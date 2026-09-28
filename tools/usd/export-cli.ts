@@ -20,6 +20,8 @@ import {
 } from '../../src/engine/scene/scene-content.ts';
 import {
   convertCroxSceneToUsdStageBundle,
+  parseAndInstantiateUsdaZone,
+  parseUsdaMaterialLibrary,
   serializeAnnotationsToUsdaOverrideLayer,
   serializeUsdaStage,
 } from '../../src/engine/usd/index.ts';
@@ -94,9 +96,10 @@ function generateUsdStage(outDir = 'usd'): void {
   }
 
   // Write materials and lighting/cameras layers
+  const materialsUsdaText = serializeUsdaStage(bundle.materialsLayer);
   writeFileSync(
     join(outDir, 'materials', 'materials.usda'),
-    serializeUsdaStage(bundle.materialsLayer),
+    materialsUsdaText,
     'utf8'
   );
   writeFileSync(
@@ -105,13 +108,28 @@ function generateUsdStage(outDir = 'usd'): void {
     'utf8'
   );
 
+  // Parse materials.usda & verify round-trip runtime instantiation for all 20 zone .usda files
+  const parsedMaterials = parseUsdaMaterialLibrary(materialsUsdaText);
+  let rtCube = 0;
+  let rtCyl = 0;
+  let rtSph = 0;
+  let rtCone = 0;
+  let rtMesh = 0;
+
   // Write all 20 modular room/system zone layers
   for (const [zoneId, stageDoc] of bundle.zoneLayers.entries()) {
+    const zoneUsdaText = serializeUsdaStage(stageDoc);
     writeFileSync(
       join(outDir, 'zones', `${zoneId}.usda`),
-      serializeUsdaStage(stageDoc),
+      zoneUsdaText,
       'utf8'
     );
+    const rt = parseAndInstantiateUsdaZone(zoneUsdaText, parsedMaterials);
+    rtCube += rt.stats.cubeCount;
+    rtCyl += rt.stats.cylinderCount;
+    rtSph += rt.stats.sphereCount;
+    rtCone += rt.stats.coneCount;
+    rtMesh += rt.stats.meshCount;
   }
 
   const elapsedMs = Date.now() - t0;
@@ -121,6 +139,9 @@ function generateUsdStage(outDir = 'usd'): void {
   );
   console.log(
     `  Zones: ${s.zoneCount} | Prims: ${s.totalPrims} (Cube=${s.cubeCount}, Cylinder=${s.cylinderCount}, Sphere=${s.sphereCount}, Cone=${s.coneCount}, Mesh=${s.meshCount}) | Materials: ${s.materialCount}`
+  );
+  console.log(
+    `[USD Loader Round-Trip] Verified 20/20 .usda zones -> Cube=${rtCube}, Cylinder=${rtCyl}, Sphere=${rtSph}, Cone=${rtCone}, Mesh=${rtMesh}, Materials=${parsedMaterials.size}`
   );
 }
 

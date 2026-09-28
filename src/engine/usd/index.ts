@@ -53,6 +53,7 @@ export {
 } from './usda-override-layer.ts';
 
 export {
+  INITIAL_INCREMENTAL_USDA_ZONES,
   UsdStageRuntimeController,
   type UsdIndexedPrimInfo,
   type UsdLodVariant,
@@ -61,5 +62,13 @@ export {
   type UsdViewportDiagnosticMode,
   type UsdZoneSublayerSummary,
 } from './stage-runtime.ts';
+
+export {
+  parseAndInstantiateUsdaZone,
+  parseUsdaMaterialLibrary,
+  type UsdaLoadedTopPrim,
+  type UsdaLoadedZoneResult,
+  type UsdaSceneLayerTarget,
+} from './usda-zone-loader.ts';
 
 export { buildUsdzArchive, type UsdzArchiveEntry } from './usdz-packager.ts';

@@ -1,10 +1,11 @@
 import type { PropertyScene } from '../engine/scene/property-scene.ts';
-import type {
-  UsdIndexedPrimInfo,
-  UsdLodVariant,
-  UsdRoofCutawayVariant,
-  UsdStageRuntimeController,
-  UsdViewportDiagnosticMode,
+import {
+  INITIAL_INCREMENTAL_USDA_ZONES,
+  type UsdIndexedPrimInfo,
+  type UsdLodVariant,
+  type UsdRoofCutawayVariant,
+  type UsdStageRuntimeController,
+  type UsdViewportDiagnosticMode,
 } from '../engine/usd/stage-runtime.ts';
 import { CROX_FARMHOUSE_USD_OVERRIDE_LAYER } from '../homes/crox-farmhouse/usd/layout-overrides.ts';
 
@@ -121,6 +122,12 @@ export class UsdStageHudController {
     this.bindEvents();
 
     this.runtime.subscribe(() => {
+      if (this.selectedPrim) {
+        const updated = this.runtime.getPrimInfoByPath(this.selectedPrim.primPath);
+        if (updated) {
+          this.selectedPrim = updated;
+        }
+      }
       this.render();
     });
 
@@ -130,6 +137,26 @@ export class UsdStageHudController {
     });
 
     this.render();
+    void this.loadInitialIncrementalUsdaZones();
+  }
+
+  private async loadInitialIncrementalUsdaZones(): Promise<void> {
+    const params = new URLSearchParams(window.location.search);
+    const usdZonesParam = params.get('usdZones');
+    if (usdZonesParam === 'all') {
+      await this.runtime.loadAllZonesFromUsdaFiles();
+      return;
+    }
+    if (usdZonesParam === 'none') {
+      return;
+    }
+    const zonesToLoad = usdZonesParam
+      ? usdZonesParam
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : INITIAL_INCREMENTAL_USDA_ZONES;
+    await this.runtime.loadZonesFromUsdaFiles(zonesToLoad);
   }
 
   private bindDraggableWindow(): void {
@@ -314,7 +341,7 @@ over "CroxFarmhouse"
 
   private render(): void {
     const stats = this.runtime.getStageStats();
-    this.primCountBadgeEl.textContent = `${stats.totalPrims.toLocaleString()} prims`;
+    this.primCountBadgeEl.textContent = `${stats.usdaZoneCount}/${stats.sublayerCount} .usda · ${stats.totalPrims.toLocaleString()} prims`;
 
     const parametricTotal =
       stats.cubeCount + stats.cylinderCount + stats.sphereCount + stats.coneCount;
@@ -327,8 +354,8 @@ over "CroxFarmhouse"
         <span class="usd-stat-val">${stats.cubeCount.toLocaleString()} Cube · ${stats.cylinderCount.toLocaleString()} Cyl · ${stats.sphereCount} Sph</span>
       </div>
       <div class="usd-stat-cell">
-        <span class="usd-stat-label">CUSTOM MESH / COLLIDERS</span>
-        <span class="usd-stat-val">${stats.meshCount.toLocaleString()} Mesh · ${stats.colliderCount.toLocaleString()} UsdPhysics</span>
+        <span class="usd-stat-label">RUNTIME .USDA SOURCE OF TRUTH</span>
+        <span class="usd-stat-val" style="color:#34d399">${stats.usdaZoneCount} / ${stats.sublayerCount} Zones Loaded from .usda</span>
       </div>
     `;
 
@@ -396,8 +423,13 @@ over "CroxFarmhouse"
       return;
     }
 
+    const sourceBadge = p.usdaSourceOfTruth
+      ? '<span class="usd-badge usd-badge-phys" title="Mesh instantiated directly from /usd/zones/*.usda">.usda Source ✓</span>'
+      : '<span class="usd-badge usd-badge-kind" title="Mesh built by TypeScript builder (click TS→.usda on sublayer to migrate)">TS Builder</span>';
+
     this.primPathEl.textContent = p.primPath;
     this.primBadgesEl.innerHTML = `
+      ${sourceBadge}
       <span class="usd-badge usd-badge-type">def ${p.typeName}</span>
       <span class="usd-badge usd-badge-kind">kind = "${p.kind}"</span>
       ${p.physicsCollision ? '<span class="usd-badge usd-badge-phys">PhysicsCollisionAPI</span>' : ''}
@@ -409,10 +441,40 @@ over "CroxFarmhouse"
 
   private renderSublayerList(): void {
     const sublayers = this.runtime.getZoneSublayers();
-    const activeCount = sublayers.filter((s) => !s.muted).length;
-    this.sublayerCountEl.textContent = `${activeCount}/${sublayers.length} ACTIVE`;
+    const usdaCount = sublayers.filter((s) => s.sourceMode === 'usda').length;
+    this.sublayerCountEl.textContent = `${usdaCount}/${sublayers.length} .USDA SOURCE`;
 
     this.sublayerListEl.innerHTML = '';
+
+    // Top bar inside sublayer list to migrate all remaining zones to .usda in one click
+    if (usdaCount < sublayers.length) {
+      const migrateBar = document.createElement('div');
+      migrateBar.className = 'usd-sublayer-row';
+      migrateBar.style.justifyContent = 'space-between';
+      migrateBar.style.background = 'rgba(16, 185, 129, 0.08)';
+      migrateBar.style.borderColor = 'rgba(16, 185, 129, 0.28)';
+
+      const label = document.createElement('span');
+      label.className = 'usd-sublayer-name';
+      label.style.color = '#6ee7b7';
+      label.textContent = `Incremental Migration: ${usdaCount}/${sublayers.length} zones on .usda`;
+
+      const loadAllBtn = document.createElement('button');
+      loadAllBtn.type = 'button';
+      loadAllBtn.className = 'hud-inline-btn usd-solo-btn';
+      loadAllBtn.style.borderColor = 'rgba(16, 185, 129, 0.45)';
+      loadAllBtn.style.color = '#6ee7b7';
+      loadAllBtn.textContent = 'Load All 20 (.usda)';
+      loadAllBtn.addEventListener('click', async () => {
+        loadAllBtn.disabled = true;
+        loadAllBtn.textContent = 'Loading .usda...';
+        await this.runtime.loadAllZonesFromUsdaFiles();
+      });
+
+      migrateBar.append(label, loadAllBtn);
+      this.sublayerListEl.appendChild(migrateBar);
+    }
+
     for (const sub of sublayers) {
       const row = document.createElement('div');
       row.className = `usd-sublayer-row ${sub.muted ? 'is-muted' : ''}`;
@@ -434,6 +496,24 @@ over "CroxFarmhouse"
       countSpan.className = 'usd-sublayer-meta';
       countSpan.textContent = `${sub.totalPrims}`;
 
+      const sourceBtn = document.createElement('button');
+      sourceBtn.type = 'button';
+      sourceBtn.className = 'hud-inline-btn usd-solo-btn';
+      if (sub.sourceMode === 'usda') {
+        sourceBtn.textContent = '.usda ✓';
+        sourceBtn.style.color = '#34d399';
+        sourceBtn.style.borderColor = 'rgba(52, 211, 153, 0.45)';
+        sourceBtn.title = `Live meshes in ${sub.label} are loaded directly from /usd/zones/${sub.fileName}`;
+      } else {
+        sourceBtn.textContent = 'TS → .usda';
+        sourceBtn.title = `Click to replace TypeScript builder meshes in ${sub.label} with /usd/zones/${sub.fileName}`;
+        sourceBtn.addEventListener('click', async () => {
+          sourceBtn.disabled = true;
+          sourceBtn.textContent = '...';
+          await this.runtime.loadZoneFromUsdaFile(sub.zoneId);
+        });
+      }
+
       const soloBtn = document.createElement('button');
       soloBtn.type = 'button';
       soloBtn.className = 'hud-inline-btn usd-solo-btn';
@@ -448,10 +528,10 @@ over "CroxFarmhouse"
       openLink.href = `/usd/zones/${sub.fileName}`;
       openLink.target = '_blank';
       openLink.rel = 'noopener';
-      openLink.textContent = '.usda';
+      openLink.textContent = 'raw';
       openLink.title = `View raw /usd/zones/${sub.fileName}`;
 
-      row.append(cb, nameSpan, countSpan, soloBtn, openLink);
+      row.append(cb, nameSpan, countSpan, sourceBtn, soloBtn, openLink);
       this.sublayerListEl.appendChild(row);
     }
   }

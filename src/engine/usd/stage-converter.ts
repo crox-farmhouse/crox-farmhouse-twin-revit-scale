@@ -367,18 +367,59 @@ function convertBufferGeometryToUsdMesh(
   };
 }
 
+function sanitizeUserDataValue(val: unknown, depth = 0): unknown {
+  if (val === null || val === undefined) return undefined;
+  if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
+    return val;
+  }
+  if (depth >= 2) return undefined;
+  if (Array.isArray(val)) {
+    return val
+      .map((item) => sanitizeUserDataValue(item, depth + 1))
+      .filter((item) => item !== undefined);
+  }
+  if (typeof val === 'object' && Object.getPrototypeOf(val) === Object.prototype) {
+    const out: Record<string, unknown> = {};
+    let count = 0;
+    for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
+      if (k.startsWith('usd')) continue;
+      const clean = sanitizeUserDataValue(v, depth + 1);
+      if (clean !== undefined) {
+        out[k] = clean;
+        count++;
+      }
+    }
+    return count > 0 ? out : undefined;
+  }
+  return undefined;
+}
+
 function extractCustomAttributes(
   obj: THREE.Object3D,
-  zoneId: string
+  zoneId: string,
+  sceneLayer?: string
 ): Readonly<Record<string, UsdCustomAttributeValue>> {
   const attrs: Record<string, UsdCustomAttributeValue> = {
     'twin:roomZoneId': { type: 'token', value: zoneId },
   };
+  if (sceneLayer) {
+    attrs['twin:sceneLayer'] = { type: 'token', value: sceneLayer };
+  }
   if (obj.name) {
     attrs['twin:threeName'] = { type: 'string', value: obj.name };
   }
 
   const u = obj.userData ?? {};
+  const sanitizedUserData = sanitizeUserDataValue(u, 0) as
+    | Record<string, unknown>
+    | undefined;
+  if (sanitizedUserData && Object.keys(sanitizedUserData).length > 0) {
+    attrs['twin:userDataJson'] = {
+      type: 'string',
+      value: JSON.stringify(sanitizedUserData),
+    };
+  }
+
   if (typeof u.lodTier === 'number') {
     attrs['twin:lodTier'] = { type: 'int', value: u.lodTier };
   }
@@ -424,7 +465,8 @@ function convertObjectBranchToUsdPrim(
   zoneId: string,
   matRegistry: CanonicalMaterialRegistry,
   usedNamesInScope: Set<string>,
-  useWorldTransform = false
+  useWorldTransform = false,
+  sceneLayer?: string
 ): UsdPrim | null {
   if (obj instanceof THREE.Light || obj instanceof THREE.Camera) {
     return null;
@@ -457,7 +499,7 @@ function convertObjectBranchToUsdPrim(
       };
 
   const visibility = obj.visible ? undefined : ('invisible' as const);
-  const customAttributes = extractCustomAttributes(obj, zoneId);
+  const customAttributes = extractCustomAttributes(obj, zoneId, sceneLayer);
   const isStructuralOrFurniture =
     obj.userData?.lodTier !== 2 && !obj.userData?.isSecurityFovCone;
 
@@ -1062,12 +1104,13 @@ export function convertCroxSceneToUsdStageBundle(input: {
   const processTopLevelBranch = (
     branch: THREE.Object3D,
     isFirstFloor: boolean,
-    parentHasTransform: boolean
+    parentHasTransform: boolean,
+    sceneLayer: string
   ): void => {
     if (branch instanceof THREE.Light || branch instanceof THREE.Camera) return;
     if (branch.userData?.isRoomContainer) {
       for (const sub of branch.children) {
-        processTopLevelBranch(sub, isFirstFloor, true);
+        processTopLevelBranch(sub, isFirstFloor, true, sceneLayer);
       }
       return;
     }
@@ -1081,7 +1124,8 @@ export function convertCroxSceneToUsdStageBundle(input: {
       zoneId,
       matRegistry,
       usedNames,
-      parentHasTransform
+      parentHasTransform,
+      sceneLayer
     );
     if (prim) {
       branch.userData = {
@@ -1095,31 +1139,33 @@ export function convertCroxSceneToUsdStageBundle(input: {
   // 1. Ground floor & exterior direct children of `scene`
   for (const child of scene.children) {
     if (topLayerContainers.has(child)) continue;
-    processTopLevelBranch(child, false, false);
+    processTopLevelBranch(child, false, false, 'ground');
   }
 
   // 2. Cutaway wall groups (ground & first floor outer walls)
-  for (const cwGroup of [
-    cutawayWallGroups.southWest,
-    cutawayWallGroups.west,
-    cutawayWallGroups.north,
-    cutawayWallGroups.east,
-  ]) {
+  const cutawayEntries: readonly [THREE.Group, string][] = [
+    [cutawayWallGroups.southWest, 'cutaway.southWest'],
+    [cutawayWallGroups.west, 'cutaway.west'],
+    [cutawayWallGroups.north, 'cutaway.north'],
+    [cutawayWallGroups.east, 'cutaway.east'],
+  ];
+  for (const [cwGroup, cwLayer] of cutawayEntries) {
     for (const child of cwGroup.children) {
-      processTopLevelBranch(child, false, false);
+      processTopLevelBranch(child, false, false, cwLayer);
     }
   }
 
   // 3. First floor rooms
   for (const child of firstFloorMeshGroup.children) {
-    processTopLevelBranch(child, true, false);
+    processTopLevelBranch(child, true, false, 'firstFloor');
   }
 
   // 4. Ground floor ceiling slabs & First floor roofs/chimneys (`roofAndCeilings`)
-  for (const roofGroup of [groundFloorCeilingGroup, ceilingMeshGroup]) {
-    for (const child of roofGroup.children) {
-      processTopLevelBranch(child, true, false);
-    }
+  for (const child of groundFloorCeilingGroup.children) {
+    processTopLevelBranch(child, true, false, 'groundCeiling');
+  }
+  for (const child of ceilingMeshGroup.children) {
+    processTopLevelBranch(child, true, false, 'roof');
   }
 
   // Build individual `usd/zones/<zoneId>.usda` documents

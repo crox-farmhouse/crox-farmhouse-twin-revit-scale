@@ -9,11 +9,17 @@ import {
   type UsdPrimTypeName,
   type UsdProceduralPatternKind,
 } from './schema.ts';
+import { classifyBranchZoneLayer } from './stage-converter.ts';
 import {
   applyUsdOverridesToScene,
   parseUsdaOverrideLayer,
 } from './usda-override-layer.ts';
 import { serializeUsdaStage } from './usda-serializer.ts';
+import {
+  parseAndInstantiateUsdaZone,
+  parseUsdaMaterialLibrary,
+  type UsdaSceneLayerTarget,
+} from './usda-zone-loader.ts';
 
 export type UsdViewportDiagnosticMode =
   | 'pbr'
@@ -41,6 +47,7 @@ export interface UsdIndexedPrimInfo {
   readonly materialArchetype: UsdProceduralPatternKind;
   readonly worldCenter: Vec3Tuple;
   readonly worldSize: Vec3Tuple;
+  readonly usdaSourceOfTruth: boolean;
 }
 
 export interface UsdZoneSublayerSummary {
@@ -48,6 +55,7 @@ export interface UsdZoneSublayerSummary {
   readonly label: string;
   readonly fileName: string;
   readonly muted: boolean;
+  readonly sourceMode: 'usda' | 'ts';
   readonly totalPrims: number;
   readonly cubeCount: number;
   readonly cylinderCount: number;
@@ -67,6 +75,7 @@ export interface UsdStageStatsSummary {
   readonly colliderCount: number;
   readonly materialCount: number;
   readonly sublayerCount: number;
+  readonly usdaZoneCount: number;
   readonly lodVariant: UsdLodVariant;
   readonly roofCutawayVariant: UsdRoofCutawayVariant;
   readonly diagnosticMode: UsdViewportDiagnosticMode;
@@ -241,11 +250,25 @@ const ARCHETYPE_COLORS: Readonly<Record<UsdProceduralPatternKind, number>> = {
  * - Live `#usda 1.0` prim inspection (`def Cube`, `def Cylinder`, `MaterialX`, `UsdPhysics`)
  * - Live `#usda 1.0` override & parametric prim (`def Cube` / `def Cylinder` / `def Sphere`) authoring
  */
+export const INITIAL_INCREMENTAL_USDA_ZONES: readonly string[] = [
+  'kitchen',
+  'butlersPantry',
+  'utility',
+  'bootRoom',
+];
+
 export class UsdStageRuntimeController {
+  private readonly sceneRoot: THREE.Scene;
   private readonly roots: readonly THREE.Object3D[];
   private readonly ceilingRoot: THREE.Object3D;
   private readonly groundCeilingRoot: THREE.Object3D;
   private readonly firstFloorRoot: THREE.Object3D;
+  private readonly cutawayWallGroups: {
+    readonly southWest: THREE.Group;
+    readonly west: THREE.Group;
+    readonly north: THREE.Group;
+    readonly east: THREE.Group;
+  };
   private readonly onRoofCutawayChanged?: (cutaway: boolean) => void;
 
   private readonly meshByUuid = new Map<string, THREE.Mesh>();
@@ -253,6 +276,8 @@ export class UsdStageRuntimeController {
   private readonly primByPath = new Map<string, UsdIndexedPrimInfo>();
   private readonly meshesByZone = new Map<string, THREE.Mesh[]>();
   private readonly mutedZones = new Set<string>();
+  private readonly usdaBackedZones = new Set<string>();
+  private usdaMaterialLibraryPromise: Promise<Map<string, THREE.Material>> | null = null;
   private readonly originalMaterials = new Map<string, THREE.Material | THREE.Material[]>();
   private readonly diagnosticMaterialCache = new Map<string, THREE.MeshStandardMaterial>();
   private readonly authoredOverrideGroup = new THREE.Group();
@@ -277,6 +302,8 @@ export class UsdStageRuntimeController {
     readonly initialCeilingCutaway: boolean;
     readonly onRoofCutawayChanged?: (cutaway: boolean) => void;
   }) {
+    this.sceneRoot = options.scene;
+    this.cutawayWallGroups = options.cutawayWallGroups;
     this.roots = [
       options.scene,
       options.firstFloorMeshGroup,
@@ -312,6 +339,176 @@ export class UsdStageRuntimeController {
     for (const l of this.listeners) {
       l();
     }
+  }
+
+  public isZoneUsdaBacked(zoneId: string): boolean {
+    return this.usdaBackedZones.has(zoneId);
+  }
+
+  private async ensureUsdaMaterialLibrary(): Promise<Map<string, THREE.Material>> {
+    if (!this.usdaMaterialLibraryPromise) {
+      this.usdaMaterialLibraryPromise = fetch('/usd/materials/materials.usda')
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status} fetching /usd/materials/materials.usda`);
+          }
+          return res.text();
+        })
+        .then((text) => parseUsdaMaterialLibrary(text));
+    }
+    return this.usdaMaterialLibraryPromise;
+  }
+
+  /**
+   * Incrementally replaces a zone's TypeScript-built Three.js meshes with meshes
+   * parsed and instantiated directly from `/usd/zones/<zoneId>.usda` and
+   * `/usd/materials/materials.usda`, making the `.usda` file the live runtime
+   * source of truth for that zone.
+   */
+  public async loadZoneFromUsdaFile(zoneId: string): Promise<boolean> {
+    if (this.usdaBackedZones.has(zoneId)) {
+      return true;
+    }
+    try {
+      const [materials, zoneRes] = await Promise.all([
+        this.ensureUsdaMaterialLibrary(),
+        fetch(`/usd/zones/${zoneId}.usda`),
+      ]);
+      if (!zoneRes.ok) {
+        return false;
+      }
+      const zoneUsdaText = await zoneRes.text();
+      const loaded = parseAndInstantiateUsdaZone(zoneUsdaText, materials);
+      if (loaded.topPrims.length === 0) {
+        return false;
+      }
+
+      this.removeTypeScriptBranchesForZone(zoneId);
+
+      for (const topPrim of loaded.topPrims) {
+        const container = this.resolveSceneLayerContainer(topPrim.sceneLayer);
+        container.add(topPrim.object3d);
+      }
+
+      this.usdaBackedZones.add(zoneId);
+      this.indexStage();
+      this.syncVisibilityForZone(zoneId);
+      if (this.diagnosticMode !== 'pbr') {
+        const currentMode = this.diagnosticMode;
+        this.diagnosticMode = 'pbr';
+        this.setDiagnosticMode(currentMode);
+      } else {
+        this.emit();
+      }
+      return true;
+    } catch (err) {
+      console.warn(`[OpenUSD Stage] Failed to load zone ${zoneId} from .usda:`, err);
+      return false;
+    }
+  }
+
+  public async loadZonesFromUsdaFiles(zoneIds: readonly string[]): Promise<number> {
+    let loadedCount = 0;
+    for (const zoneId of zoneIds) {
+      const ok = await this.loadZoneFromUsdaFile(zoneId);
+      if (ok) loadedCount++;
+    }
+    return loadedCount;
+  }
+
+  public async loadAllZonesFromUsdaFiles(): Promise<number> {
+    return this.loadZonesFromUsdaFiles(CROX_USD_ZONE_LAYERS.map((z) => z.zoneId));
+  }
+
+  private resolveSceneLayerContainer(layer: UsdaSceneLayerTarget): THREE.Object3D {
+    switch (layer) {
+      case 'firstFloor':
+        return this.firstFloorRoot;
+      case 'groundCeiling':
+        return this.groundCeilingRoot;
+      case 'roof':
+        return this.ceilingRoot;
+      case 'cutaway.southWest':
+        return this.cutawayWallGroups.southWest;
+      case 'cutaway.west':
+        return this.cutawayWallGroups.west;
+      case 'cutaway.north':
+        return this.cutawayWallGroups.north;
+      case 'cutaway.east':
+        return this.cutawayWallGroups.east;
+      case 'ground':
+      default:
+        return this.sceneRoot;
+    }
+  }
+
+  private removeTypeScriptBranchesForZone(zoneId: string): void {
+    const roofGroupSet = new Set<THREE.Object3D>([
+      this.groundCeilingRoot,
+      this.ceilingRoot,
+    ]);
+    const topLayerContainers = new Set<THREE.Object3D>([
+      this.firstFloorRoot,
+      this.groundCeilingRoot,
+      this.ceilingRoot,
+      this.cutawayWallGroups.southWest,
+      this.cutawayWallGroups.west,
+      this.cutawayWallGroups.north,
+      this.cutawayWallGroups.east,
+      this.authoredOverrideGroup,
+    ]);
+
+    const shouldKeepHelper = (obj: THREE.Object3D): boolean => {
+      if (
+        obj instanceof THREE.Light ||
+        obj instanceof THREE.Camera ||
+        obj instanceof THREE.Line ||
+        obj instanceof THREE.Points
+      ) {
+        return true;
+      }
+      if (obj.userData?.isAnnotationGroup || obj.name.startsWith('annotationMarker')) {
+        return true;
+      }
+      if (obj instanceof THREE.Mesh) {
+        const firstMat = Array.isArray(obj.material) ? obj.material[0] : obj.material;
+        if (
+          firstMat instanceof THREE.MeshBasicMaterial &&
+          firstMat.blending === THREE.AdditiveBlending &&
+          firstMat.depthWrite === false
+        ) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const pruneContainer = (container: THREE.Object3D, isFirstFloor: boolean): void => {
+      for (const child of [...container.children]) {
+        if (topLayerContainers.has(child) || shouldKeepHelper(child)) continue;
+        if (child.userData?.isRoomContainer) {
+          for (const sub of [...child.children]) {
+            if (shouldKeepHelper(sub)) continue;
+            if (classifyBranchZoneLayer(sub, roofGroupSet, isFirstFloor) === zoneId) {
+              child.remove(sub);
+            }
+          }
+          continue;
+        }
+        if (classifyBranchZoneLayer(child, roofGroupSet, isFirstFloor) === zoneId) {
+          container.remove(child);
+        }
+      }
+    };
+
+    pruneContainer(this.sceneRoot, false);
+    pruneContainer(this.cutawayWallGroups.southWest, false);
+    pruneContainer(this.cutawayWallGroups.west, false);
+    pruneContainer(this.cutawayWallGroups.north, false);
+    pruneContainer(this.cutawayWallGroups.east, false);
+    pruneContainer(this.firstFloorRoot, true);
+    pruneContainer(this.groundCeilingRoot, true);
+    pruneContainer(this.ceilingRoot, true);
   }
 
   public indexStage(): void {
@@ -367,6 +564,7 @@ export class UsdStageRuntimeController {
               : undefined;
         let isArchShell = Boolean(obj.userData?.isArchitecturalShell);
         let lodTier: 0 | 1 | 2 = 0;
+        let isUsdaSource = Boolean(obj.userData?.usdSourceOfTruth);
 
         let cur: THREE.Object3D | null = obj;
         while (cur) {
@@ -382,6 +580,9 @@ export class UsdStageRuntimeController {
           }
           if (cur.userData?.isArchitecturalShell) {
             isArchShell = true;
+          }
+          if (cur.userData?.usdSourceOfTruth) {
+            isUsdaSource = true;
           }
           if (cur.userData?.lodTier === 2) {
             lodTier = 2;
@@ -426,11 +627,14 @@ export class UsdStageRuntimeController {
           isArchShell
         );
 
+        const usdMatKind = firstMat?.userData?.proceduralKind as
+          | UsdProceduralPatternKind
+          | undefined;
         const previewSpec = firstMat
           ? convertThreeMaterialToUsdSpec(firstMat, inheritedName || obj.name)
           : null;
         const archetype: UsdProceduralPatternKind =
-          previewSpec?.proceduralPattern?.kind ?? 'solid';
+          usdMatKind ?? previewSpec?.proceduralPattern?.kind ?? 'solid';
         const matBaseName = firstMat?.name
           ? sanitizeUsdIdent(firstMat.name, 'Mat')
           : `Mat_${archetype}_${Math.round((previewSpec?.diffuseColor[0] ?? 0.8) * 255)
@@ -440,7 +644,9 @@ export class UsdStageRuntimeController {
               .padStart(2, '0')}${Math.round((previewSpec?.diffuseColor[2] ?? 0.8) * 255)
               .toString(16)
               .padStart(2, '0')}`;
-        const materialPath = `/CroxFarmhouse/_Materials/${matBaseName}`;
+        const materialPath =
+          (firstMat?.userData?.usdMaterialPath as string | undefined) ??
+          `/CroxFarmhouse/_Materials/${matBaseName}`;
         this.uniqueMaterialPaths.add(materialPath);
 
         const sublayerFile = `usd/zones/${zoneId}.usda`;
@@ -466,6 +672,7 @@ export class UsdStageRuntimeController {
           materialArchetype: archetype,
           worldCenter: toVec3(center),
           worldSize: toVec3(size),
+          usdaSourceOfTruth: isUsdaSource || this.usdaBackedZones.has(zoneId),
         };
 
         obj.userData.usdPrimPath = primPath;
@@ -513,6 +720,7 @@ export class UsdStageRuntimeController {
       colliderCount,
       materialCount: this.uniqueMaterialPaths.size,
       sublayerCount: CROX_USD_ZONE_LAYERS.length,
+      usdaZoneCount: this.usdaBackedZones.size,
       lodVariant: this.lodVariant,
       roofCutawayVariant: this.roofCutawayVariant,
       diagnosticMode: this.diagnosticMode,
@@ -543,6 +751,7 @@ export class UsdStageRuntimeController {
         label: layer.label,
         fileName: `${layer.zoneId}.usda`,
         muted: this.mutedZones.has(layer.zoneId),
+        sourceMode: this.usdaBackedZones.has(layer.zoneId) ? 'usda' : 'ts',
         totalPrims: meshes.length,
         cubeCount,
         cylinderCount,
