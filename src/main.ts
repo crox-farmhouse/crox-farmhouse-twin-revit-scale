@@ -15,6 +15,7 @@ import {
 import { AnnotatorHudController } from './ui/annotator-hud.ts';
 import { FocusHudController } from './ui/focus/focus-hud.ts';
 import { HudController } from './ui/hud.ts';
+import { UsdStageHudController } from './ui/usd-stage-hud.ts';
 
 export interface CroxDigitalTwinGlobalAPI {
   readonly hub: SmartHomeHub;
@@ -112,6 +113,9 @@ new FocusHudController({
   onFloorViewModeChanged: () => hud.syncFloorModeUI(),
 });
 new AnnotatorHudController(property3D, annotationStore, () => {
+  hud.syncFloorModeUI();
+});
+new UsdStageHudController(property3D, () => {
   hud.syncFloorModeUI();
 });
 

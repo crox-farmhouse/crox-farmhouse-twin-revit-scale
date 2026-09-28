@@ -46,6 +46,10 @@ import {
   type PropertySceneLayers,
 } from './scene-content.ts';
 import type { SceneZoneRegistry } from './scene-zone-registry.ts';
+import {
+  type UsdIndexedPrimInfo,
+  UsdStageRuntimeController,
+} from '../usd/stage-runtime.ts';
 
 export type { MovableTargetCandidate } from './controllers/annotation-controller.ts';
 
@@ -98,6 +102,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   private readonly cutaways: CutawayController;
   private readonly bifolds: BifoldDoorAnimator;
   private readonly interactions: SceneInteractionManager;
+  private readonly usdRuntime: UsdStageRuntimeController;
 
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
@@ -105,6 +110,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
   private readonly viewListeners = new Set<(view: PropertySceneViewState) => void>();
   private onSurfaceDoubleClick: ((point: THREE.Vector3) => void) | null = null;
+  private onUsdPrimPick: ((info: UsdIndexedPrimInfo) => void) | null = null;
 
   public constructor(
     canvas: HTMLCanvasElement,
@@ -188,14 +194,40 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       this.needsRender = true;
     });
 
+    this.usdRuntime = new UsdStageRuntimeController({
+      scene: this.scene,
+      firstFloorMeshGroup: this.layers.firstFloorMeshGroup,
+      groundFloorCeilingGroup: this.layers.groundFloorCeilingGroup,
+      ceilingMeshGroup: this.layers.ceilingMeshGroup,
+      cutawayWallGroups: this.layers.cutawayWallGroups,
+      initialCeilingCutaway: this.cutaways.isCeilingCutaway(),
+      onRoofCutawayChanged: (cutaway) => {
+        if (this.isCeilingCutaway() !== cutaway) {
+          this.toggleCeilingCutaway();
+        }
+      },
+    });
+    this.usdRuntime.subscribe(() => {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.needsRender = true;
+    });
+
     this.updateCameraFacingWallCutaways();
     this.freezeStaticMatrices();
     this.setupInteractionEvents();
   }
 
   // ---------------------------------------------------------------------------
-  // Registry / LOD / security / UFH
+  // Registry / LOD / security / UFH / OpenUSD Runtime
   // ---------------------------------------------------------------------------
+
+  public getUsdRuntime(): UsdStageRuntimeController {
+    return this.usdRuntime;
+  }
+
+  public setOnUsdPrimPick(cb: ((info: UsdIndexedPrimInfo) => void) | null): void {
+    this.onUsdPrimPick = cb;
+  }
 
   public getZoneRegistry(): SceneZoneRegistry {
     return this.zoneRegistry;
@@ -755,6 +787,12 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       const hits = raycaster.intersectObjects(this.content.interactiveMeshes, false);
       const firstHit = hits.find((hit) => isObjectVisibleInHierarchy(hit.object));
       if (firstHit) {
+        if (this.onUsdPrimPick) {
+          const primInfo = this.usdRuntime.getPrimInfoByMesh(firstHit.object);
+          if (primInfo) {
+            this.onUsdPrimPick(primInfo);
+          }
+        }
         const data = firstHit.object.userData as InteractiveUserData;
         if (data.interactableId) {
           this.handleInteractableClick(data.interactableId);
@@ -763,6 +801,27 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
           this.toggleUfhZone(data.ufhZoneId);
         }
         this.onObjectInteraction(data);
+        return;
+      }
+
+      // 4. OpenUSD Stage Prim Inspection pick on any visible architectural / furniture mesh
+      if (this.onUsdPrimPick) {
+        const sceneHits = raycaster.intersectObjects(
+          [this.scene, this.layers.firstFloorMeshGroup],
+          true
+        );
+        const visibleSceneHit = sceneHits.find(
+          (hit) =>
+            hit.object instanceof THREE.Mesh &&
+            hit.object.geometry !== this.content.glowPoolGeometry &&
+            isObjectVisibleInHierarchy(hit.object)
+        );
+        if (visibleSceneHit) {
+          const primInfo = this.usdRuntime.getPrimInfoByMesh(visibleSceneHit.object);
+          if (primInfo) {
+            this.onUsdPrimPick(primInfo);
+          }
+        }
       }
     });
 

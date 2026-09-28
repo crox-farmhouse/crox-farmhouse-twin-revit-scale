@@ -1709,3 +1709,346 @@ body,
   border-color: #9e6d30;
   color: #ffe2b3;
 }
+
+/* ============================================================================
+   Floating OpenUSD Stage Studio HUD (#usd-stage-panel)
+   ============================================================================ */
+
+.usd-stage-window {
+  left: 342px;
+  right: auto;
+  top: 14px;
+  width: 356px;
+  border-color: #1e425e;
+}
+
+.usd-stage-titlebar {
+  background: linear-gradient(180deg, #1b3144 0%, #152433 100%);
+  border-bottom-color: #0e1a24;
+}
+
+.usd-stage-titlebar code {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  color: #7dd3fc;
+  font-size: 9.5px;
+}
+
+.usd-count-badge {
+  background: #0c4a6e;
+  color: #bae6fd;
+  border: 1px solid #0284c7;
+}
+
+.usd-stage-body {
+  max-height: calc(100vh - 60px);
+}
+
+.usd-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.usd-stat-cell {
+  background: #141920;
+  border: 1px solid #243040;
+  border-radius: 3px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.usd-stat-label {
+  font-size: 7.5px;
+  font-weight: 700;
+  color: #7da2c4;
+  letter-spacing: 0.04em;
+}
+
+.usd-stat-val {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8.8px;
+  font-weight: 600;
+  color: #e2f1ff;
+}
+
+.usd-export-links-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+
+.usd-dl-btn {
+  text-decoration: none;
+  text-align: center;
+  padding: 3px 4px;
+  font-size: 8.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.usd-dl-primary {
+  background: #164e63;
+  border-color: #0891b2;
+  color: #cffafe;
+  font-weight: 700;
+}
+
+.usd-dl-primary:hover {
+  background: #155e75;
+}
+
+.usd-diag-row {
+  margin-bottom: 4px;
+}
+
+.usd-diag-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 6px;
+  background: #12171d;
+  border: 1px solid #222e3c;
+  border-radius: 3px;
+}
+
+.usd-legend-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8.5px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  color: #cbd5e1;
+}
+
+.usd-legend-pill i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.usd-variant-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.usd-variant-row:last-child {
+  margin-bottom: 0;
+}
+
+.usd-variant-label {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8.5px;
+  color: #93c5fd;
+  min-width: 72px;
+}
+
+.usd-variant-seg {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.usd-prim-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.usd-prim-path {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: #38bdf8;
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+
+.usd-prim-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.usd-badge {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+.usd-badge-type {
+  background: #1e3a8a;
+  color: #bfdbfe;
+  border: 1px solid #3b82f6;
+}
+
+.usd-badge-kind {
+  background: #27272a;
+  color: #d4d4d8;
+  border: 1px solid #52525b;
+}
+
+.usd-badge-phys {
+  background: #064e3b;
+  color: #a7f3d0;
+  border: 1px solid #10b981;
+}
+
+.usd-badge-link {
+  background: #1f2937;
+  color: #93c5fd;
+  border: 1px solid #374151;
+  text-decoration: none;
+}
+
+.usd-badge-link:hover {
+  background: #374151;
+}
+
+.usd-prim-mat {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8.2px;
+  color: #c4b5fd;
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
+.usd-prim-pre {
+  margin: 0;
+  padding: 5px 6px;
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 3px;
+  color: #a5d6ff;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  line-height: 1.35;
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre;
+}
+
+.usd-sublayer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 138px;
+  overflow-y: auto;
+  background: #121519;
+  border: 1px solid #1e242c;
+  border-radius: 3px;
+  padding: 3px 4px;
+}
+
+.usd-sublayer-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 3px;
+  border-radius: 2px;
+  font-size: 8.8px;
+}
+
+.usd-sublayer-row:hover {
+  background: #1b222c;
+}
+
+.usd-sublayer-row.is-muted {
+  opacity: 0.48;
+}
+
+.usd-sublayer-row input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.usd-sublayer-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #e2e8f0;
+}
+
+.usd-sublayer-meta {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  color: #94a3b8;
+}
+
+.usd-solo-btn {
+  padding: 1px 4px;
+  font-size: 7.8px;
+}
+
+.usd-sublayer-link {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  color: #38bdf8;
+  text-decoration: none;
+}
+
+.usd-sublayer-link:hover {
+  text-decoration: underline;
+}
+
+.usd-override-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0d1117;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+  border-radius: 3px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8.2px;
+  line-height: 1.35;
+  padding: 5px 6px;
+  resize: vertical;
+  margin-bottom: 5px;
+}
+
+.usd-override-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.usd-apply-btn {
+  flex: 1;
+  background: #155e75;
+  border-color: #0891b2;
+  color: #ecfeff;
+}
+
+.usd-apply-btn:hover {
+  background: #0e7490;
+}
+
+.usd-pxr-btn {
+  background: #1e293b;
+  border-color: #475569;
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.usd-compile-status {
+  margin-top: 5px;
+  padding: 4px 6px;
+  background: #0f172a;
+  border: 1px solid #1e3a8a;
+  border-radius: 3px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  color: #93c5fd;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+

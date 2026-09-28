@@ -1,4 +1,6 @@
-import { execSync } from 'node:child_process';
+import { execFile, execSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import { defineConfig } from 'vite';
 
 let cachedAccessToken = '';
@@ -28,6 +30,101 @@ function knxVertexAiMiddlewarePlugin() {
       } catch {
         // Ignore startup warm error
       }
+
+      // 1. Serve /usd/* files directly from ./usd/ (both ASCII .usda and binary .usdc / .usdz)
+      server.middlewares.use('/usd/', (req, res, next) => {
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+          next();
+          return;
+        }
+        const rawUrl = (req.url || '').split('?')[0].replace(/^\/+/, '');
+        const usdRoot = path.resolve(process.cwd(), 'usd');
+        const targetPath = path.resolve(usdRoot, rawUrl);
+        if (!targetPath.startsWith(usdRoot) || !fs.existsSync(targetPath)) {
+          next();
+          return;
+        }
+        const stat = fs.statSync(targetPath);
+        if (!stat.isFile()) {
+          next();
+          return;
+        }
+        const ext = path.extname(targetPath).toLowerCase();
+        const contentType =
+          ext === '.usda' || ext === '.md'
+            ? 'text/plain; charset=utf-8'
+            : ext === '.usdz'
+              ? 'model/vnd.usdz+zip'
+              : 'application/octet-stream';
+        res.statusCode = 200;
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Length', String(stat.size));
+        fs.createReadStream(targetPath).pipe(res);
+      });
+
+      // 2. Live OpenUSD Override Layer Save + Pixar C++ `pxr` Stage Compiler endpoint
+      server.middlewares.use('/api/usd/compile-overrides', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.end(JSON.stringify({ error: 'Method not allowed' }));
+          return;
+        }
+        let body = '';
+        req.on('data', (chunk) => {
+          body += chunk;
+        });
+        req.on('end', () => {
+          try {
+            const payload = JSON.parse(body || '{}');
+            const usdaText = typeof payload.usda === 'string' ? payload.usda : '';
+            if (!usdaText.trim().startsWith('#usda')) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: 'Override layer must start with #usda 1.0' }));
+              return;
+            }
+            const overridePath = path.resolve(process.cwd(), 'usd/overrides/layout.usda');
+            fs.mkdirSync(path.dirname(overridePath), { recursive: true });
+            fs.writeFileSync(overridePath, usdaText, 'utf8');
+
+            const scriptPath = path.resolve(process.cwd(), 'tools/usd/compile_stage.py');
+            const usdDir = path.resolve(process.cwd(), 'usd');
+            execFile(
+              'python3',
+              [scriptPath, '--usd-dir', usdDir],
+              { cwd: process.cwd(), timeout: 30000 },
+              (err, stdout, stderr) => {
+                if (err) {
+                  res.statusCode = 500;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(
+                    JSON.stringify({
+                      error: stderr || err.message,
+                    })
+                  );
+                  return;
+                }
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(
+                  JSON.stringify({
+                    ok: true,
+                    output: stdout.trim(),
+                  })
+                );
+              }
+            );
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(
+              JSON.stringify({
+                error: err instanceof Error ? err.message : 'USD compile failed',
+              })
+            );
+          }
+        });
+      });
 
       server.middlewares.use('/api/knx-ai', (req, res) => {
         if (req.method !== 'POST') {

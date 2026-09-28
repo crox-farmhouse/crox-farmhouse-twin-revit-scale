@@ -682,6 +682,109 @@
         </footer>
       </div>
     </aside>
+
+    <!-- Floating OpenUSD Stage Studio HUD (pxr 26.8 · MaterialX · Sublayers & VariantSets) -->
+    <aside id="usd-stage-panel" class="hud-window usd-stage-window" aria-label="OpenUSD Stage Studio">
+      <header id="usd-stage-titlebar" class="hud-titlebar usd-stage-titlebar" title="Drag to move OpenUSD Stage Studio">
+        <button id="usd-stage-collapse-btn" class="hud-win-btn" type="button" title="Collapse / Expand OpenUSD Stage Studio" aria-label="Collapse OpenUSD Stage Studio"></button>
+        <span class="hud-title">OpenUSD Stage · <code>/CroxFarmhouse</code></span>
+        <span id="usd-stage-prim-badge" class="hud-count usd-count-badge">0 prims</span>
+      </header>
+
+      <div id="usd-stage-body" class="hud-body usd-stage-body">
+        <!-- Section 1: Stage Summary & Export Links (Blender EEVEE/Cycles & UE5) -->
+        <section class="hud-section">
+          <div class="hud-section-head">
+            <span>STAGE TELEMETRY (PIXAR PXR 26.8)</span>
+            <span class="hud-meta">USDC · USDZ · MTLX</span>
+          </div>
+          <div id="usd-stage-stats-grid" class="usd-stats-grid"></div>
+          <div class="usd-export-links-row">
+            <a class="hud-inline-btn usd-dl-btn usd-dl-primary" href="/usd/crox_farmhouse.usdc" download="crox_farmhouse.usdc" title="Download Binary Crate (.usdc · 5.1 MB) for Blender 4.x (EEVEE & Cycles) & Unreal Engine 5">⬇ .usdc (Crate)</a>
+            <a class="hud-inline-btn usd-dl-btn" href="/usd/crox_farmhouse.usdz" download="crox_farmhouse.usdz" title="Download Packaged USDZ Archive (.usdz · 40.3 MB)">⬇ .usdz</a>
+            <a class="hud-inline-btn usd-dl-btn" href="/usd/crox_farmhouse.usda" target="_blank" rel="noopener" title="View Root ASCII Stage (usd/crox_farmhouse.usda)">Root .usda ↗</a>
+            <a class="hud-inline-btn usd-dl-btn" href="/usd/crox_farmhouse_unreal.usda" target="_blank" rel="noopener" title="View Unreal Engine 5 Stage Actor Layer (usd/crox_farmhouse_unreal.usda)">UE5 .usda ↗</a>
+          </div>
+        </section>
+
+        <!-- Section 2: Viewport USD Shading & Diagnostic Modes -->
+        <section class="hud-section">
+          <div class="hud-section-head">
+            <span>VIEWPORT USD DIAGNOSTIC SHADING</span>
+          </div>
+          <div class="hud-seg-row usd-diag-row" role="group" aria-label="USD Diagnostic Shading Mode">
+            <button id="usd-diag-pbr" class="hud-seg-btn active" type="button" title="Standard PBR + MaterialX Shading">PBR</button>
+            <button id="usd-diag-types" class="hud-seg-btn" type="button" title="Color-code native USD parametric primitives (Cube, Cylinder, Sphere, Cone) vs custom Mesh">Prim Types</button>
+            <button id="usd-diag-phys" class="hud-seg-btn" type="button" title="Highlight UsdPhysics (PhysicsCollisionAPI) walkable & structural colliders for Unreal Engine 5">UsdPhysics</button>
+            <button id="usd-diag-mtlx" class="hud-seg-btn" type="button" title="Color-code MaterialX (UsdMtlx) procedural shader archetypes (brick, herringbone, tile, wood, plaster, glass)">MaterialX</button>
+          </div>
+          <div id="usd-diag-legend" class="usd-diag-legend" hidden></div>
+        </section>
+
+        <!-- Section 3: USD VariantSets (lod & roofCutaway) -->
+        <section class="hud-section">
+          <div class="hud-section-head">
+            <span>USD VARIANTSETS (<code>/CroxFarmhouse</code>)</span>
+          </div>
+          <div class="usd-variant-row">
+            <span class="usd-variant-label"><code>lod</code></span>
+            <div class="hud-seg-row usd-variant-seg" role="group" aria-label="USD LOD VariantSet">
+              <button id="usd-var-lod-hero" class="hud-seg-btn active" type="button" title="variantSet lod = hero (All Shell + Furniture + Fine Hero Props)">hero</button>
+              <button id="usd-var-lod-std" class="hud-seg-btn" type="button" title="variantSet lod = standard (Shell + Furniture, hides LOD2 props)">standard</button>
+              <button id="usd-var-lod-shell" class="hud-seg-btn" type="button" title="variantSet lod = shell (Architectural Shell only)">shell</button>
+            </div>
+          </div>
+          <div class="usd-variant-row">
+            <span class="usd-variant-label"><code>roofCutaway</code></span>
+            <div class="hud-seg-row usd-variant-seg" role="group" aria-label="USD Roof Cutaway VariantSet">
+              <button id="usd-var-cut-ground" class="hud-seg-btn active" type="button" title="variantSet roofCutaway = groundFloorCutaway">groundFloorCutaway</button>
+              <button id="usd-var-cut-full" class="hud-seg-btn" type="button" title="variantSet roofCutaway = fullBuilding">fullBuilding</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 4: Selected USD Prim Inspector (Click any 3D object!) -->
+        <section class="hud-section">
+          <div class="hud-section-head">
+            <span>SELECTED USD PRIM INSPECTOR</span>
+            <div class="usd-prim-actions">
+              <button id="usd-copy-prim-btn" class="hud-inline-btn" type="button" title="Copy #usda 1.0 prim definition to clipboard">Copy #usda</button>
+              <button id="usd-insert-over-btn" class="hud-inline-btn" type="button" title="Generate a non-destructive 'over' + marker sphere in the Live Override Layer">Create over</button>
+            </div>
+          </div>
+          <div id="usd-prim-path" class="usd-prim-path"></div>
+          <div id="usd-prim-badges" class="usd-prim-badges"></div>
+          <div id="usd-prim-mat" class="usd-prim-mat"></div>
+          <pre id="usd-prim-usda-pre" class="usd-prim-pre"></pre>
+        </section>
+
+        <!-- Section 5: Modular USD Sublayers (usd/zones/*.usda) -->
+        <section class="hud-section">
+          <div class="hud-section-head">
+            <span>SUBLAYERS (<code>usd/zones/*.usda</code>)</span>
+            <div class="usd-prim-actions">
+              <span id="usd-sublayer-count" class="hud-meta">20/20 ACTIVE</span>
+              <button id="usd-sublayer-showall-btn" class="hud-inline-btn" type="button" title="Unmute all 20 USD room/system sublayers">All On</button>
+            </div>
+          </div>
+          <div id="usd-sublayer-list" class="usd-sublayer-list"></div>
+        </section>
+
+        <!-- Section 6: Live #usda 1.0 Override & Parametric Prim Authoring -->
+        <section class="hud-section hud-section-last">
+          <div class="hud-section-head">
+            <span>LIVE <code>#usda 1.0</code> OVERRIDE LAYER</span>
+            <button id="usd-sample-cube-btn" class="hud-inline-btn" type="button" title="Insert a sample procedural USD Cylinder prim on the Kitchen Island">+ Sample Prim</button>
+          </div>
+          <textarea id="usd-override-textarea" class="usd-override-textarea" rows="6" spellcheck="false"></textarea>
+          <div class="usd-override-actions">
+            <button id="usd-apply-override-btn" class="hud-action-btn usd-apply-btn" type="button" title="Parse #usda 1.0 and apply 'over' overrides + 'def Cube/Cylinder/Sphere' prims live in the 3D scene">Apply Live in Viewport</button>
+            <button id="usd-compile-pxr-btn" class="hud-inline-btn usd-pxr-btn" type="button" title="Save to usd/overrides/layout.usda and recompile usd/crox_farmhouse.usdc & .usdz with Pixar C++ pxr SDK">Compile .usdc (pxr)</button>
+          </div>
+          <div id="usd-compile-status" class="usd-compile-status" hidden></div>
+        </section>
+      </div>
+    </aside>
   </div>
 
   <script type="module" src="/src/main.ts"></script>

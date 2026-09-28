@@ -52,4 +52,14 @@ export {
   type UsdTransformOverride,
 } from './usda-override-layer.ts';
 
+export {
+  UsdStageRuntimeController,
+  type UsdIndexedPrimInfo,
+  type UsdLodVariant,
+  type UsdRoofCutawayVariant,
+  type UsdStageStatsSummary,
+  type UsdViewportDiagnosticMode,
+  type UsdZoneSublayerSummary,
+} from './stage-runtime.ts';
+
 export { buildUsdzArchive, type UsdzArchiveEntry } from './usdz-packager.ts';
