@@ -1,0 +1,11 @@
+#usda 1.0
+(
+    defaultPrim = "CroxFarmhouse"
+    doc = "Crox Farmhouse non-destructive layout & annotation override layer"
+    metersPerUnit = 1
+    upAxis = "Y"
+)
+
+over "CroxFarmhouse"
+{
+}

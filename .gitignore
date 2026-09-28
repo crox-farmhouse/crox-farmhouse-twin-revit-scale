@@ -3,5 +3,6 @@ dist/
 shots/
 codemod/
 .snapshots/snapshot-cli.mjs
+.snapshots/usd-export-cli.mjs
 .snapshots/*.actual
 .snapshots/scene.golden.snap

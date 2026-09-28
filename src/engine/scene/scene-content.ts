@@ -15,6 +15,7 @@ import {
   createTVArtGalleryTextures,
   createTVOffTexture,
 } from '../textures/procedural-textures.ts';
+import { applyUsdOverridesToScene } from '../usd/usda-override-layer.ts';
 import { SceneInteractionManager } from './interaction-manager.ts';
 import type {
   PropertySceneProfile,
@@ -251,6 +252,11 @@ export function buildPropertySceneContent<TSecurity extends SecurityOverlay3D>(
   const indicatorMats = options.registry.buildAllZones(ctx);
   const security = options.profile.buildSecurityOverlay(ctx);
   const ufhSystem = options.profile.buildUfhOverlay?.(ctx) ?? null;
+
+  // Apply non-destructive OpenUSD (`#usda 1.0`) override layer transforms if present.
+  if (options.profile.usdOverrides && options.profile.usdOverrides.length > 0) {
+    applyUsdOverridesToScene([scene, firstFloorMeshGroup], options.profile.usdOverrides);
+  }
 
   // Index all room furniture (LOD1) and fine hero props (LOD2) across ground & first floors.
   options.lodController.indexBuiltSceneHierarchy([scene, firstFloorMeshGroup]);

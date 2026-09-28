@@ -7,6 +7,7 @@ import type {
 import type { CircuitId } from '../../types/knx.ts';
 import type { SceneBuilderContext, ZoneIndicatorMaterials } from '../../types/scene.ts';
 import type { RoomZoneId } from '../../types/topology.ts';
+import type { UsdTransformOverride } from '../usd/usda-override-layer.ts';
 import type { SceneZoneRegistry } from './scene-zone-registry.ts';
 
 export type UfhZoneId = 'ufhZone1' | 'ufhZone2' | 'ufhZone3' | 'ufhZone4';
@@ -142,6 +143,8 @@ export interface PropertySceneProfile<TSecurity extends SecurityOverlay3D = Secu
   readonly fixtureAppearanceOverrides: Readonly<Partial<Record<CircuitId, CircuitFixtureAppearance>>>;
   readonly switchLedRules: readonly SwitchLedIndicatorRule[];
   readonly bifoldTrack: BifoldTrackConfig;
+  /** Optional non-destructive OpenUSD (`over`) layout overrides applied after building zones. */
+  readonly usdOverrides?: readonly UsdTransformOverride[];
   buildSecurityOverlay(ctx: SceneBuilderContext): TSecurity;
   buildUfhOverlay?: (ctx: SceneBuilderContext) => UfhSystemOverlay3D;
 }

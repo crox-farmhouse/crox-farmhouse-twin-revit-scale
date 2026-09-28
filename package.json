@@ -7,7 +7,8 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
     "snapshot:check": "node tools/snapshot/run.mjs check",
-    "snapshot:update": "node tools/snapshot/run.mjs update"
+    "snapshot:update": "node tools/snapshot/run.mjs update",
+    "usd:build": "node tools/usd/run.mjs"
   },
   "dependencies": {
     "three": "^0.180.0"

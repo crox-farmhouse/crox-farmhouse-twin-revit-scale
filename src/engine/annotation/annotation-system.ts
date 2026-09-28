@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { CROX_FARMHOUSE_LOD_REGISTRATIONS } from '../../homes/crox-farmhouse/manifest.ts';
+import {
+  getUsdPrimPathForAnnotation,
+  serializeAnnotationsToUsdaOverrideLayer,
+} from '../usd/usda-override-layer.ts';
 import type {
   AnnotationKind,
   CutawayWallDescriptor,
@@ -981,6 +985,10 @@ export class SceneAnnotationStore {
     this.emit();
   }
 
+  public formatAsUsdaOverrideLayer(): string {
+    return serializeAnnotationsToUsdaOverrideLayer(this.records);
+  }
+
   public formatForAgent(): string {
     if (this.records.length === 0) {
       return 'No 3D annotations recorded.';
@@ -1001,6 +1009,7 @@ export class SceneAnnotationStore {
       const [sx, sy, sz] = r.meshInfo.meshBoundingBoxSize;
       const [minX, minY, minZ] = r.meshInfo.meshBoundingBoxMin;
       const [maxX, maxY, maxZ] = r.meshInfo.meshBoundingBoxMax;
+      const usdPrimPath = getUsdPrimPathForAnnotation(r);
 
       if (kind === 'move' && r.objectTransform) {
         const tf = r.objectTransform;
@@ -1009,6 +1018,7 @@ export class SceneAnnotationStore {
         const newRyRad = round3((tf.newRotationDeg[1] * Math.PI) / 180);
         lines.push(`## Issue #${r.id} [OBJECT MOVE / ROTATE]: ${noteText}`);
         lines.push(`- **Room / Zone**: ${r.roomName} (\`${r.roomZoneId}\`)`);
+        lines.push(`- **USD Prim Path**: \`${usdPrimPath}\``);
         lines.push(`- **Moved Target (${tf.targetKind})**: \`${tf.targetName}\``);
         if (tf.targetPath.length > 0) {
           lines.push(`- **Hierarchy**: \`${tf.targetPath.join(' > ')}\``);
@@ -1041,6 +1051,7 @@ export class SceneAnnotationStore {
         const noteText = r.note.trim() || defaultNote;
         lines.push(`## Issue #${r.id} [MEASUREMENT SPAN]: ${noteText}`);
         lines.push(`- **Room / Zone**: ${r.roomName} (\`${r.roomZoneId}\`)`);
+        lines.push(`- **USD Prim Path**: \`${usdPrimPath}\``);
         lines.push(
           `- **Measured 3D Span**: \`${formatMetersAndFeetInches(m.distanceM)}\` (Horizontal XZ: \`${m.horizontalDistanceM} m\`)`
         );
@@ -1066,6 +1077,7 @@ export class SceneAnnotationStore {
       const noteText = r.note.trim() || '(No note entered)';
       lines.push(`## Issue #${r.id}: ${noteText}`);
       lines.push(`- **Room / Zone**: ${r.roomName} (\`${r.roomZoneId}\`)`);
+      lines.push(`- **USD Prim Path**: \`${usdPrimPath}\``);
       lines.push(`- **Hit World Point (m)**: \`[${x}, ${y}, ${z}]\``);
       lines.push(`- **Surface Normal**: \`[${nx}, ${ny}, ${nz}]\``);
       lines.push(`- **Mesh Name**: \`${r.meshInfo.meshName}\``);
@@ -1089,6 +1101,11 @@ export class SceneAnnotationStore {
       lines.push('');
     }
 
+    lines.push('### OpenUSD Non-Destructive Override Layer (`usd/overrides/layout.usda`)');
+    lines.push('```usda');
+    lines.push(this.formatAsUsdaOverrideLayer().trim());
+    lines.push('```');
+    lines.push('');
     lines.push('```json');
     lines.push(JSON.stringify(this.records, null, 2));
     lines.push('```');

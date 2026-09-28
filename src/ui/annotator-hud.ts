@@ -576,20 +576,37 @@ export class AnnotatorHudController {
       }, 1800);
     });
 
-    this.exportBtn.addEventListener('click', () => {
-      const payload = {
-        exportedAt: new Date().toISOString(),
-        count: this.store.getRecords().length,
-        markdownReport: this.store.formatForAgent(),
-        annotations: this.store.getRecords(),
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], {
-        type: 'application/json',
+    this.exportBtn.addEventListener('click', (e: MouseEvent) => {
+      if (e.shiftKey) {
+        const payload = {
+          exportedAt: new Date().toISOString(),
+          count: this.store.getRecords().length,
+          markdownReport: this.store.formatForAgent(),
+          usdaOverrideLayer: this.store.formatAsUsdaOverrideLayer(),
+          annotations: this.store.getRecords(),
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], {
+          type: 'application/json',
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `crox-annotations-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      const usdaText = this.store.formatAsUsdaOverrideLayer();
+      const blob = new Blob([usdaText], {
+        type: 'text/plain;charset=utf-8',
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `crox-annotations-${Date.now()}.json`;
+      a.download = 'layout.usda';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
