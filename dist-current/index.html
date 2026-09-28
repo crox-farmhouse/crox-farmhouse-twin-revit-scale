@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="description" content="Crox Farmhouse (Tur Langton) 10m x 5m Kitchen 3D Digital Twin & KNX Emulator" />
+  <title>Crox Farmhouse — Kitchen Twin</title>
+  <script type="module" crossorigin src="/assets/index-CWZoPMX7.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-4eswmOfr.css">
+</head>
+<body>
+  <div id="app">
+    <canvas id="three-canvas"></canvas>
+
+    <!-- Floating 3D Issue Annotator Palette (Top-Left) -->
+    <aside id="annotator-panel" class="hud-window annotator-window" aria-label="3D Issue Annotator">
+      <header id="annotator-titlebar" class="hud-titlebar" title="Drag to move Annotator">
+        <button id="annotator-collapse-btn" class="hud-win-btn" type="button" title="Collapse / Expand Annotator" aria-label="Collapse Annotator"></button>
+        <span class="hud-title">3D Issue Annotator</span>
+        <span id="annotator-count-badge" class="hud-count">0</span>
+      </header>
+
+      <div id="annotator-body" class="hud-body annotator-body">
+        <section class="hud-section hud-section-last">
+          <div class="annotator-top-row">
+            <button
+              id="annotator-mode-btn"
+              class="hud-rocker-btn annotator-mode-btn"
+              type="button"
+              title="Toggle 3D Annotation Mode (Shortcut: Key 'A' or Shift+Click any surface)"
+            >
+              <span id="annotator-mode-dot" class="hud-rocker-dot off-state"></span>
+              <span id="annotator-mode-label" class="hud-rocker-label">Annotate Mode: OFF</span>
+              <span class="hud-rocker-hint">Shift+Click / A</span>
+            </button>
+          </div>
+
+          <!-- Sub-Tool Selector: Pin / Move / Rotate / Measure -->
+          <div class="annotator-tools-bar" role="group" aria-label="Annotate Tool Mode">
+            <button
+              id="annotator-tool-pin"
+              class="annotator-tool-btn is-active"
+              type="button"
+              title="Pin Issue Tool (Shortcut: P) — Click any 3D surface to drop a numbered issue pin"
+            >
+              Pin (P)
+            </button>
+            <button
+              id="annotator-tool-move"
+              class="annotator-tool-btn"
+              type="button"
+              title="Move Object Tool (Shortcut: M or W) — Click any 3D furniture/fixture to drag with 3D translation gizmo or nudge coordinates"
+            >
+              Move (M)
+            </button>
+            <button
+              id="annotator-tool-rotate"
+              class="annotator-tool-btn"
+              type="button"
+              title="Rotate Object Tool (Shortcut: E) — Click any 3D furniture/fixture to rotate with 3D rotation rings or angle controls"
+            >
+              Rotate (E)
+            </button>
+            <button
+              id="annotator-tool-measure"
+              class="annotator-tool-btn"
+              type="button"
+              title="3D Measure Span Tool (Shortcut: R) — Click Point A then Point B to measure distance and record real-world target dimension"
+            >
+              Measure (R)
+            </button>
+          </div>
+
+          <div class="annotator-actions-row">
+            <button
+              id="annotator-copy-btn"
+              class="hud-action-btn annotator-copy-btn"
+              type="button"
+              title="Copy all annotations (Pins, Object Moves/Rotations, and Measurements) as Markdown + JSON to paste into chat"
+            >
+              Copy for Agent
+            </button>
+            <button
+              id="annotator-export-btn"
+              class="hud-inline-btn"
+              type="button"
+              title="Download annotations as JSON file"
+            >
+              Export JSON
+            </button>
+            <button
+              id="annotator-clear-btn"
+              class="hud-inline-btn"
+              type="button"
+              title="Clear all 3D annotations"
+            >
+              Clear
+            </button>
+          </div>
+
+          <!-- Move / Rotate Object Inspector (visible in Move or Rotate tool or when a Move/Rotate annotation is selected) -->
+          <div id="annotator-move-box" class="annotator-sub-box annotator-move-box" hidden>
+            <div class="annotator-sub-head">
+              <span id="annotator-move-box-title" class="annotator-sub-title">MOVE / ROTATE OBJECT</span>
+              <div class="annotator-gizmo-switch">
+                <button
+                  id="annotator-gizmo-translate"
+                  class="hud-inline-btn is-active"
+                  type="button"
+                  title="3D Translate Gizmo (Shortcut: M or W)"
+                >
+                  Move (W)
+                </button>
+                <button
+                  id="annotator-gizmo-rotate"
+                  class="hud-inline-btn"
+                  type="button"
+                  title="3D Rotate Gizmo (Shortcut: E)"
+                >
+                  Rotate (E)
+                </button>
+              </div>
+            </div>
+
+            <div id="annotator-move-empty" class="annotator-sub-hint">
+              Click any 3D furniture, appliance, door, or fixture to attach the 3D Move / Rotate gizmo and drag or adjust it.
+            </div>
+
+            <div id="annotator-move-controls" hidden>
+              <div class="annotator-move-row">
+                <label class="annotator-field-label" for="annotator-move-target-select">Target</label>
+                <select
+                  id="annotator-move-target-select"
+                  class="hud-select annotator-move-select"
+                  title="Choose whether to move/rotate the whole parent furniture group or an individual child mesh"
+                ></select>
+              </div>
+
+              <div class="annotator-move-grid">
+                <label class="annotator-num-field">
+                  <span>ΔX (m)</span>
+                  <input id="annotator-move-dx" type="number" step="0.05" value="0" />
+                </label>
+                <label class="annotator-num-field">
+                  <span>ΔY (m)</span>
+                  <input id="annotator-move-dy" type="number" step="0.05" value="0" />
+                </label>
+                <label class="annotator-num-field">
+                  <span>ΔZ (m)</span>
+                  <input id="annotator-move-dz" type="number" step="0.05" value="0" />
+                </label>
+                <label class="annotator-num-field">
+                  <span>ΔRot Y (°)</span>
+                  <input id="annotator-move-droty" type="number" step="15" value="0" />
+                </label>
+              </div>
+
+              <div class="annotator-rot-slider-row">
+                <label class="annotator-field-label" for="annotator-move-roty-slider">Yaw Y°</label>
+                <input
+                  id="annotator-move-roty-slider"
+                  class="annotator-rot-slider"
+                  type="range"
+                  min="-180"
+                  max="180"
+                  step="1"
+                  value="0"
+                />
+                <span id="annotator-move-roty-readout" class="annotator-rot-readout">0°</span>
+              </div>
+
+              <div class="annotator-nudge-bar">
+                <button id="annotator-nudge-xm" class="hud-inline-btn" type="button" title="Nudge West (-X 5cm)">-X</button>
+                <button id="annotator-nudge-xp" class="hud-inline-btn" type="button" title="Nudge East (+X 5cm)">+X</button>
+                <button id="annotator-nudge-zm" class="hud-inline-btn" type="button" title="Nudge North (-Z 5cm)">-Z</button>
+                <button id="annotator-nudge-zp" class="hud-inline-btn" type="button" title="Nudge South (+Z 5cm)">+Z</button>
+                <button id="annotator-nudge-ym" class="hud-inline-btn" type="button" title="Nudge Down (-Y 2cm)">-Y</button>
+                <button id="annotator-nudge-yp" class="hud-inline-btn" type="button" title="Nudge Up (+Y 2cm)">+Y</button>
+              </div>
+
+              <div class="annotator-nudge-bar">
+                <button id="annotator-nudge-rotl90" class="hud-inline-btn" type="button" title="Rotate -90° around Y">-90°</button>
+                <button id="annotator-nudge-rotl" class="hud-inline-btn" type="button" title="Rotate -45° around Y">-45°</button>
+                <button id="annotator-nudge-rotl15" class="hud-inline-btn" type="button" title="Rotate -15° around Y">-15°</button>
+                <button id="annotator-nudge-rotr15" class="hud-inline-btn" type="button" title="Rotate +15° around Y">+15°</button>
+                <button id="annotator-nudge-rotr" class="hud-inline-btn" type="button" title="Rotate +45° around Y">+45°</button>
+                <button id="annotator-nudge-rotr90" class="hud-inline-btn" type="button" title="Rotate +90° around Y">+90°</button>
+                <button id="annotator-nudge-rot180" class="hud-inline-btn" type="button" title="Rotate 180° around Y">180°</button>
+                <button id="annotator-move-reset" class="hud-inline-btn annotator-reset-btn" type="button" title="Reset object to original position and rotation">Reset</button>
+              </div>
+
+              <div id="annotator-move-summary" class="annotator-editor-meta"></div>
+            </div>
+          </div>
+
+          <!-- 3D Measure Span Inspector (visible in Measure tool or when a Measure annotation is selected) -->
+          <div id="annotator-measure-box" class="annotator-sub-box annotator-measure-box" hidden>
+            <div class="annotator-sub-head">
+              <span class="annotator-sub-title">3D MEASURE SPAN</span>
+              <div class="annotator-measure-opts">
+                <label class="annotator-snap-label" title="Lock measurement line parallel to dominant X, Y, or Z axis (or hold Shift while measuring)">
+                  <input id="annotator-measure-snap" type="checkbox" />
+                  <span>Axis Snap</span>
+                </label>
+                <button
+                  id="annotator-measure-cancel"
+                  class="hud-inline-btn"
+                  type="button"
+                  title="Cancel active measurement point"
+                  hidden
+                >
+                  Cancel Pt A
+                </button>
+              </div>
+            </div>
+
+            <div id="annotator-measure-status" class="annotator-measure-status">
+              Click <strong>Point A</strong> on any 3D wall, floor, or cabinet, then click <strong>Point B</strong> to measure span.
+            </div>
+
+            <div id="annotator-measure-readout" class="annotator-measure-readout" hidden>
+              <div class="annotator-measure-primary">
+                <span id="annotator-measure-dist-m" class="annotator-measure-val">0.000 m</span>
+                <span id="annotator-measure-dist-cm" class="annotator-measure-sub">0.0 cm · 0' 0"</span>
+              </div>
+              <div id="annotator-measure-deltas" class="annotator-editor-meta">
+                ΔX=0.000m · ΔY=0.000m · ΔZ=0.000m
+              </div>
+            </div>
+
+            <div id="annotator-measure-target-row" class="annotator-measure-target-row" hidden>
+              <label class="annotator-field-label" for="annotator-measure-target-input">Real / Target</label>
+              <input
+                id="annotator-measure-target-input"
+                class="hud-ai-input annotator-target-input"
+                type="text"
+                placeholder="e.g. 2.45m or 2450mm (real-life measurement)"
+                aria-label="Real or target measurement to correct model"
+              />
+            </div>
+          </div>
+
+          <div id="annotator-editor-box" class="annotator-editor-box" hidden>
+            <div class="annotator-editor-head">
+              <span id="annotator-editor-title" class="annotator-editor-title">PIN #1</span>
+              <span id="annotator-editor-coords" class="annotator-editor-coords">[0.00, 0.00, 0.00]</span>
+            </div>
+            <div id="annotator-editor-mesh" class="annotator-editor-meta"></div>
+            <input
+              id="annotator-note-input"
+              class="hud-ai-input annotator-note-input"
+              type="text"
+              placeholder="Add note / instructions for this annotation (Enter to save)..."
+              aria-label="Annotation issue note"
+            />
+          </div>
+
+          <div id="annotator-list" class="annotator-list">
+            <div class="annotator-empty">
+              Toggle <strong>Annotate Mode</strong> (or <strong>Shift + Click</strong>) and choose <strong>Pin</strong>, <strong>Move</strong>, or <strong>Measure</strong> to record issues, object movements, or span measurements.
+            </div>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <!-- Floating HUD Palette -->
+    <aside id="hud-panel" class="hud-window" aria-label="Kitchen &amp; KNX HUD">
+      <header id="hud-titlebar" class="hud-titlebar" title="Drag to move HUD">
+        <button id="hud-collapse-btn" class="hud-win-btn" type="button" title="Collapse / Expand HUD" aria-label="Collapse HUD"></button>
+        <span class="hud-title">Crox Farmhouse · KNX</span>
+        <span id="switch-bus-led" class="hud-bus-led" title="KNX TP1 Bus Activity"></span>
+      </header>
+
+      <div id="hud-body" class="hud-body">
+        <!-- Section 1: 4x Corston 2-Way Centre-Retractive Toggle Switches & Utility Toggle -->
+        <section class="hud-section" data-hud-levels="room" data-hud-zones="kitchen sitting utility">
+          <div class="hud-section-head">
+            <span title="Entrance · Left of AGA · Bifold Pier · Sitting Area">4× CORSTON 2-WAY · 1.1.10</span>
+            <span id="rocker-scene-readout" class="hud-meta">SCENE 1 · COOKING</span>
+          </div>
+
+          <div class="hud-two-way-box">
+            <div class="hud-two-way-row">
+              <button
+                id="knx-toggle-up-btn"
+                class="hud-rocker-btn hud-two-way-btn"
+                type="button"
+                aria-label="Toggle Up: Short press steps scene up (1-3); hold sets all lights 100% full."
+              >
+                <div class="hud-rocker-main">
+                  <span id="rocker-led" class="hud-rocker-dot"></span>
+                  <span class="hud-rocker-label">▲ Toggle Up</span>
+                </div>
+                <div class="hud-two-way-sub" id="hold-up-badge">Tap: Scene + · Hold: Full On</div>
+              </button>
+
+              <button
+                id="knx-toggle-down-btn"
+                class="hud-rocker-btn hud-two-way-btn"
+                type="button"
+                aria-label="Toggle Down: Short press steps scene down (3-1); hold turns full off / night dim."
+              >
+                <div class="hud-rocker-main">
+                  <span class="hud-rocker-label">▼ Toggle Down</span>
+                </div>
+                <div class="hud-two-way-sub" id="hold-time-badge">Tap: Scene − · Hold: Full Off</div>
+              </button>
+            </div>
+            <div class="hud-hold-track">
+              <div id="hold-progress-fill" class="hud-hold-fill"></div>
+            </div>
+          </div>
+
+          <div class="hud-sublabel-row">
+            <span>SWITCH SCENES (MAX 3) &amp; HOLD</span>
+          </div>
+          <div class="hud-seg-row" role="group" aria-label="Switch Scenes (1-3) and Long Press Full/Off">
+            <button class="hud-seg-btn scene-pill active" type="button" data-scene="0" title="Switch Scene 1: Cooking">S1 Cook</button>
+            <button class="hud-seg-btn scene-pill" type="button" data-scene="1" title="Switch Scene 2: Dining">S2 Dine</button>
+            <button class="hud-seg-btn scene-pill" type="button" data-scene="2" title="Switch Scene 3: Lounge">S3 Lounge</button>
+            <button class="hud-seg-btn scene-pill" type="button" data-scene="99" title="Hold Up: Full On (100%)">Full</button>
+            <button class="hud-seg-btn scene-pill" type="button" data-scene="-1" title="Hold Down: Full Off / Night-Walk Dim">Off</button>
+          </div>
+
+          <div class="hud-sublabel-row hud-sublabel-ext">
+            <span>AI &amp; UI EXTENDED SCENES (S4–S8)</span>
+          </div>
+          <div class="hud-seg-row" role="group" aria-label="Extended AI and UI Scenes (4-8)">
+            <button class="hud-seg-btn scene-pill scene-pill-ext" type="button" data-scene="3" title="Extended Scene 4: Morning Coffee">S4 Coffee</button>
+            <button class="hud-seg-btn scene-pill scene-pill-ext" type="button" data-scene="4" title="Extended Scene 5: Cocktail Party">S5 Party</button>
+            <button class="hud-seg-btn scene-pill scene-pill-ext" type="button" data-scene="5" title="Extended Scene 6: Wine &amp; Intimate">S6 Wine</button>
+            <button class="hud-seg-btn scene-pill scene-pill-ext" type="button" data-scene="6" title="Extended Scene 7: Courtyard Glow">S7 Patio</button>
+            <button class="hud-seg-btn scene-pill scene-pill-ext" type="button" data-scene="7" title="Extended Scene 8: Baking &amp; Detail">S8 Bake</button>
+          </div>
+
+          <button
+            id="knx-courtyard-toggle-btn"
+            class="hud-rocker-btn hud-utility-rocker"
+            type="button"
+            title="2-Gang Corston Switch next to Bifolds — Gang 2 (1.1.14): Cycles Courtyard Festoon Lighting &amp; Reclaimed Lamp Post"
+            aria-label="Bifold 2-Gang Switch Gang 2: Courtyard Festoons &amp; Lamp Post (1.1.14)"
+          >
+            <div class="hud-rocker-main hud-utility-main">
+              <span id="courtyard-rocker-led" class="hud-rocker-dot"></span>
+              <span class="hud-rocker-label">Bifold G2 · Courtyard (1.1.14)</span>
+              <span id="courtyard-state-badge" class="hud-rocker-hint">Festoons 85% + Lamp Post 90%</span>
+            </div>
+          </button>
+
+          <button
+            id="knx-utility-toggle-btn"
+            class="hud-rocker-btn hud-utility-rocker"
+            type="button"
+            aria-label="Utility Room Spotlights Toggle Switch (1.1.11)"
+          >
+            <div class="hud-rocker-main hud-utility-main">
+              <span id="utility-rocker-led" class="hud-rocker-dot"></span>
+              <span class="hud-rocker-label">Utility Spots (1.1.11)</span>
+              <span id="utility-state-badge" class="hud-rocker-hint">ON · 100%</span>
+            </div>
+          </button>
+
+          <button
+            id="knx-car-gates-btn"
+            class="hud-rocker-btn hud-utility-rocker"
+            type="button"
+            title="Motorized Dual-Leaf Front Car Entrance Gates (PA 1.1.22 · GA 1/5/1 &amp; 1/5/2 · 10s Synchronized Swing)"
+            aria-label="Front Car Entrance Gates (1.1.22 · GA 1/5/1)"
+          >
+            <div class="hud-rocker-main hud-utility-main">
+              <span id="car-gates-rocker-led" class="hud-rocker-dot off-state"></span>
+              <span class="hud-rocker-label">Front Car Gates (1.1.22)</span>
+              <span id="car-gates-state-badge" class="hud-rocker-hint">CLOSED · 0%</span>
+            </div>
+          </button>
+
+          <div class="hud-sensor-subhead">
+            <span>PIR &amp; LUX SENSORS (1.1.12 / 13)</span>
+            <span id="sensor-lux-readout" class="hud-meta">38 lx · NIGHT DIM</span>
+          </div>
+          <div class="hud-sensor-row">
+            <button
+              id="knx-kitchen-motion-btn"
+              class="hud-sensor-btn is-occupied"
+              type="button"
+              title="Toggle Kitchen Ceiling PIR Motion Sensor (1.1.12 → GA 1/4/1)"
+            >
+              <span id="kitchen-motion-led" class="hud-sensor-dot"></span>
+              <span id="kitchen-motion-label">Kitchen: Motion</span>
+            </button>
+            <button
+              id="knx-utility-motion-btn"
+              class="hud-sensor-btn is-occupied"
+              type="button"
+              title="Toggle Utility Room Ceiling PIR Motion Sensor (1.1.13 → GA 1/4/3)"
+            >
+              <span id="utility-motion-led" class="hud-sensor-dot"></span>
+              <span id="utility-motion-label">Utility: Motion</span>
+            </button>
+          </div>
+
+          <button
+            id="knx-tv-art-btn"
+            class="hud-tv-art-btn is-art-on"
+            type="button"
+            title="Sitting Area Frame TV (Presence-controlled Art Mode · Click to cycle artwork)"
+          >
+            <span id="tv-art-led" class="hud-sensor-dot"></span>
+            <span class="hud-tv-art-title">Frame TV Art:</span>
+            <span id="tv-art-readout" class="hud-tv-art-value">Tur Langton Sunset ↻</span>
+          </button>
+        </section>
+
+        <!-- Section 1B: AI Voice & Text Assistant (PA 1.1.2) -->
+        <section class="hud-section">
+          <div class="hud-section-head">
+            <span>AI VOICE / TEXT · 1.1.2</span>
+            <span id="ai-status-badge" class="hud-meta">GEMINI 3.5 FLASH-LITE</span>
+          </div>
+
+          <form id="ai-command-form" class="hud-ai-bar" autocomplete="off">
+            <button
+              id="ai-mic-btn"
+              class="hud-ai-mic-btn"
+              type="button"
+              title="Speak a lighting command (Web Speech API)"
+              aria-label="Voice Input"
+            >
+              <span id="ai-mic-dot" class="hud-ai-mic-dot"></span>
+              <span id="ai-mic-label">Mic</span>
+            </button>
+            <input
+              id="ai-command-input"
+              class="hud-ai-input"
+              type="text"
+              placeholder="Ask Gemini anything (e.g. 'Light up the courtyard festoons and lamp post')"
+              aria-label="AI lighting command input"
+            />
+            <button id="ai-send-btn" class="hud-ai-send-btn" type="submit">Run</button>
+          </form>
+
+          <div class="hud-ai-chips" aria-label="Quick AI Commands">
+            <button type="button" class="hud-ai-chip" data-prompt="Turn on the cobbled courtyard festoon lights at 85% and the reclaimed lamp post at 100%, and dim the kitchen">Courtyard Festoons &amp; Lamp</button>
+            <button type="button" class="hud-ai-chip" data-prompt="We are having friends over for cocktails, open the bifolds and light up the courtyard festoons and lamp post">Cocktail Party</button>
+            <button type="button" class="hud-ai-chip" data-prompt="Cozy evening watching art on the sofa with a glass of wine and just the outside lamp post glowing softly at 50%">Cozy Sofa &amp; Lamp Post</button>
+            <button type="button" class="hud-ai-chip" data-prompt="I'm chopping vegetables on the island, give me bright task light there but keep the sitting area dim">Prep on Island</button>
+            <button type="button" class="hud-ai-chip" data-prompt="Dim all lights by 25%">Dim −25%</button>
+          </div>
+
+          <div id="ai-output-box" class="hud-ai-output">
+            <div id="ai-fn-call-list" class="hud-ai-fn-list">
+              <code class="hud-ai-fn-pill">gemini-3.5-flash-lite · 8 channels · S1–S8</code>
+            </div>
+            <div id="ai-reply-text" class="hud-ai-reply">
+              Powered by Vertex AI Gemini 3.5 Flash-Lite — controls all 8 channels (including Cobbled Courtyard Festoons &amp; Reclaimed Lamp Post), S1–S8 scenes, TV Art &amp; environment.
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 2: 10 Lighting Channels -->
+        <section class="hud-section">
+          <div class="hud-section-head">
+            <span>10CH ACTUATOR 1.1.20</span>
+            <button id="save-scene-preset-btn" class="hud-inline-btn" type="button" title="Save current levels to active scene">Save Scene</button>
+          </div>
+          <div id="circuit-list" class="hud-sliders"></div>
+          <div id="circuit-list-empty" class="hud-focus-note" hidden>No KNX lighting circuits in focus.</div>
+        </section>
+
+        <!-- Section 3: Floor Visibility, Room Focus & Environment -->
+        <section class="hud-section">
+          <div class="hud-section-head">
+            <span>FLOOR &amp; ROOM FOCUS</span>
+            <span id="floor-mode-readout" class="hud-meta">GROUND FLOOR</span>
+          </div>
+
+          <div class="hud-sublabel-row">
+            <span>FLOOR VISIBILITY LAYER</span>
+          </div>
+          <div class="hud-seg-row" role="group" aria-label="Floor Layer Visibility">
+            <button class="hud-seg-btn floor-btn active" type="button" data-floor="ground" title="Ground Floor Only (Hides 1st Floor &amp; Roof)">Ground Floor</button>
+            <button class="hud-seg-btn floor-btn" type="button" data-floor="first" title="First Floor Bedrooms &amp; Bathrooms (Hides Roof)">1st Floor</button>
+            <button class="hud-seg-btn floor-btn" type="button" data-floor="all" title="Full Two-Storey House + Welsh Slate Roof">Full + Roof</button>
+          </div>
+
+          <div class="hud-sublabel-row hud-sublabel-ext">
+            <span>EAST WING &amp; DINING ROOM</span>
+          </div>
+          <div class="hud-seg-row" role="group" aria-label="East Wing Camera Presets">
+            <button class="hud-seg-btn cam-btn active" type="button" data-cam="overview" title="East Wing Overview">Overview</button>
+            <button class="hud-seg-btn cam-btn" type="button" data-cam="island" title="Kitchen Island &amp; AGA Range">Kitchen</button>
+            <button class="hud-seg-btn cam-btn" type="button" data-cam="familyRoom" title="Dining Room Cutaway View">Dining Rm</button>
+            <button class="hud-seg-btn cam-btn" type="button" data-cam="familySnug" title="Eye-Level View inside the Dining Room &amp; Alcove (PH-54/55)">Dining Eye</button>
+            <button class="hud-seg-btn cam-btn" type="button" data-cam="sitting" title="Vaulted Sitting Area &amp; Frame TV">Sitting</button>
+          </div>
+
+          <div class="hud-sublabel-row hud-sublabel-ext">
+            <span>MAIN HOUSE, UPSTAIRS &amp; GROUNDS</span>
+          </div>
+          <div class="hud-seg-row" role="group" aria-label="Main House and Grounds Camera Presets">
+            <button class="hud-seg-btn cam-btn" type="button" data-cam="hall" title="Main Staircase Hall, Boot Lobby, Store &amp; WC">Hall</button>
+            <button class="hud-seg-btn cam-btn" type="button" data-cam="livingRoom" title="Living Room &amp; West Canted Bay Window">Living</button>
+            <button class="hud-seg-btn cam-btn" type="button" data-cam="sittingRoom" title="West Wing Sitting Room &amp; Study">Study</button>
+            <button class="hud-seg-btn cam-btn" type="button" data-cam="upstairs" title="First Floor Bedrooms 1–4 &amp; Bathrooms">Upstairs</button>
+            <button class="hud-seg-btn cam-btn" type="button" data-cam="courtyardGates" title="Cobbled Courtyard &amp; Motorized Split Front Gate">Gates</button>
+            <button class="hud-seg-btn cam-btn" type="button" data-cam="top" title="Top-Down Architectural Floor Plan">Plan</button>
+          </div>
+
+          <div class="hud-sublabel-row hud-sublabel-ext">
+            <span>ROOM LEVEL OF DETAIL (LOD)</span>
+            <span id="lod-status-readout" class="hud-meta">KITCHEN · LOD2 HERO</span>
+          </div>
+          <div class="hud-seg-row" role="group" aria-label="Room Level of Detail Policy">
+            <button class="hud-seg-btn lod-btn active" type="button" data-lod="auto" title="Automatic Focus LOD: Focused room renders at LOD2 Hero, nearby rooms at LOD1 Standard, distant/hidden rooms at LOD0 Shell">Auto Focus</button>
+            <button class="hud-seg-btn lod-btn" type="button" data-lod="lod0" title="LOD0 Architectural Shell Only (Hides furniture &amp; interior props)">LOD0 Shell</button>
+            <button class="hud-seg-btn lod-btn" type="button" data-lod="lod1" title="LOD1 Standard Furniture &amp; Cabinetry (Hides fine crockery/tableware props)">LOD1 Room</button>
+            <button class="hud-seg-btn lod-btn" type="button" data-lod="lod2" title="LOD2 Hero Detail Across All Rooms (Full interior props &amp; crockery)">LOD2 Hero</button>
+          </div>
+
+          <div class="hud-env-row">
+            <div class="hud-seg-row hud-tod-group" role="group" aria-label="Time of Day">
+              <button class="hud-seg-btn tod-btn" type="button" data-tod="day">Day</button>
+              <button class="hud-seg-btn tod-btn active" type="button" data-tod="dusk">Dusk</button>
+              <button class="hud-seg-btn tod-btn" type="button" data-tod="night">Night</button>
+            </div>
+            <button id="toggle-bifolds-btn" class="hud-toggle-btn" type="button">
+              <span id="bifold-state-label">Bifolds: Closed</span>
+            </button>
+            <button id="toggle-roof-btn" class="hud-toggle-btn" type="button">
+              <span id="roof-state-label">Ceiling: Cut</span>
+            </button>
+          </div>
+
+          <div class="hud-sublabel-row hud-sublabel-ext">
+            <span>UNDERFLOOR HEATING (UFH) LAYER</span>
+            <span id="ufh-status-readout" class="hud-meta">3/4 ZONES ON · LAYER OFF</span>
+          </div>
+          <div class="hud-ufh-bar">
+            <button
+              id="toggle-ufh-layer-btn"
+              class="hud-toggle-btn hud-ufh-layer-btn"
+              type="button"
+              title="Toggle 3D Underfloor Heating (UFH) Sub-Floor Pipework Layer (X-Ray Floor + Red=ON / Blue=OFF Loops + Plant Room &amp; Understairs Manifolds)"
+            >
+              <span id="ufh-layer-dot" class="hud-rocker-dot off-state"></span>
+              <span id="ufh-layer-state-label">UFH Pipes Layer: Off</span>
+            </button>
+          </div>
+          <div class="hud-seg-row hud-ufh-zone-row" role="group" aria-label="Heating Zones (Click to Toggle Red=On / Blue=Off)">
+            <button class="hud-seg-btn ufh-zone-btn is-ufh-on" type="button" data-ufh-zone="ufhZone1" title="Zone 1: Sitting Room Cast-Iron Radiators (Plant Room Manifold Ports 1–2) — Click to toggle Red (Heating ON) / Blue (OFF)">Z1 Sitting Rads</button>
+            <button class="hud-seg-btn ufh-zone-btn is-ufh-off" type="button" data-ufh-zone="ufhZone2" title="Zone 2: Living Room Cast-Iron Radiators (Plant Room Manifold Ports 3–4) — Click to toggle Red (Heating ON) / Blue (OFF)">Z2 Living Rads</button>
+            <button class="hud-seg-btn ufh-zone-btn is-ufh-on" type="button" data-ufh-zone="ufhZone3" title="Zone 3: Entrance Hall, Main Staircase Hall, Boot Lobby, Cloakroom WC &amp; Walk-In Cupboard UFH (Plant Rm P5 + Understairs Manifold P1–4)">Z3 Hall/WC UFH</button>
+            <button class="hud-seg-btn ufh-zone-btn is-ufh-on" type="button" data-ufh-zone="ufhZone4" title="Zone 4: Dining Room, Kitchen &amp; Utility Room UFH (Boot Room Manifold B Ports 1–4) — Click to toggle Red (Heating ON) / Blue (OFF)">Z4 Kit/Util UFH</button>
+          </div>
+
+          <div class="hud-sublabel-row hud-sublabel-ext">
+            <span>17TH-C FARMHOUSE WARM-UP ESTIMATOR</span>
+            <span id="ufh-env-readout" class="hud-meta">5°C OUT · SETBACK</span>
+          </div>
+          <div class="hud-ufh-env-controls">
+            <div class="hud-seg-row hud-ufh-temp-group" role="group" aria-label="Outdoor Temperature">
+              <button class="hud-seg-btn ufh-out-btn" type="button" data-out-temp="-2" title="Design Frost Outdoor Temperature (-2°C · Solid Brick High Heat Loss)">-2°C</button>
+              <button class="hud-seg-btn ufh-out-btn active" type="button" data-out-temp="5" title="Typical UK Winter Outdoor Temperature (5°C)">5°C</button>
+              <button class="hud-seg-btn ufh-out-btn" type="button" data-out-temp="10" title="Mild Autumn / Spring Outdoor Temperature (10°C)">10°C</button>
+            </div>
+            <div class="hud-seg-row hud-ufh-mode-group" role="group" aria-label="Heating Start Mode">
+              <button class="hud-seg-btn ufh-mode-btn active" type="button" data-start-mode="setback" title="Morning Recovery from Night Setback (17.5–18.0°C → Target)">Setback</button>
+              <button class="hud-seg-btn ufh-mode-btn" type="button" data-start-mode="cold" title="Unheated Cold Farmhouse Recovery (14.0°C → Target)">Cold 14°C</button>
+            </div>
+          </div>
+          <div id="ufh-warmup-grid" class="hud-ufh-warmup-grid" aria-live="polite"></div>
+        </section>
+
+        <!-- Section 3B: UniFi Protect CCTV & UniFi Access Integration -->
+        <section class="hud-section" data-hud-levels="property room" data-hud-zones="courtyard">
+          <div class="hud-section-head">
+            <span>UNIFI PROTECT &amp; ACCESS</span>
+            <span id="unifi-status-readout" class="hud-meta">4 CAMS · 2 HUBS</span>
+          </div>
+
+          <div class="hud-sensor-row">
+            <button
+              id="unifi-toggle-frustums-btn"
+              class="hud-sensor-btn"
+              type="button"
+              title="Toggle 3D Camera Field-of-View (FOV) Frustum Cones for all 4 UniFi Protect Cameras"
+            >
+              <span id="unifi-frustum-led" class="hud-sensor-dot"></span>
+              <span id="unifi-frustum-label">3D CCTV Cones: Off</span>
+            </button>
+            <button
+              id="unifi-gate-access-btn"
+              class="hud-sensor-btn"
+              type="button"
+              title="Simulate UniFi Access G2 Reader Pro (192.168.10.31) NFC/Intercom Unlock → Bridges to KNX 1/5/1 Front Car Gates"
+            >
+              <span id="unifi-access-led" class="hud-sensor-dot"></span>
+              <span id="unifi-access-label">Gate Reader: Locked</span>
+            </button>
+          </div>
+
+          <div class="hud-seg-row" role="group" aria-label="UniFi Protect Smart Detection Simulation">
+            <button class="hud-seg-btn unifi-sim-btn" type="button" data-unifi-sim="lpr" title="Simulate Driveway AI Pro License Plate Recognition (LPR) → Unlocks Gate &amp; Welcomes Courtyard">Sim Gate LPR</button>
+            <button class="hud-seg-btn unifi-sim-btn" type="button" data-unifi-sim="courtyardPerson" title="Simulate Courtyard G5 Pro Person Detection → Night Security Lamp Post">Sim Courtyard</button>
+            <button class="hud-seg-btn unifi-sim-btn" type="button" data-unifi-sim="clear" title="Clear Active UniFi Protect Smart Detections">Clear Alerts</button>
+          </div>
+        </section>
+
+        <!-- Section 4: Collapsible KNX Bus & EEPROM Inspector -->
+        <section class="hud-section hud-section-last">
+          <button id="hud-knx-disclosure" class="hud-disclosure-btn" type="button" aria-expanded="false">
+            <span id="hud-disclosure-arrow" class="hud-arrow">▸</span>
+            <span>KNX BUS &amp; EEPROM</span>
+            <span id="eeprom-dirty-badge" class="hud-dirty-tag" hidden>UNFLASHED</span>
+            <span id="telegram-count-badge" class="hud-count">0</span>
+          </button>
+
+          <div id="hud-knx-drawer" class="hud-drawer" hidden>
+            <div class="hud-param-grid">
+              <label class="hud-param-row" for="param-hold-ms">
+                <span>Hold Off</span>
+                <select id="param-hold-ms">
+                  <option value="400">400 ms</option>
+                  <option value="600" selected>600 ms</option>
+                  <option value="900">900 ms</option>
+                  <option value="1200">1200 ms</option>
+                </select>
+              </label>
+              <label class="hud-param-row" for="param-short-mode">
+                <span>Tap Mode</span>
+                <select id="param-short-mode">
+                  <option value="cycle3" selected>Cycle 1–3</option>
+                  <option value="toggle13">Toggle 1↔3</option>
+                </select>
+              </label>
+              <label class="hud-param-row" for="param-wake-behavior">
+                <span>Wake Scene</span>
+                <select id="param-wake-behavior">
+                  <option value="first" selected>Scene 1</option>
+                  <option value="last">Last Active</option>
+                </select>
+              </label>
+              <label class="hud-param-row" for="param-ramp-speed">
+                <span>Dim Ramp</span>
+                <select id="param-ramp-speed">
+                  <option value="0.35">0.35 s</option>
+                  <option value="0.9" selected>0.90 s</option>
+                  <option value="2.0">2.00 s</option>
+                </select>
+              </label>
+              <label class="hud-param-row" for="param-lux-threshold">
+                <span>Night Lux</span>
+                <select id="param-lux-threshold">
+                  <option value="50">&lt; 50 lx</option>
+                  <option value="100" selected>&lt; 100 lx</option>
+                  <option value="200">&lt; 200 lx</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="hud-flash-bar">
+              <button id="flash-devices-btn" class="hud-action-btn" type="button">Flash T_Connect</button>
+              <button id="clear-bus-log-btn" class="hud-inline-btn" type="button">Clear Log</button>
+            </div>
+
+            <div id="flash-progress-box" class="hud-flash-status" hidden>
+              <div class="hud-hold-track">
+                <div id="flash-progress-bar" class="hud-hold-fill"></div>
+              </div>
+              <div id="flash-step-log" class="hud-flash-log"></div>
+            </div>
+
+            <div id="bus-telegram-list" class="hud-bus-list"></div>
+            <pre id="eeprom-hex-view" class="hud-hex-view"></pre>
+          </div>
+        </section>
+
+        <!-- Single-Line Live Telegram Status Bar at Bottom of HUD -->
+        <footer class="hud-statusbar">
+          <span id="toast-apci" class="hud-status-apci">READY</span>
+          <span id="toast-summary" class="hud-status-summary">1.1.10 → 1/0/1</span>
+        </footer>
+      </div>
+    </aside>
+  </div>
+
+</body>
+</html>

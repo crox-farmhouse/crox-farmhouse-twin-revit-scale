@@ -1,0 +1,7 @@
+node_modules/
+dist/
+shots/
+codemod/
+.snapshots/snapshot-cli.mjs
+.snapshots/*.actual
+.snapshots/scene.golden.snap
