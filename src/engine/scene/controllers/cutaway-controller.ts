@@ -9,6 +9,7 @@ export interface CutawayViewInput {
   readonly target: THREE.Vector3;
   readonly isOrthographic: boolean;
   readonly orthoZoom: number;
+  readonly isWalkthrough?: boolean;
 }
 
 export interface CutawayUpdateResult {
@@ -151,17 +152,18 @@ export class CutawayController {
 
     const maxEyeY = this.floorViewMode === 'first' ? 4.05 : 1.85;
     const cameraInsideHouse =
-      !view.isOrthographic &&
-      perspDist <= 4.35 &&
-      cam.y <= maxEyeY &&
-      this.zoneRegistry.arePointsInSameInteriorRoom(
-        cam.x,
-        cam.y,
-        cam.z,
-        target.x,
-        target.y,
-        target.z
-      );
+      Boolean(view.isWalkthrough) ||
+      (!view.isOrthographic &&
+        perspDist <= 4.35 &&
+        cam.y <= maxEyeY &&
+        this.zoneRegistry.arePointsInSameInteriorRoom(
+          cam.x,
+          cam.y,
+          cam.z,
+          target.x,
+          target.y,
+          target.z
+        ));
 
     // Determine desired visibility for First Floor rooms, Ground Floor ceilings/joists, and Pitched Roofs
     let desiredFirstFloorVis = true;
@@ -169,10 +171,10 @@ export class CutawayController {
     let desiredRoofVis = true;
 
     if (cameraInsideHouse) {
-      // Inside a single room at eye level: show overhead ceiling joists/beams while respecting active floor mode
+      // Inside a single room at eye level or in 1st-person walkthrough: show overhead ceiling joists/beams & upstairs
       desiredGroundCeilingVis = true;
       desiredRoofVis = true;
-      desiredFirstFloorVis = cam.y >= 2.2 || this.floorViewMode !== 'ground';
+      desiredFirstFloorVis = Boolean(view.isWalkthrough) || cam.y >= 2.2 || this.floorViewMode !== 'ground';
     } else if (this.floorViewMode === 'all') {
       desiredFirstFloorVis = true;
       desiredGroundCeilingVis = true;

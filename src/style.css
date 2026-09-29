@@ -2052,3 +2052,212 @@ body,
   word-break: break-word;
 }
 
+/* ==========================================================================
+   First-Person Walkthrough HUD & Crosshair Reticle
+   ========================================================================== */
+
+.hud-walkthrough-bar {
+  margin-top: 5px;
+}
+
+.hud-walkthrough-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 8px;
+  font-weight: 600;
+  background: #1d2722;
+  border-color: #2c4237;
+  color: #d7f3e3;
+}
+
+.hud-walkthrough-btn:hover {
+  background: #24332c;
+  border-color: #3c5c4c;
+  color: #ffffff;
+}
+
+.hud-walkthrough-btn.is-walkthrough-active {
+  background: #183d2c;
+  border-color: #2ea86f;
+  box-shadow: inset 0 1px 0 #38c182, 0 0 10px rgba(46, 168, 111, 0.25);
+  color: #ecfdf5;
+}
+
+.walkthrough-green-dot {
+  background: #34d399;
+  box-shadow: 0 0 6px #34d399;
+}
+
+.walkthrough-hud {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  background: rgba(18, 21, 26, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid #2e473b;
+  border-radius: 6px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding: 7px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 560px;
+  max-width: min(92vw, 760px);
+  color: #e5e7eb;
+  user-select: none;
+}
+
+.walkthrough-hud[hidden] {
+  display: none;
+}
+
+.walkthrough-hud-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.walkthrough-hud-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.walkthrough-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 7px #34d399;
+}
+
+.walkthrough-hud-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #d1fae5;
+}
+
+.walkthrough-pos-readout {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.walkthrough-hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.walkthrough-action-btn.is-active {
+  background: #1e4635;
+  border-color: #34d399;
+  color: #ecfdf5;
+}
+
+.walkthrough-exit-btn {
+  background: #422020;
+  border-color: #7c3535;
+  color: #ffd6d6;
+  font-weight: 600;
+}
+
+.walkthrough-exit-btn:hover {
+  background: #592828;
+  color: #ffffff;
+}
+
+.walkthrough-spawns-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.walkthrough-spawn-label {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  margin-right: 3px;
+}
+
+.walkthrough-spawn-btn {
+  flex: 0 1 auto;
+  padding: 2px 6px;
+  font-size: 8.8px;
+}
+
+.walkthrough-hint-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 8.5px;
+  color: #9ca3af;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding-top: 4px;
+}
+
+.walkthrough-hint-row kbd {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 2px;
+  padding: 0 3px;
+  color: #e5e7eb;
+}
+
+.walkthrough-reticle {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 40;
+}
+
+.walkthrough-reticle[hidden] {
+  display: none;
+}
+
+.walkthrough-reticle::before,
+.walkthrough-reticle::after {
+  content: "";
+  position: absolute;
+  background: rgba(236, 253, 245, 0.88);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.85);
+}
+
+.walkthrough-reticle::before {
+  top: 6px;
+  left: 0;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.walkthrough-reticle::after {
+  top: 0;
+  left: 6px;
+  width: 2px;
+  height: 14px;
+  border-radius: 1px;
+}
+
+

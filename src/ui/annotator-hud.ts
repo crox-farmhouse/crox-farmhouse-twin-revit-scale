@@ -430,6 +430,7 @@ export class AnnotatorHudController {
 
     // Keyboard shortcuts when not typing in an input
     window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (this.scene.isWalkthroughMode()) return;
       const tag = document.activeElement?.tagName ?? '';
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;

@@ -31,6 +31,10 @@ import { CameraRig, type RigCamera } from './controllers/camera-rig.ts';
 import { CircuitLightingController } from './controllers/circuit-lighting.ts';
 import { CutawayController } from './controllers/cutaway-controller.ts';
 import { EnvironmentLighting } from './controllers/environment-lighting.ts';
+import {
+  DEFAULT_WALKTHROUGH_SPAWNS,
+  WalkthroughController,
+} from './controllers/walkthrough-controller.ts';
 import type { SceneInteractionManager } from './interaction-manager.ts';
 import { isObjectVisibleInHierarchy } from './object-utils.ts';
 import type {
@@ -103,6 +107,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   private readonly bifolds: BifoldDoorAnimator;
   private readonly interactions: SceneInteractionManager;
   private readonly usdRuntime: UsdStageRuntimeController;
+  private readonly walkthrough: WalkthroughController;
 
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
@@ -149,6 +154,37 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
     this.layers = createPropertySceneLayers(this.scene);
     this.cutaways = new CutawayController(this.layers, this.zoneRegistry, this.lodController);
+
+    this.walkthrough = new WalkthroughController({
+      canvas,
+      scene: this.scene,
+      rig: this.rig,
+      getRoomMinYAt: (x, y, z) => {
+        let bestMinY: number | null = null;
+        let bestDistY = Number.POSITIVE_INFINITY;
+        for (const reg of profile.lodRegistrations) {
+          if (reg.zoneId === 'courtyard') continue;
+          const b = reg.bounds;
+          if (x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) {
+            const distY = Math.abs(y - b.minY);
+            if (distY < bestDistY) {
+              bestDistY = distY;
+              bestMinY = b.minY;
+            }
+          }
+        }
+        return bestMinY;
+      },
+      onStateChanged: () => {
+        this.updateCameraFacingWallCutaways();
+        this.renderer.shadowMap.needsUpdate = true;
+        this.needsRender = true;
+      },
+      onPoseUpdated: () => {
+        this.updateCameraFacingWallCutaways();
+        this.needsRender = true;
+      },
+    });
 
     this.annotations = new SceneAnnotationController({
       canvas,
@@ -355,6 +391,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       target: this.rig.controls.target,
       isOrthographic: this.rig.isOrthographic(),
       orthoZoom: this.rig.orthoCamera.zoom,
+      isWalkthrough: this.walkthrough.isActive(),
     });
     if (result.shadowsDirty) {
       this.renderer.shadowMap.needsUpdate = true;
@@ -368,6 +405,37 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
         listener(view);
       }
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // First-Person Walkthrough Mode
+  // ---------------------------------------------------------------------------
+
+  public getWalkthrough(): WalkthroughController {
+    return this.walkthrough;
+  }
+
+  public isWalkthroughMode(): boolean {
+    return this.walkthrough.isActive();
+  }
+
+  public setWalkthroughMode(enabled: boolean, spawnId?: string): boolean {
+    if (enabled) {
+      const spawn = spawnId
+        ? DEFAULT_WALKTHROUGH_SPAWNS.find((s) => s.id === spawnId)
+        : undefined;
+      this.walkthrough.enter(this.getCurrentCameraPoseSnapshot(), spawn);
+      return true;
+    }
+    const savedPose = this.walkthrough.exit();
+    if (savedPose) {
+      this.flyToCameraPose(savedPose);
+    }
+    return false;
+  }
+
+  public toggleWalkthroughMode(spawnId?: string): boolean {
+    return this.setWalkthroughMode(!this.walkthrough.isActive(), spawnId);
   }
 
   /** Current camera + floor state. */
@@ -490,6 +558,9 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   // ---------------------------------------------------------------------------
 
   public flyToPreset(presetName: CameraPresetName | string): void {
+    if (this.walkthrough.isActive()) {
+      this.walkthrough.exit();
+    }
     const p = this.zoneRegistry.getCameraPreset(presetName);
     if (!p) return;
 
@@ -531,6 +602,9 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   }
 
   public flyToCameraPose(pose: SceneCameraPoseSnapshot): void {
+    if (this.walkthrough.isActive()) {
+      this.walkthrough.exit();
+    }
     this.cutaways.setViewState(pose.floorViewMode, pose.ceilingCutaway);
 
     if (pose.isOrthographic) {
@@ -558,6 +632,9 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
    * direction (so the move feels like a zoom-in rather than a jump).
    */
   public flyToRoomBounds(bounds: RoomFramingBounds, floorViewMode: FloorViewMode): void {
+    if (this.walkthrough.isActive()) {
+      this.walkthrough.exit();
+    }
     this.cutaways.setFloorViewMode(floorViewMode);
     this.rig.useCamera(false);
 
@@ -728,9 +805,13 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   // ---------------------------------------------------------------------------
 
   private setRayFromClient(clientX: number, clientY: number): THREE.Raycaster {
-    const rect = this.canvas.getBoundingClientRect();
-    this.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-    this.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    if (this.walkthrough.isActive() && this.walkthrough.isPointerLocked()) {
+      this.pointer.set(0, 0);
+    } else {
+      const rect = this.canvas.getBoundingClientRect();
+      this.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      this.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    }
 
     const camera: RigCamera = this.rig.getActiveCamera();
     camera.updateMatrixWorld();
@@ -834,14 +915,18 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     });
 
     this.canvas.addEventListener('dblclick', (e: MouseEvent) => {
-      if (!this.onSurfaceDoubleClick || this.annotations.isAnnotationMode() || e.shiftKey) return;
+      if (this.annotations.isAnnotationMode() || e.shiftKey) return;
       const point = this.pickVisibleSurfacePoint(e.clientX, e.clientY);
       // Devices (switches, doors, gates…) already act on single click; don't also refocus.
       const onDevice = this.raycaster
         .intersectObjects(this.content.interactiveMeshes, false)
         .some((hit) => isObjectVisibleInHierarchy(hit.object));
       if (point && !onDevice) {
-        this.onSurfaceDoubleClick(point);
+        if (this.walkthrough.isActive()) {
+          this.walkthrough.glideToWorldPoint(point);
+        } else if (this.onSurfaceDoubleClick) {
+          this.onSurfaceDoubleClick(point);
+        }
       }
     });
 
@@ -857,7 +942,11 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   }
 
   public update(dtSeconds: number): void {
-    if (this.rig.updateTween(dtSeconds)) {
+    if (this.walkthrough.update(dtSeconds)) {
+      this.needsRender = true;
+    }
+
+    if (!this.walkthrough.isActive() && this.rig.updateTween(dtSeconds)) {
       this.updateCameraFacingWallCutaways();
       this.needsRender = true;
     }
@@ -872,7 +961,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       this.needsRender = true;
     }
 
-    if (this.rig.controls.update()) {
+    if (!this.walkthrough.isActive() && this.rig.controls.update()) {
       this.needsRender = true;
     }
 

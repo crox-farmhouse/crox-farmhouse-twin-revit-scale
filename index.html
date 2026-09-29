@@ -11,6 +11,72 @@
   <div id="app">
     <canvas id="three-canvas"></canvas>
 
+    <!-- Center Crosshair Reticle for Pointer-Locked First-Person Walkthrough -->
+    <div id="walkthrough-reticle" class="walkthrough-reticle" hidden aria-hidden="true"></div>
+
+    <!-- Floating First-Person Walkthrough Top-Center Bar -->
+    <div id="walkthrough-hud" class="walkthrough-hud" hidden role="region" aria-label="First-Person Walkthrough Controls">
+      <div class="walkthrough-hud-top">
+        <div class="walkthrough-hud-brand">
+          <span class="walkthrough-live-dot"></span>
+          <span class="walkthrough-hud-title">1ST-PERSON WALKTHROUGH</span>
+          <span id="walkthrough-pos-readout" class="walkthrough-pos-readout">KITCHEN · +0.05m</span>
+        </div>
+        <div class="walkthrough-hud-actions">
+          <button
+            id="walkthrough-crouch-btn"
+            class="hud-inline-btn walkthrough-action-btn"
+            type="button"
+            title="Toggle Crouch / Eye-Level Height (Shortcut: C)"
+          >
+            Stand (C)
+          </button>
+          <button
+            id="walkthrough-mouselook-btn"
+            class="hud-inline-btn walkthrough-action-btn"
+            type="button"
+            title="Lock Mouse Pointer for Free Look + Center Reticle Clicking (Press Esc to unlock mouse)"
+          >
+            Mouse Look
+          </button>
+          <button
+            id="walkthrough-exit-btn"
+            class="hud-inline-btn walkthrough-exit-btn"
+            type="button"
+            title="Exit First-Person Walkthrough back to Orbit Camera (Shortcut: F or Esc)"
+          >
+            Exit (F / Esc)
+          </button>
+        </div>
+      </div>
+      <div class="walkthrough-spawns-row" role="group" aria-label="Teleport to Room">
+        <span class="walkthrough-spawn-label">TELEPORT:</span>
+        <button class="hud-seg-btn walkthrough-spawn-btn active" type="button" data-spawn="kitchen" title="Kitchen &amp; AGA Range (+0.05m)">Kitchen</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="sitting" title="Vaulted Kitchen Sitting Area (+0.05m)">Sitting</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="familyRoom" title="Sunken Dining Room (-0.95m)">Dining</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="hall" title="Main Staircase Hall (-0.35m — Walk up stairs to 1st Floor)">Hall &amp; Stairs</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="livingRoom" title="Living Room (-0.65m)">Living</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="sittingRoom" title="West Wing Sitting Room (-0.65m)">Sitting Rm</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="study" title="West Wing Study (-0.65m)">Study</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="upperLanding" title="First Floor Landing (+2.02m)">1st Floor</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="mainBedroom" title="Main Bedroom 1 (+2.02m)">Main Bed</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="courtyard" title="South Cobbled Courtyard (0.00m)">Courtyard</button>
+      </div>
+      <div class="walkthrough-hint-row">
+        <span><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> Walk</span>
+        <span>·</span>
+        <span><kbd>Shift</kbd> Sprint</span>
+        <span>·</span>
+        <span><kbd>Q</kbd>/<kbd>E</kbd> or Drag / Mouse Look to Turn</span>
+        <span>·</span>
+        <span><kbd>C</kbd> Crouch</span>
+        <span>·</span>
+        <span>Double-Click Floor to Glide</span>
+        <span>·</span>
+        <span>Click Doors, Cupboards, AGA &amp; Switches</span>
+      </div>
+    </div>
+
     <!-- Floating 3D Issue Annotator Palette (Top-Left) -->
     <aside id="annotator-panel" class="hud-window annotator-window" aria-label="3D Issue Annotator">
       <header id="annotator-titlebar" class="hud-titlebar" title="Drag to move Annotator">
@@ -528,6 +594,18 @@
             </button>
             <button id="toggle-roof-btn" class="hud-toggle-btn" type="button">
               <span id="roof-state-label">Ceiling: Cut</span>
+            </button>
+          </div>
+
+          <div class="hud-walkthrough-bar">
+            <button
+              id="toggle-walkthrough-btn"
+              class="hud-toggle-btn hud-walkthrough-btn"
+              type="button"
+              title="Toggle First-Person Walkthrough Mode (Shortcut: F) — Walk through rooms &amp; up the Main Hall stairs with WASD / Arrows"
+            >
+              <span id="walkthrough-dot" class="hud-rocker-dot off-state"></span>
+              <span id="walkthrough-state-label">1st-Person Walkthrough: Off (Press F)</span>
             </button>
           </div>
 

@@ -548,6 +548,7 @@ export class HudController {
     });
 
     window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (this.scene.isWalkthroughMode()) return;
       const tag = document.activeElement?.tagName ?? '';
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
       if (e.code === 'Space' || e.code === 'ArrowUp') {
@@ -559,6 +560,7 @@ export class HudController {
       }
     });
     window.addEventListener('keyup', (e: KeyboardEvent) => {
+      if (this.scene.isWalkthroughMode()) return;
       const tag = document.activeElement?.tagName ?? '';
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
       if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown') {
@@ -793,6 +795,147 @@ export class HudController {
       this.syncUfhUI();
     });
     this.syncUfhUI();
+
+    this.bindWalkthroughEvents();
+    this.syncWalkthroughUI();
+  }
+
+  private bindWalkthroughEvents(): void {
+    const toggleBtn = document.getElementById('toggle-walkthrough-btn');
+    toggleBtn?.addEventListener('click', () => {
+      this.scene.toggleWalkthroughMode();
+      this.syncWalkthroughUI();
+      this.syncFloorModeUI();
+    });
+
+    const exitBtn = document.getElementById('walkthrough-exit-btn');
+    exitBtn?.addEventListener('click', () => {
+      this.scene.setWalkthroughMode(false);
+      this.syncWalkthroughUI();
+      this.syncFloorModeUI();
+    });
+
+    const crouchBtn = document.getElementById('walkthrough-crouch-btn');
+    crouchBtn?.addEventListener('click', () => {
+      this.scene.getWalkthrough().toggleCrouched();
+      this.syncWalkthroughUI();
+    });
+
+    const mouseLookBtn = document.getElementById('walkthrough-mouselook-btn');
+    mouseLookBtn?.addEventListener('click', () => {
+      this.scene.getWalkthrough().requestMouseLock();
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.walkthrough-spawn-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const spawnId = btn.dataset.spawn;
+        if (!spawnId) return;
+        if (!this.scene.isWalkthroughMode()) {
+          this.scene.setWalkthroughMode(true, spawnId);
+        } else {
+          this.scene.getWalkthrough().teleportToSpawn(spawnId);
+        }
+        document
+          .querySelectorAll<HTMLButtonElement>('.walkthrough-spawn-btn')
+          .forEach((b) => b.classList.toggle('active', b === btn));
+        this.syncWalkthroughUI();
+      });
+    });
+
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      const tag = document.activeElement?.tagName ?? '';
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.code === 'KeyF' && !e.repeat) {
+        e.preventDefault();
+        this.scene.toggleWalkthroughMode();
+        this.syncWalkthroughUI();
+        this.syncFloorModeUI();
+      } else if (
+        e.code === 'Escape' &&
+        this.scene.isWalkthroughMode() &&
+        !this.scene.getWalkthrough().isPointerLocked()
+      ) {
+        e.preventDefault();
+        this.scene.setWalkthroughMode(false);
+        this.syncWalkthroughUI();
+        this.syncFloorModeUI();
+      }
+    });
+
+    this.scene.getWalkthrough().subscribe(() => {
+      this.syncWalkthroughUI();
+      this.syncFloorModeUI();
+    });
+
+    this.scene.onViewChanged(() => {
+      if (this.scene.isWalkthroughMode()) {
+        this.syncWalkthroughReadout();
+      }
+    });
+  }
+
+  private syncWalkthroughReadout(): void {
+    const posReadout = document.getElementById('walkthrough-pos-readout');
+    if (!posReadout) return;
+    const wt = this.scene.getWalkthrough();
+    const foot = wt.getFootPosition();
+    const diag = this.scene.getLodDiagnostics();
+    const focusedRoom = diag.rooms.find((r) => r.zoneId === diag.focusedZoneId);
+    const roomName = (focusedRoom?.shortName ?? diag.focusedZoneId).toUpperCase();
+    const sign = foot.y >= 0 ? '+' : '';
+    posReadout.textContent = `${roomName} · ${sign}${foot.y.toFixed(2)}m`;
+  }
+
+  public syncWalkthroughUI(): void {
+    const wt = this.scene.getWalkthrough();
+    const active = wt.isActive();
+    const crouched = wt.isCrouched();
+    const pointerLocked = wt.isPointerLocked();
+
+    const toggleBtn = document.getElementById('toggle-walkthrough-btn');
+    const dot = document.getElementById('walkthrough-dot');
+    const stateLabel = document.getElementById('walkthrough-state-label');
+    if (toggleBtn) {
+      toggleBtn.classList.toggle('is-walkthrough-active', active);
+    }
+    if (dot) {
+      dot.className = active
+        ? 'hud-rocker-dot walkthrough-green-dot'
+        : 'hud-rocker-dot off-state';
+    }
+    if (stateLabel) {
+      stateLabel.textContent = active
+        ? '1st-Person Walkthrough: Active (WASD / F to Exit)'
+        : '1st-Person Walkthrough: Off (Press F)';
+    }
+
+    const hudBanner = document.getElementById('walkthrough-hud');
+    if (hudBanner) {
+      hudBanner.hidden = !active;
+    }
+
+    const reticle = document.getElementById('walkthrough-reticle');
+    if (reticle) {
+      reticle.hidden = !(active && pointerLocked);
+    }
+
+    const crouchBtn = document.getElementById('walkthrough-crouch-btn');
+    if (crouchBtn) {
+      crouchBtn.classList.toggle('is-active', crouched);
+      crouchBtn.textContent = crouched ? 'Crouched (C)' : 'Stand (C)';
+    }
+
+    const mouseLookBtn = document.getElementById('walkthrough-mouselook-btn');
+    if (mouseLookBtn) {
+      mouseLookBtn.classList.toggle('is-active', pointerLocked);
+      mouseLookBtn.textContent = pointerLocked ? 'Mouse Locked (Esc)' : 'Mouse Look';
+    }
+
+    if (active) {
+      this.syncWalkthroughReadout();
+    }
   }
 
   public syncUfhUI(): void {
