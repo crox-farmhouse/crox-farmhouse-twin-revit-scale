@@ -82,21 +82,23 @@ export function buildFirstFloorCeilingsAndRoof(
     roughness: 0.9,
   });
 
-  // A. First Floor Ceiling Slabs (at Y = 4.38m..4.46m, tucked inside the 0.28m exterior brick walls so gable walls are continuous, Issue #8)
+  // A. First Floor Ceiling Slabs (bottom at Y = upperWallTopY - 0.003m to cover wallCapMat from below while keeping ceiling roses visible)
+  const upperCeilingMat = plasterMat.clone();
+  upperCeilingMat.side = THREE.DoubleSide;
   const ewUpperCeiling = new THREE.Mesh(
-    new THREE.BoxGeometry(17.55, 0.08, 4.85),
-    plasterMat
+    new THREE.BoxGeometry(17.7, 0.03, 5.12),
+    upperCeilingMat
   );
-  ewUpperCeiling.position.set(-13.415, upperWallTopY + 0.04, -0.075);
+  ewUpperCeiling.position.set(-13.45, upperWallTopY + 0.012, -0.075);
   ewUpperCeiling.castShadow = true;
   ewUpperCeiling.receiveShadow = true;
   ewCeilingMeshGroup.add(ewUpperCeiling);
 
   const nsUpperCeiling = new THREE.Mesh(
-    new THREE.BoxGeometry(4.8, 0.08, 9.1),
-    plasterMat
+    new THREE.BoxGeometry(5.28, 0.03, 9.48),
+    upperCeilingMat
   );
-  nsUpperCeiling.position.set(-19.79, upperWallTopY + 0.04, 6.9);
+  nsUpperCeiling.position.set(-19.68, upperWallTopY + 0.012, 6.84);
   nsUpperCeiling.castShadow = true;
   nsUpperCeiling.receiveShadow = true;
   ceilingMeshGroup.add(nsUpperCeiling);

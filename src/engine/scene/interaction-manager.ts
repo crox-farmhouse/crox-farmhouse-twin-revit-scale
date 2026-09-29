@@ -416,6 +416,99 @@ export class SceneInteractionManager {
   }
 
   /**
+   * Returns a concise action prompt label for a looked-at interactive mesh
+   * (e.g. "Open Door", "Close Cupboard", "Open AGA Lid", "Toggle Light Switch").
+   */
+  public describeInteractable(mesh: THREE.Object3D, isBifoldsOpen = false): string {
+    const data = mesh.userData as InteractiveUserData;
+    const id = data.interactableId;
+    if (id) {
+      const door = this.hingedDoors.get(id);
+      if (door) {
+        const verb = door.isOpen ? 'Close' : 'Open';
+        const chainNames = [
+          mesh.name,
+          mesh.parent?.name ?? '',
+          door.pivot.name,
+          door.pivot.children[0]?.name ?? '',
+        ]
+          .join(' ')
+          .toLowerCase();
+        if (chainNames.includes('lid')) return `${verb} AGA Simmering/Boiling Lid`;
+        if (chainNames.includes('aga') || chainNames.includes('roasting') || chainNames.includes('baking') || chainNames.includes('simmering') || chainNames.includes('warming')) {
+          return `${verb} AGA Oven Door`;
+        }
+        if (chainNames.includes('fridge') || chainNames.includes('freezer') || chainNames.includes('wine') || chainNames.includes('dishwasher') || chainNames.includes('miele')) {
+          return `${verb} Appliance Door`;
+        }
+        if (
+          chainNames.includes('cupboard') ||
+          chainNames.includes('cabinet') ||
+          chainNames.includes('larder') ||
+          chainNames.includes('island') ||
+          chainNames.includes('vanity') ||
+          chainNames.includes('wardrobe') ||
+          Math.abs(door.openAngle - door.closedAngle) < 1.45
+        ) {
+          return `${verb} Cupboard`;
+        }
+        return `${verb} Door`;
+      }
+      const bifoldCup = this.bifoldCupboards.get(id);
+      if (bifoldCup) {
+        return `${bifoldCup.isOpen ? 'Close' : 'Open'} Pantry Bi-Fold Doors`;
+      }
+      const drawer = this.slidingDrawers.get(id);
+      if (drawer) {
+        return `${drawer.isOpen ? 'Close' : 'Open'} Drawer`;
+      }
+      if (this.pulleyMaid && this.pulleyMaid.id === id) {
+        return `${this.pulleyMaid.isLowered ? 'Raise' : 'Lower'} Pulley Maid Airer`;
+      }
+      if (this.toggleCallbacks.has(id)) {
+        return 'Extend / Retract Table';
+      }
+    }
+    if (data.isBifoldDoor) {
+      return `${isBifoldsOpen ? 'Close' : 'Open'} Bifold Patio Doors`;
+    }
+    if (data.isCarGate) {
+      return `${this.isCarGatesOpen() ? 'Close' : 'Open'} Courtyard Gates`;
+    }
+    if (data.isKNXSwitch || data.isCourtyardSwitch || data.isUtilitySwitch) {
+      return data.switchDirection
+        ? `Toggle Light Switch (${data.switchDirection === 'up' ? 'Up' : 'Down'})`
+        : 'Toggle KNX Light Switch';
+    }
+    if (data.isFrameTV) {
+      return 'Cycle Frame TV Artwork';
+    }
+    if (data.isKnxTempSensor) {
+      return 'Inspect KNX Temperature Probe';
+    }
+    if (data.circuitId) {
+      return 'Toggle Light Switch / Fixture';
+    }
+    if (data.ufhZoneId) {
+      return 'Toggle Underfloor Heating Zone';
+    }
+    if (
+      data.roomMotionSensorId ||
+      data.isKitchenMotionSensor ||
+      data.isUtilityMotionSensor
+    ) {
+      return 'Trigger KNX Motion Sensor';
+    }
+    if (data.accessEntityId || data.isUniFiAccessReader) {
+      return 'Unlock Gate Intercom';
+    }
+    if (data.cameraEntityId || data.isUniFiCamera) {
+      return 'Trigger CCTV Smart Detection';
+    }
+    return 'Interact';
+  }
+
+  /**
    * Rebinds all raycastable interactive meshes and animated door/drawer/pantry/pulley-maid
    * pivot groups after one or more zones have been replaced by live `.usda` prims.
    */

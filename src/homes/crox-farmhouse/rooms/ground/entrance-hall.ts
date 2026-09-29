@@ -426,6 +426,22 @@ export function buildEntranceHall(
     const ceilingStepBoxingGroup = new THREE.Group();
     ceilingStepBoxingGroup.name = 'entranceHall.ceilingStepBoxing';
 
+    const mainHallCeiling = buildPolygonalFloorSlab(
+      ceilingStepBoxingGroup,
+      [
+        [-22.42, 1.875],
+        [-16.92, 2.61],
+        [-16.95, 3.68],
+        [-22.42, 3.68],
+      ],
+      frontWallH + 0.012,
+      0.038,
+      warmRoomPlasterMat,
+      0.5
+    );
+    mainHallCeiling.name = 'entranceHall.ceilingStepBoxing.mainCeiling';
+    mainHallCeiling.receiveShadow = true;
+
     const upperStepSoffit = buildPolygonalFloorSlab(
       ceilingStepBoxingGroup,
       [

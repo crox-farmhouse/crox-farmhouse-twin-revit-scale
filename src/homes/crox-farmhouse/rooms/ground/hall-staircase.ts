@@ -1065,6 +1065,25 @@ export function buildHallStaircase(
   hallStairTrimmerBeam.castShadow = true;
   groundFloorCeilingGroup.add(hallStairTrimmerBeam);
 
+  // Plasterboard ceiling backing above the Main Hall oak joists (wrapping around the open stairwell void X = -17.85..-15.36, Z = -2.66..-0.58)
+  const hallSouthCeilingBacking = new THREE.Mesh(
+    new THREE.BoxGeometry(4.84, 0.036, 3.12),
+    warmRoomPlasterMat
+  );
+  hallSouthCeilingBacking.name = 'hall.ceilingBacking.south';
+  hallSouthCeilingBacking.position.set(-15.45, wallH - 0.005, 0.98);
+  hallSouthCeilingBacking.receiveShadow = true;
+  groundFloorCeilingGroup.add(hallSouthCeilingBacking);
+
+  const hallNorthEastCeilingBacking = new THREE.Mesh(
+    new THREE.BoxGeometry(2.36, 0.036, 2.1),
+    warmRoomPlasterMat
+  );
+  hallNorthEastCeilingBacking.name = 'hall.ceilingBacking.northEast';
+  hallNorthEastCeilingBacking.position.set(-14.18, wallH - 0.005, -1.61);
+  hallNorthEastCeilingBacking.receiveShadow = true;
+  groundFloorCeilingGroup.add(hallNorthEastCeilingBacking);
+
   // Exposed Natural Oak North-South Ceiling Joists South of the Spine Beam (Z = +0.34m..+2.35m — Issue #9)
   for (let jx = -17.35; jx <= -13.25; jx += 0.44) {
     const joist = new THREE.Mesh(

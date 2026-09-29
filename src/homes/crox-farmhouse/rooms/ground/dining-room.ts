@@ -1798,10 +1798,10 @@ export function buildDiningRoom(
 
   // White plasterboard ceiling backing above the exposed joists (in groundFloorCeilingGroup so it hides when looking from above in Ground Floor mode and appears when inside at eye level!)
   const familyCeilingBacking = new THREE.Mesh(
-    new THREE.BoxGeometry(4.92, 0.03, 4.85),
+    new THREE.BoxGeometry(5.2, 0.04, 5.18),
     whiteJoistMat
   );
-  familyCeilingBacking.position.set(-7.1, wallH - 0.015, -0.075);
+  familyCeilingBacking.position.set(-7.04, wallH - 0.01, -0.075);
   familyCeilingBacking.receiveShadow = true;
   groundFloorCeilingGroup.add(familyCeilingBacking);
 

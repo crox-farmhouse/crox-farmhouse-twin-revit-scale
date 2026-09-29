@@ -1947,6 +1947,16 @@ export function buildBootLobby(
     },
   });
 
+  // Plasterboard ceiling backing across Boot Lobby, Under-Stairs Store & Cloakroom WC (bottom at wallH - 0.005m so flush PIR sensors at wallH - 0.006m stay visible)
+  const bootLobbyCeilingBacking = new THREE.Mesh(
+    new THREE.BoxGeometry(3.54, 0.02, 5.18),
+    warmRoomPlasterMat
+  );
+  bootLobbyCeilingBacking.name = 'bootLobby.ceilingBacking';
+  bootLobbyCeilingBacking.position.set(-11.31, wallH + 0.005, -0.075);
+  bootLobbyCeilingBacking.receiveShadow = true;
+  groundFloorCeilingGroup.add(bootLobbyCeilingBacking);
+
   // Exposed Natural Oak East-West Ceiling Joists in the Boot Lobby (Issue #11: lowered with wallH)
   for (let bz = 0.05; bz <= 2.25; bz += 0.38) {
     const bootJoist = new THREE.Mesh(

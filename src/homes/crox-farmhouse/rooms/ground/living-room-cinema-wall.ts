@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
 import { createSculptedCushionGeometry } from '../../../../objects/furniture/sitting-room-sofas-and-art.ts';
 import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
@@ -11,7 +12,7 @@ import type { buildLivingRoom } from './living-room.ts';
  */
 export function buildLivingRoomCinemaWall(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'frontWallH' | 'oakMat'> &
+  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'frontWallH' | 'oakMat' | 'warmRoomPlasterMat'> &
     Pick<ReturnType<typeof defineTier2Levels>, 'tier2FloorY'> &
     Pick<ReturnType<typeof buildHallStaircase>, 'spkConeMat' | 'spkTrimRingMat'> &
     Pick<ReturnType<typeof buildLivingRoom>, 'livingRoomNorthWallFrame'>
@@ -24,6 +25,7 @@ export function buildLivingRoomCinemaWall(
     spkConeMat,
     spkTrimRingMat,
     tier2FloorY,
+    warmRoomPlasterMat,
   } = kit;
   // =========================================================================
   // FRONT ROOM (livingRoom) NORTH WALL HOME CINEMA:
@@ -1289,6 +1291,21 @@ export function buildLivingRoomCinemaWall(
 
     scene.add(coffeeTableGroup);
   }
+
+  // Plasterboard ceiling backing above the exposed oak spine beam & joists (seals the 1.625m Living Room ceiling from below)
+  buildPolygonalFloorSlab(
+    groundFloorCeilingGroup,
+    [
+      [-22.36, -3.22],
+      [-17.45, -2.56],
+      [-17.78, 2.52],
+      [-22.36, 1.98],
+    ],
+    frontWallH + 0.012,
+    0.036,
+    warmRoomPlasterMat,
+    0.5
+  ).name = 'livingRoom.ceilingBacking';
 
   // Natural Dark-Stained Oak East-West Spine Beam & North-South Ceiling Joists in Front Room (New Photo 5 top)
   const frontRoomDarkSpineBeam = new THREE.Mesh(

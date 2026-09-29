@@ -45,49 +45,49 @@ export const DEFAULT_WALKTHROUGH_SPAWNS: readonly WalkthroughSpawnPoint[] = [
     id: 'familyRoom',
     label: 'Dining Room',
     zoneId: 'familyRoom',
-    position: ewSpawnPos(-7.1, -0.95, 1.35),
+    position: ewSpawnPos(-7.1, 0.0, 1.35),
     yawDeg: -8,
   },
   {
     id: 'hall',
     label: 'Main Hall & Stairs',
     zoneId: 'hall',
-    position: ewSpawnPos(-14.8, -0.35, 1.4),
+    position: ewSpawnPos(-14.8, -0.3, 1.4),
     yawDeg: -8,
   },
   {
     id: 'livingRoom',
     label: 'Living Room',
     zoneId: 'livingRoom',
-    position: [-19.4, -0.65, 0.2],
+    position: [-19.4, -0.6, 0.2],
     yawDeg: 45,
   },
   {
     id: 'sittingRoom',
     label: 'Sitting Room',
     zoneId: 'sittingRoom',
-    position: [-19.8, -0.65, 5.8],
+    position: [-19.8, -0.6, 5.8],
     yawDeg: 90,
   },
   {
     id: 'study',
     label: 'Study',
     zoneId: 'study',
-    position: [-19.6, -0.65, 9.8],
+    position: [-19.6, -0.6, 9.8],
     yawDeg: 180,
   },
   {
     id: 'upperLanding',
     label: '1st Floor Landing',
     zoneId: 'upperLanding',
-    position: ewSpawnPos(-15.2, 2.02, 1.1),
+    position: ewSpawnPos(-15.2, 2.16, 1.1),
     yawDeg: -98,
   },
   {
     id: 'mainBedroom',
     label: 'Main Bedroom',
     zoneId: 'mainBedroom',
-    position: ewSpawnPos(-7.2, 2.02, 0.5),
+    position: ewSpawnPos(-7.2, 2.16, 0.5),
     yawDeg: -98,
   },
   {
@@ -99,15 +99,21 @@ export const DEFAULT_WALKTHROUGH_SPAWNS: readonly WalkthroughSpawnPoint[] = [
   },
 ];
 
-const STANDING_EYE_HEIGHT = 1.66;
-const CROUCH_EYE_HEIGHT = 1.02;
-const WALK_SPEED_MPS = 3.1;
-const SPRINT_SPEED_MPS = 5.4;
-const KEY_TURN_SPEED_RAD = 1.75;
-const MOUSE_SENSITIVITY = 0.0024;
+const STANDING_EYE_HEIGHT = 1.60;
+const CROUCH_EYE_HEIGHT = 1.00;
+const WALK_SPEED_MPS = 3.35;
+const SPRINT_SPEED_MPS = 5.85;
+const CROUCH_SPEED_MPS = 1.85;
+const JUMP_IMPULSE_MPS = 4.1;
+const GRAVITY_MPS2 = 16.0;
+const KEY_TURN_SPEED_RAD = 1.85;
+const MOUSE_SENSITIVITY = 0.0022;
 const DRAG_SENSITIVITY = 0.0042;
-const MAX_PITCH_RAD = THREE.MathUtils.degToRad(82);
-const WALKTHROUGH_FOV = 62;
+const MAX_PITCH_RAD = THREE.MathUtils.degToRad(84);
+export const WALKTHROUGH_FOV_PRESETS = [72, 78, 90] as const;
+const DEFAULT_WALKTHROUGH_FOV = 78;
+const SPRINT_FOV_BOOST = 6;
+const INTERACT_MAX_DISTANCE = 2.85;
 
 interface SavedOrbitState {
   readonly pose: SceneCameraPoseSnapshot;
@@ -115,19 +121,23 @@ interface SavedOrbitState {
 }
 
 /**
- * First-Person Walkthrough Controller for Crox Farmhouse.
+ * Call-of-Duty-style First-Person Walkthrough Controller (no weapon) for Crox Farmhouse.
  *
  * Supports:
- * - WASD / Arrow keys movement + Shift sprint + Q/E keyboard turning + C crouch
- * - Both click-and-drag mouselook AND optional Pointer Lock (`requestPointerLock`)
- * - Smooth downward floor/staircase surface raycasting + multi-tier room floor elevation tracking
- * - Subtle head-bob while walking and smooth glide-to-point on double-click
+ * - Wide 78° vertical (~110° horizontal widescreen) FOV with dynamic +6° sprint FOV kick & FOV presets (72° / 78° / 90°)
+ * - Auto Pointer-Lock on canvas click for instant 360° mouselook (plus drag fallback)
+ * - WASD move/strafe + Shift sprint + Space jump + C / Left Ctrl crouch
+ * - Press [F] (or Left-Click while pointer-locked) to interact with targeted doors, cupboards, drawers, AGA lids & KNX switches
+ * - Live center-screen raycast interaction prompt ("Press [F] to Open Door", etc.)
  */
 export class WalkthroughController {
   private readonly canvas: HTMLCanvasElement;
   private readonly scene: THREE.Scene;
   private readonly rig: CameraRig;
   private readonly getRoomMinYAt: (x: number, y: number, z: number) => number | null;
+  private readonly getInteractiveMeshes: () => readonly THREE.Object3D[];
+  private readonly describeInteractable: (mesh: THREE.Object3D) => string;
+  private readonly onInteractWithMesh: (mesh: THREE.Object3D) => void;
   private readonly onStateChanged: (active: boolean) => void;
   private readonly onPoseUpdated: () => void;
 
@@ -138,7 +148,12 @@ export class WalkthroughController {
   private lastDragClientX = 0;
   private lastDragClientY = 0;
 
+  private baseFov: number = DEFAULT_WALKTHROUGH_FOV;
+  private currentFov: number = DEFAULT_WALKTHROUGH_FOV;
+
   private footPos = new THREE.Vector3(-1.35, 0.05, 1.35);
+  private verticalVelocity = 0;
+  private jumpOffsetY = 0;
   private currentEyeHeight = STANDING_EYE_HEIGHT;
   private yawRad = 0; // 0 = looking along -Z
   private pitchRad = 0;
@@ -147,9 +162,15 @@ export class WalkthroughController {
   private glideTargetFoot: THREE.Vector3 | null = null;
   private savedOrbitState: SavedOrbitState | null = null;
 
+  private targetedMesh: THREE.Object3D | null = null;
+  private targetedPrompt: string | null = null;
+  private lastRaycastMs = 0;
+
   private readonly keysDown = new Set<string>();
   private readonly downRaycaster = new THREE.Raycaster();
   private readonly wallRaycaster = new THREE.Raycaster();
+  private readonly interactRaycaster = new THREE.Raycaster();
+  private readonly centerNdc = new THREE.Vector2(0, 0);
   private readonly listeners = new Set<(active: boolean) => void>();
 
   public constructor(options: {
@@ -157,6 +178,9 @@ export class WalkthroughController {
     readonly scene: THREE.Scene;
     readonly rig: CameraRig;
     readonly getRoomMinYAt: (x: number, y: number, z: number) => number | null;
+    readonly getInteractiveMeshes: () => readonly THREE.Object3D[];
+    readonly describeInteractable: (mesh: THREE.Object3D) => string;
+    readonly onInteractWithMesh: (mesh: THREE.Object3D) => void;
     readonly onStateChanged: (active: boolean) => void;
     readonly onPoseUpdated: () => void;
   }) {
@@ -164,6 +188,9 @@ export class WalkthroughController {
     this.scene = options.scene;
     this.rig = options.rig;
     this.getRoomMinYAt = options.getRoomMinYAt;
+    this.getInteractiveMeshes = options.getInteractiveMeshes;
+    this.describeInteractable = options.describeInteractable;
+    this.onInteractWithMesh = options.onInteractWithMesh;
     this.onStateChanged = options.onStateChanged;
     this.onPoseUpdated = options.onPoseUpdated;
 
@@ -171,6 +198,8 @@ export class WalkthroughController {
     this.downRaycaster.far = 4.5;
     this.wallRaycaster.near = 0.02;
     this.wallRaycaster.far = 0.55;
+    this.interactRaycaster.near = 0.05;
+    this.interactRaycaster.far = INTERACT_MAX_DISTANCE;
 
     this.bindInputEvents();
   }
@@ -185,6 +214,35 @@ export class WalkthroughController {
 
   public isPointerLocked(): boolean {
     return this.pointerLocked;
+  }
+
+  public getBaseFov(): number {
+    return this.baseFov;
+  }
+
+  public setBaseFov(fov: number): void {
+    this.baseFov = THREE.MathUtils.clamp(fov, 60, 100);
+    this.currentFov = this.baseFov;
+    if (this.active) {
+      this.rig.perspCamera.fov = this.currentFov;
+      this.rig.perspCamera.updateProjectionMatrix();
+      this.onPoseUpdated();
+    }
+    this.emit();
+  }
+
+  public cycleBaseFov(): number {
+    const idx = WALKTHROUGH_FOV_PRESETS.indexOf(
+      this.baseFov as (typeof WALKTHROUGH_FOV_PRESETS)[number]
+    );
+    const nextFov =
+      WALKTHROUGH_FOV_PRESETS[(idx + 1) % WALKTHROUGH_FOV_PRESETS.length];
+    this.setBaseFov(nextFov);
+    return nextFov;
+  }
+
+  public getTargetedPrompt(): string | null {
+    return this.targetedPrompt;
   }
 
   public getFootPosition(): THREE.Vector3 {
@@ -218,8 +276,21 @@ export class WalkthroughController {
     if (document.pointerLockElement === this.canvas) {
       document.exitPointerLock?.();
     } else {
-      this.canvas.requestPointerLock?.();
+      try {
+        this.canvas.requestPointerLock?.();
+      } catch {
+        // Ignore if browser blocks pointer lock outside direct gesture
+      }
     }
+  }
+
+  public triggerTargetedInteraction(): boolean {
+    if (!this.active) return false;
+    this.refreshTargetedInteractable(true);
+    if (!this.targetedMesh) return false;
+    this.onInteractWithMesh(this.targetedMesh);
+    this.refreshTargetedInteractable(true);
+    return true;
   }
 
   public enter(
@@ -238,14 +309,17 @@ export class WalkthroughController {
 
     this.active = true;
     this.crouched = false;
+    this.verticalVelocity = 0;
+    this.jumpOffsetY = 0;
     this.currentEyeHeight = STANDING_EYE_HEIGHT;
+    this.currentFov = this.baseFov;
     this.glideTargetFoot = null;
     this.keysDown.clear();
 
     this.rig.useCamera(false);
     this.rig.controls.enabled = false;
-    this.rig.perspCamera.fov = WALKTHROUGH_FOV;
-    this.rig.perspCamera.near = 0.08;
+    this.rig.perspCamera.fov = this.baseFov;
+    this.rig.perspCamera.near = 0.06;
     this.rig.perspCamera.updateProjectionMatrix();
 
     if (spawnOverride) {
@@ -261,14 +335,13 @@ export class WalkthroughController {
       );
       this.footPos.y = sampledY;
       this.yawRad = THREE.MathUtils.degToRad(spawnOverride.yawDeg ?? 0);
-      this.pitchRad = -0.04;
+      this.pitchRad = -0.03;
     } else {
       // Determine whether the current orbit target or camera is inside a room
       const [tx, ty, tz] = currentPose.target;
       const [cx, , cz] = currentPose.position;
       const roomMinY = this.getRoomMinYAt(tx, ty, tz);
       if (roomMinY !== null && Math.hypot(cx - tx, cz - tz) < 18.0) {
-        // Spawn a little back from the orbit target toward the camera if inside the same room
         const dirX = tx - cx;
         const dirZ = tz - cz;
         const distXZ = Math.hypot(dirX, dirZ);
@@ -278,16 +351,17 @@ export class WalkthroughController {
         const sampledY = this.sampleFloorElevation(spawnX, baseFloorY, spawnZ);
         this.footPos.set(spawnX, sampledY, spawnZ);
         this.yawRad = Math.atan2(-dirX, -dirZ);
-        this.pitchRad = -0.05;
+        this.pitchRad = -0.04;
       } else {
         const def = DEFAULT_WALKTHROUGH_SPAWNS[0];
         this.footPos.set(def.position[0], def.position[1], def.position[2]);
         this.yawRad = THREE.MathUtils.degToRad(def.yawDeg);
-        this.pitchRad = -0.04;
+        this.pitchRad = -0.03;
       }
     }
 
     this.syncCameraFromFootAndAngles(0);
+    this.refreshTargetedInteractable(true);
     this.onStateChanged(true);
     this.onPoseUpdated();
     this.emit();
@@ -299,6 +373,10 @@ export class WalkthroughController {
     this.keysDown.clear();
     this.glideTargetFoot = null;
     this.isDraggingLook = false;
+    this.targetedMesh = null;
+    this.targetedPrompt = null;
+    this.verticalVelocity = 0;
+    this.jumpOffsetY = 0;
 
     if (document.pointerLockElement === this.canvas) {
       document.exitPointerLock?.();
@@ -319,6 +397,8 @@ export class WalkthroughController {
     const sp = DEFAULT_WALKTHROUGH_SPAWNS.find((s) => s.id === spawnId);
     if (!sp) return false;
     this.glideTargetFoot = null;
+    this.verticalVelocity = 0;
+    this.jumpOffsetY = 0;
     this.footPos.set(sp.position[0], sp.position[1], sp.position[2]);
     this.footPos.y = this.sampleFloorElevation(
       this.footPos.x,
@@ -326,8 +406,9 @@ export class WalkthroughController {
       this.footPos.z
     );
     this.yawRad = THREE.MathUtils.degToRad(sp.yawDeg);
-    this.pitchRad = -0.04;
+    this.pitchRad = -0.03;
     this.syncCameraFromFootAndAngles(0);
+    this.refreshTargetedInteractable(true);
     this.onPoseUpdated();
     this.emit();
     return true;
@@ -337,11 +418,38 @@ export class WalkthroughController {
     if (!this.active) return;
     const targetFloorY = this.sampleFloorElevation(point.x, point.y, point.z);
     this.glideTargetFoot = new THREE.Vector3(point.x, targetFloorY, point.z);
-    // Smoothly orient yaw toward the clicked destination
     const dx = point.x - this.footPos.x;
     const dz = point.z - this.footPos.z;
     if (Math.hypot(dx, dz) > 0.25) {
       this.yawRad = Math.atan2(-dx, -dz);
+    }
+  }
+
+  private refreshTargetedInteractable(force = false): void {
+    if (!this.active) return;
+    const now = performance.now();
+    if (!force && now - this.lastRaycastMs < 45) return;
+    this.lastRaycastMs = now;
+
+    const cam = this.rig.perspCamera;
+    cam.updateMatrixWorld();
+    this.interactRaycaster.setFromCamera(this.centerNdc, cam);
+
+    const hits = this.interactRaycaster.intersectObjects(
+      this.getInteractiveMeshes() as THREE.Object3D[],
+      false
+    );
+    const firstHit = hits.find(
+      (h) => h.distance <= INTERACT_MAX_DISTANCE && isObjectVisibleInHierarchy(h.object)
+    );
+
+    const nextMesh = firstHit?.object ?? null;
+    const nextPrompt = nextMesh ? this.describeInteractable(nextMesh) : null;
+
+    if (nextMesh !== this.targetedMesh || nextPrompt !== this.targetedPrompt) {
+      this.targetedMesh = nextMesh;
+      this.targetedPrompt = nextPrompt;
+      this.emit();
     }
   }
 
@@ -351,6 +459,7 @@ export class WalkthroughController {
 
     const hits = this.downRaycaster.intersectObjects(this.scene.children, true);
     let bestFloorY: number | null = null;
+    const roomMinY = this.getRoomMinYAt(x, refFootY + 0.35, z);
 
     for (const hit of hits) {
       const obj = hit.object;
@@ -359,7 +468,7 @@ export class WalkthroughController {
       if (obj.userData?.isAnnotationGroup) continue;
       // Ignore ceiling/roof meshes above the head
       if (hit.point.y > refFootY + 0.62) continue;
-      if (hit.point.y < refFootY - 1.5) continue;
+      if (hit.point.y < refFootY - 1.2) continue;
 
       // Prefer upward-facing horizontal surfaces (floors, stair treads, thresholds)
       if (hit.face) {
@@ -369,12 +478,15 @@ export class WalkthroughController {
         if (worldNormal.y < 0.55) continue;
       }
 
-      // Skip table/countertop surfaces (> 0.68m above room floor) unless on stairs
-      const roomMinY = this.getRoomMinYAt(x, hit.point.y, z);
-      if (roomMinY !== null && hit.point.y - roomMinY > 0.52) {
-        // Check if this is in the Main Hall staircase zone (X in -17.2..-13.0)
-        const inStairHall = x >= -17.3 && x <= -12.8 && z >= -2.1 && z <= 3.0;
+      // Skip table/countertop/sofa surfaces (> 0.36m above room floor) unless on the Main Hall staircase
+      if (roomMinY !== null && hit.point.y - roomMinY > 0.36) {
+        const inStairHall = x >= -17.5 && x <= -12.8 && z >= -2.5 && z <= 3.0;
         if (!inStairHall) continue;
+      }
+
+      // Also never drop into sub-floor cellars/trenches below roomMinY - 0.12m
+      if (roomMinY !== null && hit.point.y < roomMinY - 0.12) {
+        continue;
       }
 
       if (bestFloorY === null || hit.point.y > bestFloorY) {
@@ -386,8 +498,7 @@ export class WalkthroughController {
       return bestFloorY;
     }
 
-    const fallbackRoomY = this.getRoomMinYAt(x, refFootY + 0.5, z);
-    return fallbackRoomY ?? refFootY;
+    return roomMinY ?? refFootY;
   }
 
   private isBlockedByWallOrCabinet(
@@ -395,8 +506,7 @@ export class WalkthroughController {
     moveDirXZ: THREE.Vector3,
     stepDist: number
   ): boolean {
-    // Cast a horizontal ray at knee/waist height (0.55m above foot) and chest height (1.15m above foot)
-    const radii = [0.52, 1.15];
+    const radii = [0.52, 1.12];
     this.wallRaycaster.far = Math.max(0.36, stepDist + 0.3);
 
     for (const hOffset of radii) {
@@ -413,7 +523,6 @@ export class WalkthroughController {
         if (!isObjectVisibleInHierarchy(obj)) continue;
         if (obj.userData?.isAnnotationGroup) continue;
         if (hit.distance <= stepDist + 0.28) {
-          // Check if surface normal is mostly vertical (a wall, closed door, or cabinet side)
           if (hit.face) {
             const worldNormal = hit.face.normal
               .clone()
@@ -430,7 +539,8 @@ export class WalkthroughController {
 
   private syncCameraFromFootAndAngles(bobOffsetY: number): void {
     const cam = this.rig.perspCamera;
-    const eyeY = this.footPos.y + this.currentEyeHeight + bobOffsetY;
+    const eyeY =
+      this.footPos.y + this.currentEyeHeight + this.jumpOffsetY + bobOffsetY;
     cam.position.set(this.footPos.x, eyeY, this.footPos.z);
 
     const cosPitch = Math.cos(this.pitchRad);
@@ -460,12 +570,23 @@ export class WalkthroughController {
       this.currentEyeHeight = THREE.MathUtils.lerp(
         this.currentEyeHeight,
         targetEyeH,
-        1 - Math.exp(-12 * dtSeconds)
+        1 - Math.exp(-14 * dtSeconds)
       );
       movedOrRotated = true;
     }
 
-    // 2. Keyboard yaw rotation (Q / E)
+    // 2. Jump & gravity physics
+    if (this.jumpOffsetY > 0 || this.verticalVelocity !== 0) {
+      this.jumpOffsetY += this.verticalVelocity * dtSeconds;
+      this.verticalVelocity -= GRAVITY_MPS2 * dtSeconds;
+      if (this.jumpOffsetY <= 0) {
+        this.jumpOffsetY = 0;
+        this.verticalVelocity = 0;
+      }
+      movedOrRotated = true;
+    }
+
+    // 3. Keyboard yaw rotation (Q / E)
     let turnInput = 0;
     if (this.keysDown.has('KeyQ')) turnInput += 1;
     if (this.keysDown.has('KeyE')) turnInput -= 1;
@@ -474,7 +595,7 @@ export class WalkthroughController {
       movedOrRotated = true;
     }
 
-    // 3. WASD / Arrow movement
+    // 4. WASD / Arrow movement
     let forwardInput = 0;
     let strafeInput = 0;
     if (this.keysDown.has('KeyW') || this.keysDown.has('ArrowUp')) forwardInput += 1;
@@ -482,11 +603,31 @@ export class WalkthroughController {
     if (this.keysDown.has('KeyD') || this.keysDown.has('ArrowRight')) strafeInput += 1;
     if (this.keysDown.has('KeyA') || this.keysDown.has('ArrowLeft')) strafeInput -= 1;
 
+    const isMoving = forwardInput !== 0 || strafeInput !== 0;
     const isSprinting =
-      this.keysDown.has('ShiftLeft') || this.keysDown.has('ShiftRight');
-    const speed = isSprinting ? SPRINT_SPEED_MPS : WALK_SPEED_MPS;
+      isMoving &&
+      !this.crouched &&
+      (this.keysDown.has('ShiftLeft') || this.keysDown.has('ShiftRight'));
+    const speed = this.crouched
+      ? CROUCH_SPEED_MPS
+      : isSprinting
+        ? SPRINT_SPEED_MPS
+        : WALK_SPEED_MPS;
 
-    if (forwardInput !== 0 || strafeInput !== 0) {
+    // Dynamic Call-of-Duty sprint FOV kick
+    const targetFov = this.baseFov + (isSprinting ? SPRINT_FOV_BOOST : 0);
+    if (Math.abs(this.currentFov - targetFov) > 0.05) {
+      this.currentFov = THREE.MathUtils.lerp(
+        this.currentFov,
+        targetFov,
+        1 - Math.exp(-10 * dtSeconds)
+      );
+      this.rig.perspCamera.fov = this.currentFov;
+      this.rig.perspCamera.updateProjectionMatrix();
+      movedOrRotated = true;
+    }
+
+    if (isMoving) {
       this.glideTargetFoot = null;
       const forwardX = -Math.sin(this.yawRad);
       const forwardZ = -Math.cos(this.yawRad);
@@ -502,7 +643,6 @@ export class WalkthroughController {
         moveVec.normalize();
         const stepDist = speed * dtSeconds;
 
-        // Try full movement vector, then slide along X or Z if blocked by a wall/counter
         if (!this.isBlockedByWallOrCabinet(this.footPos, moveVec, stepDist)) {
           this.footPos.x += moveVec.x * stepDist;
           this.footPos.z += moveVec.z * stepDist;
@@ -538,10 +678,10 @@ export class WalkthroughController {
         this.footPos.y = THREE.MathUtils.lerp(
           this.footPos.y,
           targetFloorY,
-          1 - Math.exp(-14 * dtSeconds)
+          1 - Math.exp(-15 * dtSeconds)
         );
 
-        this.bobPhase += dtSeconds * (isSprinting ? 12.5 : 8.8);
+        this.bobPhase += dtSeconds * (isSprinting ? 13.0 : 9.0);
         movedOrRotated = true;
       }
     } else if (this.glideTargetFoot) {
@@ -567,7 +707,7 @@ export class WalkthroughController {
         this.footPos.y = THREE.MathUtils.lerp(
           this.footPos.y,
           targetFloorY,
-          1 - Math.exp(-14 * dtSeconds)
+          1 - Math.exp(-15 * dtSeconds)
         );
         this.bobPhase += dtSeconds * 8.5;
       }
@@ -579,13 +719,14 @@ export class WalkthroughController {
 
     if (movedOrRotated) {
       const bobOffset =
-        forwardInput !== 0 || strafeInput !== 0 || this.glideTargetFoot
-          ? Math.sin(this.bobPhase) * 0.018
+        (isMoving || this.glideTargetFoot) && this.jumpOffsetY === 0
+          ? Math.sin(this.bobPhase) * (isSprinting ? 0.022 : 0.015)
           : 0;
       this.syncCameraFromFootAndAngles(bobOffset);
       this.onPoseUpdated();
     }
 
+    this.refreshTargetedInteractable();
     return movedOrRotated;
   }
 
@@ -597,10 +738,17 @@ export class WalkthroughController {
 
     this.canvas.addEventListener('pointerdown', (e: PointerEvent) => {
       if (!this.active || e.button !== 0) return;
-      if (this.pointerLocked) return;
-      this.isDraggingLook = true;
-      this.lastDragClientX = e.clientX;
-      this.lastDragClientY = e.clientY;
+      if (!this.pointerLocked) {
+        // Call of Duty style: clicking the 3D viewport automatically engages Pointer Lock mouselook!
+        try {
+          this.canvas.requestPointerLock?.();
+        } catch {
+          // Fallback to drag look
+        }
+        this.isDraggingLook = true;
+        this.lastDragClientX = e.clientX;
+        this.lastDragClientY = e.clientY;
+      }
     });
 
     window.addEventListener('pointermove', (e: PointerEvent) => {
@@ -613,6 +761,7 @@ export class WalkthroughController {
           MAX_PITCH_RAD
         );
         this.syncCameraFromFootAndAngles(0);
+        this.refreshTargetedInteractable();
         this.onPoseUpdated();
         return;
       }
@@ -628,6 +777,7 @@ export class WalkthroughController {
           MAX_PITCH_RAD
         );
         this.syncCameraFromFootAndAngles(0);
+        this.refreshTargetedInteractable();
         this.onPoseUpdated();
       }
     });
@@ -639,13 +789,32 @@ export class WalkthroughController {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       const tag = document.activeElement?.tagName ?? '';
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.metaKey || e.altKey) return;
 
       if (!this.active) return;
 
-      if (e.code === 'KeyC' && !e.repeat) {
+      // Press [F] to Interact with looked-at door, cupboard, drawer, AGA lid or KNX switch!
+      if (e.code === 'KeyF' && !e.repeat && !e.ctrlKey) {
+        e.preventDefault();
+        this.triggerTargetedInteraction();
+        return;
+      }
+
+      // Crouch: C or Left Ctrl
+      if ((e.code === 'KeyC' || e.code === 'ControlLeft') && !e.repeat) {
         e.preventDefault();
         this.toggleCrouched();
+        return;
+      }
+
+      // Jump: Space
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault();
+        if (this.crouched) {
+          this.setCrouched(false);
+        } else if (this.jumpOffsetY <= 0.01) {
+          this.verticalVelocity = JUMP_IMPULSE_MPS;
+        }
         return;
       }
 

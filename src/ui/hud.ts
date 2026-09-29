@@ -815,6 +815,12 @@ export class HudController {
       this.syncFloorModeUI();
     });
 
+    const fovBtn = document.getElementById('walkthrough-fov-btn');
+    fovBtn?.addEventListener('click', () => {
+      this.scene.getWalkthrough().cycleBaseFov();
+      this.syncWalkthroughUI();
+    });
+
     const crouchBtn = document.getElementById('walkthrough-crouch-btn');
     crouchBtn?.addEventListener('click', () => {
       this.scene.getWalkthrough().toggleCrouched();
@@ -847,7 +853,7 @@ export class HudController {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      if (e.code === 'KeyF' && !e.repeat) {
+      if (e.code === 'KeyV' && !e.repeat) {
         e.preventDefault();
         this.scene.toggleWalkthroughMode();
         this.syncWalkthroughUI();
@@ -893,6 +899,7 @@ export class HudController {
     const active = wt.isActive();
     const crouched = wt.isCrouched();
     const pointerLocked = wt.isPointerLocked();
+    const targetPrompt = wt.getTargetedPrompt();
 
     const toggleBtn = document.getElementById('toggle-walkthrough-btn');
     const dot = document.getElementById('walkthrough-dot');
@@ -907,8 +914,8 @@ export class HudController {
     }
     if (stateLabel) {
       stateLabel.textContent = active
-        ? '1st-Person Walkthrough: Active (WASD / F to Exit)'
-        : '1st-Person Walkthrough: Off (Press F)';
+        ? '1st-Person Walkthrough: Active (WASD · F Interact · V Exit)'
+        : '1st-Person Walkthrough: Off (Press V)';
     }
 
     const hudBanner = document.getElementById('walkthrough-hud');
@@ -918,7 +925,24 @@ export class HudController {
 
     const reticle = document.getElementById('walkthrough-reticle');
     if (reticle) {
-      reticle.hidden = !(active && pointerLocked);
+      reticle.hidden = !active;
+      reticle.classList.toggle('is-target-locked', Boolean(active && targetPrompt));
+    }
+
+    const interactPromptEl = document.getElementById('walkthrough-interact-prompt');
+    const interactLabelEl = document.getElementById('walkthrough-interact-label');
+    if (interactPromptEl && interactLabelEl) {
+      if (active && targetPrompt) {
+        interactLabelEl.textContent = `to ${targetPrompt}`;
+        interactPromptEl.hidden = false;
+      } else {
+        interactPromptEl.hidden = true;
+      }
+    }
+
+    const fovBtn = document.getElementById('walkthrough-fov-btn');
+    if (fovBtn) {
+      fovBtn.textContent = `FOV: ${wt.getBaseFov()}°`;
     }
 
     const crouchBtn = document.getElementById('walkthrough-crouch-btn');

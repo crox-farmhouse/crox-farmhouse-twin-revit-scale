@@ -11,8 +11,13 @@
   <div id="app">
     <canvas id="three-canvas"></canvas>
 
-    <!-- Center Crosshair Reticle for Pointer-Locked First-Person Walkthrough -->
+    <!-- Center Crosshair Reticle & Call-of-Duty Interaction Prompt for First-Person Walkthrough -->
     <div id="walkthrough-reticle" class="walkthrough-reticle" hidden aria-hidden="true"></div>
+    <div id="walkthrough-interact-prompt" class="walkthrough-interact-prompt" hidden aria-live="polite">
+      <span class="walkthrough-interact-prefix">Press</span>
+      <kbd class="walkthrough-interact-key">F</kbd>
+      <span id="walkthrough-interact-label" class="walkthrough-interact-label">to Open Door</span>
+    </div>
 
     <!-- Floating First-Person Walkthrough Top-Center Bar -->
     <div id="walkthrough-hud" class="walkthrough-hud" hidden role="region" aria-label="First-Person Walkthrough Controls">
@@ -24,10 +29,18 @@
         </div>
         <div class="walkthrough-hud-actions">
           <button
+            id="walkthrough-fov-btn"
+            class="hud-inline-btn walkthrough-action-btn"
+            type="button"
+            title="Cycle First-Person Field of View (72° / 78° / 90° Vertical — ~110°–120° Widescreen)"
+          >
+            FOV: 78°
+          </button>
+          <button
             id="walkthrough-crouch-btn"
             class="hud-inline-btn walkthrough-action-btn"
             type="button"
-            title="Toggle Crouch / Eye-Level Height (Shortcut: C)"
+            title="Toggle Crouch / Standing Height (Shortcut: C or Left Ctrl)"
           >
             Stand (C)
           </button>
@@ -35,7 +48,7 @@
             id="walkthrough-mouselook-btn"
             class="hud-inline-btn walkthrough-action-btn"
             type="button"
-            title="Lock Mouse Pointer for Free Look + Center Reticle Clicking (Press Esc to unlock mouse)"
+            title="Lock Mouse Pointer for 360° Free Look (Click 3D Viewport to lock, Esc to unlock)"
           >
             Mouse Look
           </button>
@@ -43,9 +56,9 @@
             id="walkthrough-exit-btn"
             class="hud-inline-btn walkthrough-exit-btn"
             type="button"
-            title="Exit First-Person Walkthrough back to Orbit Camera (Shortcut: F or Esc)"
+            title="Exit First-Person Walkthrough back to Orbit Camera (Shortcut: V or Esc)"
           >
-            Exit (F / Esc)
+            Exit (V / Esc)
           </button>
         </div>
       </div>
@@ -53,27 +66,29 @@
         <span class="walkthrough-spawn-label">TELEPORT:</span>
         <button class="hud-seg-btn walkthrough-spawn-btn active" type="button" data-spawn="kitchen" title="Kitchen &amp; AGA Range (+0.05m)">Kitchen</button>
         <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="sitting" title="Vaulted Kitchen Sitting Area (+0.05m)">Sitting</button>
-        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="familyRoom" title="Sunken Dining Room (-0.95m)">Dining</button>
-        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="hall" title="Main Staircase Hall (-0.35m — Walk up stairs to 1st Floor)">Hall &amp; Stairs</button>
-        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="livingRoom" title="Living Room (-0.65m)">Living</button>
-        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="sittingRoom" title="West Wing Sitting Room (-0.65m)">Sitting Rm</button>
-        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="study" title="West Wing Study (-0.65m)">Study</button>
-        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="upperLanding" title="First Floor Landing (+2.02m)">1st Floor</button>
-        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="mainBedroom" title="Main Bedroom 1 (+2.02m)">Main Bed</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="familyRoom" title="Dining Room (0.00m)">Dining</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="hall" title="Main Staircase Hall (-0.30m — Walk up stairs to 1st Floor)">Hall &amp; Stairs</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="livingRoom" title="Living Room (-0.60m)">Living</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="sittingRoom" title="West Wing Sitting Room (-0.60m)">Sitting Rm</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="study" title="West Wing Study (-0.60m)">Study</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="upperLanding" title="First Floor Landing (+2.16m)">1st Floor</button>
+        <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="mainBedroom" title="Main Bedroom 1 (+2.16m)">Main Bed</button>
         <button class="hud-seg-btn walkthrough-spawn-btn" type="button" data-spawn="courtyard" title="South Cobbled Courtyard (0.00m)">Courtyard</button>
       </div>
       <div class="walkthrough-hint-row">
-        <span><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> Walk</span>
+        <span><kbd>WASD</kbd> Move</span>
         <span>·</span>
         <span><kbd>Shift</kbd> Sprint</span>
         <span>·</span>
-        <span><kbd>Q</kbd>/<kbd>E</kbd> or Drag / Mouse Look to Turn</span>
+        <span><kbd>Space</kbd> Jump</span>
         <span>·</span>
-        <span><kbd>C</kbd> Crouch</span>
+        <span><kbd>C</kbd>/<kbd>Ctrl</kbd> Crouch</span>
         <span>·</span>
-        <span>Double-Click Floor to Glide</span>
+        <span><kbd>F</kbd> Interact</span>
         <span>·</span>
-        <span>Click Doors, Cupboards, AGA &amp; Switches</span>
+        <span>Click Viewport for 360° Mouse Look</span>
+        <span>·</span>
+        <span><kbd>V</kbd>/<kbd>Esc</kbd> Exit</span>
       </div>
     </div>
 
@@ -602,10 +617,10 @@
               id="toggle-walkthrough-btn"
               class="hud-toggle-btn hud-walkthrough-btn"
               type="button"
-              title="Toggle First-Person Walkthrough Mode (Shortcut: F) — Walk through rooms &amp; up the Main Hall stairs with WASD / Arrows"
+              title="Toggle First-Person Walkthrough Mode (Shortcut: V) — Walk through rooms with WASD, Sprint with Shift, Jump with Space, and Press F to Interact"
             >
               <span id="walkthrough-dot" class="hud-rocker-dot off-state"></span>
-              <span id="walkthrough-state-label">1st-Person Walkthrough: Off (Press F)</span>
+              <span id="walkthrough-state-label">1st-Person Walkthrough: Off (Press V)</span>
             </button>
           </div>
 

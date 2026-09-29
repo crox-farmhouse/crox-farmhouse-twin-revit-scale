@@ -17,7 +17,7 @@ export function buildStudy(
     Pick<ReturnType<typeof createGroundFloorShellKit>, 'addBrickWallAlongXWithWindow' | 'addBrickWallAlongZWithCourtyardDoor' | 'addExteriorBrickWall' | 'addInteriorWall'> &
     Pick<ReturnType<typeof defineTier2Levels>, 'tier2FloorY' | 'tier2WallH' | 'tier2WallMidY'>
 ): void {
-  const { scene } = ctx;
+  const { groundFloorCeilingGroup, scene } = ctx;
   const {
     addBrickWallAlongXWithWindow,
     addBrickWallAlongZWithCourtyardDoor,
@@ -405,4 +405,19 @@ export function buildStudy(
     });
     scene.add(fanGroup);
   }
+
+  // Plasterboard ceiling backing over Study & Plant Room (bottom at wallH - 0.026m above the linear LED light bars at wallH - 0.03m)
+  buildPolygonalFloorSlab(
+    groundFloorCeilingGroup,
+    [
+      [-22.36, 8.27],
+      [-17.11, 8.27],
+      [-17.25, 11.63],
+      [-22.36, 11.63],
+    ],
+    wallH + 0.012,
+    0.038,
+    warmRoomPlasterMat,
+    0.5
+  ).name = 'study.ceilingBacking';
 }

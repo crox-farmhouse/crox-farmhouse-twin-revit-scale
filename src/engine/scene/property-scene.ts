@@ -166,15 +166,33 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
           if (reg.zoneId === 'courtyard') continue;
           const b = reg.bounds;
           if (x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) {
-            const distY = Math.abs(y - b.minY);
+            // Map sub-floor UFH/cellar bounding-box minYs to actual room walking floor elevations
+            const walkingFloorY =
+              b.minY >= 1.5
+                ? 2.16
+                : reg.zoneId === 'familyRoom'
+                  ? 0.0
+                  : reg.zoneId === 'bootLobby' || reg.zoneId === 'hall'
+                    ? -0.3
+                    : reg.zoneId === 'livingRoom' ||
+                        reg.zoneId === 'entranceHall' ||
+                        reg.zoneId === 'sittingRoom' ||
+                        reg.zoneId === 'study'
+                      ? -0.6
+                      : b.minY;
+            const distY = Math.abs(y - walkingFloorY);
             if (distY < bestDistY) {
               bestDistY = distY;
-              bestMinY = b.minY;
+              bestMinY = walkingFloorY;
             }
           }
         }
         return bestMinY;
       },
+      getInteractiveMeshes: () => this.content?.interactiveMeshes ?? [],
+      describeInteractable: (mesh) =>
+        this.interactions.describeInteractable(mesh, this.bifolds.isOpen()),
+      onInteractWithMesh: (mesh) => this.triggerInteractiveObject(mesh),
       onStateChanged: () => {
         this.updateCameraFacingWallCutaways();
         this.renderer.shadowMap.needsUpdate = true;
@@ -819,6 +837,24 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     return this.raycaster;
   }
 
+  private triggerInteractiveObject(mesh: THREE.Object3D): void {
+    if (this.onUsdPrimPick) {
+      const primInfo = this.usdRuntime.getPrimInfoByMesh(mesh);
+      if (primInfo) {
+        this.onUsdPrimPick(primInfo);
+      }
+    }
+    const data = mesh.userData as InteractiveUserData;
+    if (data.interactableId) {
+      this.handleInteractableClick(data.interactableId);
+    }
+    if (data.ufhZoneId) {
+      this.toggleUfhZone(data.ufhZoneId);
+    }
+    this.onObjectInteraction(data);
+    this.needsRender = true;
+  }
+
   private setupInteractionEvents(): void {
     this.canvas.addEventListener('pointerdown', (e: PointerEvent) => {
       this.pointerDownPos = { x: e.clientX, y: e.clientY };
@@ -876,20 +912,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       const hits = raycaster.intersectObjects(this.content.interactiveMeshes, false);
       const firstHit = hits.find((hit) => isObjectVisibleInHierarchy(hit.object));
       if (firstHit) {
-        if (this.onUsdPrimPick) {
-          const primInfo = this.usdRuntime.getPrimInfoByMesh(firstHit.object);
-          if (primInfo) {
-            this.onUsdPrimPick(primInfo);
-          }
-        }
-        const data = firstHit.object.userData as InteractiveUserData;
-        if (data.interactableId) {
-          this.handleInteractableClick(data.interactableId);
-        }
-        if (data.ufhZoneId) {
-          this.toggleUfhZone(data.ufhZoneId);
-        }
-        this.onObjectInteraction(data);
+        this.triggerInteractiveObject(firstHit.object);
         return;
       }
 

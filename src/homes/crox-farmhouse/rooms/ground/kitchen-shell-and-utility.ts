@@ -1691,8 +1691,8 @@ export function buildArchitecturalShellAndUtilityRoom(
     roughness: 0.9,
     side: THREE.DoubleSide,
   });
-  const fullCeiling = new THREE.Mesh(new THREE.BoxGeometry(9.4, 0.08, 4.49), ceilingMat);
-  fullCeiling.position.set(0.3, 3.04, -0.255);
+  const fullCeiling = new THREE.Mesh(new THREE.BoxGeometry(9.8, 0.08, 4.92), ceilingMat);
+  fullCeiling.position.set(0.32, 3.04, -0.255);
   ceilingMeshGroup.add(fullCeiling);
 
   // =========================================================================

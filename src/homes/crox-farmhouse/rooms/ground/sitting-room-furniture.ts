@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
 import { buildSittingRoomSofas } from '../../../../objects/furniture/sitting-room-sofas-and-art.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
@@ -12,7 +13,7 @@ import type { defineTier2Levels } from '../../structure/tier2-levels.ts';
  */
 export function buildSittingRoomFurniture(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'frontWallH' | 'oakMat'> &
+  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'frontWallH' | 'oakMat' | 'warmRoomPlasterMat'> &
     Pick<ReturnType<typeof defineTier2Levels>, 'tier2FloorY'>
 ): void {
   const { groundFloorCeilingGroup, scene } = ctx;
@@ -20,6 +21,7 @@ export function buildSittingRoomFurniture(
     frontWallH,
     oakMat,
     tier2FloorY,
+    warmRoomPlasterMat,
   } = kit;
   // =========================================================================
   // SITTING ROOM SOFAS (Issues #14, #15 & #7 — high-LOD sculpted upholstery meshes):
@@ -339,6 +341,21 @@ export function buildSittingRoomFurniture(
 
     scene.add(coffeeTableGroup);
   }
+
+  // Plasterboard ceiling backing above the exposed oak spine beam & joists (seals the 1.625m Sitting Room ceiling from below)
+  buildPolygonalFloorSlab(
+    groundFloorCeilingGroup,
+    [
+      [-22.36, 3.55],
+      [-16.95, 3.55],
+      [-17.16, 8.39],
+      [-22.36, 8.39],
+    ],
+    frontWallH + 0.012,
+    0.036,
+    warmRoomPlasterMat,
+    0.5
+  ).name = 'sittingRoom.ceilingBacking';
 
   // Exposed Natural Oak North-South Spine Beam & East-West Ceiling Joists in Living Room (Issue #1: lowered for frontWallH = 1.625m)
   const livingSpineBeam = new THREE.Mesh(
