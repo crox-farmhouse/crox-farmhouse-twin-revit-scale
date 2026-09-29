@@ -247,6 +247,7 @@ export function buildLargeBlueIslandWithLeftSink(ctx: SceneBuilderContext): void
   // - Front (+Z) half houses the Wine Cooler on the left full-depth pier (z = 0.00m to +0.73m, completely clear of the sink!)
   //   and a 390mm breakfast-bar overhang on the right section (z = +0.37m to +0.76m) for the 3 counter stools!
   const islandGroup = new THREE.Group();
+  islandGroup.name = 'kitchen.island';
   islandGroup.position.set(-0.92, 0, 0.14);
 
   const hagueBlueMat = new THREE.MeshStandardMaterial({
@@ -582,95 +583,244 @@ export function buildLargeBlueIslandWithLeftSink(ctx: SceneBuilderContext): void
   tapLever.position.set(sinkX + 0.045, 1.015, tapZ);
   islandGroup.add(tapLever);
 
-  // Sculpted Vase of Fresh Farmhouse Flowers on the Island Worktop (x = +0.95m, z = +0.02m)
-  const vaseGroup = new THREE.Group();
-  vaseGroup.position.set(0.95, 0.954, 0.02);
+  // Sculpted Artisan Stoneware Pedestal Fruit Bowl on the Island Worktop (x = +0.95m, z = +0.02m)
+  const fruitBowlGroup = new THREE.Group();
+  fruitBowlGroup.name = 'kitchen.island.fruitBowl';
+  fruitBowlGroup.position.set(0.95, 0.954, 0.02);
+  fruitBowlGroup.userData = { lodTier: 2, zoneId: 'kitchen' };
 
-  const vaseCeramicMat = new THREE.MeshStandardMaterial({
+  const bowlCeramicMat = new THREE.MeshStandardMaterial({
+    name: 'IslandStonewareFruitBowlMat',
     color: 0xf0ece2,
+    roughness: 0.26,
+    metalness: 0.04,
+  });
+  const stemWoodMat = new THREE.MeshStandardMaterial({
+    name: 'FruitStemWoodMat',
+    color: 0x3d291a,
+    roughness: 0.82,
+  });
+  const redAppleMat = new THREE.MeshStandardMaterial({
+    name: 'RedAppleMat',
+    color: 0xb82924,
+    roughness: 0.22,
+    metalness: 0.02,
+  });
+  const greenAppleMat = new THREE.MeshStandardMaterial({
+    name: 'GreenAppleMat',
+    color: 0x6f9e38,
+    roughness: 0.25,
+    metalness: 0.02,
+  });
+  const orangeCitrusMat = new THREE.MeshStandardMaterial({
+    name: 'ValenciaOrangeMat',
+    color: 0xe8741e,
+    roughness: 0.36,
+    metalness: 0.02,
+  });
+  const lemonMat = new THREE.MeshStandardMaterial({
+    name: 'AmalfiLemonMat',
+    color: 0xf2ca27,
+    roughness: 0.32,
+    metalness: 0.02,
+  });
+  const pearMat = new THREE.MeshStandardMaterial({
+    name: 'ConferencePearMat',
+    color: 0x9aa83a,
+    roughness: 0.34,
+    metalness: 0.02,
+  });
+  const bananaMat = new THREE.MeshStandardMaterial({
+    name: 'RipeBananaMat',
+    color: 0xebd138,
+    roughness: 0.38,
+    metalness: 0.01,
+  });
+  const grapeMat = new THREE.MeshStandardMaterial({
+    name: 'BurgundyGrapeMat',
+    color: 0x3d1c38,
     roughness: 0.24,
-    metalness: 0.05,
-  });
-  const stemGreenMat = new THREE.MeshStandardMaterial({
-    color: 0x3b5e38,
-    roughness: 0.72,
-  });
-  const eucalyptusMat = new THREE.MeshStandardMaterial({
-    color: 0x527556,
-    roughness: 0.68,
+    metalness: 0.03,
   });
 
-  // Lathe-turned stoneware/ceramic vase body
-  const vaseProfile: THREE.Vector2[] = [
+  // Wide, shallow lathe-turned stoneware pedestal bowl with thick rounded rim & concave basin
+  const bowlProfile: THREE.Vector2[] = [
     new THREE.Vector2(0.0, 0.0),
-    new THREE.Vector2(0.068, 0.0),
-    new THREE.Vector2(0.088, 0.055),
-    new THREE.Vector2(0.098, 0.125),
-    new THREE.Vector2(0.074, 0.195),
-    new THREE.Vector2(0.058, 0.235),
-    new THREE.Vector2(0.068, 0.265),
-    new THREE.Vector2(0.06, 0.268),
-    new THREE.Vector2(0.05, 0.22),
+    new THREE.Vector2(0.076, 0.0),
+    new THREE.Vector2(0.072, 0.014),
+    new THREE.Vector2(0.062, 0.028),
+    new THREE.Vector2(0.112, 0.048),
+    new THREE.Vector2(0.152, 0.074),
+    new THREE.Vector2(0.168, 0.104),
+    new THREE.Vector2(0.162, 0.112),
+    new THREE.Vector2(0.153, 0.105),
+    new THREE.Vector2(0.136, 0.075),
+    new THREE.Vector2(0.095, 0.05),
+    new THREE.Vector2(0.045, 0.038),
+    new THREE.Vector2(0.0, 0.035),
   ];
-  const vaseBody = new THREE.Mesh(
-    new THREE.LatheGeometry(vaseProfile, 20),
-    vaseCeramicMat
+  const bowlMesh = new THREE.Mesh(
+    new THREE.LatheGeometry(bowlProfile, 28),
+    bowlCeramicMat
   );
-  vaseBody.castShadow = true;
-  vaseBody.receiveShadow = true;
-  vaseGroup.add(vaseBody);
+  bowlMesh.name = 'kitchen.island.fruitBowl.pedestalBowl';
+  bowlMesh.castShadow = true;
+  bowlMesh.receiveShadow = true;
+  bowlMesh.userData = { lodTier: 2, zoneId: 'kitchen' };
+  fruitBowlGroup.add(bowlMesh);
 
-  // Stems, eucalyptus foliage clusters, and fresh cottage blooms (hydrangea/roses/delphinium)
-  const flowerSpecs: ReadonlyArray<
-    readonly [number, number, number, number, number, number]
-  > = [
-    // [dx, topY, dz, tiltX, tiltZ, petalColor]
-    [0.0, 0.43, 0.0, 0.04, -0.03, 0xfbf8f2],      // Center tall white hydrangea/rose
-    [-0.065, 0.38, 0.045, 0.18, 0.24, 0xf2ced5],  // Blush pink rose
-    [0.068, 0.39, 0.038, 0.15, -0.26, 0xfbf8f2],  // White bloom
-    [-0.048, 0.4, -0.055, -0.2, 0.18, 0x9ab0d9],  // Soft cornflower/delphinium blue
-    [0.055, 0.37, -0.052, -0.18, -0.22, 0xf4d5dc],// Soft pink peony
-    [-0.092, 0.34, -0.01, 0.04, 0.36, 0xfbf8f2],  // Low cascading white bloom
-    [0.09, 0.345, 0.01, 0.05, -0.35, 0x8ea6d1],   // Low cascading blue bloom
-    [0.015, 0.365, 0.075, 0.32, -0.05, 0xf2ced5], // Front blush bloom
+  // 1. Apples (Red & Granny Smith Green) with woody stems
+  const appleSpecs: ReadonlyArray<{
+    readonly pos: readonly [number, number, number];
+    readonly rot: readonly [number, number, number];
+    readonly isGreen: boolean;
+  }> = [
+    { pos: [-0.052, 0.078, 0.038], rot: [0.18, 0.4, -0.15], isGreen: false },
+    { pos: [0.058, 0.08, 0.034], rot: [-0.14, -0.3, 0.22], isGreen: true },
+    { pos: [-0.012, 0.108, -0.012], rot: [0.08, 0.2, 0.12], isGreen: false },
+    { pos: [-0.072, 0.082, -0.035], rot: [-0.22, 0.5, 0.18], isGreen: true },
   ];
+  const appleGeo = new THREE.SphereGeometry(0.035, 16, 12);
+  const stemGeo = new THREE.CylinderGeometry(0.0018, 0.0012, 0.014, 6);
+  for (let i = 0; i < appleSpecs.length; i++) {
+    const spec = appleSpecs[i];
+    const apple = new THREE.Group();
+    apple.name = `kitchen.island.fruitBowl.apple.${i + 1}`;
+    apple.position.set(spec.pos[0], spec.pos[1], spec.pos[2]);
+    apple.rotation.set(spec.rot[0], spec.rot[1], spec.rot[2]);
 
-  for (const [fx, fy, fz, tx, tz, colorHex] of flowerSpecs) {
-    const stemLen = fy - 0.18;
-    const stem = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.004, 0.0045, stemLen, 6),
-      stemGreenMat
+    const body = new THREE.Mesh(
+      appleGeo,
+      spec.isGreen ? greenAppleMat : redAppleMat
     );
-    stem.position.set(fx * 0.55, 0.18 + stemLen * 0.5, fz * 0.55);
-    stem.rotation.set(tx, 0, tz);
-    vaseGroup.add(stem);
+    body.name = `kitchen.island.fruitBowl.appleBody.${i + 1}`;
+    body.scale.set(1.0, 0.9, 1.0);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    apple.add(body);
 
-    // Leafy eucalyptus foliage collar around the rim
-    const foliage = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(0.036, 1),
-      eucalyptusMat
-    );
-    foliage.scale.set(1.15, 0.72, 1.15);
-    foliage.position.set(fx * 0.82, fy - 0.055, fz * 0.82);
-    foliage.castShadow = true;
-    vaseGroup.add(foliage);
+    const stem = new THREE.Mesh(stemGeo, stemWoodMat);
+    stem.name = `kitchen.island.fruitBowl.appleStem.${i + 1}`;
+    stem.position.set(0, 0.033, 0);
+    apple.add(stem);
 
-    // Multi-petal flower head
-    const bloomMat = new THREE.MeshStandardMaterial({
-      color: colorHex,
-      roughness: 0.55,
-    });
-    const bloom = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(0.038, 1),
-      bloomMat
-    );
-    bloom.scale.set(1.1, 0.82, 1.1);
-    bloom.position.set(fx, fy, fz);
-    bloom.castShadow = true;
-    vaseGroup.add(bloom);
+    fruitBowlGroup.add(apple);
   }
 
-  islandGroup.add(vaseGroup);
+  // 2. Valencia Oranges
+  const orangePositions: ReadonlyArray<readonly [number, number, number]> = [
+    [0.068, 0.076, -0.042],
+    [0.005, 0.072, 0.068],
+    [-0.018, 0.074, -0.068],
+  ];
+  const orangeGeo = new THREE.SphereGeometry(0.036, 16, 12);
+  for (let i = 0; i < orangePositions.length; i++) {
+    const [ox, oy, oz] = orangePositions[i];
+    const orange = new THREE.Mesh(orangeGeo, orangeCitrusMat);
+    orange.name = `kitchen.island.fruitBowl.orange.${i + 1}`;
+    orange.scale.set(1.0, 0.95, 1.0);
+    orange.position.set(ox, oy, oz);
+    orange.castShadow = true;
+    orange.receiveShadow = true;
+    fruitBowlGroup.add(orange);
+  }
+
+  // 3. Amalfi Lemons (prolate citrus ellipsoids)
+  const lemonSpecs: ReadonlyArray<{
+    readonly pos: readonly [number, number, number];
+    readonly rot: readonly [number, number, number];
+  }> = [
+    { pos: [0.095, 0.092, 0.002], rot: [0.15, 0.65, -0.28] },
+    { pos: [-0.045, 0.112, 0.048], rot: [-0.2, -0.45, 0.24] },
+  ];
+  const lemonGeo = new THREE.SphereGeometry(0.028, 14, 12);
+  for (let i = 0; i < lemonSpecs.length; i++) {
+    const spec = lemonSpecs[i];
+    const lemon = new THREE.Mesh(lemonGeo, lemonMat);
+    lemon.name = `kitchen.island.fruitBowl.lemon.${i + 1}`;
+    lemon.scale.set(1.34, 0.88, 0.88);
+    lemon.position.set(spec.pos[0], spec.pos[1], spec.pos[2]);
+    lemon.rotation.set(spec.rot[0], spec.rot[1], spec.rot[2]);
+    lemon.castShadow = true;
+    lemon.receiveShadow = true;
+    fruitBowlGroup.add(lemon);
+  }
+
+  // 4. Conference Pears (compound lower bulb + tapered neck + stem)
+  const pearSpecs: ReadonlyArray<{
+    readonly pos: readonly [number, number, number];
+    readonly rot: readonly [number, number, number];
+  }> = [
+    { pos: [0.038, 0.108, -0.008], rot: [0.35, 0.25, -0.42] },
+    { pos: [-0.058, 0.102, -0.005], rot: [-0.28, -0.35, 0.48] },
+  ];
+  const pearBulbGeo = new THREE.SphereGeometry(0.031, 14, 12);
+  const pearNeckGeo = new THREE.ConeGeometry(0.024, 0.042, 14);
+  for (let i = 0; i < pearSpecs.length; i++) {
+    const spec = pearSpecs[i];
+    const pear = new THREE.Group();
+    pear.name = `kitchen.island.fruitBowl.pear.${i + 1}`;
+    pear.position.set(spec.pos[0], spec.pos[1], spec.pos[2]);
+    pear.rotation.set(spec.rot[0], spec.rot[1], spec.rot[2]);
+
+    const bulb = new THREE.Mesh(pearBulbGeo, pearMat);
+    bulb.name = `kitchen.island.fruitBowl.pearBulb.${i + 1}`;
+    bulb.scale.set(1.0, 0.92, 1.0);
+    bulb.castShadow = true;
+    pear.add(bulb);
+
+    const neck = new THREE.Mesh(pearNeckGeo, pearMat);
+    neck.name = `kitchen.island.fruitBowl.pearNeck.${i + 1}`;
+    neck.position.set(0, 0.024, 0);
+    neck.castShadow = true;
+    pear.add(neck);
+
+    const stem = new THREE.Mesh(stemGeo, stemWoodMat);
+    stem.name = `kitchen.island.fruitBowl.pearStem.${i + 1}`;
+    stem.position.set(0, 0.046, 0);
+    pear.add(stem);
+
+    fruitBowlGroup.add(pear);
+  }
+
+  // 5. Curved Hand of Ripe Bananas resting across the top of the fruit bowl
+  const bananaArcGeo = new THREE.TorusGeometry(0.088, 0.0145, 10, 16, 1.32);
+  for (let b = 0; b < 3; b++) {
+    const banana = new THREE.Mesh(bananaArcGeo, bananaMat);
+    banana.name = `kitchen.island.fruitBowl.banana.${b + 1}`;
+    banana.position.set(0.015 + (b - 1) * 0.018, 0.182, -0.025 + (b - 1) * 0.014);
+    banana.rotation.set(Math.PI * 0.62 + (b - 1) * 0.08, 0.35, -2.25);
+    banana.castShadow = true;
+    banana.receiveShadow = true;
+    fruitBowlGroup.add(banana);
+  }
+
+  // 6. Cascading Bunch of Burgundy Grapes draping over the front-left rim
+  const grapeGeo = new THREE.SphereGeometry(0.0105, 10, 8);
+  const grapeOffsets: ReadonlyArray<readonly [number, number, number]> = [
+    [-0.088, 0.115, 0.055],
+    [-0.104, 0.114, 0.065],
+    [-0.095, 0.124, 0.068],
+    [-0.112, 0.118, 0.052],
+    [-0.118, 0.112, 0.068],
+    [-0.105, 0.108, 0.082],
+    [-0.124, 0.106, 0.078],
+    [-0.132, 0.101, 0.068],
+    [-0.118, 0.098, 0.088],
+    [-0.136, 0.094, 0.082],
+    [-0.144, 0.086, 0.076],
+    [-0.128, 0.088, 0.094],
+  ];
+  for (let g = 0; g < grapeOffsets.length; g++) {
+    const [gx, gy, gz] = grapeOffsets[g];
+    const grape = new THREE.Mesh(grapeGeo, grapeMat);
+    grape.name = `kitchen.island.fruitBowl.grape.${g + 1}`;
+    grape.position.set(gx, gy, gz);
+    grape.castShadow = true;
+    fruitBowlGroup.add(grape);
+  }
+
+  islandGroup.add(fruitBowlGroup);
 
   // Cox & Cox Weathered Oak Counter Stools — natural weathered oak with sculpted saddle seat,
   // 4 splayed tapered oak legs, and staggered horizontal footrest rungs (backless)
