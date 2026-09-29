@@ -669,18 +669,27 @@ export function buildLargeBlueIslandWithLeftSink(ctx: SceneBuilderContext): void
   bowlMesh.userData = { lodTier: 2, zoneId: 'kitchen' };
   fruitBowlGroup.add(bowlMesh);
 
-  // 1. Apples (Red & Granny Smith Green) with woody stems
+  // Helper returning the exact inner concave surface height of the bowl at radial distance `r`
+  const getBowlInnerSurfaceY = (r: number): number => {
+    if (r <= 0.045) return 0.035 + (r / 0.045) * (0.038 - 0.035);
+    if (r <= 0.095) return 0.038 + ((r - 0.045) / 0.05) * (0.05 - 0.038);
+    if (r <= 0.136) return 0.05 + ((r - 0.095) / 0.041) * (0.075 - 0.05);
+    if (r <= 0.153) return 0.075 + ((r - 0.136) / 0.017) * (0.105 - 0.075);
+    return 0.112;
+  };
+
+  // 1. Apples (Red & Granny Smith Green) with woody stems seated directly on the bowl floor
   const appleSpecs: ReadonlyArray<{
     readonly pos: readonly [number, number, number];
     readonly rot: readonly [number, number, number];
     readonly isGreen: boolean;
   }> = [
-    { pos: [-0.052, 0.078, 0.038], rot: [0.18, 0.4, -0.15], isGreen: false },
-    { pos: [0.058, 0.08, 0.034], rot: [-0.14, -0.3, 0.22], isGreen: true },
-    { pos: [-0.012, 0.108, -0.012], rot: [0.08, 0.2, 0.12], isGreen: false },
-    { pos: [-0.072, 0.082, -0.035], rot: [-0.22, 0.5, 0.18], isGreen: true },
+    { pos: [-0.048, 0.071, 0.036], rot: [0.18, 0.4, -0.15], isGreen: false },
+    { pos: [0.054, 0.072, 0.032], rot: [-0.14, -0.3, 0.22], isGreen: true },
+    { pos: [-0.008, 0.068, -0.008], rot: [0.08, 0.2, 0.12], isGreen: false },
+    { pos: [-0.064, 0.074, -0.032], rot: [-0.22, 0.5, 0.18], isGreen: true },
   ];
-  const appleGeo = new THREE.SphereGeometry(0.035, 16, 12);
+  const appleGeo = new THREE.SphereGeometry(0.034, 16, 12);
   const stemGeo = new THREE.CylinderGeometry(0.0018, 0.0012, 0.014, 6);
   for (let i = 0; i < appleSpecs.length; i++) {
     const spec = appleSpecs[i];
@@ -701,19 +710,19 @@ export function buildLargeBlueIslandWithLeftSink(ctx: SceneBuilderContext): void
 
     const stem = new THREE.Mesh(stemGeo, stemWoodMat);
     stem.name = `kitchen.island.fruitBowl.appleStem.${i + 1}`;
-    stem.position.set(0, 0.033, 0);
+    stem.position.set(0, 0.032, 0);
     apple.add(stem);
 
     fruitBowlGroup.add(apple);
   }
 
-  // 2. Valencia Oranges
+  // 2. Valencia Oranges seated in the bowl
   const orangePositions: ReadonlyArray<readonly [number, number, number]> = [
-    [0.068, 0.076, -0.042],
-    [0.005, 0.072, 0.068],
-    [-0.018, 0.074, -0.068],
+    [0.062, 0.074, -0.038],
+    [0.004, 0.073, 0.064],
+    [-0.016, 0.073, -0.062],
   ];
-  const orangeGeo = new THREE.SphereGeometry(0.036, 16, 12);
+  const orangeGeo = new THREE.SphereGeometry(0.035, 16, 12);
   for (let i = 0; i < orangePositions.length; i++) {
     const [ox, oy, oz] = orangePositions[i];
     const orange = new THREE.Mesh(orangeGeo, orangeCitrusMat);
@@ -725,15 +734,15 @@ export function buildLargeBlueIslandWithLeftSink(ctx: SceneBuilderContext): void
     fruitBowlGroup.add(orange);
   }
 
-  // 3. Amalfi Lemons (prolate citrus ellipsoids)
+  // 3. Amalfi Lemons (prolate citrus ellipsoids nestled between the apples and oranges)
   const lemonSpecs: ReadonlyArray<{
     readonly pos: readonly [number, number, number];
     readonly rot: readonly [number, number, number];
   }> = [
-    { pos: [0.095, 0.092, 0.002], rot: [0.15, 0.65, -0.28] },
-    { pos: [-0.045, 0.112, 0.048], rot: [-0.2, -0.45, 0.24] },
+    { pos: [0.088, 0.078, -0.002], rot: [0.15, 0.65, -0.28] },
+    { pos: [-0.032, 0.095, 0.042], rot: [-0.2, -0.45, 0.24] },
   ];
-  const lemonGeo = new THREE.SphereGeometry(0.028, 14, 12);
+  const lemonGeo = new THREE.SphereGeometry(0.027, 14, 12);
   for (let i = 0; i < lemonSpecs.length; i++) {
     const spec = lemonSpecs[i];
     const lemon = new THREE.Mesh(lemonGeo, lemonMat);
@@ -746,16 +755,16 @@ export function buildLargeBlueIslandWithLeftSink(ctx: SceneBuilderContext): void
     fruitBowlGroup.add(lemon);
   }
 
-  // 4. Conference Pears (compound lower bulb + tapered neck + stem)
+  // 4. Conference Pears (compound lower bulb + tapered neck + stem resting on the base layer)
   const pearSpecs: ReadonlyArray<{
     readonly pos: readonly [number, number, number];
     readonly rot: readonly [number, number, number];
   }> = [
-    { pos: [0.038, 0.108, -0.008], rot: [0.35, 0.25, -0.42] },
-    { pos: [-0.058, 0.102, -0.005], rot: [-0.28, -0.35, 0.48] },
+    { pos: [0.034, 0.082, -0.006], rot: [0.35, 0.25, -0.42] },
+    { pos: [-0.052, 0.082, -0.002], rot: [-0.28, -0.35, 0.48] },
   ];
-  const pearBulbGeo = new THREE.SphereGeometry(0.031, 14, 12);
-  const pearNeckGeo = new THREE.ConeGeometry(0.024, 0.042, 14);
+  const pearBulbGeo = new THREE.SphereGeometry(0.03, 14, 12);
+  const pearNeckGeo = new THREE.ConeGeometry(0.023, 0.04, 14);
   for (let i = 0; i < pearSpecs.length; i++) {
     const spec = pearSpecs[i];
     const pear = new THREE.Group();
@@ -771,52 +780,147 @@ export function buildLargeBlueIslandWithLeftSink(ctx: SceneBuilderContext): void
 
     const neck = new THREE.Mesh(pearNeckGeo, pearMat);
     neck.name = `kitchen.island.fruitBowl.pearNeck.${i + 1}`;
-    neck.position.set(0, 0.024, 0);
+    neck.position.set(0, 0.023, 0);
     neck.castShadow = true;
     pear.add(neck);
 
     const stem = new THREE.Mesh(stemGeo, stemWoodMat);
     stem.name = `kitchen.island.fruitBowl.pearStem.${i + 1}`;
-    stem.position.set(0, 0.046, 0);
+    stem.position.set(0, 0.044, 0);
     pear.add(stem);
 
     fruitBowlGroup.add(pear);
   }
 
-  // 5. Curved Hand of Ripe Bananas resting across the top of the fruit bowl
-  const bananaArcGeo = new THREE.TorusGeometry(0.088, 0.0145, 10, 16, 1.32);
-  for (let b = 0; b < 3; b++) {
-    const banana = new THREE.Mesh(bananaArcGeo, bananaMat);
+  // 5. Curved Hand of Ripe Bananas whose belly origin (0, 0, 0) rests directly on the fruit below
+  const createCenteredBananaGeometry = (): THREE.BufferGeometry => {
+    const lenSegs = 14;
+    const radSegs = 6;
+    const halfSpanX = 0.074;
+    const archRiseY = 0.028;
+    const maxR = 0.0145;
+
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+
+    for (let i = 0; i <= lenSegs; i++) {
+      const u = i / lenSegs;
+      const t = u * 2 - 1; // [-1, +1]
+      const cx = t * halfSpanX;
+      const cy = t * t * archRiseY;
+      const cz = (1 - t * t) * 0.005;
+
+      // Tangent along the spine to orient the cross-section ring
+      const dx = halfSpanX;
+      const dy = 2 * t * archRiseY;
+      const tLen = Math.hypot(dx, dy) || 1;
+      const nx = -dy / tLen;
+      const ny = dx / tLen;
+
+      // Taper radius smoothly at both tips, with a short stem neck at t -> +1
+      const profile =
+        t > 0.82
+          ? 0.24
+          : Math.max(0.18, Math.cos(t * 0.44 * Math.PI));
+      const r = maxR * profile;
+
+      for (let j = 0; j <= radSegs; j++) {
+        const v = j / radSegs;
+        const theta = v * Math.PI * 2;
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+
+        const px = cx + nx * (r * sinT);
+        const py = cy + ny * (r * sinT);
+        const pz = cz + r * 0.92 * cosT;
+
+        positions.push(px, py, pz);
+        uvs.push(u, v);
+      }
+    }
+
+    const ringStride = radSegs + 1;
+    for (let i = 0; i < lenSegs; i++) {
+      for (let j = 0; j < radSegs; j++) {
+        const a = i * ringStride + j;
+        const b = (i + 1) * ringStride + j;
+        const c = (i + 1) * ringStride + (j + 1);
+        const d = i * ringStride + (j + 1);
+        indices.push(a, b, d, b, c, d);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  };
+
+  const bananaGeo = createCenteredBananaGeometry();
+  const bananaSpecs: ReadonlyArray<{
+    readonly pos: readonly [number, number, number];
+    readonly rot: readonly [number, number, number];
+  }> = [
+    { pos: [0.012, 0.095, -0.018], rot: [0.08, 0.32, -0.04] },
+    { pos: [0.022, 0.097, -0.002], rot: [0.02, 0.46, -0.05] },
+    { pos: [0.028, 0.094, 0.014], rot: [-0.06, 0.6, -0.06] },
+  ];
+  for (let b = 0; b < bananaSpecs.length; b++) {
+    const spec = bananaSpecs[b];
+    const banana = new THREE.Mesh(bananaGeo, bananaMat);
     banana.name = `kitchen.island.fruitBowl.banana.${b + 1}`;
-    banana.position.set(0.015 + (b - 1) * 0.018, 0.182, -0.025 + (b - 1) * 0.014);
-    banana.rotation.set(Math.PI * 0.62 + (b - 1) * 0.08, 0.35, -2.25);
+    banana.position.set(spec.pos[0], spec.pos[1], spec.pos[2]);
+    banana.rotation.set(spec.rot[0], spec.rot[1], spec.rot[2]);
     banana.castShadow = true;
     banana.receiveShadow = true;
     fruitBowlGroup.add(banana);
   }
 
-  // 6. Cascading Bunch of Burgundy Grapes draping over the front-left rim
-  const grapeGeo = new THREE.SphereGeometry(0.0105, 10, 8);
-  const grapeOffsets: ReadonlyArray<readonly [number, number, number]> = [
-    [-0.088, 0.115, 0.055],
-    [-0.104, 0.114, 0.065],
-    [-0.095, 0.124, 0.068],
-    [-0.112, 0.118, 0.052],
-    [-0.118, 0.112, 0.068],
-    [-0.105, 0.108, 0.082],
-    [-0.124, 0.106, 0.078],
-    [-0.132, 0.101, 0.068],
-    [-0.118, 0.098, 0.088],
-    [-0.136, 0.094, 0.082],
-    [-0.144, 0.086, 0.076],
-    [-0.128, 0.088, 0.094],
+  // Shared woody crown joining the stem tips of the 3 bananas
+  const bananaCrown = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.007, 0.009, 0.022, 8),
+    stemWoodMat
+  );
+  bananaCrown.name = 'kitchen.island.fruitBowl.bananaCrown';
+  bananaCrown.position.set(0.082, 0.12, -0.032);
+  bananaCrown.rotation.set(0.25, 0.45, -0.55);
+  bananaCrown.castShadow = true;
+  fruitBowlGroup.add(bananaCrown);
+
+  // 6. Bunch of Burgundy Grapes nestled inside the front-left bowl pocket (strictly inside r <= 0.126m and above getBowlInnerSurfaceY)
+  const grapeRadius = 0.0105;
+  const grapeGeo = new THREE.SphereGeometry(grapeRadius, 10, 8);
+  const rawGrapeCoords: ReadonlyArray<readonly [number, number, number]> = [
+    // Bottom layer resting directly on the inner bowl wall & adjacent apples
+    [-0.078, 0.082, 0.042],
+    [-0.092, 0.084, 0.032],
+    [-0.088, 0.085, 0.052],
+    [-0.104, 0.088, 0.044],
+    [-0.098, 0.089, 0.062],
+    [-0.076, 0.086, 0.062],
+    [-0.112, 0.092, 0.032],
+    [-0.112, 0.094, 0.052],
+    // Upper layer nestled in the pockets of the bottom grape layer
+    [-0.084, 0.098, 0.044],
+    [-0.096, 0.101, 0.038],
+    [-0.094, 0.102, 0.054],
+    [-0.106, 0.104, 0.046],
+    [-0.082, 0.099, 0.058],
+    [-0.09, 0.112, 0.046],
   ];
-  for (let g = 0; g < grapeOffsets.length; g++) {
-    const [gx, gy, gz] = grapeOffsets[g];
+  for (let g = 0; g < rawGrapeCoords.length; g++) {
+    const [gx, rawGy, gz] = rawGrapeCoords[g];
+    const r = Math.hypot(gx, gz);
+    const minSafeY = getBowlInnerSurfaceY(r + grapeRadius) + grapeRadius + 0.002;
+    const gy = Math.max(rawGy, minSafeY);
     const grape = new THREE.Mesh(grapeGeo, grapeMat);
     grape.name = `kitchen.island.fruitBowl.grape.${g + 1}`;
     grape.position.set(gx, gy, gz);
     grape.castShadow = true;
+    grape.receiveShadow = true;
     fruitBowlGroup.add(grape);
   }
 
