@@ -18,6 +18,18 @@ const EW_SIN = Math.sin(EW_ROT_Y);
 const EW_OFFSET_X = -16.92 - (-16.92 * EW_COS + 2.54 * EW_SIN);
 const EW_OFFSET_Z = 2.61 - (16.92 * EW_SIN + 2.54 * EW_COS);
 
+function worldToEastWingLocal(
+  wx: number,
+  wz: number
+): { readonly ewX: number; readonly ewZ: number } {
+  const dx = wx - EW_OFFSET_X;
+  const dz = wz - EW_OFFSET_Z;
+  return {
+    ewX: dx * EW_COS - dz * EW_SIN,
+    ewZ: dx * EW_SIN + dz * EW_COS,
+  };
+}
+
 function ewSpawnPos(x: number, y: number, z: number): readonly [number, number, number] {
   return [
     Number((x * EW_COS + z * EW_SIN + EW_OFFSET_X).toFixed(3)),
@@ -167,7 +179,6 @@ export class WalkthroughController {
   private lastRaycastMs = 0;
 
   private readonly keysDown = new Set<string>();
-  private readonly downRaycaster = new THREE.Raycaster();
   private readonly wallRaycaster = new THREE.Raycaster();
   private readonly interactRaycaster = new THREE.Raycaster();
   private readonly centerNdc = new THREE.Vector2(0, 0);
@@ -194,8 +205,6 @@ export class WalkthroughController {
     this.onStateChanged = options.onStateChanged;
     this.onPoseUpdated = options.onPoseUpdated;
 
-    this.downRaycaster.near = 0.05;
-    this.downRaycaster.far = 4.5;
     this.wallRaycaster.near = 0.02;
     this.wallRaycaster.far = 0.55;
     this.interactRaycaster.near = 0.05;
@@ -454,51 +463,81 @@ export class WalkthroughController {
   }
 
   private sampleFloorElevation(x: number, refFootY: number, z: number): number {
-    const rayOrigin = new THREE.Vector3(x, refFootY + 1.05, z);
-    this.downRaycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0));
+    const { ewX, ewZ } = worldToEastWingLocal(x, z);
 
-    const hits = this.downRaycaster.intersectObjects(this.scene.children, true);
-    let bestFloorY: number | null = null;
-    const roomMinY = this.getRoomMinYAt(x, refFootY + 0.35, z);
-
-    for (const hit of hits) {
-      const obj = hit.object;
-      if (!(obj instanceof THREE.Mesh)) continue;
-      if (!isObjectVisibleInHierarchy(obj)) continue;
-      if (obj.userData?.isAnnotationGroup) continue;
-      // Ignore ceiling/roof meshes above the head
-      if (hit.point.y > refFootY + 0.62) continue;
-      if (hit.point.y < refFootY - 1.2) continue;
-
-      // Prefer upward-facing horizontal surfaces (floors, stair treads, thresholds)
-      if (hit.face) {
-        const worldNormal = hit.face.normal
-          .clone()
-          .transformDirection(obj.matrixWorld);
-        if (worldNormal.y < 0.55) continue;
-      }
-
-      // Skip table/countertop/sofa surfaces (> 0.36m above room floor) unless on the Main Hall staircase
-      if (roomMinY !== null && hit.point.y - roomMinY > 0.36) {
-        const inStairHall = x >= -17.5 && x <= -12.8 && z >= -2.5 && z <= 3.0;
-        if (!inStairHall) continue;
-      }
-
-      // Also never drop into sub-floor cellars/trenches below roomMinY - 0.12m
-      if (roomMinY !== null && hit.point.y < roomMinY - 0.12) {
-        continue;
-      }
-
-      if (bestFloorY === null || hit.point.y > bestFloorY) {
-        bestFloorY = hit.point.y;
-      }
+    // 1. Main Hall Quarter-Turn Staircase (smooth continuous analytical elevation Up & Down)
+    // 1a. Upper Flight (climbing East +X along the North wall from X = -16.64m at Y = 0.84m to X = -15.36m at Y = 2.16m)
+    if (
+      ewX >= -16.64 &&
+      ewX <= -15.26 &&
+      ewZ >= -2.55 &&
+      ewZ <= -1.58 &&
+      refFootY >= 0.35
+    ) {
+      const tUpper = THREE.MathUtils.clamp(
+        (ewX - -16.64) / (-15.36 - -16.64),
+        0,
+        1
+      );
+      return 0.84 + tUpper * (2.16 - 0.84);
     }
 
-    if (bestFloorY !== null) {
-      return bestFloorY;
+    // 1b. Quarter-Turn Landing (X = -17.58m..-16.58m, Z = -2.55m..-1.62m at Y = +0.84m)
+    if (
+      ewX >= -17.58 &&
+      ewX <= -16.58 &&
+      ewZ >= -2.55 &&
+      ewZ <= -1.62 &&
+      refFootY >= 0.15 &&
+      refFootY <= 1.65
+    ) {
+      return 0.84;
     }
 
-    return roomMinY ?? refFootY;
+    // 1c. Lower Flight (climbing North -Z along the West wall from Z = -0.32m at Y = -0.30m to Z = -1.62m at Y = +0.84m)
+    if (
+      ewX >= -17.58 &&
+      ewX <= -16.58 &&
+      ewZ >= -1.62 &&
+      ewZ <= -0.24 &&
+      refFootY <= 1.55
+    ) {
+      const tLower = THREE.MathUtils.clamp(
+        (-0.32 - ewZ) / (-0.32 - -1.62),
+        0,
+        1
+      );
+      return -0.3 + tLower * (0.84 - -0.3);
+    }
+
+    // 2. First Floor Rooms & Doorways (never drops unless walking down the Upper Flight above)
+    if (refFootY >= 1.65) {
+      return 2.16;
+    }
+
+    // 3. Ground Floor East Wing (Kitchen +0.05m -> Dining Room 0.00m -> Boot Lobby & Main Hall -0.30m)
+    if (ewX >= -17.62 && ewX <= 4.35 && ewZ >= -2.85 && ewZ <= 2.75) {
+      if (ewX >= -4.45) return 0.05;
+      if (ewX >= -4.68) {
+        return THREE.MathUtils.lerp(0.0, 0.05, (ewX - -4.68) / 0.23);
+      }
+      if (ewX >= -9.58) return 0.0;
+      if (ewX >= -9.8) {
+        return THREE.MathUtils.lerp(-0.3, 0.0, (ewX - -9.8) / 0.22);
+      }
+      return -0.3;
+    }
+
+    // 4. Ground Floor West Wing (Living Room, Front Entrance Hall, Sitting Room, Study, Plant Room at -0.60m)
+    if (x <= -17.15 || (z > 2.65 && x < -16.5)) {
+      if (x >= -17.75 && z >= -2.55 && z <= 2.65) {
+        return THREE.MathUtils.lerp(-0.6, -0.3, (x - -17.75) / 0.6);
+      }
+      return -0.6;
+    }
+
+    // 5. Outdoor Courtyard & Grounds
+    return this.getRoomMinYAt(x, refFootY, z) ?? 0.0;
   }
 
   private isBlockedByWallOrCabinet(
@@ -506,7 +545,68 @@ export class WalkthroughController {
     moveDirXZ: THREE.Vector3,
     stepDist: number
   ): boolean {
-    const radii = [0.52, 1.12];
+    const nextX = fromFoot.x + moveDirXZ.x * stepDist;
+    const nextZ = fromFoot.z + moveDirXZ.z * stepDist;
+    const curEw = worldToEastWingLocal(fromFoot.x, fromFoot.z);
+    const nextEw = worldToEastWingLocal(nextX, nextZ);
+
+    // 1. First Floor Landing gallery balustrade guardrail around the stairwell void
+    //    Allows free entry/exit onto the Upper Flight at ewX = -15.36, ewZ in [-2.48, -1.65]
+    if (
+      fromFoot.y >= 1.85 &&
+      nextEw.ewX >= -17.58 &&
+      nextEw.ewX <= -15.34 &&
+      nextEw.ewZ >= -1.64 &&
+      nextEw.ewZ <= -0.54
+    ) {
+      return true;
+    }
+
+    // 2. Clean 2D corridor & balustrade bounds when walking UP or DOWN the Main Hall staircase
+    //    (prevents horizontal raycasts from ever snagging on stair risers, stringers, or slab edges)
+    const onUpperFlightOrMouth =
+      fromFoot.y >= 0.65 &&
+      curEw.ewX >= -16.68 &&
+      curEw.ewX <= -15.05 &&
+      curEw.ewZ >= -2.52 &&
+      curEw.ewZ <= -1.58;
+    const onQuarterLanding =
+      fromFoot.y >= 0.25 &&
+      fromFoot.y <= 1.55 &&
+      curEw.ewX >= -17.55 &&
+      curEw.ewX <= -16.55 &&
+      curEw.ewZ >= -2.52 &&
+      curEw.ewZ <= -1.55;
+    const onLowerFlight =
+      fromFoot.y <= 1.35 &&
+      curEw.ewX >= -17.55 &&
+      curEw.ewX <= -16.58 &&
+      curEw.ewZ >= -1.65 &&
+      curEw.ewZ <= -0.15;
+
+    if (onUpperFlightOrMouth || onQuarterLanding || onLowerFlight) {
+      if (nextEw.ewZ < -2.41) return true; // North brick wall
+      if (nextEw.ewX < -17.43) return true; // West cross-wall
+      if (
+        fromFoot.y >= 0.72 &&
+        nextEw.ewX > -16.58 &&
+        nextEw.ewX < -15.36 &&
+        nextEw.ewZ > -1.69
+      ) {
+        return true; // Upper flight South balustrade
+      }
+      if (
+        fromFoot.y <= 1.35 &&
+        nextEw.ewZ > -1.58 &&
+        nextEw.ewZ < -0.35 &&
+        nextEw.ewX > -16.68
+      ) {
+        return true; // Lower flight East balustrade
+      }
+      return false;
+    }
+
+    const radii = [0.58, 1.15];
     this.wallRaycaster.far = Math.max(0.36, stepDist + 0.3);
 
     for (const hOffset of radii) {
@@ -522,12 +622,18 @@ export class WalkthroughController {
         if (!(obj instanceof THREE.Mesh)) continue;
         if (!isObjectVisibleInHierarchy(obj)) continue;
         if (obj.userData?.isAnnotationGroup) continue;
+        if (
+          typeof obj.name === 'string' &&
+          obj.name.startsWith('hall.stairs')
+        ) {
+          continue;
+        }
         if (hit.distance <= stepDist + 0.28) {
           if (hit.face) {
             const worldNormal = hit.face.normal
               .clone()
               .transformDirection(obj.matrixWorld);
-            if (Math.abs(worldNormal.y) < 0.45) {
+            if (Math.abs(worldNormal.y) < 0.35) {
               return true;
             }
           }

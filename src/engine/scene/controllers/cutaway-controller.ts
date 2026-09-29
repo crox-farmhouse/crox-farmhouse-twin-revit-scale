@@ -146,7 +146,13 @@ export class CutawayController {
         ? view.orthoZoom <= 0.62
         : perspDist >= (isTopDownPlan ? 32.0 : 15.5));
 
-    if (this.lodController.evaluateLod(cam, target, this.floorViewMode)) {
+    if (
+      this.lodController.evaluateLod(
+        cam,
+        target,
+        view.isWalkthrough ? 'all' : this.floorViewMode
+      )
+    ) {
       needsRender = true;
     }
 

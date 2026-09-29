@@ -710,11 +710,12 @@ export function buildHallStaircase(
   stairGroup.add(cornerNewelDropCap);
 
   // 3. Upper Flight turning 90° East (+X) along the North wall (Z = -2.49m..-1.66m, X = -16.64m..-15.36m)
+  //    Rises from quarterLandingY = +0.84m to First Floor Landing floorTopY = +2.16m (6 risers of 0.22m = 1.32m)
   const upperBalustradeEndX = -15.5;
   const upperEndX = -15.36;
   const upperOpenSteps = 5;
   const upperStepRun = (upperBalustradeEndX - -16.64) / upperOpenSteps; // 1.14 / 5 = 0.228m
-  const upperStepRise = 0.132; // 5 * 0.132m = 0.66m (from Y = 0.84m to Y = 1.50m across the open balustrade)
+  const upperStepRise = 0.22; // 6 * 0.22m = 1.32m (from Y = 0.84m to Y = 2.16m flush with First Floor Landing!)
 
   const upperCarriageShape = new THREE.Shape();
   upperCarriageShape.moveTo(-16.64, 0.73);
@@ -726,8 +727,8 @@ export function buildHallStaircase(
     upperCarriageShape.lineTo(sx0, sy1);
     upperCarriageShape.lineTo(sx1, sy1);
   }
-  // Top step inside the ceiling trimmer apron (X = -15.50m..-15.36m, Y = 1.632m)
-  const topStepY = quarterLandingY + (upperOpenSteps + 1) * upperStepRise; // 1.632m
+  // Top landing arrival step flush with First Floor Landing (X = -15.50m..-15.36m, Y = 2.16m)
+  const topStepY = quarterLandingY + (upperOpenSteps + 1) * upperStepRise; // 2.16m = floorTopY
   upperCarriageShape.lineTo(upperBalustradeEndX, topStepY);
   upperCarriageShape.lineTo(upperEndX, topStepY);
   upperCarriageShape.lineTo(upperEndX, topStepY - 0.15);
@@ -832,7 +833,7 @@ export function buildHallStaircase(
     lightGroups.hallPendant.emissives.push(soffitLedMat);
 
     const soffitDx = upperEndX - -16.64; // 1.28m
-    const soffitDy = topStepY - 0.18 - 0.69; // 0.762m
+    const soffitDy = topStepY - 0.18 - 0.69; // 1.29m
     const soffitLen = Math.hypot(soffitDx, soffitDy) - 0.08;
     const soffitPitch = Math.atan2(soffitDy, soffitDx);
     const soffitMidX = (-16.64 + upperEndX) * 0.5;
@@ -864,14 +865,15 @@ export function buildHallStaircase(
     ctx.addGlowPool('hallPendant', soffitMidX, lowerFloorY + 0.006, -2.02, 1.15, 0.24);
   }
 
-  // Issue #4: Mitered Closed White Outer Stringer on the South (+Z = -1.64m) face of the Upper Flight (X = -16.59m..-15.50m)
-  // Matches the exact upper flight pitch (upperStepRise / upperStepRun = 0.132 / 0.228 -> ΔY = 0.631m over ΔX = 1.09m)
-  const upperSpanDeltaY = ((upperBalustradeEndX - -16.59) * upperStepRise) / upperStepRun; // 0.631m
+  // Issue #4: Mitered Closed White Outer Stringer on the South (+Z = -1.64m) face of the Upper Flight (X = -16.59m..-15.41m)
+  // Matches the exact upper flight pitch up to the First Floor Landing slab at X = -15.36m
+  const upperBalustradeJoinX = -15.41;
+  const upperSpanDeltaY = ((upperBalustradeJoinX - -16.59) * upperStepRise) / upperStepRun;
   const upperStrShape = new THREE.Shape();
   upperStrShape.moveTo(-16.59, 0.78);
   upperStrShape.lineTo(-16.59, 0.98);
-  upperStrShape.lineTo(upperBalustradeEndX, 0.98 + upperSpanDeltaY);
-  upperStrShape.lineTo(upperBalustradeEndX, 0.78 + upperSpanDeltaY);
+  upperStrShape.lineTo(upperBalustradeJoinX, 0.98 + upperSpanDeltaY);
+  upperStrShape.lineTo(upperBalustradeJoinX, 0.78 + upperSpanDeltaY);
   upperStrShape.closePath();
   const upperStrGeo = new THREE.ExtrudeGeometry(upperStrShape, {
     depth: 0.056,
@@ -883,14 +885,13 @@ export function buildHallStaircase(
   upperStringer.castShadow = true;
   stairGroup.add(upperStringer);
 
-  // Issue #4: Parallel Mitered White Upper Handrail along Z = -1.64m (X = -16.59m..-15.50m)
-  // Starts at Y = 1.36m..1.416m on the East face of `cornerNewel` (100% aligned with `lowerHandrail`!)
-  // and climbs at the exact stair pitch (+0.631m) to Y = 1.991m..2.047m at `hangingPostPendant`!
+  // Issue #4: Parallel Mitered White Upper Handrail along Z = -1.64m (X = -16.59m..-15.41m)
+  // Starts at Y = 1.36m..1.416m on the East face of `cornerNewel` and climbs to the First Floor gallery newel post
   const upperRailShape = new THREE.Shape();
   upperRailShape.moveTo(-16.59, 1.36);
   upperRailShape.lineTo(-16.59, 1.416);
-  upperRailShape.lineTo(upperBalustradeEndX, 1.416 + upperSpanDeltaY);
-  upperRailShape.lineTo(upperBalustradeEndX, 1.36 + upperSpanDeltaY);
+  upperRailShape.lineTo(upperBalustradeJoinX, 1.416 + upperSpanDeltaY);
+  upperRailShape.lineTo(upperBalustradeJoinX, 1.36 + upperSpanDeltaY);
   upperRailShape.closePath();
   const upperRailGeo = new THREE.ExtrudeGeometry(upperRailShape, {
     depth: 0.068,
@@ -905,7 +906,7 @@ export function buildHallStaircase(
   // 7 Full-Height (0.41m) Vertical White Square Balusters (Spindles) between the parallel Upper Stringer & Upper Handrail
   for (let ub = 0; ub < 7; ub++) {
     const ut = (ub + 0.5) / 7;
-    const bx = -16.59 + ut * (upperBalustradeEndX - -16.59);
+    const bx = -16.59 + ut * (upperBalustradeJoinX - -16.59);
     const bBottomY = 0.96 + ut * upperSpanDeltaY;
     const bTopY = 1.37 + ut * upperSpanDeltaY;
     const bH = bTopY - bBottomY;
@@ -919,10 +920,10 @@ export function buildHallStaircase(
     stairGroup.add(baluster);
   }
 
-  // Signature Hanging Square White Newel Post with Drop-Pendant Finial at X = -15.50m, Z = -1.64m (PH-47 & PH-48!)
-  // Extends vertically from its drop-cap at Y = +1.28m up to the ceiling at Y = wallH (2.06m)
-  const hangingPostBottomY = 1.28;
-  const hangingPostTopY = wallH;
+  // Signature Hanging Square White Newel Post with Drop-Pendant Finial at X = -15.38m, Z = -1.64m (PH-47 & PH-48!)
+  // Anchors the top of the Upper Flight handrail & stringer directly into the First Floor Landing gallery rail (Y = 1.76m..3.12m)
+  const hangingPostBottomY = 1.76;
+  const hangingPostTopY = topStepY + 0.96;
   const hangingPostH = hangingPostTopY - hangingPostBottomY;
   const hangingPostPendant = new THREE.Mesh(
     new THREE.BoxGeometry(0.1, hangingPostH, 0.1),
@@ -930,7 +931,7 @@ export function buildHallStaircase(
   );
   hangingPostPendant.name = 'hall.stairs.hangingNewelPost';
   hangingPostPendant.position.set(
-    upperBalustradeEndX,
+    -15.38,
     (hangingPostBottomY + hangingPostTopY) * 0.5,
     -1.64
   );
@@ -941,16 +942,17 @@ export function buildHallStaircase(
     new THREE.BoxGeometry(0.122, 0.028, 0.122),
     skirtingMat
   );
-  hangingPostCap.position.set(upperBalustradeEndX, hangingPostBottomY - 0.014, -1.64);
+  hangingPostCap.position.set(-15.38, hangingPostBottomY - 0.014, -1.64);
   stairGroup.add(hangingPostCap);
 
-  // White-Plastered Ceiling Stairwell Trimmer Fascia & Apron (X = -15.50m..-15.34m, Z = -2.50m..-1.61m, Y = +1.48m..wallH)
-  const trimmerH = wallH - 1.48;
+  // White-Plastered Ceiling Stairwell Trimmer Fascia & Apron along the First Floor gallery edge (X = -15.36m, Z = -1.65m..-0.58m)
+  // Leaves the Upper Flight arrival threshold (Z = -2.50m..-1.65m at X = -15.36m, Y = 2.16m) 100% open!
+  const trimmerH = topStepY - 1.92;
   const stairwellEastTrimmer = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16, trimmerH, 0.88),
+    new THREE.BoxGeometry(0.12, trimmerH, 1.07),
     warmRoomPlasterMat
   );
-  stairwellEastTrimmer.position.set(-15.42, 1.48 + trimmerH / 2, -2.05);
+  stairwellEastTrimmer.position.set(-15.36, 1.92 + trimmerH / 2, -1.115);
   stairwellEastTrimmer.castShadow = true;
   stairGroup.add(stairwellEastTrimmer);
 
@@ -1023,9 +1025,9 @@ export function buildHallStaircase(
   const brickNorthShape = new THREE.Shape();
   brickNorthShape.moveTo(-17.48, quarterLandingY + 0.2);
   brickNorthShape.lineTo(-16.64, quarterLandingY + 0.2);
-  brickNorthShape.lineTo(upperBalustradeEndX, quarterLandingY + upperOpenSteps * upperStepRise + 0.2);
-  brickNorthShape.lineTo(upperBalustradeEndX, wallH - 0.01);
-  brickNorthShape.lineTo(-17.48, wallH - 0.01);
+  brickNorthShape.lineTo(upperEndX, topStepY + 0.19);
+  brickNorthShape.lineTo(upperEndX, topStepY + 0.22);
+  brickNorthShape.lineTo(-17.48, topStepY + 0.22);
   brickNorthShape.closePath();
   const stairExposedBrickNorthGeo = new THREE.ExtrudeGeometry(brickNorthShape, {
     depth: 0.02,
@@ -1056,12 +1058,12 @@ export function buildHallStaircase(
   hallSpineBeam.receiveShadow = true;
   groundFloorCeilingGroup.add(hallSpineBeam);
 
-  // North-South Ceiling Trimmer Beam at the top of the stairs (X = -15.36m, Z = -2.50m..+0.34m — aligned with hanging post pendant!)
+  // North-South Ceiling Trimmer Beam along the stairwell gallery edge (X = -15.36m, Z = -1.64m..+0.34m)
   const hallStairTrimmerBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16, 0.16, 2.84),
+    new THREE.BoxGeometry(0.16, 0.16, 1.98),
     oakMat
   );
-  hallStairTrimmerBeam.position.set(-15.36, wallH - 0.12, -1.08);
+  hallStairTrimmerBeam.position.set(-15.36, wallH - 0.12, -0.65);
   hallStairTrimmerBeam.castShadow = true;
   groundFloorCeilingGroup.add(hallStairTrimmerBeam);
 
