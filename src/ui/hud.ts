@@ -808,6 +808,13 @@ export class HudController {
       this.syncFloorModeUI();
     });
 
+    const floatingEnterBtn = document.getElementById('walkthrough-floating-enter-btn');
+    floatingEnterBtn?.addEventListener('click', () => {
+      this.scene.setWalkthroughMode(true);
+      this.syncWalkthroughUI();
+      this.syncFloorModeUI();
+    });
+
     const exitBtn = document.getElementById('walkthrough-exit-btn');
     exitBtn?.addEventListener('click', () => {
       this.scene.setWalkthroughMode(false);
@@ -858,6 +865,13 @@ export class HudController {
         this.scene.toggleWalkthroughMode();
         this.syncWalkthroughUI();
         this.syncFloorModeUI();
+      } else if (e.code === 'KeyF' && !e.repeat && !this.scene.isWalkthroughMode()) {
+        // When in Orbit Mode, pressing F also enters First-Person Walkthrough!
+        // (Inside Walkthrough Mode, F is handled by WalkthroughController as "Interact".)
+        e.preventDefault();
+        this.scene.setWalkthroughMode(true);
+        this.syncWalkthroughUI();
+        this.syncFloorModeUI();
       } else if (
         e.code === 'Escape' &&
         this.scene.isWalkthroughMode() &&
@@ -901,6 +915,11 @@ export class HudController {
     const pointerLocked = wt.isPointerLocked();
     const targetPrompt = wt.getTargetedPrompt();
 
+    const floatingEnterBtn = document.getElementById('walkthrough-floating-enter-btn');
+    if (floatingEnterBtn) {
+      floatingEnterBtn.hidden = active;
+    }
+
     const toggleBtn = document.getElementById('toggle-walkthrough-btn');
     const dot = document.getElementById('walkthrough-dot');
     const stateLabel = document.getElementById('walkthrough-state-label');
@@ -915,7 +934,7 @@ export class HudController {
     if (stateLabel) {
       stateLabel.textContent = active
         ? '1st-Person Walkthrough: Active (WASD · F Interact · V Exit)'
-        : '1st-Person Walkthrough: Off (Press V)';
+        : '1st-Person Walkthrough: Off (Press V or F)';
     }
 
     const hudBanner = document.getElementById('walkthrough-hud');

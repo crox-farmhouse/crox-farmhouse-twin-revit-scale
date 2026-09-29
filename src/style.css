@@ -2091,6 +2091,50 @@ body,
   box-shadow: 0 0 6px #34d399;
 }
 
+.walkthrough-floating-enter-btn {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 44;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(18, 36, 28, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid #2ea86f;
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55), 0 0 12px rgba(46, 168, 111, 0.25);
+  color: #ecfdf5;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.walkthrough-floating-enter-btn:hover {
+  background: #1b4d38;
+  transform: translateX(-50%) translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), 0 0 16px rgba(52, 211, 153, 0.4);
+}
+
+.walkthrough-floating-enter-btn[hidden] {
+  display: none;
+}
+
+.walkthrough-floating-enter-btn kbd {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.22);
+  border: 1px solid rgba(110, 231, 183, 0.45);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: #a7f3d0;
+}
+
 .walkthrough-hud {
   position: fixed;
   top: 10px;
