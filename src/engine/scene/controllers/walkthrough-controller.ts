@@ -510,13 +510,18 @@ export class WalkthroughController {
       return -0.3 + tLower * (0.84 - -0.3);
     }
 
-    // 2. First Floor Rooms & Doorways (never drops unless walking down the Upper Flight above)
-    if (refFootY >= 1.65) {
+    // 2. First Floor Rooms & Doorways (strictly bounded to the actual First Floor footprint
+    //    so you can NEVER float on an invisible 2.16m platform over the Courtyard or single-storey Kitchen!)
+    const inEastWingFirstFloor =
+      ewX >= -18.05 && ewX <= -4.4 && ewZ >= -2.75 && ewZ <= 2.62;
+    const inWestWingFirstFloor =
+      x >= -22.5 && x <= -16.88 && z >= -2.75 && z <= 11.75;
+    if (refFootY >= 1.65 && (inEastWingFirstFloor || inWestWingFirstFloor)) {
       return 2.16;
     }
 
     // 3. Ground Floor East Wing (Kitchen +0.05m -> Dining Room 0.00m -> Boot Lobby & Main Hall -0.30m)
-    if (ewX >= -17.62 && ewX <= 4.35 && ewZ >= -2.85 && ewZ <= 2.75) {
+    if (ewX >= -17.62 && ewX <= 4.35 && ewZ >= -2.85 && ewZ <= 2.62) {
       if (ewX >= -4.45) return 0.05;
       if (ewX >= -4.68) {
         return THREE.MathUtils.lerp(0.0, 0.05, (ewX - -4.68) / 0.23);
@@ -529,15 +534,36 @@ export class WalkthroughController {
     }
 
     // 4. Ground Floor West Wing (Living Room, Front Entrance Hall, Sitting Room, Study, Plant Room at -0.60m)
-    if (x <= -17.15 || (z > 2.65 && x < -16.5)) {
+    if (x <= -17.05 && z <= 11.8) {
       if (x >= -17.75 && z >= -2.55 && z <= 2.65) {
         return THREE.MathUtils.lerp(-0.6, -0.3, (x - -17.75) / 0.6);
       }
       return -0.6;
     }
 
-    // 5. Outdoor Courtyard & Grounds
-    return this.getRoomMinYAt(x, refFootY, z) ?? 0.0;
+    // 5. Outdoor Courtyard, Raised Limestone Terrace & Grounds (continuous graded courtyard elevation)
+    const northZ = 2.61 - (x - -16.92) * (0.705 / 5.27) - 0.05;
+    const tx = Math.max(0, Math.min(1, (-4.52 - x) / 11.43));
+    const smoothTx = 0.55 * tx + 0.45 * tx * tx * (3 - 2 * tx);
+
+    const northTx = Math.max(0, Math.min(1, (-8.2 - x) / 6.8));
+    const smoothNorthTx = northTx * northTx * (3 - 2 * northTx);
+
+    const tz = Math.max(
+      0,
+      Math.min(1, (z - northZ) / Math.max(1.0, 8.65 - northZ))
+    );
+    const smoothTz = 0.5 * tz + 0.5 * tz * tz * (3 - 2 * tz);
+
+    const westEdgeY = -0.3 * smoothNorthTx * (1 - smoothTz) - 0.6 * smoothTz;
+    const westDrop = westEdgeY * smoothTx;
+
+    const seStartZ = northZ + 4.35;
+    const seTz = Math.max(0, Math.min(1, (z - seStartZ) / 9.0));
+    const smoothSeTz = seTz * seTz * (3 - 2 * seTz);
+    const eastDrop = -0.18 * (1 - smoothTx) * smoothSeTz;
+
+    return westDrop + eastDrop;
   }
 
   private isBlockedByWallOrCabinet(
@@ -622,9 +648,11 @@ export class WalkthroughController {
         if (!(obj instanceof THREE.Mesh)) continue;
         if (!isObjectVisibleInHierarchy(obj)) continue;
         if (obj.userData?.isAnnotationGroup) continue;
+        // Never snag on stair meshes or decorative foliage/ivy spheres
         if (
-          typeof obj.name === 'string' &&
-          obj.name.startsWith('hall.stairs')
+          (typeof obj.name === 'string' && obj.name.startsWith('hall.stairs')) ||
+          obj.geometry instanceof THREE.DodecahedronGeometry ||
+          obj.geometry instanceof THREE.SphereGeometry
         ) {
           continue;
         }

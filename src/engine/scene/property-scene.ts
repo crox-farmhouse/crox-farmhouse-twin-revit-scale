@@ -164,6 +164,10 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
         let bestDistY = Number.POSITIVE_INFINITY;
         for (const reg of profile.lodRegistrations) {
           if (reg.zoneId === 'courtyard') continue;
+          // Exclude the outdoor courtyard cutout from the L-shaped upperLanding bounding box
+          if (reg.zoneId === 'upperLanding' && x > -16.95 && z > 2.65) {
+            continue;
+          }
           const b = reg.bounds;
           if (x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) {
             // Map sub-floor UFH/cellar bounding-box minYs to actual room walking floor elevations
@@ -181,7 +185,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
                       ? -0.6
                       : b.minY;
             const distY = Math.abs(y - walkingFloorY);
-            if (distY < bestDistY) {
+            if (distY <= 0.95 && distY < bestDistY) {
               bestDistY = distY;
               bestMinY = walkingFloorY;
             }

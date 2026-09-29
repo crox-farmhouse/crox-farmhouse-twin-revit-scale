@@ -672,6 +672,7 @@ export function findInteriorRoomZoneAtPoint(
   return allZones.find(
     (zone) =>
       zone.isInterior &&
+      !(zone.id === 'upperLanding' && x > -16.95 && z > 2.65) &&
       x >= zone.bounds.minX &&
       x <= zone.bounds.maxX &&
       y >= zone.bounds.minY &&

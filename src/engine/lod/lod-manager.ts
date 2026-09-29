@@ -303,6 +303,7 @@ export class RoomLodController {
   ): ManagedRoomLodEntry | undefined {
     for (const room of this.rooms.values()) {
       if (room.zoneId === 'courtyard') continue;
+      if (room.zoneId === 'upperLanding' && x > -16.95 && z > 2.65) continue;
       const b = room.bounds;
       if (
         x >= b.minX + horizontalInsetM &&
