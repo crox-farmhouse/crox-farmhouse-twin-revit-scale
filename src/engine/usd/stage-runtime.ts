@@ -270,6 +270,7 @@ export class UsdStageRuntimeController {
     readonly east: THREE.Group;
   };
   private readonly onRoofCutawayChanged?: (cutaway: boolean) => void;
+  private readonly onZoneLoadedFromUsda?: (zoneId: string) => void;
 
   private readonly meshByUuid = new Map<string, THREE.Mesh>();
   private readonly primByUuid = new Map<string, UsdIndexedPrimInfo>();
@@ -301,6 +302,7 @@ export class UsdStageRuntimeController {
     };
     readonly initialCeilingCutaway: boolean;
     readonly onRoofCutawayChanged?: (cutaway: boolean) => void;
+    readonly onZoneLoadedFromUsda?: (zoneId: string) => void;
   }) {
     this.sceneRoot = options.scene;
     this.cutawayWallGroups = options.cutawayWallGroups;
@@ -321,6 +323,7 @@ export class UsdStageRuntimeController {
       ? 'groundFloorCutaway'
       : 'fullBuilding';
     this.onRoofCutawayChanged = options.onRoofCutawayChanged;
+    this.onZoneLoadedFromUsda = options.onZoneLoadedFromUsda;
 
     this.authoredOverrideGroup.name = 'usd.liveAuthoredPrims';
     options.scene.add(this.authoredOverrideGroup);
@@ -383,7 +386,10 @@ export class UsdStageRuntimeController {
         return false;
       }
 
-      this.removeTypeScriptBranchesForZone(zoneId);
+      this.transferLiveMaterialsAndRemoveTypeScriptBranches(
+        zoneId,
+        loaded.topPrims.map((p) => p.object3d)
+      );
 
       for (const topPrim of loaded.topPrims) {
         const container = this.resolveSceneLayerContainer(topPrim.sceneLayer);
@@ -393,6 +399,7 @@ export class UsdStageRuntimeController {
       this.usdaBackedZones.add(zoneId);
       this.indexStage();
       this.syncVisibilityForZone(zoneId);
+      this.onZoneLoadedFromUsda?.(zoneId);
       if (this.diagnosticMode !== 'pbr') {
         const currentMode = this.diagnosticMode;
         this.diagnosticMode = 'pbr';
@@ -442,7 +449,10 @@ export class UsdStageRuntimeController {
     }
   }
 
-  private removeTypeScriptBranchesForZone(zoneId: string): void {
+  private transferLiveMaterialsAndRemoveTypeScriptBranches(
+    zoneId: string,
+    usdTopObjects: readonly THREE.Object3D[]
+  ): void {
     const roofGroupSet = new Set<THREE.Object3D>([
       this.groundCeilingRoot,
       this.ceilingRoot,
@@ -483,32 +493,113 @@ export class UsdStageRuntimeController {
       return false;
     };
 
-    const pruneContainer = (container: THREE.Object3D, isFirstFloor: boolean): void => {
+    const isExportableUsdNode = (obj: THREE.Object3D): boolean => {
+      if (shouldKeepHelper(obj)) return false;
+      if (obj instanceof THREE.Mesh) return true;
+      return obj.children.some(isExportableUsdNode);
+    };
+
+    const syncTsNodeToUsdNode = (
+      tsNode: THREE.Object3D,
+      usdNode: THREE.Object3D
+    ): void => {
+      if (tsNode instanceof THREE.Mesh && usdNode instanceof THREE.Mesh) {
+        usdNode.castShadow = tsNode.castShadow;
+        usdNode.receiveShadow = tsNode.receiveShadow;
+
+        if (!Array.isArray(tsNode.material) && !Array.isArray(usdNode.material)) {
+          usdNode.material = tsNode.material;
+        } else if (
+          Array.isArray(tsNode.material) &&
+          Array.isArray(usdNode.material)
+        ) {
+          const uniqueMats: THREE.Material[] = [];
+          for (const grp of tsNode.geometry.groups) {
+            const m =
+              tsNode.material[
+                Math.min(grp.materialIndex ?? 0, tsNode.material.length - 1)
+              ];
+            if (m && !uniqueMats.includes(m)) {
+              uniqueMats.push(m);
+            }
+          }
+          if (uniqueMats.length === usdNode.material.length) {
+            usdNode.material = uniqueMats;
+          } else if (tsNode.material.length === usdNode.material.length) {
+            usdNode.material = [...tsNode.material];
+          }
+        }
+      }
+
+      const tsExportableChildren = tsNode.children.filter(isExportableUsdNode);
+      const usdChildren = usdNode.children.filter((c) => !shouldKeepHelper(c));
+
+      for (const child of [...tsNode.children]) {
+        if (shouldKeepHelper(child)) {
+          usdNode.add(child);
+          if (
+            child instanceof THREE.SpotLight &&
+            child.target &&
+            child.target.parent === tsNode
+          ) {
+            usdNode.add(child.target);
+          }
+        }
+      }
+
+      const count = Math.min(tsExportableChildren.length, usdChildren.length);
+      for (let i = 0; i < count; i++) {
+        syncTsNodeToUsdNode(tsExportableChildren[i], usdChildren[i]);
+      }
+    };
+
+    const tsBranches: {
+      readonly parent: THREE.Object3D;
+      readonly branch: THREE.Object3D;
+    }[] = [];
+
+    const collectFromContainer = (
+      container: THREE.Object3D,
+      isFirstFloor: boolean
+    ): void => {
       for (const child of [...container.children]) {
         if (topLayerContainers.has(child) || shouldKeepHelper(child)) continue;
         if (child.userData?.isRoomContainer) {
           for (const sub of [...child.children]) {
             if (shouldKeepHelper(sub)) continue;
             if (classifyBranchZoneLayer(sub, roofGroupSet, isFirstFloor) === zoneId) {
-              child.remove(sub);
+              tsBranches.push({ parent: child, branch: sub });
             }
           }
           continue;
         }
         if (classifyBranchZoneLayer(child, roofGroupSet, isFirstFloor) === zoneId) {
-          container.remove(child);
+          tsBranches.push({ parent: container, branch: child });
         }
       }
     };
 
-    pruneContainer(this.sceneRoot, false);
-    pruneContainer(this.cutawayWallGroups.southWest, false);
-    pruneContainer(this.cutawayWallGroups.west, false);
-    pruneContainer(this.cutawayWallGroups.north, false);
-    pruneContainer(this.cutawayWallGroups.east, false);
-    pruneContainer(this.firstFloorRoot, true);
-    pruneContainer(this.groundCeilingRoot, true);
-    pruneContainer(this.ceilingRoot, true);
+    collectFromContainer(this.sceneRoot, false);
+    collectFromContainer(this.cutawayWallGroups.southWest, false);
+    collectFromContainer(this.cutawayWallGroups.west, false);
+    collectFromContainer(this.cutawayWallGroups.north, false);
+    collectFromContainer(this.cutawayWallGroups.east, false);
+    collectFromContainer(this.firstFloorRoot, true);
+    collectFromContainer(this.groundCeilingRoot, true);
+    collectFromContainer(this.ceilingRoot, true);
+
+    const exportableTsBranches = tsBranches
+      .map((entry) => entry.branch)
+      .filter(isExportableUsdNode);
+
+    const pairCount = Math.min(exportableTsBranches.length, usdTopObjects.length);
+    for (let i = 0; i < pairCount; i++) {
+      syncTsNodeToUsdNode(exportableTsBranches[i], usdTopObjects[i]);
+    }
+
+    for (const { parent, branch } of tsBranches) {
+      parent.remove(branch);
+    }
   }
 
   public indexStage(): void {

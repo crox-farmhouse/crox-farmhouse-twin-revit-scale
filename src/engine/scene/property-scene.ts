@@ -206,6 +206,14 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
           this.toggleCeilingCutaway();
         }
       },
+      onZoneLoadedFromUsda: () => {
+        this.interactions.rebindAfterUsdZoneLoad([this.scene]);
+        this.cutaways.collectDynamicCutawayWalls();
+        this.updateCameraFacingWallCutaways();
+        this.freezeStaticMatrices();
+        this.renderer.shadowMap.needsUpdate = true;
+        this.needsRender = true;
+      },
     });
     this.usdRuntime.subscribe(() => {
       this.renderer.shadowMap.needsUpdate = true;

@@ -4,10 +4,10 @@ import type { InteractiveUserData } from '../../types/scene.ts';
 
 interface HingedDoorState {
   readonly id: string;
-  readonly pivot: THREE.Group;
+  pivot: THREE.Group;
   readonly axis: 'x' | 'y' | 'z';
-  readonly closedAngle: number;
-  readonly openAngle: number;
+  closedAngle: number;
+  openAngle: number;
   isOpen: boolean;
   progress: number;
   readonly speed: number;
@@ -15,8 +15,8 @@ interface HingedDoorState {
 
 interface BifoldCupboardState {
   readonly id: string;
-  readonly outerPivot: THREE.Group;
-  readonly innerLeaf: THREE.Group;
+  outerPivot: THREE.Group;
+  innerLeaf: THREE.Group;
   readonly sideSign: -1 | 1; // -1 = left folding pair, +1 = right folding pair
   readonly leafWidth: number;
   readonly closedOuterX: number;
@@ -29,7 +29,7 @@ interface BifoldCupboardState {
 
 interface SlidingDrawerState {
   readonly id: string;
-  readonly group: THREE.Group;
+  group: THREE.Group;
   readonly closedPos: THREE.Vector3;
   readonly openPos: THREE.Vector3;
   isOpen: boolean;
@@ -39,10 +39,10 @@ interface SlidingDrawerState {
 
 interface PulleyMaidState {
   readonly id: string;
-  readonly rackMovingGroup: THREE.Group;
-  readonly vertRopes: readonly THREE.Mesh[];
-  readonly pulleyWheels: readonly THREE.Mesh[];
-  readonly wallHaulRope: THREE.Mesh;
+  rackMovingGroup: THREE.Group;
+  vertRopes: readonly THREE.Mesh[];
+  pulleyWheels: readonly THREE.Mesh[];
+  wallHaulRope: THREE.Mesh;
   readonly baseRopeLength: number;
   readonly pulleyCeilingY: number;
   readonly baseRackEyeY: number;
@@ -55,8 +55,8 @@ interface PulleyMaidState {
 }
 
 interface MotorizedCarGatePairState {
-  readonly northPivot: THREE.Group;
-  readonly southPivot: THREE.Group;
+  northPivot: THREE.Group;
+  southPivot: THREE.Group;
   readonly northOpenAngle: number;
   readonly southOpenAngle: number;
   isOpen: boolean;
@@ -198,6 +198,8 @@ export class SceneInteractionManager {
 
     this.registerClickableObject(outerPivot, { interactableId: id });
     this.registerClickableObject(innerLeaf, { interactableId: id });
+    outerPivot.userData = { ...outerPivot.userData, bifoldRole: 'outerPivot' };
+    innerLeaf.userData = { ...innerLeaf.userData, bifoldRole: 'innerLeaf' };
 
     this.bifoldCupboards.set(id, {
       id,
@@ -257,6 +259,28 @@ export class SceneInteractionManager {
   }): void {
     const id = 'pulley-maid';
     this.registerClickableObject(config.clickRoot, { interactableId: id });
+    config.rackMovingGroup.userData = {
+      ...config.rackMovingGroup.userData,
+      pulleyMaidRole: 'rackMovingGroup',
+    };
+    config.vertRopes.forEach((rope, idx) => {
+      rope.userData = {
+        ...rope.userData,
+        pulleyMaidRole: 'vertRope',
+        pulleyMaidIndex: idx,
+      };
+    });
+    config.pulleyWheels.forEach((wheel, idx) => {
+      wheel.userData = {
+        ...wheel.userData,
+        pulleyMaidRole: 'pulleyWheel',
+        pulleyMaidIndex: idx,
+      };
+    });
+    config.wallHaulRope.userData = {
+      ...config.wallHaulRope.userData,
+      pulleyMaidRole: 'wallHaulRope',
+    };
 
     this.pulleyMaid = {
       id,
@@ -306,6 +330,8 @@ export class SceneInteractionManager {
 
     this.registerClickableObject(northPivot, { isCarGate: true });
     this.registerClickableObject(southPivot, { isCarGate: true });
+    northPivot.userData = { ...northPivot.userData, carGateRole: 'northPivot' };
+    southPivot.userData = { ...southPivot.userData, carGateRole: 'southPivot' };
 
     this.carGatePair = {
       northPivot,
@@ -387,6 +413,151 @@ export class SceneInteractionManager {
     if (!door) return false;
     door.isOpen = isOpen;
     return true;
+  }
+
+  /**
+   * Rebinds all raycastable interactive meshes and animated door/drawer/pantry/pulley-maid
+   * pivot groups after one or more zones have been replaced by live `.usda` prims.
+   */
+  public rebindAfterUsdZoneLoad(roots: readonly THREE.Object3D[]): void {
+    this.interactiveMeshes.length = 0;
+    const seenMeshes = new Set<THREE.Object3D>();
+
+    const doorCandidates = new Map<string, THREE.Group>();
+    const drawerCandidates = new Map<string, THREE.Group>();
+    const bifoldOuterCandidates = new Map<string, THREE.Group>();
+    const bifoldInnerCandidates = new Map<string, THREE.Group>();
+    let pulleyRackCandidate: THREE.Group | null = null;
+    const pulleyVertRopes = new Map<number, THREE.Mesh>();
+    const pulleyWheels = new Map<number, THREE.Mesh>();
+    let pulleyWallRope: THREE.Mesh | null = null;
+    let carGateNorthCandidate: THREE.Group | null = null;
+    let carGateSouthCandidate: THREE.Group | null = null;
+
+    for (const root of roots) {
+      root.traverse((obj) => {
+        const u = (obj.userData ?? {}) as Record<string, unknown>;
+
+        if (obj instanceof THREE.Group) {
+          const id = typeof u.interactableId === 'string' ? u.interactableId : undefined;
+          if (id) {
+            if (id.startsWith('door-') && !doorCandidates.has(id)) {
+              doorCandidates.set(id, obj);
+            } else if (id.startsWith('drawer-') && !drawerCandidates.has(id)) {
+              drawerCandidates.set(id, obj);
+            } else if (id.startsWith('bifold-cupboard-')) {
+              if (u.bifoldRole === 'outerPivot' && !bifoldOuterCandidates.has(id)) {
+                bifoldOuterCandidates.set(id, obj);
+              } else if (u.bifoldRole === 'innerLeaf' && !bifoldInnerCandidates.has(id)) {
+                bifoldInnerCandidates.set(id, obj);
+              }
+            }
+          }
+          if (u.pulleyMaidRole === 'rackMovingGroup') {
+            pulleyRackCandidate = obj;
+          }
+          if (u.carGateRole === 'northPivot') {
+            carGateNorthCandidate = obj;
+          } else if (u.carGateRole === 'southPivot') {
+            carGateSouthCandidate = obj;
+          }
+        }
+
+        if (obj instanceof THREE.Mesh && !seenMeshes.has(obj)) {
+          if (
+            u.interactableId ||
+            u.circuitId ||
+            u.isBifoldDoor ||
+            u.isCarGate ||
+            u.isKNXSwitch ||
+            u.isUtilitySwitch ||
+            u.isCourtyardSwitch ||
+            u.isKitchenMotionSensor ||
+            u.isUtilityMotionSensor ||
+            u.roomMotionSensorId ||
+            u.isFrameTV ||
+            u.isUniFiCamera ||
+            u.isUniFiAccessReader ||
+            u.ufhZoneId
+          ) {
+            seenMeshes.add(obj);
+            this.interactiveMeshes.push(obj);
+          }
+
+          if (u.pulleyMaidRole === 'vertRope' && typeof u.pulleyMaidIndex === 'number') {
+            pulleyVertRopes.set(u.pulleyMaidIndex, obj);
+          } else if (
+            u.pulleyMaidRole === 'pulleyWheel' &&
+            typeof u.pulleyMaidIndex === 'number'
+          ) {
+            pulleyWheels.set(u.pulleyMaidIndex, obj);
+          } else if (u.pulleyMaidRole === 'wallHaulRope') {
+            pulleyWallRope = obj;
+          }
+        }
+      });
+    }
+
+    for (const door of this.hingedDoors.values()) {
+      const newPivot = doorCandidates.get(door.id);
+      if (newPivot && newPivot !== door.pivot) {
+        const angleDelta = door.openAngle - door.closedAngle;
+        door.pivot = newPivot;
+        door.closedAngle = newPivot.rotation[door.axis];
+        door.openAngle = door.closedAngle + angleDelta;
+        const smooth = easeInOutCubic(door.progress);
+        door.pivot.rotation[door.axis] = door.closedAngle + angleDelta * smooth;
+        door.pivot.updateMatrixWorld(true);
+      }
+    }
+
+    for (const dr of this.slidingDrawers.values()) {
+      const newGroup = drawerCandidates.get(dr.id);
+      if (newGroup && newGroup !== dr.group) {
+        const slideDelta = dr.openPos.clone().sub(dr.closedPos);
+        const quatDelta = newGroup.quaternion
+          .clone()
+          .multiply(dr.group.quaternion.clone().invert());
+        slideDelta.applyQuaternion(quatDelta);
+        dr.closedPos.copy(newGroup.position);
+        dr.openPos.copy(newGroup.position).add(slideDelta);
+        dr.group = newGroup;
+        const smooth = easeInOutCubic(dr.progress);
+        dr.group.position.lerpVectors(dr.closedPos, dr.openPos, smooth);
+        dr.group.updateMatrixWorld(true);
+      }
+    }
+
+    for (const bf of this.bifoldCupboards.values()) {
+      const newOuter = bifoldOuterCandidates.get(bf.id);
+      const newInner = bifoldInnerCandidates.get(bf.id);
+      if (newOuter) bf.outerPivot = newOuter;
+      if (newInner) bf.innerLeaf = newInner;
+    }
+
+    if (this.pulleyMaid && pulleyRackCandidate && pulleyWallRope) {
+      this.pulleyMaid.rackMovingGroup = pulleyRackCandidate;
+      this.pulleyMaid.wallHaulRope = pulleyWallRope;
+      if (pulleyVertRopes.size === this.pulleyMaid.vertRopes.length) {
+        this.pulleyMaid.vertRopes = this.pulleyMaid.vertRopes.map(
+          (r, i) => pulleyVertRopes.get(i) ?? r
+        );
+      }
+      if (pulleyWheels.size === this.pulleyMaid.pulleyWheels.length) {
+        this.pulleyMaid.pulleyWheels = this.pulleyMaid.pulleyWheels.map(
+          (w, i) => pulleyWheels.get(i) ?? w
+        );
+      }
+    }
+
+    if (this.carGatePair) {
+      if (carGateNorthCandidate) {
+        this.carGatePair.northPivot = carGateNorthCandidate;
+      }
+      if (carGateSouthCandidate) {
+        this.carGatePair.southPivot = carGateSouthCandidate;
+      }
+    }
   }
 
   /**

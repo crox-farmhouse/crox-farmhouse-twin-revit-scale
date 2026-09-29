@@ -80,7 +80,7 @@ export class CutawayController {
       let offsetX = 0;
       let offsetZ = 0;
       let rotationY = 0;
-      let cur: THREE.Object3D | null = obj.parent;
+      let cur: THREE.Object3D | null = obj;
       while (cur) {
         const containerOffset = cur.userData?.containerOffset as
           | readonly [number, number, number]

@@ -459,8 +459,13 @@ function buildThreeObjectFromUsdaPrim(
 
   if (node.typeName === 'Cube') {
     stats.cubeCount++;
+    const dims = node.boxDimensions;
+    const hasDims =
+      dims && dims[0] > 1e-6 && dims[1] > 1e-6 && dims[2] > 1e-6;
     const size = node.size ?? 1;
-    const geo = new THREE.BoxGeometry(size, size, size);
+    const geo = hasDims
+      ? new THREE.BoxGeometry(dims[0], dims[1], dims[2])
+      : new THREE.BoxGeometry(size, size, size);
     const mat = resolveMaterialForPrim(
       node.materialBindingPath,
       node.doubleSided,
@@ -630,7 +635,16 @@ function buildThreeObjectFromUsdaPrim(
     obj.quaternion.setFromEuler(euler);
   }
   if (node.scale) {
-    obj.scale.set(node.scale[0], node.scale[1], node.scale[2]);
+    const dims = node.typeName === 'Cube' ? node.boxDimensions : undefined;
+    if (dims && dims[0] > 1e-6 && dims[1] > 1e-6 && dims[2] > 1e-6) {
+      obj.scale.set(
+        node.scale[0] / dims[0],
+        node.scale[1] / dims[1],
+        node.scale[2] / dims[2]
+      );
+    } else {
+      obj.scale.set(node.scale[0], node.scale[1], node.scale[2]);
+    }
   }
 
   let restoredUserData: Record<string, unknown> = {};
@@ -642,6 +656,32 @@ function buildThreeObjectFromUsdaPrim(
       }
     } catch {
       // Ignore malformed JSON
+    }
+  }
+  if (obj instanceof THREE.Mesh) {
+    if (typeof restoredUserData.castShadow === 'boolean') {
+      obj.castShadow = restoredUserData.castShadow;
+      delete restoredUserData.castShadow;
+    }
+    if (typeof restoredUserData.receiveShadow === 'boolean') {
+      obj.receiveShadow = restoredUserData.receiveShadow;
+      delete restoredUserData.receiveShadow;
+    }
+    if (obj.castShadow) {
+      if (!obj.geometry.boundingSphere) {
+        obj.geometry.computeBoundingSphere();
+      }
+      const sphere = obj.geometry.boundingSphere;
+      if (sphere) {
+        const maxScale = Math.max(
+          Math.abs(obj.scale.x),
+          Math.abs(obj.scale.y),
+          Math.abs(obj.scale.z)
+        );
+        if (sphere.radius * maxScale < 0.25) {
+          obj.castShadow = false;
+        }
+      }
     }
   }
   if (node.lodTier !== undefined && restoredUserData.lodTier === undefined) {

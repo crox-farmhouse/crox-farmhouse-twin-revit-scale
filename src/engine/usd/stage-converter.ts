@@ -65,7 +65,10 @@ class CanonicalMaterialRegistry {
     }
 
     const spec: UsdPreviewSurfaceData = convertThreeMaterialToUsdSpec(mat, usageHint);
-    const sig = JSON.stringify(spec);
+    const stdMat = mat as THREE.MeshStandardMaterial;
+    const mapUuid = stdMat.map?.uuid ?? '';
+    const bumpUuid = stdMat.bumpMap?.uuid ?? '';
+    const sig = `${JSON.stringify(spec)}|map:${mapUuid}|bump:${bumpUuid}|transparent:${Boolean(mat.transparent)}`;
     const bySig = this.signatureToPrimName.get(sig);
     if (bySig) {
       this.matToPrimName.set(mat, bySig);
@@ -410,10 +413,14 @@ function extractCustomAttributes(
   }
 
   const u = obj.userData ?? {};
-  const sanitizedUserData = sanitizeUserDataValue(u, 0) as
+  const sanitizedUserData = (sanitizeUserDataValue(u, 0) as
     | Record<string, unknown>
-    | undefined;
-  if (sanitizedUserData && Object.keys(sanitizedUserData).length > 0) {
+    | undefined) ?? {};
+  if (obj instanceof THREE.Mesh) {
+    sanitizedUserData.castShadow = obj.castShadow;
+    sanitizedUserData.receiveShadow = obj.receiveShadow;
+  }
+  if (Object.keys(sanitizedUserData).length > 0) {
     attrs['twin:userDataJson'] = {
       type: 'string',
       value: JSON.stringify(sanitizedUserData),
@@ -1109,7 +1116,16 @@ export function convertCroxSceneToUsdStageBundle(input: {
   ): void => {
     if (branch instanceof THREE.Light || branch instanceof THREE.Camera) return;
     if (branch.userData?.isRoomContainer) {
+      const cOffset = branch.userData?.containerOffset;
+      const cRotY = branch.userData?.containerRotationY;
       for (const sub of branch.children) {
+        if (cOffset !== undefined || cRotY !== undefined) {
+          sub.userData = {
+            ...sub.userData,
+            ...(cOffset !== undefined ? { containerOffset: cOffset } : {}),
+            ...(cRotY !== undefined ? { containerRotationY: cRotY } : {}),
+          };
+        }
         processTopLevelBranch(sub, isFirstFloor, true, sceneLayer);
       }
       return;

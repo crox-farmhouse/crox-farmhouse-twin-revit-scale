@@ -211,7 +211,9 @@ export function classifyProceduralPattern(
     hint.includes('vitoria') ||
     hint.includes('checker') ||
     hint.includes('chequer') ||
-    (palette.length >= 2 &&
+    (!mat.transparent &&
+      (repeat[0] >= 2 || repeat[1] >= 2) &&
+      palette.length >= 2 &&
       secondaryBase &&
       Math.abs(luminance(primaryBase) - luminance(secondaryBase)) > 0.45)
   ) {
