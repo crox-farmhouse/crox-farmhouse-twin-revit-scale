@@ -807,7 +807,10 @@ export class WalkthroughController {
 
       // Check ancestor chain for ceiling/roof groups, UFH overlays, architectural shell groups, or dynamic door pivots
       let hasDynamicAncestor = obj.matrixAutoUpdate;
-      let hasArchitecturalShellAncestor = obj.userData?.isArchitecturalShell === true;
+      let hasArchitecturalShellAncestor =
+        obj.userData?.isArchitecturalShell === true ||
+        obj.userData?.isCutawayWall === true ||
+        Boolean(obj.userData?.cutawayWall);
       let skipGroup = false;
       let cur: THREE.Object3D | null = obj.parent;
       while (cur && cur !== this.scene) {
@@ -825,7 +828,11 @@ export class WalkthroughController {
           skipGroup = true;
           break;
         }
-        if (cur.userData?.isArchitecturalShell === true) {
+        if (
+          cur.userData?.isArchitecturalShell === true ||
+          cur.userData?.isCutawayWall === true ||
+          Boolean(cur.userData?.cutawayWall)
+        ) {
           hasArchitecturalShellAncestor = true;
         }
         if (cur.matrixAutoUpdate) {
@@ -845,16 +852,22 @@ export class WalkthroughController {
       const centerZ = (this.tmpBox.min.z + this.tmpBox.max.z) * 0.5;
       const radiusXZ = Math.hypot(sizeX, sizeZ) * 0.5;
 
-      // 1. Vertical structural walls (including multi-material USDA BufferGeometry walls in cutawayWallGroups),
+      // 1. Vertical structural walls (including multi-material USDA BufferGeometry walls in cutawayWallGroups,
+      //    mitered polyline canted bay walls/windows, and bevelled RoundedBoxGeometry meshes),
       //    window frames/upstands/stiles/mullions, all interior/exterior doors (including 28mm panelled doors
       //    and 12-16mm glazed courtyard/bifold doors), and tall cabinetry:
+      const isSoftCurtain =
+        typeof obj.name === 'string' && /curtainPanel/i.test(obj.name);
       const isBoxOrShellWall =
-        obj.geometry instanceof THREE.BoxGeometry ||
-        hasArchitecturalShellAncestor ||
-        (obj.userData?.usdSourceOfTruth === true &&
-          !(obj.geometry instanceof THREE.CylinderGeometry) &&
-          !(obj.geometry instanceof THREE.SphereGeometry) &&
-          !(obj.geometry instanceof THREE.ConeGeometry));
+        !isSoftCurtain &&
+        (obj.geometry instanceof THREE.BoxGeometry ||
+          hasArchitecturalShellAncestor ||
+          (!(obj.geometry instanceof THREE.CylinderGeometry) &&
+            !(obj.geometry instanceof THREE.SphereGeometry) &&
+            !(obj.geometry instanceof THREE.ConeGeometry) &&
+            !(obj.geometry instanceof THREE.TubeGeometry) &&
+            !(obj.geometry instanceof THREE.RingGeometry) &&
+            !(obj.geometry instanceof THREE.TorusGeometry)));
       if (
         isBoxOrShellWall &&
         sizeY >= 0.45 &&
@@ -1031,6 +1044,34 @@ export class WalkthroughController {
         return true; // Lower flight East balustrade
       }
       return false;
+    }
+
+    // 2b. Ground-floor West Canted Bay Windows (Living Room at Z = -0.26m, Sitting Room at Z = 5.92m)
+    //     Enforces the exact 3-sided canted bay geometry (wallInnerX = -22.19m, bayInnerFrontX = -22.52m,
+    //     frontHalfZ = 0.62m, bayHalfZ = 1.08m) plus the central cast-iron bay radiator (X = -22.32m)
+    if (fromFoot.y <= 0.5 && fromFoot.x >= -22.68 && fromFoot.x <= -21.75) {
+      for (const bayCenterZ of [-0.26, 5.92] as const) {
+        const curDz = Math.abs(fromFoot.z - bayCenterZ);
+        const nextDz = Math.abs(nextZ - bayCenterZ);
+        if (nextDz <= 1.14 || curDz <= 1.14) {
+          const bayWallInnerX =
+            nextDz <= 0.62
+              ? -22.52
+              : nextDz <= 1.08
+                ? -22.52 + ((nextDz - 0.62) / 0.46) * (-22.19 - -22.52)
+                : -22.19;
+          const minAllowedX =
+            nextDz <= 0.68
+              ? Math.max(bayWallInnerX + 0.22, -22.16)
+              : bayWallInnerX + 0.22;
+          if (
+            nextX < minAllowedX &&
+            (nextX < fromFoot.x || (nextDz > curDz && fromFoot.x < -21.97))
+          ) {
+            return true;
+          }
+        }
+      }
     }
 
     const obstacles = this.getObstacleCache();
@@ -1360,19 +1401,26 @@ export class WalkthroughController {
           false
         );
         const step = Math.min(dist, WALK_SPEED_MPS * 1.25 * dtSeconds);
-        this.footPos.x += toTarget.x * step;
-        this.footPos.z += toTarget.z * step;
-        const targetFloorY = this.sampleFloorElevation(
-          this.footPos.x,
-          this.footPos.y,
-          this.footPos.z
-        );
-        this.footPos.y = THREE.MathUtils.lerp(
-          this.footPos.y,
-          targetFloorY,
-          1 - Math.exp(-15 * dtSeconds)
-        );
-        this.bobPhase += dtSeconds * 8.5;
+        this.allowDoorBarge = true;
+        const glideBlocked = this.isBlockedByWallOrCabinet(this.footPos, toTarget, step);
+        this.allowDoorBarge = false;
+        if (glideBlocked) {
+          this.glideTargetFoot = null;
+        } else {
+          this.footPos.x += toTarget.x * step;
+          this.footPos.z += toTarget.z * step;
+          const targetFloorY = this.sampleFloorElevation(
+            this.footPos.x,
+            this.footPos.y,
+            this.footPos.z
+          );
+          this.footPos.y = THREE.MathUtils.lerp(
+            this.footPos.y,
+            targetFloorY,
+            1 - Math.exp(-15 * dtSeconds)
+          );
+          this.bobPhase += dtSeconds * 8.5;
+        }
       }
       movedOrRotated = true;
     } else if (Math.abs(Math.sin(this.bobPhase)) > 0.02) {
