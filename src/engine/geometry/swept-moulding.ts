@@ -87,20 +87,20 @@ export function buildSweptMouldingGeometry(
 }
 
 /**
- * Antique oak skirting-style capping profile (d = out from wall, h = up from the board top line): a flush
- * quirk over the board face, a small cove, a half-round bead and a rounded top — the same stepped
- * board-plus-bead read as the hall skirting.
+ * Antique oak skirting-style capping profile (`d` = out from wall, `h` = up from the `0.122m` board top line):
+ * steps inward from the `0.022m`-thick base board into a `0.0175m` torus roll, concave ogee/cove neck
+ * (`0.011m`), and `0.008m` top fillet at `h = +0.024m` (total skirting/stringer height `0.146m`), matching
+ * the Hall and Dining Room skirting boards.
  */
 export function createSkirtingCapProfile(): THREE.Shape {
   const s = new THREE.Shape();
-  s.moveTo(0, -0.03);
-  s.lineTo(0.038, -0.03);
-  s.lineTo(0.038, -0.022);
-  s.quadraticCurveTo(0.039, -0.012, 0.047, -0.012);
-  s.absarc(0.047, 0, 0.012, -Math.PI / 2, Math.PI / 2, false);
-  s.lineTo(0.036, 0.012);
-  s.quadraticCurveTo(0.034, 0.022, 0.026, 0.022);
-  s.lineTo(0, 0.022);
+  s.moveTo(0, -0.003);
+  s.lineTo(0.016, -0.003);
+  s.lineTo(0.017, 0);
+  s.quadraticCurveTo(0.0185, 0.006, 0.0165, 0.012);
+  s.quadraticCurveTo(0.012, 0.017, 0.01, 0.021);
+  s.lineTo(0.008, 0.024);
+  s.lineTo(0, 0.024);
   s.closePath();
   return s;
 }
@@ -114,12 +114,13 @@ export function createWallSkirtingBoardProfile(): THREE.Shape {
   const s = new THREE.Shape();
   s.moveTo(0, 0);
   s.lineTo(0, 0.022);
-  s.lineTo(0.118, 0.022);
-  s.lineTo(0.121, 0.017);
-  s.lineTo(0.131, 0.017);
-  s.lineTo(0.136, 0.012);
+  s.lineTo(0.122, 0.022);
+  s.lineTo(0.122, 0.017);
+  s.lineTo(0.128, 0.018);
+  s.lineTo(0.134, 0.0165);
+  s.lineTo(0.139, 0.012);
   s.lineTo(0.143, 0.01);
-  s.lineTo(0.146, 0.007);
+  s.lineTo(0.146, 0.008);
   s.lineTo(0.146, 0);
   s.closePath();
   return s;

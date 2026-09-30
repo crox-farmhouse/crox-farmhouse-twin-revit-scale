@@ -141,19 +141,19 @@ export function buildHallStaircase(
   // 1A. Step 1: Wide Bullnose / Curtail Bottom Step in front of the Bottom Newel Post (Z = -0.36m..-0.58m, Y = -0.30m..-0.11m)
   const step1TopY = lowerFloorY + lowerRiserH; // -0.11m
   const step1Carriage = new THREE.Mesh(
-    new THREE.BoxGeometry(0.94, lowerRiserH - 0.026, 0.22),
+    new THREE.BoxGeometry(0.99, lowerRiserH - 0.026, 0.22),
     skirtingMat
   );
-  step1Carriage.position.set(-17.08, lowerFloorY + (lowerRiserH - 0.026) * 0.5, -0.47);
+  step1Carriage.position.set(-17.105, lowerFloorY + (lowerRiserH - 0.026) * 0.5, -0.47);
   step1Carriage.castShadow = true;
   step1Carriage.receiveShadow = true;
   stairGroup.add(step1Carriage);
 
   const step1Tread = new THREE.Mesh(
-    new THREE.BoxGeometry(0.96, 0.028, 0.24),
+    new THREE.BoxGeometry(1.0, 0.028, 0.24),
     antiqueOakSkirtingMat
   );
-  step1Tread.position.set(-17.08, step1TopY - 0.014, -0.46);
+  step1Tread.position.set(-17.1, step1TopY - 0.014, -0.46);
   step1Tread.castShadow = true;
   step1Tread.receiveShadow = true;
   stairGroup.add(step1Tread);
@@ -220,8 +220,8 @@ export function buildHallStaircase(
     const stepBotY = lowerFloorY + s * lowerRiserH;
     const stepCenterZ = -0.58 - (s - 0.5) * lowerFlightTreadDepth;
     const riserFaceZ = -0.58 - (s - 1) * lowerFlightTreadDepth;
-    const stepW = 0.88; // X = -17.55m..-16.67m
-    const stepCenterX = -17.55 + stepW * 0.5; // -17.11m
+    const stepW = 0.93; // X = -17.60m..-16.67m (tucked cleanly into West cross-wall behind 22mm stringer)
+    const stepCenterX = -17.6 + stepW * 0.5; // -17.135m
 
     const riserCarriage = new THREE.Mesh(
       new THREE.BoxGeometry(stepW, stepTopY - lowerFloorY - 0.026, lowerFlightTreadDepth),
@@ -547,63 +547,60 @@ export function buildHallStaircase(
   lowerStringer.name = 'hall.stairs.lowerStringer';
   stairGroup.add(lowerStringer);
 
-  // Issue #5: Seasoned Oak Wall Stringer (`antiqueOakSkirtingMat`) wrapping continuously:
-  // 1) Up the West cross-wall alongside the lower flight,
-  // 2) Around the West and North walls of the Quarter Landing, and
-  // 3) Up the North exposed-brick wall section alongside the second span of stairs!
-  // With 4 subtly glowing recessed warm LED step lights (reduced brightness).
+  // Issue #5 & Issue #1: Seasoned Oak Wall Stringer (`antiqueOakSkirtingMat`) matching the exact 22mm + 17mm
+  // stepped ogee/torus skirting profile, coming lower along the steps (95mm board / 125mm cap above nosings)
+  // and finishing with a clean mitred transition at `u = 2.409m` (`Z = -0.09m`) into the horizontal Hall West wall skirting!
   {
     const westWallStringerGroup = new THREE.Group();
     westWallStringerGroup.name = 'hall.stairs.westWallStringer';
     westWallStringerGroup.position.set(-17.55, 0, -2.5);
     westWallStringerGroup.rotation.y = hallFrontRoomCrossWallFrame.rotationY;
 
-    // In `hallFrontRoomCrossWallFrame` local coordinates (`u` from 0 at Z=-2.50m to 4.699 at Z=+2.19m):
-    // Quarter landing edge Z = -1.62m -> u = 0.882m, Step 1 front edge Z = -0.36m -> u = 2.144m
-    // East wall face is at local z = -0.12m; stringer protrudes 0.036m East to local z = -0.156m.
+    const westWallLen = hallFrontRoomCrossWallFrame.length;
+    const landingTurnU = 0.845;
+    const bottomMitreU = 2.409;
+    const skirtBoardH = 0.122;
+
+    // Unified 22mm-thick oak stringer & West wall skirting board (`u = 0..westWallLen`, `z = -0.142m..-0.12m`)
     const westStrShape = new THREE.Shape();
-    westStrShape.moveTo(0.88, quarterLandingY - 0.08);
-    westStrShape.lineTo(0.88, quarterLandingY + 0.19);
-    westStrShape.lineTo(2.15, lowerFloorY + 0.24);
-    westStrShape.lineTo(2.15, lowerFloorY);
+    westStrShape.moveTo(0, quarterLandingY - 0.02);
+    westStrShape.lineTo(0, quarterLandingY + skirtBoardH);
+    westStrShape.lineTo(landingTurnU, quarterLandingY + skirtBoardH);
+    westStrShape.lineTo(bottomMitreU, lowerFloorY + skirtBoardH);
+    westStrShape.lineTo(westWallLen, lowerFloorY + skirtBoardH);
+    westStrShape.lineTo(westWallLen, lowerFloorY);
+    westStrShape.lineTo(landingTurnU, lowerFloorY);
+    westStrShape.lineTo(landingTurnU, quarterLandingY - 0.02);
     westStrShape.closePath();
 
     const westStrGeo = new THREE.ExtrudeGeometry(westStrShape, {
-      depth: 0.036,
+      depth: 0.022,
       bevelEnabled: false,
     });
-    westStrGeo.translate(0, 0, -0.156);
+    westStrGeo.translate(0, 0, -0.142);
     const westWallStringerMesh = new THREE.Mesh(westStrGeo, antiqueOakSkirtingMat);
     westWallStringerMesh.name = 'hall.stairs.westWallStringer.board';
     westWallStringerMesh.castShadow = true;
     westWallStringerMesh.receiveShadow = true;
     westWallStringerGroup.add(westWallStringerMesh);
 
-    // Skirting-profile oak capping swept continuously along the landing and sloped West wall stringer top
-    // edge, mitred at the landing kink (wall face at local z = -0.12m, projecting towards local -z).
+    // Stepped ogee/torus oak skirting cap swept continuously along the Quarter Landing, sloped West wall
+    // stringer, and horizontal Hall West wall skirting, mitred at both kinks (`z = -0.12m - d`).
     const westCapGeo = buildSweptMouldingGeometry(
       createSkirtingCapProfile(),
       [
-        [0, quarterLandingY + 0.19],
-        [0.88, quarterLandingY + 0.19],
-        [2.15, lowerFloorY + 0.24],
+        [0, quarterLandingY + skirtBoardH],
+        [landingTurnU, quarterLandingY + skirtBoardH],
+        [bottomMitreU, lowerFloorY + skirtBoardH],
+        [westWallLen, lowerFloorY + skirtBoardH],
       ],
       (a, y, d) => new THREE.Vector3(a, y, -0.12 - d)
     );
     const westWallStringerCap = new THREE.Mesh(westCapGeo, antiqueOakSkirtingMat);
     westWallStringerCap.name = 'hall.stairs.westWallStringer.cap';
     westWallStringerCap.castShadow = true;
+    westWallStringerCap.receiveShadow = true;
     westWallStringerGroup.add(westWallStringerCap);
-
-    // Horizontal continuation of the West oak wall stringer & top cap beading along the Quarter Landing (u = 0.00..0.88)
-    const landingWestSkirt = new THREE.Mesh(
-      new THREE.BoxGeometry(0.88, 0.19, 0.036),
-      antiqueOakSkirtingMat
-    );
-    landingWestSkirt.name = 'hall.stairs.westWallStringer.landingBoard';
-    landingWestSkirt.position.set(0.44, quarterLandingY + 0.095, -0.138);
-    westWallStringerGroup.add(landingWestSkirt);
-
 
     // 4 Recessed Warm LED Step Lights set into the Oak West Wall Stringer above Steps 2..5, on the hall KNX
     // circuit (so they idle at the hall night-dim level after dark), each casting a small warm tread pool.
@@ -614,12 +611,12 @@ export function buildHallStaircase(
       const treadCenterZ = -0.58 - (stepIdx - 0.5) * lowerFlightTreadDepth;
       // Convert local Z to local `u` along `hallFrontRoomCrossWallFrame`
       const uLight = ((treadCenterZ - -2.5) / 4.9) * hallFrontRoomCrossWallFrame.length;
-      const yLight = treadTopY + 0.068;
+      const yLight = treadTopY + 0.055;
 
       westWallStringerGroup.add(
-        buildStepLightUnit(`hall.stairs.stepLight.${sl + 1}`, uLight, yLight, -0.157, -1)
+        buildStepLightUnit(`hall.stairs.stepLight.${sl + 1}`, uLight, yLight, -0.143, -1)
       );
-      const poolCenter = new THREE.Vector3(uLight, treadTopY, -0.156 - 0.2).applyMatrix4(
+      const poolCenter = new THREE.Vector3(uLight, treadTopY, -0.142 - 0.2).applyMatrix4(
         westWallStringerGroup.matrix
       );
       ctx.addGlowPool('hallPendant', poolCenter.x, treadTopY + 0.004, poolCenter.z, 0.17, 0.34);
@@ -956,52 +953,64 @@ export function buildHallStaircase(
   stairwellEastTrimmer.castShadow = true;
   stairGroup.add(stairwellEastTrimmer);
 
-  // Issue #5: Continuous Seasoned Oak Wall Stringer (`antiqueOakSkirtingMat`) wrapping along the North Wall
-  // across the Quarter Landing (X = -17.53m..-16.64m, Y = 0.84m..1.03m) and climbing up the North Exposed Brick Wall
-  // alongside the second span of stairs (X = -16.64m..-15.36m, rising from Y = 1.03m to Y = topStepY + 0.19m)!
+  // Issue #5 & Issue #1: Continuous Seasoned Oak Wall Stringer (`antiqueOakSkirtingMat`) wrapping along the North Wall
+  // across the Quarter Landing (X = -17.43m..-16.84m, Y = 0.84m..0.986m) and climbing up the North Exposed Brick Wall
+  // alongside the second span of stairs (X = -16.84m..-15.50m, rising to Y = topStepY + 0.146m, then horizontal to X = -15.36m)!
   {
+    const skirtBoardH = 0.122;
+    const northTurnX = -16.84;
+
     const northStrShape = new THREE.Shape();
-    northStrShape.moveTo(-17.53, quarterLandingY - 0.02);
-    northStrShape.lineTo(-17.53, quarterLandingY + 0.19);
-    northStrShape.lineTo(-16.64, quarterLandingY + 0.19);
-    northStrShape.lineTo(upperEndX, topStepY + 0.19);
+    northStrShape.moveTo(-17.43, quarterLandingY - 0.02);
+    northStrShape.lineTo(-17.43, quarterLandingY + skirtBoardH);
+    northStrShape.lineTo(northTurnX, quarterLandingY + skirtBoardH);
+    northStrShape.lineTo(upperBalustradeEndX, topStepY + skirtBoardH);
+    northStrShape.lineTo(upperEndX, topStepY + skirtBoardH);
     northStrShape.lineTo(upperEndX, topStepY - 0.04);
     northStrShape.lineTo(-16.64, quarterLandingY - 0.04);
     northStrShape.closePath();
 
     const northStrGeo = new THREE.ExtrudeGeometry(northStrShape, {
-      depth: 0.038,
+      depth: 0.022,
       bevelEnabled: false,
     });
-    northStrGeo.translate(0, 0, -2.496);
+    northStrGeo.translate(0, 0, -2.5);
     const northWallStringer = new THREE.Mesh(northStrGeo, antiqueOakSkirtingMat);
     northWallStringer.name = 'hall.stairs.northWallStringer.board';
     northWallStringer.castShadow = true;
     northWallStringer.receiveShadow = true;
     stairGroup.add(northWallStringer);
 
-    // Skirting-profile oak capping swept along the North Quarter-Landing & Brick-Wall Stringer top edge,
-    // mitred where the landing run turns up the second flight (wall face Z = -2.496m, projecting +Z).
+    // Stepped ogee/torus oak skirting cap swept along the North Quarter-Landing & Upper-Flight Stringer top edge,
+    // mitred where the landing run turns up the second flight and where it arrives at the First Floor landing.
     const northCapGeo = buildSweptMouldingGeometry(
       createSkirtingCapProfile(),
       [
-        [-17.53, quarterLandingY + 0.19],
-        [-16.64, quarterLandingY + 0.19],
-        [upperEndX, topStepY + 0.19],
+        [-17.43, quarterLandingY + skirtBoardH],
+        [northTurnX, quarterLandingY + skirtBoardH],
+        [upperBalustradeEndX, topStepY + skirtBoardH],
+        [upperEndX, topStepY + skirtBoardH],
       ],
-      (a, y, d) => new THREE.Vector3(a, y, -2.496 + d)
+      (a, y, d) => new THREE.Vector3(a, y, -2.5 + d)
     );
     const northWallStringerCap = new THREE.Mesh(northCapGeo, antiqueOakSkirtingMat);
     northWallStringerCap.name = 'hall.stairs.northWallStringer.cap';
     northWallStringerCap.castShadow = true;
+    northWallStringerCap.receiveShadow = true;
     stairGroup.add(northWallStringerCap);
 
     // Step lights continue up the stairs: one on the Quarter Landing and one above each Upper Flight tread,
-    // set into the North stringer board face (Z = -2.458m) and facing South (+Z) across the treads.
-    const northBoardFaceZ = -2.458;
-    const landingLightX = -17.09;
+    // set into the North stringer board face (Z = -2.478m) and facing South (+Z) across the treads.
+    const northBoardFaceZ = -2.478;
+    const landingLightX = -17.14;
     stairGroup.add(
-      buildStepLightUnit('hall.stairs.stepLight.landing', landingLightX, quarterLandingY + 0.068, northBoardFaceZ + 0.001, 1)
+      buildStepLightUnit(
+        'hall.stairs.stepLight.landing',
+        landingLightX,
+        quarterLandingY + 0.055,
+        northBoardFaceZ + 0.001,
+        1
+      )
     );
     ctx.addGlowPool('hallPendant', landingLightX, quarterLandingY + 0.004, northBoardFaceZ + 0.2, 0.17, 0.34);
     for (let i = 0; i < upperOpenSteps; i++) {
@@ -1011,7 +1020,7 @@ export function buildHallStaircase(
         buildStepLightUnit(
           `hall.stairs.stepLight.upper.${i + 1}`,
           treadCenterX,
-          treadTopY + 0.064,
+          treadTopY + 0.055,
           northBoardFaceZ + 0.001,
           1
         )
@@ -1023,9 +1032,10 @@ export function buildHallStaircase(
   // North Wall Polygonal Brick Panel above the Quarter Landing and Upper Flight Oak Stringer
   // (Issue #15: West Cross-Wall Exposed Brick Panel at [-17.436, 1.547, -1.857] removed!)
   const brickNorthShape = new THREE.Shape();
-  brickNorthShape.moveTo(-17.48, quarterLandingY + 0.2);
-  brickNorthShape.lineTo(-16.64, quarterLandingY + 0.2);
-  brickNorthShape.lineTo(upperEndX, topStepY + 0.19);
+  brickNorthShape.moveTo(-17.48, quarterLandingY + 0.142);
+  brickNorthShape.lineTo(-16.84, quarterLandingY + 0.142);
+  brickNorthShape.lineTo(upperBalustradeEndX, topStepY + 0.142);
+  brickNorthShape.lineTo(upperEndX, topStepY + 0.142);
   brickNorthShape.lineTo(upperEndX, topStepY + 0.22);
   brickNorthShape.lineTo(-17.48, topStepY + 0.22);
   brickNorthShape.closePath();

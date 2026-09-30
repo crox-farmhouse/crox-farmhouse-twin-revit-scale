@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { buildAngledWallSegment, buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
+import { buildSweptMouldingGeometry, createSkirtingCapProfile } from '../../../../engine/geometry/swept-moulding.ts';
 import { buildWindowRomanBlind } from '../../../../objects/decor/roman-blind.ts';
 import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
@@ -627,7 +628,7 @@ export function buildHall(
     capMaterial: wallCapMat,
     skirtingMaterial: antiqueOakSkirtingMat,
     addFrontSkirting: true,
-    addBackSkirting: true,
+    addBackSkirting: false, // Built as a single continuous mitred stringer + skirting in hall-staircase.ts
   });
 
   // Issue #5: Framed Landscape Artwork on the Hall / Front Room Cross-Wall (`[-17.586, 1.301, 1.158]`)
@@ -1651,10 +1652,18 @@ export function buildHall(
   scene.add(hallNorthSkirting);
 
   const hallNorthSkirtingCap = new THREE.Mesh(
-    new THREE.BoxGeometry(3.59, 0.024, 0.016),
+    buildSweptMouldingGeometry(
+      createSkirtingCapProfile(),
+      [
+        [-16.64, lowerFloorY + 0.122],
+        [-13.05, lowerFloorY + 0.122],
+      ],
+      (a, y, d) => new THREE.Vector3(a, y, -2.499 + d)
+    ),
     antiqueOakSkirtingMat
   );
-  hallNorthSkirtingCap.position.set(-14.845, lowerFloorY + 0.134, -2.491);
+  hallNorthSkirtingCap.castShadow = true;
+  hallNorthSkirtingCap.receiveShadow = true;
   tagCutawayWall(hallNorthSkirtingCap, {
     axis: 'z',
     coord: -2.64,
