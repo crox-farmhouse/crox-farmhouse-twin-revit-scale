@@ -364,6 +364,10 @@ export class WalkthroughController {
     return true;
   }
 
+  public refreshPrompt(): void {
+    this.refreshTargetedInteractable(true);
+  }
+
   private blurActiveControlIfNeeded(): void {
     const activeEl = document.activeElement;
     if (activeEl instanceof HTMLElement && activeEl !== document.body && activeEl !== this.canvas) {

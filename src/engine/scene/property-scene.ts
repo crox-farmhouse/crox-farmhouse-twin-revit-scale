@@ -874,6 +874,9 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       this.toggleUfhZone(data.ufhZoneId);
     }
     this.onObjectInteraction(data);
+    if (this.walkthrough.isActive()) {
+      this.walkthrough.refreshPrompt();
+    }
     this.needsRender = true;
   }
 

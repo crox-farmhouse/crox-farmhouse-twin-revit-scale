@@ -68,6 +68,8 @@ function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
+const tmpDoorBounds = new THREE.Box3();
+
 /**
  * Encapsulates all interactive 3D props in the Crox Farmhouse Digital Twin:
  * - Hinged kitchen/island/utility cupboard doors, appliance doors, AGA doors, Miele doors & room doors
@@ -416,6 +418,18 @@ export class SceneInteractionManager {
   }
 
   /**
+   * Computes the effective open angle for a hinged door, providing a ~86° swing fallback
+   * for room/courtyard doors whose initial registration specified `openAngle = 0`.
+   */
+  private getEffectiveDoorOpenAngle(door: HingedDoorState): number {
+    if (Math.abs(door.openAngle - door.closedAngle) < 0.05) {
+      const swingSign = door.pivot.position.z > 1.5 ? 1 : -1;
+      return door.closedAngle + swingSign * Math.PI * 0.48;
+    }
+    return door.openAngle;
+  }
+
+  /**
    * Returns a concise action prompt label for a looked-at interactive mesh
    * (e.g. "Open Door", "Close Cupboard", "Open AGA Lid", "Toggle Light Switch").
    */
@@ -435,21 +449,34 @@ export class SceneInteractionManager {
           .join(' ')
           .toLowerCase();
         if (chainNames.includes('lid')) return `${verb} AGA Simmering/Boiling Lid`;
-        if (chainNames.includes('aga') || chainNames.includes('roasting') || chainNames.includes('baking') || chainNames.includes('simmering') || chainNames.includes('warming')) {
+        if (
+          chainNames.includes('aga') ||
+          chainNames.includes('roasting') ||
+          chainNames.includes('baking') ||
+          chainNames.includes('simmering') ||
+          chainNames.includes('warming')
+        ) {
           return `${verb} AGA Oven Door`;
         }
-        if (chainNames.includes('fridge') || chainNames.includes('freezer') || chainNames.includes('wine') || chainNames.includes('dishwasher') || chainNames.includes('miele')) {
+        if (
+          chainNames.includes('fridge') ||
+          chainNames.includes('freezer') ||
+          (chainNames.includes('wine') && !chainNames.includes('cellar')) ||
+          chainNames.includes('dishwasher') ||
+          chainNames.includes('miele')
+        ) {
           return `${verb} Appliance Door`;
         }
-        if (
+        tmpDoorBounds.setFromObject(door.pivot);
+        const pivotHeight = tmpDoorBounds.max.y - tmpDoorBounds.min.y;
+        const hasCupboardName =
           chainNames.includes('cupboard') ||
           chainNames.includes('cabinet') ||
           chainNames.includes('larder') ||
           chainNames.includes('island') ||
           chainNames.includes('vanity') ||
-          chainNames.includes('wardrobe') ||
-          Math.abs(door.openAngle - door.closedAngle) < 1.45
-        ) {
+          chainNames.includes('wardrobe');
+        if (pivotHeight < 0.92 || (hasCupboardName && pivotHeight < 1.85)) {
           return `${verb} Cupboard`;
         }
         return `${verb} Door`;
@@ -598,8 +625,10 @@ export class SceneInteractionManager {
         door.pivot = newPivot;
         door.closedAngle = newPivot.rotation[door.axis];
         door.openAngle = door.closedAngle + angleDelta;
+        const effectiveOpen = this.getEffectiveDoorOpenAngle(door);
         const smooth = easeInOutCubic(door.progress);
-        door.pivot.rotation[door.axis] = door.closedAngle + angleDelta * smooth;
+        door.pivot.rotation[door.axis] =
+          door.closedAngle + (effectiveOpen - door.closedAngle) * smooth;
         door.pivot.updateMatrixWorld(true);
       }
     }
@@ -722,8 +751,9 @@ export class SceneInteractionManager {
             ? Math.min(1, door.progress + step)
             : Math.max(0, door.progress - step);
         const smooth = easeInOutCubic(door.progress);
+        const effectiveOpen = this.getEffectiveDoorOpenAngle(door);
         door.pivot.rotation[door.axis] =
-          door.closedAngle + (door.openAngle - door.closedAngle) * smooth;
+          door.closedAngle + (effectiveOpen - door.closedAngle) * smooth;
         door.pivot.updateMatrixWorld(true);
         anyChanged = true;
       }
