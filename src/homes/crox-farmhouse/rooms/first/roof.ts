@@ -304,15 +304,43 @@ export function buildFirstFloorCeilingsAndRoof(
 
   // Lead-Lined Valley Flashing Strips along both Valley Intersections
   for (const valleyEavePt of [pCourtyardValleyEave, pNorthValleyEave]) {
-    const valleyCurve = new THREE.LineCurve3(
-      new THREE.Vector3(pRidgeJunction.x, pRidgeJunction.y + 0.005, pRidgeJunction.z),
-      new THREE.Vector3(valleyEavePt.x, valleyEavePt.y + 0.005, valleyEavePt.z)
+    const pStart = new THREE.Vector3(
+      pRidgeJunction.x,
+      pRidgeJunction.y + 0.005,
+      pRidgeJunction.z
     );
-    const valleyFlashing = new THREE.Mesh(
-      new THREE.TubeGeometry(valleyCurve, 12, 0.065, 8, false),
-      ridgeLeadMat
+    const pEnd = new THREE.Vector3(
+      valleyEavePt.x,
+      valleyEavePt.y + 0.005,
+      valleyEavePt.z
     );
-    valleyFlashing.scale.set(1, 0.32, 1);
+    const valleyCurve = new THREE.LineCurve3(pStart, pEnd);
+    const valleyGeo = new THREE.TubeGeometry(valleyCurve, 12, 0.065, 8, false);
+    const posAttr = valleyGeo.attributes.position;
+    const segVec = new THREE.Vector3().subVectors(pEnd, pStart);
+    const segLenSq = Math.max(1e-6, segVec.lengthSq());
+    for (let i = 0; i < posAttr.count; i++) {
+      const vx = posAttr.getX(i);
+      const vy = posAttr.getY(i);
+      const vz = posAttr.getZ(i);
+      const t = THREE.MathUtils.clamp(
+        ((vx - pStart.x) * segVec.x +
+          (vy - pStart.y) * segVec.y +
+          (vz - pStart.z) * segVec.z) /
+          segLenSq,
+        0,
+        1
+      );
+      const centerY = pStart.y + t * segVec.y;
+      posAttr.setY(i, centerY + (vy - centerY) * 0.32);
+    }
+    posAttr.needsUpdate = true;
+    valleyGeo.computeVertexNormals();
+    valleyGeo.computeBoundingBox();
+    valleyGeo.computeBoundingSphere();
+
+    const valleyFlashing = new THREE.Mesh(valleyGeo, ridgeLeadMat);
+    valleyFlashing.name = 'mainHouse.roof.valleyFlashing';
     ceilingMeshGroup.add(valleyFlashing);
   }
 
