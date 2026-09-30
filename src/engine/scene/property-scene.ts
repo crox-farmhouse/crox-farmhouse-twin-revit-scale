@@ -36,6 +36,7 @@ import {
   WalkthroughController,
 } from './controllers/walkthrough-controller.ts';
 import type { SceneInteractionManager } from './interaction-manager.ts';
+import { applySelectiveBevelModifier } from './bevel-modifier.ts';
 import { isObjectVisibleInHierarchy } from './object-utils.ts';
 import type {
   PropertySceneProfile,
@@ -236,6 +237,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       lodController: this.lodController,
       ceilingCutaway: this.cutaways.isCeilingCutaway(),
     });
+    applySelectiveBevelModifier(this.layers);
     this.interactions = this.content.interactions;
     this.cutaways.collectDynamicCutawayWalls();
 
@@ -267,6 +269,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
         }
       },
       onZoneLoadedFromUsda: () => {
+        applySelectiveBevelModifier(this.layers);
         this.interactions.rebindAfterUsdZoneLoad([this.scene]);
         this.cutaways.collectDynamicCutawayWalls();
         this.walkthrough.invalidateObstacleCache();
