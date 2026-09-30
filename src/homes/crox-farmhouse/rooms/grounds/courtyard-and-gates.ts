@@ -293,8 +293,18 @@ export function buildCourtyardAndGates(
             wz = minAllowedNorthZ;
             pos.setZ(i, wz - offsetZ);
           }
+          // Issue #4: Wrap courtyard cobbles cleanly around the Ground Floor Entrance Hallway
+          // East jut-out (X = -17.00m..-16.16m, Z = 2.68m..3.83m) so cobbles at Y = -0.32m
+          // never poke through the -0.60m Entrance Hallway floor while keeping full coverage South of Z = 3.75m.
+          const isInsideJutOutZ = wz < 3.75;
+          if ((isInsideJutOutZ && wz > 3.4) || (!isInsideJutOutZ && wz < 4.1 && wx < -16.22)) {
+            wz = 3.75;
+            pos.setZ(i, wz - offsetZ);
+          }
           if (wz <= 11.78) {
-            const minAllowedCourtyardX = getEastCourtyardWallCenterX(wz) + 0.04;
+            const minAllowedCourtyardX = isInsideJutOutZ
+              ? -16.22
+              : getEastCourtyardWallCenterX(wz) + 0.04;
             if (wx < minAllowedCourtyardX) {
               wx = minAllowedCourtyardX;
               pos.setX(i, wx - offsetX);

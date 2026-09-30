@@ -616,7 +616,32 @@ export function buildArchitecturalShellAndUtilityRoom(
   );
   cutawayWallGroups.west.add(westOpeningHeader);
 
-  // Flush reclaimed Yorkstone threshold saddle strip at the Kitchen <-> Dining Room floor transition (X = -4.40m, Z = +0.85m..+1.99m)
+  // Kitchen stone tile floor continuation into the open Kitchen <-> Dining Room portal up to X = -4.64m
+  // (halfway along the right-hand pillar X = -4.40m..-4.96m and flush with the left-hand portal corner — Issue #1)
+  {
+    const portalFloorGeo = new THREE.BoxGeometry(0.24, 0.08, 1.14);
+    const pfPos = portalFloorGeo.attributes.position;
+    const pfNorm = portalFloorGeo.attributes.normal;
+    const pfUv = portalFloorGeo.attributes.uv;
+    if (pfPos && pfNorm && pfUv) {
+      for (let i = 0; i < pfPos.count; i++) {
+        const wx = pfPos.getX(i) + -4.52;
+        const wz = pfPos.getZ(i) + 1.42;
+        if (Math.abs(pfNorm.getY(i)) > 0.5) {
+          pfUv.setXY(i, (wx - -4.4) / 9.4, 1 - (wz - -2.5) / 4.49);
+        }
+      }
+      pfUv.needsUpdate = true;
+    }
+    const kitchenPortalFloor = new THREE.Mesh(portalFloorGeo, floorMat);
+    kitchenPortalFloor.name = 'kitchen.portalFloor';
+    kitchenPortalFloor.position.set(-4.52, -0.04, 1.42);
+    kitchenPortalFloor.receiveShadow = true;
+    scene.add(kitchenPortalFloor);
+  }
+
+  // Flush reclaimed Yorkstone threshold saddle strip at the Kitchen <-> Dining Room floor transition
+  // Moved to X = -4.64m (halfway along the pillar on the right X = -4.40m..-4.96m — Issue #1)
   const portalStepMat = new THREE.MeshStandardMaterial({
     color: 0xb5aba0,
     roughness: 0.76,
@@ -626,7 +651,8 @@ export function buildArchitecturalShellAndUtilityRoom(
     new THREE.BoxGeometry(0.036, 0.004, 1.14),
     portalStepMat
   );
-  portalThresholdStep.position.set(-4.4, 0.002, 1.42);
+  portalThresholdStep.name = 'kitchen.portalThreshold';
+  portalThresholdStep.position.set(-4.64, 0.002, 1.42);
   portalThresholdStep.receiveShadow = true;
   scene.add(portalThresholdStep);
 

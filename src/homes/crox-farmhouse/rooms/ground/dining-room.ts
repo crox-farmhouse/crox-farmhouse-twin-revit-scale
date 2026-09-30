@@ -96,14 +96,8 @@ export function buildDiningRoom(
   familyFloor.receiveShadow = true;
   scene.add(familyFloor);
 
-  // Flush herringbone terracotta floor continuation through the open Kitchen <-> Dining Room portal (X = -4.64m..-4.40m, Z = +0.85m..+1.99m)
-  const familyPortalFloor = new THREE.Mesh(
-    applyWorldSpaceFloorUVs(new THREE.BoxGeometry(0.24, 0.08, 1.14), -4.52, 1.42, 0.85, 0.85),
-    herringboneTerracottaQuarryMat
-  );
-  familyPortalFloor.position.set(-4.52, -0.04, 1.42);
-  familyPortalFloor.receiveShadow = true;
-  scene.add(familyPortalFloor);
+  // Issue #1: Dining Room herringbone terracotta floor (`familyFloor`) terminates cleanly at the X = -4.64m threshold
+  // (halfway along the right-hand pillar X = -4.40m..-4.96m), where the Kitchen stone floor (`kitchen.portalFloor`) meets it.
 
   // 1B. North Exterior Brick Wall (0.28m thick, Z = -2.50m..-2.78m, X = -9.56m..-4.40m):
   //     - West section across Walk-in Cupboard (X = -9.56m..-7.82m) with small 1-pane cottage window at X = -8.68m
@@ -1653,12 +1647,12 @@ export function buildDiningRoom(
   scene.add(alcoveBackWall);
 
   // Issue #2: Round Mirror (`familyRoom.eastFireplaceMirror`) on the West face of the East Fireplace Chimney Breast
-  // Centered at X = -4.96m, Y = 1.72m, Z = -0.02m (facing West -X into the Dining Room)
+  // Centered at X = -4.96m, Y = 1.60m, Z = -0.02m (moved down & slightly smaller to sit centered between the 1.26m lintel and 1.94m joists)
   {
     const mirrorGroup = new THREE.Group();
     mirrorGroup.name = 'familyRoom.eastFireplaceMirror';
     mirrorGroup.userData.zone = 'familyRoom';
-    mirrorGroup.position.set(-4.96, 1.72, -0.02);
+    mirrorGroup.position.set(-4.96, 1.6, -0.02);
     mirrorGroup.rotation.y = -Math.PI / 2; // Local +Z projects West (-X) into the Dining Room
 
     const mirrorFrameMat = new THREE.MeshStandardMaterial({
@@ -1676,8 +1670,8 @@ export function buildDiningRoom(
       roughness: 0.78,
     });
 
-    const outerR = 0.31;
-    const innerR = 0.282;
+    const outerR = 0.255;
+    const innerR = 0.23;
 
     // Circular backing board
     const backDisc = new THREE.Mesh(

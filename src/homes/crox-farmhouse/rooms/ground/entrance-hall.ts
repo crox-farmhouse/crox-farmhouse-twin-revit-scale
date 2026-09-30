@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { addCasedArchitravePortal, buildAngledWallSegment, buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
+import { createWelshSlateRoofTexture } from '../../../../engine/textures/procedural-textures.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
@@ -49,17 +50,18 @@ export function buildEntranceHall(
   // 5. FRONT ENTRANCE HALLWAY (IN) — IRREGULAR TRAPEZOID WITH TWO 100% STRAIGHT WALLS
   //    (media_1790618728778.webp to media_1790618728869.webp & media_1790619068355.png)
   //    Polygonal floor at Y = -0.60m (Fayrouz Vitoria Classic Rosso 30cm diagonal chequerboard porcelain):
-  //    - Straight North Wall (zero kinks): [-22.19, 1.905] -> [-17.891, 2.48] -> [-16.92, 2.61] (South face 2.045 -> 2.750)
-  //    - Straight South Wall (zero kinks): [-22.19, 3.625] -> [-17.00, 3.625] (North face 3.550)
-  //    - Converges from 1.505m clear width at the West Front Door down to 80cm (0.800m clear interior width)
-  //      at the East end (X = -16.92m..-17.00m)!
+  //    - Straight North Wall (zero kinks): [-22.19, 1.905] -> [-17.891, 2.48] -> [-16.36, 2.685]
+  //    - Straight South Wall (zero kinks): [-22.19, 3.625] -> [-16.44, 3.625]
+  //    - Issue #4: On the ground floor only, the East end wall juts out slightly (to X = -16.44m..-16.16m)
+  //      making this hallway slightly longer so the stepped ceiling boxing sits in the jut-out bay East of
+  //      both doorframes without intersecting the door architraves, with a small pitched roof outside.
   // =========================================================================
   buildPolygonalFloorSlab(
     scene,
     [
       [-22.42, 1.875],
-      [-16.92, 2.61],
-      [-17.0, 3.625],
+      [-16.36, 2.685],
+      [-16.44, 3.625],
       [-22.42, 3.625],
     ],
     tier2FloorY,
@@ -68,13 +70,13 @@ export function buildEntranceHall(
     vitoriaChequerUvScale
   ).name = 'entranceHall.floor';
 
-  // East Continuation of the Straight North Wall ([-17.891, 2.48] -> [-16.92, 2.61], 0.28m thick, length 0.98m):
+  // East Continuation of the Straight North Wall ([-17.891, 2.48] -> [-16.36, 2.685], 0.28m thick, length 1.545m):
   // 100% collinear with both the Cinema Room South wall ([-22.19, 1.905] -> [-17.891, 2.48]) and the
   // Hall South exterior brick wall, separating the Front Entrance Hallway (Y = -0.60m) from the
-  // Main Stair Hall (Y = -0.30m) with the 30cm step-up opening!
+  // Main Stair Hall (Y = -0.30m) with the 30cm step-up opening (`uCenter = 0.535m` from `[-17.891, 2.48]`)!
   buildAngledWallSegment(scene, interactions, {
     start: [-17.891, 2.48],
-    end: [-16.92, 2.61],
+    end: [-16.36, 2.685],
     thickness: 0.28,
     topY: wallH,
     frontFloorY: tier2FloorY,
@@ -398,12 +400,110 @@ export function buildEntranceHall(
   );
   frontDoorPivot.userData.isArchitecturalShell = true;
 
-  // 80cm East Return Wall at the East end of the Front Entrance Hallway (Z = 2.68m..3.70m, 0.800m clear interior width)
-  addExteriorBrickWall(-17.13, -16.85, 2.68, 3.7, 0, frontWallH, 'west');
+  // Ground-Floor-Only East Jut-Out of Front Entrance Hallway (Issue #4, floorplan `media_1790619068355.png`):
+  // Juts out Eastward to X_interior = -16.44m (exterior brick X = -16.44m..-16.16m, Z = 2.68m..3.83m)
+  // with a South exterior brick return wall (X = -17.00m..-16.44m, Z = 3.55m..3.83m) and a small
+  // pitched Welsh slate lean-to roof outside (`entranceHall.eastJutOutRoof`) below the First Floor wall.
+  addExteriorBrickWall(-16.44, -16.16, 2.68, 3.83, 0, frontWallH, 'west');
+  addExteriorBrickWall(-17.0, -16.44, 3.55, 3.83, 0, frontWallH, 'north');
 
-  // Stepped Plasterboard Ceiling Boxing at the Narrow East End of the Entrance Hallway (media_1790618728808.webp):
-  // Reflects the step-down in the First Floor above (where the West Wing Shower Room / Corridor steps down
-  // into the Main East-West Wing Upper Landing) plus the boxed pipe/beam soffit at the 80cm East end.
+  // Small Exterior Pitched Welsh Slate Lean-To Roof & Brick Spandrels over the Ground-Floor Jut-Out (Issue #4)
+  {
+    const jutRoofGroup = new THREE.Group();
+    jutRoofGroup.name = 'entranceHall.eastJutOutRoof';
+    jutRoofGroup.userData.isArchitecturalShell = true;
+
+    const jutSlateTex = createWelshSlateRoofTexture();
+    const jutSlateMat = new THREE.MeshStandardMaterial({
+      map: jutSlateTex,
+      bumpMap: jutSlateTex,
+      bumpScale: 0.016,
+      roughness: 0.76,
+      metalness: 0.03,
+    });
+    const leadFlashingMat = new THREE.MeshStandardMaterial({
+      color: 0x565b61,
+      roughness: 0.46,
+      metalness: 0.55,
+    });
+
+    // Upper spandrel brick backing below the First Floor East corridor return wall (Y = 1.625m..2.16m)
+    const upperSpandrelGeo = new THREE.BoxGeometry(0.28, 2.16 - frontWallH, 1.18);
+    applyWorldSpaceBrickUVs(upperSpandrelGeo, -16.99, (frontWallH + 2.16) / 2, 3.22);
+    const upperSpandrelMesh = new THREE.Mesh(upperSpandrelGeo, exteriorBrickMat);
+    upperSpandrelMesh.position.set(-16.99, (frontWallH + 2.16) / 2, 3.22);
+    upperSpandrelMesh.castShadow = true;
+    upperSpandrelMesh.receiveShadow = true;
+    jutRoofGroup.add(upperSpandrelMesh);
+
+    // Pitched triangular brick cheek / gable infill across X = -16.86m..-16.16m, Z = 2.68m..3.83m
+    const cheekW = 0.7; // X = -16.86m to -16.16m
+    const cheekH = 0.52; // Y = 1.64m at East eaves (-16.16m) rising to 2.16m at West wall (-16.86m)
+    const cheekGeo = new THREE.BoxGeometry(cheekW, cheekH, 1.15);
+    const cheekPos = cheekGeo.attributes.position;
+    if (cheekPos) {
+      for (let i = 0; i < cheekPos.count; i++) {
+        if (cheekPos.getY(i) > 0) {
+          // Taper top vertices (+Y) down from West (x = -cheekW/2 -> +cheekH/2) to East (x = +cheekW/2 -> -cheekH/2 + 0.04)
+          const tEast = (cheekPos.getX(i) + cheekW / 2) / cheekW;
+          cheekPos.setY(i, cheekH / 2 - tEast * (cheekH - 0.04));
+        }
+      }
+      cheekPos.needsUpdate = true;
+      cheekGeo.computeVertexNormals();
+    }
+    applyWorldSpaceBrickUVs(cheekGeo, -16.51, frontWallH + 0.015 + cheekH / 2, 3.255);
+    const cheekMesh = new THREE.Mesh(cheekGeo, exteriorBrickMat);
+    cheekMesh.position.set(-16.51, frontWallH + 0.015 + cheekH / 2, 3.255);
+    cheekMesh.castShadow = true;
+    cheekMesh.receiveShadow = true;
+    jutRoofGroup.add(cheekMesh);
+
+    // Pitched Welsh slate lean-to roof slope (X = -16.87m..-16.13m, Z = 2.63m..3.89m)
+    const runX = 0.74;
+    const riseY = 0.54;
+    const slopeLen = Math.hypot(runX, riseY);
+    const pitchAngle = Math.atan2(riseY, runX);
+    const slateSlopeMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(slopeLen, 0.055, 1.26),
+      jutSlateMat
+    );
+    slateSlopeMesh.position.set(-16.5, frontWallH + 0.295, 3.26);
+    slateSlopeMesh.rotation.z = -pitchAngle;
+    slateSlopeMesh.castShadow = true;
+    slateSlopeMesh.receiveShadow = true;
+    jutRoofGroup.add(slateSlopeMesh);
+
+    // Lead abutment flashing against the First Floor brickwork & South barge flashing
+    const topFlashing = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.11, 1.26),
+      leadFlashingMat
+    );
+    topFlashing.position.set(-16.85, frontWallH + 0.56, 3.26);
+    jutRoofGroup.add(topFlashing);
+
+    // Painted cream timber fascia & soffit along the East & South eaves of the jut-out
+    const eastFascia = new THREE.Mesh(
+      new THREE.BoxGeometry(0.028, 0.11, 1.27),
+      ceramicWhiteMat
+    );
+    eastFascia.position.set(-16.13, frontWallH + 0.02, 3.26);
+    jutRoofGroup.add(eastFascia);
+
+    const southBargeBoard = new THREE.Mesh(
+      new THREE.BoxGeometry(slopeLen + 0.02, 0.085, 0.028),
+      ceramicWhiteMat
+    );
+    southBargeBoard.position.set(-16.5, frontWallH + 0.28, 3.88);
+    southBargeBoard.rotation.z = -pitchAngle;
+    jutRoofGroup.add(southBargeBoard);
+
+    groundFloorCeilingGroup.add(jutRoofGroup);
+  }
+
+  // Stepped Plasterboard Ceiling Boxing at the East Jut-Out of the Entrance Hallway (Issue #4, media_1790618728808.webp):
+  // Positioned inside the ground-floor East extension (X = -16.88m..-16.44m, East of both `hallStepUpPortal`
+  // and `entranceToLivingRoomDoor` so the ceiling boxing never intersects any doorframe!).
   {
     const ceilingStepBoxingGroup = new THREE.Group();
     ceilingStepBoxingGroup.name = 'entranceHall.ceilingStepBoxing';
@@ -412,8 +512,8 @@ export function buildEntranceHall(
       ceilingStepBoxingGroup,
       [
         [-22.42, 1.875],
-        [-16.92, 2.61],
-        [-16.95, 3.68],
+        [-16.36, 2.68],
+        [-16.36, 3.68],
         [-22.42, 3.68],
       ],
       frontWallH + 0.012,
@@ -427,10 +527,10 @@ export function buildEntranceHall(
     const upperStepSoffit = buildPolygonalFloorSlab(
       ceilingStepBoxingGroup,
       [
-        [-18.32, 2.56],
-        [-16.98, 2.74],
-        [-17.0, 3.55],
-        [-18.32, 3.55],
+        [-16.88, 2.685],
+        [-16.44, 2.685],
+        [-16.44, 3.55],
+        [-16.88, 3.55],
       ],
       frontWallH,
       0.22,
@@ -443,10 +543,10 @@ export function buildEntranceHall(
     const lowerBeamBoxing = buildPolygonalFloorSlab(
       ceilingStepBoxingGroup,
       [
-        [-17.52, 2.67],
-        [-16.98, 2.74],
-        [-17.0, 3.55],
-        [-17.52, 3.55],
+        [-16.66, 2.685],
+        [-16.44, 2.685],
+        [-16.44, 3.55],
+        [-16.66, 3.55],
       ],
       frontWallH - 0.22,
       0.15,

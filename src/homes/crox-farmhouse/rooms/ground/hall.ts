@@ -132,10 +132,10 @@ export function buildHall(
 
   // Issue #10: Detached North passage boundary wall removed per user annotation.
 
-  // South Exterior Brick Wall of Hall (0.28m thick, Z = +2.40m..+2.68m, X = -12.81m..-16.92m)
+  // South Exterior Brick Wall of Hall (0.28m thick, Z = +2.40m..+2.68m, X = -12.81m..-16.25m, starting at the East end of the Entrance Hallway jut-out)
   // Collinear with the Cinema Room South wall and Hall Step-Up Portal wall (zero kink, zero step!)
   addBrickWallAlongXWithCourtyardDoor(
-    -16.92,
+    -16.25,
     -12.81,
     2.4,
     2.68,

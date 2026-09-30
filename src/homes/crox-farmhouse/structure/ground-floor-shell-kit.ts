@@ -256,7 +256,7 @@ export function createGroundFloorShellKit(
     const cz = (minZ + maxZ) / 2;
     const isAlongX = interiorSide === 'north' || interiorSide === 'south';
     const isAngledEastCourtyardWall =
-      !isAlongX && interiorSide === 'west' && rawCx > -18.0 && minZ >= 2.35;
+      !isAlongX && interiorSide === 'west' && rawCx > -18.0 && minZ >= 3.69;
     const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
     const cx = isAngledEastCourtyardWall ? getEastCourtyardWallCenterX(cz) : rawCx;
     const effMinX = cx - w / 2;

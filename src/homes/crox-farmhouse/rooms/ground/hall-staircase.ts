@@ -625,8 +625,8 @@ export function buildHallStaircase(
     stairGroup.add(westWallStringerGroup);
   }
 
-  // Square White Bottom Newel Post standing cleanly on Step 1 (X = -16.64m, Z = -0.54m, Y = -0.11m..+0.63m — PH-47 & PH-48)
-  const bottomNewelH = 0.74;
+  // Square White Bottom Newel Post standing cleanly on Step 1 (X = -16.64m, Z = -0.54m, Y = -0.11m..+0.93m — Issue #3, PH-47 & PH-48)
+  const bottomNewelH = 1.04;
   const bottomNewel = new THREE.Mesh(
     new THREE.BoxGeometry(0.104, bottomNewelH, 0.104),
     skirtingMat
@@ -643,14 +643,14 @@ export function buildHallStaircase(
   bottomNewelCap.position.set(-16.64, step1TopY + bottomNewelH + 0.018, -0.54);
   stairGroup.add(bottomNewelCap);
 
-  // Sloped White Lower Handrail strictly parallel to the lower stringer (Y = +0.52m..+0.576m at Z = -0.54m -> Y = +1.36m..+1.416m at Z = -1.62m)
+  // Sloped White Lower Handrail strictly parallel to the lower stringer (Y = +0.82m..+0.876m at Z = -0.54m -> Y = +1.66m..+1.716m at Z = -1.62m — Issue #3)
   const lowerHandrail = buildPlumbZBeam(
     -0.54,
     -1.62,
-    0.52,
-    0.576,
-    1.36,
-    1.416,
+    0.82,
+    0.876,
+    1.66,
+    1.716,
     0.068,
     -16.64,
     skirtingMat
@@ -658,13 +658,13 @@ export function buildHallStaircase(
   lowerHandrail.name = 'hall.stairs.lowerHandrail';
   stairGroup.add(lowerHandrail);
 
-  // 7 Vertical White Square Balusters (Spindles) spanning strictly between the lower stringer and parallel lower handrail
+  // 7 Vertical White Square Balusters (Spindles) spanning strictly between the lower stringer and parallel lower handrail (Issue #3)
   for (let b = 0; b < 7; b++) {
     const bt = (b + 0.5) / 7;
     const bz = -0.62 - bt * 0.92;
     const tZ = (-0.54 - bz) / lowerStringerDz;
     const strY = 0.13 + tZ * lowerStringerDy;
-    const railY = 0.54 + tZ * lowerStringerDy;
+    const railY = 0.84 + tZ * lowerStringerDy;
     const bH = railY - strY;
     const baluster = new THREE.Mesh(
       new THREE.BoxGeometry(0.03, bH, 0.03),
@@ -678,10 +678,10 @@ export function buildHallStaircase(
 
   // 2. Intermediate Corner White Newel Post at the Quarter-Landing Turn (X = -16.64m, Z = -1.63m)
   //    Rises from a dropped bottom finial at Y = +0.58m (hanging in the open space above the left armchair!)
-  //    up to a flat square cap at Y = +1.46m so both the Lower Handrail (Y = 1.36m..1.416m) and the
-  //    Upper Handrail (starting at Y = 1.36m..1.416m) frame cleanly into the post at the exact same height (Issue #4, PH-47 & PH-48!)
+  //    up to a flat square cap at Y = +1.76m so both the Lower Handrail (Y = 1.66m..1.716m) and the
+  //    Upper Handrail (starting at Y = 1.66m..1.716m) frame cleanly into the post at ~0.88m above the landing (Issue #3, PH-47 & PH-48!)
   const cornerNewelBottomY = 0.58;
-  const cornerNewelTopY = 1.46;
+  const cornerNewelTopY = 1.76;
   const cornerNewelH = cornerNewelTopY - cornerNewelBottomY;
   const cornerNewel = new THREE.Mesh(
     new THREE.BoxGeometry(0.106, cornerNewelH, 0.112),
@@ -882,13 +882,13 @@ export function buildHallStaircase(
   upperStringer.castShadow = true;
   stairGroup.add(upperStringer);
 
-  // Issue #4: Parallel Mitered White Upper Handrail along Z = -1.64m (X = -16.59m..-15.41m)
-  // Starts at Y = 1.36m..1.416m on the East face of `cornerNewel` and climbs to the First Floor gallery newel post
+  // Issue #3 & Issue #4: Parallel Mitered White Upper Handrail along Z = -1.64m (X = -16.59m..-15.41m)
+  // Starts at Y = 1.66m..1.716m on the East face of `cornerNewel` (~0.88m above landing) and climbs to the First Floor gallery newel post
   const upperRailShape = new THREE.Shape();
-  upperRailShape.moveTo(-16.59, 1.36);
-  upperRailShape.lineTo(-16.59, 1.416);
-  upperRailShape.lineTo(upperBalustradeJoinX, 1.416 + upperSpanDeltaY);
-  upperRailShape.lineTo(upperBalustradeJoinX, 1.36 + upperSpanDeltaY);
+  upperRailShape.moveTo(-16.59, 1.66);
+  upperRailShape.lineTo(-16.59, 1.716);
+  upperRailShape.lineTo(upperBalustradeJoinX, 1.716 + upperSpanDeltaY);
+  upperRailShape.lineTo(upperBalustradeJoinX, 1.66 + upperSpanDeltaY);
   upperRailShape.closePath();
   const upperRailGeo = new THREE.ExtrudeGeometry(upperRailShape, {
     depth: 0.068,
@@ -900,12 +900,12 @@ export function buildHallStaircase(
   upperHandrail.castShadow = true;
   stairGroup.add(upperHandrail);
 
-  // 7 Full-Height (0.41m) Vertical White Square Balusters (Spindles) between the parallel Upper Stringer & Upper Handrail
+  // 7 Full-Height (0.71m) Vertical White Square Balusters (Spindles) between the parallel Upper Stringer & Upper Handrail (Issue #3)
   for (let ub = 0; ub < 7; ub++) {
     const ut = (ub + 0.5) / 7;
     const bx = -16.59 + ut * (upperBalustradeJoinX - -16.59);
     const bBottomY = 0.96 + ut * upperSpanDeltaY;
-    const bTopY = 1.37 + ut * upperSpanDeltaY;
+    const bTopY = 1.67 + ut * upperSpanDeltaY;
     const bH = bTopY - bBottomY;
     const baluster = new THREE.Mesh(
       new THREE.BoxGeometry(0.03, bH, 0.03),

@@ -239,7 +239,7 @@ export const ROOM_ZONES: Readonly<Partial<Record<RoomZoneId, RoomZoneDefinition>
     isInterior: true,
     bounds: {
       minX: -22.25,
-      maxX: -16.95,
+      maxX: -16.35,
       minY: -0.65,
       maxY: 2.26,
       minZ: 2.0,

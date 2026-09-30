@@ -520,7 +520,7 @@ export function buildFirstFloorCeilingsAndRoof(
 
   // Two-Storey Cast-Iron Rainwater Downpipes with Hoppers, Pipe Collars & Shoes (Issues #11 & #12)
   for (const [dpName, px, pz, groundY, swanOffsetX, swanOffsetZ, parentGroup] of [
-    ['downpipe.upperLandingCourtyard', -16.49, 2.715, -0.32, 0, 0.22, ewCeilingMeshGroup], // Upper Landing South Courtyard wall (Issue #11)
+    ['downpipe.upperLandingCourtyard', -16.01, 2.715, -0.32, 0, 0.22, ewCeilingMeshGroup], // Upper Landing / Hall South Courtyard wall East of entranceHall jut-out (Issue #11 & Issue #4)
     ['downpipe.bootLobbyCourtyard', -9.58, 2.715, -0.1, 0, 0.22, ewCeilingMeshGroup],      // Boot Lobby / Dining Room junction
     ['downpipe.mainBedroomEastCourtyard', -4.88, 2.665, 0.0, 0, 0.27, ewCeilingMeshGroup], // Main Bedroom / Dining Room East Courtyard wall (Issue #12)
     ['downpipe.studyLobbySouthEast', -17.075, 11.42, -0.3, 0.22, 0, ceilingMeshGroup],     // Study Lobby SE courtyard corner
