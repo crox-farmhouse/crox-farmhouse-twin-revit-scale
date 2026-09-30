@@ -3358,28 +3358,28 @@ export function buildDiningRoom(
   upperThresholdNosing.receiveShadow = true;
   scene.add(upperThresholdNosing);
 
-  // 2. Intermediate rounded-corner bullnose oak step tread & recessed rounded vertical riser (15cm down at Y = -0.15m, X = -9.71m..-9.99m)
+  // 2. Intermediate rounded-corner bullnose oak step tread & recessed rounded vertical riser (15cm down at Y = -0.15m, X = -9.71m..-10.02m)
+  //    Issue #3: Extends all the way to the South exterior wall on the right (Z = 2.40m) and overlaps further on the left (Z = 1.18m).
   {
     const treadH = 0.032; // Top flush at Y = -0.15m, bottom at Y = -0.182m
     const bullnoseR = treadH * 0.5; // 16mm half-round bullnose radius
-    const cornerR = 0.095; // 95mm horizontal rounding radius on the projecting NW & SW corners
+    const cornerR = 0.095; // 95mm horizontal rounding radius on the projecting NW corner
     const xEast = -9.71;
-    const xWest = -9.97;
-    const zNorth = 1.35;
-    const zSouth = 2.25;
+    const xWest = -10.02;
+    const zNorth = 1.18;
+    const zSouth = 2.4;
 
     const buildRoundedStepFootprintShape = (inset: number): THREE.Shape => {
       const xW = xWest + inset;
       const zN = zNorth + inset;
-      const zS = zSouth - inset;
+      const zS = zSouth;
       const rC = Math.max(0.02, cornerR - inset);
       // Shape in (X, -Z) so ExtrudeGeometry rotated by -PI/2 around X puts +extrude along +Y and shape Y along +Z
       const shape = new THREE.Shape();
       shape.moveTo(xEast, -zN);
       shape.lineTo(xW + rC, -zN);
       shape.absarc(xW + rC, -(zN + rC), rC, Math.PI * 0.5, Math.PI, false);
-      shape.lineTo(xW, -(zS - rC));
-      shape.absarc(xW + rC, -(zS - rC), rC, Math.PI, Math.PI * 1.5, false);
+      shape.lineTo(xW, -zS);
       shape.lineTo(xEast, -zS);
       shape.closePath();
       return shape;
@@ -3409,7 +3409,7 @@ export function buildDiningRoom(
           if (wy > bottomY + heightY - 0.002) {
             uv.setXY(i, wx / 4.4, wz / 1.76);
           } else {
-            uv.setXY(i, (wz - 1.35) / 1.2, (wy - bottomY) / 0.4);
+            uv.setXY(i, (wz - zNorth) / 1.2, (wy - bottomY) / 0.4);
           }
         }
         uv.needsUpdate = true;
@@ -3437,16 +3437,15 @@ export function buildDiningRoom(
     midStepRiser.receiveShadow = true;
     scene.add(midStepRiser);
 
-    // Continuous rounded bullnose nosing tube wrapping around the North return, rounded NW corner, West front edge,
-    // rounded SW corner, and South return of the projecting intermediate step (Y = -0.166m, radius = 16mm)
+    // Continuous rounded bullnose nosing tube wrapping around the North return, rounded NW corner,
+    // and West front edge all the way to the South exterior wall (Y = -0.166m, radius = 16mm)
     const nosingPts: THREE.Vector3[] = [];
     const nosingY = -0.15 - bullnoseR;
     const xWallFace = -9.795;
     const cxCorner = xWest + cornerR;
     const czNorth = zNorth + cornerR;
-    const czSouth = zSouth - cornerR;
 
-    // North straight return from wall face (-9.795) to start of NW corner (-9.875)
+    // North straight return from wall face (-9.795) to start of NW corner
     for (let s = 0; s <= 3; s++) {
       const u = s / 3;
       nosingPts.push(
@@ -3465,35 +3464,17 @@ export function buildDiningRoom(
         )
       );
     }
-    // West straight front edge
-    for (let s = 1; s <= 6; s++) {
-      const u = s / 6;
+    // West straight front edge running all the way to the South exterior wall (zSouth = 2.40m)
+    for (let s = 1; s <= 8; s++) {
+      const u = s / 8;
       nosingPts.push(
-        new THREE.Vector3(xWest, nosingY, czNorth + (czSouth - czNorth) * u)
-      );
-    }
-    // SW rounded corner arc (90°)
-    for (let s = 1; s <= arcSteps; s++) {
-      const theta = (s / arcSteps) * (Math.PI * 0.5);
-      nosingPts.push(
-        new THREE.Vector3(
-          cxCorner - cornerR * Math.cos(theta),
-          nosingY,
-          czSouth + cornerR * Math.sin(theta)
-        )
-      );
-    }
-    // South straight return back to wall face (-9.795)
-    for (let s = 1; s <= 3; s++) {
-      const u = s / 3;
-      nosingPts.push(
-        new THREE.Vector3(cxCorner + (xWallFace - cxCorner) * u, nosingY, zSouth)
+        new THREE.Vector3(xWest, nosingY, czNorth + (zSouth - czNorth) * u)
       );
     }
 
     const nosingCurve = new THREE.CatmullRomCurve3(nosingPts, false, 'centripetal', 0.1);
     const midStepNosing = new THREE.Mesh(
-      new THREE.TubeGeometry(nosingCurve, 48, bullnoseR, 16, false),
+      new THREE.TubeGeometry(nosingCurve, 44, bullnoseR, 16, false),
       engineeredOakFloorMat
     );
     midStepNosing.name = 'familyRoom.thresholdStep.midBullnose';

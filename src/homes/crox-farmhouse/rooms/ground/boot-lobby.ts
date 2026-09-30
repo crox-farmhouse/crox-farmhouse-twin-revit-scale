@@ -142,16 +142,16 @@ export function buildBootLobby(
   }
 
   const bootLobbyEastSkirting = new THREE.Mesh(
-    new THREE.BoxGeometry(0.022, 0.122, 1.41),
+    new THREE.BoxGeometry(0.022, 0.122, 1.28),
     antiqueOakSkirtingMat
   );
-  bootLobbyEastSkirting.position.set(-9.81, lowerFloorY + 0.061, 0.605);
+  bootLobbyEastSkirting.position.set(-9.81, lowerFloorY + 0.061, 0.54);
   scene.add(bootLobbyEastSkirting);
   const bootLobbyEastSkirtingCap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.016, 0.024, 1.41),
+    new THREE.BoxGeometry(0.016, 0.024, 1.28),
     antiqueOakSkirtingMat
   );
-  bootLobbyEastSkirtingCap.position.set(-9.807, lowerFloorY + 0.134, 0.605);
+  bootLobbyEastSkirtingCap.position.set(-9.807, lowerFloorY + 0.134, 0.54);
   scene.add(bootLobbyEastSkirtingCap);
 
   // Issue #4: Framed Country Artwork (`bootLobby.westWallPicture`) on the East (+X = -12.81m) face of the Boot Lobby West Cross-Wall
