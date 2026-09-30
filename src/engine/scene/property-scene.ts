@@ -325,7 +325,6 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       getDynamicObjects: () => {
         const dynamicObjects = new Set<THREE.Object3D>();
         this.annotations.collectDynamicObjects(dynamicObjects);
-        this.walkthrough.collectDynamicObjects(dynamicObjects);
         for (const panel of this.bifolds.getPanels()) {
           panel.group.traverse((child) => dynamicObjects.add(child));
         }
@@ -634,7 +633,6 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     this.scene.matrixWorldAutoUpdate = false;
     const dynamicObjects = new Set<THREE.Object3D>();
     this.annotations.collectDynamicObjects(dynamicObjects);
-    this.walkthrough.collectDynamicObjects(dynamicObjects);
     for (const panel of this.bifolds.getPanels()) {
       panel.group.traverse((child) => dynamicObjects.add(child));
     }

@@ -1,8 +1,4 @@
 import * as THREE from 'three';
-import {
-  buildDewaltDrillViewmodel,
-  type DewaltDrillViewmodel,
-} from '../../../objects/tools/dewalt-drill-viewmodel.ts';
 import type { SceneCameraPoseSnapshot } from '../../../types/scene.ts';
 import type { RoomZoneId } from '../../../types/topology.ts';
 import { isObjectVisibleInHierarchy } from '../object-utils.ts';
@@ -233,18 +229,6 @@ export class WalkthroughController {
   private targetYawRad = 0;
   private targetPitchRad = 0;
   private bobPhase = 0;
-  private bobAmplitude = 0;
-  private sprintBlend = 0;
-  private viewmodelSwayX = 0;
-  private viewmodelSwayY = 0;
-  private drillTriggerHeld = false;
-  private drillSpinBoostTimer = 0;
-  private drillRpmNormalized = 0;
-  private drillChuckAngle = 0;
-  private readonly drillViewmodel: DewaltDrillViewmodel;
-  private readonly tmpViewmodelOffset = new THREE.Vector3();
-  private readonly tmpViewmodelEuler = new THREE.Euler(0, 0, 0, 'YXZ');
-  private readonly tmpViewmodelQuat = new THREE.Quaternion();
   private smoothedFps = 120;
 
   private glideTargetFoot: THREE.Vector3 | null = null;
@@ -314,17 +298,7 @@ export class WalkthroughController {
     this.interactRaycaster.near = 0.05;
     this.interactRaycaster.far = INTERACT_MAX_DISTANCE;
 
-    this.drillViewmodel = buildDewaltDrillViewmodel();
-    this.drillViewmodel.root.visible = false;
-    this.scene.add(this.drillViewmodel.root);
-
     this.bindInputEvents();
-  }
-
-  public collectDynamicObjects(out: Set<THREE.Object3D>): void {
-    this.drillViewmodel.root.traverse((obj) => {
-      out.add(obj);
-    });
   }
 
   public isActive(): boolean {
@@ -436,7 +410,6 @@ export class WalkthroughController {
 
   public triggerTargetedInteraction(): boolean {
     if (!this.active) return false;
-    this.drillSpinBoostTimer = Math.max(this.drillSpinBoostTimer, 0.42);
     this.refreshTargetedInteractable(true);
     if (!this.targetedMesh) return false;
     this.onInteractWithMesh(this.targetedMesh);
@@ -586,14 +559,6 @@ export class WalkthroughController {
     this.currentFov = this.baseFov;
     this.glideTargetFoot = null;
     this.lookDirty = false;
-    this.bobAmplitude = 0;
-    this.sprintBlend = 0;
-    this.viewmodelSwayX = 0;
-    this.viewmodelSwayY = 0;
-    this.drillTriggerHeld = false;
-    this.drillSpinBoostTimer = 0;
-    this.drillRpmNormalized = 0;
-    this.drillViewmodel.root.visible = true;
     this.keysDown.clear();
 
     this.rig.useCamera(false);
@@ -654,10 +619,6 @@ export class WalkthroughController {
   public exit(): SceneCameraPoseSnapshot | null {
     if (!this.active) return null;
     this.active = false;
-    this.drillViewmodel.root.visible = false;
-    this.drillTriggerHeld = false;
-    this.drillSpinBoostTimer = 0;
-    this.drillRpmNormalized = 0;
     this.keysDown.clear();
     this.glideTargetFoot = null;
     this.isDraggingLook = false;
@@ -1310,57 +1271,6 @@ export class WalkthroughController {
     );
     cam.lookAt(this.rig.controls.target);
     cam.updateMatrixWorld();
-    this.syncDrillViewmodelTransform();
-  }
-
-  private syncDrillViewmodelTransform(): void {
-    const drillRoot = this.drillViewmodel.root;
-    if (!this.active) {
-      drillRoot.visible = false;
-      return;
-    }
-    drillRoot.visible = true;
-
-    const cam = this.rig.perspCamera;
-    const bobAmp = this.bobAmplitude;
-    const sprint = this.sprintBlend;
-    const rpm = this.drillRpmNormalized;
-
-    // Figure-8 walk/sprint hand bob + mouselook inertia sway + brushless high-RPM micro-vibration
-    const figure8X = Math.cos(this.bobPhase * 0.5) * (0.008 + sprint * 0.008) * bobAmp;
-    const figure8Y = -Math.abs(Math.sin(this.bobPhase)) * (0.009 + sprint * 0.010) * bobAmp;
-    const jumpDipY = THREE.MathUtils.clamp(-this.verticalVelocity * 0.0045, -0.018, 0.018);
-    const vibX = Math.sin(this.drillChuckAngle * 1.7) * 0.00075 * rpm;
-    const vibY = Math.cos(this.drillChuckAngle * 2.3) * 0.00075 * rpm;
-    const triggerPullBackZ = 0.006 * rpm;
-
-    // Camera-local offset: lower-right hand position
-    this.tmpViewmodelOffset.set(
-      0.205 + figure8X + this.viewmodelSwayX - sprint * 0.028 + vibX,
-      -0.168 + figure8Y + this.viewmodelSwayY + jumpDipY - sprint * 0.018 + vibY,
-      -0.335 + triggerPullBackZ + sprint * 0.020
-    );
-    this.tmpViewmodelOffset.applyQuaternion(cam.quaternion);
-    drillRoot.position.copy(cam.position).add(this.tmpViewmodelOffset);
-
-    // Camera-local orientation: slight inward toe-in + sprint carry cant + sway lag
-    this.tmpViewmodelEuler.set(
-      0.045 + this.viewmodelSwayY * 1.35 - sprint * 0.20 + rpm * 0.032,
-      0.155 + this.viewmodelSwayX * 1.55 + sprint * 0.24,
-      -0.045 - this.viewmodelSwayX * 0.85 + sprint * 0.14
-    );
-    this.tmpViewmodelQuat.setFromEuler(this.tmpViewmodelEuler);
-    drillRoot.quaternion.copy(cam.quaternion).multiply(this.tmpViewmodelQuat);
-
-    // Chuck rotation, variable-speed trigger travel, and base white LED worklight
-    this.drillViewmodel.chuckGroup.rotation.z = this.drillChuckAngle;
-    this.drillViewmodel.triggerMesh.position.z = -0.026 + rpm * 0.0055;
-    this.drillViewmodel.worklightMat.emissiveIntensity = 0.35 + rpm * 4.2;
-    const beamMat = this.drillViewmodel.worklightBeamMesh
-      .material as THREE.MeshBasicMaterial;
-    beamMat.opacity = rpm * 0.16;
-
-    drillRoot.updateMatrixWorld(true);
   }
 
   public update(dtSeconds: number): boolean {
@@ -1391,27 +1301,6 @@ export class WalkthroughController {
         Math.abs(pitchDiff) <= 1e-4
           ? this.targetPitchRad
           : THREE.MathUtils.lerp(this.pitchRad, this.targetPitchRad, lookAlpha);
-      movedOrRotated = true;
-    }
-
-    // Smooth mouselook inertia sway for the DeWALT drill viewmodel
-    const targetSwayX = THREE.MathUtils.clamp(-yawDiff * 0.22, -0.028, 0.028);
-    const targetSwayY = THREE.MathUtils.clamp(pitchDiff * 0.22, -0.024, 0.024);
-    const swayAlpha = 1 - Math.exp(-16 * dtSeconds);
-    if (
-      Math.abs(this.viewmodelSwayX - targetSwayX) > 1e-4 ||
-      Math.abs(this.viewmodelSwayY - targetSwayY) > 1e-4
-    ) {
-      this.viewmodelSwayX = THREE.MathUtils.lerp(
-        this.viewmodelSwayX,
-        targetSwayX,
-        swayAlpha
-      );
-      this.viewmodelSwayY = THREE.MathUtils.lerp(
-        this.viewmodelSwayY,
-        targetSwayY,
-        swayAlpha
-      );
       movedOrRotated = true;
     }
 
@@ -1465,55 +1354,6 @@ export class WalkthroughController {
       : isSprinting
         ? SPRINT_SPEED_MPS
         : WALK_SPEED_MPS;
-
-    // Smooth viewmodel bob amplitude and sprint carry blend
-    const targetBobAmp = isMoving || this.glideTargetFoot !== null ? 1 : 0;
-    if (Math.abs(this.bobAmplitude - targetBobAmp) > 1e-3) {
-      this.bobAmplitude = THREE.MathUtils.lerp(
-        this.bobAmplitude,
-        targetBobAmp,
-        1 - Math.exp(-12 * dtSeconds)
-      );
-      movedOrRotated = true;
-    } else {
-      this.bobAmplitude = targetBobAmp;
-    }
-
-    const targetSprintBlend = isSprinting ? 1 : 0;
-    if (Math.abs(this.sprintBlend - targetSprintBlend) > 1e-3) {
-      this.sprintBlend = THREE.MathUtils.lerp(
-        this.sprintBlend,
-        targetSprintBlend,
-        1 - Math.exp(-11 * dtSeconds)
-      );
-      movedOrRotated = true;
-    } else {
-      this.sprintBlend = targetSprintBlend;
-    }
-
-    // DeWALT 18V XR Brushless trigger + 2,000 RPM chuck spin animation
-    if (this.drillSpinBoostTimer > 0) {
-      this.drillSpinBoostTimer = Math.max(0, this.drillSpinBoostTimer - dtSeconds);
-    }
-    const targetDrillRpm =
-      this.drillTriggerHeld || this.drillSpinBoostTimer > 0 ? 1 : 0;
-    if (
-      Math.abs(this.drillRpmNormalized - targetDrillRpm) > 1e-3 ||
-      targetDrillRpm > 0
-    ) {
-      this.drillRpmNormalized = THREE.MathUtils.lerp(
-        this.drillRpmNormalized,
-        targetDrillRpm,
-        1 - Math.exp((targetDrillRpm > 0 ? -22 : -10) * dtSeconds)
-      );
-      this.drillChuckAngle =
-        (this.drillChuckAngle + this.drillRpmNormalized * 52 * dtSeconds) %
-        (Math.PI * 200);
-      movedOrRotated = true;
-    } else if (this.drillRpmNormalized !== 0) {
-      this.drillRpmNormalized = 0;
-      movedOrRotated = true;
-    }
 
     // Dynamic Call-of-Duty sprint FOV kick
     const targetFov = this.baseFov + (isSprinting ? SPRINT_FOV_BOOST : 0);
@@ -1666,9 +1506,6 @@ export class WalkthroughController {
   private bindInputEvents(): void {
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === this.canvas;
-      if (!this.pointerLocked) {
-        this.drillTriggerHeld = false;
-      }
       this.emit();
     });
 
@@ -1676,8 +1513,6 @@ export class WalkthroughController {
       if (!this.active || e.button !== 0) return;
       this.blurActiveControlIfNeeded();
       if (this.pointerLocked) {
-        this.drillTriggerHeld = true;
-        this.drillSpinBoostTimer = Math.max(this.drillSpinBoostTimer, 0.28);
         this.triggerTargetedInteraction();
         return;
       }
@@ -1726,7 +1561,6 @@ export class WalkthroughController {
 
     window.addEventListener('pointerup', () => {
       this.isDraggingLook = false;
-      this.drillTriggerHeld = false;
     });
 
     window.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -1792,7 +1626,6 @@ export class WalkthroughController {
     window.addEventListener('blur', () => {
       this.keysDown.clear();
       this.isDraggingLook = false;
-      this.drillTriggerHeld = false;
     });
   }
 }

@@ -117,7 +117,7 @@ export function buildBedroom2(
         doorHeight: doorH,
         lowerFloorY: floorTopY,
         upperFloorY: floorTopY,
-        architraveMaterial: skirtingMat,
+        architraveMaterial: antiqueOakSkirtingMat,
         doorLeafMaterial: timberDoorMat,
         hardwareMaterial: brassMat,
         hingeSide: 'left',
@@ -132,7 +132,7 @@ export function buildBedroom2(
         doorHeight: doorH,
         lowerFloorY: floorTopY,
         upperFloorY: floorTopY,
-        architraveMaterial: skirtingMat,
+        architraveMaterial: antiqueOakSkirtingMat,
         doorLeafMaterial: timberDoorMat,
         hardwareMaterial: brassMat,
         hingeSide: 'right',
@@ -166,12 +166,19 @@ export function buildBedroom2(
   bed2ChimneyCap.position.set(0, upperWallTopY + 0.012, 0);
   bed2ChimneyGroup.add(bed2ChimneyCap);
 
-  const bed2ChimneySkirt = new THREE.Mesh(
-    new THREE.BoxGeometry(1.266, 0.14, 0.446),
+  const bed2ChimneySkirtBase = new THREE.Mesh(
+    new THREE.BoxGeometry(1.284, 0.122, 0.464),
     antiqueOakSkirtingMat
   );
-  bed2ChimneySkirt.position.set(0, floorTopY + 0.07, 0);
-  bed2ChimneyGroup.add(bed2ChimneySkirt);
+  bed2ChimneySkirtBase.position.set(0, floorTopY + 0.061, 0);
+  bed2ChimneyGroup.add(bed2ChimneySkirtBase);
+
+  const bed2ChimneySkirtCap = new THREE.Mesh(
+    new THREE.BoxGeometry(1.272, 0.024, 0.452),
+    antiqueOakSkirtingMat
+  );
+  bed2ChimneySkirtCap.position.set(0, floorTopY + 0.122 + 0.012, 0);
+  bed2ChimneyGroup.add(bed2ChimneySkirtCap);
 
   // Collinear Step-Up Portal Wall between West Wing Corridor and Main Staircase Landing
   // ([-17.891, 2.48] -> [-16.83, 2.622], 0.28m thick — directly above Ground Floor entranceHall step-up portal wall!)
@@ -196,7 +203,7 @@ export function buildBedroom2(
         doorHeight: doorH,
         lowerFloorY: floorTopY,
         upperFloorY: floorTopY,
-        architraveMaterial: skirtingMat,
+        architraveMaterial: antiqueOakSkirtingMat,
       },
     ],
   });

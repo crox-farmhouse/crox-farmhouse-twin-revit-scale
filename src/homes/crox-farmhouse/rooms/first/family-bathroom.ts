@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addCasedArchitravePortal } from '../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
@@ -11,7 +12,7 @@ import type { createFirstFloorShellKit } from '../../structure/first-floor-shell
  */
 export function buildFamilyBathroom(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addUpperBrickWallAlongXWithWindow' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
@@ -20,6 +21,7 @@ export function buildFamilyBathroom(
     addUpperBrickWallAlongXWithWindow,
     addUpperInteractiveDoor,
     addUpperInteriorWall,
+    antiqueOakSkirtingMat,
     bathroomTileMat,
     brassMat,
     ceramicWhiteMat,
@@ -144,8 +146,20 @@ export function buildFamilyBathroom(
   scene.add(bathVanityTop);
 
   // West Load-Bearing Cross-Wall between Family Bathroom/Passage and Main Staircase Landing (0.24m thick, X = -12.81m..-13.05m)
-  // Open passage/doorway at Z = +1.55m
+  // Open passage/doorway at Z = +1.55m with cased antique oak architrave portal matching downstairs
   addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, -0.7, 0.24, 3.6, warmRoomPlasterMat);
   addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, 2.2, 0.24, 0.4, warmRoomPlasterMat);
   addUpperInteriorWall(-12.93, floorTopY + doorH, upperWallTopY, 1.55, 0.24, 0.9, warmRoomPlasterMat);
+  addCasedArchitravePortal(scene, {
+    axis: 'z',
+    wallCoord: -12.93,
+    wallThickness: 0.24,
+    openingCenter: 1.55,
+    openingWidth: 0.9,
+    frontFloorY: floorTopY,
+    backFloorY: floorTopY,
+    headY: floorTopY + doorH,
+    material: antiqueOakSkirtingMat,
+    namePrefix: 'upperLanding.eastPassagePortal',
+  });
 }

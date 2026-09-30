@@ -147,21 +147,51 @@ export function createFirstFloorShellKit(
     }
 
     if (yBottom <= floorTopY + 0.05 && h > 1.2) {
-      const skirt = new THREE.Mesh(
-        new THREE.BoxGeometry(w + 0.026, 0.14, d + 0.026),
-        antiqueOakSkirtingMat
-      );
-      skirt.position.set(x, floorTopY + 0.07, z);
-      skirt.receiveShadow = true;
-      scene.add(skirt);
+      const baseH = 0.122;
+      const capH = 0.024;
+      const skirtT = 0.022;
+      const capT = 0.016;
+      if (w >= d) {
+        for (const side of [-1, 1] as const) {
+          const faceZ = z + side * (d / 2 + skirtT / 2 - 0.002);
+          const capZ = z + side * (d / 2 + capT / 2 - 0.002);
+          const skirt = new THREE.Mesh(
+            new THREE.BoxGeometry(w, baseH, skirtT),
+            antiqueOakSkirtingMat
+          );
+          skirt.position.set(x, floorTopY + baseH / 2, faceZ);
+          skirt.receiveShadow = true;
+          scene.add(skirt);
 
-      const skirtCap = new THREE.Mesh(
-        new THREE.BoxGeometry(w + 0.036, 0.024, d + 0.036),
-        antiqueOakSkirtingMat
-      );
-      skirtCap.position.set(x, floorTopY + 0.146, z);
-      skirtCap.receiveShadow = true;
-      scene.add(skirtCap);
+          const skirtCap = new THREE.Mesh(
+            new THREE.BoxGeometry(w, capH, capT),
+            antiqueOakSkirtingMat
+          );
+          skirtCap.position.set(x, floorTopY + baseH + capH / 2, capZ);
+          skirtCap.receiveShadow = true;
+          scene.add(skirtCap);
+        }
+      } else {
+        for (const side of [-1, 1] as const) {
+          const faceX = x + side * (w / 2 + skirtT / 2 - 0.002);
+          const capX = x + side * (w / 2 + capT / 2 - 0.002);
+          const skirt = new THREE.Mesh(
+            new THREE.BoxGeometry(skirtT, baseH, d),
+            antiqueOakSkirtingMat
+          );
+          skirt.position.set(faceX, floorTopY + baseH / 2, z);
+          skirt.receiveShadow = true;
+          scene.add(skirt);
+
+          const skirtCap = new THREE.Mesh(
+            new THREE.BoxGeometry(capT, capH, d),
+            antiqueOakSkirtingMat
+          );
+          skirtCap.position.set(capX, floorTopY + baseH + capH / 2, z);
+          skirtCap.receiveShadow = true;
+          scene.add(skirtCap);
+        }
+      }
     }
   };
 
@@ -250,33 +280,52 @@ export function createFirstFloorShellKit(
       scene.add(cap);
     }
 
-    if (yBottom <= floorTopY + 0.05) {
-      const skirtT = 0.024;
-      let sx = cx;
-      let sz = cz;
-      let sw = w;
-      let sd = d;
-      if (interiorSide === 'north') {
-        sz = minZ - 0.01;
-        sd = skirtT;
-      } else if (interiorSide === 'south') {
-        sz = maxZ + 0.01;
-        sd = skirtT;
-      } else if (interiorSide === 'east') {
-        sx = effMaxX + 0.01;
-        sw = skirtT;
-      } else {
-        sx = effMinX - 0.01;
-        sw = skirtT;
-      }
-      const skirt = new THREE.Mesh(
-        shearGeometryAlongZ(new THREE.BoxGeometry(sw, 0.14, sd), slopeXPerZ),
-        antiqueOakSkirtingMat
-      );
-      skirt.position.set(sx, floorTopY + 0.07, sz);
+    if (yBottom <= floorTopY + 0.05 && yTop - floorTopY > 0.35) {
+      const baseH = 0.122;
+      const capH = 0.024;
+      const skirtT = 0.022;
+      const capT = 0.016;
+      const skirtGeo = isAlongX
+        ? new THREE.BoxGeometry(w, baseH, skirtT)
+        : shearGeometryAlongZ(new THREE.BoxGeometry(skirtT, baseH, d), slopeXPerZ);
+      const skirt = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
+      const sx =
+        interiorSide === 'east'
+          ? effMaxX + skirtT / 2 - 0.002
+          : interiorSide === 'west'
+            ? effMinX - skirtT / 2 + 0.002
+            : cx;
+      const sz =
+        interiorSide === 'south'
+          ? maxZ + skirtT / 2 - 0.002
+          : interiorSide === 'north'
+            ? minZ - skirtT / 2 + 0.002
+            : cz;
+      skirt.position.set(sx, floorTopY + baseH / 2, sz);
       skirt.receiveShadow = true;
       tagUpperCutawayWall(skirt, descriptor);
       scene.add(skirt);
+
+      const capGeo = isAlongX
+        ? new THREE.BoxGeometry(w, capH, capT)
+        : shearGeometryAlongZ(new THREE.BoxGeometry(capT, capH, d), slopeXPerZ);
+      const skirtCap = new THREE.Mesh(capGeo, antiqueOakSkirtingMat);
+      const capSx =
+        interiorSide === 'east'
+          ? effMaxX + capT / 2 - 0.002
+          : interiorSide === 'west'
+            ? effMinX - capT / 2 + 0.002
+            : cx;
+      const capSz =
+        interiorSide === 'south'
+          ? maxZ + capT / 2 - 0.002
+          : interiorSide === 'north'
+            ? minZ - capT / 2 + 0.002
+            : cz;
+      skirtCap.position.set(capSx, floorTopY + baseH + capH / 2, capSz);
+      skirtCap.receiveShadow = true;
+      tagUpperCutawayWall(skirtCap, descriptor);
+      scene.add(skirtCap);
     }
   };
 
