@@ -213,8 +213,8 @@ export function buildBedroom2(
       {
         id: 'bedroom2Door',
         kind: 'hinged-door',
-        uCenter: 3.74,
-        width: 0.84,
+        uCenter: 3.8,
+        width: 0.72,
         doorHeight: doorH,
         lowerFloorY: floorTopY,
         upperFloorY: floorTopY,

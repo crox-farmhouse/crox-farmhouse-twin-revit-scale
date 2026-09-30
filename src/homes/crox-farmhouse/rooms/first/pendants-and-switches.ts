@@ -112,9 +112,9 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'bedroom2Pendant',
     switchPa: '1.2.13',
     location: 'Bedroom 2 — South Wall (by Door)',
-    x: -19.06,
+    x: -18.96,
     y: floorTopY + 1.15,
-    z: 2.24,
+    z: 2.19,
     facing: 'north',
     parentGroup: scene,
   });
@@ -122,7 +122,7 @@ export function buildFirstFloorPendantsAndSwitches(
   // 5. Bedroom 3 (Circuit: bedroom3Pendant, Switch PA: 1.2.14)
   buildRoomCeilingPendant(ctx, {
     circuitId: 'bedroom3Pendant',
-    x: -20.52,
+    x: -20.22,
     z: 6.15,
     ceilingY: upperWallTopY,
     dropLength: 0.36,
@@ -136,7 +136,7 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'bedroom3Pendant',
     switchPa: '1.2.14',
     location: 'Bedroom 3 — East Wall (by Door)',
-    x: -18.99,
+    x: -18.33,
     y: floorTopY + 1.15,
     z: 6.82,
     facing: 'west',
@@ -160,7 +160,7 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'bedroom4Pendant',
     switchPa: '1.2.15',
     location: 'Bedroom 4 — North Wall (by Door)',
-    x: -18.8,
+    x: -18.35,
     y: floorTopY + 1.15,
     z: 8.39,
     facing: 'south',

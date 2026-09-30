@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createCourtyardStoneTexture, createImperialBrickTextures, createStoneTileTexture } from '../../../engine/textures/procedural-textures.ts';
+import { createCourtyardStoneTexture, createImperialBrickTextures } from '../../../engine/textures/procedural-textures.ts';
 import type { SceneBuilderContext } from '../../../types/scene.ts';
 
 /**
@@ -102,14 +102,10 @@ export function createFirstFloorMaterials(
     metalness: 0.06,
   });
 
-  const roomTileTex = createStoneTileTexture();
+  // Issue #9: Upstairs bedrooms, landing & corridor are all carpeted the same as the Living Room (`greyRoomCarpetMat`)
   const oakFloorMat = new THREE.MeshStandardMaterial({
-    map: roomTileTex,
-    bumpMap: roomTileTex,
-    bumpScale: 0.004,
-    color: 0xd6c4a8,
-    roughness: 0.58,
-    metalness: 0.04,
+    color: 0xb8b4ae,
+    roughness: 0.94,
   });
 
   const bathStoneTex = createCourtyardStoneTexture();

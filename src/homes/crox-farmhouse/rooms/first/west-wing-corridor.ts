@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
+import { buildAngledWallSegment, buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
@@ -9,14 +9,13 @@ import type { createFirstFloorShellKit } from '../../structure/first-floor-shell
  */
 export function buildWestWingCorridor(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addUpperBrickWallAlongZWithWindow' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
 ): void {
-  const { firstFloorMeshGroup: scene } = ctx;
+  const { firstFloorMeshGroup: scene, interactions } = ctx;
   const {
     addUpperBrickWallAlongZWithWindow,
-    addUpperInteractiveDoor,
-    addUpperInteriorWall,
+    antiqueOakSkirtingMat,
     bathroomTileMat,
     brassMat,
     ceramicWhiteMat,
@@ -24,41 +23,51 @@ export function buildWestWingCorridor(
     floorBaseY,
     floorTopY,
     oakFloorMat,
+    timberDoorMat,
     upperWallTopY,
+    wallCapMat,
     wardrobeMat,
     warmRoomPlasterMat,
     windowGlassMat,
   } = kit;
   // =========================================================================
   // 5. WEST WING UPPER CORRIDOR, UPSTAIRS SHOWER ROOM & BEDROOM 3 RECESSED WARDROBE
-  //    Directly above the tapering Front Entrance Hallway (`entranceHall`):
-  //    - North Lobby (`UP`) receives the step-up portal from Upper Landing (`[-17.72, 1.60]`)
-  //      and leads directly to Bedroom 2 (`[-18.23, 0.88] -> [-18.84, 2.353]`) or South along the corridor
+  //    Matching `media_1790619089017.png` & Issues #6, #7, #8:
+  //    - North `UP` Lobby (`Z = +2.33m..+3.35m, X = -19.02m..-16.92m`) receives the step-up
+  //      portal from Upper Landing (`upperLandingCorridorArch`), with `bedroom2Door` on the
+  //      North wall (`X = -18.78m..-18.06m`) and `showerRoomDoor` on the West wall (`X = -19.02m`).
+  //    - At `Z = +3.35m` (immediately South of `showerRoomDoor`), the Walk-In Shower Enclosure
+  //      steps East (`+X`) to `X = -18.25m`, narrowing the main West Wing Upper Corridor
+  //      (`Z = +3.35m..+8.27m`) to `~1.05m` (`X = -18.175m..-17.12m` — Issue #6!).
   // =========================================================================
-  // Upper Corridor polygonal floor along the flat angled East Courtyard wall
+  // Upper Corridor & North `UP` Lobby polygonal carpeted floor (`oakFloorMat`)
   buildPolygonalFloorSlab(
     scene,
     [
-      [-18.84, 2.353],
+      [-19.02, 2.33],
       [-17.891, 2.48],
-      [-16.97, 2.61],
+      [-16.92, 2.61],
       [-17.23, 8.27],
-      [-18.84, 8.27],
+      [-18.25, 8.27],
+      [-18.25, 3.35],
+      [-19.02, 3.35],
     ],
     floorTopY,
     floorTopY - floorBaseY,
     oakFloorMat,
     0.5
   );
-  // Trapezoidal Shower Room polygonal floor (including SE walk-in shower alcove)
+  // Trapezoidal Shower Room polygonal tiled floor (including SE walk-in shower alcove `X = -19.55m..-18.25m, Z = +3.35m..+4.30m`)
   buildPolygonalFloorSlab(
     scene,
     [
       [-22.19, 1.905],
-      [-18.84, 2.353],
-      [-18.84, 4.3],
-      [-20.15, 4.3],
-      [-20.15, 3.625],
+      [-19.02, 2.33],
+      [-19.02, 3.35],
+      [-18.25, 3.35],
+      [-18.25, 4.3],
+      [-19.55, 4.3],
+      [-19.55, 3.625],
       [-22.19, 3.625],
     ],
     floorTopY,
@@ -98,47 +107,146 @@ export function buildWestWingCorridor(
   );
 
   // =========================================================================
-  // UPSTAIRS SHOWER ROOM (`X = -22.19m..-18.915m, Z = +1.905m/+2.353m..+3.625m` + SE Shower Alcove `Z = +3.625m..+4.30m`)
-  // Matching `ff_rotated_3d_axes.png` & `media_1790619089017.png`:
-  // - South wall at Z = +3.625m from X = -22.19m to X = -20.15m (behind Vanity Basin & WC)
-  // - Walk-in Shower Enclosure recessed into the SE alcove (`X = -20.15m..-18.915m, Z = +3.55m..+4.30m`)
-  // - Corridor entrance door on the East wall (`X = -18.915m`, centered at `Z = +2.92m`)
+  // UPSTAIRS SHOWER ROOM (`X = -22.19m..-19.02m, Z = +1.905m/+2.33m..+3.625m`
+  // + SE Walk-In Shower Alcove `X = -19.55m..-18.25m, Z = +3.35m..+4.30m`)
   // =========================================================================
-  // Shower Room West-South Wall at Z = +3.625m (X = -22.19m..-20.15m, length = 2.04m)
-  addUpperInteriorWall(-21.17, floorTopY, upperWallTopY, 3.625, 2.04, 0.15, warmRoomPlasterMat);
+  // 1. Shower Room East Entrance Wall on the West side of the `UP` Lobby (`X = -19.02m, Z = +2.445m..+3.425m`)
+  //    Starts cleanly at the South face (`Z = 2.445m`) of `bed2SouthWallFrame` with a 16.5cm corner pier
+  //    West of `bedroom2Door` (Issue #7: zero doorframe collision!)
+  buildAngledWallSegment(scene, interactions, {
+    start: [-19.02, 2.445],
+    end: [-19.02, 3.425],
+    thickness: 0.15,
+    topY: upperWallTopY,
+    frontFloorY: floorTopY,
+    backFloorY: floorTopY,
+    wallMaterial: warmRoomPlasterMat,
+    capMaterial: wallCapMat,
+    skirtingMaterial: antiqueOakSkirtingMat,
+    addFrontSkirting: true, // East (`+X`) face in the `UP` Lobby
+    addBackSkirting: true,  // West (`-X`) face inside the dry Shower Room
+    openings: [
+      {
+        id: 'showerRoomDoor',
+        kind: 'hinged-door',
+        uCenter: 0.49,
+        width: 0.68,
+        doorHeight: doorH,
+        lowerFloorY: floorTopY,
+        upperFloorY: floorTopY,
+        architraveMaterial: antiqueOakSkirtingMat,
+        doorLeafMaterial: timberDoorMat,
+        hardwareMaterial: brassMat,
+        hingeSide: 'right',
+        openAngle: -Math.PI * 0.45,
+        initialOpenProgress: 0.2,
+      },
+    ],
+  });
 
-  // Dividing Partition Wall at X = -20.15m (Z = +3.625m..+4.30m) between SE Walk-In Shower Alcove and Bedroom 3 North Wardrobe
-  addUpperInteriorWall(-20.15, floorTopY, upperWallTopY, 3.9625, 0.15, 0.675, warmRoomPlasterMat);
+  // 2. Step-In Wall between the `UP` Lobby and the Walk-In Shower (`Z = +3.35m, X = -18.945m..-18.175m`)
+  //    Front (`-Z`, North) faces the `UP` Lobby (with skirting); Back (`+Z`, South) faces inside the Walk-In Shower (no timber skirting!)
+  buildAngledWallSegment(scene, interactions, {
+    start: [-18.945, 3.35],
+    end: [-18.175, 3.35],
+    thickness: 0.15,
+    topY: upperWallTopY,
+    frontFloorY: floorTopY,
+    backFloorY: floorTopY,
+    wallMaterial: warmRoomPlasterMat,
+    capMaterial: wallCapMat,
+    skirtingMaterial: antiqueOakSkirtingMat,
+    addFrontSkirting: true,
+    addBackSkirting: false,
+  });
 
-  // Shower Room East Corridor Wall (X = -18.915m, Z = +2.353m..+4.30m) with hinged door at Z = +2.92m
-  addUpperInteriorWall(-18.915, floorTopY, upperWallTopY, 2.454, 0.15, 0.202, warmRoomPlasterMat);
-  addUpperInteriorWall(-18.915, floorTopY, upperWallTopY, 3.7875, 0.15, 1.025, warmRoomPlasterMat);
-  addUpperInteriorWall(-18.915, floorTopY + doorH, upperWallTopY, 2.915, 0.15, 0.72, warmRoomPlasterMat);
-  addUpperInteractiveDoor('z', -18.915, 0.15, 2.915, 0.72, -Math.PI * 0.45);
+  // 3. East Corridor Wall of the Walk-In Shower (`X = -18.25m, Z = +3.425m..+4.30m`)
+  //    Collinear with the Bedroom 3 East Corridor Wall (`X = -18.25m, Z = +4.30m..+8.15m`) so the corridor
+  //    runs in one clean unbroken line at `X = -18.175m` with continuous skirting (Issues #6 & #8!)
+  buildAngledWallSegment(scene, interactions, {
+    start: [-18.25, 3.425],
+    end: [-18.25, 4.3],
+    thickness: 0.15,
+    topY: upperWallTopY,
+    frontFloorY: floorTopY,
+    backFloorY: floorTopY,
+    wallMaterial: warmRoomPlasterMat,
+    capMaterial: wallCapMat,
+    skirtingMaterial: antiqueOakSkirtingMat,
+    addFrontSkirting: true, // East (`+X`) face in the Corridor
+    addBackSkirting: false, // West (`-X`) face inside the wet Walk-In Shower
+  });
 
-  // Walk-In Shower Enclosure in SE Alcove of Shower Room (`X = -20.075m..-18.99m, Z = +3.55m..+4.225m`)
+  // 4. Shower Room West-South Wall behind Vanity Basin & WC (`Z = +3.625m, X = -22.19m..-19.55m`)
+  //    Front (`-Z`, North) faces inside the dry Shower Room (with skirting); Back (`+Z`, South) is inside Bedroom 3's wardrobe
+  buildAngledWallSegment(scene, interactions, {
+    start: [-22.19, 3.625],
+    end: [-19.55, 3.625],
+    thickness: 0.15,
+    topY: upperWallTopY,
+    frontFloorY: floorTopY,
+    backFloorY: floorTopY,
+    wallMaterial: warmRoomPlasterMat,
+    capMaterial: wallCapMat,
+    skirtingMaterial: antiqueOakSkirtingMat,
+    addFrontSkirting: true,
+    addBackSkirting: false,
+  });
+
+  // 5. Dividing Partition Wall (`X = -19.55m, Z = +3.625m..+4.225m`) between SE Walk-In Shower Alcove and Bedroom 3 North Wardrobe
+  buildAngledWallSegment(scene, interactions, {
+    start: [-19.55, 3.625],
+    end: [-19.55, 4.225],
+    thickness: 0.15,
+    topY: upperWallTopY,
+    frontFloorY: floorTopY,
+    backFloorY: floorTopY,
+    wallMaterial: warmRoomPlasterMat,
+    capMaterial: wallCapMat,
+    skirtingMaterial: antiqueOakSkirtingMat,
+    addFrontSkirting: false,
+    addBackSkirting: false,
+  });
+
+  // 6. South Wall of SE Walk-In Shower Alcove (`Z = +4.30m, X = -19.625m..-18.325m`)
+  //    Stops flush at the West face (`X = -18.325m`) of the Corridor wall so its skirting NEVER pokes through into the corridor (Issue #8!)
+  buildAngledWallSegment(scene, interactions, {
+    start: [-19.625, 4.3],
+    end: [-18.325, 4.3],
+    thickness: 0.15,
+    topY: upperWallTopY,
+    frontFloorY: floorTopY,
+    backFloorY: floorTopY,
+    wallMaterial: warmRoomPlasterMat,
+    capMaterial: wallCapMat,
+    skirtingMaterial: antiqueOakSkirtingMat,
+    addFrontSkirting: false, // North (`-Z`) face inside the wet Walk-In Shower
+    addBackSkirting: true,   // South (`+Z`) face inside Bedroom 3
+  });
+
+  // Walk-In Shower Enclosure in SE Alcove of Shower Room (`X = -19.475m..-18.325m, Z = +3.425m..+4.225m`)
   const srShowerTray = new THREE.Mesh(
-    new THREE.BoxGeometry(1.08, 0.045, 0.68),
+    new THREE.BoxGeometry(1.14, 0.045, 0.78),
     ceramicWhiteMat
   );
   srShowerTray.name = 'showerRoom.showerTray';
-  srShowerTray.position.set(-19.53, floorTopY + 0.022, 3.885);
+  srShowerTray.position.set(-18.9, floorTopY + 0.022, 3.825);
   srShowerTray.receiveShadow = true;
   scene.add(srShowerTray);
 
   const srShowerGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(0.64, 1.88, 0.018),
+    new THREE.BoxGeometry(0.62, 1.88, 0.018),
     windowGlassMat
   );
   srShowerGlass.name = 'showerRoom.showerGlass';
-  srShowerGlass.position.set(-19.31, floorTopY + 0.94, 3.555);
+  srShowerGlass.position.set(-18.64, floorTopY + 0.94, 3.435);
   scene.add(srShowerGlass);
 
   const srShowerRiser = new THREE.Mesh(
     new THREE.CylinderGeometry(0.012, 0.012, 1.05, 10),
     brassMat
   );
-  srShowerRiser.position.set(-19.05, floorTopY + 1.38, 3.885);
+  srShowerRiser.position.set(-18.38, floorTopY + 1.38, 3.825);
   scene.add(srShowerRiser);
 
   // Vanity Basin & Cabinet on South Wall (West side: X = -21.48m, Z = +3.36m, facing North `-Z`)
@@ -157,38 +265,32 @@ export function buildWestWingCorridor(
   srBasin.position.set(-21.48, floorTopY + 0.82, 3.36);
   scene.add(srBasin);
 
-  // WC Pan & Cistern on South Wall (Center: X = -20.62m, Z = +3.32m, facing North `-Z`)
+  // WC Pan & Cistern on South Wall (Center: X = -20.52m, Z = +3.32m, facing North `-Z`)
   const srWcCistern = new THREE.Mesh(
     new THREE.BoxGeometry(0.38, 0.42, 0.16),
     ceramicWhiteMat
   );
-  srWcCistern.position.set(-20.62, floorTopY + 0.66, 3.46);
+  srWcCistern.position.set(-20.52, floorTopY + 0.66, 3.46);
   scene.add(srWcCistern);
 
   const srWc = new THREE.Mesh(
     new THREE.CylinderGeometry(0.18, 0.14, 0.42, 14),
     ceramicWhiteMat
   );
-  srWc.position.set(-20.62, floorTopY + 0.21, 3.24);
+  srWc.position.set(-20.52, floorTopY + 0.21, 3.24);
   scene.add(srWc);
 
   // =========================================================================
-  // SOUTH WALL OF SHOWER ALCOVE & BEDROOM 3 BUILT-IN NORTH WARDROBE
-  // (`Z = +3.625m..+4.30m, X = -22.19m..-20.15m`)
-  // Matching `ff_rotated_3d_axes.png`: the West half of the strip between the
-  // Shower Room and Bedroom 3 is Bedroom 3's recessed built-in wardrobe opening South (`+Z`)!
+  // BEDROOM 3 BUILT-IN NORTH WARDROBE (`X = -22.19m..-19.625m, Z = +3.68m..+4.30m`)
+  // Opening South (`+Z`) into Bedroom 3 flush with the South wall of the Walk-In Shower (`Z = +4.30m`)
   // =========================================================================
-  // South Wall behind the SE Walk-In Shower Alcove (`Z = +4.30m, X = -20.15m..-18.84m`, length = 1.31m)
-  addUpperInteriorWall(-19.495, floorTopY, upperWallTopY, 4.3, 1.31, 0.15, warmRoomPlasterMat);
-
-  // Bedroom 3 Built-In North Wardrobe (`X = -22.19m..-20.15m, Z = +3.68m..+4.30m`, opening South into Bedroom 3)
   {
     const bed3WardGroup = new THREE.Group();
     bed3WardGroup.name = 'bedroom3.northWardrobe';
-    const wardW = 1.98; // X = -22.16m .. -20.18m
+    const wardW = 2.5; // X = -22.16m .. -19.66m
     const wardH = upperWallTopY - floorTopY;
     const wardD = 0.6;
-    const centerX = -21.17;
+    const centerX = -20.91;
     const centerZ = 3.99;
 
     const carcass = new THREE.Mesh(
