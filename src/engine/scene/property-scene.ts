@@ -199,6 +199,30 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       describeInteractable: (mesh) =>
         this.interactions.describeInteractable(mesh, this.bifolds.isOpen()),
       onInteractWithMesh: (mesh) => this.triggerInteractiveObject(mesh),
+      onBargeWalkthroughDoor: (interactableId, isSprinting) => {
+        const barged = this.interactions.bargeOpenWalkthroughDoor(
+          interactableId,
+          isSprinting
+        );
+        if (barged) {
+          this.needsRender = true;
+        }
+        return barged;
+      },
+      onProximityBargeDoors: (footX, footY, footZ, moveDirX, moveDirZ, isSprinting) => {
+        const barged = this.interactions.bargeNearbyWalkthroughDoors(
+          footX,
+          footY,
+          footZ,
+          moveDirX,
+          moveDirZ,
+          isSprinting
+        );
+        if (barged) {
+          this.needsRender = true;
+        }
+        return barged;
+      },
       onStateChanged: () => {
         this.lastWalkthroughViewNotifyMs = 0;
         this.updateCameraFacingWallCutaways(true);

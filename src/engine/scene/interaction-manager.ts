@@ -10,7 +10,7 @@ interface HingedDoorState {
   openAngle: number;
   isOpen: boolean;
   progress: number;
-  readonly speed: number;
+  speed: number;
 }
 
 interface BifoldCupboardState {
@@ -69,6 +69,45 @@ function easeInOutCubic(t: number): number {
 }
 
 const tmpDoorBounds = new THREE.Box3();
+const doorManualCloseTimestampMs = new Map<string, number>();
+
+/**
+ * Corner and adjacent door pairs whose 3D open swing envelopes share the same pocket.
+ * Opening any door in this map automatically closes its conflicting neighbour(s) so doors
+ * never intersect one another.
+ */
+const CONFLICTING_DOOR_IDS: Readonly<Record<string, readonly string[]>> = {
+  'door-1': ['door-11'],
+  'door-11': ['door-1'],
+  'door-3': ['door-6', 'door-7'],
+  'door-6': ['door-3'],
+  'door-7': ['door-3'],
+  'door-32': ['door-34', 'door-35', 'door-36', 'door-37', 'bifold-cupboard-1'],
+  'door-34': ['door-32', 'bifold-cupboard-1'],
+  'door-35': ['door-32', 'bifold-cupboard-1'],
+  'door-36': ['door-32', 'bifold-cupboard-1'],
+  'door-37': ['door-32', 'bifold-cupboard-1'],
+  'door-39': ['bifold-cupboard-1'],
+  'door-41': ['bifold-cupboard-1'],
+  'bifold-cupboard-1': [
+    'door-32',
+    'door-34',
+    'door-35',
+    'door-36',
+    'door-37',
+    'door-39',
+    'door-41',
+  ],
+  'door-38': ['door-42'],
+  'door-42': ['door-38'],
+  'door-40': ['door-60'],
+  'door-60': ['door-40'],
+  'door-43': ['door-46', 'door-47'],
+  'door-46': ['door-43'],
+  'door-47': ['door-43'],
+  'door-56': ['door-57'],
+  'door-57': ['door-56'],
+};
 
 /**
  * Encapsulates all interactive 3D props in the Crox Farmhouse Digital Twin:
@@ -373,6 +412,22 @@ export class SceneInteractionManager {
     this.toggleCallbacks.set(id, { onToggle, dynamicRoots });
   }
 
+  private closeConflictingDoors(openedId: string): void {
+    const conflicts = CONFLICTING_DOOR_IDS[openedId];
+    if (!conflicts) return;
+    for (const conflictId of conflicts) {
+      const otherDoor = this.hingedDoors.get(conflictId);
+      if (otherDoor && otherDoor.isOpen) {
+        otherDoor.isOpen = false;
+        otherDoor.speed = 3.2;
+      }
+      const otherBifold = this.bifoldCupboards.get(conflictId);
+      if (otherBifold && otherBifold.isOpen) {
+        otherBifold.isOpen = false;
+      }
+    }
+  }
+
   /**
    * Toggles the interactive prop with the given `interactableId`.
    * Returns true if a prop was matched and toggled.
@@ -387,12 +442,21 @@ export class SceneInteractionManager {
     const door = this.hingedDoors.get(interactableId);
     if (door) {
       door.isOpen = !door.isOpen;
+      door.speed = 2.8;
+      if (door.isOpen) {
+        this.closeConflictingDoors(interactableId);
+      } else {
+        doorManualCloseTimestampMs.set(interactableId, performance.now());
+      }
       return true;
     }
 
     const bifoldCup = this.bifoldCupboards.get(interactableId);
     if (bifoldCup) {
       bifoldCup.isOpen = !bifoldCup.isOpen;
+      if (bifoldCup.isOpen) {
+        this.closeConflictingDoors(interactableId);
+      }
       return true;
     }
 
@@ -414,17 +478,155 @@ export class SceneInteractionManager {
     const door = this.hingedDoors.get(interactableId);
     if (!door) return false;
     door.isOpen = isOpen;
+    door.speed = 2.8;
+    if (isOpen) {
+      this.closeConflictingDoors(interactableId);
+    } else {
+      doorManualCloseTimestampMs.set(interactableId, performance.now());
+    }
     return true;
   }
 
   /**
-   * Computes the effective open angle for a hinged door, providing a ~86° swing fallback
-   * for room/courtyard doors whose initial registration specified `openAngle = 0`.
+   * Returns true if `interactableId` is a walk-through room, exterior, courtyard, or stable door
+   * (rather than a cupboard, larder, or appliance door).
+   */
+  public isWalkthroughDoor(interactableId: string): boolean {
+    const door = this.hingedDoors.get(interactableId);
+    if (!door || door.axis !== 'y') return false;
+    const pivotName = (
+      door.pivot.name +
+      ' ' +
+      (door.pivot.children[0]?.name ?? '')
+    ).toLowerCase();
+    if (
+      pivotName.includes('understairs') ||
+      pivotName.includes('cupboard') ||
+      pivotName.includes('larder') ||
+      pivotName.includes('fridge') ||
+      pivotName.includes('freezer') ||
+      pivotName.includes('winecooler')
+    ) {
+      return false;
+    }
+    tmpDoorBounds.setFromObject(door.pivot);
+    const h = tmpDoorBounds.max.y - tmpDoorBounds.min.y;
+    const w = Math.max(
+      tmpDoorBounds.max.x - tmpDoorBounds.min.x,
+      tmpDoorBounds.max.z - tmpDoorBounds.min.z
+    );
+    return h >= 0.92 && h <= 2.15 && w >= 0.45;
+  }
+
+  /**
+   * Call-of-Duty style door barge: if `interactableId` is a walk-through door, automatically
+   * flings it open (including both halves of the split Utility Stable Door `door-1` / `door-2`)
+   * and returns `true` so First-Person Walkthrough collision lets the player run right through.
+   */
+  public bargeOpenWalkthroughDoor(interactableId: string, isSprinting = false): boolean {
+    if (!this.isWalkthroughDoor(interactableId)) return false;
+    const door = this.hingedDoors.get(interactableId);
+    if (!door) return false;
+
+    const lastCloseMs = doorManualCloseTimestampMs.get(interactableId) ?? 0;
+    if (performance.now() - lastCloseMs < 650) {
+      return false;
+    }
+
+    const bargeSpeed = isSprinting ? 6.8 : 4.8;
+    if (!door.isOpen) {
+      door.isOpen = true;
+      door.speed = bargeSpeed;
+      this.closeConflictingDoors(interactableId);
+    } else if (door.progress < 0.95 && door.speed < bargeSpeed) {
+      door.speed = bargeSpeed;
+    }
+
+    // If barging through the split Utility Room Stable Door (`door-1` lower / `door-2` upper),
+    // open both halves together so the player can run straight through.
+    if (interactableId === 'door-1' || interactableId === 'door-2') {
+      const partnerId = interactableId === 'door-1' ? 'door-2' : 'door-1';
+      const partner = this.hingedDoors.get(partnerId);
+      if (partner && !partner.isOpen) {
+        partner.isOpen = true;
+        partner.speed = bargeSpeed;
+        this.closeConflictingDoors(partnerId);
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Checks if the player's capsule in First-Person Walkthrough mode is running/walking into any
+   * closed walk-through door on the same floor and pre-emptively barges it open.
+   */
+  public bargeNearbyWalkthroughDoors(
+    footX: number,
+    footY: number,
+    footZ: number,
+    moveDirX: number,
+    moveDirZ: number,
+    isSprinting = false
+  ): boolean {
+    let anyBarged = false;
+    const lookaheadDist = isSprinting ? 0.42 : 0.30;
+    const probeX = footX + moveDirX * lookaheadDist;
+    const probeZ = footZ + moveDirZ * lookaheadDist;
+    const triggerRadius = isSprinting ? 0.56 : 0.44;
+    const now = performance.now();
+
+    for (const [id, door] of this.hingedDoors.entries()) {
+      if (door.isOpen || door.axis !== 'y') continue;
+      if (now - (doorManualCloseTimestampMs.get(id) ?? 0) < 650) continue;
+      if (!this.isWalkthroughDoor(id)) continue;
+
+      tmpDoorBounds.setFromObject(door.pivot);
+      if (tmpDoorBounds.max.y <= footY + 0.25 || tmpDoorBounds.min.y >= footY + 1.65) {
+        continue;
+      }
+
+      const dx = Math.max(tmpDoorBounds.min.x - probeX, 0, probeX - tmpDoorBounds.max.x);
+      const dz = Math.max(tmpDoorBounds.min.z - probeZ, 0, probeZ - tmpDoorBounds.max.z);
+      if (Math.hypot(dx, dz) <= triggerRadius) {
+        const cx = (tmpDoorBounds.min.x + tmpDoorBounds.max.x) * 0.5;
+        const cz = (tmpDoorBounds.min.z + tmpDoorBounds.max.z) * 0.5;
+        const dot = (cx - footX) * moveDirX + (cz - footZ) * moveDirZ;
+        if (dot > 0.06 && this.bargeOpenWalkthroughDoor(id, isSprinting)) {
+          anyBarged = true;
+        }
+      }
+    }
+    return anyBarged;
+  }
+
+  /**
+   * Computes the collision-free effective open angle for a hinged door:
+   * - Provides a ~86° swing for doors whose initial registration specified `openAngle = 0`
+   * - Redirects `door-14` (Dining Courtyard Door) inward to clear the exterior terracotta planter
+   * - Redirects `door-28` (Bedroom 2 Door) inward into Bedroom 2 so it never collides with `door-29`
+   * - Clamps over-rotated (> 83°) cupboard/corner doors so adjacent doors never cross past 90°
+   *   or intersect walls/furniture
    */
   private getEffectiveDoorOpenAngle(door: HingedDoorState): number {
-    if (Math.abs(door.openAngle - door.closedAngle) < 0.05) {
+    if (door.id === 'door-14') return 1.45;
+    if (door.id === 'door-28') return -1.35;
+    if (door.id === 'door-13') return -1.38;
+    if (door.id === 'door-19') return 1.38;
+    if (door.id === 'door-42') return -1.28;
+    if (door.id === 'door-60') return -1.28;
+    if (door.id === 'door-56') return 1.25;
+    if (door.id === 'door-57') return 1.15;
+
+    const rawDelta = door.openAngle - door.closedAngle;
+    if (Math.abs(rawDelta) < 0.05) {
       const swingSign = door.pivot.position.z > 1.5 ? 1 : -1;
       return door.closedAngle + swingSign * Math.PI * 0.48;
+    }
+
+    const maxSwing = 1.45;
+    if (Math.abs(rawDelta) > maxSwing) {
+      return door.closedAngle + Math.sign(rawDelta) * maxSwing;
     }
     return door.openAngle;
   }
@@ -459,6 +661,7 @@ export class SceneInteractionManager {
           return `${verb} AGA Oven Door`;
         }
         if (
+          door.axis !== 'y' ||
           chainNames.includes('fridge') ||
           chainNames.includes('freezer') ||
           (chainNames.includes('wine') && !chainNames.includes('cellar')) ||
@@ -467,19 +670,10 @@ export class SceneInteractionManager {
         ) {
           return `${verb} Appliance Door`;
         }
-        tmpDoorBounds.setFromObject(door.pivot);
-        const pivotHeight = tmpDoorBounds.max.y - tmpDoorBounds.min.y;
-        const hasCupboardName =
-          chainNames.includes('cupboard') ||
-          chainNames.includes('cabinet') ||
-          chainNames.includes('larder') ||
-          chainNames.includes('island') ||
-          chainNames.includes('vanity') ||
-          chainNames.includes('wardrobe');
-        if (pivotHeight < 0.92 || (hasCupboardName && pivotHeight < 1.85)) {
-          return `${verb} Cupboard`;
+        if (this.isWalkthroughDoor(id)) {
+          return `${verb} Door`;
         }
-        return `${verb} Door`;
+        return `${verb} Cupboard`;
       }
       const bifoldCup = this.bifoldCupboards.get(id);
       if (bifoldCup) {

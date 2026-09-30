@@ -186,11 +186,25 @@ export class WalkthroughController {
   private readonly getInteractiveMeshes: () => readonly THREE.Object3D[];
   private readonly describeInteractable: (mesh: THREE.Object3D) => string;
   private readonly onInteractWithMesh: (mesh: THREE.Object3D) => void;
+  private readonly onBargeWalkthroughDoor: (
+    interactableId: string,
+    isSprinting: boolean
+  ) => boolean;
+  private readonly onProximityBargeDoors: (
+    footX: number,
+    footY: number,
+    footZ: number,
+    moveDirX: number,
+    moveDirZ: number,
+    isSprinting: boolean
+  ) => boolean;
   private readonly onStateChanged: (active: boolean) => void;
   private readonly onPoseUpdated: () => void;
 
   private active = false;
   private crouched = false;
+  private allowDoorBarge = false;
+  private isCurrentlySprinting = false;
   private pointerLocked = false;
   private isDraggingLook = false;
   private lookDirty = false;
@@ -239,6 +253,18 @@ export class WalkthroughController {
     readonly getInteractiveMeshes: () => readonly THREE.Object3D[];
     readonly describeInteractable: (mesh: THREE.Object3D) => string;
     readonly onInteractWithMesh: (mesh: THREE.Object3D) => void;
+    readonly onBargeWalkthroughDoor?: (
+      interactableId: string,
+      isSprinting: boolean
+    ) => boolean;
+    readonly onProximityBargeDoors?: (
+      footX: number,
+      footY: number,
+      footZ: number,
+      moveDirX: number,
+      moveDirZ: number,
+      isSprinting: boolean
+    ) => boolean;
     readonly onStateChanged: (active: boolean) => void;
     readonly onPoseUpdated: () => void;
   }) {
@@ -249,6 +275,8 @@ export class WalkthroughController {
     this.getInteractiveMeshes = options.getInteractiveMeshes;
     this.describeInteractable = options.describeInteractable;
     this.onInteractWithMesh = options.onInteractWithMesh;
+    this.onBargeWalkthroughDoor = options.onBargeWalkthroughDoor ?? (() => false);
+    this.onProximityBargeDoors = options.onProximityBargeDoors ?? (() => false);
     this.onStateChanged = options.onStateChanged;
     this.onPoseUpdated = options.onPoseUpdated;
 
@@ -815,7 +843,6 @@ export class WalkthroughController {
 
       // 1. Vertical structural walls, all interior/exterior doors (including 28mm panelled doors
       //    and 12-16mm glazed courtyard/bifold doors), and tall cabinetry for raycast collision:
-      const isWalkthroughDoor = hasDynamicAncestor && sizeY >= 0.85;
       if (
         obj.geometry instanceof THREE.BoxGeometry &&
         sizeY >= 0.45 &&
@@ -830,7 +857,7 @@ export class WalkthroughController {
           radiusXZ,
           minY: this.tmpBox.min.y,
           maxY: this.tmpBox.max.y,
-          isDynamic: isWalkthroughDoor,
+          isDynamic: hasDynamicAncestor,
         });
       }
 
@@ -838,7 +865,7 @@ export class WalkthroughController {
       //    Catches dining tables, desks, coffee tables, sofas (including sculpted BufferGeometry
       //    cushions), armchairs, dining chairs, beds, kitchen island & worktops, sideboards,
       //    bathtubs, vanities, WCs, and appliances whose top surface sits at knee-to-chest height.
-      if (!isWalkthroughDoor && Math.max(sizeX, sizeZ) <= 5.5) {
+      if (!hasDynamicAncestor && Math.max(sizeX, sizeZ) <= 5.5) {
         const floorY = this.sampleFloorElevation(centerX, this.tmpBox.max.y, centerZ);
         const topAboveFloor = this.tmpBox.max.y - floorY;
         const botAboveFloor = this.tmpBox.min.y - floorY;
@@ -1083,6 +1110,25 @@ export class WalkthroughController {
       for (let i = 0; i < hits.length; i++) {
         const hit = hits[i];
         if (hit.distance >= 0.02 && hit.distance <= maxHitDist && hit.face) {
+          let curObj: THREE.Object3D | null = hit.object;
+          let interactableId: string | undefined;
+          while (curObj && curObj !== this.scene) {
+            const uid = (curObj.userData as Record<string, unknown> | undefined)?.interactableId;
+            if (typeof uid === 'string') {
+              interactableId = uid;
+              break;
+            }
+            curObj = curObj.parent;
+          }
+          if (
+            this.allowDoorBarge &&
+            interactableId &&
+            this.onBargeWalkthroughDoor(interactableId, this.isCurrentlySprinting)
+          ) {
+            // Call-of-Duty style: running into a closed walk-through door flings it open without blocking!
+            this.refreshTargetedInteractable(true);
+            continue;
+          }
           this.tmpNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
           // Only block against front-facing vertical walls/doors opposing our movement direction
           // (worldNormal.dot(moveDirXZ) < -0.15 guarantees you can ALWAYS walk out of any overlapping box!)
@@ -1179,6 +1225,7 @@ export class WalkthroughController {
       isMoving &&
       !this.crouched &&
       (this.keysDown.has('ShiftLeft') || this.keysDown.has('ShiftRight'));
+    this.isCurrentlySprinting = isSprinting;
     const speed = this.crouched
       ? CROUCH_SPEED_MPS
       : isSprinting
@@ -1214,6 +1261,20 @@ export class WalkthroughController {
         moveVec.normalize();
         const stepDist = speed * dtSeconds;
 
+        if (
+          this.onProximityBargeDoors(
+            this.footPos.x,
+            this.footPos.y,
+            this.footPos.z,
+            moveVec.x,
+            moveVec.z,
+            isSprinting
+          )
+        ) {
+          this.refreshTargetedInteractable(true);
+        }
+
+        this.allowDoorBarge = true;
         if (!this.isBlockedByWallOrCabinet(this.footPos, moveVec, stepDist)) {
           this.footPos.x += moveVec.x * stepDist;
           this.footPos.z += moveVec.z * stepDist;
@@ -1240,6 +1301,7 @@ export class WalkthroughController {
             this.footPos.z += moveVec.z * stepDist;
           }
         }
+        this.allowDoorBarge = false;
 
         const targetFloorY = this.sampleFloorElevation(
           this.footPos.x,
@@ -1267,6 +1329,14 @@ export class WalkthroughController {
         this.glideTargetFoot = null;
       } else {
         toTarget.divideScalar(dist);
+        this.onProximityBargeDoors(
+          this.footPos.x,
+          this.footPos.y,
+          this.footPos.z,
+          toTarget.x,
+          toTarget.z,
+          false
+        );
         const step = Math.min(dist, WALK_SPEED_MPS * 1.25 * dtSeconds);
         this.footPos.x += toTarget.x * step;
         this.footPos.z += toTarget.z * step;
