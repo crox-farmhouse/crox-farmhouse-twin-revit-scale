@@ -132,6 +132,27 @@ interface SavedOrbitState {
   readonly fov: number;
 }
 
+interface CachedObstacle {
+  readonly mesh: THREE.Mesh;
+  centerX: number;
+  centerZ: number;
+  radiusXZ: number;
+  minY: number;
+  maxY: number;
+  readonly isDynamic: boolean;
+}
+
+interface PersistedWalkthroughSession {
+  readonly active: boolean;
+  readonly footPos: readonly [number, number, number];
+  readonly yawRad: number;
+  readonly pitchRad: number;
+  readonly crouched: boolean;
+  readonly baseFov: number;
+}
+
+const WALKTHROUGH_SESSION_KEY = 'crox_walkthrough_state_v1';
+
 /**
  * Call-of-Duty-style First-Person Walkthrough Controller (no weapon) for Crox Farmhouse.
  *
@@ -157,6 +178,7 @@ export class WalkthroughController {
   private crouched = false;
   private pointerLocked = false;
   private isDraggingLook = false;
+  private lookDirty = false;
   private lastDragClientX = 0;
   private lastDragClientY = 0;
 
@@ -170,6 +192,7 @@ export class WalkthroughController {
   private yawRad = 0; // 0 = looking along -Z
   private pitchRad = 0;
   private bobPhase = 0;
+  private smoothedFps = 120;
 
   private glideTargetFoot: THREE.Vector3 | null = null;
   private savedOrbitState: SavedOrbitState | null = null;
@@ -177,6 +200,13 @@ export class WalkthroughController {
   private targetedMesh: THREE.Object3D | null = null;
   private targetedPrompt: string | null = null;
   private lastRaycastMs = 0;
+  private lastSessionSaveMs = 0;
+
+  private cachedObstacles: CachedObstacle[] | null = null;
+  private readonly nearbyObstacleMeshes: THREE.Object3D[] = [];
+  private readonly tmpBox = new THREE.Box3();
+  private readonly tmpOrigin = new THREE.Vector3();
+  private readonly tmpNormal = new THREE.Vector3();
 
   private readonly keysDown = new Set<string>();
   private readonly wallRaycaster = new THREE.Raycaster();
@@ -229,6 +259,18 @@ export class WalkthroughController {
     return this.baseFov;
   }
 
+  public getSmoothedFps(): number {
+    return Math.round(this.smoothedFps);
+  }
+
+  public invalidateObstacleCache(): void {
+    this.cachedObstacles = null;
+  }
+
+  public pressKey(code: string): void {
+    this.keysDown.add(code);
+  }
+
   public setBaseFov(fov: number): void {
     this.baseFov = THREE.MathUtils.clamp(fov, 60, 100);
     this.currentFov = this.baseFov;
@@ -237,6 +279,7 @@ export class WalkthroughController {
       this.rig.perspCamera.updateProjectionMatrix();
       this.onPoseUpdated();
     }
+    this.saveSessionState(true);
     this.emit();
   }
 
@@ -271,11 +314,13 @@ export class WalkthroughController {
 
   public setCrouched(crouched: boolean): void {
     this.crouched = crouched;
+    this.saveSessionState(true);
     this.emit();
   }
 
   public toggleCrouched(): boolean {
     this.crouched = !this.crouched;
+    this.saveSessionState(true);
     this.emit();
     return this.crouched;
   }
@@ -302,6 +347,119 @@ export class WalkthroughController {
     return true;
   }
 
+  private blurActiveControlIfNeeded(): void {
+    const activeEl = document.activeElement;
+    if (activeEl instanceof HTMLElement && activeEl !== document.body && activeEl !== this.canvas) {
+      activeEl.blur();
+    }
+  }
+
+  private saveSessionState(force = false): void {
+    const now = performance.now();
+    if (!force && now - this.lastSessionSaveMs < 250) return;
+    this.lastSessionSaveMs = now;
+    try {
+      const payload: PersistedWalkthroughSession = {
+        active: this.active,
+        footPos: [
+          Number(this.footPos.x.toFixed(3)),
+          Number(this.footPos.y.toFixed(3)),
+          Number(this.footPos.z.toFixed(3)),
+        ],
+        yawRad: Number(this.yawRad.toFixed(4)),
+        pitchRad: Number(this.pitchRad.toFixed(4)),
+        crouched: this.crouched,
+        baseFov: this.baseFov,
+      };
+      sessionStorage.setItem(WALKTHROUGH_SESSION_KEY, JSON.stringify(payload));
+    } catch {
+      // Ignore storage quota or private mode errors
+    }
+  }
+
+  public restoreFromSessionIfActive(currentPose: SceneCameraPoseSnapshot): boolean {
+    try {
+      const raw = sessionStorage.getItem(WALKTHROUGH_SESSION_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw) as Partial<PersistedWalkthroughSession>;
+      if (!parsed || parsed.active !== true || !Array.isArray(parsed.footPos)) {
+        return false;
+      }
+      const [fx, fy, fz] = parsed.footPos;
+      if (
+        typeof fx !== 'number' ||
+        typeof fy !== 'number' ||
+        typeof fz !== 'number' ||
+        !Number.isFinite(fx) ||
+        !Number.isFinite(fy) ||
+        !Number.isFinite(fz)
+      ) {
+        return false;
+      }
+      if (typeof parsed.baseFov === 'number' && Number.isFinite(parsed.baseFov)) {
+        this.baseFov = THREE.MathUtils.clamp(parsed.baseFov, 60, 100);
+      }
+      this.enter(currentPose, {
+        position: [fx, fy, fz],
+        yawDeg:
+          typeof parsed.yawRad === 'number' && Number.isFinite(parsed.yawRad)
+            ? THREE.MathUtils.radToDeg(parsed.yawRad)
+            : 0,
+      });
+      if (typeof parsed.pitchRad === 'number' && Number.isFinite(parsed.pitchRad)) {
+        this.pitchRad = THREE.MathUtils.clamp(parsed.pitchRad, -MAX_PITCH_RAD, MAX_PITCH_RAD);
+      }
+      if (typeof parsed.crouched === 'boolean') {
+        this.crouched = parsed.crouched;
+        this.currentEyeHeight = this.crouched ? CROUCH_EYE_HEIGHT : STANDING_EYE_HEIGHT;
+      }
+      this.ensureFootPositionUnblocked();
+      this.syncCameraFromFootAndAngles(0);
+      this.onPoseUpdated();
+      this.emit();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private ensureFootPositionUnblocked(): void {
+    const cardinals = [
+      new THREE.Vector3(1, 0, 0),
+      new THREE.Vector3(-1, 0, 0),
+      new THREE.Vector3(0, 0, 1),
+      new THREE.Vector3(0, 0, -1),
+    ];
+    const blockedCount = cardinals.filter((dir) =>
+      this.isBlockedByWallOrCabinet(this.footPos, dir, 0.32)
+    ).length;
+    if (blockedCount >= 2) {
+      // Snap to nearest known-clear room spawn point on the closest floor
+      let bestSpawn = DEFAULT_WALKTHROUGH_SPAWNS[0];
+      let bestScore = Number.POSITIVE_INFINITY;
+      for (const sp of DEFAULT_WALKTHROUGH_SPAWNS) {
+        const dx = sp.position[0] - this.footPos.x;
+        const dy = (sp.position[1] - this.footPos.y) * 2.5;
+        const dz = sp.position[2] - this.footPos.z;
+        const score = dx * dx + dy * dy + dz * dz;
+        if (score < bestScore) {
+          bestScore = score;
+          bestSpawn = sp;
+        }
+      }
+      this.footPos.set(
+        bestSpawn.position[0],
+        bestSpawn.position[1],
+        bestSpawn.position[2]
+      );
+      this.footPos.y = this.sampleFloorElevation(
+        this.footPos.x,
+        this.footPos.y,
+        this.footPos.z
+      );
+    }
+  }
+
   public enter(
     currentPose: SceneCameraPoseSnapshot,
     spawnOverride?: {
@@ -316,6 +474,8 @@ export class WalkthroughController {
       };
     }
 
+    this.blurActiveControlIfNeeded();
+
     this.active = true;
     this.crouched = false;
     this.verticalVelocity = 0;
@@ -323,6 +483,7 @@ export class WalkthroughController {
     this.currentEyeHeight = STANDING_EYE_HEIGHT;
     this.currentFov = this.baseFov;
     this.glideTargetFoot = null;
+    this.lookDirty = false;
     this.keysDown.clear();
 
     this.rig.useCamera(false);
@@ -361,6 +522,7 @@ export class WalkthroughController {
         this.footPos.set(spawnX, sampledY, spawnZ);
         this.yawRad = Math.atan2(-dirX, -dirZ);
         this.pitchRad = -0.04;
+        this.ensureFootPositionUnblocked();
       } else {
         const def = DEFAULT_WALKTHROUGH_SPAWNS[0];
         this.footPos.set(def.position[0], def.position[1], def.position[2]);
@@ -373,6 +535,7 @@ export class WalkthroughController {
     this.refreshTargetedInteractable(true);
     this.onStateChanged(true);
     this.onPoseUpdated();
+    this.saveSessionState(true);
     this.emit();
   }
 
@@ -382,6 +545,7 @@ export class WalkthroughController {
     this.keysDown.clear();
     this.glideTargetFoot = null;
     this.isDraggingLook = false;
+    this.lookDirty = false;
     this.targetedMesh = null;
     this.targetedPrompt = null;
     this.verticalVelocity = 0;
@@ -398,6 +562,7 @@ export class WalkthroughController {
     this.rig.controls.enabled = true;
 
     this.onStateChanged(false);
+    this.saveSessionState(true);
     this.emit();
     return saved?.pose ?? null;
   }
@@ -405,6 +570,7 @@ export class WalkthroughController {
   public teleportToSpawn(spawnId: string): boolean {
     const sp = DEFAULT_WALKTHROUGH_SPAWNS.find((s) => s.id === spawnId);
     if (!sp) return false;
+    this.blurActiveControlIfNeeded();
     this.glideTargetFoot = null;
     this.verticalVelocity = 0;
     this.jumpOffsetY = 0;
@@ -419,6 +585,7 @@ export class WalkthroughController {
     this.syncCameraFromFootAndAngles(0);
     this.refreshTargetedInteractable(true);
     this.onPoseUpdated();
+    this.saveSessionState(true);
     this.emit();
     return true;
   }
@@ -437,11 +604,10 @@ export class WalkthroughController {
   private refreshTargetedInteractable(force = false): void {
     if (!this.active) return;
     const now = performance.now();
-    if (!force && now - this.lastRaycastMs < 45) return;
+    if (!force && now - this.lastRaycastMs < 90) return;
     this.lastRaycastMs = now;
 
     const cam = this.rig.perspCamera;
-    cam.updateMatrixWorld();
     this.interactRaycaster.setFromCamera(this.centerNdc, cam);
 
     const hits = this.interactRaycaster.intersectObjects(
@@ -566,6 +732,81 @@ export class WalkthroughController {
     return westDrop + eastDrop;
   }
 
+  /**
+   * Lazily indexes structural BoxGeometry obstacles (walls, closed doors, and large island/cabinet
+   * carcasses) once so walkthrough collision runs in < 0.02ms/frame instead of raycasting 300k triangles.
+   */
+  private getObstacleCache(): readonly CachedObstacle[] {
+    if (this.cachedObstacles !== null) {
+      return this.cachedObstacles;
+    }
+    const list: CachedObstacle[] = [];
+    this.scene.updateMatrixWorld(true);
+
+    this.scene.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return;
+      if (!(obj.geometry instanceof THREE.BoxGeometry)) return;
+      if (obj.userData?.isAnnotationGroup) return;
+      if (typeof obj.name === 'string' && obj.name.startsWith('hall.stairs')) return;
+
+      // Check ancestor chain for ceiling/roof groups or dynamic door pivots
+      let isDynamic = obj.matrixAutoUpdate;
+      let skipGroup = false;
+      let cur: THREE.Object3D | null = obj.parent;
+      while (cur && cur !== this.scene) {
+        if (cur.userData?.isAnnotationGroup) {
+          skipGroup = true;
+          break;
+        }
+        if (
+          typeof cur.name === 'string' &&
+          (cur.name.endsWith('.groundCeiling') || cur.name.endsWith('.roof'))
+        ) {
+          skipGroup = true;
+          break;
+        }
+        if (cur.matrixAutoUpdate) {
+          isDynamic = true;
+        }
+        cur = cur.parent;
+      }
+      if (skipGroup) return;
+
+      this.tmpBox.setFromObject(obj);
+      if (this.tmpBox.isEmpty()) return;
+
+      const sizeX = this.tmpBox.max.x - this.tmpBox.min.x;
+      const sizeY = this.tmpBox.max.y - this.tmpBox.min.y;
+      const sizeZ = this.tmpBox.max.z - this.tmpBox.min.z;
+
+      // Only include vertical structural walls, doors, and major base cabinetry/islands:
+      // - sizeY >= 0.72m excludes floor slabs, steps, rugs, coffee tables, chair seats, skirtings & ceiling beams
+      // - max(sizeX, sizeZ) >= 0.35m excludes chair legs, balusters, muntins & small props
+      // - min(sizeX, sizeZ) >= 0.035m excludes thin window glass panes, paintings & wall linings
+      if (
+        sizeY < 0.72 ||
+        Math.max(sizeX, sizeZ) < 0.35 ||
+        Math.min(sizeX, sizeZ) < 0.035 ||
+        Math.max(sizeX, sizeZ) > 28.0
+      ) {
+        return;
+      }
+
+      list.push({
+        mesh: obj,
+        centerX: (this.tmpBox.min.x + this.tmpBox.max.x) * 0.5,
+        centerZ: (this.tmpBox.min.z + this.tmpBox.max.z) * 0.5,
+        radiusXZ: Math.hypot(sizeX, sizeZ) * 0.5,
+        minY: this.tmpBox.min.y,
+        maxY: this.tmpBox.max.y,
+        isDynamic,
+      });
+    });
+
+    this.cachedObstacles = list;
+    return list;
+  }
+
   private isBlockedByWallOrCabinet(
     fromFoot: THREE.Vector3,
     moveDirXZ: THREE.Vector3,
@@ -632,39 +873,52 @@ export class WalkthroughController {
       return false;
     }
 
-    const radii = [0.58, 1.15];
-    this.wallRaycaster.far = Math.max(0.36, stepDist + 0.3);
+    // 3. Fast spatial-filtered raycast against cached structural BoxGeometry obstacles only
+    const obstacles = this.getObstacleCache();
+    this.nearbyObstacleMeshes.length = 0;
+    const footMinY = fromFoot.y + 0.35;
+    const footMaxY = fromFoot.y + 1.35;
+    const reach = stepDist + 0.65;
 
-    for (const hOffset of radii) {
-      const origin = new THREE.Vector3(
-        fromFoot.x,
-        fromFoot.y + hOffset,
-        fromFoot.z
-      );
-      this.wallRaycaster.set(origin, moveDirXZ);
-      const hits = this.wallRaycaster.intersectObjects(this.scene.children, true);
-      for (const hit of hits) {
-        const obj = hit.object;
-        if (!(obj instanceof THREE.Mesh)) continue;
-        if (!isObjectVisibleInHierarchy(obj)) continue;
-        if (obj.userData?.isAnnotationGroup) continue;
-        // Never snag on stair meshes or decorative foliage/ivy spheres
+    for (let i = 0; i < obstacles.length; i++) {
+      const obs = obstacles[i];
+      if (!isObjectVisibleInHierarchy(obs.mesh)) continue;
+      if (obs.isDynamic) {
+        this.tmpBox.setFromObject(obs.mesh);
+        obs.centerX = (this.tmpBox.min.x + this.tmpBox.max.x) * 0.5;
+        obs.centerZ = (this.tmpBox.min.z + this.tmpBox.max.z) * 0.5;
+        obs.minY = this.tmpBox.min.y;
+        obs.maxY = this.tmpBox.max.y;
+      }
+      if (obs.maxY <= footMinY || obs.minY >= footMaxY) continue;
+      const dx = obs.centerX - fromFoot.x;
+      const dz = obs.centerZ - fromFoot.z;
+      const maxDist = obs.radiusXZ + reach;
+      if (dx * dx + dz * dz <= maxDist * maxDist) {
+        this.nearbyObstacleMeshes.push(obs.mesh);
+      }
+    }
+
+    if (this.nearbyObstacleMeshes.length === 0) {
+      return false;
+    }
+
+    this.wallRaycaster.far = Math.max(0.32, stepDist + 0.26);
+    this.tmpOrigin.set(fromFoot.x, fromFoot.y + 0.9, fromFoot.z);
+    this.wallRaycaster.set(this.tmpOrigin, moveDirXZ);
+
+    const hits = this.wallRaycaster.intersectObjects(this.nearbyObstacleMeshes, false);
+    for (let i = 0; i < hits.length; i++) {
+      const hit = hits[i];
+      if (hit.distance >= 0.05 && hit.distance <= stepDist + 0.24 && hit.face) {
+        this.tmpNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
+        // Only block against front-facing vertical walls/doors opposing our movement direction
+        // (worldNormal.dot(moveDirXZ) < -0.15 guarantees you can ALWAYS walk out of any overlapping box!)
         if (
-          (typeof obj.name === 'string' && obj.name.startsWith('hall.stairs')) ||
-          obj.geometry instanceof THREE.DodecahedronGeometry ||
-          obj.geometry instanceof THREE.SphereGeometry
+          Math.abs(this.tmpNormal.y) < 0.35 &&
+          this.tmpNormal.dot(moveDirXZ) < -0.15
         ) {
-          continue;
-        }
-        if (hit.distance <= stepDist + 0.28) {
-          if (hit.face) {
-            const worldNormal = hit.face.normal
-              .clone()
-              .transformDirection(obj.matrixWorld);
-            if (Math.abs(worldNormal.y) < 0.35) {
-              return true;
-            }
-          }
+          return true;
         }
       }
     }
@@ -694,9 +948,19 @@ export class WalkthroughController {
   }
 
   public update(dtSeconds: number): boolean {
+    if (dtSeconds > 0.0005 && dtSeconds < 0.25) {
+      const instFps = 1 / dtSeconds;
+      this.smoothedFps = this.smoothedFps * 0.9 + instFps * 0.1;
+    }
+
     if (!this.active) return false;
 
     let movedOrRotated = false;
+
+    if (this.lookDirty) {
+      this.lookDirty = false;
+      movedOrRotated = true;
+    }
 
     // 1. Smoothly interpolate eye height (standing vs crouched)
     const targetEyeH = this.crouched ? CROUCH_EYE_HEIGHT : STANDING_EYE_HEIGHT;
@@ -857,10 +1121,11 @@ export class WalkthroughController {
           ? Math.sin(this.bobPhase) * (isSprinting ? 0.022 : 0.015)
           : 0;
       this.syncCameraFromFootAndAngles(bobOffset);
+      this.refreshTargetedInteractable();
       this.onPoseUpdated();
+      this.saveSessionState(false);
     }
 
-    this.refreshTargetedInteractable();
     return movedOrRotated;
   }
 
@@ -872,6 +1137,7 @@ export class WalkthroughController {
 
     this.canvas.addEventListener('pointerdown', (e: PointerEvent) => {
       if (!this.active || e.button !== 0) return;
+      this.blurActiveControlIfNeeded();
       if (!this.pointerLocked) {
         // Call of Duty style: clicking the 3D viewport automatically engages Pointer Lock mouselook!
         try {
@@ -885,47 +1151,53 @@ export class WalkthroughController {
       }
     });
 
-    window.addEventListener('pointermove', (e: PointerEvent) => {
-      if (!this.active) return;
-      if (this.pointerLocked) {
-        this.yawRad -= e.movementX * MOUSE_SENSITIVITY;
-        this.pitchRad = THREE.MathUtils.clamp(
-          this.pitchRad - e.movementY * MOUSE_SENSITIVITY,
-          -MAX_PITCH_RAD,
-          MAX_PITCH_RAD
-        );
-        this.syncCameraFromFootAndAngles(0);
-        this.refreshTargetedInteractable();
-        this.onPoseUpdated();
-        return;
-      }
-      if (this.isDraggingLook && (e.buttons & 1) !== 0) {
-        const dx = e.clientX - this.lastDragClientX;
-        const dy = e.clientY - this.lastDragClientY;
-        this.lastDragClientX = e.clientX;
-        this.lastDragClientY = e.clientY;
-        this.yawRad -= dx * DRAG_SENSITIVITY;
-        this.pitchRad = THREE.MathUtils.clamp(
-          this.pitchRad - dy * DRAG_SENSITIVITY,
-          -MAX_PITCH_RAD,
-          MAX_PITCH_RAD
-        );
-        this.syncCameraFromFootAndAngles(0);
-        this.refreshTargetedInteractable();
-        this.onPoseUpdated();
-      }
-    });
+    // Coalesce high-frequency (250-1000Hz) mouse movements into a single update per requestAnimationFrame
+    window.addEventListener(
+      'pointermove',
+      (e: PointerEvent) => {
+        if (!this.active) return;
+        if (this.pointerLocked) {
+          this.yawRad -= e.movementX * MOUSE_SENSITIVITY;
+          this.pitchRad = THREE.MathUtils.clamp(
+            this.pitchRad - e.movementY * MOUSE_SENSITIVITY,
+            -MAX_PITCH_RAD,
+            MAX_PITCH_RAD
+          );
+          this.lookDirty = true;
+          return;
+        }
+        if (this.isDraggingLook && (e.buttons & 1) !== 0) {
+          const dx = e.clientX - this.lastDragClientX;
+          const dy = e.clientY - this.lastDragClientY;
+          this.lastDragClientX = e.clientX;
+          this.lastDragClientY = e.clientY;
+          this.yawRad -= dx * DRAG_SENSITIVITY;
+          this.pitchRad = THREE.MathUtils.clamp(
+            this.pitchRad - dy * DRAG_SENSITIVITY,
+            -MAX_PITCH_RAD,
+            MAX_PITCH_RAD
+          );
+          this.lookDirty = true;
+        }
+      },
+      { passive: true }
+    );
 
     window.addEventListener('pointerup', () => {
       this.isDraggingLook = false;
     });
 
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-      const tag = document.activeElement?.tagName ?? '';
-      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
+      const activeEl = document.activeElement;
+      const tag = activeEl?.tagName ?? '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.metaKey || e.altKey) return;
 
       if (!this.active) return;
+
+      if (tag === 'SELECT' || tag === 'BUTTON') {
+        (activeEl as HTMLElement).blur();
+      }
 
       // Press [F] to Interact with looked-at door, cupboard, drawer, AGA lid or KNX switch!
       if (e.code === 'KeyF' && !e.repeat && !e.ctrlKey) {

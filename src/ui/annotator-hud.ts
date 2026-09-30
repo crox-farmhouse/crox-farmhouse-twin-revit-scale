@@ -428,32 +428,24 @@ export class AnnotatorHudController {
       }
     });
 
-    // Keyboard shortcuts when not typing in an input
+    // Keyboard shortcuts when actively in 3D Annotation Mode (never hijack W/A/S/D movement keys)
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (this.scene.isWalkthroughMode()) return;
+      if (this.scene.isWalkthroughMode() || !this.scene.isAnnotationMode()) return;
       const tag = document.activeElement?.tagName ?? '';
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       const key = e.key.toLowerCase();
-      if (key === 'a') {
-        e.preventDefault();
-        this.scene.toggleAnnotationMode();
-        this.syncModeAndToolButtonsUI();
-        this.renderInspectorBoxes(this.store.getSelectedRecord());
-      } else if (key === 'p') {
+      if (key === 'p') {
         e.preventDefault();
         this.selectTool('pin', true);
-      } else if (key === 'm' || key === 'w') {
+      } else if (key === 'm') {
         e.preventDefault();
         this.selectTool('move', true);
-      } else if (key === 'e') {
-        e.preventDefault();
-        this.selectTool('rotate', true);
       } else if (key === 'r') {
         e.preventDefault();
         this.selectTool('measure', true);
-      } else if (e.key === 'Escape' && this.scene.isAnnotationMode()) {
+      } else if (e.key === 'Escape') {
         if (this.liveMeasureState?.active) {
           this.scene.cancelActiveMeasurement();
         } else {

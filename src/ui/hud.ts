@@ -856,20 +856,43 @@ export class HudController {
     });
 
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-      const tag = document.activeElement?.tagName ?? '';
-      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
+      const activeEl = document.activeElement;
+      const tag = activeEl?.tagName ?? '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       if (e.code === 'KeyV' && !e.repeat) {
         e.preventDefault();
+        if (tag === 'SELECT' || tag === 'BUTTON') {
+          (activeEl as HTMLElement).blur();
+        }
         this.scene.toggleWalkthroughMode();
         this.syncWalkthroughUI();
         this.syncFloorModeUI();
-      } else if (e.code === 'KeyF' && !e.repeat && !this.scene.isWalkthroughMode()) {
-        // When in Orbit Mode, pressing F also enters First-Person Walkthrough!
-        // (Inside Walkthrough Mode, F is handled by WalkthroughController as "Interact".)
+      } else if (
+        (e.code === 'KeyF' ||
+          e.code === 'KeyW' ||
+          e.code === 'KeyA' ||
+          e.code === 'KeyS' ||
+          e.code === 'KeyD') &&
+        !e.repeat &&
+        !this.scene.isWalkthroughMode() &&
+        !this.scene.isAnnotationMode()
+      ) {
+        // Pressing F or WASD in Orbit Mode enters First-Person Walkthrough immediately!
         e.preventDefault();
+        if (tag === 'SELECT' || tag === 'BUTTON') {
+          (activeEl as HTMLElement).blur();
+        }
         this.scene.setWalkthroughMode(true);
+        if (
+          e.code === 'KeyW' ||
+          e.code === 'KeyA' ||
+          e.code === 'KeyS' ||
+          e.code === 'KeyD'
+        ) {
+          this.scene.getWalkthrough().pressKey(e.code);
+        }
         this.syncWalkthroughUI();
         this.syncFloorModeUI();
       } else if (
@@ -905,7 +928,8 @@ export class HudController {
     const focusedRoom = diag.rooms.find((r) => r.zoneId === diag.focusedZoneId);
     const roomName = (focusedRoom?.shortName ?? diag.focusedZoneId).toUpperCase();
     const sign = foot.y >= 0 ? '+' : '';
-    posReadout.textContent = `${roomName} · ${sign}${foot.y.toFixed(2)}m`;
+    const fps = wt.getSmoothedFps();
+    posReadout.textContent = `${roomName} · ${sign}${foot.y.toFixed(2)}m · ${fps} FPS`;
   }
 
   public syncWalkthroughUI(): void {

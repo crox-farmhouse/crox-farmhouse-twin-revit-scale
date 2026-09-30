@@ -36,6 +36,13 @@ export class CutawayController {
 
   private floorViewMode: FloorViewMode = 'ground';
   private ceilingCutaway = true;
+  private wasWalkthrough = false;
+  private allDynamicWallsShown = false;
+  private readonly lastWalkthroughLodPos = new THREE.Vector3(
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY
+  );
 
   public constructor(
     layers: PropertySceneLayers,
@@ -74,6 +81,7 @@ export class CutawayController {
   /** Indexes every object tagged with `userData.cutawayWall` under the scene, recording any parent wing/room container transform. */
   public collectDynamicCutawayWalls(): void {
     this.dynamicCutawayWallItems.length = 0;
+    this.allDynamicWallsShown = false;
     this.layers.scene.traverse((obj) => {
       const rawDescriptor = obj.userData?.cutawayWall as CutawayWallDescriptor | undefined;
       if (!rawDescriptor) return;
@@ -134,6 +142,35 @@ export class CutawayController {
 
     const cam = view.cameraPosition;
     const target = view.target;
+    const isWalkthrough = Boolean(view.isWalkthrough);
+
+    if (isWalkthrough) {
+      const enteredWalkthrough = !this.wasWalkthrough;
+      this.wasWalkthrough = true;
+      if (
+        enteredWalkthrough ||
+        this.lastWalkthroughLodPos.distanceToSquared(cam) >= 0.12
+      ) {
+        this.lastWalkthroughLodPos.copy(cam);
+        const walkthroughFloor: FloorViewMode = cam.y >= 2.15 ? 'first' : 'ground';
+        if (this.lodController.evaluateLod(cam, cam, walkthroughFloor)) {
+          needsRender = true;
+        }
+      }
+    } else {
+      if (this.wasWalkthrough) {
+        this.wasWalkthrough = false;
+        this.lastWalkthroughLodPos.set(
+          Number.POSITIVE_INFINITY,
+          Number.POSITIVE_INFINITY,
+          Number.POSITIVE_INFINITY
+        );
+      }
+      if (this.lodController.evaluateLod(cam, target, this.floorViewMode)) {
+        needsRender = true;
+      }
+    }
+
     const dx = target.x - cam.x;
     const dz = target.z - cam.z;
     const horizLen = Math.hypot(dx, dz);
@@ -146,19 +183,9 @@ export class CutawayController {
         ? view.orthoZoom <= 0.62
         : perspDist >= (isTopDownPlan ? 32.0 : 15.5));
 
-    if (
-      this.lodController.evaluateLod(
-        cam,
-        target,
-        view.isWalkthrough ? 'all' : this.floorViewMode
-      )
-    ) {
-      needsRender = true;
-    }
-
     const maxEyeY = this.floorViewMode === 'first' ? 4.05 : 1.85;
     const cameraInsideHouse =
-      Boolean(view.isWalkthrough) ||
+      isWalkthrough ||
       (!view.isOrthographic &&
         perspDist <= 4.35 &&
         cam.y <= maxEyeY &&
@@ -180,7 +207,7 @@ export class CutawayController {
       // Inside a single room at eye level or in 1st-person walkthrough: show overhead ceiling joists/beams & upstairs
       desiredGroundCeilingVis = true;
       desiredRoofVis = true;
-      desiredFirstFloorVis = Boolean(view.isWalkthrough) || cam.y >= 2.2 || this.floorViewMode !== 'ground';
+      desiredFirstFloorVis = isWalkthrough || cam.y >= 2.2 || this.floorViewMode !== 'ground';
     } else if (this.floorViewMode === 'all') {
       desiredFirstFloorVis = true;
       desiredGroundCeilingVis = true;
@@ -223,14 +250,19 @@ export class CutawayController {
         cutawayWallGroups.east.visible = true;
         changed = true;
       }
-      for (const item of this.dynamicCutawayWallItems) {
-        if (!item.obj.visible) {
-          item.obj.visible = true;
-          changed = true;
+      if (!this.allDynamicWallsShown) {
+        for (const item of this.dynamicCutawayWallItems) {
+          if (!item.obj.visible) {
+            item.obj.visible = true;
+            changed = true;
+          }
         }
+        this.allDynamicWallsShown = true;
       }
       return { needsRender: needsRender || changed, shadowsDirty: majorShellChanged };
     }
+
+    this.allDynamicWallsShown = false;
 
     // Transform camera & target into the Kitchen / East-West Wing container's local frame
     const kitchenChild = cutawayWallGroups.southWest.children[0];

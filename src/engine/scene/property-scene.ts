@@ -114,6 +114,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   private pointerDownPos = { x: 0, y: 0 };
 
   private readonly viewListeners = new Set<(view: PropertySceneViewState) => void>();
+  private lastWalkthroughViewNotifyMs = 0;
   private onSurfaceDoubleClick: ((point: THREE.Vector3) => void) | null = null;
   private onUsdPrimPick: ((info: UsdIndexedPrimInfo) => void) | null = null;
 
@@ -139,7 +140,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       powerPreference: 'high-performance',
     });
     this.renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.2));
+    this.renderer.setPixelRatio(1);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.shadowMap.autoUpdate = false;
@@ -198,12 +199,13 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
         this.interactions.describeInteractable(mesh, this.bifolds.isOpen()),
       onInteractWithMesh: (mesh) => this.triggerInteractiveObject(mesh),
       onStateChanged: () => {
-        this.updateCameraFacingWallCutaways();
+        this.lastWalkthroughViewNotifyMs = 0;
+        this.updateCameraFacingWallCutaways(true);
         this.renderer.shadowMap.needsUpdate = true;
         this.needsRender = true;
       },
       onPoseUpdated: () => {
-        this.updateCameraFacingWallCutaways();
+        this.updateCameraFacingWallCutaways(false);
         this.needsRender = true;
       },
     });
@@ -267,7 +269,8 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       onZoneLoadedFromUsda: () => {
         this.interactions.rebindAfterUsdZoneLoad([this.scene]);
         this.cutaways.collectDynamicCutawayWalls();
-        this.updateCameraFacingWallCutaways();
+        this.walkthrough.invalidateObstacleCache();
+        this.updateCameraFacingWallCutaways(true);
         this.freezeStaticMatrices();
         this.renderer.shadowMap.needsUpdate = true;
         this.needsRender = true;
@@ -278,9 +281,10 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       this.needsRender = true;
     });
 
-    this.updateCameraFacingWallCutaways();
+    this.updateCameraFacingWallCutaways(true);
     this.freezeStaticMatrices();
     this.setupInteractionEvents();
+    this.walkthrough.restoreFromSessionIfActive(this.getCurrentCameraPoseSnapshot());
   }
 
   // ---------------------------------------------------------------------------
@@ -407,13 +411,14 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     return next;
   }
 
-  private updateCameraFacingWallCutaways(): void {
+  private updateCameraFacingWallCutaways(forceNotifyView = false): void {
+    const isWalkthrough = this.walkthrough.isActive();
     const result = this.cutaways.update({
       cameraPosition: this.rig.getActiveCamera().position,
       target: this.rig.controls.target,
       isOrthographic: this.rig.isOrthographic(),
       orthoZoom: this.rig.orthoCamera.zoom,
-      isWalkthrough: this.walkthrough.isActive(),
+      isWalkthrough,
     });
     if (result.shadowsDirty) {
       this.renderer.shadowMap.needsUpdate = true;
@@ -422,6 +427,13 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       this.needsRender = true;
     }
     if (this.viewListeners.size > 0) {
+      if (isWalkthrough && !forceNotifyView) {
+        const now = performance.now();
+        if (now - this.lastWalkthroughViewNotifyMs < 150) {
+          return;
+        }
+        this.lastWalkthroughViewNotifyMs = now;
+      }
       const view = this.getViewState();
       for (const listener of this.viewListeners) {
         listener(view);
@@ -443,6 +455,9 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
   public setWalkthroughMode(enabled: boolean, spawnId?: string): boolean {
     if (enabled) {
+      if (this.annotations.isAnnotationMode()) {
+        this.annotations.setAnnotationMode(false);
+      }
       const spawn = spawnId
         ? DEFAULT_WALKTHROUGH_SPAWNS.find((s) => s.id === spawnId)
         : undefined;
@@ -866,7 +881,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
     let lastHoverRaycastMs = 0;
     this.canvas.addEventListener('pointermove', (e: PointerEvent) => {
-      if (this.annotations.isGizmoDragging()) return;
+      if (this.walkthrough.isActive() || this.annotations.isGizmoDragging()) return;
 
       // Live 3D measurement rubber-band line preview when waiting for Point B
       if (this.annotations.isAwaitingMeasureEnd() && e.buttons === 0) {
