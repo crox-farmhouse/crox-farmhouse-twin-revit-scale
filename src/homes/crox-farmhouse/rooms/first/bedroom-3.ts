@@ -56,8 +56,8 @@ export function buildBedroom3(
   addUpperInteriorWall(-19.85, floorTopY, upperWallTopY, 7.925, 1.2, 0.45, warmRoomPlasterMat);
 
   // South Load-Bearing Cross-Wall between Bedroom 3 / Upper Corridor and Bedroom 4
-  // (0.24m thick, Z = +8.15m..+8.39m, X = -17.39m..-22.19m) with doorway at X = -18.12m
-  addUpperInteriorWall(-17.53, floorTopY, upperWallTopY, 8.27, 0.28, 0.24, warmRoomPlasterMat);
+  // (0.24m thick, Z = +8.15m..+8.39m, X = -17.23m..-22.19m) with doorway at X = -18.12m
+  addUpperInteriorWall(-17.45, floorTopY, upperWallTopY, 8.27, 0.44, 0.24, warmRoomPlasterMat);
   addUpperInteriorWall(-20.38, floorTopY, upperWallTopY, 8.27, 3.62, 0.24, warmRoomPlasterMat);
   addUpperInteriorWall(-18.12, floorTopY + doorH, upperWallTopY, 8.27, 0.9, 0.24, warmRoomPlasterMat);
   addUpperInteractiveDoor('x', 8.27, 0.24, -18.12, 0.9, Math.PI * 0.48);

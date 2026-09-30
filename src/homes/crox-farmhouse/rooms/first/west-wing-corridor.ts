@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildAngledWallSegment, buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
+import { buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
@@ -12,22 +12,19 @@ export function buildWestWingCorridor(
   kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addUpperBrickWallAlongZWithWindow' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
 ): void {
-  const { firstFloorMeshGroup: scene, interactions } = ctx;
+  const { firstFloorMeshGroup: scene } = ctx;
   const {
     addUpperBrickWallAlongZWithWindow,
     addUpperInteractiveDoor,
     addUpperInteriorWall,
-    antiqueOakSkirtingMat,
     bathroomTileMat,
     brassMat,
     ceramicWhiteMat,
     doorH,
-    exteriorBrickMat,
     floorBaseY,
     floorTopY,
     oakFloorMat,
     upperWallTopY,
-    wallCapMat,
     wardrobeMat,
     warmRoomPlasterMat,
     windowGlassMat,
@@ -35,19 +32,17 @@ export function buildWestWingCorridor(
   // =========================================================================
   // 5. WEST WING UPPER CORRIDOR, TRAPEZOIDAL SHOWER ROOM & WALK-IN CUPBOARD
   //    Directly above the tapering Front Entrance Hallway (`entranceHall`):
-  //    - North boundary: straight angled wall [-22.19, 1.905] -> [-18.84, 2.353] -> [-17.891, 2.48] -> [-16.92, 2.61]
+  //    - North boundary: straight angled wall [-22.19, 1.905] -> [-18.84, 2.353] -> [-17.891, 2.48] -> [-16.83, 2.622]
   //    - Shower Room South wall at Z = +3.625m (directly above entranceHall South wall!)
   // =========================================================================
-  // Upper Corridor polygonal floor along East Courtyard wall
+  // Upper Corridor polygonal floor along the flat angled East Courtyard wall (Issue #2)
   buildPolygonalFloorSlab(
     scene,
     [
       [-18.84, 2.353],
       [-17.891, 2.48],
-      [-16.92, 2.61],
-      [-17.0, 3.625],
-      [-17.39, 3.625],
-      [-17.39, 8.27],
+      [-16.97, 2.61],
+      [-17.23, 8.27],
       [-18.84, 8.27],
     ],
     floorTopY,
@@ -85,45 +80,12 @@ export function buildWestWingCorridor(
     2
   );
 
-  // 80cm East Return Wall of Upper Corridor ([-16.92, 2.61] -> [-17.00, 3.625], directly above Front Entrance Hallway East return!)
-  buildAngledWallSegment(scene, interactions, {
-    start: [-16.92, 2.61],
-    end: [-17.0, 3.625],
-    thickness: 0.28,
-    topY: upperWallTopY,
-    frontFloorY: floorTopY,
-    backFloorY: floorTopY,
-    wallMaterial: exteriorBrickMat,
-    frontFaceMaterial: warmRoomPlasterMat,
-    backFaceMaterial: exteriorBrickMat,
-    capMaterial: wallCapMat,
-    skirtingMaterial: antiqueOakSkirtingMat,
-    addFrontSkirting: true,
-    addBackSkirting: false,
-  });
-  // Short Courtyard Step-In Return Wall ([-17.00, 3.625] -> [-17.39, 3.625])
-  buildAngledWallSegment(scene, interactions, {
-    start: [-17.0, 3.625],
-    end: [-17.39, 3.625],
-    thickness: 0.28,
-    topY: upperWallTopY,
-    frontFloorY: floorTopY,
-    backFloorY: floorTopY,
-    wallMaterial: exteriorBrickMat,
-    frontFaceMaterial: warmRoomPlasterMat,
-    backFaceMaterial: exteriorBrickMat,
-    capMaterial: wallCapMat,
-    skirtingMaterial: antiqueOakSkirtingMat,
-    addFrontSkirting: true,
-    addBackSkirting: false,
-  });
-
-  // East Courtyard Exterior Brick Wall along the West Wing Upper Corridor (X = -17.39m..-17.11m, Z = +3.625m..+8.15m)
+  // Continuous Flat East Courtyard Exterior Brick Wall along the West Wing Upper Corridor (Z = +2.61m..+8.15m, Issue #1 & Issue #2)
   // With 3-pane Georgian casement window centered at Z = +5.92m (visible in Photo 1 & Photo 3!)
   addUpperBrickWallAlongZWithWindow(
     -17.39,
     -17.11,
-    3.625,
+    2.61,
     8.15,
     5.92,
     1.45,

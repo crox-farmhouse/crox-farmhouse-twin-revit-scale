@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
 import { createWelshSlateRoofTexture } from '../../../../engine/textures/procedural-textures.ts';
 import {
   MAIN_EAST_WING_ROTATION_Y,
@@ -94,19 +95,24 @@ export function buildFirstFloorCeilingsAndRoof(
   ewUpperCeiling.receiveShadow = true;
   ewCeilingMeshGroup.add(ewUpperCeiling);
 
-  const nsUpperCeiling = new THREE.Mesh(
-    new THREE.BoxGeometry(5.28, 0.03, 9.48),
-    upperCeilingMat
+  buildPolygonalFloorSlab(
+    ceilingMeshGroup,
+    [
+      [-22.32, 1.9],
+      [-16.82, 2.61],
+      [-17.24, 11.58],
+      [-22.32, 11.58],
+    ],
+    upperWallTopY + 0.027,
+    0.03,
+    upperCeilingMat,
+    0.5
   );
-  nsUpperCeiling.position.set(-19.68, upperWallTopY + 0.012, 6.84);
-  nsUpperCeiling.castShadow = true;
-  nsUpperCeiling.receiveShadow = true;
-  ceilingMeshGroup.add(nsUpperCeiling);
 
   // -------------------------------------------------------------------------
   // B. Mathematically Exact Coplanar L-Plan Roof Slope Builder
-  //    Constructs a 3D prism roof facet from 4 coplanar world-space points
-  //    `p0, p1` (along ridge at Y = 6.04m) and `p2, p3` (along eaves at Y = 4.40m)
+  //    Constructs a 3D prism roof facet from 4 world-space points
+  //    `p0, p1` (along ridge at Y = 5.82m) and `p2, p3` (along eaves at Y = 4.18m)
   //    ordered counter-clockwise when viewed from above (+Y).
   //    Eliminates all L-corner overlap and guarantees horizontal slate courses!
   // -------------------------------------------------------------------------
@@ -117,8 +123,12 @@ export function buildFirstFloorCeilingsAndRoof(
     p3: THREE.Vector3,
     thickness: number
   ): THREE.Mesh => {
-    // uVec runs horizontally along the eave edge (p3 -> p2)
-    const uVec = new THREE.Vector3().subVectors(p2, p3).normalize();
+    // uVec runs horizontally along the eave edge (p3 -> p2), falling back to the ridge edge (p0 -> p1) when p2 === p3 (triangular facet)
+    const eaveEdge = new THREE.Vector3().subVectors(p2, p3);
+    const uVec =
+      eaveEdge.lengthSq() > 1e-4
+        ? eaveEdge.normalize()
+        : new THREE.Vector3().subVectors(p0, p1).normalize();
     // Raw vector from eave (p3) up to ridge (p0)
     const eaveToRidge = new THREE.Vector3().subVectors(p0, p3);
     // Project out any uVec component to get the exact up-slope unit vector vVec
@@ -149,11 +159,16 @@ export function buildFirstFloorCeilingsAndRoof(
       a: THREE.Vector3,
       b: THREE.Vector3,
       c: THREE.Vector3,
-      faceNormal: THREE.Vector3
+      fallbackNormal: THREE.Vector3
     ): void => {
+      const triNormal = new THREE.Vector3()
+        .subVectors(b, a)
+        .cross(new THREE.Vector3().subVectors(c, a));
+      const n =
+        triNormal.lengthSq() > 1e-8 ? triNormal.normalize() : fallbackNormal;
       for (const v of [a, b, c]) {
         positions.push(v.x, v.y, v.z);
-        normals.push(faceNormal.x, faceNormal.y, faceNormal.z);
+        normals.push(n.x, n.y, n.z);
         const rel = new THREE.Vector3().subVectors(v, p3);
         uvs.push(rel.dot(uVec) / tileU, rel.dot(vVec) / tileV);
       }
@@ -219,14 +234,18 @@ export function buildFirstFloorCeilingsAndRoof(
   const ewNorthEaveZ = -3.0;
   const ewSouthEaveZ = 2.9;
   const ewEastGableX = -4.4;
+  // Local East-West X where the East-West ridge (z_ew = -0.05) meets the North-South ridge (world X = -19.79m)
+  const ewRidgeJunctionLocalX = -20.162;
+  // Local East-West X where the East-West South eave (z_ew = 2.90m) meets the angled East Courtyard eave (0.22m East of the brick wall)
+  const ewCourtyardValleyLocalX = -16.435;
 
   // Key 3D Roof Junction Points (transformed from East-West Wing local frame into world space):
-  const pRidgeJunction = transformEastWingPoint(nsRidgeX, ridgeY, ewRidgeZ);
+  const pRidgeJunction = transformEastWingPoint(ewRidgeJunctionLocalX, ridgeY, ewRidgeZ);
   const pRidgeEastGable = transformEastWingPoint(ewEastGableX, ridgeY, ewRidgeZ);
   const pRidgeNorthGable = new THREE.Vector3(nsRidgeX, ridgeY, northGableRidgeZ);
   const pRidgeSouthGable = new THREE.Vector3(nsRidgeX, ridgeY, southGableZ);
 
-  const pCourtyardValleyEave = transformEastWingPoint(eastEaveX, eaveY, ewSouthEaveZ);
+  const pCourtyardValleyEave = transformEastWingPoint(ewCourtyardValleyLocalX, eaveY, ewSouthEaveZ);
   const pNorthValleyEave = transformEastWingPoint(eastEaveX, eaveY, ewNorthEaveZ);
   const pEastGableSouthEave = transformEastWingPoint(ewEastGableX, eaveY, ewSouthEaveZ);
   const pEastGableNorthEave = transformEastWingPoint(ewEastGableX, eaveY, ewNorthEaveZ);
@@ -279,14 +298,14 @@ export function buildFirstFloorCeilingsAndRoof(
   // -------------------------------------------------------------------------
   // C. Lead Ridge Caps & Lead-Lined Valley Flashing Channels (Photos 1 & 2)
   // -------------------------------------------------------------------------
-  // East-West Lead Ridge Roll Cap (X = -19.79m to -4.40m at local Z = ewRidgeZ, Y = 5.83m)
-  const ewRidgeLen = ewEastGableX - nsRidgeX;
+  // East-West Lead Ridge Roll Cap (local X = -20.162m to -4.40m at local Z = ewRidgeZ, Y = 5.83m)
+  const ewRidgeLen = ewEastGableX - ewRidgeJunctionLocalX;
   const ewRidgeCap = new THREE.Mesh(
     new THREE.CylinderGeometry(0.062, 0.062, ewRidgeLen + 0.04, 16, 1, false, 0, Math.PI),
     ridgeLeadMat
   );
   ewRidgeCap.rotation.z = Math.PI / 2;
-  ewRidgeCap.position.set((nsRidgeX + ewEastGableX) / 2, ridgeY + 0.01, ewRidgeZ);
+  ewRidgeCap.position.set((ewRidgeJunctionLocalX + ewEastGableX) / 2, ridgeY + 0.01, ewRidgeZ);
   ewRidgeCap.castShadow = true;
   ewCeilingMeshGroup.add(ewRidgeCap);
 
@@ -345,14 +364,16 @@ export function buildFirstFloorCeilingsAndRoof(
   }
 
   // -------------------------------------------------------------------------
-  // D. Three Brick Gable Triangles (East, North & South) + White Painted Bargeboards,
-  //    Eaves Fascias, Pale Sage-Green Half-Round Gutters & Cast-Iron Downpipes
+  // D. Three Brick Gable Pentagons (East, North & South) + White Painted Bargeboards,
+  //    Boxed Eaves Soffits, Fascias, Pale Sage-Green Half-Round Gutters & Cast-Iron Downpipes
   // -------------------------------------------------------------------------
-  // 1. East Gable Brick Triangle at local X = -4.64m..-4.40m (above Main Bedroom East wall, Y = 4.38m..5.82m)
+  // 1. East Gable Brick Pentagon at local X = -4.64m..-4.40m (above Main Bedroom East wall, Y = 4.16m..5.82m)
   const ewEastGableShape = new THREE.Shape();
   ewEastGableShape.moveTo(-2.63, 0);
   ewEastGableShape.lineTo(2.78, 0);
+  ewEastGableShape.lineTo(2.78, 0.11);
   ewEastGableShape.lineTo(0.05, ridgeY - upperWallTopY);
+  ewEastGableShape.lineTo(-2.63, 0.11);
   ewEastGableShape.closePath();
   const ewEastGableGeo = new THREE.ExtrudeGeometry(ewEastGableShape, {
     depth: 0.24,
@@ -366,17 +387,21 @@ export function buildFirstFloorCeilingsAndRoof(
   ewEastGable.receiveShadow = true;
   ewCeilingMeshGroup.add(ewEastGable);
 
-  // 2. North Gable Brick Triangle above Bedroom 2 collinear North wall ([-22.47, -3.359] -> [-17.11, -2.642])
+  // 2. North Gable Brick Pentagon above Bedroom 2 collinear North wall ([-22.47, -3.359] -> [-17.11, -2.642])
   const nsGableShape = new THREE.Shape();
   nsGableShape.moveTo(-22.47, 0);
   nsGableShape.lineTo(-17.11, 0);
+  nsGableShape.lineTo(-17.11, 0.11);
   nsGableShape.lineTo(nsRidgeX, ridgeY - upperWallTopY);
+  nsGableShape.lineTo(-22.47, 0.11);
   nsGableShape.closePath();
 
   const nsNorthGableLocalShape = new THREE.Shape();
   nsNorthGableLocalShape.moveTo(-2.68, 0);
   nsNorthGableLocalShape.lineTo(2.68, 0);
+  nsNorthGableLocalShape.lineTo(2.68, 0.11);
   nsNorthGableLocalShape.lineTo(0, ridgeY - upperWallTopY);
+  nsNorthGableLocalShape.lineTo(-2.68, 0.11);
   nsNorthGableLocalShape.closePath();
 
   const nsNorthGableGeo = new THREE.ExtrudeGeometry(nsNorthGableLocalShape, {
@@ -396,7 +421,7 @@ export function buildFirstFloorCeilingsAndRoof(
   nsNorthGable.receiveShadow = true;
   ceilingMeshGroup.add(nsNorthGable);
 
-  // 3. South Gable Brick Triangle at Z = +11.49m..+11.77m (above Bedroom 4 South wall, Y = 4.38m..5.82m)
+  // 3. South Gable Brick Pentagon at Z = +11.49m..+11.77m (above Bedroom 4 South wall, Y = 4.16m..5.82m)
   const nsSouthGableGeo = new THREE.ExtrudeGeometry(nsGableShape, {
     depth: 0.28,
     bevelEnabled: false,
@@ -408,7 +433,7 @@ export function buildFirstFloorCeilingsAndRoof(
   nsSouthGable.receiveShadow = true;
   ceilingMeshGroup.add(nsSouthGable);
 
-  // White Painted Verge Bargeboards along all 3 Gables (East, North & South)
+  // White Painted Verge Bargeboards along all 3 Gables (East, North & South) using an exact right-handed orthonormal basis (Issue #3)
   const addVergeBargeboard = (
     pStart: THREE.Vector3,
     pEnd: THREE.Vector3,
@@ -416,13 +441,21 @@ export function buildFirstFloorCeilingsAndRoof(
   ): void => {
     const len = pStart.distanceTo(pEnd);
     const mid = new THREE.Vector3().addVectors(pStart, pEnd).multiplyScalar(0.5);
-    const dir = new THREE.Vector3().subVectors(pEnd, pStart).normalize();
+    const xAxis = new THREE.Vector3().subVectors(pEnd, pStart).normalize();
+    const horizLen = Math.hypot(xAxis.x, xAxis.z);
+    const zAxis =
+      horizLen > 1e-5
+        ? new THREE.Vector3(-xAxis.z / horizLen, 0, xAxis.x / horizLen)
+        : new THREE.Vector3(0, 0, 1);
+    const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
+    const basisMat = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+
     const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.038, 0.15, len + 0.04),
+      new THREE.BoxGeometry(len + 0.04, 0.15, 0.038),
       soffitFasciaMat
     );
     mesh.position.set(mid.x, mid.y - 0.05, mid.z);
-    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+    mesh.quaternion.setFromRotationMatrix(basisMat);
     mesh.castShadow = true;
     targetGroup.add(mesh);
   };
@@ -452,27 +485,14 @@ export function buildFirstFloorCeilingsAndRoof(
       new THREE.Vector3(eastEaveX, eaveY, southGableZ - 0.01),
     ],
   ] as const) {
-    for (const eavePt of [westPt, eastPt]) {
-      const len = ridgePt.distanceTo(eavePt);
-      const mid = new THREE.Vector3().addVectors(ridgePt, eavePt).multiplyScalar(0.5);
-      const angleZ = Math.atan2(ridgePt.y - eavePt.y, ridgePt.x - eavePt.x);
-      const angleY = -Math.atan2(ridgePt.z - eavePt.z, ridgePt.x - eavePt.x);
-      const barge = new THREE.Mesh(
-        new THREE.BoxGeometry(len + 0.04, 0.15, 0.038),
-        soffitFasciaMat
-      );
-      barge.position.set(mid.x, mid.y - 0.05, mid.z);
-      barge.rotation.y = angleY;
-      barge.rotation.z = angleZ;
-      barge.castShadow = true;
-      ceilingMeshGroup.add(barge);
-    }
+    addVergeBargeboard(westPt, ridgePt, ceilingMeshGroup);
+    addVergeBargeboard(eastPt, ridgePt, ceilingMeshGroup);
   }
 
-  // White Painted Eaves Fascia Boards & Pale Sage-Green Half-Round Gutters at Y = 4.18m (Issue #11)
+  // White Painted Eaves Fascia Boards, Boxed Eaves Soffits & Pale Sage-Green Half-Round Gutters at Y = 4.18m (Issue #11 & Issue #3)
   for (const [fasciaZ, signZ, spanX, midX] of [
-    [ewNorthEaveZ + 0.02, -1, 12.49, -10.645], // East-West North eaves (local X = -16.89m..-4.40m)
-    [ewSouthEaveZ - 0.02, 1, 12.49, -10.645],  // East-West South courtyard eaves (local X = -16.89m..-4.40m)
+    [ewNorthEaveZ + 0.02, -1, 12.49, -10.645],   // East-West North eaves (local X = -16.89m..-4.40m)
+    [ewSouthEaveZ - 0.02, 1, 12.035, -10.4175],  // East-West South courtyard eaves (local X = -16.435m..-4.40m)
   ] as const) {
     const fascia = new THREE.Mesh(
       new THREE.BoxGeometry(spanX, 0.15, 0.024),
@@ -481,6 +501,13 @@ export function buildFirstFloorCeilingsAndRoof(
     fascia.position.set(midX, eaveY - 0.04, fasciaZ);
     fascia.castShadow = true;
     ewCeilingMeshGroup.add(fascia);
+
+    const soffit = new THREE.Mesh(
+      new THREE.BoxGeometry(spanX, 0.022, 0.24),
+      soffitFasciaMat
+    );
+    soffit.position.set(midX, eaveY - 0.105, fasciaZ - signZ * 0.11);
+    ewCeilingMeshGroup.add(soffit);
 
     const gutter = new THREE.Mesh(
       new THREE.CylinderGeometry(0.056, 0.056, spanX, 14, 1, true, Math.PI, Math.PI),
@@ -492,30 +519,74 @@ export function buildFirstFloorCeilingsAndRoof(
     ewCeilingMeshGroup.add(gutter);
   }
 
-  const eastCourtyardSpanZ = southGableZ - pCourtyardValleyEave.z;
-  const eastCourtyardMidZ = (pCourtyardValleyEave.z + southGableZ) * 0.5;
+  // West Front Eaves Fascia, Soffit & Gutter (straight along X = westEaveX = -22.69m)
   const westFrontSpanZ = southGableZ - northGableZ;
   const westFrontMidZ = (northGableZ + southGableZ) * 0.5;
-  for (const [fasciaX, signX, spanZ, midZ] of [
-    [westEaveX + 0.02, -1, westFrontSpanZ, westFrontMidZ], // West Front eaves
-    [eastEaveX - 0.02, 1, eastCourtyardSpanZ, eastCourtyardMidZ], // East Courtyard eaves
-  ] as const) {
-    const fascia = new THREE.Mesh(
-      new THREE.BoxGeometry(0.024, 0.15, spanZ),
+  {
+    const westFasciaX = westEaveX + 0.02;
+    const westFascia = new THREE.Mesh(
+      new THREE.BoxGeometry(0.024, 0.15, westFrontSpanZ),
       soffitFasciaMat
     );
-    fascia.position.set(fasciaX, eaveY - 0.04, midZ);
-    fascia.castShadow = true;
-    ceilingMeshGroup.add(fascia);
+    westFascia.position.set(westFasciaX, eaveY - 0.04, westFrontMidZ);
+    westFascia.castShadow = true;
+    ceilingMeshGroup.add(westFascia);
 
-    const gutter = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.056, 0.056, spanZ, 14, 1, true, Math.PI, Math.PI),
+    const westSoffit = new THREE.Mesh(
+      new THREE.BoxGeometry(0.24, 0.022, westFrontSpanZ),
+      soffitFasciaMat
+    );
+    westSoffit.position.set(westFasciaX + 0.11, eaveY - 0.105, westFrontMidZ);
+    ceilingMeshGroup.add(westSoffit);
+
+    const westGutter = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.056, 0.056, westFrontSpanZ, 14, 1, true, Math.PI, Math.PI),
       gutterPaleGreenMat
     );
-    gutter.name = 'mainHouse.gutter.ns';
-    gutter.rotation.x = Math.PI / 2;
-    gutter.position.set(fasciaX + signX * 0.068, eaveY - 0.01, midZ);
-    ceilingMeshGroup.add(gutter);
+    westGutter.name = 'mainHouse.gutter.ns';
+    westGutter.rotation.x = Math.PI / 2;
+    westGutter.position.set(westFasciaX - 0.068, eaveY - 0.01, westFrontMidZ);
+    ceilingMeshGroup.add(westGutter);
+  }
+
+  // East Courtyard Eaves Fascia, Soffit & Gutter (aligned with the -2.63° angled East Courtyard wall from pCourtyardValleyEave to southGableZ — Issue #3)
+  {
+    const eastEaveDx = eastEaveX - pCourtyardValleyEave.x;
+    const eastEaveDz = southGableZ - pCourtyardValleyEave.z;
+    const eastCourtyardSpanLen = Math.hypot(eastEaveDx, eastEaveDz);
+    const eastCourtyardAngleY = Math.atan2(eastEaveDx, eastEaveDz);
+    const eastCourtyardMidX = (pCourtyardValleyEave.x + eastEaveX) * 0.5;
+    const eastCourtyardMidZ = (pCourtyardValleyEave.z + southGableZ) * 0.5;
+
+    const eastEaveGroup = new THREE.Group();
+    eastEaveGroup.position.set(eastCourtyardMidX, 0, eastCourtyardMidZ);
+    eastEaveGroup.rotation.y = eastCourtyardAngleY;
+
+    const eastFascia = new THREE.Mesh(
+      new THREE.BoxGeometry(0.024, 0.15, eastCourtyardSpanLen),
+      soffitFasciaMat
+    );
+    eastFascia.position.set(-0.02, eaveY - 0.04, 0);
+    eastFascia.castShadow = true;
+    eastEaveGroup.add(eastFascia);
+
+    const eastSoffit = new THREE.Mesh(
+      new THREE.BoxGeometry(0.24, 0.022, eastCourtyardSpanLen),
+      soffitFasciaMat
+    );
+    eastSoffit.position.set(-0.13, eaveY - 0.105, 0);
+    eastEaveGroup.add(eastSoffit);
+
+    const eastGutter = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.056, 0.056, eastCourtyardSpanLen, 14, 1, true, Math.PI, Math.PI),
+      gutterPaleGreenMat
+    );
+    eastGutter.name = 'mainHouse.gutter.ns';
+    eastGutter.rotation.x = Math.PI / 2;
+    eastGutter.position.set(0.048, eaveY - 0.01, 0);
+    eastEaveGroup.add(eastGutter);
+
+    ceilingMeshGroup.add(eastEaveGroup);
   }
 
   // Two-Storey Cast-Iron Rainwater Downpipes with Hoppers, Pipe Collars & Shoes (Issues #11 & #12)

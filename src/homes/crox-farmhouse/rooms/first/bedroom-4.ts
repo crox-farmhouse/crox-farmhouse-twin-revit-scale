@@ -23,17 +23,15 @@ export function buildBedroom4(
     floorBaseY,
     floorTopY,
     oakFloorMat,
-    tagUpperCutawayWall,
     upperWallTopY,
     wardrobeMat,
     warmRoomPlasterMat,
-    windowFrameMat,
   } = kit;
   // =========================================================================
   // 7. BEDROOM 4 (4.95m x 3.20m / 16'3" x 10'6")
-  //    Directly above Study & Study Lobby: X = -17.39m..-22.19m, Z = +8.39m..+11.49m
+  //    Directly above Study & Study Lobby: X = -17.25m..-22.19m, Z = +8.39m..+11.49m
   // =========================================================================
-  addFirstFloorSlab(-22.19, -17.39, 8.39, 11.49, oakFloorMat);
+  addFirstFloorSlab(-22.19, -17.25, 8.39, 11.49, oakFloorMat);
 
   // West Front Exterior Brick Wall of Bedroom 4 (X = -22.47m..-22.19m, Z = +8.39m..+11.77m)
   // With 3-pane Georgian casement window centered at Z = +9.94m (rightmost upper window on West front facade in Photo 2!)
@@ -51,26 +49,11 @@ export function buildBedroom4(
   );
 
   // South Exterior Brick Gable Wall of Bedroom 4 (Z = +11.49m..+11.77m, X = -22.47m..-17.11m, Y = 2.06m..4.16m)
-  // Flush continuous exterior brickwork with the white arched feature plaque seen in Photo 1 & Photo 2,
-  // and Chimney Breast projecting INSIDE Bedroom 4 (Issue #8: flush outside, chimney breast inside the house!)
+  // Flush continuous exterior brickwork with Chimney Breast projecting INSIDE Bedroom 4 (Issue #8 & Issue #4)
   addUpperExteriorBrickWall(-22.47, -17.11, 11.49, 11.77, floorBaseY, upperWallTopY, 'north');
   addUpperInteriorWall(-19.79, floorTopY, upperWallTopY, 11.29, 0.96, 0.4, warmRoomPlasterMat);
 
-  const southPlaque = new THREE.Mesh(
-    new THREE.BoxGeometry(0.58, 0.42, 0.03),
-    windowFrameMat
-  );
-  southPlaque.position.set(-19.79, 3.1, 11.78);
-  tagUpperCutawayWall(southPlaque, {
-    axis: 'z',
-    coord: 11.63,
-    minSpan: -22.47,
-    maxSpan: -17.11,
-    floor: 'first',
-  });
-  scene.add(southPlaque);
-
-  // East Courtyard Exterior Brick Wall of Bedroom 4 (X = -17.39m..-17.11m, Z = +8.15m..+11.77m, Y = 2.28m..4.38m)
+  // East Courtyard Exterior Brick Wall of Bedroom 4 (X = -17.39m..-17.11m, Z = +8.15m..+11.77m, Y = 2.06m..4.16m)
   addUpperExteriorBrickWall(-17.39, -17.11, 8.15, 11.77, floorBaseY, upperWallTopY, 'west');
 
   // Built-in corner cupboard in NE corner of Bedroom 4 (X = -17.39m..-18.35m, Z = +8.39m..+9.15m)

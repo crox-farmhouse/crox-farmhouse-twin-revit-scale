@@ -165,6 +165,27 @@ export function createFirstFloorShellKit(
     }
   };
 
+  // Continuous subtle angle (-2.63°) for the East Courtyard Wall of the West Wing
+  // running in one unbroken straight line from [-16.82, 2.40] (Hall South corner) to [-17.25, 11.77] (Bedroom 4 / Plant Room SE corner)
+  const eastCourtyardWallSlopeXPerZ = (-17.25 - -16.82) / (11.77 - 2.4); // -0.04589114
+  const getEastCourtyardWallCenterX = (wz: number): number =>
+    -16.82 + eastCourtyardWallSlopeXPerZ * (wz - 2.4);
+  const shearGeometryAlongZ = <T extends THREE.BufferGeometry>(
+    geo: T,
+    slopeXPerZ: number
+  ): T => {
+    if (Math.abs(slopeXPerZ) < 1e-6) return geo;
+    const pos = geo.attributes.position;
+    if (pos) {
+      for (let i = 0; i < pos.count; i++) {
+        pos.setX(i, pos.getX(i) + slopeXPerZ * pos.getZ(i));
+      }
+      pos.needsUpdate = true;
+      geo.computeVertexNormals();
+    }
+    return geo;
+  };
+
   /**
    * Builds a 0.28m First Floor exterior brick wall segment (`Y = 3.00m..5.70m`) with world-space
    * Imperial Brick UVs on the exterior faces and warm plaster + antique oak skirting on the interior face.
@@ -181,16 +202,24 @@ export function createFirstFloorShellKit(
     const w = maxX - minX;
     const d = maxZ - minZ;
     const h = yTop - yBottom;
-    const cx = (minX + maxX) / 2;
+    const rawCx = (minX + maxX) / 2;
     const cy = (yBottom + yTop) / 2;
     const cz = (minZ + maxZ) / 2;
-    const descriptor: CutawayWallDescriptor =
-      interiorSide === 'north' || interiorSide === 'south'
-        ? { axis: 'z', coord: cz, minSpan: minX, maxSpan: maxX, floor: 'first' }
-        : { axis: 'x', coord: cx, minSpan: minZ, maxSpan: maxZ, floor: 'first' };
+    const isAlongX = interiorSide === 'north' || interiorSide === 'south';
+    const isAngledEastCourtyardWall =
+      !isAlongX && interiorSide === 'west' && rawCx > -18.0 && minZ >= 2.55;
+    const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
+    const cx = isAngledEastCourtyardWall ? getEastCourtyardWallCenterX(cz) : rawCx;
+    const effMinX = cx - w / 2;
+    const effMaxX = cx + w / 2;
+
+    const descriptor: CutawayWallDescriptor = isAlongX
+      ? { axis: 'z', coord: cz, minSpan: minX, maxSpan: maxX, floor: 'first' }
+      : { axis: 'x', coord: rawCx, minSpan: minZ, maxSpan: maxZ, floor: 'first' };
 
     const geo = new THREE.BoxGeometry(w, h, d);
     applyWorldSpaceBrickUVs(geo, cx, cy, cz);
+    shearGeometryAlongZ(geo, slopeXPerZ);
 
     const materials: THREE.Material[] = [
       interiorSide === 'east' ? warmRoomPlasterMat : exteriorBrickMat,
@@ -210,7 +239,10 @@ export function createFirstFloorShellKit(
 
     if (Math.abs(yTop - upperWallTopY) < 0.05) {
       const cap = new THREE.Mesh(
-        new THREE.BoxGeometry(Math.max(0.02, w - 0.012), 0.016, Math.max(0.02, d - 0.012)),
+        shearGeometryAlongZ(
+          new THREE.BoxGeometry(Math.max(0.02, w - 0.012), 0.016, Math.max(0.02, d - 0.012)),
+          slopeXPerZ
+        ),
         wallCapMat
       );
       cap.position.set(cx, upperWallTopY - 0.006, cz);
@@ -231,14 +263,14 @@ export function createFirstFloorShellKit(
         sz = maxZ + 0.01;
         sd = skirtT;
       } else if (interiorSide === 'east') {
-        sx = maxX + 0.01;
+        sx = effMaxX + 0.01;
         sw = skirtT;
       } else {
-        sx = minX - 0.01;
+        sx = effMinX - 0.01;
         sw = skirtT;
       }
       const skirt = new THREE.Mesh(
-        new THREE.BoxGeometry(sw, 0.14, sd),
+        shearGeometryAlongZ(new THREE.BoxGeometry(sw, 0.14, sd), slopeXPerZ),
         antiqueOakSkirtingMat
       );
       skirt.position.set(sx, floorTopY + 0.07, sz);
@@ -397,23 +429,32 @@ export function createFirstFloorShellKit(
   ): void => {
     const winNorth = winCenterZ - winWidth / 2;
     const winSouth = winCenterZ + winWidth / 2;
+    const rawCx = (minX + maxX) / 2;
+    const isAngledEastCourtyardWall =
+      interiorSide === 'west' && rawCx > -18.0 && minZ >= 2.55;
+    const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
+    const cx = isAngledEastCourtyardWall
+      ? getEastCourtyardWallCenterX(winCenterZ)
+      : rawCx;
+    // Extend West Wing front-room upper walls (Z <= 8.40m, above Living Room, Entrance Hall & Sitting Room whose ground walls stop at Y = 1.625m)
+    // down to Y = 1.625m so there is zero vertical gap between the Ground Floor and First Floor!
+    const baseWallY = maxZ <= 8.4 ? 1.625 : floorBaseY;
 
     if (winNorth > minZ + 0.02) {
-      addUpperExteriorBrickWall(minX, maxX, minZ, winNorth, floorBaseY, upperWallTopY, interiorSide);
+      addUpperExteriorBrickWall(minX, maxX, minZ, winNorth, baseWallY, upperWallTopY, interiorSide);
     }
     if (winSouth < maxZ - 0.02) {
-      addUpperExteriorBrickWall(minX, maxX, winSouth, maxZ, floorBaseY, upperWallTopY, interiorSide);
+      addUpperExteriorBrickWall(minX, maxX, winSouth, maxZ, baseWallY, upperWallTopY, interiorSide);
     }
-    addUpperExteriorBrickWall(minX, maxX, winNorth, winSouth, floorBaseY, sillY, interiorSide);
+    addUpperExteriorBrickWall(minX, maxX, winNorth, winSouth, baseWallY, sillY, interiorSide);
     addUpperExteriorBrickWall(minX, maxX, winNorth, winSouth, headY, upperWallTopY, interiorSide);
 
-    const cx = (minX + maxX) / 2;
     const winH = headY - sillY;
     const cy = sillY + winH / 2;
     const winGroup = new THREE.Group();
     tagUpperCutawayWall(winGroup, {
       axis: 'x',
-      coord: cx,
+      coord: rawCx,
       minSpan: minZ,
       maxSpan: maxZ,
       floor: 'first',
@@ -424,7 +465,10 @@ export function createFirstFloorShellKit(
     const intSignX = -extSignX;
     const sillDepthX = wallDepthX * 0.54 + 0.045;
     const sillMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(sillDepthX, 0.06, winWidth + 0.12),
+      shearGeometryAlongZ(
+        new THREE.BoxGeometry(sillDepthX, 0.06, winWidth + 0.12),
+        slopeXPerZ
+      ),
       stoneSillMat
     );
     sillMesh.position.set(
@@ -438,20 +482,27 @@ export function createFirstFloorShellKit(
     const intRevealDepthX = wallDepthX * 0.52;
     const intRevealCenterX = cx + intSignX * (wallDepthX * 0.24);
     for (const sideZ of [-1, 1] as const) {
+      const jambZ = winCenterZ + sideZ * (winWidth * 0.5 - 0.005);
+      const jambCx = isAngledEastCourtyardWall
+        ? getEastCourtyardWallCenterX(jambZ)
+        : rawCx;
       const revealJamb = new THREE.Mesh(
         new THREE.BoxGeometry(intRevealDepthX, winH, 0.012),
         warmRoomPlasterMat
       );
       revealJamb.position.set(
-        intRevealCenterX,
+        jambCx + intSignX * (wallDepthX * 0.24),
         cy,
-        winCenterZ + sideZ * (winWidth * 0.5 - 0.005)
+        jambZ
       );
       revealJamb.receiveShadow = true;
       winGroup.add(revealJamb);
     }
     const revealHead = new THREE.Mesh(
-      new THREE.BoxGeometry(intRevealDepthX, 0.012, winWidth),
+      shearGeometryAlongZ(
+        new THREE.BoxGeometry(intRevealDepthX, 0.012, winWidth),
+        slopeXPerZ
+      ),
       warmRoomPlasterMat
     );
     revealHead.position.set(intRevealCenterX, headY - 0.005, winCenterZ);
@@ -459,7 +510,10 @@ export function createFirstFloorShellKit(
     winGroup.add(revealHead);
 
     const windowBoard = new THREE.Mesh(
-      new THREE.BoxGeometry(intRevealDepthX + 0.028, 0.024, winWidth + 0.04),
+      shearGeometryAlongZ(
+        new THREE.BoxGeometry(intRevealDepthX + 0.028, 0.024, winWidth + 0.04),
+        slopeXPerZ
+      ),
       skirtingMat
     );
     windowBoard.position.set(
@@ -472,14 +526,20 @@ export function createFirstFloorShellKit(
 
     const frameDepth = 0.11;
     const topRail = new THREE.Mesh(
-      new THREE.BoxGeometry(frameDepth, 0.05, winWidth),
+      shearGeometryAlongZ(
+        new THREE.BoxGeometry(frameDepth, 0.05, winWidth),
+        slopeXPerZ
+      ),
       windowFrameMat
     );
     topRail.position.set(cx, headY - 0.025, winCenterZ);
     winGroup.add(topRail);
 
     const botRail = new THREE.Mesh(
-      new THREE.BoxGeometry(frameDepth, 0.05, winWidth),
+      shearGeometryAlongZ(
+        new THREE.BoxGeometry(frameDepth, 0.05, winWidth),
+        slopeXPerZ
+      ),
       windowFrameMat
     );
     botRail.position.set(cx, sillY + 0.025, winCenterZ);
@@ -487,23 +547,32 @@ export function createFirstFloorShellKit(
 
     for (let i = 0; i <= panes; i++) {
       const mz = winNorth + (i / panes) * winWidth;
+      const mCx = isAngledEastCourtyardWall
+        ? getEastCourtyardWallCenterX(mz)
+        : rawCx;
       const mullion = new THREE.Mesh(
         new THREE.BoxGeometry(frameDepth, winH, 0.042),
         windowFrameMat
       );
-      mullion.position.set(cx, cy, mz);
+      mullion.position.set(mCx, cy, mz);
       winGroup.add(mullion);
     }
 
     const transBar = new THREE.Mesh(
-      new THREE.BoxGeometry(frameDepth * 0.7, 0.026, winWidth),
+      shearGeometryAlongZ(
+        new THREE.BoxGeometry(frameDepth * 0.7, 0.026, winWidth),
+        slopeXPerZ
+      ),
       windowFrameMat
     );
     transBar.position.set(cx, sillY + winH * 0.52, winCenterZ);
     winGroup.add(transBar);
 
     const glass = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, winH - 0.08, winWidth - 0.06),
+      shearGeometryAlongZ(
+        new THREE.BoxGeometry(0.016, winH - 0.08, winWidth - 0.06),
+        slopeXPerZ
+      ),
       windowGlassMat
     );
     glass.position.set(cx, cy, winCenterZ);

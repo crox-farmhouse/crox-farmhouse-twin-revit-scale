@@ -55,7 +55,7 @@ export function buildBedroom2(
     end: [-16.858, -2.608],
     thickness: 0.28,
     topY: upperWallTopY,
-    frontFloorY: floorBaseY,
+    frontFloorY: 1.625,
     backFloorY: floorTopY,
     wallMaterial: exteriorBrickMat,
     frontFaceMaterial: exteriorBrickMat,
@@ -174,10 +174,10 @@ export function buildBedroom2(
   bed2ChimneyGroup.add(bed2ChimneySkirt);
 
   // Collinear Step-Up Portal Wall between West Wing Corridor and Main Staircase Landing
-  // ([-17.891, 2.48] -> [-16.92, 2.61], 0.28m thick — directly above Ground Floor entranceHall step-up portal wall!)
+  // ([-17.891, 2.48] -> [-16.83, 2.622], 0.28m thick — directly above Ground Floor entranceHall step-up portal wall!)
   const corridorPortalFrame = buildAngledWallSegment(scene, interactions, {
     start: [-17.891, 2.48],
-    end: [-16.92, 2.61],
+    end: [-16.83, 2.622],
     thickness: 0.28,
     topY: upperWallTopY,
     frontFloorY: floorTopY,
