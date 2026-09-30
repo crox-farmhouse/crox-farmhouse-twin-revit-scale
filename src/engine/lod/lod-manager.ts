@@ -337,6 +337,11 @@ export class RoomLodController {
     return this.focusedZoneId;
   }
 
+  public getFocusedRoomShortName(): string {
+    const focusedEntry = this.rooms.get(this.focusedZoneId);
+    return focusedEntry?.shortName ?? this.focusedZoneId;
+  }
+
   public setFocusedZoneId(
     zoneId: RoomZoneId,
     cameraPos: THREE.Vector3,
@@ -416,11 +421,17 @@ export class RoomLodController {
     if (this.policyMode === 'lod2') return 2;
 
     // In 'auto' mode:
-    // 1. Rooms on a hidden/non-active floor drop to LOD0 Shell
+    // 1. Rooms on a hidden/non-active floor drop to LOD0 Shell (except Upper Landing when looking up from Hall)
     if (floorViewMode === 'ground' && room.floorId === 'first') {
+      if (room.zoneId === 'upperLanding' && this.focusedZoneId === 'hall') {
+        return 1;
+      }
       return 0;
     }
     if (floorViewMode === 'first' && room.floorId === 'ground') {
+      if (room.zoneId === 'hall' && this.focusedZoneId === 'upperLanding') {
+        return 1;
+      }
       return 0;
     }
 

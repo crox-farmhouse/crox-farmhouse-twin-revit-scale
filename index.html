@@ -41,6 +41,22 @@
         </div>
         <div class="walkthrough-hud-actions">
           <button
+            id="walkthrough-blur-btn"
+            class="hud-inline-btn walkthrough-action-btn is-active"
+            type="button"
+            title="Toggle Per-Pixel 3D Camera Shutter Motion Blur (Shortcut: B)"
+          >
+            Blur: ON (B)
+          </button>
+          <button
+            id="walkthrough-gfx-btn"
+            class="hud-inline-btn walkthrough-action-btn"
+            type="button"
+            title="Cycle Graphics Quality Preset: Ultra (HiDPI + SSAO + Bloom + CAS) / Balanced / Max FPS"
+          >
+            GFX: Ultra
+          </button>
+          <button
             id="walkthrough-fov-btn"
             class="hud-inline-btn walkthrough-action-btn"
             type="button"
@@ -608,6 +624,17 @@
             <button class="hud-seg-btn lod-btn" type="button" data-lod="lod0" title="LOD0 Architectural Shell Only (Hides furniture &amp; interior props)">LOD0 Shell</button>
             <button class="hud-seg-btn lod-btn" type="button" data-lod="lod1" title="LOD1 Standard Furniture &amp; Cabinetry (Hides fine crockery/tableware props)">LOD1 Room</button>
             <button class="hud-seg-btn lod-btn" type="button" data-lod="lod2" title="LOD2 Hero Detail Across All Rooms (Full interior props &amp; crockery)">LOD2 Hero</button>
+          </div>
+
+          <div class="hud-sublabel-row hud-sublabel-ext">
+            <span>GRAPHICS &amp; SHUTTER BLUR</span>
+            <span id="gfx-status-readout" class="hud-meta">ULTRA · BLUR ON</span>
+          </div>
+          <div class="hud-seg-row" role="group" aria-label="Graphics Quality and Shutter Motion Blur">
+            <button class="hud-seg-btn gfx-btn active" type="button" data-gfx="ultra" title="Ultra Quality: HiDPI + Contact AO + Warm HDR Bloom + CAS Sharpening">Ultra</button>
+            <button class="hud-seg-btn gfx-btn" type="button" data-gfx="balanced" title="Balanced Quality: 1.25x DPR + Contact AO + CAS Sharpening">Balanced</button>
+            <button class="hud-seg-btn gfx-btn" type="button" data-gfx="performance" title="Performance Mode: Native 1x DPR for Maximum Framerate">Max FPS</button>
+            <button id="hud-motion-blur-btn" class="hud-seg-btn active" type="button" title="Toggle Per-Pixel 3D Camera Velocity Motion Blur (Shortcut: B)">Blur: ON</button>
           </div>
 
           <div class="hud-env-row">

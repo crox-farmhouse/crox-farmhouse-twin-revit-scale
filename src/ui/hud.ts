@@ -11,6 +11,7 @@ import {
 } from '../knx/ai-assistant.ts';
 import { CIRCUITS } from '../knx/constants.ts';
 import type { KNXPropertyBusController } from '../knx/emulator.ts';
+import type { GraphicsQualityPreset } from '../engine/scene/controllers/post-processing-pipeline.ts';
 import type { PropertyScene } from '../engine/scene/property-scene.ts';
 import type { KNXTelegram, ShortPressMode, WakeBehavior } from '../types/knx.ts';
 import type { CameraPresetName, FloorViewMode, TimeOfDay } from '../types/scene.ts';
@@ -711,6 +712,21 @@ export class HudController {
       });
     });
 
+    document.querySelectorAll<HTMLButtonElement>('.gfx-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const gfxPreset = btn.dataset.gfx as GraphicsQualityPreset | undefined;
+        if (!gfxPreset) return;
+        this.scene.setGraphicsQualityPreset(gfxPreset);
+        this.syncGraphicsUI();
+      });
+    });
+
+    const hudMotionBlurBtn = document.getElementById('hud-motion-blur-btn');
+    hudMotionBlurBtn?.addEventListener('click', () => {
+      this.scene.toggleMotionBlur();
+      this.syncGraphicsUI();
+    });
+
     const todLuxMap: Record<TimeOfDay, number> = {
       day: 480,
       dusk: 38,
@@ -798,6 +814,7 @@ export class HudController {
 
     this.bindWalkthroughEvents();
     this.syncWalkthroughUI();
+    this.syncGraphicsUI();
   }
 
   private bindWalkthroughEvents(): void {
@@ -826,6 +843,18 @@ export class HudController {
     fovBtn?.addEventListener('click', () => {
       this.scene.getWalkthrough().cycleBaseFov();
       this.syncWalkthroughUI();
+    });
+
+    const blurBtn = document.getElementById('walkthrough-blur-btn');
+    blurBtn?.addEventListener('click', () => {
+      this.scene.toggleMotionBlur();
+      this.syncGraphicsUI();
+    });
+
+    const gfxBtn = document.getElementById('walkthrough-gfx-btn');
+    gfxBtn?.addEventListener('click', () => {
+      this.scene.cycleGraphicsQualityPreset();
+      this.syncGraphicsUI();
     });
 
     const crouchBtn = document.getElementById('walkthrough-crouch-btn');
@@ -860,6 +889,13 @@ export class HudController {
       const tag = activeEl?.tagName ?? '';
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.code === 'KeyB' && !e.repeat) {
+        e.preventDefault();
+        this.scene.toggleMotionBlur();
+        this.syncGraphicsUI();
+        return;
+      }
 
       if (e.code === 'KeyV' && !e.repeat) {
         e.preventDefault();
@@ -924,12 +960,50 @@ export class HudController {
     if (!posReadout) return;
     const wt = this.scene.getWalkthrough();
     const foot = wt.getFootPosition();
-    const diag = this.scene.getLodDiagnostics();
-    const focusedRoom = diag.rooms.find((r) => r.zoneId === diag.focusedZoneId);
-    const roomName = (focusedRoom?.shortName ?? diag.focusedZoneId).toUpperCase();
+    const roomName = this.scene.getFocusedRoomShortName().toUpperCase();
     const sign = foot.y >= 0 ? '+' : '';
     const fps = wt.getSmoothedFps();
     posReadout.textContent = `${roomName} · ${sign}${foot.y.toFixed(2)}m · ${fps} FPS`;
+  }
+
+  public syncGraphicsUI(): void {
+    const gfx = this.scene.getGraphicsSettings();
+    const presetLabel =
+      gfx.quality === 'ultra'
+        ? 'Ultra'
+        : gfx.quality === 'balanced'
+          ? 'Balanced'
+          : '120Hz Perf';
+
+    document.querySelectorAll<HTMLButtonElement>('.gfx-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.gfx === gfx.quality);
+    });
+
+    const hudBlurBtn = document.getElementById('hud-motion-blur-btn');
+    if (hudBlurBtn) {
+      hudBlurBtn.classList.toggle('active', gfx.motionBlurEnabled);
+      hudBlurBtn.textContent = gfx.motionBlurEnabled ? 'Blur: ON' : 'Blur: OFF';
+    }
+
+    const gfxReadout = document.getElementById('gfx-status-readout');
+    if (gfxReadout) {
+      const features: string[] = [presetLabel.toUpperCase()];
+      features.push(gfx.motionBlurEnabled ? 'SHUTTER BLUR' : 'BLUR OFF');
+      if (gfx.ambientOcclusionEnabled) features.push('SSAO');
+      if (gfx.bloomEnabled) features.push('BLOOM');
+      gfxReadout.textContent = features.join(' · ');
+    }
+
+    const wtBlurBtn = document.getElementById('walkthrough-blur-btn');
+    if (wtBlurBtn) {
+      wtBlurBtn.classList.toggle('is-active', gfx.motionBlurEnabled);
+      wtBlurBtn.textContent = gfx.motionBlurEnabled ? 'Blur: ON (B)' : 'Blur: OFF (B)';
+    }
+
+    const wtGfxBtn = document.getElementById('walkthrough-gfx-btn');
+    if (wtGfxBtn) {
+      wtGfxBtn.textContent = `GFX: ${presetLabel}`;
+    }
   }
 
   public syncWalkthroughUI(): void {
@@ -999,6 +1073,8 @@ export class HudController {
       mouseLookBtn.classList.toggle('is-active', pointerLocked);
       mouseLookBtn.textContent = pointerLocked ? 'Mouse Locked (Esc)' : 'Mouse Look';
     }
+
+    this.syncGraphicsUI();
 
     if (active) {
       this.syncWalkthroughReadout();

@@ -220,6 +220,8 @@ export class WalkthroughController {
   private currentEyeHeight = STANDING_EYE_HEIGHT;
   private yawRad = 0; // 0 = looking along -Z
   private pitchRad = 0;
+  private targetYawRad = 0;
+  private targetPitchRad = 0;
   private bobPhase = 0;
   private smoothedFps = 120;
 
@@ -405,7 +407,7 @@ export class WalkthroughController {
 
   private saveSessionState(force = false): void {
     const now = performance.now();
-    if (!force && now - this.lastSessionSaveMs < 250) return;
+    if (!force && now - this.lastSessionSaveMs < 1500) return;
     this.lastSessionSaveMs = now;
     try {
       const payload: PersistedWalkthroughSession = {
@@ -457,6 +459,7 @@ export class WalkthroughController {
       });
       if (typeof parsed.pitchRad === 'number' && Number.isFinite(parsed.pitchRad)) {
         this.pitchRad = THREE.MathUtils.clamp(parsed.pitchRad, -MAX_PITCH_RAD, MAX_PITCH_RAD);
+        this.targetPitchRad = this.pitchRad;
       }
       if (typeof parsed.crouched === 'boolean') {
         this.crouched = parsed.crouched;
@@ -579,6 +582,8 @@ export class WalkthroughController {
         this.pitchRad = -0.03;
       }
     }
+    this.targetYawRad = this.yawRad;
+    this.targetPitchRad = this.pitchRad;
 
     this.syncCameraFromFootAndAngles(0);
     this.refreshTargetedInteractable(true);
@@ -631,6 +636,8 @@ export class WalkthroughController {
     );
     this.yawRad = THREE.MathUtils.degToRad(sp.yawDeg);
     this.pitchRad = -0.03;
+    this.targetYawRad = this.yawRad;
+    this.targetPitchRad = this.pitchRad;
     this.syncCameraFromFootAndAngles(0);
     this.refreshTargetedInteractable(true);
     this.onPoseUpdated();
@@ -647,6 +654,7 @@ export class WalkthroughController {
     const dz = point.z - this.footPos.z;
     if (Math.hypot(dx, dz) > 0.25) {
       this.yawRad = Math.atan2(-dx, -dz);
+      this.targetYawRad = this.yawRad;
     }
   }
 
@@ -1244,7 +1252,23 @@ export class WalkthroughController {
       movedOrRotated = true;
     }
 
-    // 1. Smoothly interpolate eye height (standing vs crouched)
+    // 1. Sub-frame exponential look smoothing (decouples bursty mouse packets from display refresh)
+    const yawDiff = this.targetYawRad - this.yawRad;
+    const pitchDiff = this.targetPitchRad - this.pitchRad;
+    if (Math.abs(yawDiff) > 1e-5 || Math.abs(pitchDiff) > 1e-5) {
+      const lookAlpha = 1 - Math.exp(-48 * dtSeconds);
+      this.yawRad =
+        Math.abs(yawDiff) <= 1e-4
+          ? this.targetYawRad
+          : THREE.MathUtils.lerp(this.yawRad, this.targetYawRad, lookAlpha);
+      this.pitchRad =
+        Math.abs(pitchDiff) <= 1e-4
+          ? this.targetPitchRad
+          : THREE.MathUtils.lerp(this.pitchRad, this.targetPitchRad, lookAlpha);
+      movedOrRotated = true;
+    }
+
+    // 1b. Smoothly interpolate eye height (standing vs crouched)
     const targetEyeH = this.crouched ? CROUCH_EYE_HEIGHT : STANDING_EYE_HEIGHT;
     if (Math.abs(this.currentEyeHeight - targetEyeH) > 1e-3) {
       this.currentEyeHeight = THREE.MathUtils.lerp(
@@ -1271,7 +1295,7 @@ export class WalkthroughController {
     if (this.keysDown.has('KeyQ')) turnInput += 1;
     if (this.keysDown.has('KeyE')) turnInput -= 1;
     if (turnInput !== 0) {
-      this.yawRad += turnInput * KEY_TURN_SPEED_RAD * dtSeconds;
+      this.targetYawRad += turnInput * KEY_TURN_SPEED_RAD * dtSeconds;
       movedOrRotated = true;
     }
 
@@ -1464,15 +1488,15 @@ export class WalkthroughController {
       }
     });
 
-    // Coalesce high-frequency (250-1000Hz) mouse movements into a single update per requestAnimationFrame
+    // Coalesce high-frequency (250-1000Hz) mouse movements into targetYawRad / targetPitchRad
     window.addEventListener(
       'pointermove',
       (e: PointerEvent) => {
         if (!this.active) return;
         if (this.pointerLocked) {
-          this.yawRad -= e.movementX * MOUSE_SENSITIVITY;
-          this.pitchRad = THREE.MathUtils.clamp(
-            this.pitchRad - e.movementY * MOUSE_SENSITIVITY,
+          this.targetYawRad -= e.movementX * MOUSE_SENSITIVITY;
+          this.targetPitchRad = THREE.MathUtils.clamp(
+            this.targetPitchRad - e.movementY * MOUSE_SENSITIVITY,
             -MAX_PITCH_RAD,
             MAX_PITCH_RAD
           );
@@ -1484,9 +1508,9 @@ export class WalkthroughController {
           const dy = e.clientY - this.lastDragClientY;
           this.lastDragClientX = e.clientX;
           this.lastDragClientY = e.clientY;
-          this.yawRad -= dx * DRAG_SENSITIVITY;
-          this.pitchRad = THREE.MathUtils.clamp(
-            this.pitchRad - dy * DRAG_SENSITIVITY,
+          this.targetYawRad -= dx * DRAG_SENSITIVITY;
+          this.targetPitchRad = THREE.MathUtils.clamp(
+            this.targetPitchRad - dy * DRAG_SENSITIVITY,
             -MAX_PITCH_RAD,
             MAX_PITCH_RAD
           );

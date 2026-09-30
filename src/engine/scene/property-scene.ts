@@ -32,6 +32,11 @@ import { CircuitLightingController } from './controllers/circuit-lighting.ts';
 import { CutawayController } from './controllers/cutaway-controller.ts';
 import { EnvironmentLighting } from './controllers/environment-lighting.ts';
 import {
+  PostProcessingPipeline,
+  type GraphicsQualityPreset,
+  type GraphicsSettingsState,
+} from './controllers/post-processing-pipeline.ts';
+import {
   DEFAULT_WALKTHROUGH_SPAWNS,
   WalkthroughController,
 } from './controllers/walkthrough-controller.ts';
@@ -98,6 +103,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
   private readonly scene: THREE.Scene;
   private readonly renderer: THREE.WebGLRenderer;
+  private readonly postProcessing: PostProcessingPipeline;
   private readonly rig: CameraRig;
   private readonly layers: PropertySceneLayers;
   private readonly annotations: SceneAnnotationController;
@@ -116,6 +122,9 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
   private readonly viewListeners = new Set<(view: PropertySceneViewState) => void>();
   private lastWalkthroughViewNotifyMs = 0;
+  private postBlurSettleFrames = 0;
+  private lastDoorShadowUpdateMs = 0;
+  private doorsWereAnimating = false;
   private onSurfaceDoubleClick: ((point: THREE.Vector3) => void) | null = null;
   private onUsdPrimPick: ((info: UsdIndexedPrimInfo) => void) | null = null;
 
@@ -148,6 +157,12 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     this.renderer.shadowMap.needsUpdate = true;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.12;
+
+    this.postProcessing = new PostProcessingPipeline(
+      this.renderer,
+      canvas.clientWidth,
+      canvas.clientHeight
+    );
 
     this.rig.controls.addEventListener('change', () => {
       this.updateCameraFacingWallCutaways();
@@ -225,6 +240,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       },
       onStateChanged: () => {
         this.lastWalkthroughViewNotifyMs = 0;
+        this.postProcessing.resetHistory();
         this.updateCameraFacingWallCutaways(true);
         this.renderer.shadowMap.needsUpdate = true;
         this.needsRender = true;
@@ -252,7 +268,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     });
     this.scene.add(...this.annotations.getSceneObjects());
 
-    this.environment = new EnvironmentLighting(this.scene);
+    this.environment = new EnvironmentLighting(this.scene, this.renderer);
     this.setTimeOfDay('dusk');
 
     this.content = buildPropertySceneContent(this.layers, {
@@ -336,6 +352,35 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
   public getLodDiagnostics(): RoomLodDiagnostics {
     return this.lodController.getDiagnostics();
+  }
+
+  public getFocusedRoomShortName(): string {
+    return this.lodController.getFocusedRoomShortName();
+  }
+
+  public getGraphicsSettings(): GraphicsSettingsState {
+    return this.postProcessing.getSettings();
+  }
+
+  public setGraphicsQualityPreset(preset: GraphicsQualityPreset): void {
+    this.postProcessing.setQualityPreset(preset);
+    this.needsRender = true;
+  }
+
+  public cycleGraphicsQualityPreset(): GraphicsQualityPreset {
+    const next = this.postProcessing.cycleQualityPreset();
+    this.needsRender = true;
+    return next;
+  }
+
+  public isMotionBlurEnabled(): boolean {
+    return this.postProcessing.isMotionBlurEnabled();
+  }
+
+  public toggleMotionBlur(): boolean {
+    const next = this.postProcessing.toggleMotionBlur();
+    this.needsRender = true;
+    return next;
   }
 
   public getLodPolicyMode(): LodPolicyMode {
@@ -504,12 +549,18 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
   /** Current camera + floor state. */
   public getViewState(): PropertySceneViewState {
+    const camPos = this.rig.getActiveCamera().position;
+    const isWalkthrough = this.walkthrough.isActive();
     return {
-      cameraPosition: this.rig.getActiveCamera().position,
-      target: this.rig.controls.target,
+      cameraPosition: camPos,
+      target: isWalkthrough ? camPos : this.rig.controls.target,
       isOrthographic: this.rig.isOrthographic(),
       orthoZoom: this.rig.orthoCamera.zoom,
-      floorViewMode: this.cutaways.getFloorViewMode(),
+      floorViewMode: isWalkthrough
+        ? camPos.y >= 2.15
+          ? 'first'
+          : 'ground'
+        : this.cutaways.getFloorViewMode(),
     };
   }
 
@@ -529,23 +580,46 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     }
     this.interactions.collectDynamicObjects(dynamicObjects);
 
+    const maxAnisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    const seenMaterials = new Set<THREE.Material>();
+
     this.scene.traverse((obj) => {
       if (obj !== this.scene && !dynamicObjects.has(obj)) {
         obj.matrixAutoUpdate = false;
       }
-      if (obj instanceof THREE.Mesh && obj.castShadow) {
-        if (!obj.geometry.boundingSphere) {
-          obj.geometry.computeBoundingSphere();
+      if (obj instanceof THREE.Mesh) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        for (const mat of mats) {
+          if (!mat || seenMaterials.has(mat)) continue;
+          seenMaterials.add(mat);
+          const stdMat = mat as THREE.MeshStandardMaterial;
+          for (const tex of [
+            stdMat.map,
+            stdMat.normalMap,
+            stdMat.roughnessMap,
+            stdMat.bumpMap,
+          ]) {
+            if (tex && tex.anisotropy < maxAnisotropy) {
+              tex.anisotropy = maxAnisotropy;
+              tex.needsUpdate = true;
+            }
+          }
         }
-        const sphere = obj.geometry.boundingSphere;
-        if (sphere) {
-          const maxScale = Math.max(
-            Math.abs(obj.scale.x),
-            Math.abs(obj.scale.y),
-            Math.abs(obj.scale.z)
-          );
-          if (sphere.radius * maxScale < 0.25) {
-            obj.castShadow = false;
+
+        if (obj.castShadow) {
+          if (!obj.geometry.boundingSphere) {
+            obj.geometry.computeBoundingSphere();
+          }
+          const sphere = obj.geometry.boundingSphere;
+          if (sphere) {
+            const maxScale = Math.max(
+              Math.abs(obj.scale.x),
+              Math.abs(obj.scale.y),
+              Math.abs(obj.scale.z)
+            );
+            if (sphere.radius * maxScale < 0.25) {
+              obj.castShadow = false;
+            }
           }
         }
       }
@@ -628,6 +702,8 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     const p = this.zoneRegistry.getCameraPreset(presetName);
     if (!p) return;
 
+    this.postProcessing.resetHistory();
+
     if (p.floorViewMode) {
       this.cutaways.setFloorViewMode(p.floorViewMode);
     }
@@ -669,6 +745,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     if (this.walkthrough.isActive()) {
       this.walkthrough.exit();
     }
+    this.postProcessing.resetHistory();
     this.cutaways.setViewState(pose.floorViewMode, pose.ceilingCutaway);
 
     if (pose.isOrthographic) {
@@ -699,6 +776,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     if (this.walkthrough.isActive()) {
       this.walkthrough.exit();
     }
+    this.postProcessing.resetHistory();
     this.cutaways.setFloorViewMode(floorViewMode);
     this.rig.useCamera(false);
 
@@ -1009,31 +1087,50 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     const w = this.canvas.clientWidth;
     const h = Math.max(1, this.canvas.clientHeight);
     this.rig.resize(w, h);
-    this.renderer.setSize(w, h, false);
+    this.postProcessing.resize(w, h);
     this.needsRender = true;
   }
 
   public update(dtSeconds: number): void {
+    let cameraMoved = false;
+
     if (this.walkthrough.update(dtSeconds)) {
       this.needsRender = true;
+      cameraMoved = true;
     }
 
     if (!this.walkthrough.isActive() && this.rig.updateTween(dtSeconds)) {
       this.updateCameraFacingWallCutaways();
       this.needsRender = true;
+      cameraMoved = true;
     }
 
-    if (this.bifolds.update(dtSeconds)) {
-      this.renderer.shadowMap.needsUpdate = true;
+    const bifoldMoving = this.bifolds.update(dtSeconds);
+    const doorMoving = this.interactions.update(dtSeconds);
+    if (bifoldMoving || doorMoving) {
+      this.doorsWereAnimating = true;
+      const now = performance.now();
+      const shadowThrottleMs = this.walkthrough.isActive() && cameraMoved ? 90 : 32;
+      if (now - this.lastDoorShadowUpdateMs >= shadowThrottleMs) {
+        this.lastDoorShadowUpdateMs = now;
+        this.renderer.shadowMap.needsUpdate = true;
+      }
       this.needsRender = true;
-    }
-
-    if (this.interactions.update(dtSeconds)) {
+    } else if (this.doorsWereAnimating) {
+      this.doorsWereAnimating = false;
       this.renderer.shadowMap.needsUpdate = true;
       this.needsRender = true;
     }
 
     if (!this.walkthrough.isActive() && this.rig.controls.update()) {
+      this.needsRender = true;
+      cameraMoved = true;
+    }
+
+    if (cameraMoved && this.postProcessing.isMotionBlurEnabled()) {
+      this.postBlurSettleFrames = 1;
+    } else if (!this.needsRender && this.postBlurSettleFrames > 0) {
+      this.postBlurSettleFrames -= 1;
       this.needsRender = true;
     }
 
@@ -1041,7 +1138,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       const camera = this.rig.getActiveCamera();
       camera.updateMatrixWorld();
       this.annotations.prepareForRender();
-      this.renderer.render(this.scene, camera);
+      this.postProcessing.render(this.scene, camera, dtSeconds);
       this.needsRender = false;
     }
   }
