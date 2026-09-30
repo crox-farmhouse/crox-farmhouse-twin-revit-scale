@@ -142,6 +142,21 @@ interface CachedObstacle {
   readonly isDynamic: boolean;
 }
 
+interface CachedFurnitureBox {
+  readonly mesh: THREE.Mesh;
+  readonly centerX: number;
+  readonly centerZ: number;
+  readonly radiusXZ: number;
+  readonly minY: number;
+  readonly maxY: number;
+  readonly ux: number;
+  readonly uz: number;
+  readonly minU: number;
+  readonly maxU: number;
+  readonly minV: number;
+  readonly maxV: number;
+}
+
 interface PersistedWalkthroughSession {
   readonly active: boolean;
   readonly footPos: readonly [number, number, number];
@@ -203,8 +218,10 @@ export class WalkthroughController {
   private lastSessionSaveMs = 0;
 
   private cachedObstacles: CachedObstacle[] | null = null;
+  private cachedFurnitureBoxes: CachedFurnitureBox[] = [];
   private readonly nearbyObstacleMeshes: THREE.Object3D[] = [];
   private readonly tmpBox = new THREE.Box3();
+  private readonly tmpCorner = new THREE.Vector3();
   private readonly tmpOrigin = new THREE.Vector3();
   private readonly tmpNormal = new THREE.Vector3();
 
@@ -733,40 +750,50 @@ export class WalkthroughController {
   }
 
   /**
-   * Lazily indexes structural BoxGeometry obstacles (walls, closed doors, and large island/cabinet
-   * carcasses) once so walkthrough collision runs in < 0.02ms/frame instead of raycasting 300k triangles.
+   * Lazily indexes structural BoxGeometry obstacles (walls, closed doors, and cabinet panels)
+   * plus 2D Oriented Bounding Box furniture colliders (tables, sofas, chairs, beds, islands,
+   * worktops, baths, and appliances) once so walkthrough collision runs in < 0.03ms/frame.
    */
   private getObstacleCache(): readonly CachedObstacle[] {
     if (this.cachedObstacles !== null) {
       return this.cachedObstacles;
     }
     const list: CachedObstacle[] = [];
+    const furnitureList: CachedFurnitureBox[] = [];
     this.scene.updateMatrixWorld(true);
 
     this.scene.traverse((obj) => {
       if (!(obj instanceof THREE.Mesh)) return;
-      if (!(obj.geometry instanceof THREE.BoxGeometry)) return;
-      if (obj.userData?.isAnnotationGroup) return;
-      if (typeof obj.name === 'string' && obj.name.startsWith('hall.stairs')) return;
+      if (obj.geometry instanceof THREE.PlaneGeometry) return;
+      if (obj.userData?.isAnnotationGroup || obj.userData?.circuitId) return;
+      if (
+        typeof obj.name === 'string' &&
+        (obj.name.startsWith('hall.stairs') || obj.name.includes('cobblePath'))
+      ) {
+        return;
+      }
 
-      // Check ancestor chain for ceiling/roof groups or dynamic door pivots
-      let isDynamic = obj.matrixAutoUpdate;
+      // Check ancestor chain for ceiling/roof groups, UFH overlays, or dynamic door pivots
+      let hasDynamicAncestor = obj.matrixAutoUpdate;
       let skipGroup = false;
       let cur: THREE.Object3D | null = obj.parent;
       while (cur && cur !== this.scene) {
-        if (cur.userData?.isAnnotationGroup) {
+        if (cur.userData?.isAnnotationGroup || cur.userData?.ufhZoneId) {
           skipGroup = true;
           break;
         }
         if (
           typeof cur.name === 'string' &&
-          (cur.name.endsWith('.groundCeiling') || cur.name.endsWith('.roof'))
+          (cur.name.endsWith('.groundCeiling') ||
+            cur.name.endsWith('.roof') ||
+            cur.name.startsWith('hall.stairs') ||
+            cur.name.includes('ufh'))
         ) {
           skipGroup = true;
           break;
         }
         if (cur.matrixAutoUpdate) {
-          isDynamic = true;
+          hasDynamicAncestor = true;
         }
         cur = cur.parent;
       }
@@ -778,32 +805,121 @@ export class WalkthroughController {
       const sizeX = this.tmpBox.max.x - this.tmpBox.min.x;
       const sizeY = this.tmpBox.max.y - this.tmpBox.min.y;
       const sizeZ = this.tmpBox.max.z - this.tmpBox.min.z;
+      const centerX = (this.tmpBox.min.x + this.tmpBox.max.x) * 0.5;
+      const centerZ = (this.tmpBox.min.z + this.tmpBox.max.z) * 0.5;
+      const radiusXZ = Math.hypot(sizeX, sizeZ) * 0.5;
 
-      // Only include vertical structural walls, doors, and major base cabinetry/islands:
-      // - sizeY >= 0.72m excludes floor slabs, steps, rugs, coffee tables, chair seats, skirtings & ceiling beams
-      // - max(sizeX, sizeZ) >= 0.35m excludes chair legs, balusters, muntins & small props
-      // - min(sizeX, sizeZ) >= 0.035m excludes thin window glass panes, paintings & wall linings
+      // 1. Vertical structural walls, all interior/exterior doors (including 28mm panelled doors
+      //    and 12-16mm glazed courtyard/bifold doors), and tall cabinetry for raycast collision:
+      const isWalkthroughDoor = hasDynamicAncestor && sizeY >= 0.85;
       if (
-        sizeY < 0.72 ||
-        Math.max(sizeX, sizeZ) < 0.35 ||
-        Math.min(sizeX, sizeZ) < 0.035 ||
-        Math.max(sizeX, sizeZ) > 28.0
+        obj.geometry instanceof THREE.BoxGeometry &&
+        sizeY >= 0.45 &&
+        Math.max(sizeX, sizeZ) >= 0.32 &&
+        Math.min(sizeX, sizeZ) >= 0.01 &&
+        Math.max(sizeX, sizeZ) <= 28.0
       ) {
-        return;
+        list.push({
+          mesh: obj,
+          centerX,
+          centerZ,
+          radiusXZ,
+          minY: this.tmpBox.min.y,
+          maxY: this.tmpBox.max.y,
+          isDynamic: isWalkthroughDoor,
+        });
       }
 
-      list.push({
-        mesh: obj,
-        centerX: (this.tmpBox.min.x + this.tmpBox.max.x) * 0.5,
-        centerZ: (this.tmpBox.min.z + this.tmpBox.max.z) * 0.5,
-        radiusXZ: Math.hypot(sizeX, sizeZ) * 0.5,
-        minY: this.tmpBox.min.y,
-        maxY: this.tmpBox.max.y,
-        isDynamic,
-      });
+      // 2. 2D Oriented Bounding Box (OBB) Furniture & Cabinetry Colliders:
+      //    Catches dining tables, desks, coffee tables, sofas (including sculpted BufferGeometry
+      //    cushions), armchairs, dining chairs, beds, kitchen island & worktops, sideboards,
+      //    bathtubs, vanities, WCs, and appliances whose top surface sits at knee-to-chest height.
+      if (!isWalkthroughDoor && Math.max(sizeX, sizeZ) <= 5.5) {
+        const floorY = this.sampleFloorElevation(centerX, this.tmpBox.max.y, centerZ);
+        const topAboveFloor = this.tmpBox.max.y - floorY;
+        const botAboveFloor = this.tmpBox.min.y - floorY;
+
+        if (
+          topAboveFloor >= 0.34 &&
+          topAboveFloor <= 1.38 &&
+          botAboveFloor <= 0.92
+        ) {
+          if (!obj.geometry.boundingBox) {
+            obj.geometry.computeBoundingBox();
+          }
+          const localBox = obj.geometry.boundingBox;
+          if (localBox && !localBox.isEmpty()) {
+            const m = obj.matrixWorld.elements;
+            // Extract primary horizontal unit axis (ux, uz) from mesh world matrix
+            const axX = m[0];
+            const axZ = m[2];
+            const azX = m[8];
+            const azZ = m[10];
+            const lenAx = Math.hypot(axX, axZ);
+            const lenAz = Math.hypot(azX, azZ);
+            let ux = 1;
+            let uz = 0;
+            if (lenAx >= lenAz && lenAx > 1e-4) {
+              ux = axX / lenAx;
+              uz = axZ / lenAx;
+            } else if (lenAz > 1e-4) {
+              ux = azX / lenAz;
+              uz = azZ / lenAz;
+            }
+            const vx = -uz;
+            const vz = ux;
+
+            let minU = Number.POSITIVE_INFINITY;
+            let maxU = Number.NEGATIVE_INFINITY;
+            let minV = Number.POSITIVE_INFINITY;
+            let maxV = Number.NEGATIVE_INFINITY;
+
+            for (let cxIdx = 0; cxIdx < 2; cxIdx++) {
+              const lx = cxIdx === 0 ? localBox.min.x : localBox.max.x;
+              for (let cyIdx = 0; cyIdx < 2; cyIdx++) {
+                const ly = cyIdx === 0 ? localBox.min.y : localBox.max.y;
+                for (let czIdx = 0; czIdx < 2; czIdx++) {
+                  const lz = czIdx === 0 ? localBox.min.z : localBox.max.z;
+                  this.tmpCorner.set(lx, ly, lz).applyMatrix4(obj.matrixWorld);
+                  const u = this.tmpCorner.x * ux + this.tmpCorner.z * uz;
+                  const v = this.tmpCorner.x * vx + this.tmpCorner.z * vz;
+                  if (u < minU) minU = u;
+                  if (u > maxU) maxU = u;
+                  if (v < minV) minV = v;
+                  if (v > maxV) maxV = v;
+                }
+              }
+            }
+
+            const uSpan = maxU - minU;
+            const vSpan = maxV - minV;
+            if (
+              Math.min(uSpan, vSpan) >= 0.30 &&
+              Math.max(uSpan, vSpan) >= 0.36 &&
+              Math.max(uSpan, vSpan) <= 5.2
+            ) {
+              furnitureList.push({
+                mesh: obj,
+                centerX,
+                centerZ,
+                radiusXZ,
+                minY: this.tmpBox.min.y,
+                maxY: this.tmpBox.max.y,
+                ux,
+                uz,
+                minU,
+                maxU,
+                minV,
+                maxV,
+              });
+            }
+          }
+        }
+      }
     });
 
     this.cachedObstacles = list;
+    this.cachedFurnitureBoxes = furnitureList;
     return list;
   }
 
@@ -873,11 +989,59 @@ export class WalkthroughController {
       return false;
     }
 
-    // 3. Fast spatial-filtered raycast against cached structural BoxGeometry obstacles only
     const obstacles = this.getObstacleCache();
+
+    // 3. Fast 2D Oriented Bounding Box (OBB) collision against furniture, tables, sofas, beds, islands & worktops
+    const furnMinY = fromFoot.y + 0.30;
+    const furnMaxY = fromFoot.y + 1.40;
+    const furnPad = 0.16;
+    const furnPadSq = furnPad * furnPad;
+    const furnReach = stepDist + furnPad + 0.25;
+
+    for (let i = 0; i < this.cachedFurnitureBoxes.length; i++) {
+      const f = this.cachedFurnitureBoxes[i];
+      if (f.maxY <= furnMinY || f.minY >= furnMaxY) continue;
+      const dx = f.centerX - fromFoot.x;
+      const dz = f.centerZ - fromFoot.z;
+      const maxDist = f.radiusXZ + furnReach;
+      if (dx * dx + dz * dz > maxDist * maxDist) continue;
+      if (!isObjectVisibleInHierarchy(f.mesh)) continue;
+
+      const vx = -f.uz;
+      const vz = f.ux;
+      const curU = fromFoot.x * f.ux + fromFoot.z * f.uz;
+      const curV = fromFoot.x * vx + fromFoot.z * vz;
+      const nextU = nextX * f.ux + nextZ * f.uz;
+      const nextV = nextX * vx + nextZ * vz;
+
+      const curDu = curU < f.minU ? f.minU - curU : curU > f.maxU ? curU - f.maxU : 0;
+      const curDv = curV < f.minV ? f.minV - curV : curV > f.maxV ? curV - f.maxV : 0;
+      const curDistSq = curDu * curDu + curDv * curDv;
+
+      const nextDu = nextU < f.minU ? f.minU - nextU : nextU > f.maxU ? nextU - f.maxU : 0;
+      const nextDv = nextV < f.minV ? f.minV - nextV : nextV > f.maxV ? nextV - f.maxV : 0;
+      const nextDistSq = nextDu * nextDu + nextDv * nextDv;
+
+      if (nextDistSq < furnPadSq) {
+        if (curDistSq >= furnPadSq || nextDistSq < curDistSq - 1e-5) {
+          return true;
+        }
+        if (curDistSq === 0) {
+          const midU = (f.minU + f.maxU) * 0.5;
+          const midV = (f.minV + f.maxV) * 0.5;
+          const curCenterSq = (curU - midU) ** 2 + (curV - midV) ** 2;
+          const nextCenterSq = (nextU - midU) ** 2 + (nextV - midV) ** 2;
+          if (nextCenterSq < curCenterSq) {
+            return true;
+          }
+        }
+      }
+    }
+
+    // 4. Fast spatial-filtered dual-height raycast against structural walls, doors & cabinetry
     this.nearbyObstacleMeshes.length = 0;
-    const footMinY = fromFoot.y + 0.35;
-    const footMaxY = fromFoot.y + 1.35;
+    const footMinY = fromFoot.y + 0.30;
+    const footMaxY = fromFoot.y + 1.45;
     const reach = stepDist + 0.65;
 
     for (let i = 0; i < obstacles.length; i++) {
@@ -903,22 +1067,27 @@ export class WalkthroughController {
       return false;
     }
 
-    this.wallRaycaster.far = Math.max(0.32, stepDist + 0.26);
-    this.tmpOrigin.set(fromFoot.x, fromFoot.y + 0.9, fromFoot.z);
-    this.wallRaycaster.set(this.tmpOrigin, moveDirXZ);
+    const maxHitDist = stepDist + 0.28;
+    this.wallRaycaster.far = Math.max(0.34, maxHitDist + 0.02);
 
-    const hits = this.wallRaycaster.intersectObjects(this.nearbyObstacleMeshes, false);
-    for (let i = 0; i < hits.length; i++) {
-      const hit = hits[i];
-      if (hit.distance >= 0.05 && hit.distance <= stepDist + 0.24 && hit.face) {
-        this.tmpNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
-        // Only block against front-facing vertical walls/doors opposing our movement direction
-        // (worldNormal.dot(moveDirXZ) < -0.15 guarantees you can ALWAYS walk out of any overlapping box!)
-        if (
-          Math.abs(this.tmpNormal.y) < 0.35 &&
-          this.tmpNormal.dot(moveDirXZ) < -0.15
-        ) {
-          return true;
+    // Cast at both knee/lower-panel height (+0.48m) and waist/door-leaf height (+1.05m)
+    for (const rayOffsetY of [0.48, 1.05] as const) {
+      this.tmpOrigin.set(fromFoot.x, fromFoot.y + rayOffsetY, fromFoot.z);
+      this.wallRaycaster.set(this.tmpOrigin, moveDirXZ);
+
+      const hits = this.wallRaycaster.intersectObjects(this.nearbyObstacleMeshes, false);
+      for (let i = 0; i < hits.length; i++) {
+        const hit = hits[i];
+        if (hit.distance >= 0.02 && hit.distance <= maxHitDist && hit.face) {
+          this.tmpNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
+          // Only block against front-facing vertical walls/doors opposing our movement direction
+          // (worldNormal.dot(moveDirXZ) < -0.15 guarantees you can ALWAYS walk out of any overlapping box!)
+          if (
+            Math.abs(this.tmpNormal.y) < 0.45 &&
+            this.tmpNormal.dot(moveDirXZ) < -0.15
+          ) {
+            return true;
+          }
         }
       }
     }

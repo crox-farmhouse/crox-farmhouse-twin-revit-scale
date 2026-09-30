@@ -227,6 +227,7 @@ export class CutawayController {
     if (zoomedOut || cameraInsideHouse) {
       let changed = false;
       let majorShellChanged = false;
+      this.ensureCeilingSubgroupsVisible();
       if (
         firstFloorMeshGroup.visible !== desiredFirstFloorVis ||
         groundFloorCeilingGroup.visible !== desiredGroundCeilingVis ||
@@ -311,6 +312,7 @@ export class CutawayController {
     const eVis = !cutEast;
 
     let changed = false;
+    this.ensureCeilingSubgroupsVisible();
     const majorShellChanged =
       firstFloorMeshGroup.visible !== desiredFirstFloorVis ||
       groundFloorCeilingGroup.visible !== desiredGroundCeilingVis ||
@@ -355,6 +357,19 @@ export class CutawayController {
     }
 
     return { needsRender: needsRender || changed, shadowsDirty: majorShellChanged };
+  }
+
+  private ensureCeilingSubgroupsVisible(): void {
+    for (const child of this.layers.ceilingMeshGroup.children) {
+      if (child.userData?.isRoomContainer && !child.visible) {
+        child.visible = true;
+      }
+    }
+    for (const child of this.layers.groundFloorCeilingGroup.children) {
+      if (child.userData?.isRoomContainer && !child.visible) {
+        child.visible = true;
+      }
+    }
   }
 
   private shouldCutDynamicWall(
