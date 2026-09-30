@@ -64,7 +64,7 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'familyBathroomPendant',
     switchPa: '1.2.11',
     location: 'Principal Bathroom — South Wall (by Door)',
-    x: -11.05,
+    x: -11.72,
     y: floorTopY + 1.15,
     z: 0.9,
     facing: 'north',
@@ -114,7 +114,7 @@ export function buildFirstFloorPendantsAndSwitches(
     location: 'Bedroom 2 — South Wall (by Door)',
     x: -19.06,
     y: floorTopY + 1.15,
-    z: 2.44,
+    z: 2.18,
     facing: 'north',
     parentGroup: scene,
   });
@@ -138,7 +138,7 @@ export function buildFirstFloorPendantsAndSwitches(
     location: 'Bedroom 3 — East Wall (by Door)',
     x: -18.99,
     y: floorTopY + 1.15,
-    z: 5.8,
+    z: 6.82,
     facing: 'west',
     parentGroup: scene,
   });

@@ -77,28 +77,46 @@ export function buildMainBedroom(
   // (X = -4.96m..-4.64m, Z = -0.85m..+0.82m, width 0.32m, depth 1.67m, rising from floorBaseY = 2.06m to collarCeilingY = 4.52m — Issue #5 & Issue #12)
   addUpperInteriorWall(-4.8, floorBaseY, collarCeilingY, -0.015, 0.32, 1.67, warmRoomPlasterMat);
 
-  // Full-width bank of built-in Shaker Wardrobes along the North wall of Main Bedroom (floorplan X = -4.64m..-9.56m, Z = -2.50m..-1.88m)
-  // Flanking the North window (X = -6.35m): East wardrobe bay (X = -4.64m..-5.65m) & West 3-bay wardrobe bank (X = -7.05m..-9.56m)
-  for (const [minWx, maxWx] of [
-    [-5.65, -4.64],
-    [-9.56, -7.05],
-  ] as const) {
-    const ww = maxWx - minWx;
-    const wcx = (minWx + maxWx) / 2;
-    const wardBody = new THREE.Mesh(
-      new THREE.BoxGeometry(ww, 1.92, 0.62),
+  // =========================================================================
+  // FULL-WIDTH BANK OF 4 BUILT-IN SHAKER WARDROBES ALONG THE EAST WALL
+  // (`X = -5.26m..-4.64m, Z = -2.46m..+2.31m`, facing West `-X` into Main Bedroom)
+  // Matching `ff_rotated_3d_axes.png`: a continuous run of 4 built-in double
+  // wardrobes along the entire East wall of the Main Bedroom.
+  // =========================================================================
+  {
+    const eastWardGroup = new THREE.Group();
+    eastWardGroup.name = 'mainBedroom.eastWardrobes';
+    const wardD = 0.62; // X = -5.26m .. -4.64m
+    const wardH = upperWallTopY - floorTopY;
+    const totalZ = 4.74; // Z = -2.44m .. +2.30m
+    const centerZ = -0.07;
+    const centerX = -4.95;
+
+    const carcass = new THREE.Mesh(
+      new THREE.BoxGeometry(wardD, wardH, totalZ),
       wardrobeMat
     );
-    wardBody.position.set(wcx, floorTopY + 0.96, -2.19);
-    wardBody.castShadow = true;
-    wardBody.receiveShadow = true;
-    scene.add(wardBody);
-  }
+    carcass.position.set(centerX, floorTopY + wardH / 2, centerZ);
+    carcass.castShadow = true;
+    carcass.receiveShadow = true;
+    eastWardGroup.add(carcass);
 
-  // South-West Corner Cupboard in Main Bedroom (X = -8.65m..-9.56m, Z = +0.10m..+1.05m, reaching the 4.52m collar ceiling)
-  addUpperInteriorWall(-8.65, floorTopY, collarCeilingY, 0.575, 0.15, 0.95, warmRoomPlasterMat);
-  addUpperInteriorWall(-9.105, floorTopY, collarCeilingY, 0.1, 0.91, 0.15, warmRoomPlasterMat);
-  addUpperInteriorWall(-9.105, floorTopY, collarCeilingY, 1.05, 0.91, 0.15, warmRoomPlasterMat);
+    // 8 Shaker wardrobe doors (4 pairs of double doors) along the West face (`X = -5.27m`)
+    const doorW = (totalZ - 0.24) / 8;
+    const doorLeafH = wardH - 0.22;
+    for (let i = 0; i < 8; i++) {
+      const doorZ = -2.44 + 0.12 + doorW / 2 + i * (doorW + 0.015);
+      const doorPanel = new THREE.Mesh(
+        new THREE.BoxGeometry(0.022, doorLeafH, doorW - 0.015),
+        wardrobeMat
+      );
+      doorPanel.position.set(-5.27, floorTopY + 0.11 + doorLeafH / 2, doorZ);
+      doorPanel.castShadow = true;
+      eastWardGroup.add(doorPanel);
+    }
+
+    scene.add(eastWardGroup);
+  }
 
   // West Load-Bearing Cross-Wall between Main Bedroom and Family Bathroom / Upper Passage (0.24m thick, X = -9.56m..-9.80m)
   // Doorway at Z = +1.55m (with 2 oak steps UP into Main Bedroom as marked 'UP' on the First Floor plan!)
@@ -106,6 +124,18 @@ export function buildMainBedroom(
   addUpperInteriorWall(-9.68, floorTopY, upperWallTopY, 2.18, 0.24, 0.36, warmRoomPlasterMat);
   addUpperInteriorWall(-9.68, floorTopY + doorH, upperWallTopY, 1.55, 0.24, 0.9, warmRoomPlasterMat);
   addUpperInteractiveDoor('z', -9.68, 0.24, 1.55, 0.9, Math.PI * 0.48);
+
+  // Oak Step Threshold (`UP` steps at the Main Bedroom entrance doorway `X = -9.68m, Z = +1.55m`)
+  {
+    const stepMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, 0.045, 0.88),
+      oakFloorMat
+    );
+    stepMesh.name = 'mainBedroom.entranceStep';
+    stepMesh.position.set(-9.68, floorTopY + 0.0225, 1.55);
+    stepMesh.receiveShadow = true;
+    scene.add(stepMesh);
+  }
 
   // Issue #5: Trapezoidal Upper Gable Extensions on the West (X = -9.68m) and East (X = -4.52m) Cross-Walls (Y = 4.16m..4.52m)
   for (const [gableX, gableName] of [

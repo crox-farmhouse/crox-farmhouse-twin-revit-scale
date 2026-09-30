@@ -46,11 +46,11 @@ export function buildBedroom3(
   );
 
   // East Corridor Partition Wall of Bedroom 3 (0.15m thick at X = -18.915m, Z = +4.30m..+8.15m)
-  // With doorway at Z = +5.15m
-  addUpperInteriorWall(-18.915, floorTopY, upperWallTopY, 4.5, 0.15, 0.4, warmRoomPlasterMat);
-  addUpperInteriorWall(-18.915, floorTopY, upperWallTopY, 6.875, 0.15, 2.55, warmRoomPlasterMat);
-  addUpperInteriorWall(-18.915, floorTopY + doorH, upperWallTopY, 5.15, 0.15, 0.9, warmRoomPlasterMat);
-  addUpperInteractiveDoor('z', -18.915, 0.15, 5.15, 0.9, -Math.PI * 0.48);
+  // With doorway at the South end (Z = +7.42m, width = 0.84m) matching the First Floor plan (`ff_rotated_3d_axes.png`)
+  addUpperInteriorWall(-18.915, floorTopY, upperWallTopY, 5.65, 0.15, 2.7, warmRoomPlasterMat);
+  addUpperInteriorWall(-18.915, floorTopY, upperWallTopY, 7.995, 0.15, 0.31, warmRoomPlasterMat);
+  addUpperInteriorWall(-18.915, floorTopY + doorH, upperWallTopY, 7.42, 0.15, 0.84, warmRoomPlasterMat);
+  addUpperInteractiveDoor('z', -18.915, 0.15, 7.42, 0.84, -Math.PI * 0.48);
 
   // South Chimney Breast in Bedroom 3 (X = -19.85m, Z = +7.925m)
   addUpperInteriorWall(-19.85, floorTopY, upperWallTopY, 7.925, 1.2, 0.45, warmRoomPlasterMat);

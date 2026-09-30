@@ -72,22 +72,98 @@ export function buildFamilyBathroom(
 
   const collarCeilingY = 4.52;
 
-  // Partition wall between Family Bathroom and Upper South Passage (0.15m thick, Z = +0.90m..+1.05m, X = -9.80m..-12.81m)
-  // With doorway at X = -10.45m (reaches up to the 4.52m collar ceiling edge at Z = +1.05m)
-  addUpperInteriorWall(-9.9, floorTopY, collarCeilingY, 0.975, 0.2, 0.15, warmRoomPlasterMat);
-  addUpperInteriorWall(-11.83, floorTopY, collarCeilingY, 0.975, 1.96, 0.15, warmRoomPlasterMat);
-  addUpperInteriorWall(-10.425, floorTopY + doorH, collarCeilingY, 0.975, 0.85, 0.15, warmRoomPlasterMat);
-  addUpperInteractiveDoor('x', 0.975, 0.15, -10.425, 0.85, -Math.PI * 0.48);
+  // =========================================================================
+  // RECESSED SOUTH-EAST PASSAGE CUPBOARD (`X = -10.68m..-9.80m, Z = +0.05m..+0.98m`)
+  // Matching `ff_rotated_3d_axes.png`: boxed into the SE corner of the bathroom
+  // footprint, with a Shaker cupboard door opening South (`+Z`) into the Upper Passage
+  // right next to the `UP` doorway into the Main Bedroom!
+  // =========================================================================
+  // North & West enclosing walls of the Recessed Passage Cupboard (reaching collarCeilingY = 4.52m)
+  addUpperInteriorWall(-10.24, floorTopY, collarCeilingY, 0.05, 0.88, 0.12, warmRoomPlasterMat);
+  addUpperInteriorWall(-10.68, floorTopY, collarCeilingY, 0.515, 0.12, 0.93, warmRoomPlasterMat);
 
-  // Principal Family Bathroom Sanitaryware (matching the exact symbols on the First Floor plan):
-  // 1. Freestanding Sculpted Oval Feature Bathtub at X = -11.85m, Z = -0.55m
+  {
+    const passageCupGroup = new THREE.Group();
+    passageCupGroup.name = 'familyBathroom.passageCupboard';
+    const cupW = 0.82;
+    const cupH = upperWallTopY - floorTopY;
+    const cupD = 0.82;
+    const carcass = new THREE.Mesh(
+      new THREE.BoxGeometry(cupW, cupH, cupD),
+      wardrobeMat
+    );
+    carcass.position.set(-10.24, floorTopY + cupH / 2, 0.51);
+    carcass.castShadow = true;
+    carcass.receiveShadow = true;
+    passageCupGroup.add(carcass);
+
+    // Shaker cupboard door on the South Passage face (`Z = +0.98m`)
+    const cupDoor = new THREE.Mesh(
+      new THREE.BoxGeometry(0.68, doorH - 0.08, 0.024),
+      wardrobeMat
+    );
+    cupDoor.position.set(-10.24, floorTopY + doorH / 2, 1.045);
+    cupDoor.castShadow = true;
+    passageCupGroup.add(cupDoor);
+
+    const cupKnob = new THREE.Mesh(
+      new THREE.SphereGeometry(0.014, 10, 10),
+      brassMat
+    );
+    cupKnob.position.set(-10.5, floorTopY + 1.0, 1.068);
+    passageCupGroup.add(cupKnob);
+
+    scene.add(passageCupGroup);
+  }
+
+  // Partition wall between Family Bathroom and Upper South Passage (0.15m thick, Z = +0.90m..+1.05m, X = -9.80m..-12.81m)
+  // With bathroom entrance doorway at X = -11.18m (`width = 0.82m`, immediately West of the Recessed Passage Cupboard)
+  addUpperInteriorWall(-10.285, floorTopY, collarCeilingY, 0.975, 0.97, 0.15, warmRoomPlasterMat);
+  addUpperInteriorWall(-12.2, floorTopY, collarCeilingY, 0.975, 1.22, 0.15, warmRoomPlasterMat);
+  addUpperInteriorWall(-11.18, floorTopY + doorH, collarCeilingY, 0.975, 0.82, 0.15, warmRoomPlasterMat);
+  addUpperInteractiveDoor('x', 0.975, 0.15, -11.18, 0.82, -Math.PI * 0.48);
+
+  // =========================================================================
+  // PRINCIPAL FAMILY BATHROOM SANITARYWARE (matching `ff_rotated_3d_axes.png`)
+  // 1. Walk-In Glass Shower Enclosure in SW corner (`X = -12.81m..-11.65m, Z = +0.05m..+0.90m`)
+  // 2. Freestanding Sculpted Oval Bathtub in NW quadrant (`X = -11.75m, Z = -1.35m`, oriented East-West)
+  // 3. Bathroom WC in NE corner (`X = -10.22m, Z = -2.18m`, facing South `+Z`)
+  // 4. Wash Basin & Vanity Unit on East wall (`X = -10.06m, Z = -0.78m`, facing West `-X`)
+  // =========================================================================
+  // 1. Walk-in Glass Shower Enclosure in SW corner of Bathroom (West of bathroom door)
+  const showerTray = new THREE.Mesh(
+    new THREE.BoxGeometry(1.14, 0.045, 0.84),
+    ceramicWhiteMat
+  );
+  showerTray.name = 'familyBathroom.showerTray';
+  showerTray.position.set(-12.23, floorTopY + 0.022, 0.475);
+  showerTray.receiveShadow = true;
+  scene.add(showerTray);
+
+  const showerGlassScreen = new THREE.Mesh(
+    new THREE.BoxGeometry(0.82, 1.88, 0.018),
+    windowGlassMat
+  );
+  showerGlassScreen.name = 'familyBathroom.showerGlass';
+  showerGlassScreen.position.set(-12.39, floorTopY + 0.94, 0.06);
+  scene.add(showerGlassScreen);
+
+  const showerRiser = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.012, 0.012, 1.08, 10),
+    brassMat
+  );
+  showerRiser.position.set(-12.74, floorTopY + 1.38, 0.475);
+  scene.add(showerRiser);
+
+  // 2. Freestanding Sculpted Oval Feature Bathtub at X = -11.75m, Z = -1.35m (oriented East-West)
   const bathGroup = new THREE.Group();
-  bathGroup.position.set(-11.85, floorTopY, -0.55);
+  bathGroup.name = 'familyBathroom.bathtub';
+  bathGroup.position.set(-11.75, floorTopY, -1.35);
   const bathOuter = new THREE.Mesh(
     new THREE.CylinderGeometry(0.44, 0.38, 0.58, 24),
     ceramicWhiteMat
   );
-  bathOuter.scale.set(1.0, 1.0, 1.85);
+  bathOuter.scale.set(1.85, 1.0, 1.0);
   bathOuter.position.set(0, 0.29, 0);
   bathOuter.castShadow = true;
   bathOuter.receiveShadow = true;
@@ -97,46 +173,31 @@ export function buildFamilyBathroom(
     new THREE.CylinderGeometry(0.018, 0.022, 0.76, 10),
     brassMat
   );
-  bathFillerStandpipe.position.set(-0.48, 0.38, 0);
+  bathFillerStandpipe.position.set(-0.82, 0.38, 0);
   bathGroup.add(bathFillerStandpipe);
   scene.add(bathGroup);
 
-  // 2. Walk-in Glass Shower Enclosure in SE corner of Bathroom (X = -9.80m..-10.95m, Z = -0.05m..+0.90m)
-  const showerTray = new THREE.Mesh(
-    new THREE.BoxGeometry(1.12, 0.045, 0.92),
-    ceramicWhiteMat
-  );
-  showerTray.position.set(-10.38, floorTopY + 0.022, 0.42);
-  showerTray.receiveShadow = true;
-  scene.add(showerTray);
-
-  const showerGlassScreen = new THREE.Mesh(
-    new THREE.BoxGeometry(0.018, 1.88, 0.92),
-    windowGlassMat
-  );
-  showerGlassScreen.position.set(-10.94, floorTopY + 0.94, 0.42);
-  scene.add(showerGlassScreen);
-
-  // 3. Bathroom WC on North Wall (X = -12.25m, Z = -2.18m) & Vanity Basin on East Wall (X = -10.12m, Z = -1.65m)
+  // 3. Bathroom WC in NE corner on North Wall (X = -10.22m, Z = -2.18m, facing South `+Z`)
   const bathWcCistern = new THREE.Mesh(
     new THREE.BoxGeometry(0.42, 0.44, 0.18),
     ceramicWhiteMat
   );
-  bathWcCistern.position.set(-12.25, floorTopY + 0.68, -2.38);
+  bathWcCistern.position.set(-10.22, floorTopY + 0.68, -2.38);
   scene.add(bathWcCistern);
 
   const bathWcPan = new THREE.Mesh(
     new THREE.CylinderGeometry(0.19, 0.15, 0.42, 16),
     ceramicWhiteMat
   );
-  bathWcPan.position.set(-12.25, floorTopY + 0.21, -2.08);
+  bathWcPan.position.set(-10.22, floorTopY + 0.21, -2.08);
   scene.add(bathWcPan);
 
+  // 4. Vanity Basin on East Wall between WC and Recessed Passage Cupboard (X = -10.06m, Z = -0.78m, facing West `-X`)
   const bathVanityUnit = new THREE.Mesh(
     new THREE.BoxGeometry(0.48, 0.82, 0.88),
     wardrobeMat
   );
-  bathVanityUnit.position.set(-10.06, floorTopY + 0.41, -1.55);
+  bathVanityUnit.position.set(-10.06, floorTopY + 0.41, -0.78);
   bathVanityUnit.castShadow = true;
   scene.add(bathVanityUnit);
 
@@ -144,7 +205,7 @@ export function buildFamilyBathroom(
     new THREE.BoxGeometry(0.5, 0.06, 0.9),
     ceramicWhiteMat
   );
-  bathVanityTop.position.set(-10.06, floorTopY + 0.85, -1.55);
+  bathVanityTop.position.set(-10.06, floorTopY + 0.85, -0.78);
   scene.add(bathVanityTop);
 
   // West Load-Bearing Cross-Wall between Family Bathroom/Passage and Main Staircase Landing (0.24m thick, X = -12.81m..-13.05m)

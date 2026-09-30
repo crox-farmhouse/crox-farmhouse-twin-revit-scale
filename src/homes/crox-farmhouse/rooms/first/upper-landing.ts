@@ -12,14 +12,16 @@ import type { createFirstFloorShellKit } from '../../structure/first-floor-shell
  */
 export function buildUpperLanding(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'ceramicWhiteMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'skirtingMat' | 'upperWallTopY' | 'wallCapMat' | 'warmRoomPlasterMat'> &
-    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addUpperBrickWallAlongXWithWindow' | 'addUpperInteriorWall' | 'applyWorldSpaceBrickUVs' | 'tagUpperCutawayWall'>
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'skirtingMat' | 'upperWallTopY' | 'wallCapMat' | 'warmRoomPlasterMat'> &
+    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addUpperBrickWallAlongXWithWindow' | 'addUpperInteriorWall' | 'applyWorldSpaceBrickUVs' | 'doorH' | 'tagUpperCutawayWall'>
 ): void {
   const { ceilingMeshGroup, firstFloorMeshGroup: scene, interactions } = ctx;
   const {
     addUpperBrickWallAlongXWithWindow,
     antiqueOakSkirtingMat,
     applyWorldSpaceBrickUVs,
+    brassMat,
+    doorH,
     exteriorBrickMat,
     floorBaseY,
     floorTopY,
@@ -243,10 +245,10 @@ export function buildUpperLanding(
     scene.add(northWallMidBeam);
   }
 
-  // Issues #4 & #6: Thicker South Courtyard Exterior Brick Wall of Main Stair Landing (0.46m thick: Z = +2.22m..+2.68m, X = -16.92m..-12.81m)
-  // With shorter 3-pane cottage casement window & deep splayed reveal at X = -15.35m (media_1790502987279.webp & media_1790502987242.webp!)
+  // Issues #4 & #6: Thicker South Courtyard Exterior Brick Wall of Main Stair Landing (0.46m thick: Z = +2.22m..+2.68m, X = -17.85m..-12.81m)
+  // Extends all the way West to the West cross-wall corner (`-17.85m`) with a shorter 3-pane cottage casement window & deep reveal at X = -15.35m (media_1790502987279.webp!)
   addUpperBrickWallAlongXWithWindow(
-    -16.92,
+    -17.85,
     -12.81,
     2.22,
     2.68,
@@ -620,8 +622,10 @@ export function buildUpperLanding(
   landingDarkSpineBeam.castShadow = true;
   ceilingMeshGroup.add(landingDarkSpineBeam);
 
-  // Non-Square West Load-Bearing Cross-Wall between Main Stair Landing and Bedroom 2
+  // Non-Square West Load-Bearing Cross-Wall between Main Stair Landing and Bedroom 2 / West Wing Lobby
   // (0.24m thick, [-17.55, -2.50] -> [-17.90, +2.40] — aligned with Ground Floor Hall/Front Room cross-wall!)
+  // Includes the Cased Step-Up Opening (`UP <--` on the First Floor plan & left side of media_1790502987279.webp)
+  // at the South end (`uCenter = 4.16m, width = 0.78m`, spanning `Z_ew = +1.25m..+2.03m` right next to the South Courtyard wall!)
   const upperLandingCrossWallFrame = buildAngledWallSegment(scene, interactions, {
     start: [-17.55, -2.5],
     end: [-17.9, 2.4],
@@ -634,7 +638,53 @@ export function buildUpperLanding(
     skirtingMaterial: antiqueOakSkirtingMat,
     addFrontSkirting: true,
     addBackSkirting: true,
+    openings: [
+      {
+        id: 'upperLandingCorridorArch',
+        kind: 'cased-opening',
+        uCenter: 4.16,
+        width: 0.78,
+        doorHeight: doorH,
+        lowerFloorY: floorTopY,
+        upperFloorY: floorTopY,
+        architraveMaterial: antiqueOakSkirtingMat,
+      },
+    ],
   });
+
+  // Oak Step-Up Threshold (`UP <--` arrow on First Floor plan & visible at the bottom of the doorway in media_1790502987279.webp!)
+  {
+    const landingStepGroup = upperLandingCrossWallFrame.createGroup(
+      scene,
+      'upperLanding.westStepUp',
+      4.16,
+      floorTopY,
+      0
+    );
+    const stepRiser = new THREE.Mesh(
+      new THREE.BoxGeometry(0.78, 0.12, 0.025),
+      skirtingMat
+    );
+    stepRiser.position.set(0, 0.06, -0.105);
+    landingStepGroup.add(stepRiser);
+
+    const stepTread = new THREE.Mesh(
+      new THREE.BoxGeometry(0.78, 0.03, 0.24),
+      antiqueOakSkirtingMat
+    );
+    stepTread.position.set(0, 0.12, 0.01);
+    stepTread.castShadow = true;
+    stepTread.receiveShadow = true;
+    landingStepGroup.add(stepTread);
+
+    const stepNosing = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.015, 0.015, 0.78, 10),
+      brassMat
+    );
+    stepNosing.rotation.z = Math.PI / 2;
+    stepNosing.position.set(0, 0.125, -0.11);
+    landingStepGroup.add(stepNosing);
+  }
 
   // Issue #5: Upper Vaulted Trapezoidal Gable Extension on the West Landing Cross-Wall (Y = 4.16m..4.52m)
   // Matches the exact North & South skeiling slopes (Z = -1.90m..+1.80m at Y = 4.16m tapering to Z = -1.15m..+1.05m at Y = 4.52m)
@@ -666,32 +716,16 @@ export function buildUpperLanding(
     scene.add(westUpperGable);
   }
 
-  // Exposed Dark Black-Stained Timber Wall Framing Posts & Head Beam on the West Landing Wall (New Photo 4 right)
-  for (const postU of [1.92, 3.32, 4.46]) {
-    const postTopY = postU <= 3.5 ? collarCeilingY : upperWallTopY;
-    const timberPost = new THREE.Mesh(
-      new THREE.BoxGeometry(0.14, postTopY - floorTopY, 0.05),
-      darkTimberBeamMat
-    );
-    timberPost.position.copy(
-      upperLandingCrossWallFrame.toWorld(postU, (floorTopY + postTopY) / 2, -0.125)
-    );
-    timberPost.rotation.y = upperLandingCrossWallFrame.rotationY;
-    tagUpperCutawayWall(timberPost, {
-      axis: 'x',
-      coord: -17.72,
-      minSpan: -2.5,
-      maxSpan: 2.4,
-      floor: 'first',
-    });
-    scene.add(timberPost);
-  }
+  // Exposed Dark Black-Stained Timber Wall Framing on the West Landing Wall (media_1790502987279.webp):
+  // - Horizontal black timber beam across the stairwell/middle section (`u = 0.15m..3.65m`, Y = 3.24m), stopping cleanly to the North of the `UP` doorway!
+  // - Diagonal black timber brace rising from the horizontal beam (`u = 1.95m, Y = 3.28m`) up to the ceiling spine beam (`u = 1.40m, Y = 4.42m`)!
   const westWallTimberHeadBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(2.68, 0.15, 0.05),
+    new THREE.BoxGeometry(3.5, 0.13, 0.05),
     darkTimberBeamMat
   );
+  westWallTimberHeadBeam.name = 'upperLanding.westWallTimberBeam';
   westWallTimberHeadBeam.position.copy(
-    upperLandingCrossWallFrame.toWorld(3.22, upperWallTopY - 0.12, -0.125)
+    upperLandingCrossWallFrame.toWorld(1.9, floorTopY + 1.08, -0.125)
   );
   westWallTimberHeadBeam.rotation.y = upperLandingCrossWallFrame.rotationY;
   tagUpperCutawayWall(westWallTimberHeadBeam, {
@@ -702,4 +736,23 @@ export function buildUpperLanding(
     floor: 'first',
   });
   scene.add(westWallTimberHeadBeam);
+
+  const westWallDiagonalBrace = new THREE.Mesh(
+    new THREE.BoxGeometry(0.13, 1.24, 0.05),
+    darkTimberBeamMat
+  );
+  westWallDiagonalBrace.name = 'upperLanding.westWallDiagonalBrace';
+  westWallDiagonalBrace.position.copy(
+    upperLandingCrossWallFrame.toWorld(1.68, floorTopY + 1.68, -0.125)
+  );
+  westWallDiagonalBrace.rotation.y = upperLandingCrossWallFrame.rotationY;
+  westWallDiagonalBrace.rotation.z = -0.34;
+  tagUpperCutawayWall(westWallDiagonalBrace, {
+    axis: 'x',
+    coord: -17.72,
+    minSpan: -2.5,
+    maxSpan: 2.4,
+    floor: 'first',
+  });
+  scene.add(westWallDiagonalBrace);
 }
