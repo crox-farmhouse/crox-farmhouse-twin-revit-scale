@@ -11,6 +11,7 @@ import {
   createWelshSlateRoofTexture,
 } from '../../../../engine/textures/procedural-textures.ts';
 import { buildHollowCabinetCarcass } from '../../../../objects/joinery/cabinet-interior.ts';
+import { buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/swept-moulding.ts';
 
 export function buildOakDoor(
   parent: THREE.Object3D,
@@ -579,7 +580,7 @@ export function buildArchitecturalShellAndUtilityRoom(
   cutawayWallGroups.north.add(backWall);
 
   // West Load-Bearing Cross-Wall between Kitchen & Family Room (X = -4.40m..-4.64m, thickness 0.24m, Z = -2.50m to +1.99m):
-  // Both +X (Kitchen) and -X (Family Room) faces are interior warm plaster; wide open portal at Z = +0.85m..+1.95m (width 1.10m, center Z = +1.40m, matching PH-53 & floorplan)
+  // Both +X (Kitchen) and -X (Family Room) faces are interior warm plaster; wide open portal at Z = +0.85m..+1.99m (width 1.14m, center Z = +1.42m, matching PH-53 & floorplan)
   const westWallLowBase = createExteriorBrickWallBox(
     crossWallThick,
     0.18,
@@ -593,10 +594,10 @@ export function buildArchitecturalShellAndUtilityRoom(
 
   const westWallMain = createExteriorBrickWallBox(
     crossWallThick,
-    wallHeight,
+    wallHeight - 0.18,
     3.35,
     -4.4 - crossWallThick / 2,
-    wallHeight / 2,
+    0.18 + (wallHeight - 0.18) / 2,
     -0.825,
     ['+x', '-x', '+y', '+z']
   );
@@ -613,17 +614,17 @@ export function buildArchitecturalShellAndUtilityRoom(
   );
   cutawayWallGroups.west.add(westOpeningHeader);
 
-  // Reclaimed Yorkstone threshold step inside the open Kitchen <-> Family Room portal (PH-53)
+  // Flush reclaimed Yorkstone threshold saddle strip at the Kitchen <-> Dining Room floor transition (X = -4.40m, Z = +0.85m..+1.99m)
   const portalStepMat = new THREE.MeshStandardMaterial({
     color: 0xb5aba0,
     roughness: 0.76,
     metalness: 0.04,
   });
   const portalThresholdStep = new THREE.Mesh(
-    new THREE.BoxGeometry(crossWallThick + 0.08, 0.045, 1.12),
+    new THREE.BoxGeometry(0.036, 0.004, 1.14),
     portalStepMat
   );
-  portalThresholdStep.position.set(-4.52, 0.022, 1.4);
+  portalThresholdStep.position.set(-4.4, 0.002, 1.42);
   portalThresholdStep.receiveShadow = true;
   scene.add(portalThresholdStep);
 
@@ -1557,10 +1558,10 @@ export function buildArchitecturalShellAndUtilityRoom(
 
   const southWestFullWall = createExteriorBrickWallBox(
     2.48,
-    wallHeight,
+    wallHeight - 0.18,
     extWallThick,
     -3.16,
-    wallHeight / 2,
+    0.18 + (wallHeight - 0.18) / 2,
     southWallCenterZ,
     ['-z', '+y']
   );
@@ -1613,8 +1614,7 @@ export function buildArchitecturalShellAndUtilityRoom(
   cutawayWallGroups.southWest.add(bifoldRightPier);
 
   // =========================================================================
-  // ANTIQUE OAK OGEE-STYLE SKIRTING BOARDS ALONG ALL EXPOSED INTERIOR WALLS (Issue #14)
-  // (145mm tall stepped ogee profile: flat base face + convex torus roll + concave cyma neck + top fillet cap)
+  // ANTIQUE OAK 45°-MITRED SKIRTING BOARDS ALONG ALL EXPOSED INTERIOR WALLS (Issue #14 & #4/#5)
   // =========================================================================
   const skirtingMat = new THREE.MeshStandardMaterial({
     color: 0x8e643c,
@@ -1622,68 +1622,57 @@ export function buildArchitecturalShellAndUtilityRoom(
     metalness: 0.04,
   });
 
-  const addOgeeSkirtingBoard = (
+  const addMitredKitchenSkirting = (
     parent: THREE.Object3D,
-    cx: number,
-    cz: number,
-    length: number,
-    axis: 'x' | 'z',
-    normalSign: 1 | -1
+    path: ReadonlyArray<readonly [number, number]>
   ): void => {
-    const skirtGroup = new THREE.Group();
-    skirtGroup.position.set(cx, 0, cz);
-
-    // [tierHeight, centerY, thickness]
-    const ogeeTiers: ReadonlyArray<readonly [number, number, number]> = [
-      [0.095, 0.0475, 0.022], // Lower flat baseboard face
-      [0.022, 0.106, 0.018],  // Convex ogee belly curve
-      [0.016, 0.125, 0.013],  // Concave ogee neck recess
-      [0.012, 0.139, 0.009],  // Top ogee fillet cap
-    ];
-
-    for (const [th, ty, td] of ogeeTiers) {
-      const geo =
-        axis === 'x'
-          ? new THREE.BoxGeometry(length, th, td)
-          : new THREE.BoxGeometry(td, th, length);
-      const mesh = new THREE.Mesh(geo, skirtingMat);
-      if (axis === 'x') {
-        mesh.position.set(0, ty, normalSign * (td * 0.5));
-      } else {
-        mesh.position.set(normalSign * (td * 0.5), ty, 0);
-      }
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      skirtGroup.add(mesh);
-    }
-
-    parent.add(skirtGroup);
+    const mesh = new THREE.Mesh(buildMitredWallSkirtingGeometry(path), skirtingMat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    parent.add(mesh);
   };
 
   // 1. South Front Wall interior face (Z = +1.99m):
-  //    - West low cutaway & left window pier (X = -4.40m to -1.92m)
-  addOgeeSkirtingBoard(cutawayWallGroups.southWest, -3.16, 1.99, 2.48, 'x', -1);
+  //    - West low cutaway & left window pier (X = -4.40m to -1.92m, on `scene` so it stays on `southLowCutaway`)
+  addMitredKitchenSkirting(scene, [
+    [-1.92, 1.99],
+    [-4.4, 1.99],
+  ]);
   //    - Central plaster pier between 3-pane window and 4-leaf bifolds (X = +1.06m to +1.44m)
-  addOgeeSkirtingBoard(cutawayWallGroups.southWest, 1.25, 1.99, 0.38, 'x', -1);
+  addMitredKitchenSkirting(cutawayWallGroups.southWest, [
+    [1.44, 1.99],
+    [1.06, 1.99],
+  ]);
 
-  // 2. East Sitting Area & Utility Wall interior face (X = +5.00m):
-  //    - Between Utility partition wall (Z = -0.70m) and East full-height window (Z = -0.35m)
-  addOgeeSkirtingBoard(cutawayWallGroups.east, 5.0, -0.525, 0.35, 'z', -1);
+  // 2. East Sitting Area & Utility South Wall interior corner (X = +3.15m..+5.00m at Z = -0.70m, mitred onto X = +5.00m, Z = -0.70m..-0.35m)
+  addMitredKitchenSkirting(scene, [
+    [3.15, -0.7],
+    [5.0, -0.7],
+    [5.0, -0.35],
+  ]);
   //    - Between East full-height window (Z = +1.65m) and South-East corner (Z = +1.99m)
-  addOgeeSkirtingBoard(cutawayWallGroups.east, 5.0, 1.82, 0.34, 'z', -1);
+  addMitredKitchenSkirting(scene, [
+    [5.0, 1.65],
+    [5.0, 1.99],
+  ]);
 
-  // 3. Utility Room Partition Walls (TV Wall at X = +1.85m & Utility South Wall at Z = -0.70m / -0.85m):
-  //    - Kitchen face of TV Wall from Pantry base (Z = -1.845m) to corner (Z = -0.70m)
-  addOgeeSkirtingBoard(scene, 1.85, -1.2725, 1.145, 'z', -1);
-  //    - Inside Utility Room West face (X = +2.00m, Z = -1.86m to -0.85m)
-  addOgeeSkirtingBoard(scene, 2.0, -1.355, 1.01, 'z', 1);
-  //    - Kitchen face of Utility South Wall left of door architrave (X = +1.85m to +2.21m)
-  addOgeeSkirtingBoard(scene, 2.03, -0.7, 0.36, 'x', 1);
-  //    - Kitchen face of Utility South Wall right of door architrave (X = +3.15m to +5.00m)
-  addOgeeSkirtingBoard(scene, 4.075, -0.7, 1.85, 'x', 1);
-  //    - Inside Utility Room South Wall left & right of door architrave (Z = -0.85m)
-  addOgeeSkirtingBoard(scene, 2.105, -0.85, 0.21, 'x', -1);
-  addOgeeSkirtingBoard(scene, 4.075, -0.85, 1.85, 'x', -1);
+  // 3. Utility Room Partition Walls (TV Wall at X = +1.85m mitred around the external corner onto Utility South Wall at Z = -0.70m):
+  addMitredKitchenSkirting(scene, [
+    [1.85, -1.845],
+    [1.85, -0.7],
+    [2.21, -0.7],
+  ]);
+  //    - Inside Utility Room West & South walls (45° internal mitre at X = +2.00m, Z = -0.85m)
+  addMitredKitchenSkirting(scene, [
+    [2.21, -0.85],
+    [2.0, -0.85],
+    [2.0, -1.86],
+  ]);
+  //    - Inside Utility Room South Wall right of door architrave (X = +3.15m..+5.00m at Z = -0.85m)
+  addMitredKitchenSkirting(scene, [
+    [5.0, -0.85],
+    [3.15, -0.85],
+  ]);
 
   // Smooth Plaster Ceiling over the 9.40m x 4.49m Kitchen & Utility Wing (centered at X = +0.30m, Z = -0.255m)
   const ceilingMat = new THREE.MeshStandardMaterial({

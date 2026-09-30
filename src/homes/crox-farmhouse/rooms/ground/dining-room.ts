@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/swept-moulding.ts';
 import { buildWindowRomanBlind } from '../../../../objects/decor/roman-blind.ts';
 import { buildFlutedBrassPictureLight } from '../../../../objects/fixtures/fluted-brass-picture-light.ts';
 import { buildBootRoomHeatingManifold } from '../../../../objects/fixtures/hydronic-manifold.ts';
@@ -94,6 +95,15 @@ export function buildDiningRoom(
   familyFloor.position.set(-7.1, -0.04, -0.075);
   familyFloor.receiveShadow = true;
   scene.add(familyFloor);
+
+  // Flush herringbone terracotta floor continuation through the open Kitchen <-> Dining Room portal (X = -4.64m..-4.40m, Z = +0.85m..+1.99m)
+  const familyPortalFloor = new THREE.Mesh(
+    applyWorldSpaceFloorUVs(new THREE.BoxGeometry(0.24, 0.08, 1.14), -4.52, 1.42, 0.85, 0.85),
+    herringboneTerracottaQuarryMat
+  );
+  familyPortalFloor.position.set(-4.52, -0.04, 1.42);
+  familyPortalFloor.receiveShadow = true;
+  scene.add(familyPortalFloor);
 
   // 1B. North Exterior Brick Wall (0.28m thick, Z = -2.50m..-2.78m, X = -9.56m..-4.40m):
   //     - West section across Walk-in Cupboard (X = -9.56m..-7.82m) with small 1-pane cottage window at X = -8.68m
@@ -357,12 +367,12 @@ export function buildDiningRoom(
     scene.add(picGroup);
   }
 
-  // Deep Slate-Blue lining on the East (+X, Snug) face of the Cupboard wall (X = -7.81m, Z = -2.50m..-0.51m)
+  // Deep Slate-Blue lining on the East (+X, Snug) face of the Cupboard wall (X = -7.812m, Z = -2.50m..-0.44m)
   const snugWestWallLining = new THREE.Mesh(
-    new THREE.BoxGeometry(0.016, wallH, 1.99),
+    new THREE.BoxGeometry(0.016, wallH, 2.06),
     snugSlateBlueMat
   );
-  snugWestWallLining.position.set(-7.812, wallH / 2, -1.505);
+  snugWestWallLining.position.set(-7.812, wallH / 2, -1.47);
   snugWestWallLining.receiveShadow = true;
   scene.add(snugWestWallLining);
 
@@ -1039,32 +1049,18 @@ export function buildDiningRoom(
   snugEastWallLining.receiveShadow = true;
   scene.add(snugEastWallLining);
 
-  // Antique-profiled oak skirting boards on West and East Slate-Blue Snug walls (North wall skirting is built inside addBrickWallWithWindow, Issue #4)
+  // Antique-profiled oak skirting board with 45° mitred corner around the SE Walk-in Cupboard corner & Snug West wall
   const snugSkirtWest = new THREE.Mesh(
-    new THREE.BoxGeometry(0.024, 0.122, 1.99),
+    buildMitredWallSkirtingGeometry([
+      [-8.248, -0.438],
+      [-7.804, -0.438],
+      [-7.804, -2.482],
+    ]),
     antiqueOakSkirtingMat
   );
-  snugSkirtWest.position.set(-7.805, 0.061, -1.505);
+  snugSkirtWest.name = 'familyRoom.snugWestSkirting';
+  snugSkirtWest.receiveShadow = true;
   scene.add(snugSkirtWest);
-  const snugSkirtWestCap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.016, 0.024, 1.99),
-    antiqueOakSkirtingMat
-  );
-  snugSkirtWestCap.position.set(-7.809, 0.134, -1.505);
-  scene.add(snugSkirtWestCap);
-
-  const snugSkirtEast = new THREE.Mesh(
-    new THREE.BoxGeometry(0.024, 0.122, 1.65),
-    antiqueOakSkirtingMat
-  );
-  snugSkirtEast.position.set(-4.652, 0.061, -1.675);
-  scene.add(snugSkirtEast);
-  const snugSkirtEastCap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.016, 0.024, 1.65),
-    antiqueOakSkirtingMat
-  );
-  snugSkirtEastCap.position.set(-4.648, 0.134, -1.675);
-  scene.add(snugSkirtEastCap);
 
   // 42-inch Samsung The Frame QLED Art Mode TV flush-mounted on the East Snug Wall (X = -4.668m, Y = 1.34m, Z = -1.62m — Issue #12)
   // Official 42" / 43" Frame dimensions: 969mm W x 558mm H x 25mm D with magnetic warm oak bezel & museum mat passepartout
@@ -1611,23 +1607,42 @@ export function buildDiningRoom(
   scene.add(bwFrameGroup);
 
   // 1F. White-Plastered East Chimney Breast & Recessed Fireplace Alcove
-  //     (Issue #12: juts out half as much — 0.32m, X = -4.96m..-4.64m, centered at X = -4.80m, Z = -0.85m..+0.82m)
+  //     (Issue #12 & Issue #4: X = -4.96m..-4.64m, centered at X = -4.80m, Z = -0.85m..+0.85m so the South pier
+  //      is 100% flush with the Z = +0.85m North jamb of the Kitchen <-> Dining Room portal)
   //     Extends all the way up to Y = 3.00m (flush with the Kitchen cross-wall and continuing into the 1st Floor stack!)
   const chimneyStackGroundH = 3.0;
+  const addChimneyWallBlock = (
+    cx: number,
+    cy: number,
+    cz: number,
+    w: number,
+    h: number,
+    d: number
+  ): THREE.Mesh => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), crispWhiteWallMat);
+    mesh.position.set(cx, cy, cz);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    return mesh;
+  };
+
   // Left (North) chimney pier (Z = -0.85m..-0.44m, depth 0.41m, width 0.32m)
-  addInteriorWall(-4.8, chimneyStackGroundH / 2, -0.645, 0.32, chimneyStackGroundH, 0.41, crispWhiteWallMat);
-  // Right (South) chimney pier (Z = +0.40m..+0.82m, depth 0.42m, width 0.32m)
-  addInteriorWall(-4.8, chimneyStackGroundH / 2, 0.61, 0.32, chimneyStackGroundH, 0.42, crispWhiteWallMat);
+  addChimneyWallBlock(-4.8, chimneyStackGroundH / 2, -0.645, 0.32, chimneyStackGroundH, 0.41);
+  // Right (South) chimney pier (Z = +0.40m..+0.85m, depth 0.45m, width 0.32m — flush with Kitchen portal North jamb at Z = +0.85m)
+  addChimneyWallBlock(-4.8, chimneyStackGroundH / 2, 0.625, 0.32, chimneyStackGroundH, 0.45);
   // Upper chimney breast lintel wall above the recessed fireplace opening (Y = 1.26m..3.00m, Z = -0.44m..+0.40m)
-  addInteriorWall(
+  addChimneyWallBlock(
     -4.8,
     1.26 + (chimneyStackGroundH - 1.26) / 2,
     -0.02,
     0.32,
     chimneyStackGroundH - 1.26,
-    0.84,
-    crispWhiteWallMat
+    0.84
   );
+  // Seamless plaster jamb lining across X = -4.64m..-4.40m on the North portal reveal (Z = +0.85m)
+  addChimneyWallBlock(-4.52, chimneyStackGroundH / 2, 0.851, 0.24, chimneyStackGroundH, 0.004);
+
   // White-plastered back wall of the fireplace alcove integrated flush at X = -4.64m (Y = 0..1.26m, Z = -0.44m..+0.40m)
   const alcoveBackWall = new THREE.Mesh(
     new THREE.BoxGeometry(0.024, 1.26, 0.84),
@@ -1717,71 +1732,38 @@ export function buildDiningRoom(
     scene.add(mirrorGroup);
   }
 
-  // Clean wrap-around antique oak skirting on the West front faces (X = -4.96m) of the two chimney piers,
-  // the inner North/South alcove reveals (Z = -0.44m and +0.40m), and across the back wall of the alcove (Issue #11)
-  for (const [pierZ, pierD] of [
-    [-0.645, 0.41],
-    [0.61, 0.42],
-  ] as const) {
-    const pierFrontSkirt = new THREE.Mesh(
-      new THREE.BoxGeometry(0.022, 0.122, pierD + 0.02),
-      antiqueOakSkirtingMat
-    );
-    pierFrontSkirt.position.set(-4.97, 0.061, pierZ);
-    pierFrontSkirt.receiveShadow = true;
-    scene.add(pierFrontSkirt);
-
-    const pierFrontCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, 0.024, pierD + 0.02),
-      antiqueOakSkirtingMat
-    );
-    pierFrontCap.position.set(-4.967, 0.134, pierZ);
-    scene.add(pierFrontCap);
-  }
-
-  // Issue #11: Antique oak skirting board & moulded top cap across the back of the fireplace alcove (X = -4.664m, Z = -0.44m..+0.40m)
-  const alcoveBackSkirt = new THREE.Mesh(
-    new THREE.BoxGeometry(0.022, 0.122, 0.84),
+  // Issues #4 & #5: Continuous 45°-mitred antique oak skirting board wrapping cleanly around:
+  //   - Snug East wall (`X = -4.656m, Z = -2.482m..-0.85m`)
+  //   - Left (North) chimney pier North return (`Z = -0.85m`), West face (`X = -4.96m`), and North alcove reveal (`Z = -0.44m`)
+  //   - Fireplace alcove back wall (`X = -4.664m, Z = -0.44m..+0.40m`)
+  //   - Right (South) chimney pier South alcove reveal (`Z = +0.40m`), West face (`X = -4.96m`), and South portal jamb (`Z = +0.852m, X = -4.96m..-4.40m`)
+  //   - Kitchen West wall return (`X = -4.40m, Z = +0.852m..+0.53m` up to the Integrated Fridge-Freezer)
+  const eastChimneySkirting = new THREE.Mesh(
+    buildMitredWallSkirtingGeometry([
+      [-4.656, -2.482],
+      [-4.656, -0.85],
+      [-4.96, -0.85],
+      [-4.96, -0.44],
+      [-4.664, -0.44],
+      [-4.664, 0.4],
+      [-4.96, 0.4],
+      [-4.96, 0.852],
+      [-4.4, 0.852],
+      [-4.4, 0.53],
+    ]),
     antiqueOakSkirtingMat
   );
-  alcoveBackSkirt.position.set(-4.674, 0.061, -0.02);
-  alcoveBackSkirt.receiveShadow = true;
-  scene.add(alcoveBackSkirt);
-
-  const alcoveBackSkirtCap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.016, 0.024, 0.84),
-    antiqueOakSkirtingMat
-  );
-  alcoveBackSkirtCap.position.set(-4.671, 0.134, -0.02);
-  scene.add(alcoveBackSkirtCap);
-
-  // Inner alcove side-reveal skirting returns (X = -4.96m..-4.66m at Z = -0.43m and Z = +0.39m)
-  for (const [revealZ, dirZ] of [
-    [-0.44, 1],
-    [0.4, -1],
-  ] as const) {
-    const revealSkirt = new THREE.Mesh(
-      new THREE.BoxGeometry(0.31, 0.122, 0.022),
-      antiqueOakSkirtingMat
-    );
-    revealSkirt.position.set(-4.815, 0.061, revealZ + dirZ * 0.01);
-    revealSkirt.receiveShadow = true;
-    scene.add(revealSkirt);
-
-    const revealSkirtCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.31, 0.024, 0.016),
-      antiqueOakSkirtingMat
-    );
-    revealSkirtCap.position.set(-4.815, 0.134, revealZ + dirZ * 0.007);
-    scene.add(revealSkirtCap);
-  }
+  eastChimneySkirting.name = 'familyRoom.eastChimneySkirting';
+  eastChimneySkirting.castShadow = true;
+  eastChimneySkirting.receiveShadow = true;
+  scene.add(eastChimneySkirting);
 
   // Issue #9: Herringbone terracotta quarry tile floor (`familyFloor`) extends continuously
   // right into the fireplace hearth alcove with no separate hearth slab or material change.
 
-  // Issue #13: Interior Plastered Wall Pier on the South Jamb of the Open Kitchen Portal
-  // (X = -4.64m..-4.40m, Z = +1.95m..+2.35m — no exposed exterior brick inside the Dining Room or Kitchen!)
-  addInteriorWall(-4.52, chimneyStackGroundH / 2, 2.15, 0.24, chimneyStackGroundH, 0.4, crispWhiteWallMat);
+  // Issue #13 & Issue #4: Interior Plastered Wall Pier on the South Jamb of the Open Kitchen Portal
+  // (X = -4.64m..-4.40m, Z = +1.99m..+2.35m — flush with the Kitchen South interior wall at Z = +1.99m!)
+  addChimneyWallBlock(-4.52, chimneyStackGroundH / 2, 2.17, 0.24, chimneyStackGroundH, 0.36);
 
   // 1G. Main Oak Structural Cross-Beam (Z = -0.85m), Exposed Oak Ceiling Joists (Y = wallH - 0.07m)
   //     & 6 KNX Recessed Warm-Dim Ceiling Downlights (Channel 10: familyRoomSpots, GA 1/1/10 — PH-53..56)
@@ -2281,19 +2263,27 @@ export function buildDiningRoom(
     addSouthBrickPiece(diningWinLeft, diningWinRight, 0.18, sillY);
     addSouthBrickPiece(diningWinLeft, diningWinRight, headY, wallH);
 
-    // Consistent antique oak skirting board along the Dining Room South interior face (Z = 2.338m)
-    for (const [sMinX, sMaxX] of [
-      [-9.56, diningDoorLeft],
-      [diningDoorRight, -4.64],
+    // Consistent 45°-mitred antique oak skirting board along the Dining Room South interior face (Z = 2.35m)
+    // and wrapping cleanly around the South Portal Pier (X = -4.64m..-4.40m, Z = +1.99m..+2.35m)
+    for (const skirtPath of [
+      [
+        [diningDoorLeft - 0.062, 2.35],
+        [-9.56, 2.35],
+      ],
+      [
+        [-4.4, 1.99],
+        [-4.64, 1.99],
+        [-4.64, 2.35],
+        [diningDoorRight + 0.062, 2.35],
+      ],
     ] as const) {
-      const sw = sMaxX - sMinX;
       const southSkirt = new THREE.Mesh(
-        new THREE.BoxGeometry(sw, 0.14, 0.024),
+        buildMitredWallSkirtingGeometry(skirtPath),
         antiqueOakSkirtingMat
       );
-      southSkirt.position.set((sMinX + sMaxX) / 2, 0.07, 2.338);
+      southSkirt.castShadow = true;
       southSkirt.receiveShadow = true;
-      southCutGroup.add(southSkirt);
+      scene.add(southSkirt);
     }
 
     const southCap = new THREE.Mesh(

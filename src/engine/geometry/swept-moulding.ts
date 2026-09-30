@@ -51,6 +51,12 @@ export function buildSweptMouldingGeometry(
     const flip = o3.dot(n3.clone().cross(t3)) < 0;
 
     for (let v = 0; v < src.count; v += 3) {
+      const s0 = src.getZ(v);
+      const s1 = src.getZ(v + 1);
+      const s2 = src.getZ(v + 2);
+      // Omit internal cap faces at intermediate mitred corners so only outer ends are capped.
+      if (prev && s0 < 0.5 && s1 < 0.5 && s2 < 0.5) continue;
+      if (next && s0 > 0.5 && s1 > 0.5 && s2 > 0.5) continue;
       const order = flip ? [v, v + 2, v + 1] : [v, v + 1, v + 2];
       for (const idx of order) {
         const d = src.getX(idx);
@@ -98,3 +104,42 @@ export function createSkirtingCapProfile(): THREE.Shape {
   s.closePath();
   return s;
 }
+
+/**
+ * Full-height 146mm antique oak ogee/torus skirting board cross-section in `(y, h)`:
+ * - `y` (first coordinate `d` in `buildSweptMouldingGeometry`) is vertical height above the floor (`0..0.146m`),
+ * - `h` (second coordinate `h` in `buildSweptMouldingGeometry`) is horizontal projection out from the wall (`0..0.022m`).
+ */
+export function createWallSkirtingBoardProfile(): THREE.Shape {
+  const s = new THREE.Shape();
+  s.moveTo(0, 0);
+  s.lineTo(0, 0.022);
+  s.lineTo(0.118, 0.022);
+  s.lineTo(0.121, 0.017);
+  s.lineTo(0.131, 0.017);
+  s.lineTo(0.136, 0.012);
+  s.lineTo(0.143, 0.01);
+  s.lineTo(0.146, 0.007);
+  s.lineTo(0.146, 0);
+  s.closePath();
+  return s;
+}
+
+/**
+ * Sweeps a 146mm-tall antique-profiled skirting board along a horizontal floor-plan polyline `path`
+ * of `[x, z]` wall points (ordered so the room interior lies to the left of each segment tangent
+ * `(dx, dz)`, i.e. outward normal `(-dz, dx)` points into the room), with true 45° mitred joints at
+ * every internal and external corner.
+ */
+export function buildMitredWallSkirtingGeometry(
+  path: ReadonlyArray<readonly [number, number]>,
+  floorY = 0
+): THREE.BufferGeometry {
+  return buildSweptMouldingGeometry(
+    createWallSkirtingBoardProfile(),
+    path,
+    (x, z, y) => new THREE.Vector3(x, floorY + y, z),
+    1
+  );
+}
+
