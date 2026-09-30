@@ -477,7 +477,11 @@ export class UsdStageRuntimeController {
       ) {
         return true;
       }
-      if (obj.userData?.isAnnotationGroup || obj.name.startsWith('annotationMarker')) {
+      if (
+        obj.userData?.isAnnotationGroup ||
+        obj.userData?.isSecurityFovCone ||
+        obj.name.startsWith('annotationMarker')
+      ) {
         return true;
       }
       if (obj instanceof THREE.Mesh) {
@@ -624,7 +628,11 @@ export class UsdStageRuntimeController {
       root.traverse((obj) => {
         if (!(obj instanceof THREE.Mesh)) return;
         if (visited.has(obj.uuid)) return;
-        if (obj.userData?.isAnnotationGroup || obj.name.startsWith('annotationMarker')) {
+        if (
+          obj.userData?.isAnnotationGroup ||
+          obj.userData?.isSecurityFovCone ||
+          obj.name.startsWith('annotationMarker')
+        ) {
           return;
         }
         // Skip additive light glow pools

@@ -803,7 +803,10 @@ export function parseAndInstantiateUsdaZone(
     } else if (line.startsWith('float3 xformOp:scale')) {
       const v = parseVec3Attr(line);
       if (v) current.scale = v;
-    } else if (line.startsWith('uniform token visibility')) {
+    } else if (
+      line.startsWith('token visibility') ||
+      line.startsWith('uniform token visibility')
+    ) {
       const m = line.match(/=\s*"([^"]+)"/);
       if (m) current.visible = m[1] !== 'invisible';
     } else if (line.startsWith('bool doubleSided')) {

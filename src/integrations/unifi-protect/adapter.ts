@@ -186,7 +186,7 @@ export class UniFiProtectController {
     const updated: CctvCameraEntityState = {
       ...cam,
       activeDetection: detection,
-      showFrustum3D: detection !== 'none' ? true : this.showFrustums,
+      showFrustum3D: this.showFrustums,
       lastDetectionSummary: summary,
     };
     this.cameras[idx] = updated;

@@ -481,6 +481,9 @@ function convertObjectBranchToUsdPrim(
   if (obj instanceof THREE.Line || obj instanceof THREE.Points) {
     return null;
   }
+  if (obj.userData?.isSecurityFovCone) {
+    return null;
+  }
 
   const rawBaseName = obj.name
     ? obj.name.startsWith(`${zoneId}.`)

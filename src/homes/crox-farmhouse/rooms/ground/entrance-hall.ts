@@ -70,13 +70,13 @@ export function buildEntranceHall(
     vitoriaChequerUvScale
   ).name = 'entranceHall.floor';
 
-  // East Continuation of the Straight North Wall ([-17.891, 2.48] -> [-16.36, 2.685], 0.28m thick, length 1.545m):
+  // East Continuation of the Straight North Wall ([-17.891, 2.48] -> [-16.92, 2.61], 0.28m thick, length 0.98m):
   // 100% collinear with both the Cinema Room South wall ([-22.19, 1.905] -> [-17.891, 2.48]) and the
   // Hall South exterior brick wall, separating the Front Entrance Hallway (Y = -0.60m) from the
   // Main Stair Hall (Y = -0.30m) with the 30cm step-up opening (`uCenter = 0.535m` from `[-17.891, 2.48]`)!
   buildAngledWallSegment(scene, interactions, {
     start: [-17.891, 2.48],
-    end: [-16.36, 2.685],
+    end: [-16.92, 2.61],
     thickness: 0.28,
     topY: wallH,
     frontFloorY: tier2FloorY,
@@ -100,6 +100,21 @@ export function buildEntranceHall(
         hardwareMaterial: castIronMat,
       },
     ],
+  });
+
+  // Lower North Wall segment inside the single-storey East Jut-Out ([-16.92, 2.61] -> [-16.256, 2.699], topY = frontWallH = 1.625m)
+  // Capped at frontWallH so it stays completely beneath the pitched Welsh slate lean-to roof (`entranceHall.eastJutOutRoof`)!
+  buildAngledWallSegment(scene, interactions, {
+    start: [-16.92, 2.61],
+    end: [-16.256, 2.699],
+    thickness: 0.28,
+    topY: frontWallH,
+    frontFloorY: tier2FloorY,
+    backFloorY: lowerFloorY,
+    wallMaterial: warmRoomPlasterMat,
+    capMaterial: wallCapMat,
+    skirtingMaterial: antiqueOakSkirtingMat,
+    addFrontSkirting: true,
   });
 
   // West Exterior Front Entrance Wall (0.28m thick, X = -22.19m..-22.47m, Z = +2.045m..+3.70m)
@@ -428,18 +443,18 @@ export function buildEntranceHall(
     });
 
     // Upper spandrel brick backing below the First Floor East corridor return wall (Y = 1.625m..2.16m)
-    const upperSpandrelGeo = new THREE.BoxGeometry(0.28, 2.16 - frontWallH, 1.18);
-    applyWorldSpaceBrickUVs(upperSpandrelGeo, -16.99, (frontWallH + 2.16) / 2, 3.22);
+    const upperSpandrelGeo = new THREE.BoxGeometry(0.28, 2.16 - frontWallH, 1.02);
+    applyWorldSpaceBrickUVs(upperSpandrelGeo, -16.99, (frontWallH + 2.16) / 2, 3.32);
     const upperSpandrelMesh = new THREE.Mesh(upperSpandrelGeo, exteriorBrickMat);
-    upperSpandrelMesh.position.set(-16.99, (frontWallH + 2.16) / 2, 3.22);
+    upperSpandrelMesh.position.set(-16.99, (frontWallH + 2.16) / 2, 3.32);
     upperSpandrelMesh.castShadow = true;
     upperSpandrelMesh.receiveShadow = true;
     jutRoofGroup.add(upperSpandrelMesh);
 
-    // Pitched triangular brick cheek / gable infill across X = -16.86m..-16.16m, Z = 2.68m..3.83m
+    // Pitched triangular brick cheek / gable infill across X = -16.86m..-16.16m, Z = 2.83m..3.83m
     const cheekW = 0.7; // X = -16.86m to -16.16m
     const cheekH = 0.52; // Y = 1.64m at East eaves (-16.16m) rising to 2.16m at West wall (-16.86m)
-    const cheekGeo = new THREE.BoxGeometry(cheekW, cheekH, 1.15);
+    const cheekGeo = new THREE.BoxGeometry(cheekW, cheekH, 1.0);
     const cheekPos = cheekGeo.attributes.position;
     if (cheekPos) {
       for (let i = 0; i < cheekPos.count; i++) {
@@ -452,42 +467,52 @@ export function buildEntranceHall(
       cheekPos.needsUpdate = true;
       cheekGeo.computeVertexNormals();
     }
-    applyWorldSpaceBrickUVs(cheekGeo, -16.51, frontWallH + 0.015 + cheekH / 2, 3.255);
+    applyWorldSpaceBrickUVs(cheekGeo, -16.51, frontWallH + 0.015 + cheekH / 2, 3.33);
     const cheekMesh = new THREE.Mesh(cheekGeo, exteriorBrickMat);
-    cheekMesh.position.set(-16.51, frontWallH + 0.015 + cheekH / 2, 3.255);
+    cheekMesh.position.set(-16.51, frontWallH + 0.015 + cheekH / 2, 3.33);
     cheekMesh.castShadow = true;
     cheekMesh.receiveShadow = true;
     jutRoofGroup.add(cheekMesh);
 
-    // Pitched Welsh slate lean-to roof slope (X = -16.87m..-16.13m, Z = 2.63m..3.89m)
+    // Pitched Welsh slate lean-to roof slope (X = -16.87m..-16.13m, Z = 2.83m..3.895m, flush with Hall South brick wall)
     const runX = 0.74;
     const riseY = 0.54;
     const slopeLen = Math.hypot(runX, riseY);
     const pitchAngle = Math.atan2(riseY, runX);
+    const jutRoofCenterZ = 3.3625;
+    const jutRoofSpanZ = 1.065;
     const slateSlopeMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(slopeLen, 0.055, 1.26),
+      new THREE.BoxGeometry(slopeLen, 0.055, jutRoofSpanZ),
       jutSlateMat
     );
-    slateSlopeMesh.position.set(-16.5, frontWallH + 0.295, 3.26);
+    slateSlopeMesh.position.set(-16.5, frontWallH + 0.295, jutRoofCenterZ);
     slateSlopeMesh.rotation.z = -pitchAngle;
     slateSlopeMesh.castShadow = true;
     slateSlopeMesh.receiveShadow = true;
     jutRoofGroup.add(slateSlopeMesh);
 
-    // Lead abutment flashing against the First Floor brickwork & South barge flashing
+    // Lead abutment flashing against the First Floor brickwork & North Hall brick wall
     const topFlashing = new THREE.Mesh(
-      new THREE.BoxGeometry(0.06, 0.11, 1.26),
+      new THREE.BoxGeometry(0.06, 0.11, jutRoofSpanZ),
       leadFlashingMat
     );
-    topFlashing.position.set(-16.85, frontWallH + 0.56, 3.26);
+    topFlashing.position.set(-16.85, frontWallH + 0.56, jutRoofCenterZ);
     jutRoofGroup.add(topFlashing);
+
+    const northAbutmentFlashing = new THREE.Mesh(
+      new THREE.BoxGeometry(slopeLen - 0.02, 0.075, 0.036),
+      leadFlashingMat
+    );
+    northAbutmentFlashing.position.set(-16.5, frontWallH + 0.32, 2.835);
+    northAbutmentFlashing.rotation.z = -pitchAngle;
+    jutRoofGroup.add(northAbutmentFlashing);
 
     // Painted cream timber fascia & soffit along the East & South eaves of the jut-out
     const eastFascia = new THREE.Mesh(
-      new THREE.BoxGeometry(0.028, 0.11, 1.27),
+      new THREE.BoxGeometry(0.028, 0.11, jutRoofSpanZ),
       ceramicWhiteMat
     );
-    eastFascia.position.set(-16.13, frontWallH + 0.02, 3.26);
+    eastFascia.position.set(-16.13, frontWallH + 0.02, jutRoofCenterZ);
     jutRoofGroup.add(eastFascia);
 
     const southBargeBoard = new THREE.Mesh(
@@ -497,6 +522,123 @@ export function buildEntranceHall(
     southBargeBoard.position.set(-16.5, frontWallH + 0.28, 3.88);
     southBargeBoard.rotation.z = -pitchAngle;
     jutRoofGroup.add(southBargeBoard);
+
+    // Little half-round rainwater gutter & cast-iron downpipe along the East eave (Issue #5 at [-16.117, 1.62, 3.895])
+    const jutGutterMat = new THREE.MeshStandardMaterial({
+      color: 0x8fa693,
+      roughness: 0.38,
+      metalness: 0.22,
+      side: THREE.DoubleSide,
+    });
+    const jutDownpipeMat = new THREE.MeshStandardMaterial({
+      color: 0x1e2228,
+      roughness: 0.36,
+      metalness: 0.65,
+      side: THREE.DoubleSide,
+    });
+    const jutGutterR = 0.038;
+    const jutGutterX = -16.082;
+    const jutGutterY = frontWallH + 0.04;
+    const jutGutter = new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        jutGutterR,
+        jutGutterR,
+        jutRoofSpanZ + 0.02,
+        14,
+        1,
+        true,
+        Math.PI,
+        Math.PI
+      ),
+      jutGutterMat
+    );
+    jutGutter.name = 'entranceHall.eastJutOutRoof.gutter';
+    jutGutter.rotation.x = Math.PI / 2;
+    jutGutter.position.set(jutGutterX, jutGutterY, jutRoofCenterZ);
+    jutGutter.castShadow = true;
+    jutRoofGroup.add(jutGutter);
+
+    for (const endZ of [
+      jutRoofCenterZ - (jutRoofSpanZ + 0.02) * 0.5,
+      jutRoofCenterZ + (jutRoofSpanZ + 0.02) * 0.5,
+    ]) {
+      const stopEnd = new THREE.Mesh(
+        new THREE.CircleGeometry(jutGutterR, 14, Math.PI, Math.PI),
+        jutGutterMat
+      );
+      stopEnd.position.set(jutGutterX, jutGutterY, endZ);
+      jutRoofGroup.add(stopEnd);
+    }
+
+    const dpPipeR = 0.026;
+    const dpWallX = -16.13;
+    const dpZ = 3.84;
+    const dpGroundY = tier2FloorY;
+    const dpTopShaftY = frontWallH - 0.14;
+    const dpShaftH = dpTopShaftY - (dpGroundY + 0.08);
+
+    const jutDpGroup = new THREE.Group();
+    jutDpGroup.name = 'entranceHall.eastJutOutRoof.downpipe';
+
+    const dpOutlet = new THREE.Mesh(
+      new THREE.CylinderGeometry(dpPipeR + 0.005, dpPipeR, 0.04, 14),
+      jutDownpipeMat
+    );
+    dpOutlet.position.set(jutGutterX, jutGutterY - jutGutterR - 0.01, dpZ);
+    jutDpGroup.add(dpOutlet);
+
+    const dpSwanCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(jutGutterX, jutGutterY - jutGutterR, dpZ),
+      new THREE.Vector3(jutGutterX, frontWallH - 0.03, dpZ),
+      new THREE.Vector3((jutGutterX + dpWallX) * 0.5, frontWallH - 0.075, dpZ),
+      new THREE.Vector3(dpWallX, dpTopShaftY + 0.02, dpZ),
+      new THREE.Vector3(dpWallX, dpTopShaftY - 0.01, dpZ),
+    ]);
+    const dpSwanMesh = new THREE.Mesh(
+      new THREE.TubeGeometry(dpSwanCurve, 14, dpPipeR, 14, false),
+      jutDownpipeMat
+    );
+    dpSwanMesh.castShadow = true;
+    jutDpGroup.add(dpSwanMesh);
+
+    const dpShaftMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(dpPipeR, dpPipeR, dpShaftH, 14),
+      jutDownpipeMat
+    );
+    dpShaftMesh.position.set(dpWallX, dpGroundY + 0.08 + dpShaftH * 0.5, dpZ);
+    dpShaftMesh.castShadow = true;
+    dpShaftMesh.receiveShadow = true;
+    jutDpGroup.add(dpShaftMesh);
+
+    for (const clipY of [dpGroundY + 0.45, dpGroundY + 1.35]) {
+      const collar = new THREE.Mesh(
+        new THREE.CylinderGeometry(dpPipeR + 0.006, dpPipeR + 0.006, 0.026, 14),
+        jutDownpipeMat
+      );
+      collar.position.set(dpWallX, clipY, dpZ);
+      jutDpGroup.add(collar);
+
+      const bracket = new THREE.Mesh(
+        new THREE.BoxGeometry(0.024, 0.024, 0.095),
+        jutDownpipeMat
+      );
+      bracket.position.set(dpWallX - 0.014, clipY, dpZ);
+      jutDpGroup.add(bracket);
+    }
+
+    const dpShoeCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(dpWallX, dpGroundY + 0.09, dpZ),
+      new THREE.Vector3(dpWallX + 0.01, dpGroundY + 0.045, dpZ),
+      new THREE.Vector3(dpWallX + 0.042, dpGroundY + 0.018, dpZ),
+    ]);
+    const dpShoeMesh = new THREE.Mesh(
+      new THREE.TubeGeometry(dpShoeCurve, 8, dpPipeR, 14, false),
+      jutDownpipeMat
+    );
+    dpShoeMesh.castShadow = true;
+    jutDpGroup.add(dpShoeMesh);
+
+    jutRoofGroup.add(jutDpGroup);
 
     groundFloorCeilingGroup.add(jutRoofGroup);
   }

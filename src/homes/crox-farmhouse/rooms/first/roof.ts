@@ -159,16 +159,11 @@ export function buildFirstFloorCeilingsAndRoof(
       a: THREE.Vector3,
       b: THREE.Vector3,
       c: THREE.Vector3,
-      fallbackNormal: THREE.Vector3
+      faceNormal: THREE.Vector3
     ): void => {
-      const triNormal = new THREE.Vector3()
-        .subVectors(b, a)
-        .cross(new THREE.Vector3().subVectors(c, a));
-      const n =
-        triNormal.lengthSq() > 1e-8 ? triNormal.normalize() : fallbackNormal;
       for (const v of [a, b, c]) {
         positions.push(v.x, v.y, v.z);
-        normals.push(n.x, n.y, n.z);
+        normals.push(faceNormal.x, faceNormal.y, faceNormal.z);
         const rel = new THREE.Vector3().subVectors(v, p3);
         uvs.push(rel.dot(uVec) / tileU, rel.dot(vVec) / tileV);
       }
@@ -321,39 +316,43 @@ export function buildFirstFloorCeilingsAndRoof(
   nsRidgeCap.castShadow = true;
   ceilingMeshGroup.add(nsRidgeCap);
 
-  // Lead-Lined Valley Flashing Strips along both Valley Intersections
-  for (const valleyEavePt of [pCourtyardValleyEave, pNorthValleyEave]) {
-    const pStart = new THREE.Vector3(
-      pRidgeJunction.x,
-      pRidgeJunction.y + 0.005,
-      pRidgeJunction.z
-    );
-    const pEnd = new THREE.Vector3(
-      valleyEavePt.x,
-      valleyEavePt.y + 0.005,
-      valleyEavePt.z
-    );
-    const valleyCurve = new THREE.LineCurve3(pStart, pEnd);
-    const valleyGeo = new THREE.TubeGeometry(valleyCurve, 12, 0.065, 8, false);
-    const posAttr = valleyGeo.attributes.position;
-    const segVec = new THREE.Vector3().subVectors(pEnd, pStart);
-    const segLenSq = Math.max(1e-6, segVec.lengthSq());
-    for (let i = 0; i < posAttr.count; i++) {
-      const vx = posAttr.getX(i);
-      const vy = posAttr.getY(i);
-      const vz = posAttr.getZ(i);
-      const t = THREE.MathUtils.clamp(
-        ((vx - pStart.x) * segVec.x +
-          (vy - pStart.y) * segVec.y +
-          (vz - pStart.z) * segVec.z) /
-          segLenSq,
-        0,
-        1
-      );
-      const centerY = pStart.y + t * segVec.y;
-      posAttr.setY(i, centerY + (vy - centerY) * 0.32);
-    }
-    posAttr.needsUpdate = true;
+  // Lead-Lined V-Channel Valley Flashing Strips along both Valley Intersections (coplanar with the two adjacent roof slopes)
+  for (const [valleyEavePt, wingDirA, wingDirB] of [
+    [
+      pCourtyardValleyEave,
+      new THREE.Vector3().subVectors(pEastGableSouthEave, pCourtyardValleyEave).normalize(),
+      new THREE.Vector3(eastEaveX - pCourtyardValleyEave.x, 0, southGableZ - pCourtyardValleyEave.z).normalize(),
+    ],
+    [
+      pNorthValleyEave,
+      new THREE.Vector3().subVectors(pEastGableNorthEave, pNorthValleyEave).normalize(),
+      new THREE.Vector3(0, 0, -1),
+    ],
+  ] as const) {
+    const cStart = new THREE.Vector3(pRidgeJunction.x, pRidgeJunction.y + 0.008, pRidgeJunction.z);
+    const cEnd = new THREE.Vector3(valleyEavePt.x, valleyEavePt.y + 0.008, valleyEavePt.z);
+    const wingW = 0.135;
+    const aStart = cStart.clone().addScaledVector(wingDirA, wingW);
+    const aEnd = cEnd.clone().addScaledVector(wingDirA, wingW);
+    const bStart = cStart.clone().addScaledVector(wingDirB, wingW);
+    const bEnd = cEnd.clone().addScaledVector(wingDirB, wingW);
+
+    const vPositions = new Float32Array([
+      cStart.x, cStart.y, cStart.z,
+      cEnd.x, cEnd.y, cEnd.z,
+      aEnd.x, aEnd.y, aEnd.z,
+      cStart.x, cStart.y, cStart.z,
+      aEnd.x, aEnd.y, aEnd.z,
+      aStart.x, aStart.y, aStart.z,
+      cStart.x, cStart.y, cStart.z,
+      bStart.x, bStart.y, bStart.z,
+      bEnd.x, bEnd.y, bEnd.z,
+      cStart.x, cStart.y, cStart.z,
+      bEnd.x, bEnd.y, bEnd.z,
+      cEnd.x, cEnd.y, cEnd.z,
+    ]);
+    const valleyGeo = new THREE.BufferGeometry();
+    valleyGeo.setAttribute('position', new THREE.BufferAttribute(vPositions, 3));
     valleyGeo.computeVertexNormals();
     valleyGeo.computeBoundingBox();
     valleyGeo.computeBoundingSphere();
@@ -489,33 +488,33 @@ export function buildFirstFloorCeilingsAndRoof(
     addVergeBargeboard(eastPt, ridgePt, ceilingMeshGroup);
   }
 
-  // White Painted Eaves Fascia Boards, Boxed Eaves Soffits & Pale Sage-Green Half-Round Gutters at Y = 4.18m (Issue #11 & Issue #3)
-  for (const [fasciaZ, signZ, spanX, midX] of [
-    [ewNorthEaveZ + 0.02, -1, 12.49, -10.645],   // East-West North eaves (local X = -16.89m..-4.40m)
-    [ewSouthEaveZ - 0.02, 1, 12.035, -10.4175],  // East-West South courtyard eaves (local X = -16.435m..-4.40m)
+  // White Painted Eaves Fascia Boards, Boxed Eaves Soffits & Pale Sage-Green Half-Round Gutters at Y = 4.18m (Issue #11, Issue #3 & Issue #1 L-corner join)
+  for (const [fasciaZ, signZ, fasciaSpanX, fasciaMidX, soffitSpanX, soffitMidX, gutterSpanX, gutterMidX] of [
+    [ewNorthEaveZ + 0.02, -1, 12.49, -10.645, 12.49, -10.645, 12.49, -10.645],       // East-West North eaves (local X = -16.89m..-4.40m)
+    [ewSouthEaveZ - 0.02, 1, 12.057, -10.4285, 12.275, -10.5375, 12.087, -10.4435],  // East-West South courtyard eaves extended cleanly into L-corner
   ] as const) {
     const fascia = new THREE.Mesh(
-      new THREE.BoxGeometry(spanX, 0.15, 0.024),
+      new THREE.BoxGeometry(fasciaSpanX, 0.15, 0.024),
       soffitFasciaMat
     );
-    fascia.position.set(midX, eaveY - 0.04, fasciaZ);
+    fascia.position.set(fasciaMidX, eaveY - 0.04, fasciaZ);
     fascia.castShadow = true;
     ewCeilingMeshGroup.add(fascia);
 
     const soffit = new THREE.Mesh(
-      new THREE.BoxGeometry(spanX, 0.022, 0.24),
+      new THREE.BoxGeometry(soffitSpanX, 0.022, 0.24),
       soffitFasciaMat
     );
-    soffit.position.set(midX, eaveY - 0.105, fasciaZ - signZ * 0.11);
+    soffit.position.set(soffitMidX, eaveY - 0.105, fasciaZ - signZ * 0.11);
     ewCeilingMeshGroup.add(soffit);
 
     const gutter = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.056, 0.056, spanX, 14, 1, true, Math.PI, Math.PI),
+      new THREE.CylinderGeometry(0.056, 0.056, gutterSpanX, 14, 1, true, Math.PI, Math.PI),
       gutterPaleGreenMat
     );
     gutter.name = 'mainHouse.gutter.ew';
     gutter.rotation.z = Math.PI / 2;
-    gutter.position.set(midX, eaveY - 0.01, fasciaZ + signZ * 0.068);
+    gutter.position.set(gutterMidX, eaveY - 0.01, fasciaZ + signZ * 0.068);
     ewCeilingMeshGroup.add(gutter);
   }
 
@@ -549,7 +548,7 @@ export function buildFirstFloorCeilingsAndRoof(
     ceilingMeshGroup.add(westGutter);
   }
 
-  // East Courtyard Eaves Fascia, Soffit & Gutter (aligned with the -2.63° angled East Courtyard wall from pCourtyardValleyEave to southGableZ — Issue #3)
+  // East Courtyard Eaves Fascia, Soffit & Gutter (aligned with the -2.63° angled East Courtyard wall from pCourtyardValleyEave to southGableZ — Issue #3 & Issue #1 L-corner join)
   {
     const eastEaveDx = eastEaveX - pCourtyardValleyEave.x;
     const eastEaveDz = southGableZ - pCourtyardValleyEave.z;
@@ -563,10 +562,10 @@ export function buildFirstFloorCeilingsAndRoof(
     eastEaveGroup.rotation.y = eastCourtyardAngleY;
 
     const eastFascia = new THREE.Mesh(
-      new THREE.BoxGeometry(0.024, 0.15, eastCourtyardSpanLen),
+      new THREE.BoxGeometry(0.024, 0.15, eastCourtyardSpanLen + 0.022),
       soffitFasciaMat
     );
-    eastFascia.position.set(-0.02, eaveY - 0.04, 0);
+    eastFascia.position.set(-0.02, eaveY - 0.04, -0.011);
     eastFascia.castShadow = true;
     eastEaveGroup.add(eastFascia);
 
@@ -578,60 +577,138 @@ export function buildFirstFloorCeilingsAndRoof(
     eastEaveGroup.add(eastSoffit);
 
     const eastGutter = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.056, 0.056, eastCourtyardSpanLen, 14, 1, true, Math.PI, Math.PI),
+      new THREE.CylinderGeometry(0.056, 0.056, eastCourtyardSpanLen + 0.052, 14, 1, true, Math.PI, Math.PI),
       gutterPaleGreenMat
     );
     eastGutter.name = 'mainHouse.gutter.ns';
     eastGutter.rotation.x = Math.PI / 2;
-    eastGutter.position.set(0.048, eaveY - 0.01, 0);
+    eastGutter.position.set(0.048, eaveY - 0.01, -0.026);
     eastEaveGroup.add(eastGutter);
 
     ceilingMeshGroup.add(eastEaveGroup);
+
+    // Mitered L-Corner Boxed Eaves Soffit, Brick Eave Backing & Gutter Angle Union at [-16.703, 3.958, 2.902] (Issue #1)
+    buildPolygonalFloorSlab(
+      ceilingMeshGroup,
+      [
+        [-16.715, 2.765],
+        [-16.42, 2.805],
+        [-16.485, 3.008],
+        [-16.507, 3.045],
+        [-16.725, 3.045],
+      ],
+      eaveY - 0.105 + 0.011,
+      0.022,
+      soffitFasciaMat,
+      0.5
+    ).name = 'mainHouse.roof.courtyardCornerSoffit';
+
+    const cornerEaveBackingGeo = new THREE.BoxGeometry(0.26, 0.18, 0.3);
+    applyWorldSpaceBrickUVs(cornerEaveBackingGeo, -16.82, eaveY - 0.01, 2.75);
+    const cornerEaveBacking = new THREE.Mesh(cornerEaveBackingGeo, exteriorBrickMat);
+    cornerEaveBacking.position.set(-16.82, eaveY - 0.01, 2.75);
+    ceilingMeshGroup.add(cornerEaveBacking);
+
+    const gutterCornerUnion = new THREE.Mesh(
+      new THREE.BoxGeometry(0.118, 0.058, 0.118),
+      gutterPaleGreenMat
+    );
+    gutterCornerUnion.name = 'mainHouse.gutter.cornerUnion';
+    gutterCornerUnion.position.set(-16.437, eaveY - 0.036, 3.073);
+    gutterCornerUnion.rotation.y = MAIN_EAST_WING_ROTATION_Y * 0.5;
+    ceilingMeshGroup.add(gutterCornerUnion);
   }
 
-  // Two-Storey Cast-Iron Rainwater Downpipes with Hoppers, Pipe Collars & Shoes (Issues #11 & #12)
-  for (const [dpName, px, pz, groundY, swanOffsetX, swanOffsetZ, parentGroup] of [
-    ['downpipe.upperLandingCourtyard', -16.01, 2.715, -0.32, 0, 0.22, ewCeilingMeshGroup], // Upper Landing / Hall South Courtyard wall East of entranceHall jut-out (Issue #11 & Issue #4)
-    ['downpipe.bootLobbyCourtyard', -9.58, 2.715, -0.1, 0, 0.22, ewCeilingMeshGroup],      // Boot Lobby / Dining Room junction
-    ['downpipe.mainBedroomEastCourtyard', -4.88, 2.665, 0.0, 0, 0.27, ewCeilingMeshGroup], // Main Bedroom / Dining Room East Courtyard wall (Issue #12)
-    ['downpipe.studyLobbySouthEast', -17.075, 11.42, -0.3, 0.22, 0, ceilingMeshGroup],     // Study Lobby SE courtyard corner
+  // Two-Storey Cast-Iron Rainwater Downpipes with Uniform-Radius Swan-Neck Offsets, Pipe Collars & Shoes (Issues #11, #12, #3 & #4)
+  const dpPipeR = 0.036;
+  for (const [dpName, px, pz, groundY, gutterOffsetX, gutterOffsetZ, parentGroup] of [
+    ['downpipe.bootLobbyCourtyard', -9.58, 2.715, -0.1, 0, 0.233, ewCeilingMeshGroup],      // Boot Lobby / Dining Room junction
+    ['downpipe.mainBedroomEastCourtyard', -4.88, 2.715, 0.0, 0, 0.233, ewCeilingMeshGroup], // Main Bedroom / Dining Room East Courtyard wall (Issue #4)
+    ['downpipe.studyLobbySouthEast', -17.04, 11.42, -0.3, 0.222, 0, ceilingMeshGroup],      // Study Lobby SE courtyard corner
   ] as const) {
     const dpGroup = new THREE.Group();
     dpGroup.name = `mainHouse.${dpName}`;
 
-    const dpH = eaveY - 0.14 - groundY;
-    // Main vertical cast-iron rainwater downpipe shaft against the brick wall
+    const shaftTopY = eaveY - 0.24;
+    const shaftBotY = groundY + 0.12;
+    const dpH = shaftTopY - shaftBotY;
+
+    // Main vertical cast-iron rainwater downpipe shaft against the brick wall (radius = 0.036m)
     const dpShaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.036, 0.036, dpH, 14),
+      new THREE.CylinderGeometry(dpPipeR, dpPipeR, dpH, 16),
       gutterCastIronMat
     );
-    dpShaft.position.set(px, groundY + dpH / 2, pz);
+    dpShaft.position.set(px, shaftBotY + dpH / 2, pz);
     dpShaft.castShadow = true;
     dpShaft.receiveShadow = true;
     dpGroup.add(dpShaft);
 
-    // Cast-iron collector hopper box / swan-neck offset connecting the pale green eaves gutter to the wall pipe
-    const hopper = new THREE.Mesh(
-      new THREE.BoxGeometry(0.15, 0.16, 0.13),
+    // Gutter drop outlet nozzle directly under the half-round eaves gutter trough
+    const gutterNozzle = new THREE.Mesh(
+      new THREE.CylinderGeometry(dpPipeR + 0.008, dpPipeR + 0.002, 0.055, 16),
       gutterCastIronMat
     );
-    hopper.position.set(px, eaveY - 0.16, pz);
-    hopper.castShadow = true;
-    dpGroup.add(hopper);
+    gutterNozzle.position.set(
+      px + gutterOffsetX,
+      eaveY - 0.055,
+      pz + gutterOffsetZ
+    );
+    gutterNozzle.castShadow = true;
+    dpGroup.add(gutterNozzle);
 
+    // Continuous uniform-radius (0.036m) tubular swan-neck connecting the gutter underside to the vertical shaft
+    const swanCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(px + gutterOffsetX, eaveY - 0.04, pz + gutterOffsetZ),
+      new THREE.Vector3(px + gutterOffsetX, eaveY - 0.095, pz + gutterOffsetZ),
+      new THREE.Vector3(
+        px + gutterOffsetX * 0.5,
+        eaveY - 0.155,
+        pz + gutterOffsetZ * 0.5
+      ),
+      new THREE.Vector3(px, shaftTopY + 0.025, pz),
+      new THREE.Vector3(px, shaftTopY - 0.015, pz),
+    ]);
     const swanNeck = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.032, 0.032, 0.28, 12),
+      new THREE.TubeGeometry(swanCurve, 18, dpPipeR, 16, false),
       gutterCastIronMat
     );
-    swanNeck.position.set(px + swanOffsetX * 0.5, eaveY - 0.08, pz + swanOffsetZ * 0.5);
-    swanNeck.rotation.x = swanOffsetZ !== 0 ? 0.72 : 0;
-    swanNeck.rotation.z = swanOffsetX !== 0 ? -0.72 : 0;
+    swanNeck.castShadow = true;
     dpGroup.add(swanNeck);
 
-    // Cast-iron eared wall fixing collars every ~1.2m up the brick wall
+    // Issue #4: Connect the adjacent single-storey Kitchen South Gutter (local X = -4.65m, Y = 3.125m, Z = 2.585m)
+    // into `downpipe.mainBedroomEastCourtyard` at Y ≈ 2.95m ([-5.028, 2.952, 4.367]) with the exact same 0.036m pipe radius!
+    if (dpName === 'downpipe.mainBedroomEastCourtyard') {
+      const kitchenGutterX = -4.66;
+      const kitchenGutterY = 3.125;
+      const kitchenGutterZ = 2.585;
+
+      const branchNozzle = new THREE.Mesh(
+        new THREE.CylinderGeometry(dpPipeR + 0.008, dpPipeR + 0.002, 0.05, 16),
+        gutterCastIronMat
+      );
+      branchNozzle.position.set(kitchenGutterX, kitchenGutterY - 0.045, kitchenGutterZ);
+      branchNozzle.castShadow = true;
+      dpGroup.add(branchNozzle);
+
+      const branchCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(kitchenGutterX, kitchenGutterY - 0.035, kitchenGutterZ),
+        new THREE.Vector3(kitchenGutterX, 3.04, kitchenGutterZ),
+        new THREE.Vector3((kitchenGutterX + px) * 0.5, 2.985, (kitchenGutterZ + pz) * 0.5),
+        new THREE.Vector3(px, 2.93, pz),
+        new THREE.Vector3(px, 2.89, pz),
+      ]);
+      const branchTube = new THREE.Mesh(
+        new THREE.TubeGeometry(branchCurve, 16, dpPipeR, 16, false),
+        gutterCastIronMat
+      );
+      branchTube.castShadow = true;
+      dpGroup.add(branchTube);
+    }
+
+    // Cast-iron eared wall fixing collars every ~1.25m up the brick wall
     for (let cy = groundY + 0.45; cy < eaveY - 0.35; cy += 1.25) {
       const collar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.045, 0.045, 0.032, 14),
+        new THREE.CylinderGeometry(dpPipeR + 0.006, dpPipeR + 0.006, 0.028, 16),
         gutterCastIronMat
       );
       collar.position.set(px, cy, pz);
@@ -639,9 +716,9 @@ export function buildFirstFloorCeilingsAndRoof(
 
       const earBracket = new THREE.Mesh(
         new THREE.BoxGeometry(
-          swanOffsetX !== 0 ? 0.024 : 0.13,
+          gutterOffsetX !== 0 ? 0.024 : 0.13,
           0.028,
-          swanOffsetZ !== 0 ? 0.024 : 0.13
+          gutterOffsetZ !== 0 ? 0.024 : 0.13
         ),
         gutterCastIronMat
       );
@@ -649,18 +726,19 @@ export function buildFirstFloorCeilingsAndRoof(
       dpGroup.add(earBracket);
     }
 
-    // Bottom cast-iron rainwater outfall shoe at courtyard ground level
+    // Bottom cast-iron rainwater outfall shoe at courtyard ground level (uniform 0.036m radius)
+    const shoeDirX = gutterOffsetX !== 0 ? 1 : 0;
+    const shoeDirZ = gutterOffsetZ !== 0 ? 1 : 0;
+    const shoeCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(px, shaftBotY + 0.01, pz),
+      new THREE.Vector3(px + shoeDirX * 0.012, groundY + 0.065, pz + shoeDirZ * 0.012),
+      new THREE.Vector3(px + shoeDirX * 0.048, groundY + 0.025, pz + shoeDirZ * 0.048),
+    ]);
     const bottomShoe = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.036, 0.04, 0.14, 12),
+      new THREE.TubeGeometry(shoeCurve, 10, dpPipeR, 16, false),
       gutterCastIronMat
     );
-    bottomShoe.position.set(
-      px + (swanOffsetX !== 0 ? 0.03 : 0),
-      groundY + 0.07,
-      pz + (swanOffsetZ !== 0 ? 0.03 : 0)
-    );
-    bottomShoe.rotation.x = swanOffsetZ !== 0 ? 0.38 : 0;
-    bottomShoe.rotation.z = swanOffsetX !== 0 ? -0.38 : 0;
+    bottomShoe.castShadow = true;
     dpGroup.add(bottomShoe);
 
     parentGroup.add(dpGroup);

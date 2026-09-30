@@ -129,7 +129,9 @@ export function createUniFiProtectCamera3D(
 
   // 3D Field-of-View (FOV) Frustum Cone extending along +Z of headGroup
   const frustumGroup = new THREE.Group();
+  frustumGroup.name = `unifi.frustum.${camera.entityId}`;
   frustumGroup.visible = camera.showFrustum3D;
+  frustumGroup.userData = { isSecurityFovCone: true, lodIgnore: true };
   const range = camera.pose3D.rangeMeters;
   const halfFovRad = THREE.MathUtils.degToRad(camera.pose3D.horizontalFovDeg * 0.5);
   const farRadius = Math.tan(halfFovRad) * range;
@@ -148,6 +150,8 @@ export function createUniFiProtectCamera3D(
     depthWrite: false,
   });
   const frustumMesh = new THREE.Mesh(coneGeo, frustumConeMat);
+  frustumMesh.name = `unifi.frustumMesh.${camera.entityId}`;
+  frustumMesh.userData = { isSecurityFovCone: true, lodIgnore: true };
   frustumGroup.add(frustumMesh);
 
   const edgesGeo = new THREE.EdgesGeometry(coneGeo);
@@ -157,6 +161,8 @@ export function createUniFiProtectCamera3D(
     opacity: 0.45,
   });
   const frustumLines = new THREE.LineSegments(edgesGeo, frustumWireMat);
+  frustumLines.name = `unifi.frustumLines.${camera.entityId}`;
+  frustumLines.userData = { isSecurityFovCone: true, lodIgnore: true };
   frustumGroup.add(frustumLines);
 
   headGroup.add(frustumGroup);

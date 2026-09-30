@@ -16,8 +16,8 @@ import type { buildDiningRoom } from './dining-room.ts';
  */
 export function buildHall(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'castIronMat' | 'ceramicWhiteMat' | 'doorH' | 'engineeredOakFloorMat' | 'exteriorBrickMat' | 'farrowAndBallPantalonMat' | 'oakMat' | 'singleClayBrickMat' | 'tagCutawayWall' | 'wallCapMat' | 'wallH' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
-    Pick<ReturnType<typeof createGroundFloorShellKit>, 'addBrickWallAlongXWithCourtyardDoor' | 'addBrickWallAlongXWithWindow' | 'addInteriorWall' | 'applyWorldSpaceBrickUVs'> &
+  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'castIronMat' | 'ceramicWhiteMat' | 'doorH' | 'engineeredOakFloorMat' | 'exteriorBrickMat' | 'farrowAndBallPantalonMat' | 'frontWallH' | 'oakMat' | 'singleClayBrickMat' | 'tagCutawayWall' | 'wallCapMat' | 'wallH' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
+    Pick<ReturnType<typeof createGroundFloorShellKit>, 'addBrickWallAlongXWithCourtyardDoor' | 'addBrickWallAlongXWithWindow' | 'addExteriorBrickWall' | 'addInteriorWall' | 'applyWorldSpaceBrickUVs'> &
     Pick<ReturnType<typeof buildDiningRoom>, 'lowerDoorLintelH' | 'lowerDoorLintelY' | 'lowerFloorY' | 'lowerWallH' | 'lowerWallMidY'> &
     Pick<ReturnType<typeof defineTier2Levels>, 'tier2FloorY'>
 ) {
@@ -25,6 +25,7 @@ export function buildHall(
   const {
     addBrickWallAlongXWithCourtyardDoor,
     addBrickWallAlongXWithWindow,
+    addExteriorBrickWall,
     addInteriorWall,
     antiqueOakSkirtingMat,
     applyWorldSpaceBrickUVs,
@@ -35,6 +36,7 @@ export function buildHall(
     engineeredOakFloorMat,
     exteriorBrickMat,
     farrowAndBallPantalonMat,
+    frontWallH,
     lowerDoorLintelH,
     lowerDoorLintelY,
     lowerFloorY,
@@ -131,6 +133,9 @@ export function buildHall(
   });
 
   // Issue #10: Detached North passage boundary wall removed per user annotation.
+
+  // Upper South Brick Wall Spandrel of Hall above the Entrance Hallway East Jut-Out ceiling (X = -16.92m..-16.25m, Y = frontWallH..wallH)
+  addExteriorBrickWall(-16.92, -16.25, 2.4, 2.68, frontWallH, wallH, 'north');
 
   // South Exterior Brick Wall of Hall (0.28m thick, Z = +2.40m..+2.68m, X = -12.81m..-16.25m, starting at the East end of the Entrance Hallway jut-out)
   // Collinear with the Cinema Room South wall and Hall Step-Up Portal wall (zero kink, zero step!)
