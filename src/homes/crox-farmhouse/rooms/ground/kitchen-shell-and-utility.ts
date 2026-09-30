@@ -582,7 +582,7 @@ export function buildArchitecturalShellAndUtilityRoom(
   cutawayWallGroups.north.add(backWall);
 
   // West Load-Bearing Cross-Wall between Kitchen & Family Room (X = -4.40m..-4.64m, thickness 0.24m, Z = -2.50m to +1.99m):
-  // Both +X (Kitchen) and -X (Family Room) faces are interior warm plaster; wide open portal at Z = +0.85m..+1.99m (width 1.14m, center Z = +1.42m, matching PH-53 & floorplan)
+  // Entire cross-wall is interior warm plaster on all faces; wide open portal at Z = +0.85m..+1.99m (width 1.14m, center Z = +1.42m, matching PH-53 & floorplan)
   const westWallLowBase = createExteriorBrickWallBox(
     crossWallThick,
     0.18,
@@ -590,7 +590,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     -4.4 - crossWallThick / 2,
     0.09,
     -0.825,
-    ['+x', '-x', '+y', '+z']
+    ['+x', '-x', '+y', '-y', '+z', '-z']
   );
   scene.add(westWallLowBase);
 
@@ -601,18 +601,18 @@ export function buildArchitecturalShellAndUtilityRoom(
     -4.4 - crossWallThick / 2,
     0.18 + (wallHeight - 0.18) / 2,
     -0.825,
-    ['+x', '-x', '+y', '+z']
+    ['+x', '-x', '+y', '-y', '+z', '-z']
   );
   cutawayWallGroups.west.add(westWallMain);
 
   const westOpeningHeader = createExteriorBrickWallBox(
     crossWallThick,
-    0.92,
+    0.94,
     1.14,
     -4.4 - crossWallThick / 2,
-    2.54,
+    2.53,
     1.42,
-    ['+x', '-x', '+y', '-y']
+    ['+x', '-x', '+y', '-y', '+z', '-z']
   );
   cutawayWallGroups.west.add(westOpeningHeader);
 
@@ -1554,7 +1554,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     -3.16,
     0.09,
     southWallCenterZ,
-    ['-z', '+y']
+    ['-z', '+y', '-x']
   );
   scene.add(southLowCutaway);
 
@@ -1565,7 +1565,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     -3.16,
     0.18 + (wallHeight - 0.18) / 2,
     southWallCenterZ,
-    ['-z', '+y']
+    ['-z', '+y', '-x']
   );
   cutawayWallGroups.southWest.add(southWestFullWall);
 
@@ -1676,14 +1676,14 @@ export function buildArchitecturalShellAndUtilityRoom(
     [3.15, -0.85],
   ]);
 
-  // Smooth Plaster Ceiling over the 9.40m x 4.49m Kitchen & Utility Wing (centered at X = +0.30m, Z = -0.255m)
+  // Smooth Plaster Ceiling over the 9.40m x 4.49m Kitchen & Utility Wing (spanning X = -4.64m..+5.22m, Z = -2.74m..+2.23m)
   const ceilingMat = new THREE.MeshStandardMaterial({
     color: 0xf2eee6,
     roughness: 0.9,
     side: THREE.DoubleSide,
   });
-  const fullCeiling = new THREE.Mesh(new THREE.BoxGeometry(9.8, 0.08, 4.92), ceilingMat);
-  fullCeiling.position.set(0.32, 3.04, -0.255);
+  const fullCeiling = new THREE.Mesh(new THREE.BoxGeometry(9.86, 0.08, 4.97), ceilingMat);
+  fullCeiling.position.set(0.29, 3.04, -0.255);
   ceilingMeshGroup.add(fullCeiling);
 
   // =========================================================================
@@ -1788,16 +1788,16 @@ export function buildArchitecturalShellAndUtilityRoom(
     return mesh;
   };
 
-  // 1. Cross-Wall & East Gable End Imperial Brick Masonry Pentagons
+  // 1. Cross-Wall & East Gable End Imperial Brick Masonry Pentagons (starting at Y = 3.08m above the Kitchen ceiling slab)
   const gablePointsZY: ReadonlyArray<readonly [number, number]> = [
-    [wallNorthZ, soffitBotY],
-    [wallSouthZ, soffitBotY],
+    [wallNorthZ, 3.08],
+    [wallSouthZ, 3.08],
     [wallSouthZ, wallDeckY],
     [roofCenterZ, ridgeDeckY],
     [wallNorthZ, wallDeckY],
   ];
 
-  addExtrudedZYProfile(gablePointsZY, wallWestX, wallWestX + crossWallThick, imperialBrickMat, true);
+  addExtrudedZYProfile(gablePointsZY, wallWestX + 0.01, wallWestX + crossWallThick, imperialBrickMat, true);
   addExtrudedZYProfile(gablePointsZY, wallEastX - extWallThick, wallEastX, imperialBrickMat, true);
 
   // 2. Unified Pitched Verge Soffit & Plumb-Cut Bargeboard at East Gable

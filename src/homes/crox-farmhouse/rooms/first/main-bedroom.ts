@@ -35,12 +35,12 @@ export function buildMainBedroom(
   // =========================================================================
   addFirstFloorSlab(-9.56, -4.64, -2.5, 2.35, oakFloorMat);
 
-  // East Exterior Brick Cross-Wall of Main Bedroom (X = -4.64m..-4.40m, Z = -2.78m..+2.63m)
-  // Below Y = 3.00m, shell-and-utility.ts already builds the Kitchen/Family Room cross-wall (Z = -2.50m..+1.99m),
-  // so we only add the South step-out return (Z = +1.99m..+2.63m) from floorBaseY to 3.00m,
-  // and then the full East brick wall from Y = 3.00m to upperWallTopY (4.38m) above the Kitchen eaves!
-  addUpperExteriorBrickWall(-4.68, -4.4, 1.99, 2.63, floorBaseY, 3.0, 'west');
-  addUpperExteriorBrickWall(-4.64, -4.4, -2.78, 2.63, 3.0, upperWallTopY, 'west');
+  // East Cross-Wall of Main Bedroom (X = -4.64m..-4.40m, Z = -2.78m..+2.63m)
+  // Below Y = 3.00m, kitchen-shell-and-utility.ts and dining-room.ts already build the full cross-wall (Z = -2.50m..+2.35m),
+  // so we add the Main Bedroom interior East lining & oak skirting from floorTopY to 3.08m (Z = +0.82m..+2.35m South of the chimney breast),
+  // and then the full East brick wall from Y = 3.08m (above the Kitchen ceiling slab) to upperWallTopY (4.16m) above the Kitchen eaves!
+  addUpperInteriorWall(-4.63, floorTopY, 3.08, 1.585, 0.02, 1.53, warmRoomPlasterMat);
+  addUpperExteriorBrickWall(-4.64, -4.4, -2.78, 2.63, 3.08, upperWallTopY, 'west');
 
   // North Exterior Brick Wall of Main Bedroom (Z = -2.78m..-2.50m, X = -9.56m..-4.40m) with casement window
   addUpperBrickWallAlongXWithWindow(

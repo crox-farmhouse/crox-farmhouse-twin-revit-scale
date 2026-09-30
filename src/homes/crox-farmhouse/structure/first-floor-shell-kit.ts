@@ -196,7 +196,7 @@ export function createFirstFloorShellKit(
       interiorSide === 'east' ? warmRoomPlasterMat : exteriorBrickMat,
       interiorSide === 'west' ? warmRoomPlasterMat : exteriorBrickMat,
       exteriorBrickMat,
-      exteriorBrickMat,
+      warmRoomPlasterMat,
       interiorSide === 'south' ? warmRoomPlasterMat : exteriorBrickMat,
       interiorSide === 'north' ? warmRoomPlasterMat : exteriorBrickMat,
     ];

@@ -1640,8 +1640,8 @@ export function buildDiningRoom(
     chimneyStackGroundH - 1.26,
     0.84
   );
-  // Seamless plaster jamb lining across X = -4.64m..-4.40m on the North portal reveal (Z = +0.85m)
-  addChimneyWallBlock(-4.52, chimneyStackGroundH / 2, 0.851, 0.24, chimneyStackGroundH, 0.004);
+  // Seamless plaster jamb lining across X = -4.638m..-4.402m on the North portal reveal (Z = +0.85m, Y = 0..wallH)
+  addChimneyWallBlock(-4.52, wallH / 2, 0.851, 0.236, wallH, 0.004);
 
   // White-plastered back wall of the fireplace alcove integrated flush at X = -4.64m (Y = 0..1.26m, Z = -0.44m..+0.40m)
   const alcoveBackWall = new THREE.Mesh(
@@ -1762,8 +1762,8 @@ export function buildDiningRoom(
   // right into the fireplace hearth alcove with no separate hearth slab or material change.
 
   // Issue #13 & Issue #4: Interior Plastered Wall Pier on the South Jamb of the Open Kitchen Portal
-  // (X = -4.64m..-4.40m, Z = +1.99m..+2.35m — flush with the Kitchen South interior wall at Z = +1.99m!)
-  addChimneyWallBlock(-4.52, chimneyStackGroundH / 2, 2.17, 0.24, chimneyStackGroundH, 0.36);
+  // (X = -4.64m..-4.402m, Z = +1.99m..+2.35m — flush with the Kitchen South interior wall at Z = +1.99m!)
+  addChimneyWallBlock(-4.521, chimneyStackGroundH / 2, 2.17, 0.238, chimneyStackGroundH, 0.36);
 
   // 1G. Main Oak Structural Cross-Beam (Z = -0.85m), Exposed Oak Ceiling Joists (Y = wallH - 0.07m)
   //     & 6 KNX Recessed Warm-Dim Ceiling Downlights (Channel 10: familyRoomSpots, GA 1/1/10 — PH-53..56)
@@ -1780,10 +1780,10 @@ export function buildDiningRoom(
 
   // White plasterboard ceiling backing above the exposed joists (in groundFloorCeilingGroup so it hides when looking from above in Ground Floor mode and appears when inside at eye level!)
   const familyCeilingBacking = new THREE.Mesh(
-    new THREE.BoxGeometry(5.2, 0.04, 5.18),
+    new THREE.BoxGeometry(4.92, 0.04, 4.85),
     whiteJoistMat
   );
-  familyCeilingBacking.position.set(-7.04, wallH - 0.01, -0.075);
+  familyCeilingBacking.position.set(-7.1, wallH - 0.01, -0.075);
   familyCeilingBacking.receiveShadow = true;
   groundFloorCeilingGroup.add(familyCeilingBacking);
 

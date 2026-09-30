@@ -394,7 +394,8 @@ function unescapeUsdString(escaped: string): string {
 }
 
 function parseIntArrayBracket(line: string): number[] {
-  const start = line.indexOf('[');
+  const eqIdx = line.indexOf('=');
+  const start = line.indexOf('[', eqIdx >= 0 ? eqIdx : 0);
   const end = line.lastIndexOf(']');
   if (start < 0 || end <= start) return [];
   const inner = line.slice(start + 1, end).trim();
@@ -408,7 +409,8 @@ function parseIntArrayBracket(line: string): number[] {
 }
 
 function parseTupleFloatArrayBracket(line: string): number[] {
-  const start = line.indexOf('[');
+  const eqIdx = line.indexOf('=');
+  const start = line.indexOf('[', eqIdx >= 0 ? eqIdx : 0);
   const end = line.lastIndexOf(']');
   if (start < 0 || end <= start) return [];
   const inner = line.slice(start + 1, end);

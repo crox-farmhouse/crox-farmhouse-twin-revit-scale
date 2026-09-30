@@ -805,8 +805,9 @@ export class WalkthroughController {
         return;
       }
 
-      // Check ancestor chain for ceiling/roof groups, UFH overlays, or dynamic door pivots
+      // Check ancestor chain for ceiling/roof groups, UFH overlays, architectural shell groups, or dynamic door pivots
       let hasDynamicAncestor = obj.matrixAutoUpdate;
+      let hasArchitecturalShellAncestor = obj.userData?.isArchitecturalShell === true;
       let skipGroup = false;
       let cur: THREE.Object3D | null = obj.parent;
       while (cur && cur !== this.scene) {
@@ -823,6 +824,9 @@ export class WalkthroughController {
         ) {
           skipGroup = true;
           break;
+        }
+        if (cur.userData?.isArchitecturalShell === true) {
+          hasArchitecturalShellAncestor = true;
         }
         if (cur.matrixAutoUpdate) {
           hasDynamicAncestor = true;
@@ -841,10 +845,18 @@ export class WalkthroughController {
       const centerZ = (this.tmpBox.min.z + this.tmpBox.max.z) * 0.5;
       const radiusXZ = Math.hypot(sizeX, sizeZ) * 0.5;
 
-      // 1. Vertical structural walls, window frames/upstands/stiles/mullions, all interior/exterior doors
-      //    (including 28mm panelled doors and 12-16mm glazed courtyard/bifold doors), and tall cabinetry:
+      // 1. Vertical structural walls (including multi-material USDA BufferGeometry walls in cutawayWallGroups),
+      //    window frames/upstands/stiles/mullions, all interior/exterior doors (including 28mm panelled doors
+      //    and 12-16mm glazed courtyard/bifold doors), and tall cabinetry:
+      const isBoxOrShellWall =
+        obj.geometry instanceof THREE.BoxGeometry ||
+        hasArchitecturalShellAncestor ||
+        (obj.userData?.usdSourceOfTruth === true &&
+          !(obj.geometry instanceof THREE.CylinderGeometry) &&
+          !(obj.geometry instanceof THREE.SphereGeometry) &&
+          !(obj.geometry instanceof THREE.ConeGeometry));
       if (
-        (obj.geometry instanceof THREE.BoxGeometry || obj.userData?.isArchitecturalShell === true) &&
+        isBoxOrShellWall &&
         sizeY >= 0.45 &&
         (Math.max(sizeX, sizeZ) >= 0.32 ||
           (sizeY >= 0.85 && Math.max(sizeX, sizeZ) >= 0.04)) &&
