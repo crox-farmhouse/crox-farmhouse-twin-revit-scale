@@ -841,12 +841,13 @@ export class WalkthroughController {
       const centerZ = (this.tmpBox.min.z + this.tmpBox.max.z) * 0.5;
       const radiusXZ = Math.hypot(sizeX, sizeZ) * 0.5;
 
-      // 1. Vertical structural walls, all interior/exterior doors (including 28mm panelled doors
-      //    and 12-16mm glazed courtyard/bifold doors), and tall cabinetry for raycast collision:
+      // 1. Vertical structural walls, window frames/upstands/stiles/mullions, all interior/exterior doors
+      //    (including 28mm panelled doors and 12-16mm glazed courtyard/bifold doors), and tall cabinetry:
       if (
-        obj.geometry instanceof THREE.BoxGeometry &&
+        (obj.geometry instanceof THREE.BoxGeometry || obj.userData?.isArchitecturalShell === true) &&
         sizeY >= 0.45 &&
-        Math.max(sizeX, sizeZ) >= 0.32 &&
+        (Math.max(sizeX, sizeZ) >= 0.32 ||
+          (sizeY >= 0.85 && Math.max(sizeX, sizeZ) >= 0.04)) &&
         Math.min(sizeX, sizeZ) >= 0.01 &&
         Math.max(sizeX, sizeZ) <= 28.0
       ) {
@@ -1069,7 +1070,7 @@ export class WalkthroughController {
       }
     }
 
-    // 4. Fast spatial-filtered dual-height raycast against structural walls, doors & cabinetry
+    // 4. Fast spatial-filtered dual-height & shoulder-width raycast against structural walls, window frames, doors & cabinetry
     this.nearbyObstacleMeshes.length = 0;
     const footMinY = fromFoot.y + 0.30;
     const footMaxY = fromFoot.y + 1.45;
@@ -1100,43 +1101,52 @@ export class WalkthroughController {
 
     const maxHitDist = stepDist + 0.28;
     this.wallRaycaster.far = Math.max(0.34, maxHitDist + 0.02);
+    const perpX = -moveDirXZ.z;
+    const perpZ = moveDirXZ.x;
 
-    // Cast at both knee/lower-panel height (+0.48m) and waist/door-leaf height (+1.05m)
+    // Cast at both knee/lower-panel height (+0.48m) and waist/door-leaf height (+1.05m),
+    // with center and ±0.12m shoulder rays so narrow wooden window frames, stiles, and posts cannot be slipped through
     for (const rayOffsetY of [0.48, 1.05] as const) {
-      this.tmpOrigin.set(fromFoot.x, fromFoot.y + rayOffsetY, fromFoot.z);
-      this.wallRaycaster.set(this.tmpOrigin, moveDirXZ);
+      for (const latOffset of [0, -0.12, 0.12] as const) {
+        this.tmpOrigin.set(
+          fromFoot.x + perpX * latOffset,
+          fromFoot.y + rayOffsetY,
+          fromFoot.z + perpZ * latOffset
+        );
+        this.wallRaycaster.set(this.tmpOrigin, moveDirXZ);
 
-      const hits = this.wallRaycaster.intersectObjects(this.nearbyObstacleMeshes, false);
-      for (let i = 0; i < hits.length; i++) {
-        const hit = hits[i];
-        if (hit.distance >= 0.02 && hit.distance <= maxHitDist && hit.face) {
-          let curObj: THREE.Object3D | null = hit.object;
-          let interactableId: string | undefined;
-          while (curObj && curObj !== this.scene) {
-            const uid = (curObj.userData as Record<string, unknown> | undefined)?.interactableId;
-            if (typeof uid === 'string') {
-              interactableId = uid;
-              break;
+        const hits = this.wallRaycaster.intersectObjects(this.nearbyObstacleMeshes, false);
+        for (let i = 0; i < hits.length; i++) {
+          const hit = hits[i];
+          if (hit.distance >= 0.02 && hit.distance <= maxHitDist && hit.face) {
+            let curObj: THREE.Object3D | null = hit.object;
+            let interactableId: string | undefined;
+            while (curObj && curObj !== this.scene) {
+              const uid = (curObj.userData as Record<string, unknown> | undefined)?.interactableId;
+              if (typeof uid === 'string') {
+                interactableId = uid;
+                break;
+              }
+              curObj = curObj.parent;
             }
-            curObj = curObj.parent;
-          }
-          if (
-            this.allowDoorBarge &&
-            interactableId &&
-            this.onBargeWalkthroughDoor(interactableId, this.isCurrentlySprinting)
-          ) {
-            // Call-of-Duty style: running into a closed walk-through door flings it open without blocking!
-            this.refreshTargetedInteractable(true);
-            continue;
-          }
-          this.tmpNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
-          // Only block against front-facing vertical walls/doors opposing our movement direction
-          // (worldNormal.dot(moveDirXZ) < -0.15 guarantees you can ALWAYS walk out of any overlapping box!)
-          if (
-            Math.abs(this.tmpNormal.y) < 0.45 &&
-            this.tmpNormal.dot(moveDirXZ) < -0.15
-          ) {
-            return true;
+            if (
+              this.allowDoorBarge &&
+              interactableId &&
+              this.onBargeWalkthroughDoor(interactableId, this.isCurrentlySprinting)
+            ) {
+              // Call-of-Duty style: running into a closed walk-through door flings it open without blocking!
+              this.refreshTargetedInteractable(true);
+              continue;
+            }
+            this.tmpNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
+            // Only block against front-facing vertical walls/doors opposing our movement direction
+            // (worldNormal.dot(moveDirXZ) < -0.15 guarantees you can ALWAYS walk out of any overlapping box!)
+            if (
+              Math.abs(this.tmpNormal.y) < 0.45 &&
+              this.tmpNormal.dot(moveDirXZ) < -0.15
+            ) {
+              return true;
+            }
           }
         }
       }
