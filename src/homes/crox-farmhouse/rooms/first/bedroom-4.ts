@@ -49,33 +49,30 @@ export function buildBedroom4(
   );
 
   // South Exterior Brick Gable Wall of Bedroom 4 (Z = +11.49m..+11.77m, X = -22.47m..-17.11m, Y = 2.06m..4.16m)
-  // Flush continuous exterior brickwork with Chimney Breast projecting INSIDE Bedroom 4 immediately West of the SE cupboards
+  // Flush continuous exterior brickwork with Chimney Breast projecting INSIDE Bedroom 4 (X = -20.45m..-19.25m)
   addUpperExteriorBrickWall(-22.47, -17.11, 11.49, 11.77, floorBaseY, upperWallTopY, 'north');
-  addUpperInteriorWall(-19.15, floorTopY, upperWallTopY, 11.29, 1.15, 0.4, warmRoomPlasterMat);
+  addUpperInteriorWall(-19.85, floorTopY, upperWallTopY, 11.29, 1.2, 0.4, warmRoomPlasterMat);
 
   // East Courtyard Exterior Brick Wall of Bedroom 4 (X = -17.39m..-17.11m, Z = +8.15m..+11.77m, Y = 2.06m..4.16m)
   addUpperExteriorBrickWall(-17.39, -17.11, 8.15, 11.77, floorBaseY, upperWallTopY, 'west');
 
-  // Two side-by-side Built-In Cupboards in the South-East corner of Bedroom 4 (`X = -18.25m..-17.39m, Z = +9.65m..+11.49m`)
-  // Leaving the North-East doorway corner (`Z = +8.39m..+9.65m`) completely clear for the Bedroom 4 entrance door!
+  // Two side-by-side Built-In Alcove Cupboards along the South Gable Wall East of the Chimney Breast
+  // (`X = -19.25m..-17.39m, Z = +10.85m..+11.49m`), opening North (`-Z`) into Bedroom 4
   {
     const cupGroup = new THREE.Group();
-    cupGroup.name = 'bedroom4.eastCupboards';
+    cupGroup.name = 'bedroom4.southEastCupboards';
     const cupH = upperWallTopY - floorTopY;
-    const cupD = 0.84; // X = -18.23m .. -17.39m
-    const cupSpanZ = 1.82; // Z = +9.66m .. +11.48m
-    const centerX = -17.81;
-    const centerZ = 10.57;
+    const cupSpanX = 1.84; // X = -19.24m .. -17.40m
+    const cupD = 0.62; // Z = +10.86m .. +11.48m
+    const centerX = -18.32;
+    const centerZ = 11.17;
 
-    // North end return wall of the built-in cupboards at Z = +9.65m
-    addUpperInteriorWall(centerX, floorTopY, upperWallTopY, 9.65, cupD, 0.12, warmRoomPlasterMat);
-
-    // Central dividing partition between the two SE cupboards at Z = +10.57m
-    addUpperInteriorWall(centerX, floorTopY, upperWallTopY, centerZ, cupD, 0.08, warmRoomPlasterMat);
+    // Central dividing partition between the two South-East alcove cupboards at X = -18.32m
+    addUpperInteriorWall(centerX, floorTopY, upperWallTopY, centerZ, 0.08, cupD, warmRoomPlasterMat);
 
     // Main cupboard carcass
     const carcass = new THREE.Mesh(
-      new THREE.BoxGeometry(cupD - 0.04, cupH, cupSpanZ - 0.06),
+      new THREE.BoxGeometry(cupSpanX - 0.04, cupH, cupD - 0.04),
       wardrobeMat
     );
     carcass.position.set(centerX, floorTopY + cupH / 2, centerZ);
@@ -83,16 +80,16 @@ export function buildBedroom4(
     carcass.receiveShadow = true;
     cupGroup.add(carcass);
 
-    // Two full-height Shaker cupboard doors on the West face (`X = -18.23m`) opening West (`-X`) into Bedroom 4
-    const doorW = (cupSpanZ - 0.18) / 2;
+    // Two full-height Shaker cupboard doors on the North face (`Z = +10.85m`) opening North (`-Z`) into Bedroom 4
+    const doorW = (cupSpanX - 0.16) / 2;
     const doorLeafH = cupH - 0.22;
     for (let i = 0; i < 2; i++) {
-      const doorZ = 9.74 + doorW / 2 + i * (doorW + 0.08);
+      const doorX = -19.2 + doorW / 2 + i * (doorW + 0.08);
       const doorPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(0.022, doorLeafH, doorW - 0.02),
+        new THREE.BoxGeometry(doorW - 0.02, doorLeafH, 0.022),
         wardrobeMat
       );
-      doorPanel.position.set(-18.23, floorTopY + 0.11 + doorLeafH / 2, doorZ);
+      doorPanel.position.set(doorX, floorTopY + 0.11 + doorLeafH / 2, 10.85);
       doorPanel.castShadow = true;
       cupGroup.add(doorPanel);
     }

@@ -85,6 +85,7 @@ export function buildEntranceHall(
     capMaterial: wallCapMat,
     skirtingMaterial: antiqueOakSkirtingMat,
     addFrontSkirting: true,
+    addBackSkirting: true,
     openings: [
       {
         id: 'hallStepUpPortal',
@@ -115,6 +116,7 @@ export function buildEntranceHall(
     capMaterial: wallCapMat,
     skirtingMaterial: antiqueOakSkirtingMat,
     addFrontSkirting: true,
+    addBackSkirting: true,
   });
 
   // West Exterior Front Entrance Wall (0.28m thick, X = -22.19m..-22.47m, Z = +2.045m..+3.70m)

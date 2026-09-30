@@ -35,17 +35,15 @@ export function buildWestWingCorridor(
   //    - North Lobby (`UP`) receives the step-up portal from Upper Landing (`[-17.72, 1.60]`)
   //      and leads directly to Bedroom 2 (`[-18.23, 0.88] -> [-18.84, 2.353]`) or South along the corridor
   // =========================================================================
-  // Upper Corridor & North `UP` Lobby polygonal floor
+  // Upper Corridor polygonal floor along the flat angled East Courtyard wall
   buildPolygonalFloorSlab(
     scene,
     [
-      [-18.23, 0.88],
-      [-17.596, 1.007],
-      [-17.873, 2.341],
-      [-17.23, 2.43],
+      [-18.84, 2.353],
+      [-17.891, 2.48],
+      [-16.97, 2.61],
       [-17.23, 8.27],
       [-18.84, 8.27],
-      [-18.84, 2.353],
     ],
     floorTopY,
     floorTopY - floorBaseY,
@@ -84,12 +82,12 @@ export function buildWestWingCorridor(
     2
   );
 
-  // Continuous Flat East Courtyard Exterior Brick Wall along the West Wing Upper Corridor (Z = +2.35m..+8.15m)
+  // Continuous Flat East Courtyard Exterior Brick Wall along the West Wing Upper Corridor (Z = +2.61m..+8.15m)
   // With 3-pane Georgian casement window centered at Z = +5.92m (visible in Photo 1 & Photo 3!)
   addUpperBrickWallAlongZWithWindow(
     -17.39,
     -17.11,
-    2.35,
+    2.61,
     8.15,
     5.92,
     1.45,

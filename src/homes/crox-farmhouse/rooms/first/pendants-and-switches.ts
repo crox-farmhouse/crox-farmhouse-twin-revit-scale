@@ -114,7 +114,7 @@ export function buildFirstFloorPendantsAndSwitches(
     location: 'Bedroom 2 — South Wall (by Door)',
     x: -19.06,
     y: floorTopY + 1.15,
-    z: 2.18,
+    z: 2.24,
     facing: 'north',
     parentGroup: scene,
   });

@@ -237,7 +237,7 @@ export function createFirstFloorShellKit(
     const cz = (minZ + maxZ) / 2;
     const isAlongX = interiorSide === 'north' || interiorSide === 'south';
     const isAngledEastCourtyardWall =
-      !isAlongX && interiorSide === 'west' && rawCx > -18.0 && minZ >= 2.55;
+      !isAlongX && interiorSide === 'west' && rawCx > -18.0 && minZ >= 2.3;
     const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
     const cx = isAngledEastCourtyardWall ? getEastCourtyardWallCenterX(cz) : rawCx;
     const effMinX = cx - w / 2;
@@ -487,7 +487,7 @@ export function createFirstFloorShellKit(
     const winSouth = winCenterZ + winWidth / 2;
     const rawCx = (minX + maxX) / 2;
     const isAngledEastCourtyardWall =
-      interiorSide === 'west' && rawCx > -18.0 && minZ >= 2.55;
+      interiorSide === 'west' && rawCx > -18.0 && minZ >= 2.3;
     const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
     const cx = isAngledEastCourtyardWall
       ? getEastCourtyardWallCenterX(winCenterZ)
