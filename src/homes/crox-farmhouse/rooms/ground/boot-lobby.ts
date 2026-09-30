@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addCasedArchitravePortal } from '../../../../engine/geometry/swept-moulding.ts';
 import { buildWindowRomanBlind } from '../../../../objects/decor/roman-blind.ts';
 import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
@@ -339,9 +340,6 @@ export function buildBootLobby(
     const wineDoorCenter = -10.42;
     const wineDoorWallZ = -0.175;
     const wineDoorWidth = 0.84;
-    const wineArchitraveT = 0.15 + 0.064;
-    const wineArchitraveJambW = 0.092;
-    const wineArchitraveHeadH = 0.095;
     const wineGlassMat = new THREE.MeshStandardMaterial({
       color: 0xd8e6ec,
       roughness: 0.06,
@@ -352,35 +350,18 @@ export function buildBootLobby(
 
     const wineFrameGroup = new THREE.Group();
     wineFrameGroup.name = 'bootLobby.wineCellarGlassDoor.frame';
-    for (const side of [-1, 1] as const) {
-      const jamb = new THREE.Mesh(
-        new THREE.BoxGeometry(wineArchitraveJambW, doorH + 0.04, wineArchitraveT),
-        antiqueOakSkirtingMat
-      );
-      jamb.position.set(
-        wineDoorCenter + side * (wineDoorWidth / 2 + wineArchitraveJambW / 2 - 0.008),
-        lowerFloorY + (doorH + 0.04) / 2,
-        wineDoorWallZ
-      );
-      jamb.castShadow = true;
-      jamb.receiveShadow = true;
-      wineFrameGroup.add(jamb);
-    }
-    const head = new THREE.Mesh(
-      new THREE.BoxGeometry(
-        wineDoorWidth + wineArchitraveJambW * 2 - 0.016,
-        wineArchitraveHeadH,
-        wineArchitraveT
-      ),
-      antiqueOakSkirtingMat
-    );
-    head.position.set(
-      wineDoorCenter,
-      lowerFloorY + doorH + wineArchitraveHeadH / 2 - 0.006,
-      wineDoorWallZ
-    );
-    head.castShadow = true;
-    wineFrameGroup.add(head);
+    addCasedArchitravePortal(wineFrameGroup, {
+      axis: 'x',
+      wallCoord: wineDoorWallZ,
+      wallThickness: 0.15,
+      openingCenter: wineDoorCenter,
+      openingWidth: wineDoorWidth,
+      frontFloorY: lowerFloorY,
+      backFloorY: lowerFloorY,
+      headY: lowerFloorY + doorH,
+      material: antiqueOakSkirtingMat,
+      namePrefix: 'bootLobby.wineCellarGlassDoor',
+    });
     scene.add(wineFrameGroup);
 
     const wineLeafW = wineDoorWidth - 0.04;

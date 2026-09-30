@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { SceneInteractionManager } from '../scene/interaction-manager.ts';
+import { addCasedArchitravePortal } from './swept-moulding.ts';
+
 
 /**
  * 2D world coordinate `[x, z]` in meters.
@@ -477,33 +479,19 @@ export function buildAngledWallSegment(
       }
     }
 
-    // Architrave Jambs & Head (Issue #1: thicker moulded solid wooden architrave on all doors)
-    const architraveDepth = config.thickness + 0.064;
-    const architraveJambW = 0.092;
-    const architraveHeadH = 0.095;
-    const jambHeight = headBottomY - op.lowerFloorY + 0.04;
-    for (const side of [-1, 1] as const) {
-      const jamb = new THREE.Mesh(
-        new THREE.BoxGeometry(architraveJambW, jambHeight, architraveDepth),
-        op.architraveMaterial
-      );
-      jamb.position.set(
-        op.uCenter + side * (op.width / 2 + architraveJambW / 2 - 0.008),
-        op.lowerFloorY + jambHeight / 2,
-        0
-      );
-      jamb.castShadow = true;
-      jamb.receiveShadow = true;
-      group.add(jamb);
-    }
-
-    const headArchitrave = new THREE.Mesh(
-      new THREE.BoxGeometry(op.width + architraveJambW * 2 - 0.016, architraveHeadH, architraveDepth),
-      op.architraveMaterial
-    );
-    headArchitrave.position.set(op.uCenter, headBottomY + architraveHeadH / 2 - 0.006, 0);
-    headArchitrave.castShadow = true;
-    group.add(headArchitrave);
+    // Profiled 45°-mitred architrave jambs & head + doorway reveal lining on both wall faces
+    addCasedArchitravePortal(group, {
+      axis: 'x',
+      wallCoord: 0,
+      wallThickness: config.thickness,
+      openingCenter: op.uCenter,
+      openingWidth: op.width,
+      frontFloorY: Math.max(op.lowerFloorY, config.frontFloorY),
+      backFloorY: Math.max(op.lowerFloorY, config.backFloorY),
+      headY: headBottomY,
+      material: op.architraveMaterial,
+      namePrefix: `${op.id ?? 'portal'}.architrave`,
+    });
 
     // Step riser & bullnose tread if upperFloorY > lowerFloorY (Issue #1: Carpenter-built single-board
     // solid oak bullnose step tread flush with upperFloorY + recessed one-piece vertical riser,

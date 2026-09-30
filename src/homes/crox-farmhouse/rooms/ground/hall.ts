@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { buildAngledWallSegment, buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
-import { buildSweptMouldingGeometry, createSkirtingCapProfile } from '../../../../engine/geometry/swept-moulding.ts';
+import { addCasedArchitravePortal, buildSweptMouldingGeometry, createSkirtingCapProfile } from '../../../../engine/geometry/swept-moulding.ts';
 import { buildWindowRomanBlind } from '../../../../objects/decor/roman-blind.ts';
 import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
@@ -57,27 +57,18 @@ export function buildHall(
   addInteriorWall(-12.93, lowerWallMidY, -0.6, 0.24, lowerWallH, 3.8, warmRoomPlasterMat);
   addInteriorWall(-12.93, lowerWallMidY, 2.32, 0.24, lowerWallH, 0.16, warmRoomPlasterMat);
   addInteriorWall(-12.93, lowerDoorLintelY, 1.77, 0.24, lowerDoorLintelH, 0.94, warmRoomPlasterMat);
-  for (const side of [-1, 1]) {
-    const blJamb = new THREE.Mesh(
-      new THREE.BoxGeometry(0.304, doorH + 0.04, 0.092),
-      antiqueOakSkirtingMat
-    );
-    blJamb.position.set(
-      -12.93,
-      lowerFloorY + (doorH + 0.04) / 2,
-      1.77 + side * (0.94 / 2 + 0.038)
-    );
-    blJamb.castShadow = true;
-    blJamb.receiveShadow = true;
-    scene.add(blJamb);
-  }
-  const blHead = new THREE.Mesh(
-    new THREE.BoxGeometry(0.304, 0.095, 1.108),
-    antiqueOakSkirtingMat
-  );
-  blHead.position.set(-12.93, lowerFloorY + doorH + 0.042, 1.77);
-  blHead.castShadow = true;
-  scene.add(blHead);
+  addCasedArchitravePortal(scene, {
+    axis: 'z',
+    wallCoord: -12.93,
+    wallThickness: 0.24,
+    openingCenter: 1.77,
+    openingWidth: 0.94,
+    frontFloorY: lowerFloorY,
+    backFloorY: lowerFloorY,
+    headY: lowerFloorY + doorH,
+    material: antiqueOakSkirtingMat,
+    namePrefix: 'hall.bootLobbyPortal',
+  });
 
   // =========================================================================
   // 3. ENTRANCE HALL WITH STAIRS (Hall, 16'1" x 13'1")

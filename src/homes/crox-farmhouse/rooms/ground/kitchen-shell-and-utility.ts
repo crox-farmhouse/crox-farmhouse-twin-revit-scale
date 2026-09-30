@@ -11,7 +11,7 @@ import {
   createWelshSlateRoofTexture,
 } from '../../../../engine/textures/procedural-textures.ts';
 import { buildHollowCabinetCarcass } from '../../../../objects/joinery/cabinet-interior.ts';
-import { buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/swept-moulding.ts';
+import { addCasedArchitravePortal, buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/swept-moulding.ts';
 
 export function buildOakDoor(
   parent: THREE.Object3D,
@@ -49,18 +49,19 @@ export function buildOakDoor(
     metalness: 0.48,
   });
 
-  // Outer thick solid antique oak architrave header & jambs (0.214m deep so they sit proud of the 0.15m plaster wall, Issue #1)
-  const frameTop = new THREE.Mesh(new THREE.BoxGeometry(0.994, 0.095, 0.214), oakArchitraveMat);
-  frameTop.position.set(0, 2.115, 0);
-  frameTop.castShadow = true;
-  doorGroup.add(frameTop);
-
-  for (const side of [-1, 1]) {
-    const jamb = new THREE.Mesh(new THREE.BoxGeometry(0.092, 2.16, 0.214), oakArchitraveMat);
-    jamb.position.set(side * 0.451, 1.08, 0);
-    jamb.castShadow = true;
-    doorGroup.add(jamb);
-  }
+  // Outer 45°-mitred ogee/torus solid antique oak architrave header & jambs + reveal lining
+  addCasedArchitravePortal(doorGroup, {
+    axis: 'x',
+    wallCoord: 0,
+    wallThickness: 0.15,
+    openingCenter: 0,
+    openingWidth: 0.826,
+    frontFloorY: 0,
+    backFloorY: 0,
+    headY: 2.075,
+    material: oakArchitraveMat,
+    namePrefix: 'kitchen.oakDoor',
+  });
 
   // Interactive hinged door leaf assembly
   const leafGroup = new THREE.Group();
@@ -187,18 +188,19 @@ function buildSplitStableDoor(
   oakSill.receiveShadow = true;
   doorGroup.add(oakSill);
 
-  // Outer thick solid antique oak architrave header & jambs (0.344m deep so they sit proud of the 0.28m brick wall, Issue #1)
-  const frameTop = new THREE.Mesh(new THREE.BoxGeometry(0.994, 0.095, 0.344), oakArchitraveMat);
-  frameTop.position.set(0, 2.115, 0);
-  frameTop.castShadow = true;
-  doorGroup.add(frameTop);
-
-  for (const side of [-1, 1]) {
-    const jamb = new THREE.Mesh(new THREE.BoxGeometry(0.092, 2.16, 0.344), oakArchitraveMat);
-    jamb.position.set(side * 0.451, 1.08, 0);
-    jamb.castShadow = true;
-    doorGroup.add(jamb);
-  }
+  // Outer 45°-mitred ogee/torus solid antique oak architrave header & jambs + reveal lining
+  addCasedArchitravePortal(doorGroup, {
+    axis: 'x',
+    wallCoord: 0,
+    wallThickness: 0.28,
+    openingCenter: 0,
+    openingWidth: 0.826,
+    frontFloorY: 0,
+    backFloorY: 0,
+    headY: 2.075,
+    material: oakArchitraveMat,
+    namePrefix: 'utility.stableDoor',
+  });
 
   // =========================================================================
   // 1. LOWER STABLE LEAF (Y = 0.036m to 1.020m -> height 0.984m, width 0.81m)

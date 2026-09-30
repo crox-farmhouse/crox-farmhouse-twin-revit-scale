@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildAngledWallSegment, buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
+import { addCasedArchitravePortal, buildAngledWallSegment, buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
@@ -198,21 +198,7 @@ export function buildEntranceHall(
     frameJamb.userData.isArchitecturalShell = true;
     scene.add(frameJamb);
 
-    // Issue #5: Slightly less substantial moulded interior oak architrave leg (115mm wide x 32mm deep) + plinth block
-    const interiorArchitraveLeg = new THREE.Mesh(
-      new THREE.BoxGeometry(0.032, 1.96, 0.115),
-      frontDoorOakFrameMat
-    );
-    interiorArchitraveLeg.name = 'entranceHall.frontDoorArchitrave.interiorCasing';
-    interiorArchitraveLeg.position.set(
-      -22.174,
-      tier2FloorY + 0.2 + 0.98,
-      2.835 + sideZ * 0.53
-    );
-    interiorArchitraveLeg.castShadow = true;
-    interiorArchitraveLeg.receiveShadow = true;
-    interiorArchitraveLeg.userData.isArchitecturalShell = true;
-    scene.add(interiorArchitraveLeg);
+    // Issue #5: Plinth block at base of interior front door architrave
 
     const interiorPlinthBlock = new THREE.Mesh(
       new THREE.BoxGeometry(0.038, 0.2, 0.125),
@@ -240,25 +226,21 @@ export function buildEntranceHall(
   frameHead.userData.isArchitecturalShell = true;
   scene.add(frameHead);
 
-  const interiorArchitraveHeader = new THREE.Mesh(
-    new THREE.BoxGeometry(0.034, 0.1, 1.18),
-    frontDoorOakFrameMat
-  );
-  interiorArchitraveHeader.name = 'entranceHall.frontDoorArchitrave.interiorHeader';
-  interiorArchitraveHeader.position.set(-22.173, tier2FloorY + 2.105, 2.835);
-  interiorArchitraveHeader.castShadow = true;
-  interiorArchitraveHeader.userData.isArchitecturalShell = true;
-  scene.add(interiorArchitraveHeader);
-
-  const interiorArchitraveCornice = new THREE.Mesh(
-    new THREE.BoxGeometry(0.048, 0.024, 1.22),
-    frontDoorOakFrameMat
-  );
-  interiorArchitraveCornice.name = 'entranceHall.frontDoorArchitrave.interiorCornice';
-  interiorArchitraveCornice.position.set(-22.166, tier2FloorY + 2.167, 2.835);
-  interiorArchitraveCornice.castShadow = true;
-  interiorArchitraveCornice.userData.isArchitecturalShell = true;
-  scene.add(interiorArchitraveCornice);
+  addCasedArchitravePortal(scene, {
+    axis: 'z',
+    wallCoord: -22.33,
+    wallThickness: 0.28,
+    openingCenter: 2.835,
+    openingWidth: 0.96,
+    frontFloorY: tier2FloorY + 0.2,
+    backFloorY: tier2FloorY + 0.2,
+    headY: tier2FloorY + 2.065,
+    material: frontDoorOakFrameMat,
+    architraveWidth: 0.115,
+    includeRevealLining: false,
+    includeBackArchitrave: false,
+    namePrefix: 'entranceHall.frontDoorArchitrave',
+  });
 
   // Solid oak transom bar separating door leaf and fanlight
   const transomBar = new THREE.Mesh(

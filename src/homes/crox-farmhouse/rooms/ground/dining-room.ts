@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/swept-moulding.ts';
+import { addCasedArchitravePortal, buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/swept-moulding.ts';
 import { buildWindowRomanBlind } from '../../../../objects/decor/roman-blind.ts';
 import { buildFlutedBrassPictureLight } from '../../../../objects/fixtures/fluted-brass-picture-light.ts';
 import { buildBootRoomHeatingManifold } from '../../../../objects/fixtures/hydronic-manifold.ts';
@@ -2293,29 +2293,21 @@ export function buildDiningRoom(
     southCap.position.set(-6.98, wallH + 0.012, 2.49);
     southCutGroup.add(southCap);
 
-    // Dining Room Exterior Door Frame (Issue #1: thicker solid antique oak architrave) & Interactive Cottage/Courtyard Door Leaf (X = -8.78m, Z = +2.49m)
-    const doorFrameDepth = 0.344;
-    const extDoorTopFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(diningDoorWidth + 0.16, 0.095, doorFrameDepth),
-      antiqueOakSkirtingMat
-    );
-    extDoorTopFrame.position.set(diningDoorCenterX, headY + 0.012, 2.49);
-    extDoorTopFrame.castShadow = true;
-    southCutGroup.add(extDoorTopFrame);
-
-    for (const side of [-1, 1]) {
-      const jamb = new THREE.Mesh(
-        new THREE.BoxGeometry(0.092, headY + 0.04, doorFrameDepth),
-        antiqueOakSkirtingMat
-      );
-      jamb.position.set(
-        diningDoorCenterX + side * (diningDoorWidth / 2 + 0.016),
-        (headY + 0.04) / 2,
-        2.49
-      );
-      jamb.castShadow = true;
-      southCutGroup.add(jamb);
-    }
+    // Dining Room Exterior Door Frame (45°-mitred ogee/torus architrave) & Interactive Cottage/Courtyard Door Leaf (X = -8.78m, Z = +2.49m)
+    addCasedArchitravePortal(southCutGroup, {
+      axis: 'x',
+      wallCoord: 2.49,
+      wallThickness: 0.28,
+      openingCenter: diningDoorCenterX,
+      openingWidth: diningDoorWidth,
+      frontFloorY: 0,
+      backFloorY: 0,
+      headY,
+      material: antiqueOakSkirtingMat,
+      jambInset: 0.03,
+      headInset: 0.034,
+      namePrefix: 'diningRoom.courtyardDoor',
+    });
 
     // Interactive Half-Glazed Farmhouse Courtyard Door Leaf (Issue #2: matching the 4-pane glazed upper window & Shaker lower panel of the other courtyard door)
     const leafW = diningDoorWidth - 0.058;
@@ -3281,25 +3273,19 @@ export function buildDiningRoom(
   // Issue #16: 2 High-End Carbon Road Bikes Hanging Vertically on the East Wall of the Walk-In Cupboard
   buildWalkInCupboardRoadBikes(scene);
 
-  // Thicker Solid Oak Cased Architrave Jambs & Header around the Open Walk-Through Opening (Z = +1.35m..+2.25m, Issue #1)
-  // Extending down to Y = -0.30m so the architrave frames the full height down to the lowered hallway floor
-  for (const pz of [1.312, 2.288]) {
-    const jamb = new THREE.Mesh(
-      new THREE.BoxGeometry(0.304, doorH + 0.34, 0.092),
-      antiqueOakSkirtingMat
-    );
-    jamb.position.set(-9.68, lowerFloorY + (doorH + 0.34) / 2, pz);
-    jamb.castShadow = true;
-    jamb.receiveShadow = true;
-    scene.add(jamb);
-  }
-  const diningToHallPortalHead = new THREE.Mesh(
-    new THREE.BoxGeometry(0.304, 0.095, 1.068),
-    antiqueOakSkirtingMat
-  );
-  diningToHallPortalHead.position.set(-9.68, doorH + 0.042, 1.8);
-  diningToHallPortalHead.castShadow = true;
-  scene.add(diningToHallPortalHead);
+  // 45°-mitred ogee/torus Solid Oak Cased Architrave around the Open Walk-Through Opening (Z = +1.35m..+2.25m)
+  addCasedArchitravePortal(scene, {
+    axis: 'z',
+    wallCoord: -9.68,
+    wallThickness: 0.24,
+    openingCenter: 1.8,
+    openingWidth: 0.9,
+    frontFloorY: 0,
+    backFloorY: lowerFloorY,
+    headY: doorH,
+    material: antiqueOakSkirtingMat,
+    namePrefix: 'diningRoom.bootLobbyPortal',
+  });
 
   // 30cm (0.30m) Step Down from Dining Room (Y = 0.00m) into the Boot Lobby (Y = -0.30m) at X = -9.56m..-9.99m, Z = +1.35m..+2.25m:
   // 1. Upper threshold slab, recessed oak riser & half-round bullnose nosing at X = -9.56m..-9.725m (top at Y = 0.00m, riser down to Y = -0.15m)

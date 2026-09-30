@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
+import { addCasedArchitravePortal, buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
@@ -198,28 +198,21 @@ export function buildStudy(
     const studyLintelY = tier2FloorY + studyDoorH + studyLintelH / 2; // 1.77m
     addInteriorWall(-18.915, studyLintelY, 10.68, 0.15, studyLintelH, 0.9, warmRoomPlasterMat);
 
-    // Issue #1 & #8: Thicker solid antique oak architrave around the Study / Plant Room open doorway
+    // Issue #1 & #8: 45°-mitred ogee/torus solid antique oak architrave around the Study / Plant Room open doorway
     const studyCasingGroup = new THREE.Group();
     studyCasingGroup.name = 'study.openDoorwayCasing';
-    for (const jambZ of [10.192, 11.168]) {
-      const jamb = new THREE.Mesh(
-        new THREE.BoxGeometry(0.214, studyDoorH + 0.04, 0.092),
-        antiqueOakSkirtingMat
-      );
-      jamb.name = 'study.openDoorwayCasing.jamb';
-      jamb.position.set(-18.915, tier2FloorY + (studyDoorH + 0.04) * 0.5, jambZ);
-      jamb.castShadow = true;
-      jamb.receiveShadow = true;
-      studyCasingGroup.add(jamb);
-    }
-    const head = new THREE.Mesh(
-      new THREE.BoxGeometry(0.214, 0.095, 1.068),
-      antiqueOakSkirtingMat
-    );
-    head.name = 'study.openDoorwayCasing.head';
-    head.position.set(-18.915, tier2FloorY + studyDoorH + 0.042, 10.68);
-    head.castShadow = true;
-    studyCasingGroup.add(head);
+    addCasedArchitravePortal(studyCasingGroup, {
+      axis: 'z',
+      wallCoord: -18.915,
+      wallThickness: 0.15,
+      openingCenter: 10.68,
+      openingWidth: 0.9,
+      frontFloorY: tier2FloorY,
+      backFloorY: tier2FloorY,
+      headY: tier2FloorY + studyDoorH,
+      material: antiqueOakSkirtingMat,
+      namePrefix: 'study.openDoorwayCasing',
+    });
     scene.add(studyCasingGroup);
   }
 

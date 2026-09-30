@@ -8,4 +8,14 @@ export {
   type WallLocalFrame,
   type WallPortalOpening,
 } from './period-house-primitives.ts';
+export {
+  addCasedArchitravePortal,
+  buildMitredWallSkirtingGeometry,
+  buildSweptMouldingGeometry,
+  type CasedArchitravePortalOptions,
+  createArchitraveProfile,
+  createSkirtingCapProfile,
+  createWallSkirtingBoardProfile,
+} from './swept-moulding.ts';
+
 

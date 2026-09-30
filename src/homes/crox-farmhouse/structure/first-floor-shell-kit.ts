@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addCasedArchitravePortal } from '../../../engine/geometry/index.ts';
 import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../types/scene.ts';
 import type { createFirstFloorMaterials } from './first-floor-materials.ts';
 
@@ -523,7 +524,6 @@ export function createFirstFloorShellKit(
     doorWidth: number,
     openAngle: number
   ): void => {
-    const architraveT = wallThickness + 0.064;
     const leafW = doorWidth - 0.04;
     const leafH = doorH - 0.02;
     const stileW = 0.095;
@@ -632,26 +632,20 @@ export function createFirstFloorShellKit(
       }
     };
 
-    if (axis === 'z') {
-      for (const side of [-1, 1]) {
-        const jamb = new THREE.Mesh(
-          new THREE.BoxGeometry(architraveT, doorH + 0.06, 0.092),
-          antiqueOakSkirtingMat
-        );
-        jamb.position.set(
-          wallCoord,
-          floorTopY + (doorH + 0.06) / 2,
-          doorCenter + side * (doorWidth / 2 + 0.04)
-        );
-        scene.add(jamb);
-      }
-      const head = new THREE.Mesh(
-        new THREE.BoxGeometry(architraveT, 0.095, doorWidth + 0.19),
-        antiqueOakSkirtingMat
-      );
-      head.position.set(wallCoord, floorTopY + doorH + 0.0475, doorCenter);
-      scene.add(head);
+    addCasedArchitravePortal(scene, {
+      axis,
+      wallCoord,
+      wallThickness,
+      openingCenter: doorCenter,
+      openingWidth: doorWidth,
+      frontFloorY: floorTopY,
+      backFloorY: floorTopY,
+      headY: floorTopY + doorH,
+      material: antiqueOakSkirtingMat,
+      namePrefix: 'firstFloorDoor',
+    });
 
+    if (axis === 'z') {
       const doorObj = new THREE.Group();
       doorObj.position.set(wallCoord, floorTopY + doorH / 2, doorCenter);
       populateFourPanelLeaf(doorObj, true);
@@ -666,25 +660,6 @@ export function createFirstFloorShellKit(
         0
       );
     } else {
-      for (const side of [-1, 1]) {
-        const jamb = new THREE.Mesh(
-          new THREE.BoxGeometry(0.092, doorH + 0.06, architraveT),
-          antiqueOakSkirtingMat
-        );
-        jamb.position.set(
-          doorCenter + side * (doorWidth / 2 + 0.04),
-          floorTopY + (doorH + 0.06) / 2,
-          wallCoord
-        );
-        scene.add(jamb);
-      }
-      const head = new THREE.Mesh(
-        new THREE.BoxGeometry(doorWidth + 0.19, 0.095, architraveT),
-        antiqueOakSkirtingMat
-      );
-      head.position.set(doorCenter, floorTopY + doorH + 0.0475, wallCoord);
-      scene.add(head);
-
       const doorObj = new THREE.Group();
       doorObj.position.set(doorCenter, floorTopY + doorH / 2, wallCoord);
       populateFourPanelLeaf(doorObj, false);

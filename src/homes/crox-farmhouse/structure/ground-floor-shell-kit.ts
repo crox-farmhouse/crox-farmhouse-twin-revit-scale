@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildMiteredPolylineStrip, buildPolygonalFloorSlab, type Point2D } from '../../../engine/geometry/index.ts';
+import { addCasedArchitravePortal, buildMiteredPolylineStrip, buildPolygonalFloorSlab, type Point2D } from '../../../engine/geometry/index.ts';
 import { buildTraditionalWindowCurtains } from '../../../objects/decor/curtains-and-fiddle-leaf-plant.ts';
 import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../types/scene.ts';
 import { getEastWingSouthWallZ, type createGroundFloorMaterials } from './ground-floor-materials.ts';
@@ -334,7 +334,7 @@ export function createGroundFloorShellKit(
     if (Math.abs(yBottom) < 0.01 && yTop - intFloorY > 0.35) {
       const baseH = 0.122;
       const capH = 0.024;
-      const skirtT = 0.024;
+      const skirtT = 0.022;
       const capT = 0.016;
       const skirtGeo = isAlongX
         ? new THREE.BoxGeometry(w, baseH, skirtT)
@@ -728,13 +728,23 @@ export function createGroundFloorShellKit(
     doorWidth: number,
     openAngle: number
   ): void => {
-    const architraveT = wallThickness + 0.064;
-    const architraveJambW = 0.092;
-    const architraveHeadH = 0.095;
     const doorX = axis === 'z' ? wallCoord : doorCenter;
     const doorZ = axis === 'z' ? doorCenter : wallCoord;
     const baseFloorY = getInteriorFloorY(doorX, doorZ);
     const frameGroup = new THREE.Group();
+    addCasedArchitravePortal(frameGroup, {
+      axis,
+      wallCoord,
+      wallThickness,
+      openingCenter: doorCenter,
+      openingWidth: doorWidth,
+      frontFloorY: baseFloorY,
+      backFloorY: baseFloorY,
+      headY: baseFloorY + doorH,
+      material: antiqueOakSkirtingMat,
+      namePrefix: `interiorDoor.${_id}`,
+    });
+    scene.add(frameGroup);
 
     const leafW = doorWidth - 0.04;
     const leafH = doorH - 0.02;
@@ -751,31 +761,6 @@ export function createGroundFloorShellKit(
     const lowerPanelBot = -leafH / 2 + bottomRailH;
 
     if (axis === 'z') {
-      // Doorway in a North-South cross-wall at X = wallCoord (Issue #1: thicker wooden architrave)
-      const jambH = doorH + 0.04;
-      for (const side of [-1, 1]) {
-        const jamb = new THREE.Mesh(
-          new THREE.BoxGeometry(architraveT, jambH, architraveJambW),
-          antiqueOakSkirtingMat
-        );
-        jamb.position.set(
-          wallCoord,
-          baseFloorY + jambH / 2,
-          doorCenter + side * (doorWidth / 2 + architraveJambW / 2 - 0.008)
-        );
-        jamb.castShadow = true;
-        jamb.receiveShadow = true;
-        frameGroup.add(jamb);
-      }
-      const head = new THREE.Mesh(
-        new THREE.BoxGeometry(architraveT, architraveHeadH, doorWidth + architraveJambW * 2 - 0.016),
-        antiqueOakSkirtingMat
-      );
-      head.position.set(wallCoord, baseFloorY + doorH + architraveHeadH / 2 - 0.006, doorCenter);
-      head.castShadow = true;
-      frameGroup.add(head);
-      scene.add(frameGroup);
-
       const doorObj = new THREE.Group();
       doorObj.position.set(wallCoord, baseFloorY + doorH / 2, doorCenter);
 
@@ -871,30 +856,6 @@ export function createGroundFloorShellKit(
         0
       );
     } else {
-      // Doorway in an East-West wall at Z = wallCoord (Issue #1: thicker wooden architrave)
-      for (const side of [-1, 1]) {
-        const jamb = new THREE.Mesh(
-          new THREE.BoxGeometry(architraveJambW, doorH + 0.04, architraveT),
-          antiqueOakSkirtingMat
-        );
-        jamb.position.set(
-          doorCenter + side * (doorWidth / 2 + architraveJambW / 2 - 0.008),
-          baseFloorY + (doorH + 0.04) / 2,
-          wallCoord
-        );
-        jamb.castShadow = true;
-        jamb.receiveShadow = true;
-        frameGroup.add(jamb);
-      }
-      const head = new THREE.Mesh(
-        new THREE.BoxGeometry(doorWidth + architraveJambW * 2 - 0.016, architraveHeadH, architraveT),
-        antiqueOakSkirtingMat
-      );
-      head.position.set(doorCenter, baseFloorY + doorH + architraveHeadH / 2 - 0.006, wallCoord);
-      head.castShadow = true;
-      frameGroup.add(head);
-      scene.add(frameGroup);
-
       const doorObj = new THREE.Group();
       doorObj.position.set(doorCenter, baseFloorY + doorH / 2, wallCoord);
 
@@ -1042,31 +1003,23 @@ export function createGroundFloorShellKit(
     oakThreshold.userData.isArchitecturalShell = true;
     scene.add(oakThreshold);
 
-    // Outer solid oak timber doorframe jambs & head (Issue #1: thicker wooden architrave)
+    // Outer solid oak timber doorframe jambs & head with 45°-mitred ogee/torus profile
     const frameGroup = new THREE.Group();
     tagCutawayWall(frameGroup, cutawayWall);
-    const frameDepth = wallDepth + 0.064;
-    const topFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(doorWidth + 0.16, 0.095, frameDepth),
-      antiqueOakSkirtingMat
-    );
-    topFrame.position.set(doorCenterX, headY + 0.012, cz);
-    topFrame.castShadow = true;
-    frameGroup.add(topFrame);
-
-    for (const side of [-1, 1]) {
-      const jamb = new THREE.Mesh(
-        new THREE.BoxGeometry(0.092, doorTotalH + 0.04, frameDepth),
-        antiqueOakSkirtingMat
-      );
-      jamb.position.set(
-        doorCenterX + side * (doorWidth / 2 + 0.016),
-        baseY + (doorTotalH + 0.04) / 2,
-        cz
-      );
-      jamb.castShadow = true;
-      frameGroup.add(jamb);
-    }
+    addCasedArchitravePortal(frameGroup, {
+      axis: 'x',
+      wallCoord: cz,
+      wallThickness: wallDepth,
+      openingCenter: doorCenterX,
+      openingWidth: doorWidth,
+      frontFloorY: baseY,
+      backFloorY: baseY,
+      headY,
+      material: antiqueOakSkirtingMat,
+      jambInset: 0.03,
+      headInset: 0.034,
+      namePrefix: 'courtyardDoorX',
+    });
     scene.add(frameGroup);
 
     // Flush Yorkstone threshold paving outside the Courtyard Door (no step down!)
@@ -1264,38 +1217,24 @@ export function createGroundFloorShellKit(
     doorstep.userData.isArchitecturalShell = true;
     scene.add(doorstep);
 
-    // Outer solid oak timber doorframe jambs & head (Issue #1: thicker wooden architrave)
+    // Outer solid oak timber doorframe jambs & head with 45°-mitred ogee/torus profile
     const frameGroup = new THREE.Group();
     tagCutawayWall(frameGroup, cutawayWall);
-    const frameDepth = wallDepth + 0.064;
-    const topFrame = new THREE.Mesh(
-      shearGeometryAlongZ(
-        new THREE.BoxGeometry(frameDepth, 0.095, doorWidth + 0.16),
-        slopeXPerZ
-      ),
-      antiqueOakSkirtingMat
-    );
-    topFrame.position.set(cx, headY + 0.012, doorCenterZ);
-    topFrame.castShadow = true;
-    frameGroup.add(topFrame);
-
-    for (const side of [-1, 1]) {
-      const jambZ = doorCenterZ + side * (doorWidth / 2 + 0.016);
-      const jambCx = isAngledEastCourtyardWall
-        ? getEastCourtyardWallCenterX(jambZ)
-        : rawCx;
-      const jamb = new THREE.Mesh(
-        new THREE.BoxGeometry(frameDepth, doorTotalH + 0.04, 0.092),
-        antiqueOakSkirtingMat
-      );
-      jamb.position.set(
-        jambCx,
-        baseY + (doorTotalH + 0.04) / 2,
-        jambZ
-      );
-      jamb.castShadow = true;
-      frameGroup.add(jamb);
-    }
+    addCasedArchitravePortal(frameGroup, {
+      axis: 'z',
+      wallCoord: cx,
+      wallThickness: wallDepth,
+      openingCenter: doorCenterZ,
+      openingWidth: doorWidth,
+      frontFloorY: baseY,
+      backFloorY: baseY,
+      headY,
+      material: antiqueOakSkirtingMat,
+      jambInset: 0.03,
+      headInset: 0.034,
+      slopeXPerZ,
+      namePrefix: 'courtyardDoorZ',
+    });
     scene.add(frameGroup);
 
     // Issue #4 & Issue #6: Solid Framed & Vertical-Boarded Farmhouse Courtyard Door Leaf (sized to fill frame tightly)
