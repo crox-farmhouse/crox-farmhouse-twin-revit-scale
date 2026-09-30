@@ -70,11 +70,13 @@ export function buildFamilyBathroom(
     1
   );
 
+  const collarCeilingY = 4.52;
+
   // Partition wall between Family Bathroom and Upper South Passage (0.15m thick, Z = +0.90m..+1.05m, X = -9.80m..-12.81m)
-  // With doorway at X = -10.45m
-  addUpperInteriorWall(-9.9, floorTopY, upperWallTopY, 0.975, 0.2, 0.15, warmRoomPlasterMat);
-  addUpperInteriorWall(-11.83, floorTopY, upperWallTopY, 0.975, 1.96, 0.15, warmRoomPlasterMat);
-  addUpperInteriorWall(-10.425, floorTopY + doorH, upperWallTopY, 0.975, 0.85, 0.15, warmRoomPlasterMat);
+  // With doorway at X = -10.45m (reaches up to the 4.52m collar ceiling edge at Z = +1.05m)
+  addUpperInteriorWall(-9.9, floorTopY, collarCeilingY, 0.975, 0.2, 0.15, warmRoomPlasterMat);
+  addUpperInteriorWall(-11.83, floorTopY, collarCeilingY, 0.975, 1.96, 0.15, warmRoomPlasterMat);
+  addUpperInteriorWall(-10.425, floorTopY + doorH, collarCeilingY, 0.975, 0.85, 0.15, warmRoomPlasterMat);
   addUpperInteractiveDoor('x', 0.975, 0.15, -10.425, 0.85, -Math.PI * 0.48);
 
   // Principal Family Bathroom Sanitaryware (matching the exact symbols on the First Floor plan):
@@ -162,4 +164,25 @@ export function buildFamilyBathroom(
     material: antiqueOakSkirtingMat,
     namePrefix: 'upperLanding.eastPassagePortal',
   });
+
+  // Issue #5: Trapezoidal Upper Gable Extension on the X = -12.93m Cross-Wall (Y = 4.16m..4.52m)
+  {
+    const crossGableShape = new THREE.Shape();
+    crossGableShape.moveTo(-1.9, upperWallTopY);
+    crossGableShape.lineTo(1.8, upperWallTopY);
+    crossGableShape.lineTo(1.05, collarCeilingY);
+    crossGableShape.lineTo(-1.15, collarCeilingY);
+    crossGableShape.closePath();
+    const crossGableGeo = new THREE.ExtrudeGeometry(crossGableShape, {
+      depth: 0.24,
+      bevelEnabled: false,
+    });
+    crossGableGeo.rotateY(Math.PI / 2);
+    crossGableGeo.translate(-12.93 - 0.12, 0, 0);
+    const crossGableMesh = new THREE.Mesh(crossGableGeo, warmRoomPlasterMat);
+    crossGableMesh.name = 'familyBathroom.westWallUpperGable';
+    crossGableMesh.castShadow = true;
+    crossGableMesh.receiveShadow = true;
+    scene.add(crossGableMesh);
+  }
 }

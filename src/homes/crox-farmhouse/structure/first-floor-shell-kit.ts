@@ -344,6 +344,8 @@ export function createFirstFloorShellKit(
     interiorSide: 'north' | 'south',
     panes = 2
   ): void => {
+    const effSillY = Math.max(sillY, 3.02);
+    const effHeadY = Math.min(headY, 3.78);
     const winLeft = winCenterX - winWidth / 2;
     const winRight = winCenterX + winWidth / 2;
 
@@ -353,12 +355,12 @@ export function createFirstFloorShellKit(
     if (winRight < maxX - 0.02) {
       addUpperExteriorBrickWall(winRight, maxX, minZ, maxZ, floorBaseY, upperWallTopY, interiorSide);
     }
-    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, floorBaseY, sillY, interiorSide);
-    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, headY, upperWallTopY, interiorSide);
+    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, floorBaseY, effSillY, interiorSide);
+    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, effHeadY, upperWallTopY, interiorSide);
 
     const cz = (minZ + maxZ) / 2;
-    const winH = headY - sillY;
-    const cy = sillY + winH / 2;
+    const winH = effHeadY - effSillY;
+    const cy = effSillY + winH / 2;
     const winGroup = new THREE.Group();
     tagUpperCutawayWall(winGroup, {
       axis: 'z',
@@ -368,24 +370,27 @@ export function createFirstFloorShellKit(
       floor: 'first',
     });
 
-    const wallDepthZ = maxZ - minZ;
     const extSignZ = interiorSide === 'south' ? -1 : 1;
     const intSignZ = -extSignZ;
-    const sillDepthZ = wallDepthZ * 0.54 + 0.045;
+    const extFaceZ = interiorSide === 'south' ? minZ : maxZ;
+    const intFaceZ = interiorSide === 'south' ? maxZ : minZ;
+    const frameZ = extFaceZ + intSignZ * 0.14;
+
+    const sillDepthZ = 0.196;
     const sillMesh = new THREE.Mesh(
       new THREE.BoxGeometry(winWidth + 0.12, 0.06, sillDepthZ),
       stoneSillMat
     );
     sillMesh.position.set(
       winCenterX,
-      sillY - 0.02,
-      cz + extSignZ * (wallDepthZ * 0.23 + 0.022)
+      effSillY - 0.02,
+      frameZ + extSignZ * 0.086
     );
     winGroup.add(sillMesh);
 
     // Interior plastered window reveal linings (jambs + head soffit) and painted timber window board
-    const intRevealDepthZ = wallDepthZ * 0.52;
-    const intRevealCenterZ = cz + intSignZ * (wallDepthZ * 0.24);
+    const intRevealDepthZ = Math.max(0.14, Math.abs(intFaceZ - frameZ));
+    const intRevealCenterZ = (frameZ + intFaceZ) * 0.5;
     for (const sideX of [-1, 1] as const) {
       const revealJamb = new THREE.Mesh(
         new THREE.BoxGeometry(0.012, winH, intRevealDepthZ),
@@ -403,7 +408,7 @@ export function createFirstFloorShellKit(
       new THREE.BoxGeometry(winWidth, 0.012, intRevealDepthZ),
       warmRoomPlasterMat
     );
-    revealHead.position.set(winCenterX, headY - 0.005, intRevealCenterZ);
+    revealHead.position.set(winCenterX, effHeadY - 0.005, intRevealCenterZ);
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
@@ -413,8 +418,8 @@ export function createFirstFloorShellKit(
     );
     windowBoard.position.set(
       winCenterX,
-      sillY + 0.01,
-      cz + intSignZ * (wallDepthZ * 0.25 + 0.012)
+      effSillY + 0.01,
+      intRevealCenterZ + intSignZ * 0.012
     );
     windowBoard.receiveShadow = true;
     winGroup.add(windowBoard);
@@ -424,14 +429,14 @@ export function createFirstFloorShellKit(
       new THREE.BoxGeometry(winWidth, 0.05, frameDepth),
       windowFrameMat
     );
-    topRail.position.set(winCenterX, headY - 0.025, cz);
+    topRail.position.set(winCenterX, effHeadY - 0.025, frameZ);
     winGroup.add(topRail);
 
     const botRail = new THREE.Mesh(
       new THREE.BoxGeometry(winWidth, 0.05, frameDepth),
       windowFrameMat
     );
-    botRail.position.set(winCenterX, sillY + 0.025, cz);
+    botRail.position.set(winCenterX, effSillY + 0.025, frameZ);
     winGroup.add(botRail);
 
     for (let i = 0; i <= panes; i++) {
@@ -440,7 +445,7 @@ export function createFirstFloorShellKit(
         new THREE.BoxGeometry(0.042, winH, frameDepth),
         windowFrameMat
       );
-      mullion.position.set(mx, cy, cz);
+      mullion.position.set(mx, cy, frameZ);
       winGroup.add(mullion);
     }
 
@@ -448,14 +453,14 @@ export function createFirstFloorShellKit(
       new THREE.BoxGeometry(winWidth, 0.026, frameDepth * 0.7),
       windowFrameMat
     );
-    transBar.position.set(winCenterX, sillY + winH * 0.52, cz);
+    transBar.position.set(winCenterX, effSillY + winH * 0.52, frameZ);
     winGroup.add(transBar);
 
     const glass = new THREE.Mesh(
       new THREE.BoxGeometry(winWidth - 0.06, winH - 0.08, 0.016),
       windowGlassMat
     );
-    glass.position.set(winCenterX, cy, cz);
+    glass.position.set(winCenterX, cy, frameZ);
     winGroup.add(glass);
 
     scene.add(winGroup);
@@ -476,6 +481,8 @@ export function createFirstFloorShellKit(
     interiorSide: 'east' | 'west',
     panes = 2
   ): void => {
+    const effSillY = Math.max(sillY, 3.02);
+    const effHeadY = Math.min(headY, 3.78);
     const winNorth = winCenterZ - winWidth / 2;
     const winSouth = winCenterZ + winWidth / 2;
     const rawCx = (minX + maxX) / 2;
@@ -495,11 +502,11 @@ export function createFirstFloorShellKit(
     if (winSouth < maxZ - 0.02) {
       addUpperExteriorBrickWall(minX, maxX, winSouth, maxZ, baseWallY, upperWallTopY, interiorSide);
     }
-    addUpperExteriorBrickWall(minX, maxX, winNorth, winSouth, baseWallY, sillY, interiorSide);
-    addUpperExteriorBrickWall(minX, maxX, winNorth, winSouth, headY, upperWallTopY, interiorSide);
+    addUpperExteriorBrickWall(minX, maxX, winNorth, winSouth, baseWallY, effSillY, interiorSide);
+    addUpperExteriorBrickWall(minX, maxX, winNorth, winSouth, effHeadY, upperWallTopY, interiorSide);
 
-    const winH = headY - sillY;
-    const cy = sillY + winH / 2;
+    const winH = effHeadY - effSillY;
+    const cy = effSillY + winH / 2;
     const winGroup = new THREE.Group();
     tagUpperCutawayWall(winGroup, {
       axis: 'x',
@@ -522,7 +529,7 @@ export function createFirstFloorShellKit(
     );
     sillMesh.position.set(
       cx + extSignX * (wallDepthX * 0.23 + 0.022),
-      sillY - 0.02,
+      effSillY - 0.02,
       winCenterZ
     );
     winGroup.add(sillMesh);
@@ -554,7 +561,7 @@ export function createFirstFloorShellKit(
       ),
       warmRoomPlasterMat
     );
-    revealHead.position.set(intRevealCenterX, headY - 0.005, winCenterZ);
+    revealHead.position.set(intRevealCenterX, effHeadY - 0.005, winCenterZ);
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
@@ -567,7 +574,7 @@ export function createFirstFloorShellKit(
     );
     windowBoard.position.set(
       cx + intSignX * (wallDepthX * 0.25 + 0.012),
-      sillY + 0.01,
+      effSillY + 0.01,
       winCenterZ
     );
     windowBoard.receiveShadow = true;
@@ -581,7 +588,7 @@ export function createFirstFloorShellKit(
       ),
       windowFrameMat
     );
-    topRail.position.set(cx, headY - 0.025, winCenterZ);
+    topRail.position.set(cx, effHeadY - 0.025, winCenterZ);
     winGroup.add(topRail);
 
     const botRail = new THREE.Mesh(
@@ -591,7 +598,7 @@ export function createFirstFloorShellKit(
       ),
       windowFrameMat
     );
-    botRail.position.set(cx, sillY + 0.025, winCenterZ);
+    botRail.position.set(cx, effSillY + 0.025, winCenterZ);
     winGroup.add(botRail);
 
     for (let i = 0; i <= panes; i++) {
@@ -614,7 +621,7 @@ export function createFirstFloorShellKit(
       ),
       windowFrameMat
     );
-    transBar.position.set(cx, sillY + winH * 0.52, winCenterZ);
+    transBar.position.set(cx, effSillY + winH * 0.52, winCenterZ);
     winGroup.add(transBar);
 
     const glass = new THREE.Mesh(

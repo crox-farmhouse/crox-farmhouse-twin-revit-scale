@@ -21,13 +21,15 @@ export function buildFirstFloorPendantsAndSwitches(
   //    (Mounted to `scene` = `firstFloorMeshGroup` so they hide cleanly when
   //    First Floor visibility is toggled off)
   // =========================================================================
+  const ewCollarCeilingY = 4.52;
+
   // 1. Main Bedroom (Circuit: mainBedroomPendant, Switch PA: 1.2.10)
   buildRoomCeilingPendant(eastWingCtx, {
     circuitId: 'mainBedroomPendant',
     x: -7.1,
     z: 0.15,
-    ceilingY: upperWallTopY,
-    dropLength: 0.36,
+    ceilingY: ewCollarCeilingY,
+    dropLength: 0.42,
     floorY: floorTopY,
     pointLightIntensity: 13.5,
     pointLightDistance: 7.4,
@@ -50,8 +52,8 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'familyBathroomPendant',
     x: -11.3,
     z: -0.75,
-    ceilingY: upperWallTopY,
-    dropLength: 0.32,
+    ceilingY: ewCollarCeilingY,
+    dropLength: 0.38,
     floorY: floorTopY,
     pointLightIntensity: 12.5,
     pointLightDistance: 6.5,
@@ -74,8 +76,8 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'upperLandingPendant',
     x: -14.85,
     z: 0.65,
-    ceilingY: upperWallTopY,
-    dropLength: 0.36,
+    ceilingY: ewCollarCeilingY,
+    dropLength: 0.42,
     floorY: floorTopY,
     pointLightIntensity: 13.0,
     pointLightDistance: 7.2,

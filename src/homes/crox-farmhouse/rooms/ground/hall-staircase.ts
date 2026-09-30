@@ -953,19 +953,23 @@ export function buildHallStaircase(
   stairwellEastTrimmer.castShadow = true;
   stairGroup.add(stairwellEastTrimmer);
 
-  // Issue #5 & Issue #1: Continuous Seasoned Oak Wall Stringer (`antiqueOakSkirtingMat`) wrapping along the North Wall
-  // across the Quarter Landing (X = -17.43m..-16.84m, Y = 0.84m..0.986m) and climbing up the North Exposed Brick Wall
-  // alongside the second span of stairs (X = -16.84m..-15.50m, rising to Y = topStepY + 0.146m, then horizontal to X = -15.36m)!
+  // Issue #5, Issue #1 & Issue #2: Continuous Seasoned Oak Wall Stringer (`antiqueOakSkirtingMat`) wrapping along the North Wall
+  // across the Quarter Landing (X = -17.43m..-16.84m, Y = 0.84m..0.986m), climbing up the North Exposed Brick Wall
+  // alongside the second span of stairs (X = -16.84m..-15.50m, rising to Y = topStepY + 0.146m), and continuing seamlessly
+  // horizontally across the First Floor Landing North Wall all the way to X = -13.05m!
   {
     const skirtBoardH = 0.122;
     const northTurnX = -16.84;
+    const landingNorthEndX = -13.05;
 
     const northStrShape = new THREE.Shape();
     northStrShape.moveTo(-17.43, quarterLandingY - 0.02);
     northStrShape.lineTo(-17.43, quarterLandingY + skirtBoardH);
     northStrShape.lineTo(northTurnX, quarterLandingY + skirtBoardH);
     northStrShape.lineTo(upperBalustradeEndX, topStepY + skirtBoardH);
-    northStrShape.lineTo(upperEndX, topStepY + skirtBoardH);
+    northStrShape.lineTo(landingNorthEndX, topStepY + skirtBoardH);
+    northStrShape.lineTo(landingNorthEndX, topStepY);
+    northStrShape.lineTo(upperEndX, topStepY);
     northStrShape.lineTo(upperEndX, topStepY - 0.04);
     northStrShape.lineTo(-16.64, quarterLandingY - 0.04);
     northStrShape.closePath();
@@ -981,15 +985,15 @@ export function buildHallStaircase(
     northWallStringer.receiveShadow = true;
     stairGroup.add(northWallStringer);
 
-    // Stepped ogee/torus oak skirting cap swept along the North Quarter-Landing & Upper-Flight Stringer top edge,
-    // mitred where the landing run turns up the second flight and where it arrives at the First Floor landing.
+    // Stepped ogee/torus oak skirting cap swept along the North Quarter-Landing, Upper-Flight Stringer, and First Floor Landing top edge,
+    // mitred where the landing run turns up the second flight and where it levels out across the First Floor landing.
     const northCapGeo = buildSweptMouldingGeometry(
       createSkirtingCapProfile(),
       [
         [-17.43, quarterLandingY + skirtBoardH],
         [northTurnX, quarterLandingY + skirtBoardH],
         [upperBalustradeEndX, topStepY + skirtBoardH],
-        [upperEndX, topStepY + skirtBoardH],
+        [landingNorthEndX, topStepY + skirtBoardH],
       ],
       (a, y, d) => new THREE.Vector3(a, y, -2.5 + d)
     );
@@ -1035,15 +1039,13 @@ export function buildHallStaircase(
   brickNorthShape.moveTo(-17.48, quarterLandingY + 0.142);
   brickNorthShape.lineTo(-16.84, quarterLandingY + 0.142);
   brickNorthShape.lineTo(upperBalustradeEndX, topStepY + 0.142);
-  brickNorthShape.lineTo(upperEndX, topStepY + 0.142);
-  brickNorthShape.lineTo(upperEndX, topStepY + 0.22);
-  brickNorthShape.lineTo(-17.48, topStepY + 0.22);
+  brickNorthShape.lineTo(-17.48, topStepY + 0.142);
   brickNorthShape.closePath();
   const stairExposedBrickNorthGeo = new THREE.ExtrudeGeometry(brickNorthShape, {
-    depth: 0.02,
+    depth: 0.012,
     bevelEnabled: false,
   });
-  stairExposedBrickNorthGeo.translate(0, 0, -2.498);
+  stairExposedBrickNorthGeo.translate(0, 0, -2.502);
   applyWorldSpaceBrickUVs(stairExposedBrickNorthGeo, 0, 0, 0);
   const stairExposedBrickNorth = new THREE.Mesh(stairExposedBrickNorthGeo, exteriorBrickMat);
   stairExposedBrickNorth.receiveShadow = true;

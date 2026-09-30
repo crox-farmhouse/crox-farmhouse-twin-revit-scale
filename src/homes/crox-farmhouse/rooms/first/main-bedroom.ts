@@ -71,9 +71,11 @@ export function buildMainBedroom(
     3
   );
 
+  const collarCeilingY = 4.52;
+
   // East Chimney Breast in Main Bedroom continuing directly above the Dining Room Chimney Breast
-  // (X = -4.96m..-4.64m, Z = -0.85m..+0.82m, width 0.32m, depth 1.67m, rising from floorBaseY = 2.06m to upperWallTopY = 4.16m — Issue #12)
-  addUpperInteriorWall(-4.8, floorBaseY, upperWallTopY, -0.015, 0.32, 1.67, warmRoomPlasterMat);
+  // (X = -4.96m..-4.64m, Z = -0.85m..+0.82m, width 0.32m, depth 1.67m, rising from floorBaseY = 2.06m to collarCeilingY = 4.52m — Issue #5 & Issue #12)
+  addUpperInteriorWall(-4.8, floorBaseY, collarCeilingY, -0.015, 0.32, 1.67, warmRoomPlasterMat);
 
   // Full-width bank of built-in Shaker Wardrobes along the North wall of Main Bedroom (floorplan X = -4.64m..-9.56m, Z = -2.50m..-1.88m)
   // Flanking the North window (X = -6.35m): East wardrobe bay (X = -4.64m..-5.65m) & West 3-bay wardrobe bank (X = -7.05m..-9.56m)
@@ -93,10 +95,10 @@ export function buildMainBedroom(
     scene.add(wardBody);
   }
 
-  // South-West Corner Cupboard in Main Bedroom (X = -8.65m..-9.56m, Z = +0.10m..+1.05m)
-  addUpperInteriorWall(-8.65, floorTopY, upperWallTopY, 0.575, 0.15, 0.95, warmRoomPlasterMat);
-  addUpperInteriorWall(-9.105, floorTopY, upperWallTopY, 0.1, 0.91, 0.15, warmRoomPlasterMat);
-  addUpperInteriorWall(-9.105, floorTopY, upperWallTopY, 1.05, 0.91, 0.15, warmRoomPlasterMat);
+  // South-West Corner Cupboard in Main Bedroom (X = -8.65m..-9.56m, Z = +0.10m..+1.05m, reaching the 4.52m collar ceiling)
+  addUpperInteriorWall(-8.65, floorTopY, collarCeilingY, 0.575, 0.15, 0.95, warmRoomPlasterMat);
+  addUpperInteriorWall(-9.105, floorTopY, collarCeilingY, 0.1, 0.91, 0.15, warmRoomPlasterMat);
+  addUpperInteriorWall(-9.105, floorTopY, collarCeilingY, 1.05, 0.91, 0.15, warmRoomPlasterMat);
 
   // West Load-Bearing Cross-Wall between Main Bedroom and Family Bathroom / Upper Passage (0.24m thick, X = -9.56m..-9.80m)
   // Doorway at Z = +1.55m (with 2 oak steps UP into Main Bedroom as marked 'UP' on the First Floor plan!)
@@ -104,4 +106,28 @@ export function buildMainBedroom(
   addUpperInteriorWall(-9.68, floorTopY, upperWallTopY, 2.18, 0.24, 0.36, warmRoomPlasterMat);
   addUpperInteriorWall(-9.68, floorTopY + doorH, upperWallTopY, 1.55, 0.24, 0.9, warmRoomPlasterMat);
   addUpperInteractiveDoor('z', -9.68, 0.24, 1.55, 0.9, Math.PI * 0.48);
+
+  // Issue #5: Trapezoidal Upper Gable Extensions on the West (X = -9.68m) and East (X = -4.52m) Cross-Walls (Y = 4.16m..4.52m)
+  for (const [gableX, gableName] of [
+    [-9.68, 'mainBedroom.westWallUpperGable'],
+    [-4.52, 'mainBedroom.eastWallUpperGable'],
+  ] as const) {
+    const gableShape = new THREE.Shape();
+    gableShape.moveTo(-1.9, upperWallTopY);
+    gableShape.lineTo(1.8, upperWallTopY);
+    gableShape.lineTo(1.05, collarCeilingY);
+    gableShape.lineTo(-1.15, collarCeilingY);
+    gableShape.closePath();
+    const gableGeo = new THREE.ExtrudeGeometry(gableShape, {
+      depth: 0.24,
+      bevelEnabled: false,
+    });
+    gableGeo.rotateY(Math.PI / 2);
+    gableGeo.translate(gableX - 0.12, 0, 0);
+    const gableMesh = new THREE.Mesh(gableGeo, warmRoomPlasterMat);
+    gableMesh.name = gableName;
+    gableMesh.castShadow = true;
+    gableMesh.receiveShadow = true;
+    scene.add(gableMesh);
+  }
 }
