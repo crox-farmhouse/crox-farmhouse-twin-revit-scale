@@ -154,8 +154,13 @@ function hasPhysicsCollider(name: string, zoneId: string, isArchShell: boolean):
   return zoneId === 'roofAndCeilings';
 }
 
+const _idxBox = new THREE.Box3();
+const _idxCenter = new THREE.Vector3();
+const _idxSize = new THREE.Vector3();
+
 function resolveZoneForWorldBox(
   box: THREE.Box3,
+  center: THREE.Vector3,
   objectName: string,
   userDataZoneId: string | undefined,
   isCeilingLayer: boolean
@@ -179,8 +184,6 @@ function resolveZoneForWorldBox(
     if (matchingLayer) return matchingLayer.zoneId;
   }
   if (!box.isEmpty()) {
-    const center = new THREE.Vector3();
-    box.getCenter(center);
     for (const reg of CROX_FARMHOUSE_LOD_REGISTRATIONS) {
       const b = reg.bounds;
       if (
@@ -270,7 +273,9 @@ export class UsdStageRuntimeController {
     readonly east: THREE.Group;
   };
   private readonly onRoofCutawayChanged?: (cutaway: boolean) => void;
+  private readonly onBeforeZoneLoadFromUsda?: () => void;
   private readonly onZoneLoadedFromUsda?: (zoneId: string) => void;
+  private readonly onSyncBatchState?: (shouldBatch: boolean) => void;
 
   private readonly meshByUuid = new Map<string, THREE.Mesh>();
   private readonly primByUuid = new Map<string, UsdIndexedPrimInfo>();
@@ -302,7 +307,9 @@ export class UsdStageRuntimeController {
     };
     readonly initialCeilingCutaway: boolean;
     readonly onRoofCutawayChanged?: (cutaway: boolean) => void;
+    readonly onBeforeZoneLoadFromUsda?: () => void;
     readonly onZoneLoadedFromUsda?: (zoneId: string) => void;
+    readonly onSyncBatchState?: (shouldBatch: boolean) => void;
   }) {
     this.sceneRoot = options.scene;
     this.cutawayWallGroups = options.cutawayWallGroups;
@@ -323,7 +330,9 @@ export class UsdStageRuntimeController {
       ? 'groundFloorCutaway'
       : 'fullBuilding';
     this.onRoofCutawayChanged = options.onRoofCutawayChanged;
+    this.onBeforeZoneLoadFromUsda = options.onBeforeZoneLoadFromUsda;
     this.onZoneLoadedFromUsda = options.onZoneLoadedFromUsda;
+    this.onSyncBatchState = options.onSyncBatchState;
 
     this.authoredOverrideGroup.name = 'usd.liveAuthoredPrims';
     options.scene.add(this.authoredOverrideGroup);
@@ -372,34 +381,81 @@ export class UsdStageRuntimeController {
     if (this.usdaBackedZones.has(zoneId)) {
       return true;
     }
+    const count = await this.loadZonesFromUsdaFiles([zoneId]);
+    return count > 0;
+  }
+
+  public async loadZonesFromUsdaFiles(zoneIds: readonly string[]): Promise<number> {
+    const pendingZoneIds = zoneIds.filter((id) => !this.usdaBackedZones.has(id));
+    let loadedCount = zoneIds.length - pendingZoneIds.length;
+    if (pendingZoneIds.length === 0) {
+      return loadedCount;
+    }
+
     try {
-      const [materials, zoneRes] = await Promise.all([
+      const [materials, zoneTexts] = await Promise.all([
         this.ensureUsdaMaterialLibrary(),
-        fetch(`/usd/zones/${zoneId}.usda`),
+        Promise.all(
+          pendingZoneIds.map(async (zoneId) => {
+            try {
+              const res = await fetch(`/usd/zones/${zoneId}.usda`);
+              if (!res.ok) return null;
+              return { zoneId, text: await res.text() };
+            } catch {
+              return null;
+            }
+          })
+        ),
       ]);
-      if (!zoneRes.ok) {
-        return false;
-      }
-      const zoneUsdaText = await zoneRes.text();
-      const loaded = parseAndInstantiateUsdaZone(zoneUsdaText, materials);
-      if (loaded.topPrims.length === 0) {
-        return false;
+
+      const parsedZones: Array<{
+        readonly zoneId: string;
+        readonly loaded: ReturnType<typeof parseAndInstantiateUsdaZone>;
+      }> = [];
+
+      for (const item of zoneTexts) {
+        if (!item) continue;
+        try {
+          const loaded = parseAndInstantiateUsdaZone(item.text, materials);
+          if (loaded.topPrims.length > 0) {
+            parsedZones.push({ zoneId: item.zoneId, loaded });
+          }
+        } catch (err) {
+          console.warn(`[OpenUSD Stage] Failed to parse zone ${item.zoneId} from .usda:`, err);
+        }
       }
 
-      this.transferLiveMaterialsAndRemoveTypeScriptBranches(
-        zoneId,
-        loaded.topPrims.map((p) => p.object3d)
-      );
-
-      for (const topPrim of loaded.topPrims) {
-        const container = this.resolveSceneLayerContainer(topPrim.sceneLayer);
-        container.add(topPrim.object3d);
+      if (parsedZones.length === 0) {
+        return loadedCount;
       }
 
-      this.usdaBackedZones.add(zoneId);
+      // Unbatch static scene assemblies before comparing/swapping TypeScript branches
+      this.onBeforeZoneLoadFromUsda?.();
+
+      const newlyLoadedZoneIds: string[] = [];
+      for (const { zoneId, loaded } of parsedZones) {
+        this.transferLiveMaterialsAndRemoveTypeScriptBranches(
+          zoneId,
+          loaded.topPrims.map((p) => p.object3d)
+        );
+
+        for (const topPrim of loaded.topPrims) {
+          const container = this.resolveSceneLayerContainer(topPrim.sceneLayer);
+          container.add(topPrim.object3d);
+        }
+
+        this.usdaBackedZones.add(zoneId);
+        newlyLoadedZoneIds.push(zoneId);
+        loadedCount++;
+      }
+
+      // Single post-load stage index, visibility sync, and scene optimization pass
       this.indexStage();
-      this.syncVisibilityForZone(zoneId);
-      this.onZoneLoadedFromUsda?.(zoneId);
+      for (const zoneId of newlyLoadedZoneIds) {
+        this.syncVisibilityForZone(zoneId);
+      }
+      this.onZoneLoadedFromUsda?.(newlyLoadedZoneIds[newlyLoadedZoneIds.length - 1]);
+
       if (this.diagnosticMode !== 'pbr') {
         const currentMode = this.diagnosticMode;
         this.diagnosticMode = 'pbr';
@@ -407,20 +463,11 @@ export class UsdStageRuntimeController {
       } else {
         this.emit();
       }
-      return true;
+      return loadedCount;
     } catch (err) {
-      console.warn(`[OpenUSD Stage] Failed to load zone ${zoneId} from .usda:`, err);
-      return false;
+      console.warn('[OpenUSD Stage] Failed to batch-load zones from .usda:', err);
+      return loadedCount;
     }
-  }
-
-  public async loadZonesFromUsdaFiles(zoneIds: readonly string[]): Promise<number> {
-    let loadedCount = 0;
-    for (const zoneId of zoneIds) {
-      const ok = await this.loadZoneFromUsdaFile(zoneId);
-      if (ok) loadedCount++;
-    }
-    return loadedCount;
   }
 
   public async loadAllZonesFromUsdaFiles(): Promise<number> {
@@ -646,12 +693,13 @@ export class UsdStageRuntimeController {
 
         visited.add(obj.uuid);
 
-        const box = new THREE.Box3().setFromObject(obj);
-        const center = new THREE.Vector3();
-        const size = new THREE.Vector3();
-        if (!box.isEmpty()) {
-          box.getCenter(center);
-          box.getSize(size);
+        _idxBox.setFromObject(obj);
+        if (!_idxBox.isEmpty()) {
+          _idxBox.getCenter(_idxCenter);
+          _idxBox.getSize(_idxSize);
+        } else {
+          _idxCenter.set(0, 0, 0);
+          _idxSize.set(0, 0, 0);
         }
 
         let inheritedName = obj.name;
@@ -692,7 +740,8 @@ export class UsdStageRuntimeController {
         }
 
         const zoneId = resolveZoneForWorldBox(
-          box,
+          _idxBox,
+          _idxCenter,
           inheritedName || obj.name,
           inheritedZoneId,
           isCeilingLayer
@@ -769,8 +818,8 @@ export class UsdStageRuntimeController {
           materialName: matBaseName,
           materialPath,
           materialArchetype: archetype,
-          worldCenter: toVec3(center),
-          worldSize: toVec3(size),
+          worldCenter: toVec3(_idxCenter),
+          worldSize: toVec3(_idxSize),
           usdaSourceOfTruth: isUsdaSource || this.usdaBackedZones.has(zoneId),
         };
 
@@ -862,21 +911,36 @@ export class UsdStageRuntimeController {
     });
   }
 
+  public canUseStaticBatching(): boolean {
+    return (
+      this.diagnosticMode === 'pbr' &&
+      this.lodVariant === 'hero' &&
+      this.mutedZones.size === 0
+    );
+  }
+
   public isZoneMuted(zoneId: string): boolean {
     return this.mutedZones.has(zoneId);
   }
 
   public setZoneMuted(zoneId: string, muted: boolean): void {
     if (muted) {
+      this.onSyncBatchState?.(false);
       this.mutedZones.add(zoneId);
     } else {
       this.mutedZones.delete(zoneId);
     }
     this.syncVisibilityForZone(zoneId);
+    if (this.canUseStaticBatching()) {
+      this.onSyncBatchState?.(true);
+    }
     this.emit();
   }
 
   public setAllZonesMuted(muted: boolean): void {
+    if (muted) {
+      this.onSyncBatchState?.(false);
+    }
     this.mutedZones.clear();
     if (muted) {
       for (const layer of CROX_USD_ZONE_LAYERS) {
@@ -885,6 +949,9 @@ export class UsdStageRuntimeController {
     }
     for (const layer of CROX_USD_ZONE_LAYERS) {
       this.syncVisibilityForZone(layer.zoneId);
+    }
+    if (this.canUseStaticBatching()) {
+      this.onSyncBatchState?.(true);
     }
     this.emit();
   }
@@ -900,6 +967,7 @@ export class UsdStageRuntimeController {
       return;
     }
 
+    this.onSyncBatchState?.(false);
     this.mutedZones.clear();
     for (const layer of CROX_USD_ZONE_LAYERS) {
       if (layer.zoneId !== zoneId) {
@@ -940,9 +1008,15 @@ export class UsdStageRuntimeController {
 
   public setLodVariant(variant: UsdLodVariant): void {
     if (this.lodVariant === variant) return;
+    if (variant !== 'hero') {
+      this.onSyncBatchState?.(false);
+    }
     this.lodVariant = variant;
     for (const layer of CROX_USD_ZONE_LAYERS) {
       this.syncVisibilityForZone(layer.zoneId);
+    }
+    if (this.canUseStaticBatching()) {
+      this.onSyncBatchState?.(true);
     }
     this.emit();
   }
@@ -964,6 +1038,9 @@ export class UsdStageRuntimeController {
 
   public setDiagnosticMode(mode: UsdViewportDiagnosticMode): void {
     if (this.diagnosticMode === mode) return;
+    if (mode !== 'pbr') {
+      this.onSyncBatchState?.(false);
+    }
     this.diagnosticMode = mode;
 
     if (mode === 'pbr') {
@@ -974,6 +1051,9 @@ export class UsdStageRuntimeController {
         }
       }
       this.originalMaterials.clear();
+      if (this.canUseStaticBatching()) {
+        this.onSyncBatchState?.(true);
+      }
       this.emit();
       return;
     }
@@ -1034,6 +1114,9 @@ export class UsdStageRuntimeController {
     while (cur) {
       const info = this.primByUuid.get(cur.uuid);
       if (info) return info;
+      if (cur.userData?.usdPrimInfo) {
+        return cur.userData.usdPrimInfo as UsdIndexedPrimInfo;
+      }
       cur = cur.parent;
     }
     return null;
@@ -1123,6 +1206,7 @@ export class UsdStageRuntimeController {
     readonly overridesApplied: number;
     readonly primsCreated: number;
   } {
+    this.onSyncBatchState?.(false);
     const overrides = parseUsdaOverrideLayer(usdaText);
     const overridesApplied = applyUsdOverridesToScene(
       [...this.roots, this.firstFloorRoot],
@@ -1136,6 +1220,9 @@ export class UsdStageRuntimeController {
     }
 
     const createdPrims = this.instantiateAuthoredParametricPrims(usdaText);
+    if (this.canUseStaticBatching()) {
+      this.onSyncBatchState?.(true);
+    }
     this.emit();
     return { overridesApplied, primsCreated: createdPrims };
   }

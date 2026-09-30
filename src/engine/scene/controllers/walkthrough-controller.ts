@@ -144,6 +144,7 @@ interface CachedObstacle {
 
 interface CachedFurnitureBox {
   readonly mesh: THREE.Mesh;
+  readonly visibilityNode: THREE.Object3D;
   readonly centerX: number;
   readonly centerZ: number;
   readonly radiusXZ: number;
@@ -311,6 +312,18 @@ export class WalkthroughController {
   }
 
   public invalidateObstacleCache(): void {
+    this.cachedObstacles = null;
+  }
+
+  /**
+   * Captures per-piece 2D Oriented Bounding Box furniture colliders from unmerged scene meshes
+   * before `SceneBatchOptimizer` merges static assembly child meshes, then clears `cachedObstacles`
+   * so raycast wall/door obstacles are lazily indexed against the live merged meshes.
+   */
+  public captureFurnitureColliders(): void {
+    this.cachedFurnitureBoxes = [];
+    this.cachedObstacles = null;
+    this.getObstacleCache();
     this.cachedObstacles = null;
   }
 
@@ -800,6 +813,7 @@ export class WalkthroughController {
     }
     const list: CachedObstacle[] = [];
     const furnitureList: CachedFurnitureBox[] = [];
+    const rebuildFurniture = this.cachedFurnitureBoxes.length === 0;
     this.scene.updateMatrixWorld(true);
 
     this.scene.traverse((obj) => {
@@ -899,7 +913,7 @@ export class WalkthroughController {
       //    Catches dining tables, desks, coffee tables, sofas (including sculpted BufferGeometry
       //    cushions), armchairs, dining chairs, beds, kitchen island & worktops, sideboards,
       //    bathtubs, vanities, WCs, and appliances whose top surface sits at knee-to-chest height.
-      if (!hasDynamicAncestor && Math.max(sizeX, sizeZ) <= 5.5) {
+      if (rebuildFurniture && !hasDynamicAncestor && Math.max(sizeX, sizeZ) <= 5.5) {
         const floorY = this.sampleFloorElevation(centerX, this.tmpBox.max.y, centerZ);
         const topAboveFloor = this.tmpBox.max.y - floorY;
         const botAboveFloor = this.tmpBox.min.y - floorY;
@@ -965,6 +979,7 @@ export class WalkthroughController {
             ) {
               furnitureList.push({
                 mesh: obj,
+                visibilityNode: obj.parent ?? obj,
                 centerX,
                 centerZ,
                 radiusXZ,
@@ -984,7 +999,9 @@ export class WalkthroughController {
     });
 
     this.cachedObstacles = list;
-    this.cachedFurnitureBoxes = furnitureList;
+    if (rebuildFurniture) {
+      this.cachedFurnitureBoxes = furnitureList;
+    }
     return list;
   }
 
@@ -1098,7 +1115,8 @@ export class WalkthroughController {
       const dz = f.centerZ - fromFoot.z;
       const maxDist = f.radiusXZ + furnReach;
       if (dx * dx + dz * dz > maxDist * maxDist) continue;
-      if (!isObjectVisibleInHierarchy(f.mesh)) continue;
+      const visTarget = f.mesh.parent ? f.mesh : f.visibilityNode;
+      if (!isObjectVisibleInHierarchy(visTarget)) continue;
 
       const vx = -f.uz;
       const vz = f.ux;

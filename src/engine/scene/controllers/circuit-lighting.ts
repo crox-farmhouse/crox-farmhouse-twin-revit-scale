@@ -89,10 +89,14 @@ export class CircuitLightingController {
         mat.emissiveIntensity = customEmissiveMax * pct;
       }
       for (const coneMat of group.cones) {
-        coneMat.opacity = appearance.coneOpacity * pct;
+        const nextOpacity = appearance.coneOpacity * pct;
+        coneMat.opacity = nextOpacity;
+        coneMat.visible = nextOpacity > 0.002;
       }
       for (const pool of group.pools) {
-        pool.mat.opacity = pool.maxOpacity * pct;
+        const nextOpacity = pool.maxOpacity * pct;
+        pool.mat.opacity = nextOpacity;
+        pool.mat.visible = nextOpacity > 0.002;
       }
     }
 

@@ -94,6 +94,34 @@ export function buildCourtyardAndGates(
       return x - Math.floor(x);
     };
 
+    // Precompute the 8x8 repeating cell attributes so the 1,048,576-pixel loop
+    // never recomputes trigonometric hash2() or palette lookups per pixel.
+    const cellJitterALut = new Float64Array(coursesPerTile * numRows);
+    const cellJitterBLut = new Float64Array(coursesPerTile * numRows);
+    const halfLenSLut = new Float64Array(coursesPerTile * numRows);
+    const halfWidULut = new Float64Array(coursesPerTile * numRows);
+    const palIdxLut = new Uint8Array(coursesPerTile * numRows);
+
+    for (let c = 0; c < coursesPerTile; c++) {
+      for (let r = 0; r < numRows; r++) {
+        const cellIdx = c * numRows + r;
+        const jA = hash2(c * 19 + 3, r * 37 + 11);
+        const jB = hash2(c * 43 + 7, r * 23 + 5);
+        cellJitterALut[cellIdx] = jA;
+        cellJitterBLut[cellIdx] = jB;
+        halfLenSLut[cellIdx] = Math.max(
+          0.01,
+          courseStep * 0.5 - mortarHalfW * (0.9 + 0.25 * jA)
+        );
+        halfWidULut[cellIdx] = Math.max(
+          0.01,
+          cobbleStepU * 0.5 - mortarHalfW * (0.9 + 0.25 * jB)
+        );
+        palIdxLut[cellIdx] =
+          Math.floor(jA * granitePalette.length) % granitePalette.length;
+      }
+    }
+
     for (let py = 0; py < size; py++) {
       // py = 0 corresponds to uv.y = 1 (north edge of a 1.46m band), py = size - 1 to uv.y = 0 (south edge)
       const u = (py / size) * pathW;
@@ -108,6 +136,7 @@ export function buildCourtyardAndGates(
 
       // Edge border joint where adjacent 1.46m parallel fan bands meet
       const bandSeamDist = Math.min(u, pathW - u);
+      const isBandSeam = bandSeamDist < mortarHalfW * 0.85;
 
       for (let px = 0; px < size; px++) {
         const s = (px / size) * tileSpanX;
@@ -127,17 +156,16 @@ export function buildCourtyardAndGates(
         const wrappedRowIdx = ((cobbleRow % numRows) + numRows) % numRows;
         const distFromRowCenter = (rowPos - (cobbleRow + 0.5)) * cobbleStepU;
 
-        const cellJitterA = hash2(wrappedCourseIdx * 19 + 3, wrappedRowIdx * 37 + 11);
-        const cellJitterB = hash2(wrappedCourseIdx * 43 + 7, wrappedRowIdx * 23 + 5);
-        const halfLenS = courseStep * 0.5 - mortarHalfW * (0.9 + 0.25 * cellJitterA);
-        const halfWidU = cobbleStepU * 0.5 - mortarHalfW * (0.9 + 0.25 * cellJitterB);
+        const cellIdx = wrappedCourseIdx * numRows + wrappedRowIdx;
+        const cellJitterA = cellJitterALut[cellIdx]!;
+        const cellJitterB = cellJitterBLut[cellIdx]!;
 
-        const normS = Math.abs(distFromCourseCenter) / Math.max(0.01, halfLenS);
-        const normU = Math.abs(distFromRowCenter) / Math.max(0.01, halfWidU);
-        const superEllipse = Math.pow(
-          Math.pow(normS, 4.5) + Math.pow(normU, 4.5),
-          1 / 4.5
-        );
+        const normS = Math.abs(distFromCourseCenter) / halfLenSLut[cellIdx]!;
+        const normU = Math.abs(distFromRowCenter) / halfWidULut[cellIdx]!;
+        const superEllipse =
+          isBandSeam || normS > 1.0 || normU > 1.0
+            ? 1.1
+            : Math.pow(Math.pow(normS, 4.5) + Math.pow(normU, 4.5), 1 / 4.5);
 
         const grain1 =
           Math.sin(s * 195 + u * 210) *
@@ -145,7 +173,7 @@ export function buildCourtyardAndGates(
           Math.sin((s + u) * 310);
         const grain2 = Math.sin(s * 520 + u * 480) * 0.5;
 
-        if (superEllipse > 1.0 || bandSeamDist < mortarHalfW * 0.85) {
+        if (superEllipse > 1.0 || isBandSeam) {
           // Sandy-buff lime mortar bed (#cbb894) matching `createGraniteSettLPathTextures`
           const sandGrain = grain1 * 9 + grain2 * 5;
           cData[idx] = Math.max(0, Math.min(255, Math.round(203 + sandGrain)));
@@ -159,10 +187,7 @@ export function buildCourtyardAndGates(
           bData[idx + 2] = jointDepth;
           bData[idx + 3] = 255;
         } else {
-          const palIdx =
-            Math.floor(cellJitterA * granitePalette.length) %
-            granitePalette.length;
-          const baseRGB = granitePalette[palIdx]!;
+          const baseRGB = granitePalette[palIdxLut[cellIdx]!]!;
           const shadeShift = (cellJitterB - 0.5) * 24;
 
           const localX =

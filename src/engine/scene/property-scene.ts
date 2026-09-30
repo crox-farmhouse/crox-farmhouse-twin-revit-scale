@@ -56,6 +56,8 @@ import {
   type PropertySceneLayers,
 } from './scene-content.ts';
 import type { SceneZoneRegistry } from './scene-zone-registry.ts';
+import { SceneBatchOptimizer } from './scene-batch-optimizer.ts';
+import { installShaderLightCulling } from './shader-light-culling.ts';
 import {
   type UsdIndexedPrimInfo,
   UsdStageRuntimeController,
@@ -113,6 +115,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   private readonly cutaways: CutawayController;
   private readonly bifolds: BifoldDoorAnimator;
   private readonly interactions: SceneInteractionManager;
+  private readonly batchOptimizer: SceneBatchOptimizer;
   private readonly usdRuntime: UsdStageRuntimeController;
   private readonly walkthrough: WalkthroughController;
 
@@ -133,6 +136,8 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     onObjectInteraction: (data: InteractiveUserData) => void,
     profile: PropertySceneProfile<TSecurity>
   ) {
+    installShaderLightCulling();
+
     this.canvas = canvas;
     this.onObjectInteraction = onObjectInteraction;
     this.zoneRegistry = profile.createZoneRegistry();
@@ -296,6 +301,25 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       this.needsRender = true;
     });
 
+    this.batchOptimizer = new SceneBatchOptimizer({
+      layers: this.layers,
+      lodController: this.lodController,
+      lightGroups: this.content.lightGroups,
+      indicatorMats: this.content.indicatorMats,
+      roomSwitchLedMats: this.content.roomSwitchLedMats,
+      interactiveMeshes: this.content.interactiveMeshes,
+      bifoldPanels: this.content.bifoldPanels,
+      getDynamicObjects: () => {
+        const dynamicObjects = new Set<THREE.Object3D>();
+        this.annotations.collectDynamicObjects(dynamicObjects);
+        for (const panel of this.bifolds.getPanels()) {
+          panel.group.traverse((child) => dynamicObjects.add(child));
+        }
+        this.interactions.collectDynamicObjects(dynamicObjects);
+        return dynamicObjects;
+      },
+    });
+
     this.usdRuntime = new UsdStageRuntimeController({
       scene: this.scene,
       firstFloorMeshGroup: this.layers.firstFloorMeshGroup,
@@ -308,13 +332,32 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
           this.toggleCeilingCutaway();
         }
       },
+      onBeforeZoneLoadFromUsda: () => {
+        this.batchOptimizer.unbatchAll();
+      },
       onZoneLoadedFromUsda: () => {
         applySelectiveBevelModifier(this.layers);
         this.interactions.rebindAfterUsdZoneLoad([this.scene]);
         this.cutaways.collectDynamicCutawayWalls();
+        this.walkthrough.captureFurnitureColliders();
+        if (!this.annotations.isAnnotationMode() && this.usdRuntime.canUseStaticBatching()) {
+          this.batchOptimizer.optimize();
+        }
         this.walkthrough.invalidateObstacleCache();
         this.updateCameraFacingWallCutaways(true);
         this.freezeStaticMatrices();
+        this.renderer.shadowMap.needsUpdate = true;
+        this.needsRender = true;
+      },
+      onSyncBatchState: (shouldBatch) => {
+        if (shouldBatch && !this.annotations.isAnnotationMode()) {
+          this.batchOptimizer.optimize();
+          this.freezeStaticMatrices();
+        } else {
+          this.batchOptimizer.unbatchAll();
+          this.freezeStaticMatrices();
+        }
+        this.walkthrough.invalidateObstacleCache();
         this.renderer.shadowMap.needsUpdate = true;
         this.needsRender = true;
       },
@@ -324,6 +367,8 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       this.needsRender = true;
     });
 
+    this.walkthrough.captureFurnitureColliders();
+    this.batchOptimizer.optimize();
     this.updateCameraFacingWallCutaways(true);
     this.freezeStaticMatrices();
     this.setupInteractionEvents();
@@ -836,11 +881,23 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   }
 
   public setAnnotationMode(enabled: boolean): void {
+    if (enabled) {
+      this.batchOptimizer.unbatchAll();
+      this.freezeStaticMatrices();
+    }
     this.annotations.setAnnotationMode(enabled);
+    if (!enabled && this.usdRuntime.canUseStaticBatching()) {
+      this.walkthrough.captureFurnitureColliders();
+      this.batchOptimizer.optimize();
+      this.freezeStaticMatrices();
+    }
+    this.walkthrough.invalidateObstacleCache();
   }
 
   public toggleAnnotationMode(): boolean {
-    return this.annotations.toggleAnnotationMode();
+    const next = !this.annotations.isAnnotationMode();
+    this.setAnnotationMode(next);
+    return this.annotations.isAnnotationMode();
   }
 
   public getAnnotationToolMode(): AnnotationToolMode {
@@ -901,7 +958,14 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   }
 
   public reapplySavedMoveAnnotations(records: readonly SceneAnnotationRecord[]): void {
+    this.batchOptimizer.unbatchAll();
     this.annotations.reapplySavedMoveAnnotations(records);
+    if (!this.annotations.isAnnotationMode() && this.usdRuntime.canUseStaticBatching()) {
+      this.walkthrough.captureFurnitureColliders();
+      this.batchOptimizer.optimize();
+    }
+    this.walkthrough.invalidateObstacleCache();
+    this.freezeStaticMatrices();
   }
 
   public detachMoveGizmo(): void {
