@@ -768,11 +768,12 @@ export function buildArchitecturalShellAndUtilityRoom(
   scene.add(utilWestWall);
 
   // Utility Room South Wall (Z = -0.775m) with doorway cutout centered at X = +2.68m (X = 2.245m..3.115m)
+  // Starts at X = +2.00m (flush with the East face of utilWestWall at X = 1.85m..2.00m) to avoid coplanar corner Z-fighting
   const utilSouthWallLeft = new THREE.Mesh(
-    new THREE.BoxGeometry(0.395, wallHeight, partWallThick),
+    new THREE.BoxGeometry(0.245, wallHeight, partWallThick),
     wallMat
   );
-  utilSouthWallLeft.position.set(2.0475, wallHeight / 2, -0.775);
+  utilSouthWallLeft.position.set(2.1225, wallHeight / 2, -0.775);
   utilSouthWallLeft.castShadow = true;
   utilSouthWallLeft.receiveShadow = true;
   scene.add(utilSouthWallLeft);

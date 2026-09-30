@@ -1292,14 +1292,15 @@ export function buildLivingRoomCinemaWall(
     scene.add(coffeeTableGroup);
   }
 
-  // Plasterboard ceiling backing above the exposed oak spine beam & joists (seals the 1.625m Living Room ceiling from below)
+  // Plasterboard ceiling backing above the exposed oak spine beam & joists (seals the 1.625m Living Room ceiling from below
+  // flush to the rotated East Cross-Wall [-16.876, -2.49] -> [-17.891, 2.48] — Issue #4)
   buildPolygonalFloorSlab(
     groundFloorCeilingGroup,
     [
-      [-22.36, -3.22],
-      [-17.45, -2.56],
-      [-17.78, 2.52],
-      [-22.36, 1.98],
+      [-22.32, -3.22],
+      [-16.876, -2.49],
+      [-17.891, 2.48],
+      [-22.32, 1.93],
     ],
     frontWallH + 0.012,
     0.036,
@@ -1309,18 +1310,21 @@ export function buildLivingRoomCinemaWall(
 
   // Natural Dark-Stained Oak East-West Spine Beam & North-South Ceiling Joists in Front Room (New Photo 5 top)
   const frontRoomDarkSpineBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(4.65, 0.19, 0.2),
+    new THREE.BoxGeometry(4.8, 0.19, 0.2),
     oakMat
   );
-  frontRoomDarkSpineBeam.position.set(-19.8, frontWallH - 0.15, -0.32);
+  frontRoomDarkSpineBeam.position.set(-19.84, frontWallH - 0.15, -0.325);
   frontRoomDarkSpineBeam.rotation.y = -Math.atan2(0.705, 5.27);
   frontRoomDarkSpineBeam.castShadow = true;
   groundFloorCeilingGroup.add(frontRoomDarkSpineBeam);
 
-  for (let fjx = -21.95; fjx <= -17.95; fjx += 0.4) {
+  for (let fjx = -21.95; fjx <= -17.15; fjx += 0.4) {
     const zNorth = -3.18 + (0.705 / 5.27) * (fjx + 22.19) + 0.02;
-    const zSouth = 1.905 + (0.705 / 5.27) * (fjx + 22.19) - 0.15;
-    const joistLen = Math.max(1.0, zSouth - zNorth);
+    const zSouthWall = 1.905 + (0.705 / 5.27) * (fjx + 22.19) - 0.15;
+    const zEastCrossWall = -2.469 + ((-16.956 - fjx) / 1.015) * 4.949;
+    const zSouth = Math.min(zSouthWall, zEastCrossWall);
+    const joistLen = zSouth - zNorth;
+    if (joistLen < 0.45) continue;
     const darkJoist = new THREE.Mesh(
       new THREE.BoxGeometry(0.095, 0.12, joistLen),
       oakMat

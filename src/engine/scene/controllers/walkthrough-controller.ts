@@ -189,7 +189,12 @@ export class WalkthroughController {
   private readonly onInteractWithMesh: (mesh: THREE.Object3D) => void;
   private readonly onBargeWalkthroughDoor: (
     interactableId: string,
-    isSprinting: boolean
+    isSprinting: boolean,
+    footX: number,
+    footY: number,
+    footZ: number,
+    moveDirX: number,
+    moveDirZ: number
   ) => boolean;
   private readonly onProximityBargeDoors: (
     footX: number,
@@ -258,7 +263,12 @@ export class WalkthroughController {
     readonly onInteractWithMesh: (mesh: THREE.Object3D) => void;
     readonly onBargeWalkthroughDoor?: (
       interactableId: string,
-      isSprinting: boolean
+      isSprinting: boolean,
+      footX: number,
+      footY: number,
+      footZ: number,
+      moveDirX: number,
+      moveDirZ: number
     ) => boolean;
     readonly onProximityBargeDoors?: (
       footX: number,
@@ -1211,9 +1221,17 @@ export class WalkthroughController {
             if (
               this.allowDoorBarge &&
               interactableId &&
-              this.onBargeWalkthroughDoor(interactableId, this.isCurrentlySprinting)
+              this.onBargeWalkthroughDoor(
+                interactableId,
+                this.isCurrentlySprinting,
+                fromFoot.x,
+                fromFoot.y,
+                fromFoot.z,
+                moveDirXZ.x,
+                moveDirXZ.z
+              )
             ) {
-              // Call-of-Duty style: running into a closed walk-through door flings it open without blocking!
+              // Call-of-Duty style: running through a walk-through doorway flings it open without blocking!
               this.refreshTargetedInteractable(true);
               continue;
             }
@@ -1380,7 +1398,9 @@ export class WalkthroughController {
         }
 
         this.allowDoorBarge = true;
-        if (!this.isBlockedByWallOrCabinet(this.footPos, moveVec, stepDist)) {
+        const primaryBlocked = this.isBlockedByWallOrCabinet(this.footPos, moveVec, stepDist);
+        this.allowDoorBarge = false;
+        if (!primaryBlocked) {
           this.footPos.x += moveVec.x * stepDist;
           this.footPos.z += moveVec.z * stepDist;
         } else {
@@ -1406,7 +1426,6 @@ export class WalkthroughController {
             this.footPos.z += moveVec.z * stepDist;
           }
         }
-        this.allowDoorBarge = false;
 
         const targetFloorY = this.sampleFloorElevation(
           this.footPos.x,

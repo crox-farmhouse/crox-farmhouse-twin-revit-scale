@@ -36,6 +36,11 @@ export interface SceneBatchOptimizerOptions {
 export class SceneBatchOptimizer {
   private readonly options: SceneBatchOptimizerOptions;
   private readonly batchRecords: BatchedGroupRecord[] = [];
+  private readonly originalChildrenByParent = new Map<THREE.Object3D, THREE.Object3D[]>();
+  private readonly originalMeshProps = new Map<
+    THREE.Mesh,
+    { readonly material: THREE.Material | THREE.Material[]; readonly castShadow: boolean }
+  >();
   private isCurrentlyBatched = false;
   private extraLodBound = false;
 
@@ -43,8 +48,15 @@ export class SceneBatchOptimizer {
     this.options = options;
   }
 
+  private snapshotParentChildren(parent: THREE.Object3D): void {
+    if (!this.originalChildrenByParent.has(parent)) {
+      this.originalChildrenByParent.set(parent, [...parent.children]);
+    }
+  }
+
   /**
-   * Restores all merged `THREE.Mesh` batches back to their original individual `THREE.Mesh` nodes.
+   * Restores all merged `THREE.Mesh` batches back to their original individual `THREE.Mesh` nodes
+   * in their exact original `parent.children` order and with their original materials.
    */
   public unbatchAll(): void {
     if (!this.isCurrentlyBatched) return;
@@ -58,7 +70,22 @@ export class SceneBatchOptimizer {
         meshParent.add(mesh);
       }
     }
+    for (const [parent, origChildren] of this.originalChildrenByParent.entries()) {
+      for (const child of origChildren) {
+        if (child.parent !== parent) {
+          parent.add(child);
+        }
+      }
+      parent.children.length = 0;
+      parent.children.push(...origChildren);
+    }
+    for (const [mesh, props] of this.originalMeshProps.entries()) {
+      mesh.material = props.material;
+      mesh.castShadow = props.castShadow;
+    }
     this.batchRecords.length = 0;
+    this.originalChildrenByParent.clear();
+    this.originalMeshProps.clear();
     this.isCurrentlyBatched = false;
     this.extraLodBound = false;
   }
@@ -270,6 +297,13 @@ export class SceneBatchOptimizer {
     scene.traverse((obj) => {
       if (!(obj instanceof THREE.Mesh)) return;
 
+      if (!this.originalMeshProps.has(obj)) {
+        this.originalMeshProps.set(obj, {
+          material: obj.material,
+          castShadow: obj.castShadow,
+        });
+      }
+
       // Disable shadow casting on small (< 30cm radius) interior detail clutter
       if (obj.castShadow) {
         if (!obj.geometry.boundingSphere) {
@@ -438,10 +472,12 @@ export class SceneBatchOptimizer {
       }
 
       for (const item of list) {
+        this.snapshotParentChildren(item.meshParent);
         item.meshParent.remove(item.mesh);
         originalMeshes.push(item);
       }
 
+      this.snapshotParentChildren(propGroup);
       propGroup.add(mergedMesh);
       mergedMesh.matrixWorld.copy(propGroup.matrixWorld);
       mergedMeshes.push(mergedMesh);
@@ -535,6 +571,7 @@ export class SceneBatchOptimizer {
         lodController.registerObjectWithTier(zoneId, mergedMesh, lodTier);
       }
 
+      this.snapshotParentChildren(container);
       for (const item of list) {
         container.remove(item.mesh);
         originalMeshes.push(item);

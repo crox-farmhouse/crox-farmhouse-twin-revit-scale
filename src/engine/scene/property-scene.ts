@@ -219,10 +219,23 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       describeInteractable: (mesh) =>
         this.interactions.describeInteractable(mesh, this.bifolds.isOpen()),
       onInteractWithMesh: (mesh) => this.triggerInteractiveObject(mesh),
-      onBargeWalkthroughDoor: (interactableId, isSprinting) => {
+      onBargeWalkthroughDoor: (
+        interactableId,
+        isSprinting,
+        footX,
+        footY,
+        footZ,
+        moveDirX,
+        moveDirZ
+      ) => {
         const barged = this.interactions.bargeOpenWalkthroughDoor(
           interactableId,
-          isSprinting
+          isSprinting,
+          footX,
+          footY,
+          footZ,
+          moveDirX,
+          moveDirZ
         );
         if (barged) {
           this.needsRender = true;

@@ -2,6 +2,18 @@ import * as THREE from 'three';
 import type { CircuitId } from '../../types/knx.ts';
 import type { InteractiveUserData } from '../../types/scene.ts';
 
+interface ClosedDoorwayGeometry {
+  readonly centerX: number;
+  readonly centerZ: number;
+  readonly minY: number;
+  readonly maxY: number;
+  readonly tangentX: number;
+  readonly tangentZ: number;
+  readonly normalX: number;
+  readonly normalZ: number;
+  readonly halfWidth: number;
+}
+
 interface HingedDoorState {
   readonly id: string;
   pivot: THREE.Group;
@@ -11,6 +23,9 @@ interface HingedDoorState {
   isOpen: boolean;
   progress: number;
   speed: number;
+  bargeSwingSign?: -1 | 1;
+  fromAngle?: number;
+  closedGeometry?: ClosedDoorwayGeometry;
 }
 
 interface BifoldCupboardState {
@@ -418,6 +433,7 @@ export class SceneInteractionManager {
     for (const conflictId of conflicts) {
       const otherDoor = this.hingedDoors.get(conflictId);
       if (otherDoor && otherDoor.isOpen) {
+        otherDoor.fromAngle = undefined;
         otherDoor.isOpen = false;
         otherDoor.speed = 3.2;
       }
@@ -441,6 +457,7 @@ export class SceneInteractionManager {
 
     const door = this.hingedDoors.get(interactableId);
     if (door) {
+      door.fromAngle = undefined;
       door.isOpen = !door.isOpen;
       door.speed = 2.8;
       if (door.isOpen) {
@@ -477,6 +494,7 @@ export class SceneInteractionManager {
   public setHingedDoorOpen(interactableId: string, isOpen: boolean): boolean {
     const door = this.hingedDoors.get(interactableId);
     if (!door) return false;
+    door.fromAngle = undefined;
     door.isOpen = isOpen;
     door.speed = 2.8;
     if (isOpen) {
@@ -485,6 +503,131 @@ export class SceneInteractionManager {
       doorManualCloseTimestampMs.set(interactableId, performance.now());
     }
     return true;
+  }
+
+  private readonly tmpHingeWorld = new THREE.Vector3();
+
+  /**
+   * Computes and caches the world-space closed doorway threshold geometry for `door`:
+   * - `(centerX, centerZ)` is the world XZ midpoint of the closed door leaf
+   * - `(tangentX, tangentZ)` points along the closed door plane from the hinge jamb to the latch jamb
+   * - `(normalX, normalZ) = (tangentZ, -tangentX)` is perpendicular to the closed doorway plane AND
+   *   points in the exact world XZ direction that increasing `pivot.rotation.y` (`deltaAngle > 0`) swings the door leaf!
+   */
+  private getClosedDoorwayGeometry(door: HingedDoorState): ClosedDoorwayGeometry {
+    if (door.closedGeometry) return door.closedGeometry;
+
+    const savedRot = door.pivot.rotation[door.axis];
+    if (savedRot !== door.closedAngle) {
+      door.pivot.rotation[door.axis] = door.closedAngle;
+      door.pivot.updateMatrixWorld(true);
+    } else {
+      door.pivot.updateMatrixWorld(true);
+    }
+
+    tmpDoorBounds.setFromObject(door.pivot);
+    door.pivot.getWorldPosition(this.tmpHingeWorld);
+
+    if (savedRot !== door.closedAngle) {
+      door.pivot.rotation[door.axis] = savedRot;
+      door.pivot.updateMatrixWorld(true);
+    }
+
+    const centerX = (tmpDoorBounds.min.x + tmpDoorBounds.max.x) * 0.5;
+    const centerZ = (tmpDoorBounds.min.z + tmpDoorBounds.max.z) * 0.5;
+    const dx = centerX - this.tmpHingeWorld.x;
+    const dz = centerZ - this.tmpHingeWorld.z;
+    const distFromHinge = Math.hypot(dx, dz);
+    const boxSpan = Math.max(
+      tmpDoorBounds.max.x - tmpDoorBounds.min.x,
+      tmpDoorBounds.max.z - tmpDoorBounds.min.z
+    );
+    const halfWidth = distFromHinge >= 0.18 ? distFromHinge : Math.max(0.35, boxSpan * 0.5);
+    const tangentX = distFromHinge >= 1e-4 ? dx / distFromHinge : 1;
+    const tangentZ = distFromHinge >= 1e-4 ? dz / distFromHinge : 0;
+    const normalX = tangentZ;
+    const normalZ = -tangentX;
+
+    const geom: ClosedDoorwayGeometry = {
+      centerX,
+      centerZ,
+      minY: tmpDoorBounds.min.y,
+      maxY: tmpDoorBounds.max.y,
+      tangentX,
+      tangentZ,
+      normalX,
+      normalZ,
+      halfWidth,
+    };
+    door.closedGeometry = geom;
+    return geom;
+  }
+
+  /**
+   * Determines whether a player at `(footX, footY, footZ)` moving with horizontal unit direction
+   * `(moveDirX, moveDirZ)` is genuinely running/walking **through** `door`'s doorway (rather than
+   * running parallel past the door in a corridor).
+   *
+   * Returns the desired `rotation.y` swing sign (`+1` or `-1`) so the door swings open **away**
+   * from the player in whichever direction they are running through, or `null` if not traversing.
+   */
+  private computeDoorwayTraversalSwingSign(
+    door: HingedDoorState,
+    footX: number,
+    footY: number,
+    footZ: number,
+    moveDirX: number,
+    moveDirZ: number,
+    isSprinting: boolean,
+    isRaycastHit: boolean
+  ): -1 | 1 | null {
+    const geom = this.getClosedDoorwayGeometry(door);
+    if (geom.maxY <= footY + 0.25 || geom.minY >= footY + 1.65) {
+      return null;
+    }
+
+    const relX = footX - geom.centerX;
+    const relZ = footZ - geom.centerZ;
+    // Lateral offset along the doorway (0 = center, ±halfWidth = jambs)
+    const u = relX * geom.tangentX + relZ * geom.tangentZ;
+    // Signed perpendicular distance from the closed doorway plane
+    const n = relX * geom.normalX + relZ * geom.normalZ;
+
+    // Velocity components along and perpendicular to the doorway plane
+    const vu = moveDirX * geom.tangentX + moveDirZ * geom.tangentZ;
+    const vn = moveDirX * geom.normalX + moveDirZ * geom.normalZ;
+
+    // 1. Must be moving substantially across the doorway plane (never open when running parallel past a door!)
+    if (Math.abs(vn) < 0.58) {
+      return null;
+    }
+
+    // 2. Must be on the approach side of the doorway (or right in the threshold) moving toward/across n = 0
+    if (n * vn > 0.05) {
+      return null;
+    }
+
+    const maxPerpDist =
+      isRaycastHit && door.isOpen
+        ? 0.88
+        : isSprinting
+          ? 0.44
+          : 0.34;
+    if (Math.abs(n) > maxPerpDist) {
+      return null;
+    }
+
+    // 3. Must be within the doorway span and projected plane crossing must pass between the doorway jambs
+    if (Math.abs(u) > geom.halfWidth + 0.04) {
+      return null;
+    }
+    const distToPlane = Math.max(0, -n / vn);
+    const uCross = u + vu * distToPlane;
+    if (Math.abs(uCross) > geom.halfWidth - 0.02) {
+      return null;
+    }
+
+    return vn >= 0 ? 1 : -1;
   }
 
   /**
@@ -509,21 +652,49 @@ export class SceneInteractionManager {
     ) {
       return false;
     }
-    tmpDoorBounds.setFromObject(door.pivot);
-    const h = tmpDoorBounds.max.y - tmpDoorBounds.min.y;
-    const w = Math.max(
-      tmpDoorBounds.max.x - tmpDoorBounds.min.x,
-      tmpDoorBounds.max.z - tmpDoorBounds.min.z
-    );
+    const geom = this.getClosedDoorwayGeometry(door);
+    const h = geom.maxY - geom.minY;
+    const w = geom.halfWidth * 2;
     return h >= 0.92 && h <= 2.15 && w >= 0.45;
   }
 
+  private applyDoorBargeSwing(
+    door: HingedDoorState,
+    desiredSign: -1 | 1 | undefined,
+    bargeSpeed: number
+  ): void {
+    if (!door.isOpen) {
+      const currentEffectiveOpen = this.getEffectiveDoorOpenAngle(door);
+      const currentSign: -1 | 1 =
+        currentEffectiveOpen - door.closedAngle >= 0 ? 1 : -1;
+      door.fromAngle =
+        door.progress > 0.01 ? door.pivot.rotation[door.axis] : undefined;
+      door.bargeSwingSign = desiredSign ?? currentSign;
+      door.progress = 0;
+      door.isOpen = true;
+      door.speed = bargeSpeed;
+      this.closeConflictingDoors(door.id);
+    } else if (door.progress < 0.95 && door.speed < bargeSpeed) {
+      door.speed = bargeSpeed;
+    }
+  }
+
   /**
-   * Call-of-Duty style door barge: if `interactableId` is a walk-through door, automatically
-   * flings it open (including both halves of the split Utility Stable Door `door-1` / `door-2`)
-   * and returns `true` so First-Person Walkthrough collision lets the player run right through.
+   * Call-of-Duty style door barge: if `interactableId` is a closed walk-through door and the player is
+   * genuinely running **through** the doorway (not running parallel past it), automatically flings
+   * it open away from the player's movement direction (including both halves of the split Utility
+   * Stable Door `door-1` / `door-2`) and returns `true` so First-Person Walkthrough collision lets
+   * the player run right through. If the door is already open, it stays open without swinging the other way.
    */
-  public bargeOpenWalkthroughDoor(interactableId: string, isSprinting = false): boolean {
+  public bargeOpenWalkthroughDoor(
+    interactableId: string,
+    isSprinting = false,
+    footX?: number,
+    footY?: number,
+    footZ?: number,
+    moveDirX?: number,
+    moveDirZ?: number
+  ): boolean {
     if (!this.isWalkthroughDoor(interactableId)) return false;
     const door = this.hingedDoors.get(interactableId);
     if (!door) return false;
@@ -533,24 +704,50 @@ export class SceneInteractionManager {
       return false;
     }
 
-    const bargeSpeed = isSprinting ? 6.8 : 4.8;
-    if (!door.isOpen) {
-      door.isOpen = true;
-      door.speed = bargeSpeed;
-      this.closeConflictingDoors(interactableId);
-    } else if (door.progress < 0.95 && door.speed < bargeSpeed) {
-      door.speed = bargeSpeed;
+    // If the door is already open, do not swing it the other way again; allow passing while it finishes opening
+    if (door.isOpen) {
+      if (door.progress < 0.95) {
+        const bargeSpeed = isSprinting ? 6.8 : 4.8;
+        if (door.speed < bargeSpeed) door.speed = bargeSpeed;
+        return true;
+      }
+      return false;
     }
 
+    let desiredSign: -1 | 1 | undefined;
+    if (
+      footX !== undefined &&
+      footY !== undefined &&
+      footZ !== undefined &&
+      moveDirX !== undefined &&
+      moveDirZ !== undefined
+    ) {
+      const sign = this.computeDoorwayTraversalSwingSign(
+        door,
+        footX,
+        footY,
+        footZ,
+        moveDirX,
+        moveDirZ,
+        isSprinting,
+        true
+      );
+      if (sign === null) {
+        return false;
+      }
+      desiredSign = sign;
+    }
+
+    const bargeSpeed = isSprinting ? 6.8 : 4.8;
+    this.applyDoorBargeSwing(door, desiredSign, bargeSpeed);
+
     // If barging through the split Utility Room Stable Door (`door-1` lower / `door-2` upper),
-    // open both halves together so the player can run straight through.
+    // open both halves together in the same direction so the player can run straight through.
     if (interactableId === 'door-1' || interactableId === 'door-2') {
       const partnerId = interactableId === 'door-1' ? 'door-2' : 'door-1';
       const partner = this.hingedDoors.get(partnerId);
       if (partner && !partner.isOpen) {
-        partner.isOpen = true;
-        partner.speed = bargeSpeed;
-        this.closeConflictingDoors(partnerId);
+        this.applyDoorBargeSwing(partner, desiredSign, bargeSpeed);
       }
     }
 
@@ -558,8 +755,9 @@ export class SceneInteractionManager {
   }
 
   /**
-   * Checks if the player's capsule in First-Person Walkthrough mode is running/walking into any
-   * closed walk-through door on the same floor and pre-emptively barges it open.
+   * Checks if the player's capsule in First-Person Walkthrough mode is running/walking **through**
+   * any closed walk-through doorway on the same floor and pre-emptively barges it open away from the
+   * player's movement direction (both ways depending on which way you ran through).
    */
   public bargeNearbyWalkthroughDoors(
     footX: number,
@@ -570,10 +768,6 @@ export class SceneInteractionManager {
     isSprinting = false
   ): boolean {
     let anyBarged = false;
-    const lookaheadDist = isSprinting ? 0.42 : 0.30;
-    const probeX = footX + moveDirX * lookaheadDist;
-    const probeZ = footZ + moveDirZ * lookaheadDist;
-    const triggerRadius = isSprinting ? 0.56 : 0.44;
     const now = performance.now();
 
     for (const [id, door] of this.hingedDoors.entries()) {
@@ -581,34 +775,44 @@ export class SceneInteractionManager {
       if (now - (doorManualCloseTimestampMs.get(id) ?? 0) < 650) continue;
       if (!this.isWalkthroughDoor(id)) continue;
 
-      tmpDoorBounds.setFromObject(door.pivot);
-      if (tmpDoorBounds.max.y <= footY + 0.25 || tmpDoorBounds.min.y >= footY + 1.65) {
-        continue;
-      }
+      const desiredSign = this.computeDoorwayTraversalSwingSign(
+        door,
+        footX,
+        footY,
+        footZ,
+        moveDirX,
+        moveDirZ,
+        isSprinting,
+        false
+      );
+      if (desiredSign === null) continue;
 
-      const dx = Math.max(tmpDoorBounds.min.x - probeX, 0, probeX - tmpDoorBounds.max.x);
-      const dz = Math.max(tmpDoorBounds.min.z - probeZ, 0, probeZ - tmpDoorBounds.max.z);
-      if (Math.hypot(dx, dz) <= triggerRadius) {
-        const cx = (tmpDoorBounds.min.x + tmpDoorBounds.max.x) * 0.5;
-        const cz = (tmpDoorBounds.min.z + tmpDoorBounds.max.z) * 0.5;
-        const dot = (cx - footX) * moveDirX + (cz - footZ) * moveDirZ;
-        if (dot > 0.06 && this.bargeOpenWalkthroughDoor(id, isSprinting)) {
-          anyBarged = true;
-        }
+      if (
+        this.bargeOpenWalkthroughDoor(
+          id,
+          isSprinting,
+          footX,
+          footY,
+          footZ,
+          moveDirX,
+          moveDirZ
+        )
+      ) {
+        anyBarged = true;
       }
     }
     return anyBarged;
   }
 
   /**
-   * Computes the collision-free effective open angle for a hinged door:
+   * Computes the default collision-free open angle for a hinged door when clicked:
    * - Provides a ~86° swing for doors whose initial registration specified `openAngle = 0`
    * - Redirects `door-14` (Dining Courtyard Door) inward to clear the exterior terracotta planter
    * - Redirects `door-28` (Bedroom 2 Door) inward into Bedroom 2 so it never collides with `door-29`
    * - Clamps over-rotated (> 83°) cupboard/corner doors so adjacent doors never cross past 90°
    *   or intersect walls/furniture
    */
-  private getEffectiveDoorOpenAngle(door: HingedDoorState): number {
+  private getDefaultDoorOpenAngle(door: HingedDoorState): number {
     if (door.id === 'door-14') return 1.45;
     if (door.id === 'door-28') return -1.35;
     if (door.id === 'door-13') return -1.38;
@@ -629,6 +833,15 @@ export class SceneInteractionManager {
       return door.closedAngle + Math.sign(rawDelta) * maxSwing;
     }
     return door.openAngle;
+  }
+
+  private getEffectiveDoorOpenAngle(door: HingedDoorState): number {
+    const defaultOpen = this.getDefaultDoorOpenAngle(door);
+    if (door.bargeSwingSign !== undefined && door.axis === 'y') {
+      const mag = Math.abs(defaultOpen - door.closedAngle);
+      return door.closedAngle + door.bargeSwingSign * mag;
+    }
+    return defaultOpen;
   }
 
   /**
@@ -819,10 +1032,12 @@ export class SceneInteractionManager {
         door.pivot = newPivot;
         door.closedAngle = newPivot.rotation[door.axis];
         door.openAngle = door.closedAngle + angleDelta;
+        door.closedGeometry = undefined;
         const effectiveOpen = this.getEffectiveDoorOpenAngle(door);
+        const startAngle = door.fromAngle ?? door.closedAngle;
         const smooth = easeInOutCubic(door.progress);
         door.pivot.rotation[door.axis] =
-          door.closedAngle + (effectiveOpen - door.closedAngle) * smooth;
+          startAngle + (effectiveOpen - startAngle) * smooth;
         door.pivot.updateMatrixWorld(true);
       }
     }
@@ -946,8 +1161,15 @@ export class SceneInteractionManager {
             : Math.max(0, door.progress - step);
         const smooth = easeInOutCubic(door.progress);
         const effectiveOpen = this.getEffectiveDoorOpenAngle(door);
+        const startAngle = door.fromAngle ?? door.closedAngle;
         door.pivot.rotation[door.axis] =
-          door.closedAngle + (effectiveOpen - door.closedAngle) * smooth;
+          startAngle + (effectiveOpen - startAngle) * smooth;
+        if (door.progress === 0) {
+          door.bargeSwingSign = undefined;
+          door.fromAngle = undefined;
+        } else if (door.progress === 1) {
+          door.fromAngle = undefined;
+        }
         door.pivot.updateMatrixWorld(true);
         anyChanged = true;
       }
