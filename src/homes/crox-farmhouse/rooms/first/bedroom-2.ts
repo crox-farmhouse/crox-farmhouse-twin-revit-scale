@@ -121,6 +121,7 @@ export function buildBedroom2(
   {
     const wardGroup = new THREE.Group();
     wardGroup.name = 'bedroom2.eastWardrobes';
+    wardGroup.userData.zone = 'bedroom2';
     const [startX, , startZ] = transformEastWingTuple(-17.55, 0, -2.5);
     const [endX, , endZ] = transformEastWingTuple(-17.92, 0, 2.68);
     const dx = endX - startX;
@@ -143,20 +144,20 @@ export function buildBedroom2(
     const baySpan = uEnd - uStart; // 3.653m
     const uMid = (uStart + uEnd) / 2;
 
-    // Unified full-height vaulted Shaker wardrobe carcass (`u = -0.12m..uEnd`) rising all the way to `eastSkeiling`
+    // Unified full-height vaulted Shaker wardrobe carcass (`u = uStart..uEnd`, `z_local = +0.12m..+frontLocalZ` West into Bedroom 2)
     const carcassShape = new THREE.Shape();
-    carcassShape.moveTo(0.12, 0);
-    carcassShape.lineTo(frontLocalZ, 0);
-    carcassShape.lineTo(frontLocalZ, wardFrontTopH + 0.015);
-    carcassShape.lineTo(0.12, wardEavesH + 0.02);
+    carcassShape.moveTo(-frontLocalZ, 0);
+    carcassShape.lineTo(-0.12, 0);
+    carcassShape.lineTo(-0.12, wardEavesH);
+    carcassShape.lineTo(-frontLocalZ, wardFrontTopH);
     carcassShape.closePath();
-    const carcassSpanU = uEnd - -0.12;
+    const carcassSpanU = uEnd - uStart;
     const carcassGeo = new THREE.ExtrudeGeometry(carcassShape, {
       depth: carcassSpanU,
       bevelEnabled: false,
     });
     carcassGeo.rotateY(Math.PI / 2);
-    carcassGeo.translate(-0.12, 0, 0);
+    carcassGeo.translate(uStart, 0, 0);
     const carcass = new THREE.Mesh(carcassGeo, wardrobeMat);
     carcass.name = 'bedroom2.eastWardrobes.carcass';
     carcass.userData.isArchitecturalShell = true;
