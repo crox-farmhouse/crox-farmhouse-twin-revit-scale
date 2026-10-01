@@ -53,20 +53,20 @@ export function buildUpperLanding(
 
   const collarCeilingY = 4.52;
 
-  // Non-Square Polygonal Floor Slab for Main Staircase Landing (wrapping around the X = -17.69m..-15.36m, Z = -2.50m..-0.58m stairwell void
-  // and extending into the West Cross-Wall cased opening reveal z_ew = 1.24m..2.10m up to the 8cm step!)
+  // Non-Square Polygonal Floor Slab for Main Staircase Landing (wrapping around the X = -17.69m..-15.36m, Z = -2.50m..-0.58m stairwell void,
+  // stopping at the z_ew = 2.22m North face of the 0.46m South wall, and extending into the West Cross-Wall cased opening reveal z_ew = 1.232m..2.090m!)
   buildPolygonalFloorSlab(
     scene,
     [
       [-15.36, -2.5],
       [-13.05, -2.5],
-      [-13.05, 2.4],
-      [-17.9, 2.4],
-      [-17.88, 2.1],
-      [-17.98, 2.1],
-      [-17.92, 1.24],
-      [-17.81, 1.24],
-      [-17.69, -0.58],
+      [-13.05, 2.22],
+      [-17.887, 2.22],
+      [-17.878, 2.09],
+      [-17.998, 2.09],
+      [-17.937, 1.232],
+      [-17.817, 1.232],
+      [-17.688, -0.58],
       [-15.36, -0.58],
     ],
     floorTopY,
@@ -249,11 +249,11 @@ export function buildUpperLanding(
     scene.add(northWallMidBeam);
   }
 
-  // Issues #4 & #6: Continuous 0.46m-thick South Wall of Main Stair Landing (Z = +2.22m..+2.68m, X = -17.88m..-12.81m)
-  // Runs seamlessly all the way to the West Cross-Wall (`x_ew = -17.88m`) with one continuous antique oak skirting board
+  // Issues #4 & #6: Continuous 0.46m-thick South Wall of Main Stair Landing (Z = +2.22m..+2.68m, X = -17.80m..-12.81m)
+  // Runs seamlessly all the way to the West Cross-Wall (`x_ew = -17.80m`) with one continuous antique oak skirting board
   // (`skirtingMin: -17.768, skirtingMax: -13.072`) so there is zero wall-thickness step or skirting seam at `x_ew = -17.12m`!
   addUpperBrickWallAlongXWithWindow(
-    -17.88,
+    -17.8,
     -12.81,
     2.22,
     2.68,
@@ -266,25 +266,25 @@ export function buildUpperLanding(
     { skirtingMin: -17.768, skirtingMax: -13.072 }
   );
 
-  // Interior warm plaster cladding on the South (`z_ew = +2.68m`) corridor-facing segment (`x_ew = -17.92m..-17.15m`)
+  // Interior warm plaster cladding on the South (`z_ew = +2.68m`) corridor-facing segment (`x_ew = -18.04m..-16.956m`)
   // where the Upper Landing South wall separates the Landing (`Y = 2.16m`) from the West Wing Corridor (`Y = 2.08m`).
   {
     const southCorridorClad = new THREE.Mesh(
-      new THREE.BoxGeometry(0.77, upperWallTopY - (floorTopY - 0.08), 0.016),
+      new THREE.BoxGeometry(1.084, upperWallTopY - floorBaseY, 0.016),
       warmRoomPlasterMat
     );
     southCorridorClad.name = 'upperLanding.southWallCorridorCladding';
     southCorridorClad.userData.isArchitecturalShell = true;
     southCorridorClad.position.set(
-      (-17.92 + -17.15) / 2,
-      (floorTopY - 0.08 + upperWallTopY) / 2,
+      (-18.04 + -16.956) / 2,
+      (floorBaseY + upperWallTopY) / 2,
       2.688
     );
     southCorridorClad.receiveShadow = true;
     tagUpperCutawayWall(southCorridorClad, {
       axis: 'z',
       coord: 2.45,
-      minSpan: -17.92,
+      minSpan: -18.04,
       maxSpan: -12.81,
       floor: 'first',
     });

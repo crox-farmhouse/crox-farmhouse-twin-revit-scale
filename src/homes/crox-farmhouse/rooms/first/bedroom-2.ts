@@ -4,6 +4,7 @@ import {
   buildMitredWallSkirtingGeometry,
   buildPolygonalFloorSlab,
 } from '../../../../engine/geometry/index.ts';
+import { transformEastWingTuple } from '../../structure/ground-floor-materials.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
@@ -46,8 +47,8 @@ export function buildBedroom2(
     [
       [-22.19, -3.18],
       [-16.876, -2.469],
-      [-17.58, 0.9],
-      [-18.72, 0.75],
+      [-17.65, 1.05],
+      [-18.72, 1.05],
       [-18.72, 2.37],
       [-22.19, 1.905],
     ],
@@ -112,18 +113,16 @@ export function buildBedroom2(
   }
 
   // =========================================================================
-  // TWO BUILT-IN SHAKER DOUBLE WARDROBES ALONG THE EAST CROSS-WALL OF BEDROOM 2
-  // (`[-16.876, -2.469] -> [-17.58, +0.90]`, baySpan = 3.22m, depth = 0.62m West `+Z_local` into Bedroom 2)
-  // Issues #7 & #8: Authentic Shaker-framed wardrobe doors with aged-brass vertical bar pull handles
-  // and a continuous 45°-mitred antique oak skirting board along the wardrobe plinth!
+  // THREE BUILT-IN SHAKER DOUBLE WARDROBES (6 SMALLER DOORS) ALONG THE EAST CROSS-WALL OF BEDROOM 2
+  // (`[-16.876, -2.469] -> [-17.930, +2.616]`, baySpan = 3.586m, depth = 0.60m West `+Z_local` into Bedroom 2)
+  // Issue #7 ("Smaller doors and more of them (6 doors)"): 3 pairs of double Shaker doors (6 doors total)
+  // with aged-brass vertical bar pull handles, terminating flush against the Z = 0.975m North face of the cut-out hallway wall!
   // =========================================================================
   {
     const wardGroup = new THREE.Group();
     wardGroup.name = 'bedroom2.eastWardrobes';
-    const startX = -16.876;
-    const startZ = -2.469;
-    const endX = -17.891;
-    const endZ = 2.48;
+    const [startX, , startZ] = transformEastWingTuple(-17.55, 0, -2.5);
+    const [endX, , endZ] = transformEastWingTuple(-17.92, 0, 2.68);
     const dx = endX - startX;
     const dz = endZ - startZ;
     const angleY = -Math.atan2(dz, dx);
@@ -131,8 +130,8 @@ export function buildBedroom2(
     wardGroup.rotation.y = angleY;
 
     const wardH = upperWallTopY - floorTopY;
-    const wardDepth = 0.62;
-    const baySpan = 3.22; // u = 0.08m .. 3.30m (meeting the North face of the cut-out hallway wall!)
+    const wardDepth = 0.6;
+    const baySpan = 3.586; // u = 0.08m .. 3.666m (South-West front corner lands at [-18.325, 0.975] flush with the North cut-out wall!)
     const uMid = 0.08 + baySpan / 2;
 
     // Main carcass box on the WEST (`+Z` in local frame) Bedroom 2 side of the cross-wall
@@ -167,35 +166,40 @@ export function buildBedroom2(
     cornice.castShadow = true;
     wardGroup.add(cornice);
 
-    // Central vertical dividing stile between the 2 built-in double wardrobes
-    const centerDivider = new THREE.Mesh(
-      new THREE.BoxGeometry(0.06, wardH, wardDepth + 0.02),
-      wardrobeMat
-    );
-    centerDivider.position.set(uMid, wardH / 2, 0.12 + wardDepth / 2);
-    wardGroup.add(centerDivider);
+    // 2 vertical dividing stiles separating the 3 double-door wardrobe bays
+    for (const bayIdx of [1, 2] as const) {
+      const stileU = 0.08 + (baySpan * bayIdx) / 3;
+      const divider = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, wardH, wardDepth + 0.02),
+        wardrobeMat
+      );
+      divider.position.set(stileU, wardH / 2, 0.12 + wardDepth / 2);
+      wardGroup.add(divider);
+    }
 
     // South end return panel closing the South side of the built-in wardrobes against the cut-out hallway wall
     const southEndPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, wardH + 0.18, wardDepth + 0.02),
+      new THREE.BoxGeometry(0.06, wardH + 0.18, wardDepth + 0.02),
       warmRoomPlasterMat
     );
     southEndPanel.userData.isArchitecturalShell = true;
-    southEndPanel.position.set(0.08 + baySpan, (wardH + 0.18) / 2, 0.12 + wardDepth / 2);
+    southEndPanel.position.set(0.08 + baySpan - 0.03, (wardH + 0.18) / 2, 0.12 + wardDepth / 2);
     southEndPanel.castShadow = true;
     southEndPanel.receiveShadow = true;
     wardGroup.add(southEndPanel);
 
-    // 4 Shaker wardrobe doors (2 pairs of double doors) with recessed panels, stiles/rails & vertical brass bar handles (Issue #8)
-    const doorW = (baySpan - 0.18) / 4;
+    // Issue #7: 6 smaller Shaker wardrobe doors (3 pairs of double doors) with recessed panels, stiles/rails & vertical brass bar handles
+    const numDoors = 6;
+    const doorStep = (baySpan - 0.12) / numDoors;
+    const doorLeafW = doorStep - 0.014;
     const doorLeafH = wardH - 0.24;
-    for (let i = 0; i < 4; i++) {
-      const doorU = 0.14 + doorW / 2 + i * (doorW + 0.02);
+    for (let i = 0; i < numDoors; i++) {
+      const doorU = 0.14 + doorStep * (i + 0.5);
       addShakerWardrobeDoor(wardGroup, {
         x: doorU,
         y: 0.15 + doorLeafH / 2,
         z: 0.12 + wardDepth + 0.013,
-        width: doorW - 0.012,
+        width: doorLeafW,
         height: doorLeafH,
         alongZ: false,
         normalSign: 1,
@@ -204,12 +208,12 @@ export function buildBedroom2(
       });
     }
 
-    // Issue #7: Continuous antique oak skirting board along the wardrobe front face up to the cut-out hallway wall
+    // Continuous antique oak skirting board along the wardrobe front face up to the Z = 0.975m cut-out hallway wall
     const wardMitredSkirt = new THREE.Mesh(
       buildMitredWallSkirtingGeometry(
         [
           [0.14, 0.12 + wardDepth],
-          [0.08 + baySpan + 0.04, 0.12 + wardDepth],
+          [0.08 + baySpan, 0.12 + wardDepth],
         ],
         0
       ),
@@ -264,8 +268,7 @@ export function buildBedroom2(
     addBackSkirting: true,
     backSkirtingExclusions: [
       [0, 0.14],
-      [1.02, 2.14], // Omit skirting behind Bedroom 2 South Chimney Breast
-      [3.42, 3.51],
+      [1.02, 3.51], // East of the chimney breast (`u = 2.14m..3.42m`), `bedroom2.southPierMitredSkirting` provides a continuous 45°-mitred corner into the X = -18.795m wall!
     ],
     openings: [
       {
@@ -285,6 +288,37 @@ export function buildBedroom2(
       },
     ],
   });
+
+  // Issue #6: Continuous 45°-mitred antique oak skirtings inside Bedroom 2 around the SE Cut-Out Hallway corner (`[-18.795, 0.975]`)
+  // and the South-East pier between `bedroom2Door` and `bed2SouthWallFrame`!
+  for (const [skirtName, path] of [
+    [
+      'bedroom2.southeastCutoutMitredSkirting',
+      [
+        [-18.325, 0.975],
+        [-18.795, 0.975],
+        [-18.795, 1.233],
+      ] as const,
+    ],
+    [
+      'bedroom2.southPierMitredSkirting',
+      [
+        [-18.795, 2.117],
+        [-18.795, 2.221],
+        [-20.072, 2.05],
+      ] as const,
+    ],
+  ] as const) {
+    const skirtMesh = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(path, floorTopY),
+      antiqueOakSkirtingMat
+    );
+    skirtMesh.name = skirtName;
+    skirtMesh.userData.isArchitecturalShell = true;
+    skirtMesh.castShadow = true;
+    skirtMesh.receiveShadow = true;
+    scene.add(skirtMesh);
+  }
 
   // Issue #6 & #10: Vaulted upper gable extensions on Bedroom 2 South Wall & SE Hallway Cut-Out Walls (Y = 4.16m..4.52m)
   {
@@ -335,9 +369,9 @@ export function buildBedroom2(
       gableCapGroup.add(capMesh);
     }
 
-    // Upper gable strip (`Y = 4.16m..4.52m`) along the X = -18.72m cut-out wall (`Z = 0.75m..2.37m`) under the East edge of the 4.52m collar ceiling
+    // Upper gable strip (`Y = 4.16m..4.52m`) along the X = -18.72m cut-out wall (`Z = 0.975m..2.37m`) under the East edge of the 4.52m collar ceiling
     const cutoutWestGable = new THREE.Mesh(
-      new THREE.BoxGeometry(0.15, collarCeilingY - upperWallTopY, 1.62),
+      new THREE.BoxGeometry(0.15, collarCeilingY - upperWallTopY, 1.395),
       warmRoomPlasterMat
     );
     cutoutWestGable.name = 'bedroom2.cutoutWestWallUpperGable';
@@ -345,26 +379,26 @@ export function buildBedroom2(
     cutoutWestGable.position.set(
       -18.72,
       (upperWallTopY + collarCeilingY) / 2,
-      (0.75 + 2.37) / 2
+      (0.975 + 2.37) / 2
     );
     cutoutWestGable.castShadow = true;
     cutoutWestGable.receiveShadow = true;
     scene.add(cutoutWestGable);
 
     const cutoutWestCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.154, 0.025, 1.628),
+      new THREE.BoxGeometry(0.154, 0.025, 1.403),
       wallCapMat
     );
     cutoutWestCap.userData.isArchitecturalShell = true;
-    cutoutWestCap.position.set(-18.72, collarCeilingY + 0.012, (0.75 + 2.37) / 2);
+    cutoutWestCap.position.set(-18.72, collarCeilingY + 0.012, (0.975 + 2.37) / 2);
     scene.add(cutoutWestCap);
 
-    // Triangular upper gable (`Y = 4.52m` at X = -18.72m tapering to `Y = 4.16m` at X = -17.58m) on the North cut-out wall (`[-18.72, 0.75] -> [-17.58, 0.90]`)
-    const cutoutNorthLen = Math.hypot(-17.58 - -18.72, 0.9 - 0.75);
-    const cutoutNorthAngleY = -Math.atan2(0.9 - 0.75, -17.58 - -18.72);
+    // Triangular upper gable (`Y = 4.52m` at X = -18.795m..18.72m tapering to `Y = 4.16m` at X = -17.65m) on the North cut-out wall (`Z = 1.05m`)
+    const cutoutNorthLen = -17.65 - -18.795; // 1.145m
     const cutoutNorthShape = new THREE.Shape();
     cutoutNorthShape.moveTo(0, upperWallTopY);
     cutoutNorthShape.lineTo(cutoutNorthLen, upperWallTopY);
+    cutoutNorthShape.lineTo(0.075, collarCeilingY);
     cutoutNorthShape.lineTo(0, collarCeilingY);
     cutoutNorthShape.closePath();
     const cutoutNorthGeo = new THREE.ExtrudeGeometry(cutoutNorthShape, {
@@ -375,25 +409,24 @@ export function buildBedroom2(
     const cutoutNorthGable = new THREE.Mesh(cutoutNorthGeo, warmRoomPlasterMat);
     cutoutNorthGable.name = 'bedroom2.cutoutNorthWallUpperGable';
     cutoutNorthGable.userData.isArchitecturalShell = true;
-    cutoutNorthGable.position.set(-18.72, 0, 0.75);
-    cutoutNorthGable.rotation.y = cutoutNorthAngleY;
+    cutoutNorthGable.position.set(-18.795, 0, 1.05);
     cutoutNorthGable.castShadow = true;
     cutoutNorthGable.receiveShadow = true;
     scene.add(cutoutNorthGable);
 
-    const slopeLen = Math.hypot(cutoutNorthLen, collarCeilingY - upperWallTopY);
-    const slopeAngle = Math.atan2(upperWallTopY - collarCeilingY, cutoutNorthLen);
+    const slopeSpanX = -17.65 - -18.72; // 1.07m
+    const slopeLen = Math.hypot(slopeSpanX, collarCeilingY - upperWallTopY);
+    const slopeAngle = Math.atan2(upperWallTopY - collarCeilingY, slopeSpanX);
     const cutoutNorthCap = new THREE.Mesh(
       new THREE.BoxGeometry(slopeLen + 0.008, 0.025, 0.154),
       wallCapMat
     );
     cutoutNorthCap.userData.isArchitecturalShell = true;
     cutoutNorthCap.position.set(
-      (-18.72 + -17.58) / 2,
+      (-18.72 + -17.65) / 2,
       (collarCeilingY + upperWallTopY) / 2 + 0.012,
-      (0.75 + 0.9) / 2
+      1.05
     );
-    cutoutNorthCap.rotation.y = cutoutNorthAngleY;
     cutoutNorthCap.rotation.z = slopeAngle;
     scene.add(cutoutNorthCap);
   }

@@ -4,6 +4,7 @@ import {
   buildMitredWallSkirtingGeometry,
   buildPolygonalFloorSlab,
 } from '../../../../engine/geometry/index.ts';
+import { transformEastWingTuple } from '../../structure/ground-floor-materials.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
@@ -33,32 +34,29 @@ export function buildWestWingCorridor(
     wallCapMat,
     wardrobeMat,
     warmRoomPlasterMat,
-    windowGlassMat,
   } = kit;
 
   const landingFloorTopY = 2.16;
 
+  // Exact world-space junction coordinates along the West face of `upperLandingCrossWallFrame` and
+  // South face (`z_ew = 2.688m`) of the Upper Landing South wall via `transformEastWingTuple`:
+  const [portalNorthJambX, , portalNorthJambZ] = transformEastWingTuple(-17.937, 0, 1.232);
+  const [portalSouthJambX, , portalSouthJambZ] = transformEastWingTuple(-17.998, 0, 2.09);
+  const [portalSouthArchX, , portalSouthArchZ] = transformEastWingTuple(-18.004, 0, 2.171);
+  const [landingSouthWestX, , landingSouthWestZ] = transformEastWingTuple(-18.04, 0, 2.688);
+  const [landingSouthEastX, , landingSouthEastZ] = transformEastWingTuple(-16.956, 0, 2.688);
+
   // =========================================================================
   // 5. WEST WING UPPER CORRIDOR, UPSTAIRS SHOWER ROOM & BEDROOM 3 RECESSED WARDROBE
-  //    Matching `media_1790619089017.png` & Issues #3, #4, #5, #7, #8:
-  //    - Open `UP` Step Threshold (`[-17.891, 2.48] -> [-16.92, 2.61]`) stepping 8cm
-  //      down (`2.16m -> 2.08m`) from Upper Landing into the 3-bedroom West Wing!
-  //    - North `UP` Lobby (`Z = +2.35m..+3.55m, X = -18.85m..-16.92m`) with `bedroom2Door`
-  //      on the North wall and `showerRoomDoor` on the West wall (`X = -18.85m`).
-  //    - Single straight cross-wall at `Z = +3.55m` (`X = -22.19m..-18.25m`) behind the
-  //      Shower Room Basin & WC, with the walk-in shower entrance (`X = -20.08m..-19.22m`)
-  //      leading into the East-West Walk-In Shower Enclosure (`X = -20.15m..-18.25m, Z = +3.55m..+4.30m`).
-  //    - Bedroom 3 Built-In North Wardrobe (`X = -22.19m..-20.15m, Z = +3.55m..+4.30m`)
-  //      opening South (`+Z`) into Bedroom 3 with Shaker doors & brass handles.
   // =========================================================================
   // Upper Corridor & Cut-Out North Hallway polygonal carpeted floor (`oakFloorMat`, Y = 2.08m)
   buildPolygonalFloorSlab(
     scene,
     [
-      [-18.72, 0.75],
-      [-17.58, 0.9],
-      [-18.068, 2.45],
-      [-17.165, 2.62],
+      [-18.72, 1.05],
+      [-17.72, 1.05],
+      [landingSouthWestX, landingSouthWestZ],
+      [landingSouthEastX, landingSouthEastZ],
       [-17.224, 8.27],
       [-18.25, 8.27],
       [-18.25, 3.55],
@@ -71,12 +69,12 @@ export function buildWestWingCorridor(
   );
 
   // Carpeted 8cm (`2.08m -> 2.16m`) `UP` Step Riser & Rounded Bullnose Nosing along the West face of
-  // `upperLandingToWestWingPortal` (`[-17.711, 1.051] -> [-17.923, 1.885]`) stepping down into the cut-out hallway!
+  // `upperLandingToWestWingPortal` stepping down into the cut-out hallway!
   {
-    const stepStartX = -17.711;
-    const stepStartZ = 1.051;
-    const stepEndX = -17.923;
-    const stepEndZ = 1.885;
+    const stepStartX = portalNorthJambX;
+    const stepStartZ = portalNorthJambZ;
+    const stepEndX = portalSouthJambX;
+    const stepEndZ = portalSouthJambZ;
     const sdx = stepEndX - stepStartX;
     const sdz = stepEndZ - stepStartZ;
     const stepLen = Math.hypot(sdx, sdz);
@@ -155,11 +153,11 @@ export function buildWestWingCorridor(
     { skirtingMin: 2.045, skirtingMax: 3.475 }
   );
 
-  // Continuous Flat East Courtyard Exterior Brick Wall along the West Wing Upper Corridor (Z = +2.61m..+8.15m)
+  // Continuous Flat East Courtyard Exterior Brick Wall along the West Wing Upper Corridor (Z = +2.74m..+8.15m)
   addUpperBrickWallAlongZWithWindow(
     -17.39,
     -17.11,
-    2.61,
+    2.74,
     8.15,
     5.92,
     1.45,
@@ -179,9 +177,9 @@ export function buildWestWingCorridor(
     const eastCorridorSkirt = new THREE.Mesh(
       buildMitredWallSkirtingGeometry(
         [
-          [-17.944, 1.964],
-          [-18.068, 2.45],
-          [getEastInnerX(2.61), 2.61],
+          [portalSouthArchX, portalSouthArchZ],
+          [landingSouthWestX, landingSouthWestZ],
+          [getEastInnerX(landingSouthEastZ), landingSouthEastZ],
           [getEastInnerX(8.15), 8.15],
           [-17.258, 8.15],
         ],
@@ -196,7 +194,7 @@ export function buildWestWingCorridor(
     eastCorridorSkirt.userData.cutawayWall = {
       axis: 'x',
       coord: -17.25,
-      minSpan: 1.96,
+      minSpan: 2.15,
       maxSpan: 8.15,
       floor: 'first',
     };
@@ -207,13 +205,11 @@ export function buildWestWingCorridor(
   // CUT-OUT NORTH HALLWAY & UPSTAIRS SHOWER ROOM (`X = -22.19m..-18.72m, Z = +1.905m/+2.37m..+3.55m`
   // + Walk-In Shower Stall `X = -20.15m..-18.25m, Z = +3.55m..+4.30m`)
   // =========================================================================
-  // 1a. North End Wall of the Cut-Out Hallway (`[-18.72, 0.75] -> [-17.58, 0.90]`, 0.15m thick)
-  //     Separating the North end of the hallway from Bedroom 2 and its East built-in wardrobes!
-  //     Note: for start=[-18.72, 0.75] -> end=[-17.58, 0.90], +normal (front) points SOUTH into the Hallway,
-  //     and -normal (back) points NORTH into Bedroom 2.
+  // 1a. Orthogonal 90° North End Wall of the Cut-Out Hallway (`Z = +1.05m, X = -18.795m..-17.65m`, 0.15m thick: `Z = 0.975m..1.125m`)
+  //     Starts at `X = -18.795m` (100% flush with the West face of the `X = -18.72m` wall!) so there is zero corner notch (Issue #6)!
   buildAngledWallSegment(scene, interactions, {
-    start: [-18.72, 0.75],
-    end: [-17.58, 0.9],
+    start: [-18.795, 1.05],
+    end: [-17.65, 1.05],
     thickness: 0.15,
     topY: upperWallTopY,
     frontFloorY: floorTopY,
@@ -222,19 +218,14 @@ export function buildWestWingCorridor(
     capMaterial: wallCapMat,
     skirtingMaterial: antiqueOakSkirtingMat,
     addFrontSkirting: false, // Hallway side uses continuous 45°-mitred skirting in bedroom-3.ts
-    addBackSkirting: true,   // North (`-Z`) face inside Bedroom 2 between X = -18.72m and East wardrobes
-    backSkirtingExclusions: [
-      [0, 0.08],
-      [0.42, 1.15],
-    ],
+    addBackSkirting: false,  // Bedroom 2 side uses continuous 45°-mitred skirting in bedroom-2.ts
   });
 
-  // 1b. Continuous West Wall of the Cut-Out Hallway & `UP` Lobby (`X = -18.72m, Z = +0.75m..+3.55m`, length = 2.80m)
-  //     Contains BOTH `bedroom2Door` (North half, opposite `upperLandingToWestWingPortal`) and `showerRoomDoor` (South half)!
-  //     Note: for start=[-18.72, 0.75] -> end=[-18.72, 3.55] (tx = 0, tz = +1),
-  //     +normal (front) points WEST (`-X`, inside Bedroom 2 & Shower Room) and -normal (back) points EAST (`+X`, inside Hallway)!
+  // 1b. Continuous West Wall of the Cut-Out Hallway & `UP` Lobby (`X = -18.72m, Z = +0.975m..+3.55m`, length = 2.575m)
+  //     Starts at `Z = +0.975m` (100% flush with the North face of the `Z = +1.05m` cut-out wall!)
+  //     Contains BOTH `bedroom2Door` (`uCenter = 0.70m`, `Z = 1.675m`, directly opposite `upperLandingToWestWingPortal`) and `showerRoomDoor` (`uCenter = 2.02m`, `Z = 2.995m`)!
   buildAngledWallSegment(scene, interactions, {
-    start: [-18.72, 0.75],
+    start: [-18.72, 0.975],
     end: [-18.72, 3.55],
     thickness: 0.15,
     topY: upperWallTopY,
@@ -243,18 +234,17 @@ export function buildWestWingCorridor(
     wallMaterial: warmRoomPlasterMat,
     capMaterial: wallCapMat,
     skirtingMaterial: antiqueOakSkirtingMat,
-    addFrontSkirting: true,  // West (`-X`) face inside Bedroom 2 (North) and dry Shower Room (South)
+    addFrontSkirting: true,  // West (`-X`) face inside dry Shower Room (`u = 1.535m..2.50m`)
     frontSkirtingExclusions: [
-      [0, 0.08],
-      [1.48, 1.76], // Omit skirting across bed2SouthWallFrame T-junction (Z = 2.23m..2.51m)
-      [2.72, 2.8],
+      [0, 1.535],  // Bedroom 2 side (`u = 0..1.255m`) uses continuous 45°-mitred skirting in bedroom-2.ts; `u = 1.255..1.535m` is bed2SouthWallFrame T-junction
+      [2.5, 2.575],
     ],
     addBackSkirting: false,  // East (`+X`) Hallway/Lobby face uses continuous 45°-mitred skirting in bedroom-3.ts
     openings: [
       {
         id: 'bedroom2Door',
         kind: 'hinged-door',
-        uCenter: 0.72,
+        uCenter: 0.7,
         width: 0.72,
         doorHeight: doorH,
         lowerFloorY: floorTopY,
@@ -269,7 +259,7 @@ export function buildWestWingCorridor(
       {
         id: 'showerRoomDoor',
         kind: 'hinged-door',
-        uCenter: 2.28,
+        uCenter: 2.02,
         width: 0.68,
         doorHeight: doorH,
         lowerFloorY: floorTopY,
@@ -304,7 +294,7 @@ export function buildWestWingCorridor(
   });
 
   //    2b. East section forming the North wall of the Walk-In Shower & South wall of the `UP` Lobby (`Z = +3.55m, X = -19.22m..-18.175m`)
-  //        (Leaves `X = -20.08m..-19.22m` open as the 0.86m walk-in entry into the shower from inside the Shower Room!)
+  //        (Leaves `X = -20.08m..-19.22m` open as the 0.86m arched step-up entry into the shower from inside the Shower Room!)
   buildAngledWallSegment(scene, interactions, {
     start: [-19.22, 3.55],
     end: [-18.175, 3.55],
@@ -350,61 +340,638 @@ export function buildWestWingCorridor(
     addBackSkirting: false,  // Bedroom 3 emits one continuous North skirting across both wardrobe and shower wall
   });
 
-  // Walk-In Shower Enclosure (`X = -20.075m..-18.325m, Z = +3.625m..+4.225m`, matching `media_1790619089017.png`)
-  const srShowerTray = new THREE.Mesh(
-    new THREE.BoxGeometry(1.72, 0.045, 0.58),
-    ceramicWhiteMat
-  );
-  srShowerTray.name = 'showerRoom.showerTray';
-  srShowerTray.position.set(-19.2, floorTopY + 0.022, 3.925);
-  srShowerTray.receiveShadow = true;
-  scene.add(srShowerTray);
+  // =========================================================================
+  // ISSUE #3: STEP-UP WALK-IN SHOWER TRAY & PLASTERED ARCHWAY ENTRANCE
+  // ("This isn't glass, there is a shower tray and you step up into it, its an arch")
+  // =========================================================================
+  {
+    const showerGroup = new THREE.Group();
+    showerGroup.name = 'showerRoom.stepUpArchShower';
 
-  const srShowerGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(0.52, 1.88, 0.018),
-    windowGlassMat
-  );
-  srShowerGlass.name = 'showerRoom.showerGlass';
-  srShowerGlass.position.set(-19.48, floorTopY + 0.94, 3.625);
-  scene.add(srShowerGlass);
+    // 1. Plastered Archway Header (`showerRoom.showerArch`) over the `X = -20.08m..-19.22m` (`width = 0.86m`) entrance at `Z = +3.55m`
+    const archLeftX = -20.08;
+    const archRightX = -19.22;
+    const archCenterX = (archLeftX + archRightX) / 2; // -19.65m
+    const archSpan = archRightX - archLeftX; // 0.86m
+    const archRadius = archSpan / 2; // 0.43m
+    const archSpringY = floorTopY + 1.58; // 3.66m springing line
+    const archWallD = 0.15;
 
-  const srShowerRiser = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.012, 0.012, 1.05, 10),
-    brassMat
-  );
-  srShowerRiser.position.set(-18.38, floorTopY + 1.38, 3.925);
-  scene.add(srShowerRiser);
+    const archSpandrelShape = new THREE.Shape();
+    archSpandrelShape.moveTo(-archRadius, archSpringY);
+    archSpandrelShape.absarc(0, archSpringY, archRadius, Math.PI, 0, true);
+    archSpandrelShape.lineTo(archRadius, upperWallTopY);
+    archSpandrelShape.lineTo(-archRadius, upperWallTopY);
+    archSpandrelShape.closePath();
 
-  // Vanity Basin & Cabinet on Z = +3.55m South Wall (West side: X = -21.55m, Z = +3.28m, facing North `-Z`)
-  const srVanityUnit = new THREE.Mesh(
-    new THREE.BoxGeometry(0.56, 0.78, 0.38),
-    wardrobeMat
-  );
-  srVanityUnit.position.set(-21.55, floorTopY + 0.39, 3.28);
-  srVanityUnit.castShadow = true;
-  scene.add(srVanityUnit);
+    const archSpandrelGeo = new THREE.ExtrudeGeometry(archSpandrelShape, {
+      depth: archWallD,
+      bevelEnabled: false,
+      curveSegments: 28,
+    });
+    archSpandrelGeo.translate(archCenterX, 0, 3.55 - archWallD / 2);
+    const archSpandrelMesh = new THREE.Mesh(archSpandrelGeo, warmRoomPlasterMat);
+    archSpandrelMesh.name = 'showerRoom.showerArch';
+    archSpandrelMesh.userData.isArchitecturalShell = true;
+    archSpandrelMesh.castShadow = true;
+    archSpandrelMesh.receiveShadow = true;
+    showerGroup.add(archSpandrelMesh);
 
-  const srBasin = new THREE.Mesh(
-    new THREE.BoxGeometry(0.58, 0.12, 0.4),
-    ceramicWhiteMat
-  );
-  srBasin.position.set(-21.55, floorTopY + 0.82, 3.28);
-  scene.add(srBasin);
+    const archCapMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(archSpan + 0.008, 0.025, archWallD + 0.004),
+      wallCapMat
+    );
+    archCapMesh.userData.isArchitecturalShell = true;
+    archCapMesh.position.set(archCenterX, upperWallTopY + 0.012, 3.55);
+    showerGroup.add(archCapMesh);
 
-  // WC Pan & Cistern on Z = +3.55m South Wall (Center: X = -20.65m, Z = +3.24m, facing North `-Z`)
-  const srWcCistern = new THREE.Mesh(
-    new THREE.BoxGeometry(0.38, 0.42, 0.16),
-    ceramicWhiteMat
-  );
-  srWcCistern.position.set(-20.65, floorTopY + 0.66, 3.38);
-  scene.add(srWcCistern);
+    // Plastered arch intrados soffit & subtle impost/architrave bead around the arch curve
+    const archBeadGeo = new THREE.CylinderGeometry(
+      archRadius,
+      archRadius,
+      archWallD + 0.012,
+      28,
+      1,
+      true,
+      0,
+      Math.PI
+    );
+    archBeadGeo.rotateX(Math.PI / 2);
+    const archBeadMesh = new THREE.Mesh(archBeadGeo, warmRoomPlasterMat);
+    archBeadMesh.name = 'showerRoom.showerArch.intrados';
+    archBeadMesh.userData.isArchitecturalShell = true;
+    archBeadMesh.position.set(archCenterX, archSpringY, 3.55);
+    showerGroup.add(archBeadMesh);
 
-  const srWc = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.18, 0.14, 0.42, 14),
-    ceramicWhiteMat
-  );
-  srWc.position.set(-20.65, floorTopY + 0.21, 3.16);
-  scene.add(srWc);
+    // 2. Step-Up Tiled Shower Plinth (`0.14m` high, `Y = 2.08m..2.22m`) & Ceramic Step-Up Shower Tray (`Y = 2.22m..2.26m`)
+    const plinthH = 0.14;
+    const trayW = 1.75; // X = -20.075m..-18.325m
+    const trayD = 0.675; // Z = +3.55m..+4.225m
+    const trayCenterX = -19.2;
+    const trayCenterZ = 3.8875;
+
+    const showerStepPlinth = new THREE.Mesh(
+      new THREE.BoxGeometry(trayW, plinthH, trayD + 0.15),
+      bathroomTileMat
+    );
+    showerStepPlinth.name = 'showerRoom.showerStepPlinth';
+    showerStepPlinth.position.set(trayCenterX, floorTopY + plinthH / 2, trayCenterZ - 0.075);
+    showerStepPlinth.castShadow = true;
+    showerStepPlinth.receiveShadow = true;
+    showerGroup.add(showerStepPlinth);
+
+    // Ceramic step-up threshold lip across the arch opening (`X = -20.08m..-19.22m, Z = 3.475m`)
+    const stepNosing = new THREE.Mesh(
+      new THREE.BoxGeometry(archSpan, 0.028, 0.165),
+      ceramicWhiteMat
+    );
+    stepNosing.name = 'showerRoom.showerStepThreshold';
+    stepNosing.position.set(archCenterX, floorTopY + plinthH + 0.014, 3.55);
+    stepNosing.castShadow = true;
+    stepNosing.receiveShadow = true;
+    showerGroup.add(stepNosing);
+
+    // Raised white stone-resin shower tray with perimeter upstands & recessed standing well
+    const trayBaseY = floorTopY + plinthH;
+    const srShowerTray = new THREE.Mesh(
+      new THREE.BoxGeometry(trayW, 0.042, trayD),
+      ceramicWhiteMat
+    );
+    srShowerTray.name = 'showerRoom.showerTray';
+    srShowerTray.position.set(trayCenterX, trayBaseY + 0.021, trayCenterZ);
+    srShowerTray.castShadow = true;
+    srShowerTray.receiveShadow = true;
+    showerGroup.add(srShowerTray);
+
+    const trayRecessedWell = new THREE.Mesh(
+      new THREE.BoxGeometry(trayW - 0.14, 0.012, trayD - 0.12),
+      new THREE.MeshStandardMaterial({ color: 0xebeae4, roughness: 0.22, metalness: 0.04 })
+    );
+    trayRecessedWell.position.set(trayCenterX, trayBaseY + 0.043, trayCenterZ);
+    showerGroup.add(trayRecessedWell);
+
+    // Aged-brass square shower waste grate
+    const showerDrainGrate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.11, 0.014, 0.11),
+      brassMat
+    );
+    showerDrainGrate.name = 'showerRoom.showerDrainGrate';
+    showerDrainGrate.position.set(-18.62, trayBaseY + 0.044, trayCenterZ);
+    showerGroup.add(showerDrainGrate);
+
+    // Exposed traditional aged-brass thermostatic rainfall & hand-shower column on the East wall (`X = -18.325m`)
+    const srShowerRiser = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 1.08, 12),
+      brassMat
+    );
+    srShowerRiser.position.set(-18.38, trayBaseY + 1.42, trayCenterZ);
+    showerGroup.add(srShowerRiser);
+
+    const showerValveBar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.022, 0.022, 0.24, 14),
+      brassMat
+    );
+    showerValveBar.rotation.x = Math.PI / 2;
+    showerValveBar.position.set(-18.37, trayBaseY + 1.02, trayCenterZ);
+    showerGroup.add(showerValveBar);
+
+    const rainfallRose = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.11, 0.09, 0.024, 20),
+      brassMat
+    );
+    rainfallRose.name = 'showerRoom.rainfallShowerRose';
+    rainfallRose.position.set(-18.62, trayBaseY + 1.92, trayCenterZ);
+    showerGroup.add(rainfallRose);
+
+    const rainfallArm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.01, 0.01, 0.26, 10),
+      brassMat
+    );
+    rainfallArm.rotation.z = Math.PI / 2;
+    rainfallArm.position.set(-18.49, trayBaseY + 1.95, trayCenterZ);
+    showerGroup.add(rainfallArm);
+
+    scene.add(showerGroup);
+  }
+
+  // =========================================================================
+  // ISSUE #4: BESPOKE PERIOD SHAKER VANITY UNIT & HIGH-LOD EDWARDIAN LOW-LEVEL TOILET
+  // ("Use the same toilet / sink as downstairs toilet" — mounted on Z = +3.475m South wall facing North `-Z`)
+  // =========================================================================
+  {
+    const fixturesGroup = new THREE.Group();
+    fixturesGroup.name = 'showerRoom.sanitaryware';
+    // Local frame with origin at (0, floorTopY, 3.475) and rotation.y = Math.PI / 2:
+    //   local +X -> world -Z (North, projecting out from the Z = 3.475m wall into the Shower Room)
+    //   local +Z -> world +X (East along the Z = 3.475m wall)
+    fixturesGroup.position.set(0, floorTopY, 3.475);
+    fixturesGroup.rotation.y = Math.PI / 2;
+
+    const vanityCabinetMat = new THREE.MeshStandardMaterial({
+      color: 0x3b443c, // rich deep heritage olive-charcoal joinery matching downstairs WC
+      roughness: 0.48,
+      metalness: 0.04,
+    });
+    const vanityTrimMat = new THREE.MeshStandardMaterial({
+      color: 0x2d352e,
+      roughness: 0.52,
+      metalness: 0.04,
+    });
+    const marbleCounterMat = new THREE.MeshStandardMaterial({
+      color: 0xf1eee8,
+      roughness: 0.3,
+      metalness: 0.04,
+    });
+    const mirrorGlassMat = new THREE.MeshStandardMaterial({
+      color: 0xdce6eb,
+      roughness: 0.1,
+      metalness: 0.22,
+    });
+
+    // 1. Floor-Standing Bespoke Period Shaker Vanity Unit + Mirror (centered at world X = -21.58m -> local Z = -21.58m)
+    const vanityZ = -21.58;
+    const vanityW = 0.78; // E-W width along wall
+    const vanityD = 0.46; // N-S projection into room
+    const vanityCarcassH = 0.8;
+
+    const vanityPlinth = new THREE.Mesh(
+      new THREE.BoxGeometry(vanityD - 0.02, 0.085, vanityW + 0.016),
+      vanityTrimMat
+    );
+    vanityPlinth.position.set((vanityD - 0.02) / 2, 0.0425, vanityZ);
+    vanityPlinth.castShadow = true;
+    vanityPlinth.receiveShadow = true;
+    fixturesGroup.add(vanityPlinth);
+
+    const vanityCab = new THREE.Mesh(
+      new THREE.BoxGeometry(vanityD, vanityCarcassH - 0.08, vanityW),
+      vanityCabinetMat
+    );
+    vanityCab.name = 'showerRoom.vanityCabinet';
+    vanityCab.position.set(vanityD / 2, 0.44, vanityZ);
+    vanityCab.castShadow = true;
+    vanityCab.receiveShadow = true;
+    fixturesGroup.add(vanityCab);
+
+    for (const sideZ of [-1, 1] as const) {
+      const doorZ = vanityZ + sideZ * 0.18;
+      const shakerDoorFrame = new THREE.Mesh(
+        new THREE.BoxGeometry(0.022, 0.62, 0.34),
+        vanityTrimMat
+      );
+      shakerDoorFrame.position.set(vanityD + 0.008, 0.44, doorZ);
+      shakerDoorFrame.castShadow = true;
+      fixturesGroup.add(shakerDoorFrame);
+
+      const shakerDoorPanel = new THREE.Mesh(
+        new THREE.BoxGeometry(0.014, 0.5, 0.24),
+        vanityCabinetMat
+      );
+      shakerDoorPanel.position.set(vanityD + 0.015, 0.44, doorZ);
+      fixturesGroup.add(shakerDoorPanel);
+
+      const doorKnob = new THREE.Mesh(
+        new THREE.SphereGeometry(0.015, 12, 12),
+        brassMat
+      );
+      doorKnob.position.set(vanityD + 0.032, 0.52, vanityZ + sideZ * 0.045);
+      fixturesGroup.add(doorKnob);
+    }
+
+    const basinSlab = new THREE.Mesh(
+      new THREE.BoxGeometry(vanityD + 0.03, 0.042, vanityW + 0.04),
+      marbleCounterMat
+    );
+    basinSlab.name = 'showerRoom.sinkBasin';
+    basinSlab.position.set((vanityD + 0.03) / 2, 0.821, vanityZ);
+    basinSlab.castShadow = true;
+    basinSlab.receiveShadow = true;
+    fixturesGroup.add(basinSlab);
+
+    const marbleUpstand = new THREE.Mesh(
+      new THREE.BoxGeometry(0.024, 0.11, vanityW + 0.04),
+      marbleCounterMat
+    );
+    marbleUpstand.position.set(0.012, 0.897, vanityZ);
+    marbleUpstand.castShadow = true;
+    fixturesGroup.add(marbleUpstand);
+
+    const basinRim = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.016, 0.48),
+      ceramicWhiteMat
+    );
+    basinRim.position.set(0.26, 0.843, vanityZ);
+    fixturesGroup.add(basinRim);
+
+    const basinWell = new THREE.Mesh(
+      new THREE.BoxGeometry(0.25, 0.018, 0.42),
+      new THREE.MeshStandardMaterial({ color: 0xdfe3e6, roughness: 0.14, metalness: 0.06 })
+    );
+    basinWell.position.set(0.26, 0.846, vanityZ);
+    fixturesGroup.add(basinWell);
+
+    const tapStem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.016, 0.02, 0.16, 14),
+      brassMat
+    );
+    tapStem.position.set(0.085, 0.92, vanityZ);
+    fixturesGroup.add(tapStem);
+
+    const tapSpout = new THREE.Mesh(
+      new THREE.BoxGeometry(0.14, 0.018, 0.02),
+      brassMat
+    );
+    tapSpout.position.set(0.145, 0.99, vanityZ);
+    fixturesGroup.add(tapSpout);
+
+    for (const valveZ of [vanityZ - 0.11, vanityZ + 0.11] as const) {
+      const valveBody = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.014, 0.018, 0.065, 12),
+        brassMat
+      );
+      valveBody.position.set(0.085, 0.875, valveZ);
+      fixturesGroup.add(valveBody);
+
+      const crossBar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.052, 0.01, 0.052),
+        brassMat
+      );
+      crossBar.position.set(0.085, 0.91, valveZ);
+      fixturesGroup.add(crossBar);
+    }
+
+    const mirrorFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(0.028, 0.84, 0.66),
+      brassMat
+    );
+    mirrorFrame.name = 'showerRoom.mirrorFrame';
+    mirrorFrame.position.set(0.024, 1.42, vanityZ);
+    mirrorFrame.castShadow = true;
+    fixturesGroup.add(mirrorFrame);
+
+    const mirrorSurface = new THREE.Mesh(
+      new THREE.BoxGeometry(0.01, 0.78, 0.6),
+      mirrorGlassMat
+    );
+    mirrorSurface.name = 'showerRoom.mirror';
+    mirrorSurface.position.set(0.036, 1.42, vanityZ);
+    fixturesGroup.add(mirrorSurface);
+
+    // 2. High-LOD Traditional Edwardian Low-Level Vitreous China Toilet (centered at world X = -20.58m -> local Z = -20.58m)
+    const toiletZ = -20.58;
+    const panCenterX = 0.455;
+
+    const vitreousChinaMat = new THREE.MeshStandardMaterial({
+      color: 0xf6f5f0,
+      roughness: 0.11,
+      metalness: 0.05,
+      side: THREE.DoubleSide,
+    });
+    const innerBowlGlazeMat = new THREE.MeshStandardMaterial({
+      color: 0xe6eaec,
+      roughness: 0.08,
+      metalness: 0.06,
+      side: THREE.DoubleSide,
+    });
+    const waterSealMat = new THREE.MeshStandardMaterial({
+      color: 0xd4edf4,
+      roughness: 0.04,
+      metalness: 0.12,
+      transparent: true,
+      opacity: 0.78,
+    });
+    const walnutSeatMat = new THREE.MeshStandardMaterial({
+      color: 0x5c3a21,
+      roughness: 0.28,
+      metalness: 0.04,
+    });
+
+    const pedestalFootPts = [
+      new THREE.Vector2(0.001, 0.0),
+      new THREE.Vector2(0.148, 0.0),
+      new THREE.Vector2(0.146, 0.018),
+      new THREE.Vector2(0.132, 0.028),
+      new THREE.Vector2(0.126, 0.046),
+      new THREE.Vector2(0.106, 0.068),
+      new THREE.Vector2(0.098, 0.145),
+      new THREE.Vector2(0.112, 0.188),
+    ];
+    const wcPanPedestal = new THREE.Mesh(
+      new THREE.LatheGeometry(pedestalFootPts, 24),
+      vitreousChinaMat
+    );
+    wcPanPedestal.name = 'showerRoom.toiletPedestal';
+    wcPanPedestal.position.set(panCenterX - 0.015, 0.01, toiletZ);
+    wcPanPedestal.scale.set(1.26, 1.0, 0.88);
+    wcPanPedestal.castShadow = true;
+    wcPanPedestal.receiveShadow = true;
+    fixturesGroup.add(wcPanPedestal);
+
+    for (const boltSideZ of [-1, 1] as const) {
+      const floorBolt = new THREE.Mesh(
+        new THREE.SphereGeometry(0.011, 10, 10),
+        brassMat
+      );
+      floorBolt.position.set(panCenterX - 0.015, 0.026, toiletZ + boltSideZ * 0.116);
+      fixturesGroup.add(floorBolt);
+    }
+
+    const soilPipeShroud = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.056, 0.058, 0.22, 16),
+      vitreousChinaMat
+    );
+    soilPipeShroud.rotation.z = Math.PI / 2;
+    soilPipeShroud.position.set(0.11, 0.185, toiletZ);
+    soilPipeShroud.castShadow = true;
+    fixturesGroup.add(soilPipeShroud);
+
+    const soilWallCollar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.076, 0.08, 0.026, 18),
+      vitreousChinaMat
+    );
+    soilWallCollar.rotation.z = Math.PI / 2;
+    soilWallCollar.position.set(0.013, 0.185, toiletZ);
+    fixturesGroup.add(soilWallCollar);
+
+    const bowlProfilePts = [
+      new THREE.Vector2(0.001, 0.175),
+      new THREE.Vector2(0.068, 0.18),
+      new THREE.Vector2(0.112, 0.172),
+      new THREE.Vector2(0.146, 0.235),
+      new THREE.Vector2(0.174, 0.315),
+      new THREE.Vector2(0.182, 0.365),
+      new THREE.Vector2(0.198, 0.376),
+      new THREE.Vector2(0.202, 0.398),
+      new THREE.Vector2(0.192, 0.406),
+      new THREE.Vector2(0.154, 0.404),
+      new THREE.Vector2(0.148, 0.382),
+      new THREE.Vector2(0.132, 0.315),
+      new THREE.Vector2(0.088, 0.235),
+      new THREE.Vector2(0.064, 0.192),
+      new THREE.Vector2(0.001, 0.188),
+    ];
+    const wcPanBowl = new THREE.Mesh(
+      new THREE.LatheGeometry(bowlProfilePts, 28),
+      vitreousChinaMat
+    );
+    wcPanBowl.name = 'showerRoom.toiletPan';
+    wcPanBowl.position.set(panCenterX, 0, toiletZ);
+    wcPanBowl.scale.set(1.18, 1.0, 0.95);
+    wcPanBowl.castShadow = true;
+    wcPanBowl.receiveShadow = true;
+    fixturesGroup.add(wcPanBowl);
+
+    const innerWellLiner = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.138, 0.068, 0.16, 24, 1, true),
+      innerBowlGlazeMat
+    );
+    innerWellLiner.position.set(panCenterX, 0.285, toiletZ);
+    innerWellLiner.scale.set(1.16, 1.0, 0.93);
+    fixturesGroup.add(innerWellLiner);
+
+    const waterSealDisc = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.086, 0.072, 0.008, 22),
+      waterSealMat
+    );
+    waterSealDisc.name = 'showerRoom.waterSeal';
+    waterSealDisc.position.set(panCenterX - 0.01, 0.224, toiletZ);
+    waterSealDisc.scale.set(1.15, 1.0, 0.92);
+    fixturesGroup.add(waterSealDisc);
+
+    const rearPanDeck = new THREE.Mesh(
+      new THREE.BoxGeometry(0.15, 0.048, 0.25),
+      vitreousChinaMat
+    );
+    rearPanDeck.position.set(panCenterX - 0.185, 0.38, toiletZ);
+    rearPanDeck.castShadow = true;
+    fixturesGroup.add(rearPanDeck);
+
+    const rearInletHorn = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.036, 0.044, 0.07, 16),
+      vitreousChinaMat
+    );
+    rearInletHorn.rotation.z = Math.PI / 2;
+    rearInletHorn.position.set(panCenterX - 0.255, 0.382, toiletZ);
+    fixturesGroup.add(rearInletHorn);
+
+    const wcSeat = new THREE.Mesh(
+      new THREE.TorusGeometry(0.164, 0.027, 18, 36),
+      walnutSeatMat
+    );
+    wcSeat.name = 'showerRoom.toiletSeat';
+    wcSeat.rotation.x = Math.PI / 2;
+    wcSeat.position.set(panCenterX + 0.006, 0.418, toiletZ);
+    wcSeat.scale.set(1.17, 0.95, 0.36);
+    wcSeat.castShadow = true;
+    wcSeat.receiveShadow = true;
+    fixturesGroup.add(wcSeat);
+
+    const walnutHingeBlock = new THREE.Mesh(
+      new THREE.BoxGeometry(0.052, 0.018, 0.21),
+      walnutSeatMat
+    );
+    walnutHingeBlock.position.set(panCenterX - 0.175, 0.418, toiletZ);
+    walnutHingeBlock.castShadow = true;
+    fixturesGroup.add(walnutHingeBlock);
+
+    for (const hingeSideZ of [-1, 1] as const) {
+      const hingePillar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.012, 0.015, 0.034, 12),
+        brassMat
+      );
+      hingePillar.position.set(panCenterX - 0.182, 0.418, toiletZ + hingeSideZ * 0.078);
+      fixturesGroup.add(hingePillar);
+    }
+    const hingeCrossBar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.006, 0.006, 0.18, 12),
+      brassMat
+    );
+    hingeCrossBar.rotation.x = Math.PI / 2;
+    hingeCrossBar.position.set(panCenterX - 0.182, 0.426, toiletZ);
+    fixturesGroup.add(hingeCrossBar);
+
+    const cisternCenterX = 0.11;
+    const cisternBaseY = 0.73;
+    const cisternH = 0.31;
+    const cisternW = 0.46;
+    const cisternD = 0.2;
+
+    const cisternLowerSkirt = new THREE.Mesh(
+      new THREE.BoxGeometry(cisternD - 0.016, 0.028, cisternW - 0.02),
+      vitreousChinaMat
+    );
+    cisternLowerSkirt.position.set(cisternCenterX - 0.005, cisternBaseY + 0.014, toiletZ);
+    cisternLowerSkirt.castShadow = true;
+    fixturesGroup.add(cisternLowerSkirt);
+
+    const wcCistern = new THREE.Mesh(
+      new THREE.BoxGeometry(cisternD, cisternH - 0.028, cisternW),
+      vitreousChinaMat
+    );
+    wcCistern.name = 'showerRoom.cistern';
+    wcCistern.position.set(cisternCenterX, cisternBaseY + 0.028 + (cisternH - 0.028) / 2, toiletZ);
+    wcCistern.castShadow = true;
+    wcCistern.receiveShadow = true;
+    fixturesGroup.add(wcCistern);
+
+    const cisternFrontPanel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.012, 0.19, 0.36),
+      vitreousChinaMat
+    );
+    cisternFrontPanel.position.set(cisternCenterX + cisternD / 2 + 0.004, cisternBaseY + 0.165, toiletZ);
+    fixturesGroup.add(cisternFrontPanel);
+
+    const makerBadgeRim = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.032, 0.032, 0.008, 16),
+      brassMat
+    );
+    makerBadgeRim.rotation.z = Math.PI / 2;
+    makerBadgeRim.position.set(cisternCenterX + cisternD / 2 + 0.011, cisternBaseY + 0.17, toiletZ);
+    makerBadgeRim.scale.set(1.0, 1.35, 0.72);
+    fixturesGroup.add(makerBadgeRim);
+
+    const cisternCorniceStep = new THREE.Mesh(
+      new THREE.BoxGeometry(cisternD + 0.022, 0.024, cisternW + 0.026),
+      vitreousChinaMat
+    );
+    cisternCorniceStep.position.set(cisternCenterX + 0.004, cisternBaseY + cisternH + 0.012, toiletZ);
+    cisternCorniceStep.castShadow = true;
+    fixturesGroup.add(cisternCorniceStep);
+
+    const cisternLid = new THREE.Mesh(
+      new THREE.BoxGeometry(cisternD + 0.006, 0.022, cisternW + 0.008),
+      vitreousChinaMat
+    );
+    cisternLid.name = 'showerRoom.cisternLid';
+    cisternLid.position.set(cisternCenterX + 0.002, cisternBaseY + cisternH + 0.034, toiletZ);
+    cisternLid.castShadow = true;
+    fixturesGroup.add(cisternLid);
+
+    for (const brkSideZ of [-1, 1] as const) {
+      const brkZ = toiletZ + brkSideZ * 0.155;
+      const wallLeg = new THREE.Mesh(
+        new THREE.BoxGeometry(0.016, 0.13, 0.024),
+        brassMat
+      );
+      wallLeg.position.set(0.014, cisternBaseY - 0.055, brkZ);
+      fixturesGroup.add(wallLeg);
+
+      const topArm = new THREE.Mesh(
+        new THREE.BoxGeometry(0.165, 0.014, 0.022),
+        brassMat
+      );
+      topArm.position.set(0.09, cisternBaseY - 0.004, brkZ);
+      fixturesGroup.add(topArm);
+
+      const scrollStrut = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.006, 0.006, 0.16, 10),
+        brassMat
+      );
+      scrollStrut.rotation.z = -0.82;
+      scrollStrut.position.set(0.075, cisternBaseY - 0.055, brkZ);
+      fixturesGroup.add(scrollStrut);
+    }
+
+    const leverZ = toiletZ + 0.155;
+    const leverY = cisternBaseY + 0.235;
+    const leverFulcrum = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.018, 0.022, 0.026, 14),
+      brassMat
+    );
+    leverFulcrum.rotation.z = Math.PI / 2;
+    leverFulcrum.position.set(cisternCenterX + cisternD / 2 + 0.016, leverY, leverZ);
+    fixturesGroup.add(leverFulcrum);
+
+    const leverArm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0055, 0.0055, 0.075, 10),
+      brassMat
+    );
+    leverArm.rotation.x = Math.PI / 2;
+    leverArm.rotation.z = -0.22;
+    leverArm.position.set(cisternCenterX + cisternD / 2 + 0.032, leverY - 0.008, leverZ + 0.032);
+    fixturesGroup.add(leverArm);
+
+    const ceramicTorpedoHandle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.011, 0.009, 0.068, 14),
+      vitreousChinaMat
+    );
+    ceramicTorpedoHandle.name = 'showerRoom.flushLever';
+    ceramicTorpedoHandle.rotation.x = Math.PI / 2;
+    ceramicTorpedoHandle.position.set(cisternCenterX + cisternD / 2 + 0.036, leverY - 0.014, leverZ + 0.078);
+    ceramicTorpedoHandle.castShadow = true;
+    fixturesGroup.add(ceramicTorpedoHandle);
+
+    const handleFinial = new THREE.Mesh(
+      new THREE.SphereGeometry(0.009, 10, 10),
+      brassMat
+    );
+    handleFinial.position.set(cisternCenterX + cisternD / 2 + 0.036, leverY - 0.014, leverZ + 0.114);
+    fixturesGroup.add(handleFinial);
+
+    const flushPipeX = 0.125;
+    const cisternNut = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.028, 0.028, 0.026, 14),
+      brassMat
+    );
+    cisternNut.position.set(flushPipeX, cisternBaseY - 0.012, toiletZ);
+    fixturesGroup.add(cisternNut);
+
+    const flushPipeCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(flushPipeX, cisternBaseY, toiletZ),
+      new THREE.Vector3(flushPipeX, 0.43, toiletZ),
+      new THREE.Vector3(flushPipeX + 0.02, 0.385, toiletZ),
+      new THREE.Vector3(panCenterX - 0.25, 0.382, toiletZ),
+    ]);
+    const flushPipe = new THREE.Mesh(
+      new THREE.TubeGeometry(flushPipeCurve, 18, 0.019, 12, false),
+      brassMat
+    );
+    flushPipe.name = 'showerRoom.flushPipe';
+    flushPipe.castShadow = true;
+    fixturesGroup.add(flushPipe);
+
+    scene.add(fixturesGroup);
+  }
 
   // =========================================================================
   // BEDROOM 3 BUILT-IN NORTH WARDROBE (`X = -22.19m..-20.225m, Z = +3.625m..+4.165m`)

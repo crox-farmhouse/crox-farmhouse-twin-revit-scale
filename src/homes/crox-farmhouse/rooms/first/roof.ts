@@ -4,6 +4,7 @@ import { createWelshSlateRoofTexture } from '../../../../engine/textures/procedu
 import {
   MAIN_EAST_WING_ROTATION_Y,
   transformEastWingPoint,
+  transformEastWingTuple,
 } from '../../structure/ground-floor-materials.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
@@ -89,14 +90,15 @@ export function buildFirstFloorCeilingsAndRoof(
   const upperCeilingMat = plasterMat.clone();
   upperCeilingMat.side = THREE.DoubleSide;
   {
-    const ewVaultSpanX = -4.52 - -17.65; // 13.13m (stops at Upper Landing West cross-wall)
-    const ewVaultCenterX = (-17.65 + -4.52) / 2; // -11.085m
+    const ewVaultSpanX = -4.52 - -17.85; // 13.33m (stops at Upper Landing West cross-wall)
+    const ewVaultCenterX = (-17.85 + -4.52) / 2; // -11.185m
     const collarCeilingY = 4.52;
-    const skeilingEaveY = 3.86;
     const collarNorthZ = -1.15;
     const collarSouthZ = 1.05;
-    const northEaveZ = -2.52;
-    const southEaveZ = 2.42;
+    const northPitchBaseZ = -1.9;
+    const southPitchBaseZ = 1.8;
+    const northWallOuterZ = -2.64;
+    const southWallOuterZ = 2.54;
 
     // 1. Central raised horizontal collar ceiling (Y = 4.52m, Z = -1.15m..+1.05m)
     const ewCollarCeiling = new THREE.Mesh(
@@ -113,85 +115,74 @@ export function buildFirstFloorCeilingsAndRoof(
     ewCollarCeiling.receiveShadow = true;
     ewCeilingMeshGroup.add(ewCollarCeiling);
 
-    // 2a. South pitched skeiling slope along the South courtyard wall (`x_ew = -16.82m..-4.52m`, Z = +2.42m, Y = 3.86m -> Z = +1.05m, Y = 4.52m)
-    const southCourtyardSpanX = -4.52 - -16.82; // 12.30m
-    const southCourtyardCenterX = (-16.82 + -4.52) / 2; // -10.67m
-    const southDz = southEaveZ - collarSouthZ; // 1.37m
-    const southDy = collarCeilingY - skeilingEaveY; // 0.66m
+    // 2. Continuous South pitched skeiling (`Z = +1.80m, Y = 4.16m -> Z = +1.05m, Y = 4.52m`) + flat 4.16m eave soffit (`Z = +1.80m..+2.54m`)
+    //    Matches all 4 East Wing cross-wall gables (`-17.72m`, `-12.93m`, `-9.68m`, `-4.52m`) with zero mid-air step at `x_ew = -16.82m`!
+    const southDz = southPitchBaseZ - collarSouthZ; // 0.75m
+    const southDy = collarCeilingY - upperWallTopY; // 0.36m
     const southSlopeLen = Math.hypot(southDz, southDy);
     const southSlopeAngle = Math.atan2(southDy, southDz);
     const ewSouthSkeiling = new THREE.Mesh(
-      new THREE.BoxGeometry(southCourtyardSpanX, 0.03, southSlopeLen + 0.04),
+      new THREE.BoxGeometry(ewVaultSpanX, 0.03, southSlopeLen + 0.03),
       upperCeilingMat
     );
     ewSouthSkeiling.name = 'eastWing.vaultedCeiling.southSkeiling';
     ewSouthSkeiling.position.set(
-      southCourtyardCenterX,
-      (skeilingEaveY + collarCeilingY) / 2 + 0.012,
-      (southEaveZ + collarSouthZ) / 2
+      ewVaultCenterX,
+      (upperWallTopY + collarCeilingY) / 2 + 0.012,
+      (southPitchBaseZ + collarSouthZ) / 2
     );
     ewSouthSkeiling.rotation.x = southSlopeAngle;
     ewSouthSkeiling.castShadow = true;
     ewSouthSkeiling.receiveShadow = true;
     ewCeilingMeshGroup.add(ewSouthSkeiling);
 
-    // 2b. Upper Landing South-West valley skeiling (`x_ew = -17.85m..-16.82m`, Z = +1.80m, Y = 4.16m -> Z = +1.05m, Y = 4.52m)
-    //     Stops at `upperWallTopY = 4.16m` (matching `westWallUpperGable`) and meets a flat 4.16m soffit over the UP threshold!
-    const valleySpanX = -16.82 - -17.85; // 1.03m
-    const valleyCenterX = (-17.85 + -16.82) / 2; // -17.335m
-    const valleyEaveZ = 1.8;
-    const valleyDz = valleyEaveZ - collarSouthZ; // 0.75m
-    const valleyDy = collarCeilingY - upperWallTopY; // 0.36m
-    const valleySlopeLen = Math.hypot(valleyDz, valleyDy);
-    const valleySlopeAngle = Math.atan2(valleyDy, valleyDz);
-    const ewValleySkeiling = new THREE.Mesh(
-      new THREE.BoxGeometry(valleySpanX, 0.03, valleySlopeLen + 0.03),
+    const ewSouthEaveSoffit = new THREE.Mesh(
+      new THREE.BoxGeometry(ewVaultSpanX + 0.04, 0.03, southWallOuterZ - southPitchBaseZ),
       upperCeilingMat
     );
-    ewValleySkeiling.name = 'eastWing.vaultedCeiling.valleySkeiling';
-    ewValleySkeiling.position.set(
-      valleyCenterX,
-      (upperWallTopY + collarCeilingY) / 2 + 0.012,
-      (valleyEaveZ + collarSouthZ) / 2
-    );
-    ewValleySkeiling.rotation.x = valleySlopeAngle;
-    ewValleySkeiling.castShadow = true;
-    ewValleySkeiling.receiveShadow = true;
-    ewCeilingMeshGroup.add(ewValleySkeiling);
-
-    const ewUpThresholdSoffit = new THREE.Mesh(
-      new THREE.BoxGeometry(valleySpanX + 0.06, 0.03, 2.54 - valleyEaveZ),
-      upperCeilingMat
-    );
-    ewUpThresholdSoffit.name = 'eastWing.vaultedCeiling.upThresholdSoffit';
-    ewUpThresholdSoffit.position.set(
-      valleyCenterX,
+    ewSouthEaveSoffit.name = 'eastWing.vaultedCeiling.southEaveSoffit';
+    ewSouthEaveSoffit.position.set(
+      ewVaultCenterX,
       upperWallTopY + 0.015,
-      (valleyEaveZ + 2.54) / 2
+      (southPitchBaseZ + southWallOuterZ) / 2
     );
-    ewUpThresholdSoffit.castShadow = true;
-    ewUpThresholdSoffit.receiveShadow = true;
-    ewCeilingMeshGroup.add(ewUpThresholdSoffit);
+    ewSouthEaveSoffit.castShadow = true;
+    ewSouthEaveSoffit.receiveShadow = true;
+    ewCeilingMeshGroup.add(ewSouthEaveSoffit);
 
-    // 3. North pitched skeiling slope (Z = -2.52m, Y = 3.86m -> Z = -1.15m, Y = 4.52m)
-    const northDz = collarNorthZ - northEaveZ; // 1.37m
-    const northDy = collarCeilingY - skeilingEaveY; // 0.66m
+    // 3. Continuous North pitched skeiling (`Z = -1.90m, Y = 4.16m -> Z = -1.15m, Y = 4.52m`) + flat 4.16m eave soffit (`Z = -2.64m..-1.90m`)
+    const northDz = collarNorthZ - northPitchBaseZ; // 0.75m
+    const northDy = collarCeilingY - upperWallTopY; // 0.36m
     const northSlopeLen = Math.hypot(northDz, northDy);
     const northSlopeAngle = -Math.atan2(northDy, northDz);
     const ewNorthSkeiling = new THREE.Mesh(
-      new THREE.BoxGeometry(ewVaultSpanX, 0.03, northSlopeLen + 0.04),
+      new THREE.BoxGeometry(ewVaultSpanX, 0.03, northSlopeLen + 0.03),
       upperCeilingMat
     );
     ewNorthSkeiling.name = 'eastWing.vaultedCeiling.northSkeiling';
     ewNorthSkeiling.position.set(
       ewVaultCenterX,
-      (skeilingEaveY + collarCeilingY) / 2 + 0.012,
-      (northEaveZ + collarNorthZ) / 2
+      (upperWallTopY + collarCeilingY) / 2 + 0.012,
+      (northPitchBaseZ + collarNorthZ) / 2
     );
     ewNorthSkeiling.rotation.x = northSlopeAngle;
     ewNorthSkeiling.castShadow = true;
     ewNorthSkeiling.receiveShadow = true;
     ewCeilingMeshGroup.add(ewNorthSkeiling);
+
+    const ewNorthEaveSoffit = new THREE.Mesh(
+      new THREE.BoxGeometry(ewVaultSpanX + 0.04, 0.03, northPitchBaseZ - northWallOuterZ),
+      upperCeilingMat
+    );
+    ewNorthEaveSoffit.name = 'eastWing.vaultedCeiling.northEaveSoffit';
+    ewNorthEaveSoffit.position.set(
+      ewVaultCenterX,
+      upperWallTopY + 0.015,
+      (northWallOuterZ + northPitchBaseZ) / 2
+    );
+    ewNorthEaveSoffit.castShadow = true;
+    ewNorthEaveSoffit.receiveShadow = true;
+    ewCeilingMeshGroup.add(ewNorthEaveSoffit);
   }
 
   // Helper to build an exact 4-corner sloped or horizontal vaulted ceiling quad slab (`0.03m` thick)
@@ -305,34 +296,38 @@ export function buildFirstFloorCeilingsAndRoof(
       new THREE.Vector3(collarWestX, collarCeilingY, zSouthAtX(collarWestX))
     );
 
-    // 3. East pitched skeiling slope (`X = -18.72m, Y = 4.52m` -> East cross-wall at `Y = 4.16m`, stopping at the North cut-out wall `[-18.72, 0.75] -> [-17.58, 0.90]`)
+    // 3. East pitched skeiling slope (`X = -18.72m, Y = 4.52m` -> East cross-wall at `Y = 4.16m`, stopping at the North cut-out wall `Z = 1.05m`)
     buildVaultedCeilingQuad(
       'bedroom2.vaultedCeiling.eastSkeiling',
       new THREE.Vector3(collarEastX, collarCeilingY, zNorthAtX(collarEastX)),
-      new THREE.Vector3(-16.876, skeilingBaseY, -2.469),
-      new THREE.Vector3(-17.58, skeilingBaseY, 0.9),
-      new THREE.Vector3(collarEastX, collarCeilingY, 0.75)
+      transformEastWingPoint(-17.55, skeilingBaseY, -2.5),
+      new THREE.Vector3(-17.65, skeilingBaseY, 1.05),
+      new THREE.Vector3(collarEastX, collarCeilingY, 1.05)
     );
   }
 
-  // Flat 4.16m ceiling over the Cut-Out Hallway, central Shower Room, West Wing Corridor & Bedroom 3 (`Z = 0.75m..8.27m`)
-  buildPolygonalFloorSlab(
-    ceilingMeshGroup,
-    [
-      [-22.32, 1.905],
-      [-18.72, 2.37],
-      [-18.72, 0.75],
-      [-17.58, 0.9],
-      [-18.068, 2.45],
-      [-16.82, 2.61],
-      [-17.09, 8.27],
-      [-22.32, 8.27],
-    ],
-    upperWallTopY + 0.027,
-    0.03,
-    upperCeilingMat,
-    0.5
-  );
+  // Flat 4.16m ceiling over the Cut-Out Hallway, central Shower Room, West Wing Corridor & Bedroom 3 (`Z = 1.05m..8.27m`)
+  {
+    const [landingSouthWestX, , landingSouthWestZ] = transformEastWingTuple(-18.04, 0, 2.688);
+    const [landingSouthEastX, , landingSouthEastZ] = transformEastWingTuple(-16.956, 0, 2.688);
+    buildPolygonalFloorSlab(
+      ceilingMeshGroup,
+      [
+        [-22.32, 1.905],
+        [-18.72, 2.37],
+        [-18.72, 1.05],
+        [-17.65, 1.05],
+        [landingSouthWestX, landingSouthWestZ],
+        [landingSouthEastX, landingSouthEastZ],
+        [-17.09, 8.27],
+        [-22.32, 8.27],
+      ],
+      upperWallTopY + 0.027,
+      0.03,
+      upperCeilingMat,
+      0.5
+    );
+  }
 
   // Issue #6: Partially Vaulted Ceiling over Bedroom 4 (`Z = 8.27m..11.63m`, zero flat side strips!)
   // Pitches directly from the West exterior wall (`X = -22.25m, Y = 4.16m`) and East courtyard wall (`Y = 4.16m`)
@@ -669,9 +664,10 @@ export function buildFirstFloorCeilingsAndRoof(
   nsNorthGableLocalShape.closePath();
 
   const nsNorthGableGeo = new THREE.ExtrudeGeometry(nsNorthGableLocalShape, {
-    depth: 0.28,
+    depth: 0.24,
     bevelEnabled: false,
   });
+  nsNorthGableGeo.translate(0, 0, -0.15);
   applyWorldSpaceBrickUVs(
     nsNorthGableGeo,
     nsRidgeX,

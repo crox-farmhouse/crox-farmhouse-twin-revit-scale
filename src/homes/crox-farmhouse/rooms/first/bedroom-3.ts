@@ -89,7 +89,7 @@ export function buildBedroom3(
     ],
   });
 
-  // Issues #3, #4 & #7: Continuous 45°-mitred skirting along the West & North walls of the Corridor & Cut-Out Hallway
+  // Issues #3, #4, #6 & #7: Continuous 45°-mitred skirting along the West & North walls of the Corridor & Cut-Out Hallway
   for (const [skirtName, path] of [
     [
       'westWingCorridor.westWallMainMitredSkirting',
@@ -97,7 +97,7 @@ export function buildBedroom3(
         [-18.175, 6.918],
         [-18.175, 3.475],
         [-18.645, 3.475],
-        [-18.645, 3.452],
+        [-18.645, 3.417],
       ] as const,
     ],
     [
@@ -110,16 +110,17 @@ export function buildBedroom3(
     [
       'westWingCorridor.upLobbyNorthPierSkirting',
       [
-        [-18.645, 2.608],
-        [-18.645, 1.912],
+        [-18.645, 2.573],
+        [-18.645, 2.117],
       ] as const,
     ],
     [
       'westWingCorridor.cutoutNorthCornerSkirting',
       [
-        [-18.645, 1.028],
-        [-18.645, 0.835],
-        [-17.691, 0.971],
+        [-18.645, 1.233],
+        [-18.645, 1.125],
+        [-17.721, 1.125],
+        [-17.739, 1.219],
       ] as const,
     ],
   ] as const) {
