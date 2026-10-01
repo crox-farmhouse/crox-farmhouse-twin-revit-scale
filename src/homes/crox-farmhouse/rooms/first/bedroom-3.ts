@@ -96,8 +96,8 @@ export function buildBedroom3(
       [
         [-18.175, 6.918],
         [-18.175, 3.475],
-        [-18.875, 3.475],
-        [-18.875, 3.4],
+        [-18.645, 3.475],
+        [-18.645, 3.452],
       ] as const,
     ],
     [
@@ -110,16 +110,16 @@ export function buildBedroom3(
     [
       'westWingCorridor.upLobbyNorthPierSkirting',
       [
-        [-18.875, 2.57],
-        [-18.875, 2.095],
+        [-18.645, 2.608],
+        [-18.645, 1.912],
       ] as const,
     ],
     [
       'westWingCorridor.cutoutNorthCornerSkirting',
       [
-        [-18.875, 1.225],
-        [-18.875, 1.165],
-        [-17.695, 1.32],
+        [-18.645, 1.028],
+        [-18.645, 0.835],
+        [-17.691, 0.971],
       ] as const,
     ],
   ] as const) {

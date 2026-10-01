@@ -232,10 +232,11 @@ export function buildFamilyBathroom(
   addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, -0.7, 0.24, 3.6, warmRoomPlasterMat, {
     skipSkirting: true,
   });
-  // Clean skirting segments on the X = -12.93m Cross-Wall North pier (stopping at East Chimney Breast on West side and Shower on East side)
+  // Clean skirting segments on the X = -12.93m Cross-Wall (stopping at North stringer Z = -2.478m, East Chimney Breast, and South Landing Wall Z = +2.22m on West side; and Shower on East side)
   for (const [sideSign, z0, z1] of [
-    [-1, -2.5, -1.34],
+    [-1, -2.478, -1.34],
     [-1, 0.46, 1.018],
+    [-1, 2.082, 2.22],
     [1, -2.5, 0.05],
   ] as const) {
     const sD = z1 - z0;
@@ -258,6 +259,7 @@ export function buildFamilyBathroom(
     scene.add(skirtCap);
   }
   addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, 2.2, 0.24, 0.4, warmRoomPlasterMat, {
+    skirtingSides: [1],
     skirtingMin: 2.082,
     skirtingMax: 2.4,
   });

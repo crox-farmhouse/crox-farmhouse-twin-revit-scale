@@ -249,10 +249,11 @@ export function buildUpperLanding(
     scene.add(northWallMidBeam);
   }
 
-  // Issues #4 & #6: Thicker South Courtyard Exterior Brick Wall of Main Stair Landing (0.46m thick: Z = +2.22m..+2.68m, X = -17.12m..-12.81m)
-  // With shorter 3-pane cottage casement window & deep reveal at X = -15.35m (media_1790502987279.webp!)
+  // Issues #4 & #6: Continuous 0.46m-thick South Wall of Main Stair Landing (Z = +2.22m..+2.68m, X = -17.88m..-12.81m)
+  // Runs seamlessly all the way to the West Cross-Wall (`x_ew = -17.88m`) with one continuous antique oak skirting board
+  // (`skirtingMin: -17.768, skirtingMax: -13.072`) so there is zero wall-thickness step or skirting seam at `x_ew = -17.12m`!
   addUpperBrickWallAlongXWithWindow(
-    -17.12,
+    -17.88,
     -12.81,
     2.22,
     2.68,
@@ -262,26 +263,33 @@ export function buildUpperLanding(
     3.78,
     'north',
     3,
-    { skirtingMin: -17.12, skirtingMax: -13.05 }
+    { skirtingMin: -17.768, skirtingMax: -13.072 }
   );
 
-  // Interior continuation of the Upper Landing South wall between the West Cross-Wall (`x_ew = -17.90m`)
-  // and the Courtyard Exterior Wall corner (`x_ew = -17.12m`), separating the Upper Landing (`Y = 2.16m`)
-  // from the West Wing Corridor (`Y = 2.08m`) now that the UP portal is on the West Cross-Wall.
-  buildAngledWallSegment(scene, interactions, {
-    start: [-17.9, 2.36],
-    end: [-17.12, 2.36],
-    thickness: 0.28, // z_ew = 2.22m (North landing face) .. 2.50m (South corridor face)
-    topY: upperWallTopY,
-    frontFloorY: floorTopY - 0.08, // South face inside West Wing Corridor (Y = 2.08m)
-    backFloorY: floorTopY,         // North face inside Upper Landing (Y = 2.16m)
-    wallMaterial: warmRoomPlasterMat,
-    capMaterial: wallCapMat,
-    skirtingMaterial: antiqueOakSkirtingMat,
-    addFrontSkirting: false,       // West Wing Corridor builds a continuous 45°-mitred skirting along its East/North-East wall
-    addBackSkirting: true,
-    backSkirtingExclusions: [[0, 0.12]],
-  });
+  // Interior warm plaster cladding on the South (`z_ew = +2.68m`) corridor-facing segment (`x_ew = -17.92m..-17.15m`)
+  // where the Upper Landing South wall separates the Landing (`Y = 2.16m`) from the West Wing Corridor (`Y = 2.08m`).
+  {
+    const southCorridorClad = new THREE.Mesh(
+      new THREE.BoxGeometry(0.77, upperWallTopY - (floorTopY - 0.08), 0.016),
+      warmRoomPlasterMat
+    );
+    southCorridorClad.name = 'upperLanding.southWallCorridorCladding';
+    southCorridorClad.userData.isArchitecturalShell = true;
+    southCorridorClad.position.set(
+      (-17.92 + -17.15) / 2,
+      (floorTopY - 0.08 + upperWallTopY) / 2,
+      2.688
+    );
+    southCorridorClad.receiveShadow = true;
+    tagUpperCutawayWall(southCorridorClad, {
+      axis: 'z',
+      coord: 2.45,
+      minSpan: -17.92,
+      maxSpan: -12.81,
+      floor: 'first',
+    });
+    scene.add(southCorridorClad);
+  }
 
   // Issue #3: Floor-Standing Cast-Iron 4-Column Traditional Radiator below the South Landing Window
   // Replaces the old wall-hung white convector box at X = -15.35m, standing on the landing floor in front of Z = 2.22m
@@ -289,7 +297,7 @@ export function buildUpperLanding(
     const southCutawayDescriptor = {
       axis: 'z' as const,
       coord: 2.45,
-      minSpan: -16.92,
+      minSpan: -17.88,
       maxSpan: -12.81,
       floor: 'first' as const,
     };
@@ -649,13 +657,13 @@ export function buildUpperLanding(
   ceilingMeshGroup.add(landingDarkSpineBeam);
 
   // Non-Square West Load-Bearing Cross-Wall between Main Stair Landing and Bedroom 2 / West Wing Hallway
-  // (0.24m thick, [-17.55, -2.50] -> [-17.907, +2.50] — aligned with Ground Floor Hall/Front Room cross-wall,
+  // (0.24m thick, [-17.55, -2.50] -> [-17.92, +2.68] — aligned with Ground Floor Hall/Front Room cross-wall,
   // with the cased UP entrance opening `upperLandingToWestWingPortal` at the South end `uCenter = 4.18m, width = 0.86m`!)
-  // Note: for start=[-17.55, -2.5] -> end=[-17.907, 2.5], +normal (front) points WEST into Bedroom 2 / Hallway (Y = 2.08m),
+  // Note: for start=[-17.55, -2.5] -> end=[-17.92, 2.68], +normal (front) points WEST into Bedroom 2 / Hallway (Y = 2.08m),
   // and -normal (back) points EAST into Upper Landing (Y = 2.16m)!
   const upperLandingCrossWallFrame = buildAngledWallSegment(scene, interactions, {
     start: [-17.55, -2.5],
-    end: [-17.907, 2.5],
+    end: [-17.92, 2.68],
     thickness: 0.24,
     topY: upperWallTopY,
     frontFloorY: floorTopY - 0.08, // +normal = West (Bedroom 2 & Cut-Out Hallway at Y = 2.08m)
@@ -666,8 +674,8 @@ export function buildUpperLanding(
     addFrontSkirting: false, // Bedroom 2 & West Wing Hallway build continuous 45°-mitred skirtings on the West face
     addBackSkirting: true,
     backSkirtingExclusions: [
-      [0, 1.92],     // Omit skirting across the open Stairwell Void (Z = -2.50m..-0.58m)
-      [4.68, 5.012], // Omit skirting inside the South wall thickness (z_ew = 2.22m..2.50m)
+      [0, 1.975],     // Omit skirting across the open Stairwell Void & westWallNewel (Z = -2.50m..-0.53m)
+      [4.65, 5.193],  // Omit skirting inside the 0.46m-thick South wall (z_ew = 2.22m..2.68m)
     ],
     openings: [
       {
@@ -676,7 +684,7 @@ export function buildUpperLanding(
         uCenter: 4.18,
         width: 0.86,
         doorHeight: doorH,
-        lowerFloorY: floorTopY,
+        lowerFloorY: floorTopY - 0.08,
         upperFloorY: floorTopY,
         architraveMaterial: antiqueOakSkirtingMat,
       },
@@ -688,7 +696,7 @@ export function buildUpperLanding(
   {
     const westGableShape = new THREE.Shape();
     westGableShape.moveTo(0, upperWallTopY);
-    westGableShape.lineTo(5.012, upperWallTopY);
+    westGableShape.lineTo(5.193, upperWallTopY);
     westGableShape.lineTo(4.3, upperWallTopY);
     westGableShape.lineTo(3.55, collarCeilingY);
     westGableShape.lineTo(1.35, collarCeilingY);
@@ -710,7 +718,7 @@ export function buildUpperLanding(
       axis: 'x',
       coord: -17.72,
       minSpan: -2.5,
-      maxSpan: 2.5,
+      maxSpan: 2.68,
       floor: 'first',
     });
     scene.add(westUpperGable);
