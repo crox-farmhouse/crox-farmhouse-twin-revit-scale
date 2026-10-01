@@ -264,7 +264,7 @@ export function createFirstFloorShellKit(
     const effFloorY = options?.floorY ?? floorTopY;
 
     const isAngledEastCourtyardWall =
-      !isAlongX && interiorSide === 'west' && rawCx > -18.0 && sMax >= 2.5;
+      !isAlongX && interiorSide === 'west' && Math.abs(rawCx - -17.25) < 0.35 && sMin >= 2.3;
     const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
     const cx = isAngledEastCourtyardWall
       ? getEastCourtyardWallCenterX(sCenter)
@@ -349,7 +349,7 @@ export function createFirstFloorShellKit(
     const cz = (minZ + maxZ) / 2;
     const isAlongX = interiorSide === 'north' || interiorSide === 'south';
     const isAngledEastCourtyardWall =
-      !isAlongX && interiorSide === 'west' && rawCx > -18.0 && maxZ >= 2.5;
+      !isAlongX && interiorSide === 'west' && Math.abs(rawCx - -17.25) < 0.35 && minZ >= 2.3;
     const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
     const cx = isAngledEastCourtyardWall ? getEastCourtyardWallCenterX(cz) : rawCx;
 
@@ -585,7 +585,7 @@ export function createFirstFloorShellKit(
     const winSouth = winCenterZ + winWidth / 2;
     const rawCx = (minX + maxX) / 2;
     const isAngledEastCourtyardWall =
-      interiorSide === 'west' && rawCx > -18.0 && maxZ >= 2.5;
+      interiorSide === 'west' && Math.abs(rawCx - -17.25) < 0.35 && minZ >= 2.3;
     const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
     const cx = isAngledEastCourtyardWall
       ? getEastCourtyardWallCenterX(winCenterZ)
