@@ -51,17 +51,18 @@ export function buildWestWingCorridor(
   //    - Bedroom 3 Built-In North Wardrobe (`X = -22.19m..-20.15m, Z = +3.55m..+4.30m`)
   //      opening South (`+Z`) into Bedroom 3 with Shaker doors & brass handles.
   // =========================================================================
-  // Upper Corridor & North `UP` Lobby polygonal carpeted floor (`oakFloorMat`, Y = 2.08m)
+  // Upper Corridor & Cut-Out North Hallway polygonal carpeted floor (`oakFloorMat`, Y = 2.08m)
   buildPolygonalFloorSlab(
     scene,
     [
-      [-18.85, 2.35],
-      [-17.891, 2.48],
-      [-16.92, 2.61],
+      [-18.95, 1.08],
+      [-17.64, 1.255],
+      [-18.017, 2.661],
+      [-17.133, 2.552],
       [-17.224, 8.27],
       [-18.25, 8.27],
       [-18.25, 3.55],
-      [-18.85, 3.55],
+      [-18.95, 3.55],
     ],
     floorTopY,
     floorTopY - floorBaseY,
@@ -69,13 +70,13 @@ export function buildWestWingCorridor(
     0.5
   );
 
-  // Carpeted 8cm (`2.08m -> 2.16m`) `UP` Step Riser & Rounded Bullnose Nosing along the open
-  // threshold line (`[-17.891, 2.48] -> [-16.92, 2.61]`) between the 3-bedroom wing and Upper Landing!
+  // Carpeted 8cm (`2.08m -> 2.16m`) `UP` Step Riser & Rounded Bullnose Nosing along the West face of
+  // `upperLandingToWestWingPortal` (`[-17.708, 1.246] -> [-17.923, 2.079]`) stepping down into the cut-out hallway!
   {
-    const stepStartX = -17.891;
-    const stepStartZ = 2.48;
-    const stepEndX = -16.92;
-    const stepEndZ = 2.61;
+    const stepStartX = -17.708;
+    const stepStartZ = 1.246;
+    const stepEndX = -17.923;
+    const stepEndZ = 2.079;
     const sdx = stepEndX - stepStartX;
     const sdz = stepEndZ - stepStartZ;
     const stepLen = Math.hypot(sdx, sdz);
@@ -123,8 +124,8 @@ export function buildWestWingCorridor(
     scene,
     [
       [-22.19, 1.905],
-      [-18.85, 2.35],
-      [-18.85, 3.55],
+      [-18.95, 2.34],
+      [-18.95, 3.55],
       [-18.25, 3.55],
       [-18.25, 4.3],
       [-20.15, 4.3],
@@ -169,7 +170,7 @@ export function buildWestWingCorridor(
     { skipSkirting: true }
   );
 
-  // Continuous 45°-mitred antique oak skirting along the East wall of the West Wing Corridor (Z = 2.61m..8.15m at Y = 2.08m)
+  // Continuous 45°-mitred antique oak skirting along the East & North-East wall of the West Wing Corridor (Y = 2.08m)
   {
     const eastWallSlope = (-17.25 - -16.82) / (11.77 - 2.4);
     const getEastInnerX = (wz: number): number =>
@@ -178,7 +179,9 @@ export function buildWestWingCorridor(
     const eastCorridorSkirt = new THREE.Mesh(
       buildMitredWallSkirtingGeometry(
         [
-          [getEastInnerX(2.61), 2.61],
+          [-17.942, 2.152],
+          [-18.017, 2.661],
+          [getEastInnerX(2.61), 2.598],
           [getEastInnerX(8.15), 8.15],
           [-17.258, 8.15],
         ],
@@ -193,7 +196,7 @@ export function buildWestWingCorridor(
     eastCorridorSkirt.userData.cutawayWall = {
       axis: 'x',
       coord: -17.25,
-      minSpan: 2.61,
+      minSpan: 2.15,
       maxSpan: 8.15,
       floor: 'first',
     };
@@ -201,13 +204,14 @@ export function buildWestWingCorridor(
   }
 
   // =========================================================================
-  // UPSTAIRS SHOWER ROOM (`X = -22.19m..-18.85m, Z = +1.905m/+2.35m..+3.55m`
+  // CUT-OUT NORTH HALLWAY & UPSTAIRS SHOWER ROOM (`X = -22.19m..-18.95m, Z = +1.905m/+2.34m..+3.55m`
   // + Walk-In Shower Stall `X = -20.15m..-18.25m, Z = +3.55m..+4.30m`)
   // =========================================================================
-  // 1. Shower Room East Entrance Wall on the West side of the `UP` Lobby (`X = -18.85m, Z = +2.42m..+3.55m`)
+  // 1a. North End Wall of the Cut-Out Hallway (`[-18.95, 1.08] -> [-17.64, 1.255]`, 0.15m thick)
+  //     Separating the North end of the hallway from Bedroom 2 and its East built-in wardrobes!
   buildAngledWallSegment(scene, interactions, {
-    start: [-18.85, 2.42],
-    end: [-18.85, 3.55],
+    start: [-18.95, 1.08],
+    end: [-17.64, 1.255],
     thickness: 0.15,
     topY: upperWallTopY,
     frontFloorY: floorTopY,
@@ -215,14 +219,53 @@ export function buildWestWingCorridor(
     wallMaterial: warmRoomPlasterMat,
     capMaterial: wallCapMat,
     skirtingMaterial: antiqueOakSkirtingMat,
-    addFrontSkirting: false, // Corridor/Lobby side uses continuous 45°-mitred skirting below
-    addBackSkirting: true,   // West (`-X`) face inside the dry Shower Room
-    backSkirtingExclusions: [[1.04, 1.15]],
+    addFrontSkirting: false, // Hallway side uses continuous 45°-mitred skirting in bedroom-3.ts
+    addBackSkirting: true,   // North (`-Z`) face inside Bedroom 2 between X = -18.95m and East wardrobes
+    backSkirtingExclusions: [
+      [0, 0.08],
+      [0.62, 1.33],
+    ],
+  });
+
+  // 1b. Continuous West Wall of the Cut-Out Hallway & `UP` Lobby (`X = -18.95m, Z = +1.08m..+3.55m`, length = 2.47m)
+  //     Contains BOTH `bedroom2Door` (North half, opposite `upperLandingToWestWingPortal`) and `showerRoomDoor` (South half)!
+  buildAngledWallSegment(scene, interactions, {
+    start: [-18.95, 1.08],
+    end: [-18.95, 3.55],
+    thickness: 0.15,
+    topY: upperWallTopY,
+    frontFloorY: floorTopY,
+    backFloorY: floorTopY,
+    wallMaterial: warmRoomPlasterMat,
+    capMaterial: wallCapMat,
+    skirtingMaterial: antiqueOakSkirtingMat,
+    addFrontSkirting: false, // Hallway/Lobby side uses continuous 45°-mitred skirting in bedroom-3.ts
+    addBackSkirting: true,   // West (`-X`) face inside Bedroom 2 (North) and dry Shower Room (South)
+    backSkirtingExclusions: [
+      [0, 0.08],
+      [1.12, 1.4],   // Omit skirting across bed2SouthWallFrame T-junction (Z = 2.20m..2.48m)
+      [2.39, 2.47],
+    ],
     openings: [
+      {
+        id: 'bedroom2Door',
+        kind: 'hinged-door',
+        uCenter: 0.58,
+        width: 0.72,
+        doorHeight: doorH,
+        lowerFloorY: floorTopY,
+        upperFloorY: floorTopY,
+        architraveMaterial: antiqueOakSkirtingMat,
+        doorLeafMaterial: timberDoorMat,
+        hardwareMaterial: brassMat,
+        hingeSide: 'left',
+        openAngle: -Math.PI * 0.45,
+        initialOpenProgress: 0.2,
+      },
       {
         id: 'showerRoomDoor',
         kind: 'hinged-door',
-        uCenter: 0.565,
+        uCenter: 1.905,
         width: 0.68,
         doorHeight: doorH,
         lowerFloorY: floorTopY,

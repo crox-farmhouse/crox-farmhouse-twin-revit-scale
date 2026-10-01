@@ -112,9 +112,9 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'bedroom2Pendant',
     switchPa: '1.2.13',
     location: 'Bedroom 2 — South Wall (by Door)',
-    x: -18.96,
+    x: -19.25,
     y: floorTopY + 1.15,
-    z: 2.19,
+    z: 2.16,
     facing: 'north',
     parentGroup: scene,
   });
