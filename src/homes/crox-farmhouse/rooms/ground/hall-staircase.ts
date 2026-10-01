@@ -911,11 +911,13 @@ export function buildHallStaircase(
 
   // White-Plastered Ceiling Stairwell Trimmer Fascia & Apron along the First Floor gallery edge (X = -15.36m, Z = -1.65m..-0.58m)
   // Leaves the Upper Flight arrival threshold (Z = -2.50m..-1.65m at X = -15.36m, Y = 2.16m) 100% open!
-  const trimmerH = topStepY - 1.92;
+  const trimmerTopY = topStepY - 0.002;
+  const trimmerH = trimmerTopY - 1.92;
   const stairwellEastTrimmer = new THREE.Mesh(
-    new THREE.BoxGeometry(0.12, trimmerH, 1.07),
+    new THREE.BoxGeometry(0.052, trimmerH, 1.07),
     ceilingWhiteMat
   );
+  stairwellEastTrimmer.name = 'hall.stairs.eastTrimmer';
   stairwellEastTrimmer.position.set(-15.36, 1.92 + trimmerH / 2, -1.115);
   stairwellEastTrimmer.castShadow = true;
   stairGroup.add(stairwellEastTrimmer);
