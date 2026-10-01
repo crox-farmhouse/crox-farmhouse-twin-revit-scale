@@ -444,18 +444,19 @@ export function buildEntranceHall(
       metalness: 0.55,
     });
 
-    // Upper spandrel brick backing below the First Floor East corridor return wall (Y = 1.625m..2.16m)
-    const upperSpandrelGeo = new THREE.BoxGeometry(0.28, 2.16 - frontWallH, 1.02);
-    applyWorldSpaceBrickUVs(upperSpandrelGeo, -16.99, (frontWallH + 2.16) / 2, 3.32);
+    // Upper spandrel brick backing below the First Floor East corridor return wall (Y = 1.625m..2.00m, East of X = -16.96m)
+    const spandrelTopY = 2.0;
+    const upperSpandrelGeo = new THREE.BoxGeometry(0.24, spandrelTopY - frontWallH, 1.02);
+    applyWorldSpaceBrickUVs(upperSpandrelGeo, -16.82, (frontWallH + spandrelTopY) / 2, 3.32);
     const upperSpandrelMesh = new THREE.Mesh(upperSpandrelGeo, exteriorBrickMat);
-    upperSpandrelMesh.position.set(-16.99, (frontWallH + 2.16) / 2, 3.32);
+    upperSpandrelMesh.position.set(-16.82, (frontWallH + spandrelTopY) / 2, 3.32);
     upperSpandrelMesh.castShadow = true;
     upperSpandrelMesh.receiveShadow = true;
     jutRoofGroup.add(upperSpandrelMesh);
 
-    // Pitched triangular brick cheek / gable infill across X = -16.86m..-16.16m, Z = 2.83m..3.83m
-    const cheekW = 0.7; // X = -16.86m to -16.16m
-    const cheekH = 0.52; // Y = 1.64m at East eaves (-16.16m) rising to 2.16m at West wall (-16.86m)
+    // Pitched triangular brick cheek / gable infill across X = -16.82m..-16.16m, Z = 2.83m..3.83m
+    const cheekW = 0.66; // X = -16.82m to -16.16m
+    const cheekH = 0.36; // Y = 1.64m at East eaves (-16.16m) rising to 2.00m at West wall (-16.82m)
     const cheekGeo = new THREE.BoxGeometry(cheekW, cheekH, 1.0);
     const cheekPos = cheekGeo.attributes.position;
     if (cheekPos) {
@@ -468,17 +469,18 @@ export function buildEntranceHall(
       }
       cheekPos.needsUpdate = true;
       cheekGeo.computeVertexNormals();
+      cheekGeo.userData.isSheared = true;
     }
-    applyWorldSpaceBrickUVs(cheekGeo, -16.51, frontWallH + 0.015 + cheekH / 2, 3.33);
+    applyWorldSpaceBrickUVs(cheekGeo, -16.49, frontWallH + 0.015 + cheekH / 2, 3.33);
     const cheekMesh = new THREE.Mesh(cheekGeo, exteriorBrickMat);
-    cheekMesh.position.set(-16.51, frontWallH + 0.015 + cheekH / 2, 3.33);
+    cheekMesh.position.set(-16.49, frontWallH + 0.015 + cheekH / 2, 3.33);
     cheekMesh.castShadow = true;
     cheekMesh.receiveShadow = true;
     jutRoofGroup.add(cheekMesh);
 
-    // Pitched Welsh slate lean-to roof slope (X = -16.87m..-16.13m, Z = 2.83m..3.895m, flush with Hall South brick wall)
-    const runX = 0.74;
-    const riseY = 0.54;
+    // Pitched Welsh slate lean-to roof slope (X = -16.82m..-16.13m, Z = 2.83m..3.895m, flush with Hall South brick wall)
+    const runX = 0.69;
+    const riseY = 0.38;
     const slopeLen = Math.hypot(runX, riseY);
     const pitchAngle = Math.atan2(riseY, runX);
     const jutRoofCenterZ = 3.3625;
@@ -487,7 +489,7 @@ export function buildEntranceHall(
       new THREE.BoxGeometry(slopeLen, 0.055, jutRoofSpanZ),
       jutSlateMat
     );
-    slateSlopeMesh.position.set(-16.5, frontWallH + 0.295, jutRoofCenterZ);
+    slateSlopeMesh.position.set(-16.475, frontWallH + 0.215, jutRoofCenterZ);
     slateSlopeMesh.rotation.z = -pitchAngle;
     slateSlopeMesh.castShadow = true;
     slateSlopeMesh.receiveShadow = true;
@@ -495,10 +497,10 @@ export function buildEntranceHall(
 
     // Lead abutment flashing against the First Floor brickwork & North Hall brick wall
     const topFlashing = new THREE.Mesh(
-      new THREE.BoxGeometry(0.06, 0.11, jutRoofSpanZ),
+      new THREE.BoxGeometry(0.05, 0.09, jutRoofSpanZ),
       leadFlashingMat
     );
-    topFlashing.position.set(-16.85, frontWallH + 0.56, jutRoofCenterZ);
+    topFlashing.position.set(-16.79, frontWallH + 0.4, jutRoofCenterZ);
     jutRoofGroup.add(topFlashing);
 
     const northAbutmentFlashing = new THREE.Mesh(

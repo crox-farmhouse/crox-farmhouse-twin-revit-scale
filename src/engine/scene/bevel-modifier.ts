@@ -76,6 +76,26 @@ export function applySelectiveBevelModifier(layers: PropertySceneLayers): void {
     const h = params.height ?? 1;
     const d = params.depth ?? 1;
 
+    // Never overwrite BoxGeometries whose vertices were sheared, tapered, or translated in-place!
+    if (obj.geometry.userData?.isSheared) {
+      return;
+    }
+    const posAttr = obj.geometry.getAttribute('position');
+    if (posAttr && posAttr.count === 24) {
+      const hw = w * 0.5;
+      const hh = h * 0.5;
+      const hd = d * 0.5;
+      for (let i = 0; i < 24; i++) {
+        if (
+          Math.abs(Math.abs(posAttr.getX(i)) - hw) > 1e-3 ||
+          Math.abs(Math.abs(posAttr.getY(i)) - hh) > 1e-3 ||
+          Math.abs(Math.abs(posAttr.getZ(i)) - hd) > 1e-3
+        ) {
+          return;
+        }
+      }
+    }
+
     const dims = [w, h, d].sort((a, b) => a - b);
     const minDim = dims[0];
     const midDim = dims[1];

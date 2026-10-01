@@ -130,16 +130,19 @@ export function buildBedroom3(
   });
 
   // South Load-Bearing Cross-Wall between Bedroom 3 / Upper Corridor and Bedroom 4
-  // (0.24m thick, Z = +8.15m..+8.39m, X = -17.23m..-22.19m) with doorway centered in the Corridor at X = -17.71m
-  addUpperInteriorWall(-20.175, floorTopY, upperWallTopY, 8.27, 4.03, 0.24, warmRoomPlasterMat, {
+  // (0.24m thick, Z = +8.15m..+8.39m, X = -17.22m..-22.19m) with doorway centered in the Corridor at X = -17.70m (width = 0.78m)
+  addUpperInteriorWall(-20.14, floorTopY, upperWallTopY, 8.27, 4.1, 0.24, warmRoomPlasterMat, {
     skirtingSides: [1], // South (+Z) face inside Bedroom 4
     skirtingMin: -22.19,
-    skirtingMax: -18.242,
+    skirtingMax: -18.17,
   });
-  addUpperInteriorWall(-17.71, floorTopY + doorH, upperWallTopY, 8.27, 0.9, 0.24, warmRoomPlasterMat, {
+  addUpperInteriorWall(-17.265, floorTopY, upperWallTopY, 8.27, 0.09, 0.24, warmRoomPlasterMat, {
     skipSkirting: true,
   });
-  addUpperInteractiveDoor('x', 8.27, 0.24, -17.71, 0.9, Math.PI * 0.48);
+  addUpperInteriorWall(-17.655, floorTopY + doorH, upperWallTopY, 8.27, 0.87, 0.24, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
+  addUpperInteractiveDoor('x', 8.27, 0.24, -17.7, 0.78, Math.PI * 0.48);
 
   // Issue #7: Continuous 45°-mitred skirting along the South wall & Chimney Breast of Bedroom 3
   const bed3SouthMitredSkirt = new THREE.Mesh(

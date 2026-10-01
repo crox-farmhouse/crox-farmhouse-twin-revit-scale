@@ -58,7 +58,7 @@ export function buildWestWingCorridor(
       [-18.85, 2.35],
       [-17.891, 2.48],
       [-16.92, 2.61],
-      [-17.23, 8.27],
+      [-17.224, 8.27],
       [-18.25, 8.27],
       [-18.25, 3.55],
       [-18.85, 3.55],
@@ -70,12 +70,12 @@ export function buildWestWingCorridor(
   );
 
   // Carpeted 8cm (`2.08m -> 2.16m`) `UP` Step Riser & Rounded Bullnose Nosing along the open
-  // threshold line (`[-17.891, 2.48] -> [-16.92, 2.61]`) between the 3-bedroom wing and Upper Landing!
+  // threshold line (`[-17.891, 2.48] -> [-16.95, 2.606]`) between the 3-bedroom wing and Upper Landing!
   {
     const stepStartX = -17.891;
     const stepStartZ = 2.48;
-    const stepEndX = -16.92;
-    const stepEndZ = 2.61;
+    const stepEndX = -16.955;
+    const stepEndZ = 2.606;
     const sdx = stepEndX - stepStartX;
     const sdz = stepEndZ - stepStartZ;
     const stepLen = Math.hypot(sdx, sdz);
@@ -154,12 +154,13 @@ export function buildWestWingCorridor(
     { skirtingMin: 2.045, skirtingMax: 3.475 }
   );
 
-  // Continuous Flat East Courtyard Exterior Brick Wall along the West Wing Upper Corridor (Z = +2.61m..+8.15m)
-  // Issue #3: Emits ONE single continuous sheared skirting run from Z = +2.61m to Z = +8.15m!
+  // Continuous Flat East Courtyard Exterior Brick Wall along the West Wing Upper Corridor (Z = +2.29m..+8.15m)
+  // Starts at Z = +2.29m so its warm-plastered interior West (-X) face meets Upper Landing's South wall
+  // with zero exposed brick at the UP corner!
   addUpperBrickWallAlongZWithWindow(
     -17.39,
     -17.11,
-    2.61,
+    2.29,
     8.15,
     5.92,
     1.45,
@@ -167,8 +168,63 @@ export function buildWestWingCorridor(
     3.94,
     'west',
     3,
-    { skirtingMin: 2.61, skirtingMax: 8.15 }
+    { skipSkirting: true }
   );
+
+  // Continuous 45°-mitred antique oak skirting along the East wall of the West Wing Corridor (Z = 2.606m..8.15m at Y = 2.08m)
+  // and the short Upper Landing return (Z = 2.29m..2.606m at Y = 2.16m)
+  {
+    const eastWallSlope = (-17.25 - -16.82) / (11.77 - 2.4);
+    const getEastInnerX = (wz: number): number =>
+      -16.82 + eastWallSlope * (wz - 2.4) - 0.14;
+
+    const eastCorridorSkirt = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(
+        [
+          [getEastInnerX(2.606), 2.606],
+          [getEastInnerX(8.15), 8.15],
+          [-17.258, 8.15],
+        ],
+        floorTopY
+      ),
+      antiqueOakSkirtingMat
+    );
+    eastCorridorSkirt.name = 'westWingCorridor.eastWallMitredSkirting';
+    eastCorridorSkirt.castShadow = true;
+    eastCorridorSkirt.receiveShadow = true;
+    eastCorridorSkirt.userData.isCutawayWall = true;
+    eastCorridorSkirt.userData.cutawayWall = {
+      axis: 'x',
+      coord: -17.25,
+      minSpan: 2.29,
+      maxSpan: 8.15,
+      floor: 'first',
+    };
+    scene.add(eastCorridorSkirt);
+
+    const eastLandingReturnSkirt = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(
+        [
+          [getEastInnerX(2.29), 2.29],
+          [getEastInnerX(2.606), 2.606],
+        ],
+        landingFloorTopY
+      ),
+      antiqueOakSkirtingMat
+    );
+    eastLandingReturnSkirt.name = 'westWingCorridor.eastLandingReturnSkirting';
+    eastLandingReturnSkirt.castShadow = true;
+    eastLandingReturnSkirt.receiveShadow = true;
+    eastLandingReturnSkirt.userData.isCutawayWall = true;
+    eastLandingReturnSkirt.userData.cutawayWall = {
+      axis: 'x',
+      coord: -17.25,
+      minSpan: 2.29,
+      maxSpan: 8.15,
+      floor: 'first',
+    };
+    scene.add(eastLandingReturnSkirt);
+  }
 
   // =========================================================================
   // UPSTAIRS SHOWER ROOM (`X = -22.19m..-18.85m, Z = +1.905m/+2.35m..+3.55m`

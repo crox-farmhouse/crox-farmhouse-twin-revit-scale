@@ -58,11 +58,9 @@ export function buildBedroom4(
     skipSkirting: true,
   });
 
-  // East Courtyard Exterior Brick Wall of Bedroom 4 (X = -17.39m..-17.11m, Z = +8.15m..+11.77m, Y = 2.06m..4.16m)
-  // Skirting clamped between North cross-wall (Z = 8.39m) and SE alcove cupboards (Z = 10.85m)
+  // East Courtyard Exterior Brick Wall of Bedroom 4 (X = -17.39m..-17.11m, Z = +8.15m..+11.77m, Y = 2.00m..4.16m)
   addUpperExteriorBrickWall(-17.39, -17.11, 8.15, 11.77, floorBaseY, upperWallTopY, 'west', {
-    skirtingMin: 8.39,
-    skirtingMax: 10.85,
+    skipSkirting: true,
   });
 
   // Two side-by-side Built-In Alcove Cupboards along the South Gable Wall East of the Chimney Breast
@@ -112,23 +110,30 @@ export function buildBedroom4(
     scene.add(cupGroup);
   }
 
-  // Issue #7: Continuous 45°-mitred skirting along Bedroom 4 South Alcove Cupboards, Chimney Breast, and SW Alcove
-  const bed4SouthMitredSkirt = new THREE.Mesh(
-    buildMitredWallSkirtingGeometry(
-      [
-        [-17.36, 10.85],
-        [-19.25, 10.85],
-        [-19.25, 11.09],
-        [-20.45, 11.09],
-        [-20.45, 11.49],
-        [-22.19, 11.49],
-      ],
-      floorTopY
-    ),
-    antiqueOakSkirtingMat
-  );
-  bed4SouthMitredSkirt.name = 'bedroom4.southWallMitredSkirting';
-  bed4SouthMitredSkirt.castShadow = true;
-  bed4SouthMitredSkirt.receiveShadow = true;
-  scene.add(bed4SouthMitredSkirt);
+  // Issue #7: Continuous 45°-mitred skirting along Bedroom 4 East Wall, South Alcove Cupboards, Chimney Breast, and SW Alcove
+  {
+    const eastWallSlope = (-17.25 - -16.82) / (11.77 - 2.4);
+    const getEastInnerX = (wz: number): number =>
+      -16.82 + eastWallSlope * (wz - 2.4) - 0.14;
+
+    const bed4SouthMitredSkirt = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(
+        [
+          [getEastInnerX(8.39), 8.39],
+          [getEastInnerX(10.85), 10.85],
+          [-19.25, 10.85],
+          [-19.25, 11.09],
+          [-20.45, 11.09],
+          [-20.45, 11.49],
+          [-22.19, 11.49],
+        ],
+        floorTopY
+      ),
+      antiqueOakSkirtingMat
+    );
+    bed4SouthMitredSkirt.name = 'bedroom4.southWallMitredSkirting';
+    bed4SouthMitredSkirt.castShadow = true;
+    bed4SouthMitredSkirt.receiveShadow = true;
+    scene.add(bed4SouthMitredSkirt);
+  }
 }

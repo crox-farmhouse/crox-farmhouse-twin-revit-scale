@@ -233,6 +233,9 @@ export function createGroundFloorShellKit(
       }
       pos.needsUpdate = true;
       geo.computeVertexNormals();
+      geo.computeBoundingBox();
+      geo.computeBoundingSphere();
+      geo.userData.isSheared = true;
     }
     return geo;
   };

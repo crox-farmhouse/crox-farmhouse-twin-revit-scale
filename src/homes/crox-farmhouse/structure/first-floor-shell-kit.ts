@@ -233,6 +233,9 @@ export function createFirstFloorShellKit(
       }
       pos.needsUpdate = true;
       geo.computeVertexNormals();
+      geo.computeBoundingBox();
+      geo.computeBoundingSphere();
+      geo.userData.isSheared = true;
     }
     return geo;
   };
