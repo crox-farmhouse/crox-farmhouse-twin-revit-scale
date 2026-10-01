@@ -58,10 +58,10 @@ export function buildFamilyBathroom(
     { skirtingMin: -12.81, skirtingMax: -9.8 }
   );
 
-  // South Courtyard Exterior Brick Wall of Upper Passage (Z = +2.40m..+2.68m, X = -12.81m..-9.56m)
+  // South Courtyard Exterior Brick Wall of Upper Passage (Z = +2.40m..+2.68m, X = -12.93m..-9.56m)
   // Skirting clamped to [-12.81, -9.80] so it never pokes through the Main Bedroom cross-wall corner (Issue #2!)
   addUpperBrickWallAlongXWithWindow(
-    -12.81,
+    -12.93,
     -9.56,
     2.4,
     2.68,
@@ -615,6 +615,7 @@ export function buildFamilyBathroom(
   // Open passage/doorway at Z = +1.55m with cased antique oak architrave portal matching downstairs
   addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, -0.7, 0.24, 3.6, warmRoomPlasterMat, {
     skipSkirting: true,
+    skipCap: true,
   });
   // Clean skirting segments on the X = -12.93m Cross-Wall (stopping at North stringer Z = -2.478m, East Chimney Breast, and South Landing Wall Z = +2.22m on West side; and Shower on East side)
   for (const [sideSign, z0, z1] of [
@@ -642,13 +643,17 @@ export function buildFamilyBathroom(
     skirtCap.receiveShadow = true;
     scene.add(skirtCap);
   }
-  addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, 2.2, 0.24, 0.4, warmRoomPlasterMat, {
+  // Issue #11: Stop the South cross-wall pier at `Z = 2.398m` (`z = 2.199, d = 0.398`) and inset its East face by `2mm` across `Z = 2.22m..2.40m`
+  // so it never Z-fights with the `+X` face of the Upper Landing South wall (`Z = 2.22m..2.68m`)!
+  addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, 2.199, 0.24, 0.398, warmRoomPlasterMat, {
     skirtingSides: [1],
     skirtingMin: 2.082,
     skirtingMax: 2.4,
+    skipCap: true,
   });
   addUpperInteriorWall(-12.93, floorTopY + doorH, upperWallTopY, 1.55, 0.24, 0.9, warmRoomPlasterMat, {
     skipSkirting: true,
+    skipCap: true,
   });
   addCasedArchitravePortal(scene, {
     axis: 'z',
@@ -663,22 +668,25 @@ export function buildFamilyBathroom(
     namePrefix: 'upperLanding.eastPassagePortal',
   });
 
-  // Issue #5: Trapezoidal Upper Gable Extension on the X = -12.93m Cross-Wall (Y = 4.16m..4.52m)
+  // Issue #5, #9 & #10: Full-Span Trapezoidal Upper Gable Extension on the X = -12.93m Cross-Wall (Y = 4.14m..4.535m)
   {
     const crossGableShape = new THREE.Shape();
-    crossGableShape.moveTo(-1.9, upperWallTopY);
-    crossGableShape.lineTo(1.8, upperWallTopY);
-    crossGableShape.lineTo(1.05, collarCeilingY);
-    crossGableShape.lineTo(-1.15, collarCeilingY);
+    crossGableShape.moveTo(-2.54, upperWallTopY - 0.02);
+    crossGableShape.lineTo(2.44, upperWallTopY - 0.02);
+    crossGableShape.lineTo(2.44, upperWallTopY + 0.015);
+    crossGableShape.lineTo(1.05, collarCeilingY + 0.015);
+    crossGableShape.lineTo(-1.15, collarCeilingY + 0.015);
+    crossGableShape.lineTo(-2.54, upperWallTopY + 0.015);
     crossGableShape.closePath();
     const crossGableGeo = new THREE.ExtrudeGeometry(crossGableShape, {
       depth: 0.24,
       bevelEnabled: false,
     });
-    crossGableGeo.rotateY(Math.PI / 2);
-    crossGableGeo.translate(-12.93 - 0.12, 0, 0);
+    crossGableGeo.rotateY(-Math.PI / 2);
+    crossGableGeo.translate(-12.93 + 0.12, 0, 0);
     const crossGableMesh = new THREE.Mesh(crossGableGeo, warmRoomPlasterMat);
     crossGableMesh.name = 'familyBathroom.westWallUpperGable';
+    crossGableMesh.userData.isArchitecturalShell = true;
     crossGableMesh.castShadow = true;
     crossGableMesh.receiveShadow = true;
     scene.add(crossGableMesh);

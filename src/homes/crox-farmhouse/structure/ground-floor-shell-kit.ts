@@ -65,9 +65,9 @@ export function createGroundFloorShellKit(
 
     const topEdgeY = y + h / 2;
     if (Math.abs(topEdgeY - wallH) < 0.05 || Math.abs(topEdgeY - frontWallH) < 0.05) {
-      const cap = new THREE.Mesh(new THREE.BoxGeometry(w + 0.004, 0.025, d + 0.004), wallCapMat);
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(w + 0.004, 0.016, d + 0.004), wallCapMat);
       cap.userData.isArchitecturalShell = true;
-      cap.position.set(x, topEdgeY + 0.012, z);
+      cap.position.set(x, topEdgeY - 0.006, z);
       scene.add(cap);
     }
 

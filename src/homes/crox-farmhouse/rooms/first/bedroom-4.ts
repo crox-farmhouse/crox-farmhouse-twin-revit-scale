@@ -36,7 +36,7 @@ export function buildBedroom4(
   // 7. BEDROOM 4 (4.95m x 3.20m / 16'3" x 10'6")
   //    Directly above Study & Study Lobby: X = -17.25m..-22.19m, Z = +8.39m..+11.49m
   // =========================================================================
-  addFirstFloorSlab(-22.19, -17.25, 8.39, 11.49, oakFloorMat);
+  addFirstFloorSlab(-22.19, -17.25, 8.27, 11.49, oakFloorMat);
 
   // West Front Exterior Brick Wall of Bedroom 4 (X = -22.47m..-22.19m, Z = +8.39m..+11.77m)
   // With 3-pane Georgian casement window centered at Z = +9.94m (rightmost upper window on West front facade in Photo 2!)
@@ -60,33 +60,54 @@ export function buildBedroom4(
     skipSkirting: true,
   });
 
-  // Issue #6 & #7: Full-span vaulted upper gable on Bedroom 4 South Wall (Y = 4.16m..4.52m),
-  // offset cleanly inside the room (`Z = 11.488m..11.728m`) so exterior brick (`Z = 11.53m..11.77m`) never bleeds through!
+  // Issue #6 & #7: Full-span vaulted upper gable on Bedroom 4 South Wall (Y = 4.14m..4.545m),
+  // overlapping 2cm into the lower wall and 2.5cm into the vaulted ceiling slab with a 3-segment cutaway cap to prevent directional shadow-map light leakage!
   {
+    const southGableDescriptor = {
+      axis: 'z' as const,
+      coord: 11.63,
+      minSpan: -22.47,
+      maxSpan: -17.11,
+      floor: 'first' as const,
+    };
     const southGableShape = new THREE.Shape();
-    southGableShape.moveTo(-22.19, upperWallTopY);
-    southGableShape.lineTo(-17.25, upperWallTopY);
-    southGableShape.lineTo(-18.75, collarCeilingY);
-    southGableShape.lineTo(-20.85, collarCeilingY);
+    southGableShape.moveTo(-22.25, upperWallTopY - 0.02);
+    southGableShape.lineTo(-17.22, upperWallTopY - 0.02);
+    southGableShape.lineTo(-17.22, upperWallTopY + 0.025);
+    southGableShape.lineTo(-18.75, collarCeilingY + 0.025);
+    southGableShape.lineTo(-20.85, collarCeilingY + 0.025);
+    southGableShape.lineTo(-22.25, upperWallTopY + 0.025);
     southGableShape.closePath();
     const southGableGeo = new THREE.ExtrudeGeometry(southGableShape, {
       depth: 0.24,
       bevelEnabled: false,
     });
-    southGableGeo.translate(0, 0, 11.488);
+    southGableGeo.translate(0, 0, 11.49);
     const southUpperGable = new THREE.Mesh(southGableGeo, warmRoomPlasterMat);
     southUpperGable.name = 'bedroom4.southWallUpperGable';
     southUpperGable.userData.isArchitecturalShell = true;
     southUpperGable.castShadow = true;
     southUpperGable.receiveShadow = true;
-    tagUpperCutawayWall(southUpperGable, {
-      axis: 'z',
-      coord: 11.63,
-      minSpan: -22.47,
-      maxSpan: -17.11,
-      floor: 'first',
-    });
+    tagUpperCutawayWall(southUpperGable, southGableDescriptor);
     scene.add(southUpperGable);
+
+    for (const [x0, y0, x1, y1] of [
+      [-22.25, upperWallTopY, -20.85, collarCeilingY],
+      [-20.85, collarCeilingY, -18.75, collarCeilingY],
+      [-18.75, collarCeilingY, -17.22, upperWallTopY],
+    ] as const) {
+      const segLen = Math.hypot(x1 - x0, y1 - y0);
+      const segAngle = Math.atan2(y1 - y0, x1 - x0);
+      const capMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(segLen + 0.01, 0.025, 0.244),
+        wallCapMat
+      );
+      capMesh.userData.isArchitecturalShell = true;
+      capMesh.position.set((x0 + x1) / 2, (y0 + y1) / 2 + 0.012, 11.61);
+      capMesh.rotation.z = segAngle;
+      tagUpperCutawayWall(capMesh, southGableDescriptor);
+      scene.add(capMesh);
+    }
   }
 
   // Bedroom 4 South Chimney Breast rising cleanly to the 4.52m collar ceiling

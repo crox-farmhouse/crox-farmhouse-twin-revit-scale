@@ -11,7 +11,7 @@ import type { createFirstFloorShellKit } from '../../structure/first-floor-shell
  */
 export function buildMainBedroom(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBrickWallAlongXWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
@@ -24,7 +24,6 @@ export function buildMainBedroom(
     addUpperInteriorWall,
     antiqueOakSkirtingMat,
     doorH,
-    floorBaseY,
     floorTopY,
     oakFloorMat,
     upperWallTopY,
@@ -79,17 +78,13 @@ export function buildMainBedroom(
 
   const collarCeilingY = 4.52;
 
-  // East Chimney Breast in Main Bedroom continuing directly above the Dining Room Chimney Breast
-  // (X = -4.96m..-4.64m, Z = -0.85m..+0.82m, width 0.32m, depth 1.67m, rising from floorBaseY = 2.06m to collarCeilingY = 4.52m — Issue #5 & Issue #12)
-  addUpperInteriorWall(-4.8, floorBaseY, collarCeilingY, -0.015, 0.32, 1.67, warmRoomPlasterMat, {
-    skipSkirting: true,
-  });
-
   // =========================================================================
   // FULL-WIDTH BANK OF 4 BUILT-IN SHAKER WARDROBES ALONG THE EAST WALL
   // (`X = -5.26m..-4.64m, Z = -2.50m..+2.35m`, facing West `-X` into Main Bedroom)
-  // Matching `ff_rotated_3d_axes.png`: a continuous run of 4 built-in double
-  // wardrobes along the entire East wall of the Main Bedroom.
+  // Issue #8 ("Some weerid boxing here, wardrobes should go right to the top"):
+  // Continuous full-height Shaker wardrobe carcass (`wardrobeMat`) rising all the way
+  // up to the vaulted ceiling (`Y = 4.16m` at the eaves pitching up to `Y = 4.52m` at the collar),
+  // with zero protruding step or separate boxing above the wardrobes!
   // =========================================================================
   {
     const eastWardGroup = new THREE.Group();
@@ -98,16 +93,46 @@ export function buildMainBedroom(
     const wardH = upperWallTopY - floorTopY;
     const totalZ = 4.85; // Z = -2.50m .. +2.35m
     const centerZ = -0.075;
-    const centerX = -4.95;
 
-    const carcass = new THREE.Mesh(
-      new THREE.BoxGeometry(wardD, wardH, totalZ),
-      wardrobeMat
-    );
-    carcass.position.set(centerX, floorTopY + wardH / 2, centerZ);
+    // Full-height vaulted wardrobe carcass (`Y = floorTopY..collarCeilingY`, `Z = -2.50m..+2.35m`)
+    const carcassShape = new THREE.Shape();
+    carcassShape.moveTo(-2.5, floorTopY);
+    carcassShape.lineTo(2.35, floorTopY);
+    carcassShape.lineTo(2.35, upperWallTopY + 0.02);
+    carcassShape.lineTo(1.05, collarCeilingY + 0.015);
+    carcassShape.lineTo(-1.15, collarCeilingY + 0.015);
+    carcassShape.lineTo(-2.5, upperWallTopY + 0.02);
+    carcassShape.closePath();
+    const carcassGeo = new THREE.ExtrudeGeometry(carcassShape, {
+      depth: wardD,
+      bevelEnabled: false,
+    });
+    carcassGeo.rotateY(-Math.PI / 2);
+    carcassGeo.translate(-4.64, 0, 0);
+    const carcass = new THREE.Mesh(carcassGeo, wardrobeMat);
+    carcass.name = 'mainBedroom.eastWardrobes.carcass';
     carcass.castShadow = true;
     carcass.receiveShadow = true;
     eastWardGroup.add(carcass);
+
+    // Raked Shaker crown cornice moulding following the vaulted ceiling profile along the front of the wardrobes (`X = -5.28m..-5.24m`)
+    for (const [z0, y0, z1, y1] of [
+      [-2.5, upperWallTopY + 0.008, -1.15, collarCeilingY],
+      [-1.15, collarCeilingY, 1.05, collarCeilingY],
+      [1.05, collarCeilingY, 2.35, upperWallTopY + 0.023],
+    ] as const) {
+      const segLen = Math.hypot(z1 - z0, y1 - y0);
+      const segAngle = Math.atan2(y1 - y0, z1 - z0);
+      const corniceSeg = new THREE.Mesh(
+        new THREE.BoxGeometry(0.036, 0.044, segLen + 0.02),
+        wardrobeMat
+      );
+      corniceSeg.name = 'mainBedroom.eastWardrobes.cornice';
+      corniceSeg.position.set(-5.26 - 0.008, (y0 + y1) / 2 - 0.02, (z0 + z1) / 2);
+      corniceSeg.rotation.x = -segAngle;
+      corniceSeg.castShadow = true;
+      eastWardGroup.add(corniceSeg);
+    }
 
     // Continuous antique oak skirting plinth + top cap along the front face (`X = -5.26m`) of the East wardrobes
     const wardSkirt = new THREE.Mesh(
@@ -151,12 +176,15 @@ export function buildMainBedroom(
   // Doorway at Z = +1.55m
   addUpperInteriorWall(-9.68, floorTopY, upperWallTopY, -0.7, 0.24, 3.6, warmRoomPlasterMat, {
     skipSkirting: true,
+    skipCap: true,
   });
   addUpperInteriorWall(-9.68, floorTopY, upperWallTopY, 2.2, 0.24, 0.4, warmRoomPlasterMat, {
     skipSkirting: true,
+    skipCap: true,
   });
   addUpperInteriorWall(-9.68, floorTopY + doorH, upperWallTopY, 1.55, 0.24, 0.9, warmRoomPlasterMat, {
     skipSkirting: true,
+    skipCap: true,
   });
   // Clean skirting segments on both sides of the X = -9.68m Cross-Wall (Issue #2 & Issue #7: zero protruding ends!)
   for (const [sideSign, z0, z1] of [
@@ -184,25 +212,29 @@ export function buildMainBedroom(
   }
   addUpperInteractiveDoor('z', -9.68, 0.24, 1.55, 0.9, Math.PI * 0.48);
 
-  // Issue #5: Trapezoidal Upper Gable Extensions on the West (X = -9.68m) and East (X = -4.52m) Cross-Walls (Y = 4.16m..4.52m)
+  // Issue #5, #9 & #10: Full-Span Trapezoidal Upper Gable Extensions on the West (X = -9.68m) and East (X = -4.52m) Cross-Walls (Y = 4.14m..4.535m)
+  // Using `rotateY(-Math.PI / 2)` so Shape X maps directly to `+z_ew` (`-2.54m..+2.44m` at `Y = 4.16m` pitching to `-1.15m..+1.05m` at `Y = 4.52m`) with zero gap!
   for (const [gableX, gableName] of [
     [-9.68, 'mainBedroom.westWallUpperGable'],
     [-4.52, 'mainBedroom.eastWallUpperGable'],
   ] as const) {
     const gableShape = new THREE.Shape();
-    gableShape.moveTo(-1.9, upperWallTopY);
-    gableShape.lineTo(1.8, upperWallTopY);
-    gableShape.lineTo(1.05, collarCeilingY);
-    gableShape.lineTo(-1.15, collarCeilingY);
+    gableShape.moveTo(-2.54, upperWallTopY - 0.02);
+    gableShape.lineTo(2.44, upperWallTopY - 0.02);
+    gableShape.lineTo(2.44, upperWallTopY + 0.015);
+    gableShape.lineTo(1.05, collarCeilingY + 0.015);
+    gableShape.lineTo(-1.15, collarCeilingY + 0.015);
+    gableShape.lineTo(-2.54, upperWallTopY + 0.015);
     gableShape.closePath();
     const gableGeo = new THREE.ExtrudeGeometry(gableShape, {
       depth: 0.24,
       bevelEnabled: false,
     });
-    gableGeo.rotateY(Math.PI / 2);
-    gableGeo.translate(gableX - 0.12, 0, 0);
+    gableGeo.rotateY(-Math.PI / 2);
+    gableGeo.translate(gableX + 0.12, 0, 0);
     const gableMesh = new THREE.Mesh(gableGeo, warmRoomPlasterMat);
     gableMesh.name = gableName;
+    gableMesh.userData.isArchitecturalShell = true;
     gableMesh.castShadow = true;
     gableMesh.receiveShadow = true;
     scene.add(gableMesh);

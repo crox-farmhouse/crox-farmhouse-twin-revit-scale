@@ -439,8 +439,8 @@ export function createFirstFloorShellKit(
       readonly floorY?: number;
     }
   ): void => {
-    const effSillY = Math.max(sillY, 3.02);
-    const effHeadY = Math.min(headY, 3.78);
+    const effSillY = Math.max(sillY, 2.97);
+    const effHeadY = Math.min(headY, 3.83);
     const winLeft = winCenterX - winWidth / 2;
     const winRight = winCenterX + winWidth / 2;
 
@@ -587,8 +587,8 @@ export function createFirstFloorShellKit(
       readonly floorY?: number;
     }
   ): void => {
-    const effSillY = Math.max(sillY, 3.02);
-    const effHeadY = Math.min(headY, 3.78);
+    const effSillY = Math.max(sillY, 2.97);
+    const effHeadY = Math.min(headY, 3.83);
     const winNorth = winCenterZ - winWidth / 2;
     const winSouth = winCenterZ + winWidth / 2;
     const rawCx = (minX + maxX) / 2;

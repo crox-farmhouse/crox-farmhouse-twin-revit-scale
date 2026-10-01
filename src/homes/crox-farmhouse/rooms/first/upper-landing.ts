@@ -249,12 +249,12 @@ export function buildUpperLanding(
     scene.add(northWallMidBeam);
   }
 
-  // Issues #4 & #6: Continuous 0.46m-thick South Wall of Main Stair Landing (Z = +2.22m..+2.68m, X = -17.80m..-12.81m)
-  // Runs seamlessly all the way to the West Cross-Wall (`x_ew = -17.80m`) with one continuous antique oak skirting board
-  // (`skirtingMin: -17.768, skirtingMax: -13.072`) so there is zero wall-thickness step or skirting seam at `x_ew = -17.12m`!
+  // Issues #4, #6 & #11: Continuous 0.46m-thick South Wall of Main Stair Landing (Z = +2.22m..+2.68m, X = -17.80m..-12.93m)
+  // Stops at `x_ew = -12.93m` inside the East cross-wall (`x_ew = -13.05m..-12.81m`) so its `+X` brick end face never Z-fights
+  // with the East face of the cross-wall at `x_ew = -12.81m` (Issue #11)!
   addUpperBrickWallAlongXWithWindow(
     -17.8,
-    -12.81,
+    -12.93,
     2.22,
     2.68,
     -15.35,
@@ -265,6 +265,27 @@ export function buildUpperLanding(
     3,
     { skirtingMin: -17.768, skirtingMax: -13.072 }
   );
+
+  // Top interior plaster frieze strip (`Y = 4.15m..4.225m, Z = 2.22m..2.45m`) sealing the inner face (`Z = 2.22m`)
+  // of the 0.46m-thick Upper Landing South wall up to `eastWing.vaultedCeiling.southSkeiling` (Issue #9)
+  {
+    const southTopFrieze = new THREE.Mesh(
+      new THREE.BoxGeometry(-12.93 - -17.8, 0.075, 0.23),
+      warmRoomPlasterMat
+    );
+    southTopFrieze.name = 'upperLanding.southWallTopFrieze';
+    southTopFrieze.userData.isArchitecturalShell = true;
+    southTopFrieze.position.set((-17.8 + -12.93) / 2, upperWallTopY + 0.0275, 2.335);
+    southTopFrieze.receiveShadow = true;
+    tagUpperCutawayWall(southTopFrieze, {
+      axis: 'z',
+      coord: 2.45,
+      minSpan: -17.8,
+      maxSpan: -12.93,
+      floor: 'first',
+    });
+    scene.add(southTopFrieze);
+  }
 
   // Interior warm plaster cladding on the South (`z_ew = +2.68m`) corridor-facing segment (`x_ew = -18.04m..-16.956m`)
   // where the Upper Landing South wall separates the Landing (`Y = 2.16m`) from the West Wing Corridor (`Y = 2.08m`).
@@ -691,16 +712,16 @@ export function buildUpperLanding(
     ],
   });
 
-  // Issue #5: Upper Vaulted Trapezoidal Gable Extension on the West Landing Cross-Wall (Y = 4.16m..4.52m)
-  // Matches the exact North & South skeiling slopes (Z = -1.90m..+1.80m at Y = 4.16m tapering to Z = -1.15m..+1.05m at Y = 4.52m)
+  // Issue #5, #9 & #10: Full-Span Upper Vaulted Trapezoidal Gable Extension on the West Landing Cross-Wall (Y = 4.14m..4.535m)
+  // Matches the exact North & South skeiling slopes (`Z = -2.54m..+2.44m` at `Y = 4.16m` tapering to `Z = -1.15m..+1.05m` at `Y = 4.52m`)
   {
     const westGableShape = new THREE.Shape();
-    westGableShape.moveTo(0, upperWallTopY);
-    westGableShape.lineTo(5.193, upperWallTopY);
-    westGableShape.lineTo(4.3, upperWallTopY);
-    westGableShape.lineTo(3.55, collarCeilingY);
-    westGableShape.lineTo(1.35, collarCeilingY);
-    westGableShape.lineTo(0.6, upperWallTopY);
+    westGableShape.moveTo(0, upperWallTopY - 0.02);
+    westGableShape.lineTo(4.96, upperWallTopY - 0.02);
+    westGableShape.lineTo(4.96, upperWallTopY + 0.015);
+    westGableShape.lineTo(3.559, collarCeilingY + 0.015);
+    westGableShape.lineTo(1.353, collarCeilingY + 0.015);
+    westGableShape.lineTo(0, upperWallTopY + 0.015);
     westGableShape.closePath();
     const westGableGeo = new THREE.ExtrudeGeometry(westGableShape, {
       depth: 0.24,

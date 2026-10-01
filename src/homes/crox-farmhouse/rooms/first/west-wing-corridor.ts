@@ -394,14 +394,24 @@ export function buildWestWingCorridor(
     const trayCenterZ = 4.4375;
 
     const showerStepPlinth = new THREE.Mesh(
-      new THREE.BoxGeometry(trayW, plinthH, trayD + 0.15),
+      new THREE.BoxGeometry(trayW, plinthH, trayD),
       bathroomTileMat
     );
     showerStepPlinth.name = 'showerRoom.showerStepPlinth';
-    showerStepPlinth.position.set(trayCenterX, floorTopY + plinthH / 2, trayCenterZ - 0.075);
+    showerStepPlinth.position.set(trayCenterX, floorTopY + plinthH / 2, trayCenterZ);
     showerStepPlinth.castShadow = true;
     showerStepPlinth.receiveShadow = true;
     showerGroup.add(showerStepPlinth);
+
+    const archStepRiser = new THREE.Mesh(
+      new THREE.BoxGeometry(archSpan, plinthH, 0.08),
+      bathroomTileMat
+    );
+    archStepRiser.name = 'showerRoom.showerStepArchRiser';
+    archStepRiser.position.set(archCenterX, floorTopY + plinthH / 2, 4.06);
+    archStepRiser.castShadow = true;
+    archStepRiser.receiveShadow = true;
+    showerGroup.add(archStepRiser);
 
     // Ceramic step-up threshold lip across the arch opening (`X = -20.18m..-19.32m, Z = 4.10m`)
     const stepNosing = new THREE.Mesh(

@@ -81,16 +81,15 @@ export function buildBedroom2(
   // Issue #2, #5, #6 & #10: High Vaulted Upper Gable Extension on Bedroom 2 North Wall (`Y = 4.16m..5.02m`)
   {
     const northGableShape = new THREE.Shape();
-    northGableShape.moveTo(0.28, upperWallTopY);
-    northGableShape.lineTo(5.32, upperWallTopY);
-    northGableShape.lineTo(3.58, collarCeilingY);
-    northGableShape.lineTo(1.53, collarWallY(collarCeilingY));
+    northGableShape.moveTo(0.2, upperWallTopY - 0.02);
+    northGableShape.lineTo(5.65, upperWallTopY - 0.02);
+    northGableShape.lineTo(5.65, upperWallTopY + 0.02);
+    northGableShape.lineTo(3.58, collarCeilingY + 0.02);
+    northGableShape.lineTo(1.53, collarCeilingY + 0.02);
+    northGableShape.lineTo(0.2, upperWallTopY + 0.02);
     northGableShape.closePath();
-    function collarWallY(y: number): number {
-      return y;
-    }
     const northGableGeo = new THREE.ExtrudeGeometry(northGableShape, {
-      depth: 0.294,
+      depth: 0.305,
       bevelEnabled: false,
     });
     northGableGeo.translate(0, 0, -0.14);
@@ -153,15 +152,25 @@ export function buildBedroom2(
     carcass.receiveShadow = true;
     wardGroup.add(carcass);
 
-    // Upper vaulted bulkhead above the cornice so the built-in wardrobe meets the pitched East skeiling slope seamlessly
-    const bulkheadH = 0.52;
-    const vaultBulkhead = new THREE.Mesh(
-      new THREE.BoxGeometry(baySpan, bulkheadH, wardDepth),
-      warmRoomPlasterMat
-    );
+    // Issue #2: Sloped upper vaulted bulkhead above the cornice (`u = -0.12m..uEnd`) rising to `wardH + 0.56m` at the front face
+    // (`z = 0.68m`) and `wardH + 0.02m` at the cross-wall (`z = 0.12m`) so it seals tightly against `eastSkeiling` and the North wall!
+    const bulkheadH = 0.56;
+    const bulkShape = new THREE.Shape();
+    bulkShape.moveTo(0.12, wardH - 0.02);
+    bulkShape.lineTo(frontLocalZ, wardH - 0.02);
+    bulkShape.lineTo(frontLocalZ, wardH + bulkheadH);
+    bulkShape.lineTo(0.12, wardH + 0.02);
+    bulkShape.closePath();
+    const bulkSpanU = uEnd - -0.12;
+    const bulkGeo = new THREE.ExtrudeGeometry(bulkShape, {
+      depth: bulkSpanU,
+      bevelEnabled: false,
+    });
+    bulkGeo.rotateY(Math.PI / 2);
+    bulkGeo.translate(-0.12, 0, 0);
+    const vaultBulkhead = new THREE.Mesh(bulkGeo, warmRoomPlasterMat);
     vaultBulkhead.name = 'bedroom2.eastWardrobes.vaultBulkhead';
     vaultBulkhead.userData.isArchitecturalShell = true;
-    vaultBulkhead.position.set(uMid, wardH + bulkheadH / 2, 0.12 + wardDepth / 2);
     vaultBulkhead.castShadow = true;
     vaultBulkhead.receiveShadow = true;
     wardGroup.add(vaultBulkhead);
@@ -221,20 +230,21 @@ export function buildBedroom2(
 
     scene.add(wardGroup);
 
-    // Exact world coordinates of the NE and SE front corners of `bedroom2.eastWardrobes`
-    const neCornerX = startX + uStart * ux + frontLocalZ * nx;
-    const neCornerZ = startZ + uStart * uz + frontLocalZ * nz;
+    // Issue #3: Exact intersection of the North wall South plaster face (`v = +0.1535m`) with the East wardrobe front face (`frontLocalZ = 0.68m`)
+    const uSkirtStart = 0.063;
+    const neCornerX = startX + uSkirtStart * ux + frontLocalZ * nx;
+    const neCornerZ = startZ + uSkirtStart * uz + frontLocalZ * nz;
     const seCornerX = startX + uEnd * ux + frontLocalZ * nx;
     const seCornerZ = startZ + uEnd * uz + frontLocalZ * nz;
 
-    // Issues #1 & #6: Single continuous 45°-mitred antique oak skirting board along the Bedroom 2 North Wall,
+    // Issues #1, #3 & #6: Single continuous 45°-mitred antique oak skirting board along the Bedroom 2 North Wall (`[-22.19, -3.165]`),
     // turning seamlessly at the NE corner (`[neCornerX, neCornerZ]`), running South along the 6-door East Wardrobe
     // plinth to `[seCornerX, seCornerZ]`, turning West along the North cut-out hallway wall (`Z = 0.975m`),
     // and turning South along `X = -18.995m` up to the North architrave of `bedroom2Door`!
     const northEastAndCutoutSkirt = new THREE.Mesh(
       buildMitredWallSkirtingGeometry(
         [
-          [-22.19, -3.178],
+          [-22.19, -3.165],
           [neCornerX, neCornerZ],
           [seCornerX, seCornerZ],
           [-18.995, 0.975],
