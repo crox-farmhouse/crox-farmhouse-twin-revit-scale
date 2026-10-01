@@ -83,8 +83,8 @@ export function buildBedroom2(
     const northGableShape = new THREE.Shape();
     northGableShape.moveTo(0.24, upperWallTopY - 0.02);
     northGableShape.lineTo(5.45, upperWallTopY - 0.02);
-    northGableShape.lineTo(5.32, upperWallTopY + 0.02);
-    northGableShape.lineTo(4.24, collarCeilingY + 0.02);
+    northGableShape.lineTo(5.36, upperWallTopY + 0.02);
+    northGableShape.lineTo(4.38, collarCeilingY + 0.02);
     northGableShape.lineTo(1.53, collarCeilingY + 0.02);
     northGableShape.lineTo(0.24, upperWallTopY + 0.02);
     northGableShape.closePath();

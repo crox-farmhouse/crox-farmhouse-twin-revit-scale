@@ -182,7 +182,7 @@ export function buildWestWingCorridor(
           [landingSouthWestX, landingSouthWestZ],
           [getEastInnerX(landingSouthEastZ), landingSouthEastZ],
           [getEastInnerX(8.15), 8.15],
-          [-17.258, 8.15],
+          [-17.276, 8.15],
         ],
         floorTopY
       ),

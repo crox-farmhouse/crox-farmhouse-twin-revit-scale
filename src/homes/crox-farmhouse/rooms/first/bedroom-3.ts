@@ -104,6 +104,7 @@ export function buildBedroom3(
     [
       'westWingCorridor.westWallSouthPierSkirting',
       [
+        [-18.224, 8.15],
         [-18.325, 8.15],
         [-18.325, 7.922],
       ] as const,
@@ -148,7 +149,7 @@ export function buildBedroom3(
   addUpperInteriorWall(-20.205, floorTopY, upperWallTopY, 8.27, 3.97, 0.24, warmRoomPlasterMat, {
     skirtingSides: [1], // South (+Z) face inside Bedroom 4
     skirtingMin: -22.19,
-    skirtingMax: -18.22,
+    skirtingMax: -18.224,
     skipCap: true,
   });
   addUpperInteriorWall(-17.29, floorTopY, upperWallTopY, 8.27, 0.14, 0.24, warmRoomPlasterMat, {

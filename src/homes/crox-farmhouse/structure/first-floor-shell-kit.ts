@@ -957,8 +957,8 @@ export function createFirstFloorShellKit(
     const topRailH = 0.076;
     const midRailH = 0.068;
     const botRailH = 0.088;
-    const midRailY = -0.08;
     const yBot = -h / 2;
+    const midRailY = yBot + 0.84;
     const getTopYAtU = (u: number): number =>
       yBot + hLeft + ((u + w / 2) / Math.max(0.01, w)) * (hRight - hLeft);
 
@@ -1084,7 +1084,7 @@ export function createFirstFloorShellKit(
     // Vertical aged-brass Shaker bar pull handle + standoffs on the meeting stile
     const handleSign = options.handleSide === 'right' ? 1 : -1;
     const handleU = handleSign * (w / 2 - stileW * 0.5);
-    const handleY = 0.04;
+    const handleY = yBot + 0.96;
     const barOutN = normalSign * (frameT / 2 + 0.024);
     const standoffMidN = normalSign * (frameT / 2 + 0.012);
 

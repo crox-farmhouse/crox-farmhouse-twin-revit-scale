@@ -112,8 +112,8 @@ export function createSkirtingCapProfile(): THREE.Shape {
  */
 export function createWallSkirtingBoardProfile(): THREE.Shape {
   const s = new THREE.Shape();
-  s.moveTo(0, 0);
-  s.lineTo(0, 0.022);
+  s.moveTo(-0.003, -0.002);
+  s.lineTo(-0.003, 0.022);
   s.lineTo(0.122, 0.022);
   s.lineTo(0.122, 0.017);
   s.lineTo(0.128, 0.018);
@@ -121,7 +121,7 @@ export function createWallSkirtingBoardProfile(): THREE.Shape {
   s.lineTo(0.139, 0.012);
   s.lineTo(0.143, 0.01);
   s.lineTo(0.146, 0.008);
-  s.lineTo(0.146, 0);
+  s.lineTo(0.146, -0.002);
   s.closePath();
   return s;
 }

@@ -31,6 +31,16 @@ export function installShaderLightCulling(): void {
 			light.visible = false;
 			return;
 		}
+		vec3 camUpWorld = vec3( viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1] );
+		float lightWorldY = cameraPosition.y + dot( pointLight.position, camUpWorld );
+		float fragWorldY = cameraPosition.y + dot( geometryPosition, camUpWorld );
+		float lightWorldX = cameraPosition.x + dot( pointLight.position, vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] ) );
+		if ( lightWorldX < -5.5 && lightWorldY < 2.00 && fragWorldY > 2.072 ) {
+			light.color = vec3( 0.0 );
+			light.direction = vec3( 0.0, 1.0, 0.0 );
+			light.visible = false;
+			return;
+		}
 		float lightDistance = sqrt( distSq );
 		light.direction = lVector / max( lightDistance, 1e-4 );
 		light.color = pointLight.color * getDistanceAttenuation( lightDistance, cutoff, pointLight.decay );

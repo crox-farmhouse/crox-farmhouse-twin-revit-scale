@@ -226,7 +226,6 @@ export class CutawayController {
 
     if (zoomedOut || cameraInsideHouse) {
       let changed = false;
-      let majorShellChanged = false;
       this.ensureCeilingSubgroupsVisible();
       if (
         firstFloorMeshGroup.visible !== desiredFirstFloorVis ||
@@ -237,7 +236,6 @@ export class CutawayController {
         groundFloorCeilingGroup.visible = desiredGroundCeilingVis;
         ceilingMeshGroup.visible = desiredRoofVis;
         changed = true;
-        majorShellChanged = true;
       }
       if (
         !cutawayWallGroups.southWest.visible ||
@@ -260,7 +258,7 @@ export class CutawayController {
         }
         this.allDynamicWallsShown = true;
       }
-      return { needsRender: needsRender || changed, shadowsDirty: majorShellChanged };
+      return { needsRender: needsRender || changed, shadowsDirty: needsRender || changed };
     }
 
     this.allDynamicWallsShown = false;
@@ -356,7 +354,7 @@ export class CutawayController {
       }
     }
 
-    return { needsRender: needsRender || changed, shadowsDirty: majorShellChanged };
+    return { needsRender: needsRender || changed, shadowsDirty: needsRender || changed };
   }
 
   private ensureCeilingSubgroupsVisible(): void {

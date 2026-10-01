@@ -230,13 +230,13 @@ export function buildFirstFloorCeilingsAndRoof(
       ((westInnerWallX - westWallX) / (collarWestX - westInnerWallX)) *
         (collarCeilingY - skeilingBaseY);
 
-    // East cross-wall runs from (-17.200, -2.419) to (-17.918, 1.05).
-    // Parallel collar East edge offset 1.002m West so eastSkeiling is a 100% planar slope (Issues #6 & #8!):
-    const collarEastNorthX = -18.202;
+    // East cross-wall runs from (-17.169, -2.568) to (-17.918, 1.05).
+    // Parallel collar East edge offset West so eastSkeiling is a 100% planar slope meeting the North wall seamlessly (Issue #7!):
+    const collarEastNorthX = -18.144;
     const collarEastSouthX = -18.92;
 
     const zNorthAtX = (wx: number): number =>
-      -3.2 + ((wx - -22.19) / (-16.876 - -22.19)) * (-2.489 - -3.2);
+      -3.24 + ((wx - -22.19) / (-16.876 - -22.19)) * (-2.529 - -3.24);
     const zSouthAtX = (wx: number): number =>
       1.925 + ((wx - -22.19) / (-18.92 - -22.19)) * (2.36 - 1.925);
 
@@ -266,11 +266,11 @@ export function buildFirstFloorCeilingsAndRoof(
     );
     collarSlab.name = 'bedroom2.vaultedCeiling.collar';
 
-    // 3. Planar East pitched skeiling slope (`Y = 5.02m` -> East cross-wall at `Y = 4.16m`, stopping at the North cut-out wall `Z = 1.05m`, `X = -17.918m`)
+    // 3. Planar East pitched skeiling slope (`Y = 5.02m` -> East cross-wall at `Y = 4.16m`, meeting North wall at `zNorthAtX(-17.169)`)
     buildVaultedCeilingQuad(
       'bedroom2.vaultedCeiling.eastSkeiling',
       new THREE.Vector3(collarEastNorthX, collarCeilingY, zNorthAtX(collarEastNorthX)),
-      new THREE.Vector3(-17.2, skeilingBaseY, -2.419),
+      new THREE.Vector3(-17.169, skeilingBaseY, zNorthAtX(-17.169)),
       new THREE.Vector3(-17.918, skeilingBaseY, 1.05),
       new THREE.Vector3(collarEastSouthX, collarCeilingY, 1.05)
     );

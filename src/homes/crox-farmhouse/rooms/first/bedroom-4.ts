@@ -36,7 +36,7 @@ export function buildBedroom4(
   // 7. BEDROOM 4 (4.95m x 3.20m / 16'3" x 10'6")
   //    Directly above Study & Study Lobby: X = -17.25m..-22.19m, Z = +8.39m..+11.49m
   // =========================================================================
-  addFirstFloorSlab(-22.19, -17.25, 8.27, 11.49, oakFloorMat);
+  addFirstFloorSlab(-22.33, -17.15, 8.27, 11.63, oakFloorMat);
 
   // West Front Exterior Brick Wall of Bedroom 4 (X = -22.47m..-22.19m, Z = +8.39m..+11.77m)
   // With 3-pane Georgian casement window centered at Z = +9.94m (rightmost upper window on West front facade in Photo 2!)
@@ -54,9 +54,9 @@ export function buildBedroom4(
     { skirtingMin: 8.39, skirtingMax: 11.49 }
   );
 
-  // South Exterior Brick Gable Wall of Bedroom 4 (Z = +11.49m..+11.77m, X = -22.47m..-17.11m, Y = 2.06m..4.16m)
+  // South Exterior Brick Gable Wall of Bedroom 4 (Z = +11.49m..+11.77m, X = -22.47m..-17.11m, Y = 1.88m..4.16m)
   // Flush continuous exterior brickwork with Chimney Breast projecting INSIDE Bedroom 4 (X = -20.45m..-19.25m, rising to collarCeilingY = 4.52m)
-  addUpperExteriorBrickWall(-22.47, -17.11, 11.49, 11.77, floorBaseY, upperWallTopY, 'north', {
+  addUpperExteriorBrickWall(-22.47, -17.11, 11.49, 11.77, floorBaseY - 0.12, upperWallTopY, 'north', {
     skipSkirting: true,
   });
 
@@ -127,77 +127,97 @@ export function buildBedroom4(
     skipSkirting: true,
   });
 
-  // Two side-by-side Built-In Alcove Cupboards along the South Gable Wall East of the Chimney Breast
-  // (`X = -19.25m..-17.39m, Z = +10.85m..+11.49m`), opening North (`-Z`) into Bedroom 4
+  // Issue #8: Full-Height Vaulted 3-Door Shaker Built-In Wardrobe along the South Gable Wall East of the Chimney Breast
+  // (`X = -19.25m..-17.39m, Z = +10.85m..+11.49m`), rising all the way to Bedroom 4's vaulted ceiling (`Y = 4.52m` collar + East skeiling)
   {
     const cupGroup = new THREE.Group();
     cupGroup.name = 'bedroom4.southEastCupboards';
-    const cupH = upperWallTopY - floorTopY;
-    const cupSpanX = 1.84; // X = -19.24m .. -17.40m
+    const cupMinX = -19.25;
+    const cupMaxX = -17.39;
+    const collarEastX = -18.75;
+    const skeilingEastX = -17.22;
     const cupD = 0.62; // Z = +10.86m .. +11.48m
-    const centerX = -18.32;
     const centerZ = 11.17;
 
-    // Central dividing partition between the two South-East alcove cupboards at X = -18.32m
-    addUpperInteriorWall(centerX, floorTopY, upperWallTopY + 0.25, centerZ, 0.08, cupD, warmRoomPlasterMat, {
-      skipSkirting: true,
-      skipCap: true,
-    });
+    const getVaultCeilingYAtX = (wx: number): number => {
+      if (wx <= collarEastX) return collarCeilingY;
+      const t = (wx - collarEastX) / (skeilingEastX - collarEastX);
+      return collarCeilingY - t * (collarCeilingY - upperWallTopY);
+    };
 
-    // Main cupboard carcass
-    const carcass = new THREE.Mesh(
-      new THREE.BoxGeometry(cupSpanX - 0.04, cupH, cupD - 0.04),
-      wardrobeMat
-    );
-    carcass.position.set(centerX, floorTopY + cupH / 2, centerZ);
+    // Full-height vaulted wardrobe carcass (`Y = floorTopY..getVaultCeilingYAtX(x)`)
+    const carcassShape = new THREE.Shape();
+    carcassShape.moveTo(cupMinX + 0.01, floorTopY);
+    carcassShape.lineTo(cupMaxX - 0.01, floorTopY);
+    carcassShape.lineTo(cupMaxX - 0.01, getVaultCeilingYAtX(cupMaxX - 0.01));
+    carcassShape.lineTo(collarEastX, collarCeilingY);
+    carcassShape.lineTo(cupMinX + 0.01, collarCeilingY);
+    carcassShape.closePath();
+    const carcassGeo = new THREE.ExtrudeGeometry(carcassShape, {
+      depth: cupD,
+      bevelEnabled: false,
+    });
+    carcassGeo.translate(0, 0, 10.86);
+    const carcass = new THREE.Mesh(carcassGeo, wardrobeMat);
+    carcass.name = 'bedroom4.southEastCupboards.carcass';
     carcass.castShadow = true;
     carcass.receiveShadow = true;
     cupGroup.add(carcass);
 
-    // Moulded Shaker top cornice header at Y = 4.16m across the front of the alcove cupboards
-    const cornice = new THREE.Mesh(
-      new THREE.BoxGeometry(cupSpanX, 0.048, cupD + 0.024),
-      wardrobeMat
-    );
-    cornice.name = 'bedroom4.southEastCupboards.cornice';
-    cornice.position.set(centerX, upperWallTopY - 0.024, centerZ - 0.008);
-    cornice.castShadow = true;
-    cupGroup.add(cornice);
+    // 2-segment moulded Shaker top crown cornice following the horizontal collar (`-19.25m..-18.75m`) and East skeiling (`-18.75m..-17.39m`)
+    const corniceH = 0.044;
+    for (const [x0, x1] of [
+      [cupMinX, collarEastX],
+      [collarEastX, cupMaxX],
+    ] as const) {
+      const y0 = getVaultCeilingYAtX(x0);
+      const y1 = getVaultCeilingYAtX(x1);
+      const segLen = Math.hypot(x1 - x0, y1 - y0);
+      const segAngle = Math.atan2(y1 - y0, x1 - x0);
+      const corniceSeg = new THREE.Mesh(
+        new THREE.BoxGeometry(segLen + 0.008, corniceH, cupD + 0.024),
+        wardrobeMat
+      );
+      corniceSeg.name = 'bedroom4.southEastCupboards.cornice';
+      corniceSeg.position.set(
+        (x0 + x1) / 2,
+        (y0 + y1) / 2 - corniceH / 2,
+        centerZ - 0.008
+      );
+      corniceSeg.rotation.z = segAngle;
+      corniceSeg.castShadow = true;
+      corniceSeg.receiveShadow = true;
+      cupGroup.add(corniceSeg);
+    }
 
-    // Vaulted plaster bulkhead above Y = 4.16m matching the East skeiling & collar ceiling over X = -19.25m..-17.39m
-    const bulkShape = new THREE.Shape();
-    bulkShape.moveTo(-19.25, upperWallTopY);
-    bulkShape.lineTo(-17.39, upperWallTopY);
-    bulkShape.lineTo(-17.39, upperWallTopY + 0.04);
-    bulkShape.lineTo(-18.75, collarCeilingY);
-    bulkShape.lineTo(-19.25, collarCeilingY);
-    bulkShape.closePath();
-    const bulkGeo = new THREE.ExtrudeGeometry(bulkShape, {
-      depth: cupD,
-      bevelEnabled: false,
-    });
-    bulkGeo.translate(0, 0, 10.86);
-    const bulkMesh = new THREE.Mesh(bulkGeo, warmRoomPlasterMat);
-    bulkMesh.name = 'bedroom4.southEastCupboards.vaultBulkhead';
-    bulkMesh.userData.isArchitecturalShell = true;
-    bulkMesh.castShadow = true;
-    bulkMesh.receiveShadow = true;
-    cupGroup.add(bulkMesh);
+    // Three full-height vaulted Shaker wardrobe doors (`door_1`, `door_2`, `door_3`) rising right up to the vaulted ceiling (Issue #8)
+    const numDoors = 3;
+    const totalDoorSpan = 1.78; // X = -19.21m .. -17.43m
+    const bayW = totalDoorSpan / numDoors;
+    const doorBaseY = floorTopY + 0.15;
+    const corniceClearance = 0.046;
+    const handleSides = ['right', 'left', 'left'] as const;
 
-    // Two full-height Shaker cupboard doors with vertical brass handles on the North face (`Z = +10.847m`) (Issue #8)
-    const doorW = (cupSpanX - 0.16) / 2;
-    const doorLeafH = cupH - 0.24;
-    for (let i = 0; i < 2; i++) {
-      const doorX = -19.2 + doorW / 2 + i * (doorW + 0.08);
+    for (let i = 0; i < numDoors; i++) {
+      const doorWidth = bayW - 0.012;
+      const doorCenterX = -19.21 + bayW * (i + 0.5);
+      const xLeft = doorCenterX - doorWidth / 2;
+      const xRight = doorCenterX + doorWidth / 2;
+      const hLeft = getVaultCeilingYAtX(xLeft) - corniceClearance - doorBaseY;
+      const hRight = getVaultCeilingYAtX(xRight) - corniceClearance - doorBaseY;
+      const maxDoorH = Math.max(hLeft, hRight);
+
       addShakerWardrobeDoor(cupGroup, {
-        x: doorX,
-        y: floorTopY + 0.15 + doorLeafH / 2,
+        x: doorCenterX,
+        y: doorBaseY + maxDoorH / 2,
         z: 10.847,
-        width: doorW - 0.015,
-        height: doorLeafH,
+        width: doorWidth,
+        height: maxDoorH,
+        heightLeft: hLeft,
+        heightRight: hRight,
         alongZ: false,
         normalSign: -1,
-        handleSide: i === 0 ? 'right' : 'left',
+        handleSide: handleSides[i],
         namePrefix: `bedroom4.southEastCupboards.door_${i + 1}`,
       });
     }
@@ -205,7 +225,7 @@ export function buildBedroom4(
     scene.add(cupGroup);
   }
 
-  // Issue #7: Continuous 45°-mitred skirting along Bedroom 4 East Wall, South Alcove Cupboards, Chimney Breast, and SW Alcove
+  // Issue #4, #5 & #7: Continuous 45°-mitred skirting along Bedroom 4 North-East Pier (`Z = 8.39m`), East Wall, South Alcove Cupboards, Chimney Breast, and SW Alcove
   {
     const eastWallSlope = (-17.25 - -16.82) / (11.77 - 2.4);
     const getEastInnerX = (wz: number): number =>
@@ -214,6 +234,7 @@ export function buildBedroom4(
     const bed4SouthMitredSkirt = new THREE.Mesh(
       buildMitredWallSkirtingGeometry(
         [
+          [-17.276, 8.39],
           [getEastInnerX(8.39), 8.39],
           [getEastInnerX(10.85), 10.85],
           [-19.25, 10.85],

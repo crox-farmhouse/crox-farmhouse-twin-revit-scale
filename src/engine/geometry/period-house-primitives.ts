@@ -269,6 +269,7 @@ export function buildPolygonalFloorSlab(
   geo.computeVertexNormals();
 
   const mesh = new THREE.Mesh(geo, material);
+  mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
   return mesh;

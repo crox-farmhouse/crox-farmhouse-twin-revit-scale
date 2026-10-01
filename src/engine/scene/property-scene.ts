@@ -905,6 +905,8 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       this.freezeStaticMatrices();
     }
     this.walkthrough.invalidateObstacleCache();
+    this.renderer.shadowMap.needsUpdate = true;
+    this.needsRender = true;
   }
 
   public toggleAnnotationMode(): boolean {

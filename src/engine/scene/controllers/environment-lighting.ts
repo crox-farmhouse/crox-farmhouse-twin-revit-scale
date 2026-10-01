@@ -61,12 +61,15 @@ export class EnvironmentLighting {
     this.sunLight.position.set(6.5, 13.5, 10.5);
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.set(2048, 2048);
-    this.sunLight.shadow.camera.left = -26.0;
-    this.sunLight.shadow.camera.right = 12.0;
-    this.sunLight.shadow.camera.top = 14.0;
+    this.sunLight.shadow.camera.near = 4.0;
+    this.sunLight.shadow.camera.far = 34.0;
+    this.sunLight.shadow.camera.left = -28.0;
+    this.sunLight.shadow.camera.right = 8.0;
+    this.sunLight.shadow.camera.top = 15.5;
     this.sunLight.shadow.camera.bottom = -14.0;
-    this.sunLight.shadow.bias = -0.00035;
-    this.sunLight.shadow.normalBias = 0.016;
+    this.sunLight.shadow.camera.updateProjectionMatrix();
+    this.sunLight.shadow.bias = -0.00018;
+    this.sunLight.shadow.normalBias = 0.006;
     scene.add(this.sunLight);
 
     if (renderer) {
