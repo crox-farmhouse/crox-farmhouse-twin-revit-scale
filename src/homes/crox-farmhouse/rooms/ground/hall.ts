@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { buildAngledWallSegment, buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
-import { addCasedArchitravePortal, buildSweptMouldingGeometry, createSkirtingCapProfile } from '../../../../engine/geometry/swept-moulding.ts';
+import {
+  addCasedArchitravePortal,
+  buildMitredWallSkirtingGeometry,
+  buildSweptMouldingGeometry,
+  createSkirtingCapProfile,
+} from '../../../../engine/geometry/swept-moulding.ts';
 import { buildWindowRomanBlind } from '../../../../objects/decor/roman-blind.ts';
 import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
@@ -77,9 +82,10 @@ export function buildHall(
   //    Non-square period geometry with 75%-staggered step-up portal:
   //    - North wall: X = -17.55m..-13.05m at Z = -2.50m
   //    - East wall:  X = -13.05m, Z = -2.50m..+2.40m
-  //    - South wall: X = -13.05m..-16.74m at Z = +2.40m, then angled at 11.5° along the
-  //      30cm step-up cased opening from (-16.74, +2.40) to (-17.75, +2.19)
-  //    - West cross-wall: angled off-square from (-17.75, +2.19) to (-17.55, -2.50)
+  //    - South wall: X = -13.05m..-17.90m at Z = +2.40m, with floorboards extending cleanly
+  //      into the `hallStepUpPortal` doorway opening (`X = -17.745m..-16.985m, Z = +2.40m..+2.652m`)
+  //      right up to the 56mm solid oak bullnose step nosing (`Z = +2.652m..+2.708m` — Issue #1)
+  //    - West cross-wall: angled off-square from (-17.90, +2.40) to (-17.55, -2.50)
   //    - Floor at Y = -0.30m (engineered timber oak flooring, continuous with Boot Lobby at identical scale)
   // =========================================================================
   buildPolygonalFloorSlab(
@@ -88,15 +94,17 @@ export function buildHall(
       [-17.55, -2.5],
       [-13.05, -2.5],
       [-13.05, 2.4],
-      [-16.25, 2.4],
-      [-16.25, 2.58],
+      [-16.985, 2.4],
+      [-16.985, 2.652],
+      [-17.745, 2.652],
+      [-17.745, 2.4],
       [-17.9, 2.4],
     ],
     lowerFloorY,
     0.08,
     engineeredOakFloorMat,
     [1 / 4.4, 1 / 1.76]
-  );
+  ).name = 'hall.floor';
 
   // North Exterior Brick Wall of Hall (0.28m thick, Z = -2.50m..-2.78m, X = -12.81m..-17.55m)
   // With 3-pane white cottage casement window centered at X = -14.55m (aligned with the
@@ -190,10 +198,46 @@ export function buildHall(
     fpBreastGeo.computeVertexNormals();
   }
   const fpBreastMesh = new THREE.Mesh(fpBreastGeo, warmRoomPlasterMat);
+  fpBreastMesh.name = 'hall.fireplaceBreast';
   fpBreastMesh.position.set(-13.05, lowerFloorY, 0);
   fpBreastMesh.castShadow = true;
   fpBreastMesh.receiveShadow = true;
   hallFireplaceGroup.add(fpBreastMesh);
+
+  // Issue #6: 45°-mitred 146mm antique oak skirting boards wrapping the North & South piers and returns of `fpBreastMesh`
+  {
+    const fpNorthSkirtMesh = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(
+        [
+          [-13.05, -1.35],
+          [-13.55, -1.35],
+          [-13.55, -0.98],
+        ],
+        lowerFloorY
+      ),
+      antiqueOakSkirtingMat
+    );
+    fpNorthSkirtMesh.name = 'hall.fireplaceBreast.skirting.north';
+    fpNorthSkirtMesh.castShadow = true;
+    fpNorthSkirtMesh.receiveShadow = true;
+    hallFireplaceGroup.add(fpNorthSkirtMesh);
+
+    const fpSouthSkirtMesh = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(
+        [
+          [-13.55, -0.12],
+          [-13.55, 0.25],
+          [-13.05, 0.25],
+        ],
+        lowerFloorY
+      ),
+      antiqueOakSkirtingMat
+    );
+    fpSouthSkirtMesh.name = 'hall.fireplaceBreast.skirting.south';
+    fpSouthSkirtMesh.castShadow = true;
+    fpSouthSkirtMesh.receiveShadow = true;
+    hallFireplaceGroup.add(fpSouthSkirtMesh);
+  }
 
   // Smooth pale-plastered firebox back wall inside the recess (X = -13.10m, Z = -0.99m..-0.11m)
   const fpBackWall = new THREE.Mesh(
@@ -204,33 +248,35 @@ export function buildHall(
   fpBackWall.receiveShadow = true;
   hallFireplaceGroup.add(fpBackWall);
 
-  // Heavy Stripped Natural Oak Stepped / Moulded Timber Fascia Beam spanning across the left alcove AND fireplace top (Issue #11: lowered with wallH)
-  // (Z = -2.46m..+0.46m, Y = lowerFloorY + 1.82m..2.06m)
+  // Heavy Stripped Natural Oak Stepped / Moulded Timber Fascia Beam spanning across the left alcove, fireplace top,
+  // and seating cleanly atop the shifted right structural pier (`hallSpinePost` at Z = +0.46m, Z = -2.46m..+0.59m — Issue #2 & Issue #7)
+  const fpBeamLen = 3.05;
+  const fpBeamCenterZ = -0.935;
   const fpLowerBeamBand = new THREE.Mesh(
-    new THREE.BoxGeometry(0.54, 0.16, 2.92),
+    new THREE.BoxGeometry(0.54, 0.16, fpBeamLen),
     oakMat
   );
   fpLowerBeamBand.name = 'hall.fireplaceBeam.lower';
-  fpLowerBeamBand.position.set(-13.31, lowerFloorY + 1.82, -1.0);
+  fpLowerBeamBand.position.set(-13.31, lowerFloorY + 1.82, fpBeamCenterZ);
   fpLowerBeamBand.castShadow = true;
   fpLowerBeamBand.receiveShadow = true;
   hallFireplaceGroup.add(fpLowerBeamBand);
 
   const fpMidMouldingBand = new THREE.Mesh(
-    new THREE.BoxGeometry(0.57, 0.045, 2.94),
+    new THREE.BoxGeometry(0.57, 0.045, fpBeamLen + 0.02),
     oakMat
   );
   fpMidMouldingBand.name = 'hall.fireplaceBeam.midMoulding';
-  fpMidMouldingBand.position.set(-13.325, lowerFloorY + 1.92, -1.0);
+  fpMidMouldingBand.position.set(-13.325, lowerFloorY + 1.9225, fpBeamCenterZ);
   fpMidMouldingBand.castShadow = true;
   hallFireplaceGroup.add(fpMidMouldingBand);
 
   const fpUpperBeamBand = new THREE.Mesh(
-    new THREE.BoxGeometry(0.55, 0.16, 2.92),
+    new THREE.BoxGeometry(0.55, 0.16, fpBeamLen),
     oakMat
   );
   fpUpperBeamBand.name = 'hall.fireplaceBeam.upper';
-  fpUpperBeamBand.position.set(-13.315, lowerFloorY + 2.02, -1.0);
+  fpUpperBeamBand.position.set(-13.315, lowerFloorY + 2.025, fpBeamCenterZ);
   fpUpperBeamBand.castShadow = true;
   hallFireplaceGroup.add(fpUpperBeamBand);
 
@@ -354,22 +400,39 @@ export function buildHall(
 
   hallFireplaceGroup.add(hallStoveGroup);
 
-  // Substantial Square Plastered Structural Pier supporting the Spine Beam at the right corner of the fireplace
-  // (X = -13.48m, Z = +0.34m, rising from the Y = -0.30m flagstone floor to the ceiling spine beam, media_1790514908713.webp right!)
+  // Substantial Square Plastered Structural Pier supporting the Spine Beam & Fireplace Beam at the right (South) of the fireplace
+  // (Issue #2, #6 & #7: shifted slightly right to Z = +0.46m, X = -13.42m, capped cleanly at lowerFloorY + 1.74m beneath fpLowerBeamBand,
+  //  with 4-sided 45°-mitred 146mm antique oak skirting wrapping its base!)
+  const spinePostX = -13.42;
+  const spinePostZ = 0.46;
+  const spinePostW = 0.26;
+  const spinePostH = 1.74;
   const hallSpinePost = new THREE.Mesh(
-    new THREE.BoxGeometry(0.26, lowerWallH - 0.14, 0.26),
+    new THREE.BoxGeometry(spinePostW, spinePostH, spinePostW),
     warmRoomPlasterMat
   );
-  hallSpinePost.position.set(-13.48, lowerFloorY + (lowerWallH - 0.14) / 2, 0.34);
+  hallSpinePost.name = 'hall.spinePost';
+  hallSpinePost.position.set(spinePostX, lowerFloorY + spinePostH * 0.5, spinePostZ);
   hallSpinePost.castShadow = true;
   hallSpinePost.receiveShadow = true;
   hallFireplaceGroup.add(hallSpinePost);
 
   const hallSpinePostBase = new THREE.Mesh(
-    new THREE.BoxGeometry(0.29, 0.13, 0.29),
+    buildMitredWallSkirtingGeometry(
+      [
+        [spinePostX + spinePostW * 0.5, spinePostZ - spinePostW * 0.5],
+        [spinePostX - spinePostW * 0.5, spinePostZ - spinePostW * 0.5],
+        [spinePostX - spinePostW * 0.5, spinePostZ + spinePostW * 0.5],
+        [spinePostX + spinePostW * 0.5, spinePostZ + spinePostW * 0.5],
+        [spinePostX + spinePostW * 0.5, spinePostZ - spinePostW * 0.5],
+      ],
+      lowerFloorY
+    ),
     antiqueOakSkirtingMat
   );
-  hallSpinePostBase.position.set(-13.48, lowerFloorY + 0.065, 0.34);
+  hallSpinePostBase.name = 'hall.spinePost.skirting';
+  hallSpinePostBase.castShadow = true;
+  hallSpinePostBase.receiveShadow = true;
   hallFireplaceGroup.add(hallSpinePostBase);
 
   // Issue #4: Removed `hallNorthSocket` faceplate off the North wall at [-13.56, lowerFloorY + 0.24, -2.485].

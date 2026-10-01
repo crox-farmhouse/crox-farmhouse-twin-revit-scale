@@ -70,7 +70,8 @@ export function createGroundFloorShellKit(
     }
 
     // Automatically add consistent 0.145m-tall antique-profiled oak skirting boards on both faces of full-height interior walls that reach or span across floorY (Issue #10)
-    if (h > 1.5) {
+    // Skip short doorway return nib piers (Math.max(w, d) <= 0.28) so skirting never protrudes across a doorlining reveal (Issue #8)
+    if (h > 1.5 && Math.max(w, d) > 0.28) {
       const baseH = 0.122;
       const capH = 0.024;
       const skirtT = 0.022;

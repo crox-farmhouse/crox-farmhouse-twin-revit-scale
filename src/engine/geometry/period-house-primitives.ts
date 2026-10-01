@@ -525,9 +525,10 @@ export function buildAngledWallSegment(
 
       const stepW = op.width + 0.02;
       const stepRise = highFloorY - op.lowerFloorY;
-      const nosingH = 0.032; // 32mm solid oak bullnose tread thickness, top flush with highFloorY
-      const treadDepth = config.thickness + 0.088; // 238mm deep solid oak threshold board
-      const riserDepth = config.thickness + 0.058; // Recessed 22mm behind bullnose front overhang
+      const nosingH = 0.032; // 32mm solid oak bullnose nosing bar thickness, top flush with highFloorY
+      const nosingDepth = 0.056; // 56mm solid oak bullnose nosing bar meeting the upper floorboards at localZ = +0.112m
+      const nosingCenterZ = config.thickness * 0.5; // +0.140m (spans localZ = +0.112m..+0.168m, zero overlap with upper floor!)
+      const riserDepth = 0.028; // 28mm solid oak vertical riser board tucked cleanly beneath the bullnose overhang
 
       const riserH = Math.max(0.02, stepRise - nosingH);
       const stepRiser = new THREE.Mesh(
@@ -541,14 +542,18 @@ export function buildAngledWallSegment(
         op.stepMaterial
       );
       stepRiser.name = `${op.id}.stepRiser`;
-      stepRiser.position.set(op.uCenter, op.lowerFloorY + riserH * 0.5, 0.014);
+      stepRiser.position.set(
+        op.uCenter,
+        op.lowerFloorY + riserH * 0.5,
+        nosingCenterZ - 0.002
+      );
       stepRiser.castShadow = true;
       stepRiser.receiveShadow = true;
       group.add(stepRiser);
 
       const stepNosing = new THREE.Mesh(
         applyCarpenterSingleBoardUVs(
-          new THREE.BoxGeometry(stepW, nosingH, treadDepth),
+          new THREE.BoxGeometry(stepW, nosingH, nosingDepth),
           stepW,
           0.04,
           0.03,
@@ -557,8 +562,12 @@ export function buildAngledWallSegment(
         op.stepMaterial
       );
       stepNosing.name = `${op.id}.stepNosing`;
-      // Top surface at highFloorY - 0.016 + 0.016 = highFloorY (100% flush with upper floor!)
-      stepNosing.position.set(op.uCenter, highFloorY - nosingH * 0.5, 0.029);
+      // Top surface at highFloorY, abutting the doorway floorboards at localZ = config.thickness * 0.5 - nosingDepth * 0.5
+      stepNosing.position.set(
+        op.uCenter,
+        highFloorY - nosingH * 0.5,
+        nosingCenterZ
+      );
       stepNosing.castShadow = true;
       stepNosing.receiveShadow = true;
       group.add(stepNosing);
@@ -581,7 +590,7 @@ export function buildAngledWallSegment(
       bullnoseLip.position.set(
         op.uCenter,
         highFloorY - nosingH * 0.5,
-        0.029 + treadDepth * 0.5
+        nosingCenterZ + nosingDepth * 0.5
       );
       bullnoseLip.castShadow = true;
       bullnoseLip.receiveShadow = true;

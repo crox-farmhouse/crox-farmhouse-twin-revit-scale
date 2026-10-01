@@ -1614,6 +1614,7 @@ export function buildDiningRoom(
     d: number
   ): THREE.Mesh => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), crispWhiteWallMat);
+    mesh.name = 'familyRoom.chimneyWallPier';
     mesh.position.set(cx, cy, cz);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -1634,14 +1635,13 @@ export function buildDiningRoom(
     chimneyStackGroundH - 1.26,
     0.84
   );
-  // Seamless plaster jamb lining across X = -4.638m..-4.402m on the North portal reveal (Z = +0.85m, Y = 0..wallH)
-  addChimneyWallBlock(-4.52, wallH / 2, 0.851, 0.236, wallH, 0.004);
 
   // White-plastered back wall of the fireplace alcove integrated flush at X = -4.64m (Y = 0..1.26m, Z = -0.44m..+0.40m)
   const alcoveBackWall = new THREE.Mesh(
     new THREE.BoxGeometry(0.024, 1.26, 0.84),
     crispWhiteWallMat
   );
+  alcoveBackWall.name = 'familyRoom.chimneyWallAlcoveBack';
   alcoveBackWall.position.set(-4.652, 0.63, -0.02);
   alcoveBackWall.receiveShadow = true;
   scene.add(alcoveBackWall);

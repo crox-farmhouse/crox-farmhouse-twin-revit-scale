@@ -9,15 +9,19 @@ import {
 } from '../../../../engine/textures/procedural-textures.ts';
 import { buildHollowCabinetCarcass } from '../../../../objects/joinery/cabinet-interior.ts';
 
-function buildUnderCounterWineCooler(
+export function buildUnderCounterWineCooler(
   islandGroup: THREE.Group,
   localX: number,
   frontZ: number,
-  interactions: SceneInteractionManager
+  interactions: SceneInteractionManager,
+  options?: {
+    readonly groupName?: string;
+    readonly yOffset?: number;
+  }
 ): void {
   const coolerGroup = new THREE.Group();
-  coolerGroup.name = 'island.wineCooler';
-  coolerGroup.position.set(localX, 0, frontZ);
+  coolerGroup.name = options?.groupName ?? 'island.wineCooler';
+  coolerGroup.position.set(localX, options?.yOffset ?? 0, frontZ);
 
   const brushedStainlessTex = createBrushedStainlessTexture();
   const stainlessMat = new THREE.MeshStandardMaterial({

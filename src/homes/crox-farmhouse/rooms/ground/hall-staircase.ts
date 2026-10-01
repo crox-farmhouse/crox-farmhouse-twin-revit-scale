@@ -295,10 +295,15 @@ export function buildHallStaircase(
 
   // 1C. Step 6 / NW Quarter-Turn Landing in the NW corner (X = -17.55m..-16.66m, Z = -1.62m..-2.50m, top Y = +0.84m)
   //     Hollowed inside to form the Understairs Service Cupboard housing the Secondary 8-Port UFH Manifold (`hall.understairsManifold`)
+  const ceilingWhiteMat = new THREE.MeshStandardMaterial({
+    color: 0xf7f5f0,
+    roughness: 0.86,
+    metalness: 0.01,
+  });
   const carriageFullH = quarterLandingY - lowerFloorY - 0.026;
   const carriageSoffit = new THREE.Mesh(
     new THREE.BoxGeometry(0.89, 0.06, 0.88),
-    warmRoomPlasterMat
+    ceilingWhiteMat
   );
   carriageSoffit.position.set(-17.105, quarterLandingY - 0.056, -2.06);
   carriageSoffit.castShadow = true;
@@ -715,7 +720,7 @@ export function buildHallStaircase(
   const upperStepRise = 0.22; // 6 * 0.22m = 1.32m (from Y = 0.84m to Y = 2.16m flush with First Floor Landing!)
 
   const upperCarriageShape = new THREE.Shape();
-  upperCarriageShape.moveTo(-16.64, 0.73);
+  upperCarriageShape.moveTo(-16.64, 0.755);
   upperCarriageShape.lineTo(-16.64, quarterLandingY);
   for (let i = 0; i < upperOpenSteps; i++) {
     const sx0 = -16.64 + i * upperStepRun;
@@ -725,19 +730,23 @@ export function buildHallStaircase(
     upperCarriageShape.lineTo(sx1, sy1);
   }
   // Top landing arrival step flush with First Floor Landing (X = -15.50m..-15.36m, Y = 2.16m)
+  // Underside stays 15mm clear above openSlopedSoffit and stops at X = -15.38m below the 28mm nosing so it never Z-fights at X = -15.36m (Issue #5)
   const topStepY = quarterLandingY + (upperOpenSteps + 1) * upperStepRise; // 2.16m = floorTopY
   upperCarriageShape.lineTo(upperBalustradeEndX, topStepY);
   upperCarriageShape.lineTo(upperEndX, topStepY);
-  upperCarriageShape.lineTo(upperEndX, topStepY - 0.15);
+  upperCarriageShape.lineTo(upperEndX, topStepY - 0.028);
+  upperCarriageShape.lineTo(upperEndX - 0.022, topStepY - 0.028);
+  upperCarriageShape.lineTo(upperEndX - 0.022, topStepY - 0.115);
   upperCarriageShape.closePath();
 
   const upperCarriageGeo = new THREE.ExtrudeGeometry(upperCarriageShape, {
-    depth: 0.83,
+    depth: 0.826,
     bevelEnabled: false,
   });
-  upperCarriageGeo.translate(0, 0, -2.49);
+  upperCarriageGeo.translate(0, 0, -2.486);
   // Solid Antique Oak upper stair treads & risers flanking the central runner carpet (Issue #16)
   const upperCarriageMesh = new THREE.Mesh(upperCarriageGeo, antiqueOakSkirtingMat);
+  upperCarriageMesh.name = 'hall.stairs.upperCarriage';
   upperCarriageMesh.castShadow = true;
   upperCarriageMesh.receiveShadow = true;
   stairGroup.add(upperCarriageMesh);
@@ -800,67 +809,25 @@ export function buildHallStaircase(
     stairGroup.add(upperRod);
   }
 
-  // Smooth White-Plastered Sloped Soffit Underside Panel beneath the Upper Flight
+  // Smooth Painted-White Sloped Soffit Underside Panel + Vertical Arrival Fascia beneath the Upper Flight (Issue #4 & Issue #5)
+  // Extruded over Z = -2.488m..-1.655m (clear of stairExposedBrickNorth at Z = -2.490m) with zero LED strip line!
   const soffitShape = new THREE.Shape();
   soffitShape.moveTo(-16.64, 0.69);
   soffitShape.lineTo(-16.64, 0.74);
-  soffitShape.lineTo(upperEndX, topStepY - 0.13);
+  soffitShape.lineTo(upperEndX - 0.02, topStepY - 0.13);
+  soffitShape.lineTo(upperEndX - 0.02, topStepY - 0.028);
+  soffitShape.lineTo(upperEndX, topStepY - 0.028);
   soffitShape.lineTo(upperEndX, topStepY - 0.18);
   soffitShape.closePath();
   const soffitGeo = new THREE.ExtrudeGeometry(soffitShape, {
-    depth: 0.84,
+    depth: 0.833,
     bevelEnabled: false,
   });
-  soffitGeo.translate(0, 0, -2.495);
-  const openSlopedSoffit = new THREE.Mesh(soffitGeo, warmRoomPlasterMat);
+  soffitGeo.translate(0, 0, -2.488);
+  const openSlopedSoffit = new THREE.Mesh(soffitGeo, ceilingWhiteMat);
   openSlopedSoffit.name = 'hall.stairs.upperSoffit';
   openSlopedSoffit.receiveShadow = true;
   stairGroup.add(openSlopedSoffit);
-
-  // Recessed warm-white LED strip along the underside of the sloped upper-flight soffit,
-  // illuminating the Roland GP-6-PE piano alcove below (on `hallPendant`, low in night mode).
-  {
-    const soffitLedMat = new THREE.MeshStandardMaterial({
-      color: 0xffefb8,
-      emissive: 0xffae24,
-      emissiveIntensity: 2.2,
-      roughness: 0.2,
-    });
-    soffitLedMat.userData.baseEmissiveIntensity = 2.2;
-    lightGroups.hallPendant.emissives.push(soffitLedMat);
-
-    const soffitDx = upperEndX - -16.64; // 1.28m
-    const soffitDy = topStepY - 0.18 - 0.69; // 1.29m
-    const soffitLen = Math.hypot(soffitDx, soffitDy) - 0.08;
-    const soffitPitch = Math.atan2(soffitDy, soffitDx);
-    const soffitMidX = (-16.64 + upperEndX) * 0.5;
-    const soffitMidY = (0.69 + (topStepY - 0.18)) * 0.5;
-
-    const soffitLedGroup = new THREE.Group();
-    soffitLedGroup.name = 'hall.stairs.upperSoffit.ledStrip';
-    soffitLedGroup.position.set(soffitMidX, soffitMidY, -2.02);
-    soffitLedGroup.rotation.z = soffitPitch;
-
-    const housing = new THREE.Mesh(
-      new THREE.BoxGeometry(soffitLen + 0.01, 0.009, 0.022),
-      brassMat
-    );
-    housing.name = 'hall.stairs.upperSoffit.ledStrip.housing';
-    housing.position.set(0, -0.004, 0);
-    soffitLedGroup.add(housing);
-
-    const diffuser = new THREE.Mesh(
-      new THREE.BoxGeometry(soffitLen, 0.006, 0.014),
-      soffitLedMat
-    );
-    diffuser.name = 'hall.stairs.upperSoffit.ledStrip.diffuser';
-    diffuser.position.set(0, -0.008, 0);
-    soffitLedGroup.add(diffuser);
-
-    stairGroup.add(soffitLedGroup);
-    interactions.registerLightFixture(soffitLedGroup, 'hallPendant');
-    ctx.addGlowPool('hallPendant', soffitMidX, lowerFloorY + 0.006, -2.02, 1.15, 0.24);
-  }
 
   // Issue #4: Mitered Closed White Outer Stringer on the South (+Z = -1.64m) face of the Upper Flight (X = -16.59m..-15.41m)
   // Matches the exact upper flight pitch up to the First Floor Landing slab at X = -15.36m
@@ -947,7 +914,7 @@ export function buildHallStaircase(
   const trimmerH = topStepY - 1.92;
   const stairwellEastTrimmer = new THREE.Mesh(
     new THREE.BoxGeometry(0.12, trimmerH, 1.07),
-    warmRoomPlasterMat
+    ceilingWhiteMat
   );
   stairwellEastTrimmer.position.set(-15.36, 1.92 + trimmerH / 2, -1.115);
   stairwellEastTrimmer.castShadow = true;
@@ -1060,29 +1027,29 @@ export function buildHallStaircase(
 
   scene.add(stairGroup);
 
-  // Exposed Natural Oak Timber Ceiling Spine Beam & Joists in Entrance Hall (Issue #11: lowered with wallH)
+  // Exposed Natural Oak Timber Ceiling Spine Beam & Joists in Entrance Hall (Issue #7: aligned with shifted hallSpinePost at Z = +0.46m)
   const hallSpineBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(4.56, 0.18, 0.19),
+    new THREE.BoxGeometry(4.62, 0.18, 0.19),
     oakMat
   );
-  hallSpineBeam.position.set(-15.33, wallH - 0.14, 0.34);
+  hallSpineBeam.position.set(-15.3, wallH - 0.14, 0.46);
   hallSpineBeam.castShadow = true;
   hallSpineBeam.receiveShadow = true;
   groundFloorCeilingGroup.add(hallSpineBeam);
 
-  // North-South Ceiling Trimmer Beam along the stairwell gallery edge (X = -15.36m, Z = -1.64m..+0.34m)
+  // North-South Ceiling Trimmer Beam along the stairwell gallery edge (X = -15.36m, Z = -1.64m..+0.46m)
   const hallStairTrimmerBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16, 0.16, 1.98),
+    new THREE.BoxGeometry(0.16, 0.16, 2.1),
     oakMat
   );
-  hallStairTrimmerBeam.position.set(-15.36, wallH - 0.12, -0.65);
+  hallStairTrimmerBeam.position.set(-15.36, wallH - 0.12, -0.59);
   hallStairTrimmerBeam.castShadow = true;
   groundFloorCeilingGroup.add(hallStairTrimmerBeam);
 
-  // Plasterboard ceiling backing above the Main Hall oak joists (wrapping around the open stairwell void X = -17.85..-15.36, Z = -2.66..-0.58)
+  // Painted-white plasterboard ceiling backing above the Main Hall oak joists (Issue #3, wrapping around the open stairwell void)
   const hallSouthCeilingBacking = new THREE.Mesh(
     new THREE.BoxGeometry(4.84, 0.036, 3.12),
-    warmRoomPlasterMat
+    ceilingWhiteMat
   );
   hallSouthCeilingBacking.name = 'hall.ceilingBacking.south';
   hallSouthCeilingBacking.position.set(-15.45, wallH - 0.005, 0.98);
@@ -1090,21 +1057,21 @@ export function buildHallStaircase(
   groundFloorCeilingGroup.add(hallSouthCeilingBacking);
 
   const hallNorthEastCeilingBacking = new THREE.Mesh(
-    new THREE.BoxGeometry(2.36, 0.036, 2.1),
-    warmRoomPlasterMat
+    new THREE.BoxGeometry(2.3, 0.036, 2.1),
+    ceilingWhiteMat
   );
   hallNorthEastCeilingBacking.name = 'hall.ceilingBacking.northEast';
-  hallNorthEastCeilingBacking.position.set(-14.18, wallH - 0.005, -1.61);
+  hallNorthEastCeilingBacking.position.set(-14.2, wallH - 0.005, -1.61);
   hallNorthEastCeilingBacking.receiveShadow = true;
   groundFloorCeilingGroup.add(hallNorthEastCeilingBacking);
 
-  // Exposed Natural Oak North-South Ceiling Joists South of the Spine Beam (Z = +0.34m..+2.35m — Issue #9)
+  // Exposed Natural Oak North-South Ceiling Joists South of the Spine Beam (Z = +0.46m..+2.35m — Issue #9 & Issue #7)
   for (let jx = -17.35; jx <= -13.25; jx += 0.44) {
     const joist = new THREE.Mesh(
-      new THREE.BoxGeometry(0.095, 0.11, 1.98),
+      new THREE.BoxGeometry(0.095, 0.11, 1.86),
       oakMat
     );
-    joist.position.set(jx, wallH - 0.07, 1.33);
+    joist.position.set(jx, wallH - 0.07, 1.39);
     joist.castShadow = true;
     groundFloorCeilingGroup.add(joist);
   }

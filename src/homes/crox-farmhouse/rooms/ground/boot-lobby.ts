@@ -1,10 +1,14 @@
 import * as THREE from 'three';
-import { addCasedArchitravePortal } from '../../../../engine/geometry/swept-moulding.ts';
+import {
+  addCasedArchitravePortal,
+  buildMitredWallSkirtingGeometry,
+} from '../../../../engine/geometry/swept-moulding.ts';
 import { buildWindowRomanBlind } from '../../../../objects/decor/roman-blind.ts';
 import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
 import type { buildDiningRoom } from './dining-room.ts';
+import { buildUnderCounterWineCooler } from './kitchen-island.ts';
 
 /**
  * Middle Boot Lobby (`bootLobby`), store, cloakroom WC and wine cellar.
@@ -80,20 +84,20 @@ export function buildBootLobby(
     -2.5,
     -12.14,
     0.76,
-    1.05,
-    1.86,
+    0.79,
+    1.6,
     'south',
     2
   );
 
-  // Face-fixed linen Roman blind over the Downstairs Cloakroom WC North window (X = -12.14m, sized to 0.70m total width to fit the WC window reveal)
+  // Face-fixed linen Roman blind over the Downstairs Cloakroom WC North window (X = -12.14m, lowered to sillY = 0.79m..1.60m — Issue #10)
   buildWindowRomanBlind(scene, tagCutawayWall, {
     name: 'bootLobby.downstairsWc.northWindow.romanBlind',
     zone: 'bootLobby',
     centerX: -12.14,
     width: 0.56,
-    railY: 1.815,
-    bottomY: 1.48,
+    railY: 1.555,
+    bottomY: 1.22,
     wallFaceZ: -2.5,
     facingZ: 1,
     cutawayWall: {
@@ -583,7 +587,7 @@ export function buildBootLobby(
     wcSouthDoorHeaderLining.position.set(-12.12, lowerDoorLintelY, -0.258);
     wcGroup.add(wcSouthDoorHeaderLining);
 
-    // North exterior wall dark lining around the WC window (X = -12.52m..-11.76m, Y = 1.05m..1.86m), tagged with tagCutawayWall
+    // North exterior wall dark lining around the WC window (X = -12.52m..-11.76m, Y = 0.79m..1.60m), tagged with tagCutawayWall
     const wcNorthCutaway: CutawayWallDescriptor = {
       axis: 'z',
       coord: -2.64,
@@ -594,8 +598,8 @@ export function buildBootLobby(
     for (const [nx, ny, nw, nh] of [
       [-12.665, lowerWallMidY, 0.29, lowerWallH],
       [-11.615, lowerWallMidY, 0.29, lowerWallH],
-      [-12.14, (lowerFloorY + 1.05) / 2, 0.76, 1.05 - lowerFloorY],
-      [-12.14, (1.86 + wallH) / 2, 0.76, wallH - 1.86],
+      [-12.14, (lowerFloorY + 0.79) / 2, 0.76, 0.79 - lowerFloorY],
+      [-12.14, (1.6 + wallH) / 2, 0.76, wallH - 1.6],
     ] as const) {
       const northLining = new THREE.Mesh(
         new THREE.BoxGeometry(nw, nh, 0.016),
@@ -1000,13 +1004,72 @@ export function buildBootLobby(
       wcGroup.add(floorBolt);
     }
 
-    // Rear horizontal porcelain soil-pipe shroud & stepped wall collar into the West wall (X = -12.80m)
+    // Issue #9: Boxed-out painted plasterboard waste/soil pipe casing (`bootLobby.downstairsWc.wastePipeBoxing`)
+    // on the West wall (`X = -12.80m`):
+    // - Vertical full-height stack boxing at Z = -1.64m..-1.32m (centered at Z = -1.48m between the Shaker vanity
+    //   at Z = -1.31m and the WC cistern at Z = -1.69m, X = -12.80m..-12.60m, Y = lowerFloorY..wallH)
+    // - Low horizontal soil/waste pipe boxing ledge from the vertical stack (Z = -1.64m) North behind the toilet pan
+    //   to the North wall (Z = -2.482m, X = -12.80m..-12.62m, Y = lowerFloorY..lowerFloorY + 0.38m)
+    const wastePipeBoxingGroup = new THREE.Group();
+    wastePipeBoxingGroup.name = 'bootLobby.downstairsWc.wastePipeBoxing';
+
+    const vertStackBoxing = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, lowerWallH, 0.32),
+      wcDarkWallMat
+    );
+    vertStackBoxing.name = 'bootLobby.downstairsWc.wastePipeBoxing.verticalStack';
+    vertStackBoxing.position.set(-12.7, lowerWallMidY, -1.48);
+    vertStackBoxing.castShadow = true;
+    vertStackBoxing.receiveShadow = true;
+    wastePipeBoxingGroup.add(vertStackBoxing);
+
+    const horizSoilBoxing = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.36, 0.842),
+      wcDarkWallMat
+    );
+    horizSoilBoxing.name = 'bootLobby.downstairsWc.wastePipeBoxing.horizontalDuct';
+    horizSoilBoxing.position.set(-12.71, lowerFloorY + 0.18, -2.061);
+    horizSoilBoxing.castShadow = true;
+    horizSoilBoxing.receiveShadow = true;
+    wastePipeBoxingGroup.add(horizSoilBoxing);
+
+    const horizBoxingCapShelf = new THREE.Mesh(
+      new THREE.BoxGeometry(0.194, 0.022, 0.846),
+      vanityCabinetMat
+    );
+    horizBoxingCapShelf.name = 'bootLobby.downstairsWc.wastePipeBoxing.capShelf';
+    horizBoxingCapShelf.position.set(-12.703, lowerFloorY + 0.371, -2.061);
+    horizBoxingCapShelf.castShadow = true;
+    horizBoxingCapShelf.receiveShadow = true;
+    wastePipeBoxingGroup.add(horizBoxingCapShelf);
+
+    // 45-degree mitred 146mm antique oak skirting wrapping the waste-pipe boxing base
+    const boxSkirt = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(
+        [
+          [-12.62, -2.482],
+          [-12.62, -1.64],
+          [-12.6, -1.64],
+          [-12.6, -1.32],
+          [-12.8, -1.32],
+        ],
+        lowerFloorY
+      ),
+      antiqueOakSkirtingMat
+    );
+    boxSkirt.name = 'bootLobby.downstairsWc.wastePipeBoxing.skirting';
+    boxSkirt.castShadow = true;
+    boxSkirt.receiveShadow = true;
+    wastePipeBoxingGroup.add(boxSkirt);
+    wcGroup.add(wastePipeBoxingGroup);
+
+    // Rear horizontal porcelain soil-pipe shroud & stepped wall collar into the horizontal waste-pipe boxing (X = -12.62m)
     const soilPipeShroud = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.056, 0.058, 0.34, 16),
+      new THREE.CylinderGeometry(0.056, 0.058, 0.22, 16),
       vitreousChinaMat
     );
     soilPipeShroud.rotation.z = Math.PI / 2;
-    soilPipeShroud.position.set(-12.8 + 0.17, lowerFloorY + 0.185, toiletZ);
+    soilPipeShroud.position.set(-12.62 + 0.11, lowerFloorY + 0.185, toiletZ);
     soilPipeShroud.castShadow = true;
     wcGroup.add(soilPipeShroud);
 
@@ -1015,7 +1078,7 @@ export function buildBootLobby(
       vitreousChinaMat
     );
     soilWallCollar.rotation.z = Math.PI / 2;
-    soilWallCollar.position.set(-12.8 + 0.018, lowerFloorY + 0.185, toiletZ);
+    soilWallCollar.position.set(-12.62 + 0.013, lowerFloorY + 0.185, toiletZ);
     wcGroup.add(soilWallCollar);
 
     // 2B. Hollow Lathe-Sculpted Traditional Flared Box-Rim Vitreous China Pan Bowl
@@ -1279,21 +1342,22 @@ export function buildBootLobby(
     panPipeCollar.position.set(panCenterX - 0.282, lowerFloorY + 0.382, toiletZ);
     wcGroup.add(panPipeCollar);
 
-    // 15mm aged-brass water supply pipe rising from the floor on the North side of the cistern with cross-head service valve
+    // 15mm aged-brass water supply pipe rising from the top of the horizontal waste-pipe boxing on the North side of the cistern
     const supplyPipeX = -12.8 + 0.085;
     const supplyPipeZ = toiletZ - 0.165;
+    const supplyPipeBaseY = lowerFloorY + 0.382;
     const supplyPipe = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.008, 0.008, cisternBaseY - lowerFloorY, 10),
+      new THREE.CylinderGeometry(0.008, 0.008, cisternBaseY - supplyPipeBaseY, 10),
       brassMat
     );
-    supplyPipe.position.set(supplyPipeX, (lowerFloorY + cisternBaseY) / 2, supplyPipeZ);
+    supplyPipe.position.set(supplyPipeX, (supplyPipeBaseY + cisternBaseY) / 2, supplyPipeZ);
     wcGroup.add(supplyPipe);
 
     const supplyFloorRose = new THREE.Mesh(
       new THREE.CylinderGeometry(0.022, 0.024, 0.012, 12),
       brassMat
     );
-    supplyFloorRose.position.set(supplyPipeX, lowerFloorY + 0.012, supplyPipeZ);
+    supplyFloorRose.position.set(supplyPipeX, supplyPipeBaseY + 0.006, supplyPipeZ);
     wcGroup.add(supplyFloorRose);
 
     // 2G. Matching Heritage Aged-Brass Wall-Mounted Toilet Roll Holder on the North wall (`Z = -2.476m`)
@@ -1363,19 +1427,6 @@ export function buildBootLobby(
       color: 0x24272a,
       roughness: 0.38,
       metalness: 0.72,
-    });
-    const coolerGlassMat = new THREE.MeshStandardMaterial({
-      color: 0x182026,
-      roughness: 0.1,
-      metalness: 0.25,
-      transparent: true,
-      opacity: 0.58,
-    });
-    const coolerDisplayMat = new THREE.MeshStandardMaterial({
-      color: 0x101418,
-      emissive: 0x3898ff,
-      emissiveIntensity: 0.55,
-      roughness: 0.2,
     });
     const bordeauxGreenGlassMat = new THREE.MeshStandardMaterial({
       color: 0x1e3a24,
@@ -1702,15 +1753,18 @@ export function buildBootLobby(
 
     ctx.addGlowPool('wineCellarLeds', -10.85, lowerFloorY + 0.006, -1.15, 1.45, 0.24);
 
-    // North return oak back panel against Z = -2.48m & East end gable panel at X = -9.834m
+    // North return oak back panel restricted to the left open cubby bay (X = -10.975m..-10.466m)
+    // so it never overlaps coplanarly with the recessed wine cooler cavity back wall
+    const leftCubbySpanX = -10.466 - northReturnMinX; // 0.509m
+    const leftCubbyMidX = (northReturnMinX + -10.466) / 2; // -10.7205m
     const northBackPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(northReturnSpanX, counterHeight, 0.018),
+      new THREE.BoxGeometry(leftCubbySpanX, counterHeight, 0.018),
       cellarOakMat
     );
-    northBackPanel.position.set(northReturnMidX, lowerFloorY + counterHeight / 2, northWallZ + 0.01);
+    northBackPanel.position.set(leftCubbyMidX, lowerFloorY + counterHeight / 2, northWallZ + 0.01);
     wineCellarGroup.add(northBackPanel);
 
-    for (const px of [northReturnMinX + 0.014, northReturnMaxX - 0.014, -10.72] as const) {
+    for (const px of [northReturnMinX + 0.014, northReturnMaxX - 0.014, -10.466] as const) {
       const returnCheek = new THREE.Mesh(
         new THREE.BoxGeometry(0.028, counterHeight - 0.02, northReturnDepth),
         cellarOakMat
@@ -1722,158 +1776,33 @@ export function buildBootLobby(
       wineCellarGroup.add(returnCheek);
     }
 
-    // Corner open oak cubby shelves on the left of the wine cooler (X = -10.975m..-10.72m)
+    // Corner open oak cubby shelves on the left of the wine cooler (X = -10.961m..-10.48m)
     for (const sy of [0.06, 0.42] as const) {
       const cornerShelf = new THREE.Mesh(
-        new THREE.BoxGeometry(0.25, 0.024, northReturnDepth - 0.02),
+        new THREE.BoxGeometry(0.48, 0.024, northReturnDepth - 0.02),
         cellarOakMat
       );
-      cornerShelf.position.set(-10.848, lowerFloorY + sy, northReturnMidZ);
+      cornerShelf.position.set(-10.72, lowerFloorY + sy, northReturnMidZ);
       wineCellarGroup.add(cornerShelf);
     }
 
-    // Built-In Dual-Zone Under-Counter Wine Cooler (`bootLobby.wineCellar.wineCooler`)
-    // Centered at X = -10.27m (spanning X = -10.70m..-9.85m -> 0.85m wide double/wide cooler bay) underneath the North wrap-around counter
-    const coolerGroup = new THREE.Group();
-    coolerGroup.name = 'bootLobby.wineCellar.wineCooler';
-    const coolerW = 0.82;
-    const coolerH = counterHeight - 0.038; // 0.802m
-    const coolerD = northReturnDepth - 0.02; // 0.36m
-    const coolerX = -10.275;
-    const coolerZ = northReturnMidZ;
-    coolerGroup.position.set(coolerX, lowerFloorY, coolerZ);
-
-    // Dark brushed-steel/anthracite insulated cabinet housing & recessed kick-plinth grille
-    const coolerCabinet = new THREE.Mesh(
-      new THREE.BoxGeometry(coolerW, coolerH - 0.08, coolerD - 0.03),
-      cellarSteelMat
+    // Issue #11: Reuse the exact Kitchen Island Under-Counter Wine Cooler (`buildUnderCounterWineCooler`)
+    // Centered at X = -10.15m (spanning X = -10.45m..-9.85m, 0.60m wide) underneath the North wrap-around counter,
+    // with a matching oak base kick-plinth (`Y = lowerFloorY..lowerFloorY + 0.06m`) and zero coplanar dithering
+    const coolerKickPlinth = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.06, 0.34),
+      cellarOakMat
     );
-    coolerCabinet.name = 'bootLobby.wineCellar.wineCooler.cabinet';
-    coolerCabinet.position.set(0, 0.08 + (coolerH - 0.08) / 2, -0.01);
-    coolerCabinet.castShadow = true;
-    coolerCabinet.receiveShadow = true;
-    coolerGroup.add(coolerCabinet);
+    coolerKickPlinth.name = 'bootLobby.wineCellar.wineCooler.plinth';
+    coolerKickPlinth.position.set(-10.15, lowerFloorY + 0.03, -2.29);
+    coolerKickPlinth.castShadow = true;
+    coolerKickPlinth.receiveShadow = true;
+    wineCellarGroup.add(coolerKickPlinth);
 
-    const coolerPlinth = new THREE.Mesh(
-      new THREE.BoxGeometry(coolerW, 0.08, coolerD - 0.05),
-      cellarSteelMat
-    );
-    coolerPlinth.position.set(0, 0.04, -0.02);
-    coolerGroup.add(coolerPlinth);
-
-    // Louvered ventilation slots on the bottom plinth grille
-    for (let v = 0; v < 3; v++) {
-      const ventBar = new THREE.Mesh(
-        new THREE.BoxGeometry(coolerW - 0.12, 0.006, 0.01),
-        brassMat
-      );
-      ventBar.position.set(0, 0.024 + v * 0.018, coolerD / 2 - 0.04);
-      coolerGroup.add(ventBar);
-    }
-
-    // Warm interior LED side strips illuminating the wine cooler cavity
-    for (const sx of [-coolerW / 2 + 0.04, coolerW / 2 - 0.04] as const) {
-      const innerLed = new THREE.Mesh(
-        new THREE.BoxGeometry(0.008, coolerH - 0.18, 0.012),
-        warmLedStripMat
-      );
-      innerLed.position.set(sx, 0.08 + (coolerH - 0.12) / 2, 0.08);
-      coolerGroup.add(innerLed);
-    }
-
-    // Digital Dual-Zone LED Temperature Control Bar across the middle of the cooler cavity
-    const tempControlBar = new THREE.Mesh(
-      new THREE.BoxGeometry(coolerW - 0.08, 0.034, 0.024),
-      coolerDisplayMat
-    );
-    tempControlBar.name = 'bootLobby.wineCellar.wineCooler.display';
-    tempControlBar.position.set(0, 0.44, coolerD / 2 - 0.035);
-    coolerGroup.add(tempControlBar);
-
-    // 4 Pull-Out Slatted Natural Oak Wine Shelves inside the cooler + chilled wine bottles (necks facing South +Z)
-    const bottleBodyNorthGeo = new THREE.CylinderGeometry(0.033, 0.033, 0.19, 10);
-    bottleBodyNorthGeo.rotateX(Math.PI / 2);
-    const bottleNeckNorthGeo = new THREE.CylinderGeometry(0.012, 0.02, 0.075, 10);
-    bottleNeckNorthGeo.rotateX(Math.PI / 2);
-
-    for (const shelfY of [0.16, 0.29, 0.53, 0.66] as const) {
-      const pullOutShelf = new THREE.Mesh(
-        new THREE.BoxGeometry(coolerW - 0.08, 0.018, coolerD - 0.07),
-        cellarCrateOakMat
-      );
-      pullOutShelf.name = 'bootLobby.wineCellar.wineCooler.shelf';
-      pullOutShelf.position.set(0, shelfY, 0.01);
-      coolerGroup.add(pullOutShelf);
-
-      for (let m = 0; m < 6; m++) {
-        const bx = -coolerW / 2 + 0.11 + m * ((coolerW - 0.22) / 5);
-        const cbBody = new THREE.Mesh(
-          bottleBodyNorthGeo,
-          (m + Math.round(shelfY * 10)) % 2 === 0
-            ? bordeauxGreenGlassMat
-            : burgundyAmberGlassMat
-        );
-        cbBody.position.set(bx, shelfY + 0.042, -0.02);
-        coolerGroup.add(cbBody);
-
-        const cbNeck = new THREE.Mesh(bottleNeckNorthGeo, brassMat);
-        cbNeck.position.set(bx, shelfY + 0.042, 0.105);
-        coolerGroup.add(cbNeck);
-      }
-    }
-
-    // Framed Smoked-Glass Cooler Door on the South (+Z) front face (top/bottom/left/right dark steel stiles + glass pane + tubular handle)
-    const doorFrontZ = coolerD / 2 - 0.008;
-    const doorTopY = coolerH - 0.01;
-    const doorBotY = 0.085;
-    const doorH = doorTopY - doorBotY;
-    const doorMidY = (doorTopY + doorBotY) / 2;
-    const frameW = 0.045;
-
-    for (const [fx, fy, fw, fh] of [
-      [0, doorTopY - frameW / 2, coolerW - 0.01, frameW],
-      [0, doorBotY + frameW / 2, coolerW - 0.01, frameW],
-      [-coolerW / 2 + frameW / 2 + 0.005, doorMidY, frameW, doorH - frameW * 2],
-      [coolerW / 2 - frameW / 2 - 0.005, doorMidY, frameW, doorH - frameW * 2],
-    ] as const) {
-      const doorFrameBar = new THREE.Mesh(
-        new THREE.BoxGeometry(fw, fh, 0.022),
-        cellarSteelMat
-      );
-      doorFrameBar.name = 'bootLobby.wineCellar.wineCooler.doorFrame';
-      doorFrameBar.position.set(fx, fy, doorFrontZ);
-      doorFrameBar.castShadow = true;
-      coolerGroup.add(doorFrameBar);
-    }
-
-    const coolerGlassPane = new THREE.Mesh(
-      new THREE.BoxGeometry(coolerW - frameW * 2 - 0.01, doorH - frameW * 2, 0.008),
-      coolerGlassMat
-    );
-    coolerGlassPane.name = 'bootLobby.wineCellar.wineCooler.glassDoor';
-    coolerGlassPane.position.set(0, doorMidY, doorFrontZ);
-    coolerGroup.add(coolerGlassPane);
-
-    // Vertical brushed stainless/brass tubular bar handle on the left of the cooler door
-    const coolerHandle = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.008, 0.008, doorH * 0.68, 12),
-      brassMat
-    );
-    coolerHandle.name = 'bootLobby.wineCellar.wineCooler.handle';
-    coolerHandle.position.set(-coolerW / 2 + 0.028, doorMidY, doorFrontZ + 0.028);
-    coolerGroup.add(coolerHandle);
-
-    for (const hy of [doorMidY - doorH * 0.28, doorMidY + doorH * 0.28] as const) {
-      const standoff = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.006, 0.006, 0.026, 10),
-        brassMat
-      );
-      standoff.rotation.x = Math.PI / 2;
-      standoff.position.set(-coolerW / 2 + 0.028, hy, doorFrontZ + 0.014);
-      coolerGroup.add(standoff);
-    }
-
-    wineCellarGroup.add(coolerGroup);
+    buildUnderCounterWineCooler(wineCellarGroup, -10.15, -2.1, interactions, {
+      groupName: 'bootLobby.wineCellar.wineCooler',
+      yOffset: lowerFloorY - 0.04,
+    });
 
     scene.add(wineCellarGroup);
   }
@@ -1928,10 +1857,15 @@ export function buildBootLobby(
     },
   });
 
-  // Plasterboard ceiling backing across Boot Lobby, Under-Stairs Store & Cloakroom WC (bottom at wallH - 0.005m so flush PIR sensors at wallH - 0.006m stay visible)
+  // White-painted plasterboard ceiling backing across Boot Lobby, Under-Stairs Store & Cloakroom WC between the oak joists
+  const bootLobbyCeilingWhiteMat = new THREE.MeshStandardMaterial({
+    color: 0xf7f5f0,
+    roughness: 0.88,
+    metalness: 0.01,
+  });
   const bootLobbyCeilingBacking = new THREE.Mesh(
     new THREE.BoxGeometry(3.54, 0.02, 5.18),
-    warmRoomPlasterMat
+    bootLobbyCeilingWhiteMat
   );
   bootLobbyCeilingBacking.name = 'bootLobby.ceilingBacking';
   bootLobbyCeilingBacking.position.set(-11.31, wallH + 0.005, -0.075);

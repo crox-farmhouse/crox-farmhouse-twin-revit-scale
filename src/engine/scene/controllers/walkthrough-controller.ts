@@ -498,7 +498,78 @@ export class WalkthroughController {
     }
   }
 
+  private depenetrateFootPosition(): void {
+    this.getObstacleCache();
+    const furnMinY = this.footPos.y + 0.25;
+    const furnMaxY =
+      this.footPos.y + Math.max(this.currentEyeHeight, STANDING_EYE_HEIGHT) + 0.15;
+    const furnPad = 0.2;
+    const furnPadSq = furnPad * furnPad;
+
+    for (let iter = 0; iter < 2; iter++) {
+      let pushed = false;
+      for (let i = 0; i < this.cachedFurnitureBoxes.length; i++) {
+        const f = this.cachedFurnitureBoxes[i];
+        if (f.maxY <= furnMinY || f.minY >= furnMaxY) continue;
+        const dx = f.centerX - this.footPos.x;
+        const dz = f.centerZ - this.footPos.z;
+        const maxDist = f.radiusXZ + furnPad + 0.15;
+        if (dx * dx + dz * dz > maxDist * maxDist) continue;
+        const visTarget = f.mesh.parent ? f.mesh : f.visibilityNode;
+        if (!isObjectVisibleInHierarchy(visTarget)) continue;
+
+        const vx = -f.uz;
+        const vz = f.ux;
+        const curU = this.footPos.x * f.ux + this.footPos.z * f.uz;
+        const curV = this.footPos.x * vx + this.footPos.z * vz;
+
+        const clampedU = Math.max(f.minU, Math.min(f.maxU, curU));
+        const clampedV = Math.max(f.minV, Math.min(f.maxV, curV));
+        const du = curU - clampedU;
+        const dv = curV - clampedV;
+        const distSq = du * du + dv * dv;
+
+        if (distSq >= furnPadSq) continue;
+
+        let targetU = curU;
+        let targetV = curV;
+        if (distSq > 1e-6) {
+          const dist = Math.sqrt(distSq);
+          const push = furnPad - dist + 0.005;
+          targetU += (du / dist) * push;
+          targetV += (dv / dist) * push;
+        } else {
+          // Inside OBB: push out along nearest edge
+          const dMinU = curU - (f.minU - furnPad);
+          const dMaxU = f.maxU + furnPad - curU;
+          const dMinV = curV - (f.minV - furnPad);
+          const dMaxV = f.maxV + furnPad - curV;
+          const minD = Math.min(dMinU, dMaxU, dMinV, dMaxV);
+          if (minD === dMinU) targetU = f.minU - furnPad - 0.005;
+          else if (minD === dMaxU) targetU = f.maxU + furnPad + 0.005;
+          else if (minD === dMinV) targetV = f.minV - furnPad - 0.005;
+          else targetV = f.maxV + furnPad + 0.005;
+        }
+
+        const nextX = targetU * f.ux + targetV * vx;
+        const nextZ = targetU * f.uz + targetV * vz;
+        const pushDir = new THREE.Vector3(nextX - this.footPos.x, 0, nextZ - this.footPos.z);
+        const pushLen = pushDir.length();
+        if (pushLen > 1e-4) {
+          pushDir.divideScalar(pushLen);
+          if (!this.isBlockedByWallOrCabinet(this.footPos, pushDir, pushLen)) {
+            this.footPos.x = nextX;
+            this.footPos.z = nextZ;
+            pushed = true;
+          }
+        }
+      }
+      if (!pushed) break;
+    }
+  }
+
   private ensureFootPositionUnblocked(): void {
+    this.depenetrateFootPosition();
     const cardinals = [
       new THREE.Vector3(1, 0, 0),
       new THREE.Vector3(-1, 0, 0),
@@ -581,6 +652,7 @@ export class WalkthroughController {
       this.footPos.y = sampledY;
       this.yawRad = THREE.MathUtils.degToRad(spawnOverride.yawDeg ?? 0);
       this.pitchRad = -0.03;
+      this.depenetrateFootPosition();
     } else {
       // Determine whether the current orbit target or camera is inside a room
       const [tx, ty, tz] = currentPose.target;
@@ -657,6 +729,7 @@ export class WalkthroughController {
       this.footPos.y,
       this.footPos.z
     );
+    this.depenetrateFootPosition();
     this.yawRad = THREE.MathUtils.degToRad(sp.yawDeg);
     this.pitchRad = -0.03;
     this.targetYawRad = this.yawRad;
@@ -837,8 +910,19 @@ export class WalkthroughController {
         return;
       }
 
-      // Check ancestor chain for ceiling/roof groups, UFH overlays, architectural shell groups, or dynamic door pivots
-      let hasDynamicAncestor = obj.matrixAutoUpdate;
+      // Check ancestor chain for ceiling/roof groups, UFH overlays, architectural shell groups, or dynamic door/bifold pivots
+      const isDynamicObject = (node: THREE.Object3D): boolean => {
+        const u = node.userData as Record<string, unknown> | undefined;
+        if (
+          typeof u?.interactableId === 'string' ||
+          u?.isBifoldDoor === true ||
+          u?.isCarGate === true
+        ) {
+          return true;
+        }
+        return typeof node.name === 'string' && /bifold|doorPivot/i.test(node.name);
+      };
+      let hasDynamicAncestor = isDynamicObject(obj);
       let hasArchitecturalShellAncestor =
         obj.userData?.isArchitecturalShell === true ||
         obj.userData?.isCutawayWall === true ||
@@ -867,7 +951,7 @@ export class WalkthroughController {
         ) {
           hasArchitecturalShellAncestor = true;
         }
-        if (cur.matrixAutoUpdate) {
+        if (isDynamicObject(cur)) {
           hasDynamicAncestor = true;
         }
         cur = cur.parent;
@@ -886,26 +970,41 @@ export class WalkthroughController {
 
       // 1. Vertical structural walls (including multi-material USDA BufferGeometry walls in cutawayWallGroups,
       //    mitered polyline canted bay walls/windows, and bevelled RoundedBoxGeometry meshes),
-      //    window frames/upstands/stiles/mullions, all interior/exterior doors (including 28mm panelled doors
-      //    and 12-16mm glazed courtyard/bifold doors), and tall cabinetry:
-      const isSoftCurtain =
-        typeof obj.name === 'string' && /curtainPanel/i.test(obj.name);
+      //    window frames/upstands/stiles/mullions, Roman blinds & curtains, all interior/exterior doors
+      //    (including 28mm panelled doors and 12-16mm glazed courtyard/bifold doors), and tall cabinetry:
+      const isBlindOrCurtain =
+        typeof obj.name === 'string' && /romanBlind|curtain/i.test(obj.name);
+      const isWindowGlass =
+        !hasDynamicAncestor &&
+        (Array.isArray(obj.material)
+          ? obj.material.some(
+              (m) =>
+                Boolean((m as THREE.Material & { transparent?: boolean }).transparent) &&
+                ((m as THREE.Material & { opacity?: number }).opacity ?? 1) <= 0.5
+            )
+          : Boolean(
+              (obj.material as THREE.Material & { transparent?: boolean })?.transparent &&
+                ((obj.material as THREE.Material & { opacity?: number })?.opacity ?? 1) <= 0.5
+            )) &&
+        sizeY >= 0.45 &&
+        Math.min(sizeX, sizeZ) <= 0.16 &&
+        Math.max(sizeX, sizeZ) >= 0.35;
       const isBoxOrShellWall =
-        !isSoftCurtain &&
-        (obj.geometry instanceof THREE.BoxGeometry ||
-          hasArchitecturalShellAncestor ||
-          (!(obj.geometry instanceof THREE.CylinderGeometry) &&
-            !(obj.geometry instanceof THREE.SphereGeometry) &&
-            !(obj.geometry instanceof THREE.ConeGeometry) &&
-            !(obj.geometry instanceof THREE.TubeGeometry) &&
-            !(obj.geometry instanceof THREE.RingGeometry) &&
-            !(obj.geometry instanceof THREE.TorusGeometry)));
+        isBlindOrCurtain ||
+        obj.geometry instanceof THREE.BoxGeometry ||
+        hasArchitecturalShellAncestor ||
+        (!(obj.geometry instanceof THREE.CylinderGeometry) &&
+          !(obj.geometry instanceof THREE.SphereGeometry) &&
+          !(obj.geometry instanceof THREE.ConeGeometry) &&
+          !(obj.geometry instanceof THREE.TubeGeometry) &&
+          !(obj.geometry instanceof THREE.RingGeometry) &&
+          !(obj.geometry instanceof THREE.TorusGeometry));
       if (
         isBoxOrShellWall &&
-        sizeY >= 0.45 &&
+        (sizeY >= 0.45 || (isBlindOrCurtain && sizeY >= 0.25)) &&
         (Math.max(sizeX, sizeZ) >= 0.32 ||
           (sizeY >= 0.85 && Math.max(sizeX, sizeZ) >= 0.04)) &&
-        Math.min(sizeX, sizeZ) >= 0.01 &&
+        Math.min(sizeX, sizeZ) >= 0.008 &&
         Math.max(sizeX, sizeZ) <= 28.0
       ) {
         list.push({
@@ -919,10 +1018,10 @@ export class WalkthroughController {
         });
       }
 
-      // 2. 2D Oriented Bounding Box (OBB) Furniture & Cabinetry Colliders:
+      // 2. 2D Oriented Bounding Box (OBB) Furniture, Cabinetry, Window Recess & Blind/Curtain Colliders:
       //    Catches dining tables, desks, coffee tables, sofas (including sculpted BufferGeometry
       //    cushions), armchairs, dining chairs, beds, kitchen island & worktops, sideboards,
-      //    bathtubs, vanities, WCs, and appliances whose top surface sits at knee-to-chest height.
+      //    bathtubs, vanities, WCs, tall pantry/wardrobe units, Roman blinds, curtains, and window glass recesses.
       if (rebuildFurniture && !hasDynamicAncestor && Math.max(sizeX, sizeZ) <= 5.5) {
         const floorY = this.sampleFloorElevation(centerX, this.tmpBox.max.y, centerZ);
         const topAboveFloor = this.tmpBox.max.y - floorY;
@@ -930,8 +1029,8 @@ export class WalkthroughController {
 
         if (
           topAboveFloor >= 0.34 &&
-          topAboveFloor <= 1.38 &&
-          botAboveFloor <= 0.92
+          topAboveFloor <= 2.32 &&
+          botAboveFloor <= 1.65
         ) {
           if (!obj.geometry.boundingBox) {
             obj.geometry.computeBoundingBox();
@@ -980,19 +1079,37 @@ export class WalkthroughController {
               }
             }
 
-            const uSpan = maxU - minU;
-            const vSpan = maxV - minV;
-            if (
-              Math.min(uSpan, vSpan) >= 0.30 &&
-              Math.max(uSpan, vSpan) >= 0.36 &&
-              Math.max(uSpan, vSpan) <= 5.2
-            ) {
+            let uSpan = maxU - minU;
+            let vSpan = maxV - minV;
+            // Inflate thin depth axis of Roman blinds, curtains, and fixed window glass panes
+            // so the camera can never enter the 14cm window reveal or clip inside window blinds.
+            if (isBlindOrCurtain || isWindowGlass) {
+              const padDepth = isWindowGlass ? 0.15 : 0.1;
+              if (uSpan < vSpan) {
+                minU -= padDepth;
+                maxU += padDepth;
+                uSpan = maxU - minU;
+              } else {
+                minV -= padDepth;
+                maxV += padDepth;
+                vSpan = maxV - minV;
+              }
+            }
+
+            const validDimensions =
+              isBlindOrCurtain || isWindowGlass
+                ? Math.max(uSpan, vSpan) >= 0.32 && Math.max(uSpan, vSpan) <= 5.2
+                : Math.min(uSpan, vSpan) >= 0.29 &&
+                  Math.max(uSpan, vSpan) >= 0.36 &&
+                  Math.max(uSpan, vSpan) <= 5.2;
+
+            if (validDimensions) {
               furnitureList.push({
                 mesh: obj,
                 visibilityNode: obj.parent ?? obj,
                 centerX,
                 centerZ,
-                radiusXZ,
+                radiusXZ: Math.max(radiusXZ, Math.hypot(uSpan, vSpan) * 0.5),
                 minY: this.tmpBox.min.y,
                 maxY: this.tmpBox.max.y,
                 ux,
@@ -1060,8 +1177,8 @@ export class WalkthroughController {
       curEw.ewZ <= -0.15;
 
     if (onUpperFlightOrMouth || onQuarterLanding || onLowerFlight) {
-      if (nextEw.ewZ < -2.41) return true; // North brick wall
-      if (nextEw.ewX < -17.43) return true; // West cross-wall
+      if (nextEw.ewZ < -2.22) return true; // North brick wall + Roman blind clearance
+      if (nextEw.ewX < -17.28) return true; // West cross-wall clearance
       if (
         fromFoot.y >= 0.72 &&
         nextEw.ewX > -16.58 &&
@@ -1111,10 +1228,11 @@ export class WalkthroughController {
 
     const obstacles = this.getObstacleCache();
 
-    // 3. Fast 2D Oriented Bounding Box (OBB) collision against furniture, tables, sofas, beds, islands & worktops
-    const furnMinY = fromFoot.y + 0.30;
-    const furnMaxY = fromFoot.y + 1.40;
-    const furnPad = 0.16;
+    // 3. Fast 2D Oriented Bounding Box (OBB) collision against furniture, tables, sofas, beds, islands, worktops, window recesses & blinds
+    const furnMinY = fromFoot.y + 0.25;
+    const furnMaxY =
+      fromFoot.y + Math.max(this.currentEyeHeight, STANDING_EYE_HEIGHT) + 0.15;
+    const furnPad = 0.2;
     const furnPadSq = furnPad * furnPad;
     const furnReach = stepDist + furnPad + 0.25;
 
@@ -1159,11 +1277,12 @@ export class WalkthroughController {
       }
     }
 
-    // 4. Fast spatial-filtered dual-height & shoulder-width raycast against structural walls, window frames, doors & cabinetry
+    // 4. Fast spatial-filtered multi-height & shoulder-width raycast against structural walls, window frames, blinds, doors & cabinetry
     this.nearbyObstacleMeshes.length = 0;
-    const footMinY = fromFoot.y + 0.30;
-    const footMaxY = fromFoot.y + 1.45;
-    const reach = stepDist + 0.65;
+    const footMinY = fromFoot.y + 0.3;
+    const footMaxY =
+      fromFoot.y + Math.max(this.currentEyeHeight, STANDING_EYE_HEIGHT) + 0.18;
+    const reach = stepDist + 0.72;
 
     for (let i = 0; i < obstacles.length; i++) {
       const obs = obstacles[i];
@@ -1188,26 +1307,27 @@ export class WalkthroughController {
       return false;
     }
 
-    const maxHitDist = stepDist + 0.28;
-    this.wallRaycaster.far = Math.max(0.34, maxHitDist + 0.02);
+    const backOff = 0.08;
+    const maxHitDist = stepDist + 0.34 + backOff;
+    this.wallRaycaster.far = Math.max(0.42, maxHitDist + 0.04);
     const perpX = -moveDirXZ.z;
     const perpZ = moveDirXZ.x;
 
-    // Cast at both knee/lower-panel height (+0.48m) and waist/door-leaf height (+1.05m),
-    // with center and ±0.12m shoulder rays so narrow wooden window frames, stiles, and posts cannot be slipped through
-    for (const rayOffsetY of [0.48, 1.05] as const) {
-      for (const latOffset of [0, -0.12, 0.12] as const) {
+    // Cast at knee (+0.45m), waist (+0.95m), chest (+1.35m), and eye height (currentEyeHeight),
+    // with center and ±0.15m shoulder rays backed off by 0.08m so thin window frames, blinds, and stiles cannot be clipped into
+    for (const rayOffsetY of [0.45, 0.95, 1.35, this.currentEyeHeight] as const) {
+      for (const latOffset of [0, -0.15, 0.15] as const) {
         this.tmpOrigin.set(
-          fromFoot.x + perpX * latOffset,
+          fromFoot.x + perpX * latOffset - moveDirXZ.x * backOff,
           fromFoot.y + rayOffsetY,
-          fromFoot.z + perpZ * latOffset
+          fromFoot.z + perpZ * latOffset - moveDirXZ.z * backOff
         );
         this.wallRaycaster.set(this.tmpOrigin, moveDirXZ);
 
         const hits = this.wallRaycaster.intersectObjects(this.nearbyObstacleMeshes, false);
         for (let i = 0; i < hits.length; i++) {
           const hit = hits[i];
-          if (hit.distance >= 0.02 && hit.distance <= maxHitDist && hit.face) {
+          if (hit.distance >= 0.01 && hit.distance <= maxHitDist && hit.face) {
             let curObj: THREE.Object3D | null = hit.object;
             let interactableId: string | undefined;
             while (curObj && curObj !== this.scene) {
@@ -1236,11 +1356,11 @@ export class WalkthroughController {
               continue;
             }
             this.tmpNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
-            // Only block against front-facing vertical walls/doors opposing our movement direction
-            // (worldNormal.dot(moveDirXZ) < -0.15 guarantees you can ALWAYS walk out of any overlapping box!)
+            // Block any front-facing vertical wall/door/blind opposing our movement direction
+            // (using -0.01 instead of -0.15 so 7.62° East Wing wall-sliding never slips through walls!)
             if (
               Math.abs(this.tmpNormal.y) < 0.45 &&
-              this.tmpNormal.dot(moveDirXZ) < -0.15
+              this.tmpNormal.dot(moveDirXZ) < -0.01
             ) {
               return true;
             }
@@ -1404,28 +1524,47 @@ export class WalkthroughController {
           this.footPos.x += moveVec.x * stepDist;
           this.footPos.z += moveVec.z * stepDist;
         } else {
-          const slideX = new THREE.Vector3(Math.sign(moveVec.x), 0, 0);
-          const slideZ = new THREE.Vector3(0, 0, Math.sign(moveVec.z));
+          // Slide along the active wing's orthogonal wall axes (East Wing rotated -7.62° vs West Wing world axes)
+          const inEastWing = worldToEastWingLocal(this.footPos.x, this.footPos.z).ewX > -17.65;
+          const axisUX = inEastWing ? EW_COS : 1;
+          const axisUZ = inEastWing ? -EW_SIN : 0;
+          const axisVX = inEastWing ? EW_SIN : 0;
+          const axisVZ = inEastWing ? EW_COS : 1;
+          const projU = moveVec.x * axisUX + moveVec.z * axisUZ;
+          const projV = moveVec.x * axisVX + moveVec.z * axisVZ;
+          const slideU = new THREE.Vector3(
+            Math.sign(projU) * axisUX,
+            0,
+            Math.sign(projU) * axisUZ
+          );
+          const slideV = new THREE.Vector3(
+            Math.sign(projV) * axisVX,
+            0,
+            Math.sign(projV) * axisVZ
+          );
           if (
-            Math.abs(moveVec.x) > 0.1 &&
+            Math.abs(projU) > 0.1 &&
             !this.isBlockedByWallOrCabinet(
               this.footPos,
-              slideX,
-              Math.abs(moveVec.x) * stepDist
+              slideU,
+              Math.abs(projU) * stepDist
             )
           ) {
-            this.footPos.x += moveVec.x * stepDist;
+            this.footPos.x += slideU.x * Math.abs(projU) * stepDist;
+            this.footPos.z += slideU.z * Math.abs(projU) * stepDist;
           } else if (
-            Math.abs(moveVec.z) > 0.1 &&
+            Math.abs(projV) > 0.1 &&
             !this.isBlockedByWallOrCabinet(
               this.footPos,
-              slideZ,
-              Math.abs(moveVec.z) * stepDist
+              slideV,
+              Math.abs(projV) * stepDist
             )
           ) {
-            this.footPos.z += moveVec.z * stepDist;
+            this.footPos.x += slideV.x * Math.abs(projV) * stepDist;
+            this.footPos.z += slideV.z * Math.abs(projV) * stepDist;
           }
         }
+        this.depenetrateFootPosition();
 
         const targetFloorY = this.sampleFloorElevation(
           this.footPos.x,

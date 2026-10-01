@@ -592,6 +592,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     -0.825,
     ['+x', '-x', '+y', '-y', '+z', '-z']
   );
+  westWallLowBase.name = 'kitchen.westCrossWall.lowBase';
   scene.add(westWallLowBase);
 
   const westWallMain = createExteriorBrickWallBox(
@@ -603,6 +604,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     -0.825,
     ['+x', '-x', '+y', '-y', '+z', '-z']
   );
+  westWallMain.name = 'kitchen.westCrossWall.main';
   cutawayWallGroups.west.add(westWallMain);
 
   const westOpeningHeader = createExteriorBrickWallBox(
@@ -614,6 +616,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     1.42,
     ['+x', '-x', '+y', '-y', '+z', '-z']
   );
+  westOpeningHeader.name = 'kitchen.westCrossWall.portalHeader';
   cutawayWallGroups.west.add(westOpeningHeader);
 
   // Kitchen stone tile floor continuation into the open Kitchen <-> Dining Room portal up to X = -4.64m
