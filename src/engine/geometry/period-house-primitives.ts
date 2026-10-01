@@ -32,6 +32,8 @@ export interface WallPortalOpening {
   readonly stepMaterial?: THREE.Material;
   /** Architrave / casing material. */
   readonly architraveMaterial: THREE.Material;
+  /** Whether to emit 3-sided reveal lining + architraves (defaults to `true`). */
+  readonly includeArchitrave?: boolean;
   /** Optional cast-iron/brass pull handle mounted inside the right or left reveal of a cased opening. */
   readonly revealPullHandleSide?: 'left' | 'right';
   readonly hardwareMaterial?: THREE.Material;
@@ -71,6 +73,10 @@ export interface AngledWallSegmentConfig {
   readonly skirtingMaterial?: THREE.Material;
   readonly addFrontSkirting?: boolean;
   readonly addBackSkirting?: boolean;
+  /** Optional u-intervals `[u0, u1]` where front (`+normal`) skirting is suppressed (e.g. behind chimney breasts/wardrobes or at corners). */
+  readonly frontSkirtingExclusions?: readonly (readonly [number, number])[];
+  /** Optional u-intervals `[u0, u1]` where back (`-normal`) skirting is suppressed (e.g. behind chimney breasts/wardrobes or at corners). */
+  readonly backSkirtingExclusions?: readonly (readonly [number, number])[];
   readonly openings?: readonly WallPortalOpening[];
 }
 
@@ -319,8 +325,64 @@ export function buildAngledWallSegment(
     return geo;
   };
 
+  const emitSkirtingSegments = (
+    uStart: number,
+    uEnd: number,
+    exclusions: readonly (readonly [number, number])[] | undefined,
+    floorY: number,
+    zSign: 1 | -1
+  ): void => {
+    if (!config.skirtingMaterial || uEnd - uStart <= 0.01) return;
+    let intervals: Array<[number, number]> = [[uStart, uEnd]];
+    if (exclusions && exclusions.length > 0) {
+      for (const [ex0, ex1] of exclusions) {
+        const next: Array<[number, number]> = [];
+        for (const [a, b] of intervals) {
+          if (ex1 <= a || ex0 >= b) {
+            next.push([a, b]);
+          } else {
+            if (ex0 > a + 0.01) next.push([a, ex0]);
+            if (ex1 < b - 0.01) next.push([ex1, b]);
+          }
+        }
+        intervals = next;
+      }
+    }
+    for (const [segA, segB] of intervals) {
+      const segW = segB - segA;
+      if (segW <= 0.01) continue;
+      const segMid = (segA + segB) / 2;
+      const skirt = new THREE.Mesh(
+        new THREE.BoxGeometry(segW, 0.125, 0.022),
+        config.skirtingMaterial
+      );
+      skirt.position.set(
+        segMid,
+        floorY + 0.0625,
+        zSign * (config.thickness / 2 + 0.011)
+      );
+      group.add(skirt);
+
+      const skirtCap = new THREE.Mesh(
+        new THREE.BoxGeometry(segW, 0.022, 0.016),
+        config.skirtingMaterial
+      );
+      skirtCap.position.set(
+        segMid,
+        floorY + 0.136,
+        zSign * (config.thickness / 2 + 0.008)
+      );
+      group.add(skirtCap);
+    }
+  };
+
   // Helper to add a solid wall pier from u0 to u1
-  const addWallPier = (u0: number, u1: number): void => {
+  const addWallPier = (
+    u0: number,
+    u1: number,
+    trimLeftArchitrave = false,
+    trimRightArchitrave = false
+  ): void => {
     const segW = u1 - u0;
     if (segW <= 0.005) return;
     const uMid = (u0 + u1) / 2;
@@ -377,63 +439,38 @@ export function buildAngledWallSegment(
       group.add(frontClad);
     }
 
-    if (config.skirtingMaterial && config.addFrontSkirting) {
-      const frontSkirt = new THREE.Mesh(
-        new THREE.BoxGeometry(segW, 0.125, 0.022),
-        config.skirtingMaterial
-      );
-      frontSkirt.position.set(
-        uMid,
-        config.frontFloorY + 0.0625,
-        config.thickness / 2 + 0.011
-      );
-      group.add(frontSkirt);
+    const skirtU0 = u0 + (trimLeftArchitrave ? 0.082 : 0);
+    const skirtU1 = u1 - (trimRightArchitrave ? 0.082 : 0);
 
-      // Antique ogee/torus profile cap bead along top edge of skirting
-      const frontSkirtCap = new THREE.Mesh(
-        new THREE.BoxGeometry(segW, 0.022, 0.016),
-        config.skirtingMaterial
+    if (config.skirtingMaterial && config.addFrontSkirting) {
+      emitSkirtingSegments(
+        skirtU0,
+        skirtU1,
+        config.frontSkirtingExclusions,
+        config.frontFloorY,
+        1
       );
-      frontSkirtCap.position.set(
-        uMid,
-        config.frontFloorY + 0.136,
-        config.thickness / 2 + 0.008
-      );
-      group.add(frontSkirtCap);
     }
 
     if (config.skirtingMaterial && config.addBackSkirting) {
-      const backSkirt = new THREE.Mesh(
-        new THREE.BoxGeometry(segW, 0.125, 0.022),
-        config.skirtingMaterial
+      emitSkirtingSegments(
+        skirtU0,
+        skirtU1,
+        config.backSkirtingExclusions,
+        config.backFloorY,
+        -1
       );
-      backSkirt.position.set(
-        uMid,
-        config.backFloorY + 0.0625,
-        -config.thickness / 2 - 0.011
-      );
-      group.add(backSkirt);
-
-      // Antique ogee/torus profile cap bead along top edge of skirting
-      const backSkirtCap = new THREE.Mesh(
-        new THREE.BoxGeometry(segW, 0.022, 0.016),
-        config.skirtingMaterial
-      );
-      backSkirtCap.position.set(
-        uMid,
-        config.backFloorY + 0.136,
-        -config.thickness / 2 - 0.008
-      );
-      group.add(backSkirtCap);
     }
   };
 
   let cursorU = 0;
+  let prevHadArchitrave = false;
   for (const op of sortedOpenings) {
     const opLeft = op.uCenter - op.width / 2;
     const opRight = op.uCenter + op.width / 2;
+    const hasArchitrave = op.includeArchitrave !== false;
     if (opLeft > cursorU) {
-      addWallPier(cursorU, opLeft);
+      addWallPier(cursorU, opLeft, prevHadArchitrave, hasArchitrave);
     }
 
     const highFloorY = op.upperFloorY ?? op.lowerFloorY;
@@ -479,19 +516,21 @@ export function buildAngledWallSegment(
       }
     }
 
-    // Profiled 45°-mitred architrave jambs & head + doorway reveal lining on both wall faces
-    addCasedArchitravePortal(group, {
-      axis: 'x',
-      wallCoord: 0,
-      wallThickness: config.thickness,
-      openingCenter: op.uCenter,
-      openingWidth: op.width,
-      frontFloorY: Math.max(op.lowerFloorY, config.frontFloorY),
-      backFloorY: Math.max(op.lowerFloorY, config.backFloorY),
-      headY: headBottomY,
-      material: op.architraveMaterial,
-      namePrefix: `${op.id ?? 'portal'}.architrave`,
-    });
+    if (hasArchitrave) {
+      // Profiled 45°-mitred architrave jambs & head + doorway reveal lining on both wall faces
+      addCasedArchitravePortal(group, {
+        axis: 'x',
+        wallCoord: 0,
+        wallThickness: config.thickness,
+        openingCenter: op.uCenter,
+        openingWidth: op.width,
+        frontFloorY: Math.max(op.lowerFloorY, config.frontFloorY),
+        backFloorY: Math.max(op.lowerFloorY, config.backFloorY),
+        headY: headBottomY,
+        material: op.architraveMaterial,
+        namePrefix: `${op.id ?? 'portal'}.architrave`,
+      });
+    }
 
     // Step riser & bullnose tread if upperFloorY > lowerFloorY (Issue #1: Carpenter-built single-board
     // solid oak bullnose step tread flush with upperFloorY + recessed one-piece vertical riser,
@@ -738,10 +777,11 @@ export function buildAngledWallSegment(
     }
 
     cursorU = opRight;
+    prevHadArchitrave = hasArchitrave;
   }
 
   if (cursorU < frame.length) {
-    addWallPier(cursorU, frame.length);
+    addWallPier(cursorU, frame.length, prevHadArchitrave, false);
   }
 
   return frame;

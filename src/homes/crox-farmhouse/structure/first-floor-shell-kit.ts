@@ -126,7 +126,14 @@ export function createFirstFloorShellKit(
     z: number,
     w: number,
     d: number,
-    mat: THREE.Material = warmRoomPlasterMat
+    mat: THREE.Material = warmRoomPlasterMat,
+    options?: {
+      readonly skipSkirting?: boolean;
+      readonly skirtingSides?: readonly (-1 | 1)[];
+      readonly skirtingMin?: number;
+      readonly skirtingMax?: number;
+      readonly floorY?: number;
+    }
   ): void => {
     const h = yTop - yBottom;
     const cy = (yBottom + yTop) / 2;
@@ -146,50 +153,64 @@ export function createFirstFloorShellKit(
       scene.add(cap);
     }
 
-    if (yBottom <= floorTopY + 0.05 && h > 1.2) {
+    const effFloorY = options?.floorY ?? floorTopY;
+    if (!options?.skipSkirting && yBottom <= effFloorY + 0.05 && h > 1.2) {
       const baseH = 0.122;
       const capH = 0.024;
       const skirtT = 0.022;
       const capT = 0.016;
+      const sides = options?.skirtingSides ?? ([-1, 1] as const);
       if (w >= d) {
-        for (const side of [-1, 1] as const) {
-          const faceZ = z + side * (d / 2 + skirtT / 2 - 0.002);
-          const capZ = z + side * (d / 2 + capT / 2 - 0.002);
-          const skirt = new THREE.Mesh(
-            new THREE.BoxGeometry(w, baseH, skirtT),
-            antiqueOakSkirtingMat
-          );
-          skirt.position.set(x, floorTopY + baseH / 2, faceZ);
-          skirt.receiveShadow = true;
-          scene.add(skirt);
+        const sMin = options?.skirtingMin ?? x - w / 2;
+        const sMax = options?.skirtingMax ?? x + w / 2;
+        const sW = sMax - sMin;
+        const sCx = (sMin + sMax) / 2;
+        if (sW > 0.01) {
+          for (const side of sides) {
+            const faceZ = z + side * (d / 2 + skirtT / 2 - 0.002);
+            const capZ = z + side * (d / 2 + capT / 2 - 0.002);
+            const skirt = new THREE.Mesh(
+              new THREE.BoxGeometry(sW, baseH, skirtT),
+              antiqueOakSkirtingMat
+            );
+            skirt.position.set(sCx, effFloorY + baseH / 2, faceZ);
+            skirt.receiveShadow = true;
+            scene.add(skirt);
 
-          const skirtCap = new THREE.Mesh(
-            new THREE.BoxGeometry(w, capH, capT),
-            antiqueOakSkirtingMat
-          );
-          skirtCap.position.set(x, floorTopY + baseH + capH / 2, capZ);
-          skirtCap.receiveShadow = true;
-          scene.add(skirtCap);
+            const skirtCap = new THREE.Mesh(
+              new THREE.BoxGeometry(sW, capH, capT),
+              antiqueOakSkirtingMat
+            );
+            skirtCap.position.set(sCx, effFloorY + baseH + capH / 2, capZ);
+            skirtCap.receiveShadow = true;
+            scene.add(skirtCap);
+          }
         }
       } else {
-        for (const side of [-1, 1] as const) {
-          const faceX = x + side * (w / 2 + skirtT / 2 - 0.002);
-          const capX = x + side * (w / 2 + capT / 2 - 0.002);
-          const skirt = new THREE.Mesh(
-            new THREE.BoxGeometry(skirtT, baseH, d),
-            antiqueOakSkirtingMat
-          );
-          skirt.position.set(faceX, floorTopY + baseH / 2, z);
-          skirt.receiveShadow = true;
-          scene.add(skirt);
+        const sMin = options?.skirtingMin ?? z - d / 2;
+        const sMax = options?.skirtingMax ?? z + d / 2;
+        const sD = sMax - sMin;
+        const sCz = (sMin + sMax) / 2;
+        if (sD > 0.01) {
+          for (const side of sides) {
+            const faceX = x + side * (w / 2 + skirtT / 2 - 0.002);
+            const capX = x + side * (w / 2 + capT / 2 - 0.002);
+            const skirt = new THREE.Mesh(
+              new THREE.BoxGeometry(skirtT, baseH, sD),
+              antiqueOakSkirtingMat
+            );
+            skirt.position.set(faceX, effFloorY + baseH / 2, sCz);
+            skirt.receiveShadow = true;
+            scene.add(skirt);
 
-          const skirtCap = new THREE.Mesh(
-            new THREE.BoxGeometry(capT, capH, d),
-            antiqueOakSkirtingMat
-          );
-          skirtCap.position.set(capX, floorTopY + baseH + capH / 2, z);
-          skirtCap.receiveShadow = true;
-          scene.add(skirtCap);
+            const skirtCap = new THREE.Mesh(
+              new THREE.BoxGeometry(capT, capH, sD),
+              antiqueOakSkirtingMat
+            );
+            skirtCap.position.set(capX, effFloorY + baseH + capH / 2, sCz);
+            skirtCap.receiveShadow = true;
+            scene.add(skirtCap);
+          }
         }
       }
     }
@@ -216,6 +237,88 @@ export function createFirstFloorShellKit(
     return geo;
   };
 
+  const emitExteriorWallSkirting = (
+    minX: number,
+    maxX: number,
+    minZ: number,
+    maxZ: number,
+    interiorSide: 'north' | 'south' | 'east' | 'west',
+    descriptor: CutawayWallDescriptor,
+    options?: {
+      readonly skirtingMin?: number;
+      readonly skirtingMax?: number;
+      readonly floorY?: number;
+    }
+  ): void => {
+    const w = maxX - minX;
+    const rawCx = (minX + maxX) / 2;
+    const isAlongX = interiorSide === 'north' || interiorSide === 'south';
+    const sMin = options?.skirtingMin ?? (isAlongX ? minX : minZ);
+    const sMax = options?.skirtingMax ?? (isAlongX ? maxX : maxZ);
+    const sSpan = sMax - sMin;
+    if (sSpan <= 0.01) return;
+    const sCenter = (sMin + sMax) / 2;
+    const effFloorY = options?.floorY ?? floorTopY;
+
+    const isAngledEastCourtyardWall =
+      !isAlongX && interiorSide === 'west' && rawCx > -18.0 && sMin >= 2.3;
+    const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
+    const cx = isAngledEastCourtyardWall
+      ? getEastCourtyardWallCenterX(sCenter)
+      : isAlongX
+        ? sCenter
+        : rawCx;
+    const cz = isAlongX ? (minZ + maxZ) / 2 : sCenter;
+    const effMinX = cx - w / 2;
+    const effMaxX = cx + w / 2;
+
+    const baseH = 0.122;
+    const capH = 0.024;
+    const skirtT = 0.022;
+    const capT = 0.016;
+    const skirtGeo = isAlongX
+      ? new THREE.BoxGeometry(sSpan, baseH, skirtT)
+      : shearGeometryAlongZ(new THREE.BoxGeometry(skirtT, baseH, sSpan), slopeXPerZ);
+    const skirt = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
+    const sx =
+      interiorSide === 'east'
+        ? effMaxX + skirtT / 2 - 0.002
+        : interiorSide === 'west'
+          ? effMinX - skirtT / 2 + 0.002
+          : cx;
+    const sz =
+      interiorSide === 'south'
+        ? maxZ + skirtT / 2 - 0.002
+        : interiorSide === 'north'
+          ? minZ - skirtT / 2 + 0.002
+          : cz;
+    skirt.position.set(sx, effFloorY + baseH / 2, sz);
+    skirt.receiveShadow = true;
+    tagUpperCutawayWall(skirt, descriptor);
+    scene.add(skirt);
+
+    const capGeo = isAlongX
+      ? new THREE.BoxGeometry(sSpan, capH, capT)
+      : shearGeometryAlongZ(new THREE.BoxGeometry(capT, capH, sSpan), slopeXPerZ);
+    const skirtCap = new THREE.Mesh(capGeo, antiqueOakSkirtingMat);
+    const capSx =
+      interiorSide === 'east'
+        ? effMaxX + capT / 2 - 0.002
+        : interiorSide === 'west'
+          ? effMinX - capT / 2 + 0.002
+          : cx;
+    const capSz =
+      interiorSide === 'south'
+        ? maxZ + capT / 2 - 0.002
+        : interiorSide === 'north'
+          ? minZ - capT / 2 + 0.002
+          : cz;
+    skirtCap.position.set(capSx, effFloorY + baseH + capH / 2, capSz);
+    skirtCap.receiveShadow = true;
+    tagUpperCutawayWall(skirtCap, descriptor);
+    scene.add(skirtCap);
+  };
+
   /**
    * Builds a 0.28m First Floor exterior brick wall segment (`Y = 3.00m..5.70m`) with world-space
    * Imperial Brick UVs on the exterior faces and warm plaster + antique oak skirting on the interior face.
@@ -227,7 +330,13 @@ export function createFirstFloorShellKit(
     maxZ: number,
     yBottom: number,
     yTop: number,
-    interiorSide: 'north' | 'south' | 'east' | 'west'
+    interiorSide: 'north' | 'south' | 'east' | 'west',
+    options?: {
+      readonly skipSkirting?: boolean;
+      readonly skirtingMin?: number;
+      readonly skirtingMax?: number;
+      readonly floorY?: number;
+    }
   ): void => {
     const w = maxX - minX;
     const d = maxZ - minZ;
@@ -240,8 +349,6 @@ export function createFirstFloorShellKit(
       !isAlongX && interiorSide === 'west' && rawCx > -18.0 && minZ >= 2.3;
     const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
     const cx = isAngledEastCourtyardWall ? getEastCourtyardWallCenterX(cz) : rawCx;
-    const effMinX = cx - w / 2;
-    const effMaxX = cx + w / 2;
 
     const descriptor: CutawayWallDescriptor = isAlongX
       ? { axis: 'z', coord: cz, minSpan: minX, maxSpan: maxX, floor: 'first' }
@@ -280,52 +387,21 @@ export function createFirstFloorShellKit(
       scene.add(cap);
     }
 
-    if (yBottom <= floorTopY + 0.05 && yTop - floorTopY > 0.35) {
-      const baseH = 0.122;
-      const capH = 0.024;
-      const skirtT = 0.022;
-      const capT = 0.016;
-      const skirtGeo = isAlongX
-        ? new THREE.BoxGeometry(w, baseH, skirtT)
-        : shearGeometryAlongZ(new THREE.BoxGeometry(skirtT, baseH, d), slopeXPerZ);
-      const skirt = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
-      const sx =
-        interiorSide === 'east'
-          ? effMaxX + skirtT / 2 - 0.002
-          : interiorSide === 'west'
-            ? effMinX - skirtT / 2 + 0.002
-            : cx;
-      const sz =
-        interiorSide === 'south'
-          ? maxZ + skirtT / 2 - 0.002
-          : interiorSide === 'north'
-            ? minZ - skirtT / 2 + 0.002
-            : cz;
-      skirt.position.set(sx, floorTopY + baseH / 2, sz);
-      skirt.receiveShadow = true;
-      tagUpperCutawayWall(skirt, descriptor);
-      scene.add(skirt);
-
-      const capGeo = isAlongX
-        ? new THREE.BoxGeometry(w, capH, capT)
-        : shearGeometryAlongZ(new THREE.BoxGeometry(capT, capH, d), slopeXPerZ);
-      const skirtCap = new THREE.Mesh(capGeo, antiqueOakSkirtingMat);
-      const capSx =
-        interiorSide === 'east'
-          ? effMaxX + capT / 2 - 0.002
-          : interiorSide === 'west'
-            ? effMinX - capT / 2 + 0.002
-            : cx;
-      const capSz =
-        interiorSide === 'south'
-          ? maxZ + capT / 2 - 0.002
-          : interiorSide === 'north'
-            ? minZ - capT / 2 + 0.002
-            : cz;
-      skirtCap.position.set(capSx, floorTopY + baseH + capH / 2, capSz);
-      skirtCap.receiveShadow = true;
-      tagUpperCutawayWall(skirtCap, descriptor);
-      scene.add(skirtCap);
+    const effFloorY = options?.floorY ?? floorTopY;
+    if (
+      !options?.skipSkirting &&
+      yBottom <= effFloorY + 0.05 &&
+      yTop - effFloorY > 0.35
+    ) {
+      emitExteriorWallSkirting(
+        minX,
+        maxX,
+        minZ,
+        maxZ,
+        interiorSide,
+        descriptor,
+        options
+      );
     }
   };
 
@@ -342,7 +418,13 @@ export function createFirstFloorShellKit(
     sillY: number,
     headY: number,
     interiorSide: 'north' | 'south',
-    panes = 2
+    panes = 2,
+    options?: {
+      readonly skipSkirting?: boolean;
+      readonly skirtingMin?: number;
+      readonly skirtingMax?: number;
+      readonly floorY?: number;
+    }
   ): void => {
     const effSillY = Math.max(sillY, 3.02);
     const effHeadY = Math.min(headY, 3.78);
@@ -350,25 +432,30 @@ export function createFirstFloorShellKit(
     const winRight = winCenterX + winWidth / 2;
 
     if (winLeft > minX + 0.02) {
-      addUpperExteriorBrickWall(minX, winLeft, minZ, maxZ, floorBaseY, upperWallTopY, interiorSide);
+      addUpperExteriorBrickWall(minX, winLeft, minZ, maxZ, floorBaseY, upperWallTopY, interiorSide, { skipSkirting: true });
     }
     if (winRight < maxX - 0.02) {
-      addUpperExteriorBrickWall(winRight, maxX, minZ, maxZ, floorBaseY, upperWallTopY, interiorSide);
+      addUpperExteriorBrickWall(winRight, maxX, minZ, maxZ, floorBaseY, upperWallTopY, interiorSide, { skipSkirting: true });
     }
-    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, floorBaseY, effSillY, interiorSide);
-    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, effHeadY, upperWallTopY, interiorSide);
+    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, floorBaseY, effSillY, interiorSide, { skipSkirting: true });
+    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, effHeadY, upperWallTopY, interiorSide, { skipSkirting: true });
 
     const cz = (minZ + maxZ) / 2;
-    const winH = effHeadY - effSillY;
-    const cy = effSillY + winH / 2;
-    const winGroup = new THREE.Group();
-    tagUpperCutawayWall(winGroup, {
+    const descriptor: CutawayWallDescriptor = {
       axis: 'z',
       coord: cz,
       minSpan: minX,
       maxSpan: maxX,
       floor: 'first',
-    });
+    };
+    if (!options?.skipSkirting) {
+      emitExteriorWallSkirting(minX, maxX, minZ, maxZ, interiorSide, descriptor, options);
+    }
+
+    const winH = effHeadY - effSillY;
+    const cy = effSillY + winH / 2;
+    const winGroup = new THREE.Group();
+    tagUpperCutawayWall(winGroup, descriptor);
 
     const extSignZ = interiorSide === 'south' ? -1 : 1;
     const intSignZ = -extSignZ;
@@ -479,7 +566,13 @@ export function createFirstFloorShellKit(
     sillY: number,
     headY: number,
     interiorSide: 'east' | 'west',
-    panes = 2
+    panes = 2,
+    options?: {
+      readonly skipSkirting?: boolean;
+      readonly skirtingMin?: number;
+      readonly skirtingMax?: number;
+      readonly floorY?: number;
+    }
   ): void => {
     const effSillY = Math.max(sillY, 3.02);
     const effHeadY = Math.min(headY, 3.78);
@@ -497,24 +590,29 @@ export function createFirstFloorShellKit(
     const baseWallY = maxZ <= 8.4 ? 1.625 : floorBaseY;
 
     if (winNorth > minZ + 0.02) {
-      addUpperExteriorBrickWall(minX, maxX, minZ, winNorth, baseWallY, upperWallTopY, interiorSide);
+      addUpperExteriorBrickWall(minX, maxX, minZ, winNorth, baseWallY, upperWallTopY, interiorSide, { skipSkirting: true });
     }
     if (winSouth < maxZ - 0.02) {
-      addUpperExteriorBrickWall(minX, maxX, winSouth, maxZ, baseWallY, upperWallTopY, interiorSide);
+      addUpperExteriorBrickWall(minX, maxX, winSouth, maxZ, baseWallY, upperWallTopY, interiorSide, { skipSkirting: true });
     }
-    addUpperExteriorBrickWall(minX, maxX, winNorth, winSouth, baseWallY, effSillY, interiorSide);
-    addUpperExteriorBrickWall(minX, maxX, winNorth, winSouth, effHeadY, upperWallTopY, interiorSide);
+    addUpperExteriorBrickWall(minX, maxX, winNorth, winSouth, baseWallY, effSillY, interiorSide, { skipSkirting: true });
+    addUpperExteriorBrickWall(minX, maxX, winNorth, winSouth, effHeadY, upperWallTopY, interiorSide, { skipSkirting: true });
 
-    const winH = effHeadY - effSillY;
-    const cy = effSillY + winH / 2;
-    const winGroup = new THREE.Group();
-    tagUpperCutawayWall(winGroup, {
+    const descriptor: CutawayWallDescriptor = {
       axis: 'x',
       coord: rawCx,
       minSpan: minZ,
       maxSpan: maxZ,
       floor: 'first',
-    });
+    };
+    if (!options?.skipSkirting) {
+      emitExteriorWallSkirting(minX, maxX, minZ, maxZ, interiorSide, descriptor, options);
+    }
+
+    const winH = effHeadY - effSillY;
+    const cy = effSillY + winH / 2;
+    const winGroup = new THREE.Group();
+    tagUpperCutawayWall(winGroup, descriptor);
 
     const wallDepthX = maxX - minX;
     const extSignX = interiorSide === 'east' ? -1 : 1;
@@ -801,8 +899,148 @@ export function createFirstFloorShellKit(
     }
   };
 
+  /**
+   * Builds a traditional 2-panel Shaker wardrobe door leaf with recessed flat panels,
+   * raised perimeter stiles & rails, and an aged-brass vertical bar pull handle (Issue #8).
+   */
+  const addShakerWardrobeDoor = (
+    parent: THREE.Object3D,
+    options: {
+      readonly x: number;
+      readonly y: number;
+      readonly z: number;
+      readonly width: number;
+      readonly height: number;
+      readonly alongZ?: boolean;
+      readonly normalSign?: 1 | -1;
+      readonly handleSide: 'left' | 'right';
+      readonly namePrefix?: string;
+    }
+  ): THREE.Group => {
+    const alongZ = options.alongZ ?? false;
+    const normalSign = options.normalSign ?? 1;
+    const w = options.width;
+    const h = options.height;
+    const prefix = options.namePrefix ?? 'shakerWardrobeDoor';
+
+    const doorGroup = new THREE.Group();
+    doorGroup.name = prefix;
+    doorGroup.position.set(options.x, options.y, options.z);
+
+    const frameT = 0.026;
+    const panelT = 0.014;
+    const stileW = Math.min(0.068, w * 0.16);
+    const topRailH = 0.076;
+    const midRailH = 0.068;
+    const botRailH = 0.088;
+    const midRailY = -0.08;
+
+    // Recessed center backing panel (set back 4mm so front has a 6mm Shaker recess step)
+    const panelOffsetN = -normalSign * 0.004;
+    const panelMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        alongZ ? panelT : w - 0.012,
+        h - 0.012,
+        alongZ ? w - 0.012 : panelT
+      ),
+      wardrobeMat
+    );
+    panelMesh.name = `${prefix}.recessedPanel`;
+    panelMesh.position.set(
+      alongZ ? panelOffsetN : 0,
+      0,
+      alongZ ? 0 : panelOffsetN
+    );
+    panelMesh.castShadow = true;
+    panelMesh.receiveShadow = true;
+    doorGroup.add(panelMesh);
+
+    // Left and right vertical Shaker stiles
+    for (const sSign of [-1, 1] as const) {
+      const u = sSign * (w / 2 - stileW / 2);
+      const stile = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          alongZ ? frameT : stileW,
+          h,
+          alongZ ? stileW : frameT
+        ),
+        wardrobeMat
+      );
+      stile.name = `${prefix}.stile`;
+      stile.position.set(alongZ ? 0 : u, 0, alongZ ? u : 0);
+      stile.castShadow = true;
+      stile.receiveShadow = true;
+      doorGroup.add(stile);
+    }
+
+    // Top, middle, and bottom horizontal Shaker rails
+    const innerW = Math.max(0.06, w - stileW * 2 + 0.002);
+    for (const [ry, rh] of [
+      [h / 2 - topRailH / 2, topRailH],
+      [midRailY, midRailH],
+      [-h / 2 + botRailH / 2, botRailH],
+    ] as const) {
+      const rail = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          alongZ ? frameT : innerW,
+          rh,
+          alongZ ? innerW : frameT
+        ),
+        wardrobeMat
+      );
+      rail.name = `${prefix}.rail`;
+      rail.position.set(0, ry, 0);
+      rail.castShadow = true;
+      rail.receiveShadow = true;
+      doorGroup.add(rail);
+    }
+
+    // Vertical aged-brass Shaker bar pull handle + standoffs on the meeting stile
+    const handleSign = options.handleSide === 'right' ? 1 : -1;
+    const handleU = handleSign * (w / 2 - stileW * 0.5);
+    const handleY = 0.04;
+    const barOutN = normalSign * (frameT / 2 + 0.024);
+    const standoffMidN = normalSign * (frameT / 2 + 0.012);
+
+    const pullBar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0055, 0.0055, 0.175, 10),
+      brassMat
+    );
+    pullBar.name = `${prefix}.handleBar`;
+    pullBar.position.set(
+      alongZ ? barOutN : handleU,
+      handleY,
+      alongZ ? handleU : barOutN
+    );
+    pullBar.castShadow = true;
+    doorGroup.add(pullBar);
+
+    for (const dy of [-0.062, 0.062] as const) {
+      const standoff = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0042, 0.0042, 0.024, 8),
+        brassMat
+      );
+      standoff.name = `${prefix}.handleStandoff`;
+      if (alongZ) {
+        standoff.rotation.z = Math.PI / 2;
+      } else {
+        standoff.rotation.x = Math.PI / 2;
+      }
+      standoff.position.set(
+        alongZ ? standoffMidN : handleU,
+        handleY + dy,
+        alongZ ? handleU : standoffMidN
+      );
+      doorGroup.add(standoff);
+    }
+
+    parent.add(doorGroup);
+    return doorGroup;
+  };
+
   return {
     addFirstFloorSlab,
+    addShakerWardrobeDoor,
     addUpperBrickWallAlongXWithWindow,
     addUpperBrickWallAlongZWithWindow,
     addUpperExteriorBrickWall,
@@ -810,6 +1048,7 @@ export function createFirstFloorShellKit(
     addUpperInteriorWall,
     applyWorldSpaceBrickUVs,
     doorH,
+    emitExteriorWallSkirting,
     tagUpperCutawayWall,
   };
 }

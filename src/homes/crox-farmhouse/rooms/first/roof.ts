@@ -154,15 +154,73 @@ export function buildFirstFloorCeilingsAndRoof(
     ewCeilingMeshGroup.add(ewNorthSkeiling);
   }
 
-  // Flat ceiling slab over Bedroom 2 (West end of North-South / East-West junction: X = -22.32m..-17.55m, Z = -2.65m..+2.50m)
-  const bed2Ceiling = new THREE.Mesh(
-    new THREE.BoxGeometry(4.77, 0.03, 5.15),
-    upperCeilingMat
-  );
-  bed2Ceiling.position.set(-19.935, upperWallTopY + 0.012, -0.075);
-  bed2Ceiling.castShadow = true;
-  bed2Ceiling.receiveShadow = true;
-  ceilingMeshGroup.add(bed2Ceiling);
+  // Issue #6: Partially Vaulted Ceiling over Bedroom 2 (Z = -3.18m..+2.48m, North-South ridge X = -19.75m)
+  // Pitches inward above the West & East eaves (skeilings from Y = 3.86m at X = -22.22m / -17.28m up to the raised 4.52m collar ceiling across X = -20.85m..-18.65m)
+  {
+    const bed2VaultSpanZ = 2.48 - -3.18; // 5.66m
+    const bed2VaultCenterZ = (-3.18 + 2.48) / 2; // -0.35m
+    const collarCeilingY = 4.52;
+    const skeilingEaveY = 3.86;
+    const collarWestX = -20.85;
+    const collarEastX = -18.65;
+    const westEaveX = -22.22;
+    const eastEaveX = -17.28;
+
+    // 1. Central raised horizontal collar ceiling (Y = 4.52m, X = -20.85m..-18.65m)
+    const bed2CollarCeiling = new THREE.Mesh(
+      new THREE.BoxGeometry(collarEastX - collarWestX, 0.03, bed2VaultSpanZ),
+      upperCeilingMat
+    );
+    bed2CollarCeiling.name = 'bedroom2.vaultedCeiling.collar';
+    bed2CollarCeiling.position.set(
+      (collarWestX + collarEastX) / 2,
+      collarCeilingY + 0.015,
+      bed2VaultCenterZ
+    );
+    bed2CollarCeiling.castShadow = true;
+    bed2CollarCeiling.receiveShadow = true;
+    ceilingMeshGroup.add(bed2CollarCeiling);
+
+    // 2. West pitched skeiling slope (X = -22.22m, Y = 3.86m -> X = -20.85m, Y = 4.52m)
+    const westDx = collarWestX - westEaveX; // 1.37m
+    const westDy = collarCeilingY - skeilingEaveY; // 0.66m
+    const westSlopeLen = Math.hypot(westDx, westDy);
+    const westSlopeAngle = Math.atan2(westDy, westDx);
+    const bed2WestSkeiling = new THREE.Mesh(
+      new THREE.BoxGeometry(westSlopeLen + 0.04, 0.03, bed2VaultSpanZ),
+      upperCeilingMat
+    );
+    bed2WestSkeiling.name = 'bedroom2.vaultedCeiling.westSkeiling';
+    bed2WestSkeiling.position.set(
+      (westEaveX + collarWestX) / 2,
+      (skeilingEaveY + collarCeilingY) / 2 + 0.012,
+      bed2VaultCenterZ
+    );
+    bed2WestSkeiling.rotation.z = westSlopeAngle;
+    bed2WestSkeiling.castShadow = true;
+    bed2WestSkeiling.receiveShadow = true;
+    ceilingMeshGroup.add(bed2WestSkeiling);
+
+    // 3. East pitched skeiling slope (X = -17.28m, Y = 3.86m -> X = -18.65m, Y = 4.52m)
+    const eastDx = eastEaveX - collarEastX; // 1.37m
+    const eastDy = collarCeilingY - skeilingEaveY; // 0.66m
+    const eastSlopeLen = Math.hypot(eastDx, eastDy);
+    const eastSlopeAngle = -Math.atan2(eastDy, eastDx);
+    const bed2EastSkeiling = new THREE.Mesh(
+      new THREE.BoxGeometry(eastSlopeLen + 0.04, 0.03, bed2VaultSpanZ),
+      upperCeilingMat
+    );
+    bed2EastSkeiling.name = 'bedroom2.vaultedCeiling.eastSkeiling';
+    bed2EastSkeiling.position.set(
+      (eastEaveX + collarEastX) / 2,
+      (skeilingEaveY + collarCeilingY) / 2 + 0.012,
+      bed2VaultCenterZ
+    );
+    bed2EastSkeiling.rotation.z = eastSlopeAngle;
+    bed2EastSkeiling.castShadow = true;
+    bed2EastSkeiling.receiveShadow = true;
+    ceilingMeshGroup.add(bed2EastSkeiling);
+  }
 
   buildPolygonalFloorSlab(
     ceilingMeshGroup,

@@ -22,7 +22,6 @@ export function buildDiningRoom(
   const { cutawayWallGroups, groundFloorCeilingGroup, interactions, interactiveMeshes, lightGroups, scene } = ctx;
   const {
     addBrickWallAlongXWithWindow,
-    addExteriorBrickWall,
     addInteractiveInteriorDoor,
     addInteriorWall,
     antiqueOakSkirtingMat,
@@ -67,8 +66,8 @@ export function buildDiningRoom(
 
   // Family Room Materials matching PH-53..56
   const crispWhiteWallMat = new THREE.MeshStandardMaterial({
-    color: 0xf3efe6,
-    roughness: 0.84,
+    color: 0xe6e1d6,
+    roughness: 0.86,
     metalness: 0.02,
   });
   const snugSlateBlueMat = new THREE.MeshStandardMaterial({
@@ -2199,10 +2198,6 @@ export function buildDiningRoom(
   const diningDoorLeft = diningDoorCenterX - diningDoorWidth / 2;  // -9.24m
   const diningDoorRight = diningDoorCenterX + diningDoorWidth / 2; // -8.32m
 
-  // Low 0.18m base plinth on either side of the Dining Room Exterior Courtyard Door (`X = -9.56m..-9.24m` and `X = -8.32m..-4.40m`)
-  addExteriorBrickWall(-9.56, diningDoorLeft, 2.35, 2.63, 0, 0.18, 'north');
-  addExteriorBrickWall(diningDoorRight, -4.4, 2.35, 2.63, 0, 0.18, 'north');
-
   // Weathered oak threshold & reclaimed Yorkstone doorstep at the Dining Room Exterior Courtyard Door (X = -8.78m)
   const diningExtDoorThreshold = new THREE.Mesh(
     new THREE.BoxGeometry(diningDoorWidth + 0.06, 0.036, 0.33),
@@ -2250,11 +2245,11 @@ export function buildDiningRoom(
     };
 
     // Brick piers & lintels around the Dining Room Exterior Door (X = -9.24m..-8.32m) and 3-pane Window (X = -7.34m..-5.66m)
-    addSouthBrickPiece(-9.56, diningDoorLeft, 0.18, wallH);
+    addSouthBrickPiece(-9.56, diningDoorLeft, 0, wallH);
     addSouthBrickPiece(diningDoorLeft, diningDoorRight, headY, wallH);
-    addSouthBrickPiece(diningDoorRight, diningWinLeft, 0.18, wallH);
-    addSouthBrickPiece(diningWinRight, -4.4, 0.18, wallH);
-    addSouthBrickPiece(diningWinLeft, diningWinRight, 0.18, sillY);
+    addSouthBrickPiece(diningDoorRight, diningWinLeft, 0, wallH);
+    addSouthBrickPiece(diningWinRight, -4.4, 0, wallH);
+    addSouthBrickPiece(diningWinLeft, diningWinRight, 0, sillY);
     addSouthBrickPiece(diningWinLeft, diningWinRight, headY, wallH);
 
     // Consistent 45°-mitred antique oak skirting board along the Dining Room South interior face (Z = 2.35m)

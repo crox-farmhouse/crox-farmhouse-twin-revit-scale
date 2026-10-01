@@ -832,11 +832,11 @@ export class WalkthroughController {
     // 2. First Floor Rooms & Doorways (strictly bounded to the actual First Floor footprint
     //    so you can NEVER float on an invisible 2.16m platform over the Courtyard or single-storey Kitchen!)
     const inEastWingFirstFloor =
-      ewX >= -18.05 && ewX <= -4.4 && ewZ >= -2.75 && ewZ <= 2.62;
+      ewX >= -17.85 && ewX <= -4.4 && ewZ >= -2.75 && ewZ <= 2.45;
     const inWestWingFirstFloor =
-      x >= -22.5 && x <= -16.88 && z >= -2.75 && z <= 11.75;
+      x >= -22.5 && x <= -16.88 && z >= -3.25 && z <= 11.75;
     if (refFootY >= 1.65 && (inEastWingFirstFloor || inWestWingFirstFloor)) {
-      return 2.16;
+      return inEastWingFirstFloor ? 2.16 : 2.08;
     }
 
     // 3. Ground Floor East Wing (Kitchen +0.05m -> Dining Room 0.00m -> Boot Lobby & Main Hall -0.30m)

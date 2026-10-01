@@ -1,25 +1,25 @@
 import * as THREE from 'three';
+import { buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
 
 /**
  * Bedroom 4 (`bedroom4`).
- *
- * Extracted verbatim from `buildMainHouseFirstFloorAndRoof` (first-floor-rooms.ts). Statement order and
- * geometry are unchanged; shared locals flow in via `kit` and out via the return value.
  */
 export function buildBedroom4(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowFrameMat'> &
-    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteriorWall' | 'tagUpperCutawayWall'>
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowFrameMat'> &
+    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteriorWall' | 'tagUpperCutawayWall'>
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
   const {
     addFirstFloorSlab,
+    addShakerWardrobeDoor,
     addUpperBrickWallAlongZWithWindow,
     addUpperExteriorBrickWall,
     addUpperInteriorWall,
+    antiqueOakSkirtingMat,
     floorBaseY,
     floorTopY,
     oakFloorMat,
@@ -45,16 +45,25 @@ export function buildBedroom4(
     2.92,
     3.94,
     'east',
-    3
+    3,
+    { skirtingMin: 8.39, skirtingMax: 11.49 }
   );
 
   // South Exterior Brick Gable Wall of Bedroom 4 (Z = +11.49m..+11.77m, X = -22.47m..-17.11m, Y = 2.06m..4.16m)
   // Flush continuous exterior brickwork with Chimney Breast projecting INSIDE Bedroom 4 (X = -20.45m..-19.25m)
-  addUpperExteriorBrickWall(-22.47, -17.11, 11.49, 11.77, floorBaseY, upperWallTopY, 'north');
-  addUpperInteriorWall(-19.85, floorTopY, upperWallTopY, 11.29, 1.2, 0.4, warmRoomPlasterMat);
+  addUpperExteriorBrickWall(-22.47, -17.11, 11.49, 11.77, floorBaseY, upperWallTopY, 'north', {
+    skipSkirting: true,
+  });
+  addUpperInteriorWall(-19.85, floorTopY, upperWallTopY, 11.29, 1.2, 0.4, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
 
   // East Courtyard Exterior Brick Wall of Bedroom 4 (X = -17.39m..-17.11m, Z = +8.15m..+11.77m, Y = 2.06m..4.16m)
-  addUpperExteriorBrickWall(-17.39, -17.11, 8.15, 11.77, floorBaseY, upperWallTopY, 'west');
+  // Skirting clamped between North cross-wall (Z = 8.39m) and SE alcove cupboards (Z = 10.85m)
+  addUpperExteriorBrickWall(-17.39, -17.11, 8.15, 11.77, floorBaseY, upperWallTopY, 'west', {
+    skirtingMin: 8.39,
+    skirtingMax: 10.85,
+  });
 
   // Two side-by-side Built-In Alcove Cupboards along the South Gable Wall East of the Chimney Breast
   // (`X = -19.25m..-17.39m, Z = +10.85m..+11.49m`), opening North (`-Z`) into Bedroom 4
@@ -68,7 +77,9 @@ export function buildBedroom4(
     const centerZ = 11.17;
 
     // Central dividing partition between the two South-East alcove cupboards at X = -18.32m
-    addUpperInteriorWall(centerX, floorTopY, upperWallTopY, centerZ, 0.08, cupD, warmRoomPlasterMat);
+    addUpperInteriorWall(centerX, floorTopY, upperWallTopY, centerZ, 0.08, cupD, warmRoomPlasterMat, {
+      skipSkirting: true,
+    });
 
     // Main cupboard carcass
     const carcass = new THREE.Mesh(
@@ -80,20 +91,44 @@ export function buildBedroom4(
     carcass.receiveShadow = true;
     cupGroup.add(carcass);
 
-    // Two full-height Shaker cupboard doors on the North face (`Z = +10.85m`) opening North (`-Z`) into Bedroom 4
+    // Two full-height Shaker cupboard doors with vertical brass handles on the North face (`Z = +10.847m`) (Issue #8)
     const doorW = (cupSpanX - 0.16) / 2;
-    const doorLeafH = cupH - 0.22;
+    const doorLeafH = cupH - 0.24;
     for (let i = 0; i < 2; i++) {
       const doorX = -19.2 + doorW / 2 + i * (doorW + 0.08);
-      const doorPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(doorW - 0.02, doorLeafH, 0.022),
-        wardrobeMat
-      );
-      doorPanel.position.set(doorX, floorTopY + 0.11 + doorLeafH / 2, 10.85);
-      doorPanel.castShadow = true;
-      cupGroup.add(doorPanel);
+      addShakerWardrobeDoor(cupGroup, {
+        x: doorX,
+        y: floorTopY + 0.15 + doorLeafH / 2,
+        z: 10.847,
+        width: doorW - 0.015,
+        height: doorLeafH,
+        alongZ: false,
+        normalSign: -1,
+        handleSide: i === 0 ? 'right' : 'left',
+        namePrefix: `bedroom4.southEastCupboards.door_${i + 1}`,
+      });
     }
 
     scene.add(cupGroup);
   }
+
+  // Issue #7: Continuous 45°-mitred skirting along Bedroom 4 South Alcove Cupboards, Chimney Breast, and SW Alcove
+  const bed4SouthMitredSkirt = new THREE.Mesh(
+    buildMitredWallSkirtingGeometry(
+      [
+        [-17.36, 10.85],
+        [-19.25, 10.85],
+        [-19.25, 11.09],
+        [-20.45, 11.09],
+        [-20.45, 11.49],
+        [-22.19, 11.49],
+      ],
+      floorTopY
+    ),
+    antiqueOakSkirtingMat
+  );
+  bed4SouthMitredSkirt.name = 'bedroom4.southWallMitredSkirting';
+  bed4SouthMitredSkirt.castShadow = true;
+  bed4SouthMitredSkirt.receiveShadow = true;
+  scene.add(bed4SouthMitredSkirt);
 }

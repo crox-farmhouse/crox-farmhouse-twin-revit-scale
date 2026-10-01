@@ -13,11 +13,12 @@ import type { createFirstFloorShellKit } from '../../structure/first-floor-shell
 export function buildFamilyBathroom(
   ctx: SceneBuilderContext,
   kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
-    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addUpperBrickWallAlongXWithWindow' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
+    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBrickWallAlongXWithWindow' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
   const {
     addFirstFloorSlab,
+    addShakerWardrobeDoor,
     addUpperBrickWallAlongXWithWindow,
     addUpperInteractiveDoor,
     addUpperInteriorWall,
@@ -37,11 +38,12 @@ export function buildFamilyBathroom(
   // 2. PRINCIPAL FAMILY BATHROOM & UPPER PASSAGE
   //    Directly above Boot Lobby / Store / WC: X = -9.80m..-12.81m, Z = -2.50m..+2.40m
   // =========================================================================
-  // Bathroom tiled floor (Z = -2.50m..+0.98m) & Upper South Passage oak floor (Z = +0.98m..+2.40m)
+  // Bathroom tiled floor (Z = -2.50m..+0.98m) & Upper South Passage carpeted floor (Z = +0.98m..+2.40m)
   addFirstFloorSlab(-12.81, -9.8, -2.5, 0.98, bathroomTileMat);
   addFirstFloorSlab(-12.81, -9.8, 0.98, 2.4, oakFloorMat);
 
   // North Exterior Brick Wall of Family Bathroom (Z = -2.78m..-2.50m, X = -12.81m..-9.56m)
+  // Skirting clamped to [-12.81, -9.80] so it butts cleanly against the Cross-Wall West face (Issues #2 & #7)
   addUpperBrickWallAlongXWithWindow(
     -12.81,
     -9.56,
@@ -52,11 +54,12 @@ export function buildFamilyBathroom(
     3.02,
     3.94,
     'south',
-    2
+    2,
+    { skirtingMin: -12.81, skirtingMax: -9.8 }
   );
 
   // South Courtyard Exterior Brick Wall of Upper Passage (Z = +2.40m..+2.68m, X = -12.81m..-9.56m)
-  // With small casement window at X = -12.05m (directly above the Boot Lobby window & garden bench, Photo 1!)
+  // Skirting clamped to [-12.81, -9.80] so it never pokes through the Main Bedroom cross-wall corner (Issue #2!)
   addUpperBrickWallAlongXWithWindow(
     -12.81,
     -9.56,
@@ -67,7 +70,8 @@ export function buildFamilyBathroom(
     3.06,
     3.9,
     'north',
-    1
+    1,
+    { skirtingMin: -12.81, skirtingMax: -9.8 }
   );
 
   const collarCeilingY = 4.52;
@@ -78,9 +82,17 @@ export function buildFamilyBathroom(
   // footprint, with a Shaker cupboard door opening South (`+Z`) into the Upper Passage
   // right next to the `UP` doorway into the Main Bedroom!
   // =========================================================================
-  // North & West enclosing walls of the Recessed Passage Cupboard (reaching collarCeilingY = 4.52m)
-  addUpperInteriorWall(-10.24, floorTopY, collarCeilingY, 0.05, 0.88, 0.12, warmRoomPlasterMat);
-  addUpperInteriorWall(-10.68, floorTopY, collarCeilingY, 0.515, 0.12, 0.93, warmRoomPlasterMat);
+  // North & West enclosing walls of the Recessed Passage Cupboard (reaching collarCeilingY = 4.52m, skirting only on Bathroom side)
+  addUpperInteriorWall(-10.24, floorTopY, collarCeilingY, 0.05, 0.88, 0.12, warmRoomPlasterMat, {
+    skirtingSides: [-1],
+    skirtingMin: -10.62,
+    skirtingMax: -9.8,
+  });
+  addUpperInteriorWall(-10.68, floorTopY, collarCeilingY, 0.515, 0.12, 0.93, warmRoomPlasterMat, {
+    skirtingSides: [-1],
+    skirtingMin: 0.01,
+    skirtingMax: 0.9,
+  });
 
   {
     const passageCupGroup = new THREE.Group();
@@ -97,30 +109,37 @@ export function buildFamilyBathroom(
     carcass.receiveShadow = true;
     passageCupGroup.add(carcass);
 
-    // Shaker cupboard door on the South Passage face (`Z = +0.98m`)
-    const cupDoor = new THREE.Mesh(
-      new THREE.BoxGeometry(0.68, doorH - 0.08, 0.024),
-      wardrobeMat
-    );
-    cupDoor.position.set(-10.24, floorTopY + doorH / 2, 1.045);
-    cupDoor.castShadow = true;
-    passageCupGroup.add(cupDoor);
-
-    const cupKnob = new THREE.Mesh(
-      new THREE.SphereGeometry(0.014, 10, 10),
-      brassMat
-    );
-    cupKnob.position.set(-10.5, floorTopY + 1.0, 1.068);
-    passageCupGroup.add(cupKnob);
+    // Shaker cupboard door with vertical brass handle on the South Passage face (`Z = +1.055m`)
+    addShakerWardrobeDoor(passageCupGroup, {
+      x: -10.24,
+      y: floorTopY + 0.14 + (doorH - 0.18) / 2,
+      z: 1.055,
+      width: 0.68,
+      height: doorH - 0.18,
+      alongZ: false,
+      normalSign: 1,
+      handleSide: 'left',
+      namePrefix: 'familyBathroom.passageCupboard.door',
+    });
 
     scene.add(passageCupGroup);
   }
 
   // Partition wall between Family Bathroom and Upper South Passage (0.15m thick, Z = +0.90m..+1.05m, X = -9.80m..-12.81m)
   // With bathroom entrance doorway at X = -11.18m (`width = 0.82m`, immediately West of the Recessed Passage Cupboard)
-  addUpperInteriorWall(-10.285, floorTopY, collarCeilingY, 0.975, 0.97, 0.15, warmRoomPlasterMat);
-  addUpperInteriorWall(-12.2, floorTopY, collarCeilingY, 0.975, 1.22, 0.15, warmRoomPlasterMat);
-  addUpperInteriorWall(-11.18, floorTopY + doorH, collarCeilingY, 0.975, 0.82, 0.15, warmRoomPlasterMat);
+  addUpperInteriorWall(-10.285, floorTopY, collarCeilingY, 0.975, 0.97, 0.15, warmRoomPlasterMat, {
+    skirtingSides: [1],
+    skirtingMin: -10.688,
+    skirtingMax: -9.8,
+  });
+  addUpperInteriorWall(-12.2, floorTopY, collarCeilingY, 0.975, 1.22, 0.15, warmRoomPlasterMat, {
+    skirtingSides: [1],
+    skirtingMin: -12.81,
+    skirtingMax: -11.672,
+  });
+  addUpperInteriorWall(-11.18, floorTopY + doorH, collarCeilingY, 0.975, 0.82, 0.15, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
   addUpperInteractiveDoor('x', 0.975, 0.15, -11.18, 0.82, -Math.PI * 0.48);
 
   // =========================================================================
@@ -210,9 +229,39 @@ export function buildFamilyBathroom(
 
   // West Load-Bearing Cross-Wall between Family Bathroom/Passage and Main Staircase Landing (0.24m thick, X = -12.81m..-13.05m)
   // Open passage/doorway at Z = +1.55m with cased antique oak architrave portal matching downstairs
-  addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, -0.7, 0.24, 3.6, warmRoomPlasterMat);
-  addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, 2.2, 0.24, 0.4, warmRoomPlasterMat);
-  addUpperInteriorWall(-12.93, floorTopY + doorH, upperWallTopY, 1.55, 0.24, 0.9, warmRoomPlasterMat);
+  addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, -0.7, 0.24, 3.6, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
+  // Clean skirting segments on the X = -12.93m Cross-Wall North pier (stopping at East Chimney Breast on West side and Shower on East side)
+  for (const [sideSign, z0, z1] of [
+    [-1, -2.5, -1.34],
+    [-1, 0.46, 1.018],
+    [1, -2.5, 0.05],
+  ] as const) {
+    const sD = z1 - z0;
+    const sCz = (z0 + z1) / 2;
+    const skirt = new THREE.Mesh(
+      new THREE.BoxGeometry(0.022, 0.122, sD),
+      antiqueOakSkirtingMat
+    );
+    skirt.position.set(-12.93 + sideSign * (0.12 + 0.009), floorTopY + 0.061, sCz);
+    skirt.receiveShadow = true;
+    scene.add(skirt);
+    const skirtCap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, 0.024, sD),
+      antiqueOakSkirtingMat
+    );
+    skirtCap.position.set(-12.93 + sideSign * (0.12 + 0.006), floorTopY + 0.134, sCz);
+    skirtCap.receiveShadow = true;
+    scene.add(skirtCap);
+  }
+  addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, 2.2, 0.24, 0.4, warmRoomPlasterMat, {
+    skirtingMin: 2.082,
+    skirtingMax: 2.4,
+  });
+  addUpperInteriorWall(-12.93, floorTopY + doorH, upperWallTopY, 1.55, 0.24, 0.9, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
   addCasedArchitravePortal(scene, {
     axis: 'z',
     wallCoord: -12.93,

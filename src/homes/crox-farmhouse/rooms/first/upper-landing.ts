@@ -255,7 +255,8 @@ export function buildUpperLanding(
     3.02,
     3.78,
     'north',
-    3
+    3,
+    { skirtingMin: -16.92, skirtingMax: -13.05 }
   );
 
   // Issue #3: Floor-Standing Cast-Iron 4-Column Traditional Radiator below the South Landing Window
@@ -629,12 +630,13 @@ export function buildUpperLanding(
     thickness: 0.24,
     topY: upperWallTopY,
     frontFloorY: floorTopY,
-    backFloorY: floorTopY,
+    backFloorY: floorTopY - 0.08,
     wallMaterial: warmRoomPlasterMat,
     capMaterial: wallCapMat,
     skirtingMaterial: antiqueOakSkirtingMat,
     addFrontSkirting: true,
-    addBackSkirting: true,
+    frontSkirtingExclusions: [[0, 1.92]], // Omit skirting across the open Stairwell Void (Z = -2.50m..-0.58m)
+    addBackSkirting: false, // Bedroom 2 builds a continuous 45°-mitred skirting around its East wardrobes & exposed wall
   });
 
   // Issue #5: Upper Vaulted Trapezoidal Gable Extension on the West Landing Cross-Wall (Y = 4.16m..4.52m)

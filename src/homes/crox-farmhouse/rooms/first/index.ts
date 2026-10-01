@@ -28,16 +28,19 @@ export function buildMainHouseFirstFloorAndRoof(ctx: SceneBuilderContext): void 
     rotationY: MAIN_EAST_WING_ROTATION_Y,
   });
   const kit0 = createFirstFloorMaterials(ctx);
-  const kit1 = { ...kit0, ...createFirstFloorShellKit(ctx, kit0) };
   const eastWingKit1 = { ...kit0, ...createFirstFloorShellKit(eastWingCtx, kit0) };
+  // The 3-Bedroom West Wing (Bedroom 2, Shower Room, West Wing Corridor, Bedroom 3, Bedroom 4)
+  // sits one small 8cm step (Y = 2.08m) lower than the Main Staircase Landing & East Wing (Y = 2.16m)
+  const westWingKit0 = { ...kit0, floorBaseY: 2.0, floorTopY: 2.08 };
+  const westWingKit1 = { ...westWingKit0, ...createFirstFloorShellKit(ctx, westWingKit0) };
 
   buildMainBedroom(eastWingCtx, eastWingKit1);
   buildFamilyBathroom(eastWingCtx, eastWingKit1);
   buildUpperLanding(eastWingCtx, eastWingKit1);
-  buildBedroom2(ctx, kit1);
-  buildWestWingCorridor(ctx, kit1);
-  buildBedroom3(ctx, kit1);
-  buildBedroom4(ctx, kit1);
-  buildFirstFloorCeilingsAndRoof(ctx, kit1, eastWingCtx);
-  buildFirstFloorPendantsAndSwitches(ctx, kit1, eastWingCtx);
+  buildBedroom2(ctx, westWingKit1);
+  buildWestWingCorridor(ctx, westWingKit1);
+  buildBedroom3(ctx, westWingKit1);
+  buildBedroom4(ctx, westWingKit1);
+  buildFirstFloorCeilingsAndRoof(ctx, westWingKit1, eastWingCtx);
+  buildFirstFloorPendantsAndSwitches(ctx, westWingKit1, eastWingCtx);
 }
