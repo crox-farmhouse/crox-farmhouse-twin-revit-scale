@@ -9,7 +9,7 @@ import type { createFirstFloorShellKit } from '../../structure/first-floor-shell
  */
 export function buildBedroom4(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowFrameMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowFrameMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteriorWall' | 'tagUpperCutawayWall'>
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
@@ -23,10 +23,15 @@ export function buildBedroom4(
     floorBaseY,
     floorTopY,
     oakFloorMat,
+    tagUpperCutawayWall,
     upperWallTopY,
+    wallCapMat,
     wardrobeMat,
     warmRoomPlasterMat,
   } = kit;
+
+  const collarCeilingY = 4.52;
+
   // =========================================================================
   // 7. BEDROOM 4 (4.95m x 3.20m / 16'3" x 10'6")
   //    Directly above Study & Study Lobby: X = -17.25m..-22.19m, Z = +8.39m..+11.49m
@@ -50,13 +55,50 @@ export function buildBedroom4(
   );
 
   // South Exterior Brick Gable Wall of Bedroom 4 (Z = +11.49m..+11.77m, X = -22.47m..-17.11m, Y = 2.06m..4.16m)
-  // Flush continuous exterior brickwork with Chimney Breast projecting INSIDE Bedroom 4 (X = -20.45m..-19.25m)
+  // Flush continuous exterior brickwork with Chimney Breast projecting INSIDE Bedroom 4 (X = -20.45m..-19.25m, rising to collarCeilingY = 4.52m)
   addUpperExteriorBrickWall(-22.47, -17.11, 11.49, 11.77, floorBaseY, upperWallTopY, 'north', {
     skipSkirting: true,
   });
-  addUpperInteriorWall(-19.85, floorTopY, upperWallTopY, 11.29, 1.2, 0.4, warmRoomPlasterMat, {
+
+  // Issue #6: Full-span coplanar vaulted upper gable on Bedroom 4 South Wall (Y = 4.16m..4.52m)
+  {
+    const southGableShape = new THREE.Shape();
+    southGableShape.moveTo(-22.19, upperWallTopY);
+    southGableShape.lineTo(-17.25, upperWallTopY);
+    southGableShape.lineTo(-18.75, collarCeilingY);
+    southGableShape.lineTo(-20.85, collarCeilingY);
+    southGableShape.closePath();
+    const southGableGeo = new THREE.ExtrudeGeometry(southGableShape, {
+      depth: 0.28,
+      bevelEnabled: false,
+    });
+    southGableGeo.translate(0, 0, 11.49);
+    const southUpperGable = new THREE.Mesh(southGableGeo, warmRoomPlasterMat);
+    southUpperGable.name = 'bedroom4.southWallUpperGable';
+    southUpperGable.userData.isArchitecturalShell = true;
+    southUpperGable.castShadow = true;
+    southUpperGable.receiveShadow = true;
+    tagUpperCutawayWall(southUpperGable, {
+      axis: 'z',
+      coord: 11.63,
+      minSpan: -22.47,
+      maxSpan: -17.11,
+      floor: 'first',
+    });
+    scene.add(southUpperGable);
+  }
+
+  // Bedroom 4 South Chimney Breast rising cleanly to the 4.52m collar ceiling
+  addUpperInteriorWall(-19.85, floorTopY, collarCeilingY, 11.29, 1.2, 0.4, warmRoomPlasterMat, {
     skipSkirting: true,
   });
+  const bed4ChimneyCap = new THREE.Mesh(
+    new THREE.BoxGeometry(1.204, 0.025, 0.404),
+    wallCapMat
+  );
+  bed4ChimneyCap.userData.isArchitecturalShell = true;
+  bed4ChimneyCap.position.set(-19.85, collarCeilingY + 0.012, 11.29);
+  scene.add(bed4ChimneyCap);
 
   // East Courtyard Exterior Brick Wall of Bedroom 4 (X = -17.39m..-17.11m, Z = +8.15m..+11.77m, Y = 2.00m..4.16m)
   addUpperExteriorBrickWall(-17.39, -17.11, 8.15, 11.77, floorBaseY, upperWallTopY, 'west', {
@@ -75,8 +117,9 @@ export function buildBedroom4(
     const centerZ = 11.17;
 
     // Central dividing partition between the two South-East alcove cupboards at X = -18.32m
-    addUpperInteriorWall(centerX, floorTopY, upperWallTopY, centerZ, 0.08, cupD, warmRoomPlasterMat, {
+    addUpperInteriorWall(centerX, floorTopY, upperWallTopY + 0.25, centerZ, 0.08, cupD, warmRoomPlasterMat, {
       skipSkirting: true,
+      skipCap: true,
     });
 
     // Main cupboard carcass
@@ -88,6 +131,36 @@ export function buildBedroom4(
     carcass.castShadow = true;
     carcass.receiveShadow = true;
     cupGroup.add(carcass);
+
+    // Moulded Shaker top cornice header at Y = 4.16m across the front of the alcove cupboards
+    const cornice = new THREE.Mesh(
+      new THREE.BoxGeometry(cupSpanX, 0.048, cupD + 0.024),
+      wardrobeMat
+    );
+    cornice.name = 'bedroom4.southEastCupboards.cornice';
+    cornice.position.set(centerX, upperWallTopY - 0.024, centerZ - 0.008);
+    cornice.castShadow = true;
+    cupGroup.add(cornice);
+
+    // Vaulted plaster bulkhead above Y = 4.16m matching the East skeiling & collar ceiling over X = -19.25m..-17.39m
+    const bulkShape = new THREE.Shape();
+    bulkShape.moveTo(-19.25, upperWallTopY);
+    bulkShape.lineTo(-17.39, upperWallTopY);
+    bulkShape.lineTo(-17.39, upperWallTopY + 0.04);
+    bulkShape.lineTo(-18.75, collarCeilingY);
+    bulkShape.lineTo(-19.25, collarCeilingY);
+    bulkShape.closePath();
+    const bulkGeo = new THREE.ExtrudeGeometry(bulkShape, {
+      depth: cupD,
+      bevelEnabled: false,
+    });
+    bulkGeo.translate(0, 0, 10.86);
+    const bulkMesh = new THREE.Mesh(bulkGeo, warmRoomPlasterMat);
+    bulkMesh.name = 'bedroom4.southEastCupboards.vaultBulkhead';
+    bulkMesh.userData.isArchitecturalShell = true;
+    bulkMesh.castShadow = true;
+    bulkMesh.receiveShadow = true;
+    cupGroup.add(bulkMesh);
 
     // Two full-height Shaker cupboard doors with vertical brass handles on the North face (`Z = +10.847m`) (Issue #8)
     const doorW = (cupSpanX - 0.16) / 2;
@@ -132,6 +205,7 @@ export function buildBedroom4(
       antiqueOakSkirtingMat
     );
     bed4SouthMitredSkirt.name = 'bedroom4.southWallMitredSkirting';
+    bed4SouthMitredSkirt.userData.isArchitecturalShell = true;
     bed4SouthMitredSkirt.castShadow = true;
     bed4SouthMitredSkirt.receiveShadow = true;
     scene.add(bed4SouthMitredSkirt);

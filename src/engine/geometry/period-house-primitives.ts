@@ -69,6 +69,8 @@ export interface AngledWallSegmentConfig {
   readonly frontFaceMaterial?: THREE.Material;
   /** Cutaway top cap material (`wallCapMat`). */
   readonly capMaterial: THREE.Material;
+  /** Omit horizontal top cap at `topY` when a vaulted upper gable extension sits directly on top of the wall. */
+  readonly skipCap?: boolean;
   /** Skirting board material (`skirtingMat`). */
   readonly skirtingMaterial?: THREE.Material;
   readonly addFrontSkirting?: boolean;
@@ -282,6 +284,7 @@ export function buildAngledWallSegment(
 ): WallLocalFrame {
   const frame = createWallLocalFrame(config.start, config.end);
   const group = new THREE.Group();
+  group.userData.isArchitecturalShell = true;
   group.position.set(config.start[0], 0, config.start[1]);
   group.rotation.y = frame.rotationY;
   scene.add(group);
@@ -400,12 +403,14 @@ export function buildAngledWallSegment(
     pier.receiveShadow = true;
     group.add(pier);
 
-    const cap = new THREE.Mesh(
-      new THREE.BoxGeometry(segW + 0.004, 0.025, config.thickness + 0.004),
-      config.capMaterial
-    );
-    cap.position.set(uMid, config.topY + 0.012, 0);
-    group.add(cap);
+    if (!config.skipCap) {
+      const cap = new THREE.Mesh(
+        new THREE.BoxGeometry(segW + 0.004, 0.025, config.thickness + 0.004),
+        config.capMaterial
+      );
+      cap.position.set(uMid, config.topY + 0.012, 0);
+      group.add(cap);
+    }
 
     if (config.backFaceMaterial) {
       const backH = config.topY - config.backFloorY;
@@ -491,12 +496,14 @@ export function buildAngledWallSegment(
       lintel.receiveShadow = true;
       group.add(lintel);
 
-      const lintelCap = new THREE.Mesh(
-        new THREE.BoxGeometry(op.width + 0.004, 0.025, config.thickness + 0.004),
-        config.capMaterial
-      );
-      lintelCap.position.set(op.uCenter, config.topY + 0.012, 0);
-      group.add(lintelCap);
+      if (!config.skipCap) {
+        const lintelCap = new THREE.Mesh(
+          new THREE.BoxGeometry(op.width + 0.004, 0.025, config.thickness + 0.004),
+          config.capMaterial
+        );
+        lintelCap.position.set(op.uCenter, config.topY + 0.012, 0);
+        group.add(lintelCap);
+      }
 
       if (config.backFaceMaterial) {
         const backLintelClad = new THREE.Mesh(
@@ -512,7 +519,26 @@ export function buildAngledWallSegment(
           lintelMidY,
           -config.thickness / 2 - 0.007
         );
+        backLintelClad.receiveShadow = true;
         group.add(backLintelClad);
+      }
+
+      if (config.frontFaceMaterial) {
+        const frontLintelClad = new THREE.Mesh(
+          applyLocalWallBrickUVs(
+            new THREE.BoxGeometry(op.width, lintelH, 0.014),
+            op.uCenter,
+            lintelMidY
+          ),
+          config.frontFaceMaterial
+        );
+        frontLintelClad.position.set(
+          op.uCenter,
+          lintelMidY,
+          config.thickness / 2 + 0.007
+        );
+        frontLintelClad.receiveShadow = true;
+        group.add(frontLintelClad);
       }
     }
 

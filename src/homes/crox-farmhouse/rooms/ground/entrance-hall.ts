@@ -42,7 +42,6 @@ export function buildEntranceHall(
     vitoriaChequerTileMat,
     vitoriaChequerUvScale,
     wallCapMat,
-    wallH,
     warmRoomPlasterMat,
     windowGlassMat,
   } = kit;
@@ -78,7 +77,7 @@ export function buildEntranceHall(
     start: [-17.891, 2.48],
     end: [-16.92, 2.61],
     thickness: 0.28,
-    topY: wallH,
+    topY: 2.0,
     frontFloorY: tier2FloorY,
     backFloorY: lowerFloorY,
     wallMaterial: warmRoomPlasterMat,

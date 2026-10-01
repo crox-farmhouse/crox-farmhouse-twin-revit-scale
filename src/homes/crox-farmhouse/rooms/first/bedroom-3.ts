@@ -36,13 +36,14 @@ export function buildBedroom3(
   //    Directly above Sitting Room: X = -18.25m..-22.19m, Z = +4.30m..+8.15m
   // =========================================================================
   addFirstFloorSlab(-22.19, -18.25, 4.3, 8.15, oakFloorMat);
+  addFirstFloorSlab(-22.19, -20.15, 4.15, 4.3, oakFloorMat);
 
-  // West Front Exterior Brick Wall of Bedroom 3 (X = -22.47m..-22.19m, Z = +4.30m..+8.39m)
+  // West Front Exterior Brick Wall of Bedroom 3 (X = -22.47m..-22.19m, Z = +4.15m..+8.39m)
   // With 2-pane Georgian casement window centered at Z = +5.92m (directly above Sitting Room bay — Photo 2!)
   addUpperBrickWallAlongZWithWindow(
     -22.47,
     -22.19,
-    4.3,
+    4.15,
     8.39,
     5.92,
     1.35,
@@ -50,7 +51,7 @@ export function buildBedroom3(
     3.94,
     'east',
     2,
-    { skirtingMin: 4.375, skirtingMax: 8.15 }
+    { skirtingMin: 4.18, skirtingMax: 8.15 }
   );
 
   // Single Continuous West Corridor Partition Wall (`X = -18.25m, Z = +3.475m..+8.15m`, 0.15m thick)
@@ -119,6 +120,7 @@ export function buildBedroom3(
       antiqueOakSkirtingMat
     );
     skirtMesh.name = skirtName;
+    skirtMesh.userData.isArchitecturalShell = true;
     skirtMesh.castShadow = true;
     skirtMesh.receiveShadow = true;
     scene.add(skirtMesh);
@@ -135,14 +137,56 @@ export function buildBedroom3(
     skirtingSides: [1], // South (+Z) face inside Bedroom 4
     skirtingMin: -22.19,
     skirtingMax: -18.17,
+    skipCap: true,
   });
   addUpperInteriorWall(-17.265, floorTopY, upperWallTopY, 8.27, 0.09, 0.24, warmRoomPlasterMat, {
     skipSkirting: true,
+    skipCap: true,
   });
   addUpperInteriorWall(-17.655, floorTopY + doorH, upperWallTopY, 8.27, 0.87, 0.24, warmRoomPlasterMat, {
     skipSkirting: true,
+    skipCap: true,
   });
   addUpperInteractiveDoor('x', 8.27, 0.24, -17.7, 0.78, Math.PI * 0.48);
+
+  // Issue #6 & #10: Full-span coplanar vaulted upper gable on the Z = 8.27m North wall of Bedroom 4 (Y = 4.16m..4.52m)
+  {
+    const collarCeilingY = 4.52;
+    const northGableShape = new THREE.Shape();
+    northGableShape.moveTo(-22.19, upperWallTopY);
+    northGableShape.lineTo(-17.22, upperWallTopY);
+    northGableShape.lineTo(-18.75, collarCeilingY);
+    northGableShape.lineTo(-20.85, collarCeilingY);
+    northGableShape.closePath();
+    const northGableGeo = new THREE.ExtrudeGeometry(northGableShape, {
+      depth: 0.24,
+      bevelEnabled: false,
+    });
+    northGableGeo.translate(0, 0, 8.27 - 0.12);
+    const northUpperGable = new THREE.Mesh(northGableGeo, warmRoomPlasterMat);
+    northUpperGable.name = 'bedroom4.northWallUpperGable';
+    northUpperGable.userData.isArchitecturalShell = true;
+    northUpperGable.castShadow = true;
+    northUpperGable.receiveShadow = true;
+    scene.add(northUpperGable);
+
+    for (const [x0, y0, x1, y1] of [
+      [-22.19, upperWallTopY, -20.85, collarCeilingY],
+      [-20.85, collarCeilingY, -18.75, collarCeilingY],
+      [-18.75, collarCeilingY, -17.22, upperWallTopY],
+    ] as const) {
+      const segLen = Math.hypot(x1 - x0, y1 - y0);
+      const segAngle = Math.atan2(y1 - y0, x1 - x0);
+      const capMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(segLen + 0.008, 0.025, 0.244),
+        wallCapMat
+      );
+      capMesh.userData.isArchitecturalShell = true;
+      capMesh.position.set((x0 + x1) / 2, (y0 + y1) / 2 + 0.012, 8.27);
+      capMesh.rotation.z = segAngle;
+      scene.add(capMesh);
+    }
+  }
 
   // Issue #7: Continuous 45°-mitred skirting along the South wall & Chimney Breast of Bedroom 3
   const bed3SouthMitredSkirt = new THREE.Mesh(
@@ -160,6 +204,7 @@ export function buildBedroom3(
     antiqueOakSkirtingMat
   );
   bed3SouthMitredSkirt.name = 'bedroom3.southWallMitredSkirting';
+  bed3SouthMitredSkirt.userData.isArchitecturalShell = true;
   bed3SouthMitredSkirt.castShadow = true;
   bed3SouthMitredSkirt.receiveShadow = true;
   scene.add(bed3SouthMitredSkirt);

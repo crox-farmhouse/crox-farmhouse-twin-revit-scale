@@ -144,9 +144,11 @@ export class RoomLodController {
 
     for (const root of roots) {
       root.updateMatrixWorld(true);
+      const floorFilter: 'ground' | 'first' | undefined =
+        root.name === 'firstFloorMeshGroup' ? 'first' : undefined;
       for (const child of root.children) {
         if (rootSet.has(child)) continue;
-        this.classifySceneBranch(child, box, size, center);
+        this.classifySceneBranch(child, box, size, center, floorFilter);
       }
     }
   }
@@ -155,7 +157,8 @@ export class RoomLodController {
     obj: THREE.Object3D,
     box: THREE.Box3,
     size: THREE.Vector3,
-    center: THREE.Vector3
+    center: THREE.Vector3,
+    floorFilter?: 'ground' | 'first'
   ): void {
     // Skip lights, cameras, and helper planes, as well as state-toggled hidden subtrees (e.g. extended dining table seats)
     if (obj instanceof THREE.Light || obj instanceof THREE.Camera || !obj.visible || obj.userData?.lodIgnore) {
@@ -166,17 +169,19 @@ export class RoomLodController {
     // so their child meshes and furniture groups are classified identically to top-level scene children.
     if (obj.userData?.isRoomContainer) {
       for (const sub of obj.children) {
-        this.classifySceneBranch(sub, box, size, center);
+        this.classifySceneBranch(sub, box, size, center, floorFilter);
       }
       return;
     }
 
-    // Never classify dynamic cutaway wall segments, architectural shell groups, windows, doors, floors, or stairs as LOD1/LOD2 furniture
+    // Never classify dynamic cutaway wall segments, architectural shell groups, windows, doors, floors, skirtings, or stairs as LOD1/LOD2 furniture
     if (
       obj.userData?.isCutawayWall ||
       obj.userData?.isArchitecturalShell ||
       (typeof obj.name === 'string' &&
-        /floor|stairs|architrave|doorwaycasing/i.test(obj.name))
+        /floor|stairs|architrave|doorwaycasing|skirting|chimneybreast|gable|skeiling|collar/i.test(
+          obj.name
+        ))
     ) {
       return;
     }
@@ -239,7 +244,7 @@ export class RoomLodController {
       // recurse into its children so individual furniture and props inside it are classified!
       if (obj instanceof THREE.Group && obj.children.length > 1 && maxDim < 18.0) {
         for (const sub of obj.children) {
-          this.classifySceneBranch(sub, box, size, center);
+          this.classifySceneBranch(sub, box, size, center, floorFilter);
         }
       }
       return;
@@ -257,7 +262,8 @@ export class RoomLodController {
       center.x,
       center.y,
       center.z,
-      isNamedGroup ? -0.15 : 0.05
+      isNamedGroup ? -0.15 : 0.05,
+      floorFilter
     );
     if (!room) return;
 
@@ -299,17 +305,20 @@ export class RoomLodController {
     x: number,
     y: number,
     z: number,
-    horizontalInsetM = -0.15
+    horizontalInsetM = -0.15,
+    floorFilter?: 'ground' | 'first'
   ): ManagedRoomLodEntry | undefined {
     for (const room of this.rooms.values()) {
       if (room.zoneId === 'courtyard') continue;
+      if (floorFilter && room.floorId !== floorFilter) continue;
       if (room.zoneId === 'upperLanding' && x > -16.95 && z > 2.65) continue;
       const b = room.bounds;
+      const maxYLimit = room.floorId === 'ground' ? b.maxY : b.maxY + 0.1;
       if (
         x >= b.minX + horizontalInsetM &&
         x <= b.maxX - horizontalInsetM &&
         y >= b.minY - 0.1 &&
-        y <= b.maxY + 0.1 &&
+        y <= maxYLimit &&
         z >= b.minZ + horizontalInsetM &&
         z <= b.maxZ - horizontalInsetM
       ) {

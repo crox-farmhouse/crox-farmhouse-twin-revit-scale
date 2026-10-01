@@ -512,6 +512,7 @@ export function buildUpperLanding(
 
     const chimneyMesh = new THREE.Mesh(chimneyGeo, warmRoomPlasterMat);
     chimneyMesh.name = 'upperLanding.eastChimneyBreast';
+    chimneyMesh.userData.isArchitecturalShell = true;
     chimneyMesh.castShadow = true;
     chimneyMesh.receiveShadow = true;
     scene.add(chimneyMesh);
@@ -523,6 +524,7 @@ export function buildUpperLanding(
       new THREE.BoxGeometry(0.38, 0.025, topCapDepthZ),
       wallCapMat
     );
+    topCap.userData.isArchitecturalShell = true;
     topCap.position.set(wallX - 0.19, collarCeilingY - 0.012, topCapCenterZ);
     scene.add(topCap);
 
@@ -591,6 +593,7 @@ export function buildUpperLanding(
       geo.computeVertexNormals();
       const mesh = new THREE.Mesh(geo, antiqueOakSkirtingMat);
       mesh.name = name;
+      mesh.userData.isArchitecturalShell = true;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       return mesh;
@@ -627,37 +630,42 @@ export function buildUpperLanding(
   // Non-Square West Load-Bearing Cross-Wall between Main Stair Landing and Bedroom 2
   // (0.24m thick, [-17.55, -2.50] -> [-17.90, +2.40] — aligned with Ground Floor Hall/Front Room cross-wall,
   // meeting the South wall at the center pier [-17.891, 2.48] between bedroom2Door and upperLandingCorridorArch!)
+  // Note: for start=[-17.55, -2.5] -> end=[-17.9, 2.4], +normal (front) points WEST into Bedroom 2 (Y = 2.08m),
+  // and -normal (back) points EAST into Upper Landing (Y = 2.16m)!
   const upperLandingCrossWallFrame = buildAngledWallSegment(scene, interactions, {
     start: [-17.55, -2.5],
     end: [-17.9, 2.4],
     thickness: 0.24,
     topY: upperWallTopY,
-    frontFloorY: floorTopY,
-    backFloorY: floorTopY - 0.08,
+    frontFloorY: floorTopY - 0.08, // +normal = West (Bedroom 2 at Y = 2.08m)
+    backFloorY: floorTopY,         // -normal = East (Upper Landing at Y = 2.16m)
     wallMaterial: warmRoomPlasterMat,
-    capMaterial: wallCapMat,
+    capMaterial: warmRoomPlasterMat,
     skirtingMaterial: antiqueOakSkirtingMat,
-    addFrontSkirting: true,
-    frontSkirtingExclusions: [[0, 1.92]], // Omit skirting across the open Stairwell Void (Z = -2.50m..-0.58m)
-    addBackSkirting: false, // Bedroom 2 builds a continuous 45°-mitred skirting around its East wardrobes & exposed wall
+    addFrontSkirting: false, // Bedroom 2 builds a continuous 45°-mitred skirting around its East wardrobes & exposed wall
+    addBackSkirting: true,
+    backSkirtingExclusions: [[0, 1.92]], // Omit skirting across the open Stairwell Void (Z = -2.50m..-0.58m)
   });
 
   // Issue #5: Upper Vaulted Trapezoidal Gable Extension on the West Landing Cross-Wall (Y = 4.16m..4.52m)
   // Matches the exact North & South skeiling slopes (Z = -1.90m..+1.80m at Y = 4.16m tapering to Z = -1.15m..+1.05m at Y = 4.52m)
   {
     const westGableShape = new THREE.Shape();
-    westGableShape.moveTo(0.6, upperWallTopY);
+    westGableShape.moveTo(0, upperWallTopY);
+    westGableShape.lineTo(4.912, upperWallTopY);
     westGableShape.lineTo(4.3, upperWallTopY);
     westGableShape.lineTo(3.55, collarCeilingY);
     westGableShape.lineTo(1.35, collarCeilingY);
+    westGableShape.lineTo(0.6, upperWallTopY);
     westGableShape.closePath();
     const westGableGeo = new THREE.ExtrudeGeometry(westGableShape, {
-      depth: 0.236,
+      depth: 0.24,
       bevelEnabled: false,
     });
-    westGableGeo.translate(0, 0, -0.118);
+    westGableGeo.translate(0, 0, -0.12);
     const westUpperGable = new THREE.Mesh(westGableGeo, warmRoomPlasterMat);
     westUpperGable.name = 'upperLanding.westWallUpperGable';
+    westUpperGable.userData.isArchitecturalShell = true;
     westUpperGable.position.copy(upperLandingCrossWallFrame.toWorld(0, 0, 0));
     westUpperGable.rotation.y = upperLandingCrossWallFrame.rotationY;
     westUpperGable.castShadow = true;

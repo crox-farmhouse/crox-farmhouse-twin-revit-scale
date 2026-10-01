@@ -57,6 +57,7 @@ export function createGroundFloorShellKit(
     mat: THREE.Material | THREE.Material[] = plasterMat
   ): void => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    mesh.userData.isArchitecturalShell = true;
     mesh.position.set(x, y, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -65,6 +66,7 @@ export function createGroundFloorShellKit(
     const topEdgeY = y + h / 2;
     if (Math.abs(topEdgeY - wallH) < 0.05 || Math.abs(topEdgeY - frontWallH) < 0.05) {
       const cap = new THREE.Mesh(new THREE.BoxGeometry(w + 0.004, 0.025, d + 0.004), wallCapMat);
+      cap.userData.isArchitecturalShell = true;
       cap.position.set(x, topEdgeY + 0.012, z);
       scene.add(cap);
     }
@@ -87,6 +89,7 @@ export function createGroundFloorShellKit(
             new THREE.BoxGeometry(w, baseH, skirtT),
             antiqueOakSkirtingMat
           );
+          skirt.userData.isArchitecturalShell = true;
           skirt.position.set(x, floorY + baseH / 2, faceZ);
           skirt.receiveShadow = true;
           scene.add(skirt);
@@ -95,6 +98,7 @@ export function createGroundFloorShellKit(
             new THREE.BoxGeometry(w, capH, capT),
             antiqueOakSkirtingMat
           );
+          skirtCap.userData.isArchitecturalShell = true;
           skirtCap.position.set(x, floorY + baseH + capH / 2, capZ);
           scene.add(skirtCap);
         }
@@ -109,6 +113,7 @@ export function createGroundFloorShellKit(
             new THREE.BoxGeometry(skirtT, baseH, d),
             antiqueOakSkirtingMat
           );
+          skirt.userData.isArchitecturalShell = true;
           skirt.position.set(faceX, floorY + baseH / 2, z);
           skirt.receiveShadow = true;
           scene.add(skirt);
@@ -117,6 +122,7 @@ export function createGroundFloorShellKit(
             new THREE.BoxGeometry(capT, capH, d),
             antiqueOakSkirtingMat
           );
+          skirtCap.userData.isArchitecturalShell = true;
           skirtCap.position.set(capX, floorY + baseH + capH / 2, z);
           scene.add(skirtCap);
         }

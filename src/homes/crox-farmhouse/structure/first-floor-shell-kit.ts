@@ -133,22 +133,26 @@ export function createFirstFloorShellKit(
       readonly skirtingMin?: number;
       readonly skirtingMax?: number;
       readonly floorY?: number;
+      readonly skipCap?: boolean;
+      readonly capMaterial?: THREE.Material;
     }
   ): void => {
     const h = yTop - yBottom;
     const cy = (yBottom + yTop) / 2;
 
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    mesh.userData.isArchitecturalShell = true;
     mesh.position.set(x, cy, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
 
-    if (Math.abs(yTop - upperWallTopY) < 0.05) {
+    if (!options?.skipCap && Math.abs(yTop - upperWallTopY) < 0.05) {
       const cap = new THREE.Mesh(
         new THREE.BoxGeometry(w + 0.004, 0.025, d + 0.004),
-        wallCapMat
+        options?.capMaterial ?? wallCapMat
       );
+      cap.userData.isArchitecturalShell = true;
       cap.position.set(x, upperWallTopY + 0.012, z);
       scene.add(cap);
     }
@@ -173,6 +177,7 @@ export function createFirstFloorShellKit(
               new THREE.BoxGeometry(sW, baseH, skirtT),
               antiqueOakSkirtingMat
             );
+            skirt.userData.isArchitecturalShell = true;
             skirt.position.set(sCx, effFloorY + baseH / 2, faceZ);
             skirt.receiveShadow = true;
             scene.add(skirt);
@@ -181,6 +186,7 @@ export function createFirstFloorShellKit(
               new THREE.BoxGeometry(sW, capH, capT),
               antiqueOakSkirtingMat
             );
+            skirtCap.userData.isArchitecturalShell = true;
             skirtCap.position.set(sCx, effFloorY + baseH + capH / 2, capZ);
             skirtCap.receiveShadow = true;
             scene.add(skirtCap);
@@ -199,6 +205,7 @@ export function createFirstFloorShellKit(
               new THREE.BoxGeometry(skirtT, baseH, sD),
               antiqueOakSkirtingMat
             );
+            skirt.userData.isArchitecturalShell = true;
             skirt.position.set(faceX, effFloorY + baseH / 2, sCz);
             skirt.receiveShadow = true;
             scene.add(skirt);
@@ -207,6 +214,7 @@ export function createFirstFloorShellKit(
               new THREE.BoxGeometry(capT, capH, sD),
               antiqueOakSkirtingMat
             );
+            skirtCap.userData.isArchitecturalShell = true;
             skirtCap.position.set(capX, effFloorY + baseH + capH / 2, sCz);
             skirtCap.receiveShadow = true;
             scene.add(skirtCap);

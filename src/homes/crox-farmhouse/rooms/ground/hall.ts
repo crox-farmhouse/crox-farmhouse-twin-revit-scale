@@ -681,7 +681,7 @@ export function buildHall(
     start: [-17.55, -2.5],
     end: [-17.9, 2.4],
     thickness: 0.24,
-    topY: wallH,
+    topY: 2.0,
     frontFloorY: tier2FloorY, // +normal = West (Front / Cinema Room at Y = -0.60m)
     backFloorY: lowerFloorY,  // -normal = East (Entrance Hall at Y = -0.30m)
     wallMaterial: warmRoomPlasterMat,

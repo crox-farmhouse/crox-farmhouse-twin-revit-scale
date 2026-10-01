@@ -356,17 +356,17 @@ export function buildWestWingCorridor(
   scene.add(srWc);
 
   // =========================================================================
-  // BEDROOM 3 BUILT-IN NORTH WARDROBE (`X = -22.19m..-20.225m, Z = +3.625m..+4.375m`)
-  // Opening South (`+Z`) into Bedroom 3 flush with the South wall of the Walk-In Shower (`Z = +4.375m`)
+  // BEDROOM 3 BUILT-IN NORTH WARDROBE (`X = -22.19m..-20.225m, Z = +3.625m..+4.165m`)
+  // Slightly inset 18cm into the North alcove rather than taking up the full depth to `Z = +4.375m` (Issue #7)
   // =========================================================================
   {
     const bed3WardGroup = new THREE.Group();
     bed3WardGroup.name = 'bedroom3.northWardrobe';
     const wardW = 1.965; // X = -22.19m .. -20.225m
     const wardH = upperWallTopY - floorTopY;
-    const wardD = 0.72; // Z = +3.64m .. +4.36m
+    const wardD = 0.54; // Z = +3.625m .. +4.165m (inset 18cm from Z = +4.375m alcove front)
     const centerX = -21.2075;
-    const centerZ = 4.0;
+    const centerZ = 3.895;
 
     const carcass = new THREE.Mesh(
       new THREE.BoxGeometry(wardW, wardH, wardD),
@@ -377,7 +377,7 @@ export function buildWestWingCorridor(
     carcass.receiveShadow = true;
     bed3WardGroup.add(carcass);
 
-    // 4 Shaker wardrobe doors (2 pairs) along the South face (`Z = +4.373m`) with vertical brass bar handles (Issue #8)
+    // 4 Shaker wardrobe doors (2 pairs) along the South face (`Z = +4.178m`) with vertical brass bar handles (Issues #7 & #8)
     const doorW = (wardW - 0.12) / 4;
     const doorLeafH = wardH - 0.24;
     for (let i = 0; i < 4; i++) {
@@ -385,7 +385,7 @@ export function buildWestWingCorridor(
       addShakerWardrobeDoor(bed3WardGroup, {
         x: doorX,
         y: floorTopY + 0.15 + doorLeafH / 2,
-        z: 4.373,
+        z: 4.178,
         width: doorW - 0.012,
         height: doorLeafH,
         alongZ: false,
@@ -395,11 +395,14 @@ export function buildWestWingCorridor(
       });
     }
 
-    // Continuous North skirting board across Bedroom 3 (`X = -22.19m..-18.325m` along `Z = +4.375m`)
+    // Continuous 45°-mitred North skirting board wrapping the inset wardrobe plinth (`Z = +4.18m`),
+    // returning South along the alcove side reveal (`X = -20.225m`), and continuing along `Z = +4.375m` (Issue #7)
     const bed3NorthSkirt = new THREE.Mesh(
       buildMitredWallSkirtingGeometry(
         [
-          [-22.19, 4.375],
+          [-22.19, 4.18],
+          [-20.225, 4.18],
+          [-20.225, 4.375],
           [-18.325, 4.375],
         ],
         floorTopY
@@ -407,6 +410,7 @@ export function buildWestWingCorridor(
       antiqueOakSkirtingMat
     );
     bed3NorthSkirt.name = 'bedroom3.northWallMitredSkirting';
+    bed3NorthSkirt.userData.isArchitecturalShell = true;
     bed3NorthSkirt.castShadow = true;
     bed3NorthSkirt.receiveShadow = true;
     scene.add(bed3NorthSkirt);

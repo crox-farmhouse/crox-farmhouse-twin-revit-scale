@@ -114,12 +114,16 @@ export function applySelectiveBevelModifier(layers: PropertySceneLayers): void {
 
     // Inspect ancestor hierarchy for semantic context
     let inCutawayWall = false;
+    let inArchitecturalShell = false;
     let hasFurnitureOrJoineryTag = false;
     let hasExplicitWallName = false;
     let cur: THREE.Object3D | null = obj;
     while (cur && cur !== scene) {
       if (cutawayRoots.has(cur) || cur.userData?.cutawayWall || cur.userData?.isCutawayWall) {
         inCutawayWall = true;
+      }
+      if (cur.userData?.isArchitecturalShell) {
+        inArchitecturalShell = true;
       }
       if (
         cur.userData?.interactableId ||
@@ -142,7 +146,7 @@ export function applySelectiveBevelModifier(layers: PropertySceneLayers): void {
       cur = cur.parent;
     }
 
-    if (hasExplicitWallName) {
+    if (hasExplicitWallName || (inArchitecturalShell && !hasFurnitureOrJoineryTag)) {
       return;
     }
 

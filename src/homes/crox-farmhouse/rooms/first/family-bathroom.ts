@@ -244,6 +244,7 @@ export function buildFamilyBathroom(
       new THREE.BoxGeometry(0.022, 0.122, sD),
       antiqueOakSkirtingMat
     );
+    skirt.userData.isArchitecturalShell = true;
     skirt.position.set(-12.93 + sideSign * (0.12 + 0.009), floorTopY + 0.061, sCz);
     skirt.receiveShadow = true;
     scene.add(skirt);
@@ -251,6 +252,7 @@ export function buildFamilyBathroom(
       new THREE.BoxGeometry(0.016, 0.024, sD),
       antiqueOakSkirtingMat
     );
+    skirtCap.userData.isArchitecturalShell = true;
     skirtCap.position.set(-12.93 + sideSign * (0.12 + 0.006), floorTopY + 0.134, sCz);
     skirtCap.receiveShadow = true;
     scene.add(skirtCap);
