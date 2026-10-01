@@ -32,15 +32,15 @@ export function buildMainBedroom(
   } = kit;
   // =========================================================================
   // 1. MAIN BEDROOM (5.00m x 4.55m / 16'5" x 14'11")
-  //    Directly above Family Room: X = -4.64m..-9.56m, Z = -2.50m..+2.35m
+  //    Directly above Family Room: X = -4.64m..-9.56m, Z = -2.50m..+2.40m
   // =========================================================================
-  addFirstFloorSlab(-9.56, -4.64, -2.5, 2.35, oakFloorMat);
+  addFirstFloorSlab(-9.68, -4.52, -2.64, 2.54, oakFloorMat);
 
-  // East Cross-Wall of Main Bedroom (X = -4.64m..-4.40m, Z = -2.78m..+2.63m)
+  // East Cross-Wall of Main Bedroom (X = -4.64m..-4.40m, Z = -2.78m..+2.68m)
   addUpperInteriorWall(-4.63, floorTopY, 3.08, 1.585, 0.02, 1.53, warmRoomPlasterMat, {
     skipSkirting: true,
   });
-  addUpperExteriorBrickWall(-4.64, -4.4, -2.78, 2.63, 3.08, upperWallTopY, 'west', {
+  addUpperExteriorBrickWall(-4.64, -4.4, -2.78, 2.68, 3.08, upperWallTopY, 'west', {
     skipSkirting: true,
   });
 
@@ -60,13 +60,13 @@ export function buildMainBedroom(
     { skirtingMin: -9.56, skirtingMax: -5.26 }
   );
 
-  // South Courtyard Exterior Brick Wall of Main Bedroom (Z = +2.35m..+2.63m, X = -9.56m..-4.40m)
-  // With 3-pane Georgian casement window centered at X = -6.85m (directly above Family Room window, Photo 1)
+  // South Courtyard Exterior Brick Wall of Main Bedroom (Z = +2.40m..+2.68m, X = -9.56m..-4.40m)
+  // Aligned 100% collinearly with Ground Floor Family Room South wall (Z = 2.40m..2.68m) and Upper Passage South wall (Issue #2)!
   addUpperBrickWallAlongXWithWindow(
     -9.56,
     -4.4,
-    2.35,
-    2.63,
+    2.4,
+    2.68,
     -6.85,
     1.55,
     2.92,
@@ -80,25 +80,39 @@ export function buildMainBedroom(
 
   // =========================================================================
   // FULL-WIDTH BANK OF 4 BUILT-IN SHAKER WARDROBES ALONG THE EAST WALL
-  // (`X = -5.26m..-4.64m, Z = -2.50m..+2.35m`, facing West `-X` into Main Bedroom)
-  // Issue #8 ("Some weerid boxing here, wardrobes should go right to the top"):
-  // Continuous full-height Shaker wardrobe carcass (`wardrobeMat`) rising all the way
-  // up to the vaulted ceiling (`Y = 4.16m` at the eaves pitching up to `Y = 4.52m` at the collar),
-  // with zero protruding step or separate boxing above the wardrobes!
+  // (`X = -5.26m..-4.64m, Z = -2.50m..+2.40m`, facing West `-X` into Main Bedroom)
+  // Issues #1 & #8: Continuous full-height Shaker wardrobe carcass (`wardrobeMat`) and
+  // 8 ceiling-height Shaker doors (raked outer doors under the North/South skeilings +
+  // full-height central doors under the 4.52m collar ceiling) rising all the way to the ceiling!
   // =========================================================================
   {
     const eastWardGroup = new THREE.Group();
     eastWardGroup.name = 'mainBedroom.eastWardrobes';
     const wardD = 0.62; // X = -5.26m .. -4.64m
-    const wardH = upperWallTopY - floorTopY;
-    const totalZ = 4.85; // Z = -2.50m .. +2.35m
-    const centerZ = -0.075;
+    const totalZ = 4.9; // Z = -2.50m .. +2.40m
+    const centerZ = -0.05;
 
-    // Full-height vaulted wardrobe carcass (`Y = floorTopY..collarCeilingY`, `Z = -2.50m..+2.35m`)
+    const getVaultCeilingYAtZ = (z: number): number => {
+      if (z < -1.15) {
+        return (
+          upperWallTopY +
+          ((z - -2.5) / (-1.15 - -2.5)) * (collarCeilingY - upperWallTopY)
+        );
+      }
+      if (z > 1.05) {
+        return (
+          collarCeilingY -
+          ((z - 1.05) / (2.4 - 1.05)) * (collarCeilingY - upperWallTopY)
+        );
+      }
+      return collarCeilingY;
+    };
+
+    // Full-height vaulted wardrobe carcass (`Y = floorTopY..collarCeilingY`, `Z = -2.50m..+2.40m`)
     const carcassShape = new THREE.Shape();
     carcassShape.moveTo(-2.5, floorTopY);
-    carcassShape.lineTo(2.35, floorTopY);
-    carcassShape.lineTo(2.35, upperWallTopY + 0.02);
+    carcassShape.lineTo(2.4, floorTopY);
+    carcassShape.lineTo(2.4, upperWallTopY + 0.02);
     carcassShape.lineTo(1.05, collarCeilingY + 0.015);
     carcassShape.lineTo(-1.15, collarCeilingY + 0.015);
     carcassShape.lineTo(-2.5, upperWallTopY + 0.02);
@@ -119,7 +133,7 @@ export function buildMainBedroom(
     for (const [z0, y0, z1, y1] of [
       [-2.5, upperWallTopY + 0.008, -1.15, collarCeilingY],
       [-1.15, collarCeilingY, 1.05, collarCeilingY],
-      [1.05, collarCeilingY, 2.35, upperWallTopY + 0.023],
+      [1.05, collarCeilingY, 2.4, upperWallTopY + 0.008],
     ] as const) {
       const segLen = Math.hypot(z1 - z0, y1 - y0);
       const segAngle = Math.atan2(y1 - y0, z1 - z0);
@@ -140,6 +154,7 @@ export function buildMainBedroom(
       antiqueOakSkirtingMat
     );
     wardSkirt.position.set(-5.26 - 0.009, floorTopY + 0.061, centerZ);
+    wardSkirt.castShadow = true;
     wardSkirt.receiveShadow = true;
     eastWardGroup.add(wardSkirt);
 
@@ -148,20 +163,41 @@ export function buildMainBedroom(
       antiqueOakSkirtingMat
     );
     wardSkirtCap.position.set(-5.26 - 0.006, floorTopY + 0.134, centerZ);
+    wardSkirtCap.castShadow = true;
     wardSkirtCap.receiveShadow = true;
     eastWardGroup.add(wardSkirtCap);
 
-    // 8 Shaker wardrobe doors (4 pairs of double doors) along the West face (`X = -5.273m`)
-    const doorW = (totalZ - 0.24) / 8;
-    const doorLeafH = wardH - 0.24;
-    for (let i = 0; i < 8; i++) {
-      const doorZ = -2.5 + 0.12 + doorW / 2 + i * (doorW + 0.015);
+    // 8 ceiling-height Shaker wardrobe doors (4 pairs of double doors) aligned with the vaulted ceiling segments:
+    // - Bay 0 (Doors 1 & 2): Z = -2.44m .. -1.15m (raked under North skeiling)
+    // - Bays 1 & 2 (Doors 3..6): Z = -1.15m .. +1.05m (full-height under 4.52m flat collar)
+    // - Bay 3 (Doors 7 & 8): Z = +1.05m .. +2.34m (raked under South skeiling)
+    const doorIntervals: ReadonlyArray<readonly [number, number]> = [
+      [-2.44, -1.801],
+      [-1.789, -1.156],
+      [-1.144, -0.604],
+      [-0.592, -0.056],
+      [-0.044, 0.492],
+      [0.504, 1.044],
+      [1.056, 1.689],
+      [1.701, 2.34],
+    ];
+    const doorBaseY = floorTopY + 0.15;
+    const corniceClearance = 0.042;
+    for (let i = 0; i < doorIntervals.length; i++) {
+      const [z0, z1] = doorIntervals[i];
+      const doorW = z1 - z0;
+      const doorZ = (z0 + z1) / 2;
+      const hLeft = getVaultCeilingYAtZ(z0) - corniceClearance - doorBaseY;
+      const hRight = getVaultCeilingYAtZ(z1) - corniceClearance - doorBaseY;
+      const maxDoorH = Math.max(hLeft, hRight);
       addShakerWardrobeDoor(eastWardGroup, {
         x: -5.273,
-        y: floorTopY + 0.15 + doorLeafH / 2,
+        y: doorBaseY + maxDoorH / 2,
         z: doorZ,
-        width: doorW - 0.012,
-        height: doorLeafH,
+        width: doorW,
+        height: maxDoorH,
+        heightLeft: hLeft,
+        heightRight: hRight,
         alongZ: true,
         normalSign: -1,
         handleSide: i % 2 === 0 ? 'right' : 'left',
@@ -191,7 +227,7 @@ export function buildMainBedroom(
     [-1, -2.5, -0.01],   // West face inside Family Bathroom (North of Recessed Cupboard)
     [-1, 2.082, 2.4],    // West face inside Upper South Passage (South of Doorway up to Z = 2.40m South wall!)
     [1, -2.5, 1.018],    // East face inside Main Bedroom (North of Doorway)
-    [1, 2.082, 2.35],    // East face inside Main Bedroom (South of Doorway up to Z = 2.35m South wall!)
+    [1, 2.082, 2.4],     // East face inside Main Bedroom (South of Doorway up to Z = 2.40m South wall!)
   ] as const) {
     const sD = z1 - z0;
     const sCz = (z0 + z1) / 2;
@@ -200,6 +236,7 @@ export function buildMainBedroom(
       antiqueOakSkirtingMat
     );
     skirt.position.set(-9.68 + sideSign * (0.12 + 0.009), floorTopY + 0.061, sCz);
+    skirt.castShadow = true;
     skirt.receiveShadow = true;
     scene.add(skirt);
     const skirtCap = new THREE.Mesh(
@@ -207,6 +244,7 @@ export function buildMainBedroom(
       antiqueOakSkirtingMat
     );
     skirtCap.position.set(-9.68 + sideSign * (0.12 + 0.006), floorTopY + 0.134, sCz);
+    skirtCap.castShadow = true;
     skirtCap.receiveShadow = true;
     scene.add(skirtCap);
   }

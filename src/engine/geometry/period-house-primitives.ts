@@ -71,6 +71,8 @@ export interface AngledWallSegmentConfig {
   readonly capMaterial: THREE.Material;
   /** Omit horizontal top cap at `topY` when a vaulted upper gable extension sits directly on top of the wall. */
   readonly skipCap?: boolean;
+  /** Optional u-intervals `[u0, u1]` where the horizontal top cap at `topY` is omitted (e.g. under a partial upper gable wall). */
+  readonly skipCapRanges?: readonly (readonly [number, number])[];
   /** Skirting board material (`skirtingMat`). */
   readonly skirtingMaterial?: THREE.Material;
   readonly addFrontSkirting?: boolean;
@@ -364,6 +366,8 @@ export function buildAngledWallSegment(
         floorY + 0.0625,
         zSign * (config.thickness / 2 + 0.011)
       );
+      skirt.castShadow = true;
+      skirt.receiveShadow = true;
       group.add(skirt);
 
       const skirtCap = new THREE.Mesh(
@@ -375,7 +379,39 @@ export function buildAngledWallSegment(
         floorY + 0.136,
         zSign * (config.thickness / 2 + 0.008)
       );
+      skirtCap.castShadow = true;
+      skirtCap.receiveShadow = true;
       group.add(skirtCap);
+    }
+  };
+
+  const emitCapSegments = (uStart: number, uEnd: number): void => {
+    if (config.skipCap || uEnd - uStart <= 0.005) return;
+    let intervals: Array<[number, number]> = [[uStart, uEnd]];
+    if (config.skipCapRanges && config.skipCapRanges.length > 0) {
+      for (const [ex0, ex1] of config.skipCapRanges) {
+        const next: Array<[number, number]> = [];
+        for (const [a, b] of intervals) {
+          if (ex1 <= a || ex0 >= b) {
+            next.push([a, b]);
+          } else {
+            if (ex0 > a + 0.005) next.push([a, ex0]);
+            if (ex1 < b - 0.005) next.push([ex1, b]);
+          }
+        }
+        intervals = next;
+      }
+    }
+    for (const [segA, segB] of intervals) {
+      const segW = segB - segA;
+      if (segW <= 0.005) continue;
+      const segMid = (segA + segB) / 2;
+      const cap = new THREE.Mesh(
+        new THREE.BoxGeometry(segW + 0.004, 0.025, config.thickness + 0.004),
+        config.capMaterial
+      );
+      cap.position.set(segMid, config.topY + 0.012, 0);
+      group.add(cap);
     }
   };
 
@@ -403,14 +439,7 @@ export function buildAngledWallSegment(
     pier.receiveShadow = true;
     group.add(pier);
 
-    if (!config.skipCap) {
-      const cap = new THREE.Mesh(
-        new THREE.BoxGeometry(segW + 0.004, 0.025, config.thickness + 0.004),
-        config.capMaterial
-      );
-      cap.position.set(uMid, config.topY + 0.012, 0);
-      group.add(cap);
-    }
+    emitCapSegments(u0, u1);
 
     if (config.backFaceMaterial) {
       const backH = config.topY - config.backFloorY;
@@ -496,14 +525,7 @@ export function buildAngledWallSegment(
       lintel.receiveShadow = true;
       group.add(lintel);
 
-      if (!config.skipCap) {
-        const lintelCap = new THREE.Mesh(
-          new THREE.BoxGeometry(op.width + 0.004, 0.025, config.thickness + 0.004),
-          config.capMaterial
-        );
-        lintelCap.position.set(op.uCenter, config.topY + 0.012, 0);
-        group.add(lintelCap);
-      }
+      emitCapSegments(opLeft, opRight);
 
       if (config.backFaceMaterial) {
         const backLintelClad = new THREE.Mesh(
@@ -550,8 +572,8 @@ export function buildAngledWallSegment(
         wallThickness: config.thickness,
         openingCenter: op.uCenter,
         openingWidth: op.width,
-        frontFloorY: Math.max(op.lowerFloorY, config.frontFloorY),
-        backFloorY: Math.max(op.lowerFloorY, config.backFloorY),
+        frontFloorY: config.frontFloorY,
+        backFloorY: config.backFloorY,
         headY: headBottomY,
         material: op.architraveMaterial,
         namePrefix: `${op.id ?? 'portal'}.architrave`,

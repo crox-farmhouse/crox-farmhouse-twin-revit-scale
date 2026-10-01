@@ -34,9 +34,10 @@ export function buildBedroom3(
   // =========================================================================
   // 6. BEDROOM 3 (4.00m x 3.85m / 13'1" x 12'8")
   //    Directly above Sitting Room: X = -18.40m..-22.19m, Z = +4.85m..+8.15m
+  //    + NW Wardrobe Alcove: X = -22.19m..-20.25m, Z = +4.10m..+4.85m (Issue #14!)
   // =========================================================================
-  addFirstFloorSlab(-22.19, -18.4, 4.85, 8.15, oakFloorMat);
-  addFirstFloorSlab(-22.19, -20.25, 4.7, 4.85, oakFloorMat);
+  addFirstFloorSlab(-22.33, -18.4, 4.85, 8.27, oakFloorMat);
+  addFirstFloorSlab(-22.33, -20.25, 4.1, 4.85, oakFloorMat);
 
   // West Front Exterior Brick Wall of Bedroom 3 (X = -22.47m..-22.19m, Z = +4.85m..+8.39m)
   // With 2-pane Georgian casement window centered at Z = +6.38m (directly above Sitting Room bay — Photo 2!)
@@ -55,7 +56,7 @@ export function buildBedroom3(
   );
 
   // Single Continuous West Corridor Partition Wall (`X = -18.40m, Z = +4.025m..+8.15m`, 0.15m thick)
-  // Issues #3, #4, #6 & #7: Runs in ONE single unbroken straight wall from the North corner of the Walk-In Shower
+  // Issues #3, #4, #6, #7 & #15: Runs in ONE single unbroken straight wall from the North corner of the Walk-In Shower
   // (`Z = +4.025m`) all the way South to the Bedroom 4 cross-wall (`Z = +8.15m`), with `bedroom3Door` at Z = +7.42m!
   buildAngledWallSegment(scene, interactions, {
     start: [-18.4, 4.025],
@@ -66,6 +67,7 @@ export function buildBedroom3(
     backFloorY: floorTopY,
     wallMaterial: warmRoomPlasterMat,
     capMaterial: wallCapMat,
+    skipCapRanges: [[0.825, 4.125]],
     skirtingMaterial: antiqueOakSkirtingMat,
     addFrontSkirting: false, // West (`-X`) face inside Bedroom 3 uses continuous 45°-mitred skirtings `bedroom3.northWallMitredSkirting` & `bedroom3.southWallMitredSkirting`
     addBackSkirting: false,  // East (`+X`) face inside Corridor uses 45°-mitred continuous skirting below
@@ -133,9 +135,12 @@ export function buildBedroom3(
     scene.add(skirtMesh);
   }
 
-  // South Chimney Breast in Bedroom 3 (X = -19.85m, Z = +7.925m)
-  addUpperInteriorWall(-19.85, floorTopY, upperWallTopY, 7.925, 1.2, 0.45, warmRoomPlasterMat, {
+  const collarCeilingY = 4.52;
+
+  // South Chimney Breast in Bedroom 3 (X = -19.85m, Z = +7.925m, rising to Bedroom 3's 4.52m vaulted collar ceiling — Issue #15!)
+  addUpperInteriorWall(-19.85, floorTopY, collarCeilingY + 0.015, 7.925, 1.2, 0.45, warmRoomPlasterMat, {
     skipSkirting: true,
+    skipCap: true,
   });
 
   // South Load-Bearing Cross-Wall between Bedroom 3 / Upper Corridor and Bedroom 4
@@ -156,14 +161,15 @@ export function buildBedroom3(
   });
   addUpperInteractiveDoor('x', 8.27, 0.24, -17.75, 0.78, Math.PI * 0.48);
 
-  // Issue #6 & #10: Full-span coplanar vaulted upper gable on the Z = 8.27m North wall of Bedroom 4 (Y = 4.16m..4.52m)
+  // Issue #6, #10 & #15: Full-span coplanar vaulted upper gable on the Z = 8.27m wall between Bedroom 3 and Bedroom 4 (Y = 4.14m..4.535m)
   {
-    const collarCeilingY = 4.52;
     const northGableShape = new THREE.Shape();
-    northGableShape.moveTo(-22.19, upperWallTopY);
-    northGableShape.lineTo(-17.22, upperWallTopY);
-    northGableShape.lineTo(-18.75, collarCeilingY);
-    northGableShape.lineTo(-20.85, collarCeilingY);
+    northGableShape.moveTo(-22.19, upperWallTopY - 0.02);
+    northGableShape.lineTo(-17.22, upperWallTopY - 0.02);
+    northGableShape.lineTo(-17.22, upperWallTopY + 0.015);
+    northGableShape.lineTo(-18.75, collarCeilingY + 0.015);
+    northGableShape.lineTo(-20.85, collarCeilingY + 0.015);
+    northGableShape.lineTo(-22.19, upperWallTopY + 0.015);
     northGableShape.closePath();
     const northGableGeo = new THREE.ExtrudeGeometry(northGableShape, {
       depth: 0.24,
@@ -176,23 +182,6 @@ export function buildBedroom3(
     northUpperGable.castShadow = true;
     northUpperGable.receiveShadow = true;
     scene.add(northUpperGable);
-
-    for (const [x0, y0, x1, y1] of [
-      [-22.19, upperWallTopY, -20.85, collarCeilingY],
-      [-20.85, collarCeilingY, -18.75, collarCeilingY],
-      [-18.75, collarCeilingY, -17.22, upperWallTopY],
-    ] as const) {
-      const segLen = Math.hypot(x1 - x0, y1 - y0);
-      const segAngle = Math.atan2(y1 - y0, x1 - x0);
-      const capMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(segLen + 0.008, 0.025, 0.244),
-        wallCapMat
-      );
-      capMesh.userData.isArchitecturalShell = true;
-      capMesh.position.set((x0 + x1) / 2, (y0 + y1) / 2 + 0.012, 8.27);
-      capMesh.rotation.z = segAngle;
-      scene.add(capMesh);
-    }
   }
 
   // Issue #6 & #7: Continuous 45°-mitred skirting along the South-East pier (`X = -18.475m`), South wall & Chimney Breast of Bedroom 3

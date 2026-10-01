@@ -12,10 +12,7 @@ export function buildFirstFloorPendantsAndSwitches(
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
   const { firstFloorMeshGroup: ewScene } = eastWingCtx;
-  const {
-    floorTopY,
-    upperWallTopY,
-  } = kit;
+  const { floorTopY } = kit;
   // =========================================================================
   // 9. KNX CEILING PENDANTS & CORSTON TOGGLE SWITCHES FOR ALL FIRST FLOOR ROOMS
   //    (Mounted to `scene` = `firstFloorMeshGroup` so they hide cleanly when
@@ -122,10 +119,10 @@ export function buildFirstFloorPendantsAndSwitches(
   // 5. Bedroom 3 (Circuit: bedroom3Pendant, Switch PA: 1.2.14)
   buildRoomCeilingPendant(ctx, {
     circuitId: 'bedroom3Pendant',
-    x: -20.3,
+    x: -20.05,
     z: 6.38,
-    ceilingY: upperWallTopY,
-    dropLength: 0.36,
+    ceilingY: ewCollarCeilingY,
+    dropLength: 0.42,
     floorY: floorTopY,
     pointLightIntensity: 13.0,
     pointLightDistance: 7.0,

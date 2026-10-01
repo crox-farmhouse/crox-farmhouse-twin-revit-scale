@@ -263,7 +263,7 @@ export function buildUpperLanding(
     3.78,
     'north',
     3,
-    { skirtingMin: -17.768, skirtingMax: -13.072 }
+    { skirtingMin: -17.788, skirtingMax: -13.072 }
   );
 
   // Top interior plaster frieze strip (`Y = 4.15m..4.225m, Z = 2.22m..2.45m`) sealing the inner face (`Z = 2.22m`)
@@ -696,7 +696,7 @@ export function buildUpperLanding(
     addBackSkirting: true,
     backSkirtingExclusions: [
       [0, 1.975],     // Omit skirting across the open Stairwell Void & westWallNewel (Z = -2.50m..-0.53m)
-      [4.65, 5.193],  // Omit skirting inside the 0.46m-thick South wall (z_ew = 2.22m..2.68m)
+      [4.732, 5.193], // Omit skirting inside the 0.46m-thick South wall (z_ew = 2.22m..2.68m) while bridging u = 4.692..4.732 (Issue #9)
     ],
     openings: [
       {

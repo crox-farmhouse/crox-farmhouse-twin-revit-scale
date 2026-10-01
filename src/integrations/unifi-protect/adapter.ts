@@ -55,7 +55,7 @@ export const DEFAULT_UNIFI_PROTECT_CAMERAS: readonly CctvCameraEntityState[] = [
     activeDetection: 'none',
     lastDetectionSummary: 'Clear · Courtyard & Bifolds Zone',
     pose3D: {
-      position: transformEastWingTuple(-4.55, 3.15, 2.38),
+      position: transformEastWingTuple(-4.55, 3.15, 2.72),
       lookAt: transformEastWingTuple(1.2, 0.7, 7.8),
       horizontalFovDeg: 68,
       rangeMeters: 9.0,
@@ -103,7 +103,7 @@ export const DEFAULT_UNIFI_PROTECT_CAMERAS: readonly CctvCameraEntityState[] = [
     activeDetection: 'none',
     lastDetectionSummary: 'Clear · Front Porch Approach',
     pose3D: {
-      position: [-22.28, 3.35, 3.6],
+      position: [-22.52, 3.85, 3.6],
       lookAt: [-27.5, 0.8, 2.8],
       horizontalFovDeg: 65,
       rangeMeters: 8.0,

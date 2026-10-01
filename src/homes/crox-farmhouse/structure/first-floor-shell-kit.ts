@@ -179,6 +179,7 @@ export function createFirstFloorShellKit(
             );
             skirt.userData.isArchitecturalShell = true;
             skirt.position.set(sCx, effFloorY + baseH / 2, faceZ);
+            skirt.castShadow = true;
             skirt.receiveShadow = true;
             scene.add(skirt);
 
@@ -188,6 +189,7 @@ export function createFirstFloorShellKit(
             );
             skirtCap.userData.isArchitecturalShell = true;
             skirtCap.position.set(sCx, effFloorY + baseH + capH / 2, capZ);
+            skirtCap.castShadow = true;
             skirtCap.receiveShadow = true;
             scene.add(skirtCap);
           }
@@ -207,6 +209,7 @@ export function createFirstFloorShellKit(
             );
             skirt.userData.isArchitecturalShell = true;
             skirt.position.set(faceX, effFloorY + baseH / 2, sCz);
+            skirt.castShadow = true;
             skirt.receiveShadow = true;
             scene.add(skirt);
 
@@ -216,6 +219,7 @@ export function createFirstFloorShellKit(
             );
             skirtCap.userData.isArchitecturalShell = true;
             skirtCap.position.set(capX, effFloorY + baseH + capH / 2, sCz);
+            skirtCap.castShadow = true;
             skirtCap.receiveShadow = true;
             scene.add(skirtCap);
           }
@@ -304,6 +308,7 @@ export function createFirstFloorShellKit(
           ? minZ - skirtT / 2 + 0.002
           : cz;
     skirt.position.set(sx, effFloorY + baseH / 2, sz);
+    skirt.castShadow = true;
     skirt.receiveShadow = true;
     tagUpperCutawayWall(skirt, descriptor);
     scene.add(skirt);
@@ -325,6 +330,7 @@ export function createFirstFloorShellKit(
           ? minZ - capT / 2 + 0.002
           : cz;
     skirtCap.position.set(capSx, effFloorY + baseH + capH / 2, capSz);
+    skirtCap.castShadow = true;
     skirtCap.receiveShadow = true;
     tagUpperCutawayWall(skirtCap, descriptor);
     scene.add(skirtCap);
@@ -924,6 +930,8 @@ export function createFirstFloorShellKit(
       readonly z: number;
       readonly width: number;
       readonly height: number;
+      readonly heightLeft?: number;
+      readonly heightRight?: number;
       readonly alongZ?: boolean;
       readonly normalSign?: 1 | -1;
       readonly handleSide: 'left' | 'right';
@@ -934,6 +942,9 @@ export function createFirstFloorShellKit(
     const normalSign = options.normalSign ?? 1;
     const w = options.width;
     const h = options.height;
+    const hLeft = options.heightLeft ?? h;
+    const hRight = options.heightRight ?? h;
+    const isRaked = Math.abs(hLeft - hRight) > 1e-4;
     const prefix = options.namePrefix ?? 'shakerWardrobeDoor';
 
     const doorGroup = new THREE.Group();
@@ -947,17 +958,60 @@ export function createFirstFloorShellKit(
     const midRailH = 0.068;
     const botRailH = 0.088;
     const midRailY = -0.08;
+    const yBot = -h / 2;
+    const getTopYAtU = (u: number): number =>
+      yBot + hLeft + ((u + w / 2) / Math.max(0.01, w)) * (hRight - hLeft);
+
+    const buildRakedDoorElementGeo = (
+      uMin: number,
+      uMax: number,
+      yBotFn: (u: number) => number,
+      yTopFn: (u: number) => number,
+      thicknessN: number
+    ): THREE.BufferGeometry => {
+      const spanU = Math.max(0.004, uMax - uMin);
+      const midU = (uMin + uMax) / 2;
+      const geo = new THREE.BoxGeometry(
+        alongZ ? thicknessN : spanU,
+        1,
+        alongZ ? spanU : thicknessN
+      );
+      const pos = geo.attributes.position;
+      if (pos) {
+        for (let i = 0; i < pos.count; i++) {
+          const u = (alongZ ? pos.getZ(i) : pos.getX(i)) + midU;
+          const tY = pos.getY(i) + 0.5;
+          const y0 = yBotFn(u);
+          const y1 = Math.max(y0 + 0.01, yTopFn(u));
+          pos.setY(i, y0 + tY * (y1 - y0));
+          if (alongZ) {
+            pos.setZ(i, u);
+          } else {
+            pos.setX(i, u);
+          }
+        }
+        pos.needsUpdate = true;
+        geo.computeVertexNormals();
+      }
+      return geo;
+    };
 
     // Recessed center backing panel (set back 4mm so front has a 6mm Shaker recess step)
     const panelOffsetN = -normalSign * 0.004;
-    const panelMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(
-        alongZ ? panelT : w - 0.012,
-        h - 0.012,
-        alongZ ? w - 0.012 : panelT
-      ),
-      wardrobeMat
-    );
+    const panelGeo = isRaked
+      ? buildRakedDoorElementGeo(
+          -w / 2 + 0.006,
+          w / 2 - 0.006,
+          () => yBot + 0.006,
+          (u) => getTopYAtU(u) - 0.006,
+          panelT
+        )
+      : new THREE.BoxGeometry(
+          alongZ ? panelT : w - 0.012,
+          h - 0.012,
+          alongZ ? w - 0.012 : panelT
+        );
+    const panelMesh = new THREE.Mesh(panelGeo, wardrobeMat);
     panelMesh.name = `${prefix}.recessedPanel`;
     panelMesh.position.set(
       alongZ ? panelOffsetN : 0,
@@ -971,16 +1025,20 @@ export function createFirstFloorShellKit(
     // Left and right vertical Shaker stiles
     for (const sSign of [-1, 1] as const) {
       const u = sSign * (w / 2 - stileW / 2);
-      const stile = new THREE.Mesh(
-        new THREE.BoxGeometry(
-          alongZ ? frameT : stileW,
-          h,
-          alongZ ? stileW : frameT
-        ),
-        wardrobeMat
-      );
+      const uMin = u - stileW / 2;
+      const uMax = u + stileW / 2;
+      const stileGeo = isRaked
+        ? buildRakedDoorElementGeo(uMin, uMax, () => yBot, getTopYAtU, frameT)
+        : new THREE.BoxGeometry(
+            alongZ ? frameT : stileW,
+            h,
+            alongZ ? stileW : frameT
+          );
+      const stile = new THREE.Mesh(stileGeo, wardrobeMat);
       stile.name = `${prefix}.stile`;
-      stile.position.set(alongZ ? 0 : u, 0, alongZ ? u : 0);
+      if (!isRaked) {
+        stile.position.set(alongZ ? 0 : u, 0, alongZ ? u : 0);
+      }
       stile.castShadow = true;
       stile.receiveShadow = true;
       doorGroup.add(stile);
@@ -988,8 +1046,23 @@ export function createFirstFloorShellKit(
 
     // Top, middle, and bottom horizontal Shaker rails
     const innerW = Math.max(0.06, w - stileW * 2 + 0.002);
+    if (isRaked) {
+      const topRailGeo = buildRakedDoorElementGeo(
+        -innerW / 2,
+        innerW / 2,
+        (u) => getTopYAtU(u) - topRailH,
+        getTopYAtU,
+        frameT
+      );
+      const topRail = new THREE.Mesh(topRailGeo, wardrobeMat);
+      topRail.name = `${prefix}.rail`;
+      topRail.castShadow = true;
+      topRail.receiveShadow = true;
+      doorGroup.add(topRail);
+    }
+
     for (const [ry, rh] of [
-      [h / 2 - topRailH / 2, topRailH],
+      ...(isRaked ? ([] as const) : ([[h / 2 - topRailH / 2, topRailH]] as const)),
       [midRailY, midRailH],
       [-h / 2 + botRailH / 2, botRailH],
     ] as const) {
