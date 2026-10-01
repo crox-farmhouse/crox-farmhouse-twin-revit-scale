@@ -264,7 +264,7 @@ export function createFirstFloorShellKit(
     const effFloorY = options?.floorY ?? floorTopY;
 
     const isAngledEastCourtyardWall =
-      !isAlongX && interiorSide === 'west' && rawCx > -18.0 && sMin >= 2.3;
+      !isAlongX && interiorSide === 'west' && rawCx > -18.0 && sMax >= 2.5;
     const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
     const cx = isAngledEastCourtyardWall
       ? getEastCourtyardWallCenterX(sCenter)
@@ -349,7 +349,7 @@ export function createFirstFloorShellKit(
     const cz = (minZ + maxZ) / 2;
     const isAlongX = interiorSide === 'north' || interiorSide === 'south';
     const isAngledEastCourtyardWall =
-      !isAlongX && interiorSide === 'west' && rawCx > -18.0 && minZ >= 2.3;
+      !isAlongX && interiorSide === 'west' && rawCx > -18.0 && maxZ >= 2.5;
     const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
     const cx = isAngledEastCourtyardWall ? getEastCourtyardWallCenterX(cz) : rawCx;
 
@@ -363,7 +363,9 @@ export function createFirstFloorShellKit(
 
     const materials: THREE.Material[] = [
       interiorSide === 'east' ? warmRoomPlasterMat : exteriorBrickMat,
-      interiorSide === 'west' ? warmRoomPlasterMat : exteriorBrickMat,
+      interiorSide === 'west' || (interiorSide === 'north' && Math.abs(minX - -16.92) < 0.05)
+        ? warmRoomPlasterMat
+        : exteriorBrickMat,
       exteriorBrickMat,
       warmRoomPlasterMat,
       interiorSide === 'south' ? warmRoomPlasterMat : exteriorBrickMat,
@@ -583,7 +585,7 @@ export function createFirstFloorShellKit(
     const winSouth = winCenterZ + winWidth / 2;
     const rawCx = (minX + maxX) / 2;
     const isAngledEastCourtyardWall =
-      interiorSide === 'west' && rawCx > -18.0 && minZ >= 2.3;
+      interiorSide === 'west' && rawCx > -18.0 && maxZ >= 2.5;
     const slopeXPerZ = isAngledEastCourtyardWall ? eastCourtyardWallSlopeXPerZ : 0;
     const cx = isAngledEastCourtyardWall
       ? getEastCourtyardWallCenterX(winCenterZ)

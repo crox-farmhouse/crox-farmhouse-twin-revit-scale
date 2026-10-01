@@ -53,15 +53,15 @@ export function buildUpperLanding(
   const collarCeilingY = 4.52;
 
   // Non-Square Polygonal Floor Slab for Main Staircase Landing (wrapping around the X = -17.69m..-15.36m, Z = -2.50m..-0.58m stairwell void
-  // and extending to z_ew = 2.54m across the UP threshold x_ew = -17.90m..-16.80m so there is zero gap before the 8cm step!)
+  // and extending to z_ew = 2.54m across the UP threshold x_ew = -17.90m..-16.92m so there is zero gap before the 8cm step!)
   buildPolygonalFloorSlab(
     scene,
     [
       [-15.36, -2.5],
       [-13.05, -2.5],
-      [-13.05, 2.3],
-      [-16.8, 2.3],
-      [-16.8, 2.54],
+      [-13.05, 2.4],
+      [-16.92, 2.4],
+      [-16.92, 2.54],
       [-17.9, 2.54],
       [-17.69, -0.58],
       [-15.36, -0.58],
@@ -246,10 +246,10 @@ export function buildUpperLanding(
     scene.add(northWallMidBeam);
   }
 
-  // Issues #4 & #6: Thicker South Courtyard Exterior Brick Wall of Main Stair Landing (0.46m thick: Z = +2.22m..+2.68m, X = -16.82m..-12.81m)
+  // Issues #4 & #6: Thicker South Courtyard Exterior Brick Wall of Main Stair Landing (0.46m thick: Z = +2.22m..+2.68m, X = -16.92m..-12.81m)
   // With shorter 3-pane cottage casement window & deep reveal at X = -15.35m (media_1790502987279.webp!)
   addUpperBrickWallAlongXWithWindow(
-    -16.82,
+    -16.92,
     -12.81,
     2.22,
     2.68,
@@ -259,7 +259,7 @@ export function buildUpperLanding(
     3.78,
     'north',
     3,
-    { skirtingMin: -16.88, skirtingMax: -13.05 }
+    { skirtingMin: -16.92, skirtingMax: -13.05 }
   );
 
   // Issue #3: Floor-Standing Cast-Iron 4-Column Traditional Radiator below the South Landing Window
