@@ -267,18 +267,18 @@ export function buildFirstFloorCeilingsAndRoof(
   // up to the raised central horizontal collar ceiling at `collarCeilingY = 4.52m` (`X = -20.85m..-18.72m`),
   // following the exact angled North & South walls and SE hallway cut-out of Bedroom 2!
   {
-    const collarCeilingY = 4.52;
+    const collarCeilingY = 5.02;
     const skeilingBaseY = upperWallTopY; // 4.16m
     const westWallX = -22.25;
-    const collarWestX = -20.85;
-    const collarEastX = -18.72;
+    const collarWestX = -20.95;
+    const collarEastX = -18.92;
 
     const zNorthAtX = (wx: number): number =>
       -3.18 + ((wx - -22.19) / (-16.876 - -22.19)) * (-2.469 - -3.18);
     const zSouthAtX = (wx: number): number =>
-      1.905 + ((wx - -22.19) / (-18.72 - -22.19)) * (2.37 - 1.905);
+      1.905 + ((wx - -22.19) / (-18.92 - -22.19)) * (2.34 - 1.905);
 
-    // 1. West pitched skeiling slope (`X = -22.25m, Y = 4.16m` -> `X = -20.85m, Y = 4.52m`)
+    // 1. West pitched skeiling slope (`X = -22.25m, Y = 4.16m` -> `X = -20.95m, Y = 5.02m`)
     buildVaultedCeilingQuad(
       'bedroom2.vaultedCeiling.westSkeiling',
       new THREE.Vector3(westWallX, skeilingBaseY, zNorthAtX(westWallX)),
@@ -287,7 +287,7 @@ export function buildFirstFloorCeilingsAndRoof(
       new THREE.Vector3(westWallX, skeilingBaseY, zSouthAtX(westWallX))
     );
 
-    // 2. Central raised horizontal collar ceiling (`X = -20.85m..-18.72m, Y = 4.52m`)
+    // 2. Central raised horizontal collar ceiling (`X = -20.95m..-18.92m, Y = 5.02m`)
     buildVaultedCeilingQuad(
       'bedroom2.vaultedCeiling.collar',
       new THREE.Vector3(collarWestX, collarCeilingY, zNorthAtX(collarWestX)),
@@ -296,7 +296,7 @@ export function buildFirstFloorCeilingsAndRoof(
       new THREE.Vector3(collarWestX, collarCeilingY, zSouthAtX(collarWestX))
     );
 
-    // 3. East pitched skeiling slope (`X = -18.72m, Y = 4.52m` -> East cross-wall at `Y = 4.16m`, stopping at the North cut-out wall `Z = 1.05m`)
+    // 3. East pitched skeiling slope (`X = -18.92m, Y = 5.02m` -> East cross-wall at `Y = 4.16m`, stopping at the North cut-out wall `Z = 1.05m`)
     buildVaultedCeilingQuad(
       'bedroom2.vaultedCeiling.eastSkeiling',
       new THREE.Vector3(collarEastX, collarCeilingY, zNorthAtX(collarEastX)),
@@ -314,8 +314,8 @@ export function buildFirstFloorCeilingsAndRoof(
       ceilingMeshGroup,
       [
         [-22.32, 1.905],
-        [-18.72, 2.37],
-        [-18.72, 1.05],
+        [-18.92, 2.34],
+        [-18.92, 1.05],
         [-17.65, 1.05],
         [landingSouthWestX, landingSouthWestZ],
         [landingSouthEastX, landingSouthEastZ],
@@ -635,13 +635,13 @@ export function buildFirstFloorCeilingsAndRoof(
   ewEastGableShape.lineTo(-2.63, 0.11);
   ewEastGableShape.closePath();
   const ewEastGableGeo = new THREE.ExtrudeGeometry(ewEastGableShape, {
-    depth: 0.24,
+    depth: 0.21,
     bevelEnabled: false,
   });
   ewEastGableGeo.rotateY(Math.PI / 2);
-  applyWorldSpaceBrickUVs(ewEastGableGeo, -4.64, upperWallTopY, 0);
+  applyWorldSpaceBrickUVs(ewEastGableGeo, -4.61, upperWallTopY, 0);
   const ewEastGable = new THREE.Mesh(ewEastGableGeo, exteriorBrickMat);
-  ewEastGable.position.set(-4.64, upperWallTopY, 0);
+  ewEastGable.position.set(-4.61, upperWallTopY, 0);
   ewEastGable.castShadow = true;
   ewEastGable.receiveShadow = true;
   ewCeilingMeshGroup.add(ewEastGable);
@@ -664,7 +664,7 @@ export function buildFirstFloorCeilingsAndRoof(
   nsNorthGableLocalShape.closePath();
 
   const nsNorthGableGeo = new THREE.ExtrudeGeometry(nsNorthGableLocalShape, {
-    depth: 0.24,
+    depth: 0.21,
     bevelEnabled: false,
   });
   nsNorthGableGeo.translate(0, 0, -0.15);
@@ -681,14 +681,15 @@ export function buildFirstFloorCeilingsAndRoof(
   nsNorthGable.receiveShadow = true;
   ceilingMeshGroup.add(nsNorthGable);
 
-  // 3. South Gable Brick Pentagon at Z = +11.49m..+11.77m (above Bedroom 4 South wall, Y = 4.16m..5.82m)
+  // 3. South Gable Brick Pentagon at Z = +11.53m..+11.77m (exterior leaf of Bedroom 4 South wall, Y = 4.16m..5.82m)
+  // Offset 4.2cm South of bedroom4.southWallUpperGable (`Z = 11.488m`) so zero brick is visible inside Bedroom 4 (Issue #7)
   const nsSouthGableGeo = new THREE.ExtrudeGeometry(nsGableShape, {
-    depth: 0.28,
+    depth: 0.24,
     bevelEnabled: false,
   });
-  applyWorldSpaceBrickUVs(nsSouthGableGeo, 0, upperWallTopY, 11.49);
+  applyWorldSpaceBrickUVs(nsSouthGableGeo, 0, upperWallTopY, 11.53);
   const nsSouthGable = new THREE.Mesh(nsSouthGableGeo, exteriorBrickMat);
-  nsSouthGable.position.set(0, upperWallTopY, 11.49);
+  nsSouthGable.position.set(0, upperWallTopY, 11.53);
   nsSouthGable.castShadow = true;
   nsSouthGable.receiveShadow = true;
   ceilingMeshGroup.add(nsSouthGable);

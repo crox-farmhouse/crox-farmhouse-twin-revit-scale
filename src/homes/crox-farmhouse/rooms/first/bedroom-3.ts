@@ -33,33 +33,33 @@ export function buildBedroom3(
   } = kit;
   // =========================================================================
   // 6. BEDROOM 3 (4.00m x 3.85m / 13'1" x 12'8")
-  //    Directly above Sitting Room: X = -18.25m..-22.19m, Z = +4.30m..+8.15m
+  //    Directly above Sitting Room: X = -18.40m..-22.19m, Z = +4.85m..+8.15m
   // =========================================================================
-  addFirstFloorSlab(-22.19, -18.25, 4.3, 8.15, oakFloorMat);
-  addFirstFloorSlab(-22.19, -20.15, 4.15, 4.3, oakFloorMat);
+  addFirstFloorSlab(-22.19, -18.4, 4.85, 8.15, oakFloorMat);
+  addFirstFloorSlab(-22.19, -20.25, 4.7, 4.85, oakFloorMat);
 
-  // West Front Exterior Brick Wall of Bedroom 3 (X = -22.47m..-22.19m, Z = +4.15m..+8.39m)
-  // With 2-pane Georgian casement window centered at Z = +5.92m (directly above Sitting Room bay — Photo 2!)
+  // West Front Exterior Brick Wall of Bedroom 3 (X = -22.47m..-22.19m, Z = +4.85m..+8.39m)
+  // With 2-pane Georgian casement window centered at Z = +6.38m (directly above Sitting Room bay — Photo 2!)
   addUpperBrickWallAlongZWithWindow(
     -22.47,
     -22.19,
-    4.15,
+    4.85,
     8.39,
-    5.92,
+    6.38,
     1.35,
     2.92,
     3.94,
     'east',
     2,
-    { skirtingMin: 4.18, skirtingMax: 8.15 }
+    { skirtingMin: 4.73, skirtingMax: 8.15 }
   );
 
-  // Single Continuous West Corridor Partition Wall (`X = -18.25m, Z = +3.475m..+8.15m`, 0.15m thick)
-  // Issues #3, #4 & #7: Runs in ONE single unbroken straight wall from the North corner of the Walk-In Shower
-  // (`Z = +3.475m`) all the way South to the Bedroom 4 cross-wall (`Z = +8.15m`), with `bedroom3Door` at Z = +7.42m!
+  // Single Continuous West Corridor Partition Wall (`X = -18.40m, Z = +4.025m..+8.15m`, 0.15m thick)
+  // Issues #3, #4, #6 & #7: Runs in ONE single unbroken straight wall from the North corner of the Walk-In Shower
+  // (`Z = +4.025m`) all the way South to the Bedroom 4 cross-wall (`Z = +8.15m`), with `bedroom3Door` at Z = +7.42m!
   buildAngledWallSegment(scene, interactions, {
-    start: [-18.25, 3.475],
-    end: [-18.25, 8.15],
+    start: [-18.4, 4.025],
+    end: [-18.4, 8.15],
     thickness: 0.15,
     topY: upperWallTopY,
     frontFloorY: floorTopY,
@@ -67,14 +67,13 @@ export function buildBedroom3(
     wallMaterial: warmRoomPlasterMat,
     capMaterial: wallCapMat,
     skirtingMaterial: antiqueOakSkirtingMat,
-    addFrontSkirting: false, // Corridor side uses 45°-mitred continuous skirting below
-    addBackSkirting: true,   // West (`-X`) face inside Bedroom 3 (omitting Z = 3.475..4.375 inside Walk-In Shower)
-    backSkirtingExclusions: [[0, 0.9]],
+    addFrontSkirting: false, // West (`-X`) face inside Bedroom 3 uses continuous 45°-mitred skirtings `bedroom3.northWallMitredSkirting` & `bedroom3.southWallMitredSkirting`
+    addBackSkirting: false,  // East (`+X`) face inside Corridor uses 45°-mitred continuous skirting below
     openings: [
       {
         id: 'bedroom3Door',
         kind: 'hinged-door',
-        uCenter: 3.945, // Z = +7.42m
+        uCenter: 3.395, // Z = +7.42m
         width: 0.84,
         doorHeight: doorH,
         lowerFloorY: floorTopY,
@@ -89,38 +88,37 @@ export function buildBedroom3(
     ],
   });
 
-  // Issues #3, #4, #6 & #7: Continuous 45°-mitred skirting along the West & North walls of the Corridor & Cut-Out Hallway
+  // Issues #3, #4, #6, #7 & #8: Continuous 45°-mitred skirting along the West & North walls of the Corridor & Cut-Out Hallway
   for (const [skirtName, path] of [
     [
       'westWingCorridor.westWallMainMitredSkirting',
       [
-        [-18.175, 6.918],
-        [-18.175, 3.475],
-        [-18.645, 3.475],
-        [-18.645, 3.417],
+        [-18.325, 6.918],
+        [-18.325, 4.025],
+        [-18.845, 4.025],
+        [-18.845, 3.742],
       ] as const,
     ],
     [
       'westWingCorridor.westWallSouthPierSkirting',
       [
-        [-18.175, 8.15],
-        [-18.175, 7.922],
+        [-18.325, 8.15],
+        [-18.325, 7.922],
       ] as const,
     ],
     [
       'westWingCorridor.upLobbyNorthPierSkirting',
       [
-        [-18.645, 2.573],
-        [-18.645, 2.117],
+        [-18.845, 2.898],
+        [-18.845, 2.117],
       ] as const,
     ],
     [
       'westWingCorridor.cutoutNorthCornerSkirting',
       [
-        [-18.645, 1.233],
-        [-18.645, 1.125],
-        [-17.721, 1.125],
-        [-17.739, 1.219],
+        [-18.845, 1.233],
+        [-18.845, 1.125],
+        [-17.755, 1.125],
       ] as const,
     ],
   ] as const) {
@@ -141,22 +139,22 @@ export function buildBedroom3(
   });
 
   // South Load-Bearing Cross-Wall between Bedroom 3 / Upper Corridor and Bedroom 4
-  // (0.24m thick, Z = +8.15m..+8.39m, X = -17.22m..-22.19m) with doorway centered in the Corridor at X = -17.70m (width = 0.78m)
-  addUpperInteriorWall(-20.14, floorTopY, upperWallTopY, 8.27, 4.1, 0.24, warmRoomPlasterMat, {
+  // (0.24m thick, Z = +8.15m..+8.39m, X = -17.22m..-22.19m) with doorway centered in the Corridor at X = -17.75m (width = 0.78m)
+  addUpperInteriorWall(-20.205, floorTopY, upperWallTopY, 8.27, 3.97, 0.24, warmRoomPlasterMat, {
     skirtingSides: [1], // South (+Z) face inside Bedroom 4
     skirtingMin: -22.19,
-    skirtingMax: -18.17,
+    skirtingMax: -18.22,
     skipCap: true,
   });
-  addUpperInteriorWall(-17.265, floorTopY, upperWallTopY, 8.27, 0.09, 0.24, warmRoomPlasterMat, {
+  addUpperInteriorWall(-17.29, floorTopY, upperWallTopY, 8.27, 0.14, 0.24, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
-  addUpperInteriorWall(-17.655, floorTopY + doorH, upperWallTopY, 8.27, 0.87, 0.24, warmRoomPlasterMat, {
+  addUpperInteriorWall(-17.75, floorTopY + doorH, upperWallTopY, 8.27, 0.92, 0.24, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
-  addUpperInteractiveDoor('x', 8.27, 0.24, -17.7, 0.78, Math.PI * 0.48);
+  addUpperInteractiveDoor('x', 8.27, 0.24, -17.75, 0.78, Math.PI * 0.48);
 
   // Issue #6 & #10: Full-span coplanar vaulted upper gable on the Z = 8.27m North wall of Bedroom 4 (Y = 4.16m..4.52m)
   {
@@ -197,11 +195,12 @@ export function buildBedroom3(
     }
   }
 
-  // Issue #7: Continuous 45°-mitred skirting along the South wall & Chimney Breast of Bedroom 3
+  // Issue #6 & #7: Continuous 45°-mitred skirting along the South-East pier (`X = -18.475m`), South wall & Chimney Breast of Bedroom 3
   const bed3SouthMitredSkirt = new THREE.Mesh(
     buildMitredWallSkirtingGeometry(
       [
-        [-18.325, 8.15],
+        [-18.475, 7.922],
+        [-18.475, 8.15],
         [-19.25, 8.15],
         [-19.25, 7.7],
         [-20.45, 7.7],

@@ -60,7 +60,8 @@ export function buildBedroom4(
     skipSkirting: true,
   });
 
-  // Issue #6: Full-span coplanar vaulted upper gable on Bedroom 4 South Wall (Y = 4.16m..4.52m)
+  // Issue #6 & #7: Full-span vaulted upper gable on Bedroom 4 South Wall (Y = 4.16m..4.52m),
+  // offset cleanly inside the room (`Z = 11.488m..11.728m`) so exterior brick (`Z = 11.53m..11.77m`) never bleeds through!
   {
     const southGableShape = new THREE.Shape();
     southGableShape.moveTo(-22.19, upperWallTopY);
@@ -69,10 +70,10 @@ export function buildBedroom4(
     southGableShape.lineTo(-20.85, collarCeilingY);
     southGableShape.closePath();
     const southGableGeo = new THREE.ExtrudeGeometry(southGableShape, {
-      depth: 0.28,
+      depth: 0.24,
       bevelEnabled: false,
     });
-    southGableGeo.translate(0, 0, 11.49);
+    southGableGeo.translate(0, 0, 11.488);
     const southUpperGable = new THREE.Mesh(southGableGeo, warmRoomPlasterMat);
     southUpperGable.name = 'bedroom4.southWallUpperGable';
     southUpperGable.userData.isArchitecturalShell = true;
