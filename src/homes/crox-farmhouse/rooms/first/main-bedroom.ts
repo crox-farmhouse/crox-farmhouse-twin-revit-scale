@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/index.ts';
 import { buildLeafieldSuperKingBed } from './leafield-super-king-bed.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
@@ -46,7 +47,7 @@ export function buildMainBedroom(
   });
 
   // North Exterior Brick Wall of Main Bedroom (Z = -2.78m..-2.50m, X = -9.56m..-4.40m) with casement window
-  // Skirting clamped to [-9.56, -5.26] between West cross-wall and East built-in wardrobes
+  // Skirting is emitted below via `mainBedroom.perimeterMitredSkirting` for 45°-mitred corners
   addUpperBrickWallAlongXWithWindow(
     -9.56,
     -4.4,
@@ -58,7 +59,7 @@ export function buildMainBedroom(
     3.94,
     'south',
     2,
-    { skirtingMin: -9.56, skirtingMax: -5.26 }
+    { skipSkirting: true }
   );
 
   // South Courtyard Exterior Brick Wall of Main Bedroom (Z = +2.40m..+2.68m, X = -9.56m..-4.40m)
@@ -74,7 +75,7 @@ export function buildMainBedroom(
     3.94,
     'north',
     3,
-    { skirtingMin: -9.56, skirtingMax: -5.26 }
+    { skipSkirting: true }
   );
 
   const collarCeilingY = 4.52;
@@ -90,8 +91,6 @@ export function buildMainBedroom(
     const eastWardGroup = new THREE.Group();
     eastWardGroup.name = 'mainBedroom.eastWardrobes';
     const wardD = 0.62; // X = -5.26m .. -4.64m
-    const totalZ = 4.9; // Z = -2.50m .. +2.40m
-    const centerZ = -0.05;
 
     const getVaultCeilingYAtZ = (z: number): number => {
       if (z < -1.15) {
@@ -149,25 +148,6 @@ export function buildMainBedroom(
       eastWardGroup.add(corniceSeg);
     }
 
-    // Continuous antique oak skirting plinth + top cap along the front face (`X = -5.26m`) of the East wardrobes
-    const wardSkirt = new THREE.Mesh(
-      new THREE.BoxGeometry(0.022, 0.122, totalZ),
-      antiqueOakSkirtingMat
-    );
-    wardSkirt.position.set(-5.26 - 0.009, floorTopY + 0.061, centerZ);
-    wardSkirt.castShadow = true;
-    wardSkirt.receiveShadow = true;
-    eastWardGroup.add(wardSkirt);
-
-    const wardSkirtCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, 0.024, totalZ),
-      antiqueOakSkirtingMat
-    );
-    wardSkirtCap.position.set(-5.26 - 0.006, floorTopY + 0.134, centerZ);
-    wardSkirtCap.castShadow = true;
-    wardSkirtCap.receiveShadow = true;
-    eastWardGroup.add(wardSkirtCap);
-
     // 8 ceiling-height Shaker wardrobe doors (4 pairs of double doors) aligned with the vaulted ceiling segments:
     // - Bay 0 (Doors 1 & 2): Z = -2.44m .. -1.15m (raked under North skeiling)
     // - Bays 1 & 2 (Doors 3..6): Z = -1.15m .. +1.05m (full-height under 4.52m flat collar)
@@ -223,39 +203,37 @@ export function buildMainBedroom(
     skipSkirting: true,
     skipCap: true,
   });
-  // Clean skirting segments on both sides of the X = -9.68m Cross-Wall (Issue #2 & Issue #7: zero protruding ends!)
-  for (const [sideSign, z0, z1] of [
-    [-1, -2.5, -0.01],   // West face inside Family Bathroom (North of Recessed Cupboard)
-    [-1, 2.082, 2.4],    // West face inside Upper South Passage (South of Doorway up to Z = 2.40m South wall!)
-    [1, -2.5, 1.018],    // East face inside Main Bedroom (North of Doorway)
-    [1, 2.082, 2.4],     // East face inside Main Bedroom (South of Doorway up to Z = 2.40m South wall!)
-  ] as const) {
-    const sD = z1 - z0;
-    const sCz = (z0 + z1) / 2;
-    const skirt = new THREE.Mesh(
-      new THREE.BoxGeometry(0.022, 0.122, sD),
+
+  // Continuous 45°-mitred 146mm antique oak skirting around the entire Main Bedroom perimeter
+  // (from North door architrave `Z = 1.018m` -> NW corner -> NE wardrobe corner -> SE wardrobe corner -> SW corner -> South door architrave `Z = 2.082m`)
+  {
+    const mainBedPerimeterSkirt = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(
+        [
+          [-9.56, 1.018],
+          [-9.56, -2.5],
+          [-5.26, -2.5],
+          [-5.26, 2.4],
+          [-9.56, 2.4],
+          [-9.56, 2.082],
+        ],
+        floorTopY
+      ),
       antiqueOakSkirtingMat
     );
-    skirt.position.set(-9.68 + sideSign * (0.12 + 0.009), floorTopY + 0.061, sCz);
-    skirt.castShadow = true;
-    skirt.receiveShadow = true;
-    scene.add(skirt);
-    const skirtCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, 0.024, sD),
-      antiqueOakSkirtingMat
-    );
-    skirtCap.position.set(-9.68 + sideSign * (0.12 + 0.006), floorTopY + 0.134, sCz);
-    skirtCap.castShadow = true;
-    skirtCap.receiveShadow = true;
-    scene.add(skirtCap);
+    mainBedPerimeterSkirt.name = 'mainBedroom.perimeterMitredSkirting';
+    mainBedPerimeterSkirt.userData.isArchitecturalShell = true;
+    mainBedPerimeterSkirt.castShadow = true;
+    mainBedPerimeterSkirt.receiveShadow = true;
+    scene.add(mainBedPerimeterSkirt);
   }
   addUpperInteractiveDoor('z', -9.68, 0.24, 1.55, 0.9, Math.PI * 0.48);
 
-  // Issue #5, #9 & #10: Full-Span Trapezoidal Upper Gable Extensions on the West (X = -9.68m) and East (X = -4.52m) Cross-Walls (Y = 4.16m..4.52m)
-  // Using `rotateY(-Math.PI / 2)` so Shape X maps directly to `+z_ew` (`-2.50m..+2.40m` at `Y = 4.16m` pitching to `-1.15m..+1.05m` at `Y = 4.52m`) with zero gap or overlap!
-  for (const [gableX, gableName] of [
-    [-9.68, 'mainBedroom.westWallUpperGable'],
-    [-4.52, 'mainBedroom.eastWallUpperGable'],
+  // Issue #5, #9 & #10: Full-Span Trapezoidal Upper Gable Extensions on the West (X = -9.68m) and East (X = -4.64m..-4.61m) Cross-Walls (Y = 4.16m..4.52m)
+  // Using `rotateY(-Math.PI / 2)` so Shape X maps directly to `+z_ew` (`-2.50m..+2.40m` at `Y = 4.16m` pitching to `-1.15m..+1.05m` at `Y = 4.52m`) with zero gap or exterior Z-fighting!
+  for (const [gableMaxX, gableDepth, gableName] of [
+    [-9.56, 0.24, 'mainBedroom.westWallUpperGable'],
+    [-4.61, 0.03, 'mainBedroom.eastWallUpperGable'],
   ] as const) {
     const gableShape = new THREE.Shape();
     gableShape.moveTo(-2.5, upperWallTopY);
@@ -264,11 +242,11 @@ export function buildMainBedroom(
     gableShape.lineTo(-1.15, collarCeilingY);
     gableShape.closePath();
     const gableGeo = new THREE.ExtrudeGeometry(gableShape, {
-      depth: 0.24,
+      depth: gableDepth,
       bevelEnabled: false,
     });
     gableGeo.rotateY(-Math.PI / 2);
-    gableGeo.translate(gableX + 0.12, 0, 0);
+    gableGeo.translate(gableMaxX, 0, 0);
     const gableMesh = new THREE.Mesh(gableGeo, warmRoomPlasterMat);
     gableMesh.name = gableName;
     gableMesh.userData.isArchitecturalShell = true;

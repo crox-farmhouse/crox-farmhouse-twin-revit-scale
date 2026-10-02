@@ -51,7 +51,7 @@ export function buildBedroom4(
     3.94,
     'east',
     3,
-    { skirtingMin: 8.39, skirtingMax: 11.49 }
+    { skipSkirting: true }
   );
 
   // South Exterior Brick Gable Wall of Bedroom 4 (Z = +11.49m..+11.77m, X = -22.47m..-17.11m, Y = 1.88m..4.16m)
@@ -229,7 +229,7 @@ export function buildBedroom4(
   }
 
   // Issue #2, #4, #5 & #7: Continuous 45°-mitred skirting along Bedroom 4 North-East Pier (`Z = 8.39m`), East Wall, South Alcove Cupboards,
-  // Chimney Breast, and SW Alcove, terminating cleanly against the East (`X = -19.57m`) and West (`X = -20.13m`) jambs of the compact 1800s black fireplace!
+  // Chimney Breast, SW Alcove, West Wall, and North Wall up to the door architrave (`X = -18.224m`)!
   {
     const eastWallSlope = (-17.25 - -16.82) / (11.77 - 2.4);
     const getEastInnerX = (wz: number): number =>
@@ -254,6 +254,8 @@ export function buildBedroom4(
           [-20.45, 11.09],
           [-20.45, 11.476],
           [-22.19, 11.476],
+          [-22.19, 8.39],
+          [-18.224, 8.39],
         ] as const,
       ],
     ] as const) {

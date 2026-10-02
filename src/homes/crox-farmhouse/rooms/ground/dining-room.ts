@@ -370,9 +370,15 @@ export function buildDiningRoom(
   scene.add(snugWestWallLining);
 
   // South partition wall of Walk-in Cupboard shifted South +0.34m to Z = -0.515m (X = -9.56m..-7.82m, Issues #2–#9) with Cupboard Door at X = -8.72m
-  addInteriorWall(-9.345, wallH / 2, -0.515, 0.43, wallH, 0.15, crispWhiteWallMat);
-  addInteriorWall(-8.065, wallH / 2, -0.515, 0.49, wallH, 0.15, crispWhiteWallMat);
-  addInteriorWall(-8.72, doorLintelY, -0.515, 0.82, doorLintelH, 0.15, crispWhiteWallMat);
+  addInteriorWall(-9.345, wallH / 2, -0.515, 0.43, wallH, 0.15, crispWhiteWallMat, {
+    skipSkirting: true,
+  });
+  addInteriorWall(-8.065, wallH / 2, -0.515, 0.49, wallH, 0.15, crispWhiteWallMat, {
+    skipSkirting: true,
+  });
+  addInteriorWall(-8.72, doorLintelY, -0.515, 0.82, doorLintelH, 0.15, crispWhiteWallMat, {
+    skipSkirting: true,
+  });
   addInteractiveInteriorDoor(
     'familyCupboardDoor',
     'Dining Room Walk-in Cupboard Door',
@@ -3124,9 +3130,35 @@ export function buildDiningRoom(
   const lowerDoorLintelH = wallH - (lowerFloorY + doorH); // 0.60m
   const lowerDoorLintelY = lowerFloorY + doorH + lowerDoorLintelH / 2; // 1.98m
 
-  addInteriorWall(-9.68, lowerWallMidY, -0.575, 0.24, lowerWallH, 3.85, crispWhiteWallMat);
-  addInteriorWall(-9.68, doorLintelY, 1.8, 0.24, doorLintelH, 0.9, crispWhiteWallMat);
-  addInteriorWall(-9.68, lowerWallMidY, 2.325, 0.24, lowerWallH, 0.15, crispWhiteWallMat);
+  addInteriorWall(-9.68, lowerWallMidY, -0.575, 0.24, lowerWallH, 3.85, crispWhiteWallMat, {
+    skipSkirting: true,
+  });
+  addInteriorWall(-9.68, doorLintelY, 1.8, 0.24, doorLintelH, 0.9, crispWhiteWallMat, {
+    skipSkirting: true,
+  });
+  addInteriorWall(-9.68, lowerWallMidY, 2.325, 0.24, lowerWallH, 0.15, crispWhiteWallMat, {
+    skipSkirting: true,
+  });
+
+  // 45°-mitred 146mm antique-profiled oak skirting along the Dining Room West cross-wall (`X = -9.56m`) and Walk-In Cupboard South pier (`Z = -0.44m`)
+  {
+    const diningWestSkirt = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(
+        [
+          [-9.56, 1.268],
+          [-9.56, -0.44],
+          [-9.212, -0.44],
+        ],
+        0
+      ),
+      antiqueOakSkirtingMat
+    );
+    diningWestSkirt.name = 'familyRoom.westWallMitredSkirting';
+    diningWestSkirt.userData.isArchitecturalShell = true;
+    diningWestSkirt.castShadow = true;
+    diningWestSkirt.receiveShadow = true;
+    scene.add(diningWestSkirt);
+  }
 
   // Framed Botanical & Architectural Picture on the solid West wall of the Dining Room
   // (Issue #8 & Issue #2: at X = -9.552m, Y = 1.486m above the West wall sideboard, Z = +0.28m)

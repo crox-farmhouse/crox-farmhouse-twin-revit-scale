@@ -53,7 +53,7 @@ export function buildBedroom3(
     3.94,
     'east',
     2,
-    { skirtingMin: 4.73, skirtingMax: 8.15 }
+    { skipSkirting: true }
   );
 
   // Single Continuous West Corridor Partition Wall (`X = -18.40m, Z = +4.025m..+8.15m`, 0.15m thick)
@@ -185,9 +185,8 @@ export function buildBedroom3(
     scene.add(northUpperGable);
   }
 
-  // Issue #2, #6 & #7: Continuous 45°-mitred skirting along the South-East pier (`X = -18.475m`), South wall & Chimney Breast of Bedroom 3,
-  // terminating cleanly against the East (`X = -19.52m`) and West (`X = -20.08m`) jambs of the compact 1800s black cast-iron fireplace,
-  // plus the Bedroom 4 North wall skirting (`Z = 8.39m, X = -22.19m..-18.224m`)!
+  // Issue #2, #6 & #7: Continuous 45°-mitred skirting along the South-East pier (`X = -18.475m`), South wall, Chimney Breast, and West wall of Bedroom 3,
+  // terminating cleanly against the East (`X = -19.52m`) and West (`X = -20.08m`) jambs of the compact 1800s black cast-iron fireplace and NW wardrobes (`Z = 4.73m`)!
   for (const [skirtName, path] of [
     [
       'bedroom3.southWallMitredSkirting',
@@ -206,13 +205,7 @@ export function buildBedroom3(
         [-20.65, 7.68],
         [-20.65, 8.15],
         [-22.19, 8.15],
-      ] as const,
-    ],
-    [
-      'bedroom4.northWallMitredSkirting',
-      [
-        [-22.19, 8.39],
-        [-18.224, 8.39],
+        [-22.19, 4.73],
       ] as const,
     ],
   ] as const) {

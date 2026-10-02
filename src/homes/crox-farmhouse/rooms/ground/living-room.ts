@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {
   buildAngledWallSegment,
+  buildMitredWallSkirtingGeometry,
   buildPolygonalFloorSlab,
   createWallLocalFrame,
   type WallLocalFrame,
@@ -200,7 +201,7 @@ export function buildLivingRoom(
     capMaterial: wallCapMat,
     skirtingMaterial: antiqueOakSkirtingMat,
     addFrontSkirting: true,
-    addBackSkirting: true,
+    addBackSkirting: false, // North face inside Living Room is occupied by built-in alcove cabinets (`-22.15..-21.10`, `-19.90..-18.98`), fireplace (`-21.10..-19.90`), and `frontRoomDoor`
     openings: [
       {
         id: 'frontRoomDoor',
@@ -238,10 +239,19 @@ export function buildLivingRoom(
   frontRoomFpGroup.add(frBreastLeft);
 
   const frBreastLeftSkirt = new THREE.Mesh(
-    new THREE.BoxGeometry(0.36, 0.14, 0.48),
+    buildMitredWallSkirtingGeometry(
+      [
+        [-19.9, 1.52],
+        [-19.9, 1.5],
+        [-20.22, 1.5],
+      ],
+      tier2FloorY
+    ),
     antiqueOakSkirtingMat
   );
-  frBreastLeftSkirt.position.set(-20.06, tier2FloorY + 0.07, 1.72);
+  frBreastLeftSkirt.name = 'livingRoom.fireplaceBreast.leftSkirting';
+  frBreastLeftSkirt.castShadow = true;
+  frBreastLeftSkirt.receiveShadow = true;
   frontRoomFpGroup.add(frBreastLeftSkirt);
 
   const frBreastRight = new THREE.Mesh(
@@ -253,10 +263,19 @@ export function buildLivingRoom(
   frontRoomFpGroup.add(frBreastRight);
 
   const frBreastRightSkirt = new THREE.Mesh(
-    new THREE.BoxGeometry(0.36, 0.14, 0.48),
+    buildMitredWallSkirtingGeometry(
+      [
+        [-20.78, 1.5],
+        [-21.1, 1.5],
+        [-21.1, 1.52],
+      ],
+      tier2FloorY
+    ),
     antiqueOakSkirtingMat
   );
-  frBreastRightSkirt.position.set(-20.94, tier2FloorY + 0.07, 1.72);
+  frBreastRightSkirt.name = 'livingRoom.fireplaceBreast.rightSkirting';
+  frBreastRightSkirt.castShadow = true;
+  frBreastRightSkirt.receiveShadow = true;
   frontRoomFpGroup.add(frBreastRightSkirt);
 
   const frBreastUpper = new THREE.Mesh(

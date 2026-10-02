@@ -55,7 +55,13 @@ export function createGroundFloorShellKit(
     w: number,
     h: number,
     d: number,
-    mat: THREE.Material | THREE.Material[] = plasterMat
+    mat: THREE.Material | THREE.Material[] = plasterMat,
+    wallOptions?: {
+      readonly skipSkirting?: boolean;
+      readonly skirtingSides?: readonly (-1 | 1)[];
+      readonly skirtingMin?: number;
+      readonly skirtingMax?: number;
+    }
   ): void => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
     mesh.userData.isArchitecturalShell = true;
@@ -74,58 +80,71 @@ export function createGroundFloorShellKit(
 
     // Automatically add consistent 0.145m-tall antique-profiled oak skirting boards on both faces of full-height interior walls that reach or span across floorY (Issue #10)
     // Skip short doorway return nib piers (Math.max(w, d) <= 0.28) so skirting never protrudes across a doorlining reveal (Issue #8)
-    if (h > 1.5 && Math.max(w, d) > 0.28) {
+    if (!wallOptions?.skipSkirting && h > 1.5 && Math.max(w, d) > 0.28) {
       const baseH = 0.122;
       const capH = 0.024;
       const skirtT = 0.022;
       const capT = 0.016;
+      const sides = wallOptions?.skirtingSides ?? ([-1, 1] as const);
       if (w >= d) {
-        // East-West interior wall: add antique oak skirting on North (-Z) and South (+Z) faces if wall spans down to floorY
-        for (const side of [-1, 1] as const) {
-          const floorY = getInteriorFloorY(x, z + side * (d / 2 + 0.08));
-          if (y - h / 2 > floorY + 0.12 || y + h / 2 < floorY + 0.5) continue;
-          const faceZ = z + side * (d / 2 + skirtT / 2 - 0.002);
-          const capZ = z + side * (d / 2 + capT / 2 - 0.002);
-          const skirt = new THREE.Mesh(
-            new THREE.BoxGeometry(w, baseH, skirtT),
-            antiqueOakSkirtingMat
-          );
-          skirt.userData.isArchitecturalShell = true;
-          skirt.position.set(x, floorY + baseH / 2, faceZ);
-          skirt.receiveShadow = true;
-          scene.add(skirt);
+        const sMin = wallOptions?.skirtingMin ?? x - w / 2;
+        const sMax = wallOptions?.skirtingMax ?? x + w / 2;
+        const sW = sMax - sMin;
+        const sCx = (sMin + sMax) / 2;
+        if (sW > 0.01) {
+          // East-West interior wall: add antique oak skirting on North (-Z) and South (+Z) faces if wall spans down to floorY
+          for (const side of sides) {
+            const floorY = getInteriorFloorY(sCx, z + side * (d / 2 + 0.08));
+            if (y - h / 2 > floorY + 0.12 || y + h / 2 < floorY + 0.5) continue;
+            const faceZ = z + side * (d / 2 + skirtT / 2 - 0.002);
+            const capZ = z + side * (d / 2 + capT / 2 - 0.002);
+            const skirt = new THREE.Mesh(
+              new THREE.BoxGeometry(sW, baseH, skirtT),
+              antiqueOakSkirtingMat
+            );
+            skirt.userData.isArchitecturalShell = true;
+            skirt.position.set(sCx, floorY + baseH / 2, faceZ);
+            skirt.receiveShadow = true;
+            scene.add(skirt);
 
-          const skirtCap = new THREE.Mesh(
-            new THREE.BoxGeometry(w, capH, capT),
-            antiqueOakSkirtingMat
-          );
-          skirtCap.userData.isArchitecturalShell = true;
-          skirtCap.position.set(x, floorY + baseH + capH / 2, capZ);
-          scene.add(skirtCap);
+            const skirtCap = new THREE.Mesh(
+              new THREE.BoxGeometry(sW, capH, capT),
+              antiqueOakSkirtingMat
+            );
+            skirtCap.userData.isArchitecturalShell = true;
+            skirtCap.position.set(sCx, floorY + baseH + capH / 2, capZ);
+            scene.add(skirtCap);
+          }
         }
       } else {
-        // North-South interior wall: add antique oak skirting on West (-X) and East (+X) faces if wall spans down to floorY (Issue #10)
-        for (const side of [-1, 1] as const) {
-          const floorY = getInteriorFloorY(x + side * (w / 2 + 0.08), z);
-          if (y - h / 2 > floorY + 0.12 || y + h / 2 < floorY + 0.5) continue;
-          const faceX = x + side * (w / 2 + skirtT / 2 - 0.002);
-          const capX = x + side * (w / 2 + capT / 2 - 0.002);
-          const skirt = new THREE.Mesh(
-            new THREE.BoxGeometry(skirtT, baseH, d),
-            antiqueOakSkirtingMat
-          );
-          skirt.userData.isArchitecturalShell = true;
-          skirt.position.set(faceX, floorY + baseH / 2, z);
-          skirt.receiveShadow = true;
-          scene.add(skirt);
+        const sMin = wallOptions?.skirtingMin ?? z - d / 2;
+        const sMax = wallOptions?.skirtingMax ?? z + d / 2;
+        const sD = sMax - sMin;
+        const sCz = (sMin + sMax) / 2;
+        if (sD > 0.01) {
+          // North-South interior wall: add antique oak skirting on West (-X) and East (+X) faces if wall spans down to floorY (Issue #10)
+          for (const side of sides) {
+            const floorY = getInteriorFloorY(x + side * (w / 2 + 0.08), sCz);
+            if (y - h / 2 > floorY + 0.12 || y + h / 2 < floorY + 0.5) continue;
+            const faceX = x + side * (w / 2 + skirtT / 2 - 0.002);
+            const capX = x + side * (w / 2 + capT / 2 - 0.002);
+            const skirt = new THREE.Mesh(
+              new THREE.BoxGeometry(skirtT, baseH, sD),
+              antiqueOakSkirtingMat
+            );
+            skirt.userData.isArchitecturalShell = true;
+            skirt.position.set(faceX, floorY + baseH / 2, sCz);
+            skirt.receiveShadow = true;
+            scene.add(skirt);
 
-          const skirtCap = new THREE.Mesh(
-            new THREE.BoxGeometry(capT, capH, d),
-            antiqueOakSkirtingMat
-          );
-          skirtCap.userData.isArchitecturalShell = true;
-          skirtCap.position.set(capX, floorY + baseH + capH / 2, z);
-          scene.add(skirtCap);
+            const skirtCap = new THREE.Mesh(
+              new THREE.BoxGeometry(capT, capH, sD),
+              antiqueOakSkirtingMat
+            );
+            skirtCap.userData.isArchitecturalShell = true;
+            skirtCap.position.set(capX, floorY + baseH + capH / 2, sCz);
+            scene.add(skirtCap);
+          }
         }
       }
     }
@@ -259,7 +278,8 @@ export function createGroundFloorShellKit(
     maxZ: number,
     yBottom: number,
     yTop: number,
-    interiorSide: 'north' | 'south' | 'east' | 'west'
+    interiorSide: 'north' | 'south' | 'east' | 'west',
+    wallOptions?: { readonly skipSkirting?: boolean }
   ): void => {
     const w = maxX - minX;
     const d = maxZ - minZ;
@@ -342,7 +362,7 @@ export function createGroundFloorShellKit(
     }
 
     // Automatically add a consistent 0.145m-tall antique-profiled oak skirting board along the interior base of floor-reaching exterior walls (Issue #14)
-    if (Math.abs(yBottom) < 0.01 && yTop - intFloorY > 0.35) {
+    if (!wallOptions?.skipSkirting && Math.abs(yBottom) < 0.01 && yTop - intFloorY > 0.35) {
       const baseH = 0.122;
       const capH = 0.024;
       const skirtT = 0.022;
@@ -423,7 +443,8 @@ export function createGroundFloorShellKit(
     sillY: number,
     headY: number,
     interiorSide: 'north' | 'south',
-    panes = 3
+    panes = 3,
+    wallOptions?: { readonly skipSkirting?: boolean }
   ): void => {
     const winLeft = winCenterX - winWidth / 2;
     const winRight = winCenterX + winWidth / 2;
@@ -432,14 +453,14 @@ export function createGroundFloorShellKit(
     const effHeadY = headY + yOffset * 0.5;
 
     if (winLeft > minX + 0.02) {
-      addExteriorBrickWall(minX, winLeft, minZ, maxZ, 0, wallH, interiorSide);
+      addExteriorBrickWall(minX, winLeft, minZ, maxZ, 0, wallH, interiorSide, wallOptions);
     }
     if (winRight < maxX - 0.02) {
-      addExteriorBrickWall(winRight, maxX, minZ, maxZ, 0, wallH, interiorSide);
+      addExteriorBrickWall(winRight, maxX, minZ, maxZ, 0, wallH, interiorSide, wallOptions);
     }
     // Sill wall below window & lintel wall above window
-    addExteriorBrickWall(winLeft, winRight, minZ, maxZ, 0, effSillY, interiorSide);
-    addExteriorBrickWall(winLeft, winRight, minZ, maxZ, effHeadY, wallH, interiorSide);
+    addExteriorBrickWall(winLeft, winRight, minZ, maxZ, 0, effSillY, interiorSide, wallOptions);
+    addExteriorBrickWall(winLeft, winRight, minZ, maxZ, effHeadY, wallH, interiorSide, wallOptions);
 
     const cz = (minZ + maxZ) / 2;
     const winH = effHeadY - effSillY;

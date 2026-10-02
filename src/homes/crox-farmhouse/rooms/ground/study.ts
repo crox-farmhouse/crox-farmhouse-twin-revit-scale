@@ -1,5 +1,9 @@
 import * as THREE from 'three';
-import { addCasedArchitravePortal, buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
+import {
+  addCasedArchitravePortal,
+  buildMitredWallSkirtingGeometry,
+  buildPolygonalFloorSlab,
+} from '../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
@@ -157,7 +161,9 @@ export function buildStudy(
 
   // West Exterior Brick Wall of Study / Office (0.28m thick, X = -22.19m..-22.47m, Z = +8.39m..+11.77m)
   // Solid red brickwork with climbing ivy (NO window on the outside street facade — media_1790510441132.jpg!)
-  addExteriorBrickWall(-22.47, -22.19, 8.39, 11.77, 0, wallH, 'east');
+  addExteriorBrickWall(-22.47, -22.19, 8.39, 11.77, 0, wallH, 'east', {
+    skipSkirting: true,
+  });
 
   // South Exterior Brick Gable Wall of Office & Plant Room (0.28m thick, Z = +11.49m..+11.77m, X = -22.47m..-17.11m)
   // With small 2-pane cottage window at X = -21.05m — just on your left as you walk East through the courtyard gates!
@@ -171,7 +177,8 @@ export function buildStudy(
     0.76,
     1.48,
     'north',
-    2
+    2,
+    { skipSkirting: true }
   );
 
   // East Courtyard Exterior Brick Wall of Plant Room (0.28m thick, X = -17.11m..-17.39m, Z = +8.15m..+11.77m)
@@ -189,14 +196,20 @@ export function buildStudy(
 
   // Interior Partition Wall between Study (3.20m wide) and Plant Room (1.45m wide)
   // (0.15m thick, X = -18.84m..-18.99m, Z = +8.39m..+11.49m) with Open Cased Doorway at Z = +10.68m (Z = +10.23m..+11.13m)
-  addInteriorWall(-18.915, tier2WallMidY, 9.31, 0.15, tier2WallH, 1.84, warmRoomPlasterMat);
-  addInteriorWall(-18.915, tier2WallMidY, 11.31, 0.15, tier2WallH, 0.36, warmRoomPlasterMat);
+  addInteriorWall(-18.915, tier2WallMidY, 9.31, 0.15, tier2WallH, 1.84, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
+  addInteriorWall(-18.915, tier2WallMidY, 11.31, 0.15, tier2WallH, 0.36, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
   {
     // Issue #8: Raise the Study / Plant Room open doorway clear height to 2.08m (6'10") above tier2FloorY (-0.60m)
     const studyDoorH = 2.08;
     const studyLintelH = wallH - (tier2FloorY + studyDoorH); // 0.58m
     const studyLintelY = tier2FloorY + studyDoorH + studyLintelH / 2; // 1.77m
-    addInteriorWall(-18.915, studyLintelY, 10.68, 0.15, studyLintelH, 0.9, warmRoomPlasterMat);
+    addInteriorWall(-18.915, studyLintelY, 10.68, 0.15, studyLintelH, 0.9, warmRoomPlasterMat, {
+      skipSkirting: true,
+    });
 
     // Issue #1 & #8: 45°-mitred ogee/torus solid antique oak architrave around the Study / Plant Room open doorway
     const studyCasingGroup = new THREE.Group();
@@ -214,6 +227,47 @@ export function buildStudy(
       namePrefix: 'study.openDoorwayCasing',
     });
     scene.add(studyCasingGroup);
+
+    // Continuous 45°-mitred 146mm antique oak skirtings around the Study and Plant Room perimeters
+    for (const [skirtName, path] of [
+      [
+        'study.perimeterMitredSkirting',
+        [
+          [-18.99, 11.212],
+          [-18.99, 11.49],
+          [-22.19, 11.49],
+          [-22.19, 8.39],
+          [-18.99, 8.39],
+          [-18.99, 10.148],
+        ] as const,
+      ],
+      [
+        'plantRoom.northWestMitredSkirting',
+        [
+          [-18.84, 10.148],
+          [-18.84, 8.39],
+          [-17.24, 8.39],
+        ] as const,
+      ],
+      [
+        'plantRoom.southWestMitredSkirting',
+        [
+          [-17.38, 11.49],
+          [-18.84, 11.49],
+          [-18.84, 11.212],
+        ] as const,
+      ],
+    ] as const) {
+      const skirtMesh = new THREE.Mesh(
+        buildMitredWallSkirtingGeometry(path, tier2FloorY),
+        antiqueOakSkirtingMat
+      );
+      skirtMesh.name = skirtName;
+      skirtMesh.userData.isArchitecturalShell = true;
+      skirtMesh.castShadow = true;
+      skirtMesh.receiveShadow = true;
+      scene.add(skirtMesh);
+    }
   }
 
   // =========================================================================

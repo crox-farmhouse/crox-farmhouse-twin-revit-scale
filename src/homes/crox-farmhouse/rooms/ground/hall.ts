@@ -61,9 +61,15 @@ export function buildHall(
   // West Load-Bearing Cross-Wall between Boot Lobby/WC (Y = -0.30m) and Entrance Hall with Stairs (Y = -0.30m)
   // (0.24m thick, X = -12.81m..-13.05m, center X = -12.93m)
   // Open solid oak cased architrave doorway right near the South exterior wall at Z = +1.77m (Z = +1.30m..+2.24m — Issue #1)
-  addInteriorWall(-12.93, lowerWallMidY, -0.6, 0.24, lowerWallH, 3.8, warmRoomPlasterMat);
-  addInteriorWall(-12.93, lowerWallMidY, 2.32, 0.24, lowerWallH, 0.16, warmRoomPlasterMat);
-  addInteriorWall(-12.93, lowerDoorLintelY, 1.77, 0.24, lowerDoorLintelH, 0.94, warmRoomPlasterMat);
+  addInteriorWall(-12.93, lowerWallMidY, -0.6, 0.24, lowerWallH, 3.8, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
+  addInteriorWall(-12.93, lowerWallMidY, 2.32, 0.24, lowerWallH, 0.16, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
+  addInteriorWall(-12.93, lowerDoorLintelY, 1.77, 0.24, lowerDoorLintelH, 0.94, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
   addCasedArchitravePortal(scene, {
     axis: 'z',
     wallCoord: -12.93,
@@ -204,11 +210,12 @@ export function buildHall(
   fpBreastMesh.receiveShadow = true;
   hallFireplaceGroup.add(fpBreastMesh);
 
-  // Issue #6: 45°-mitred 146mm antique oak skirting boards wrapping the North & South piers and returns of `fpBreastMesh`
+  // Issue #6: 45°-mitred 146mm antique oak skirting boards wrapping the Hall East wall and the North & South piers and returns of `fpBreastMesh`
   {
     const fpNorthSkirtMesh = new THREE.Mesh(
       buildMitredWallSkirtingGeometry(
         [
+          [-13.05, -2.5],
           [-13.05, -1.35],
           [-13.55, -1.35],
           [-13.55, -0.98],
@@ -228,6 +235,7 @@ export function buildHall(
           [-13.55, -0.12],
           [-13.55, 0.25],
           [-13.05, 0.25],
+          [-13.05, 1.218],
         ],
         lowerFloorY
       ),

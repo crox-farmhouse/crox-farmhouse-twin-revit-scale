@@ -141,12 +141,21 @@ export function buildSittingRoom(
   // (0.24m thick, Z = +8.15m..+8.39m, X = -17.23m..-22.19m — NO internal door to Plant Room!)
   // Issue #14: Farrow & Ball "Cord" (`farrowAndBallCordMat`) on the North (-Z, index 5, Sitting Room) face!
   // Issue #1: Reduced ceiling height (`frontTier2WallH = 2.225m`, top at `frontWallH = 1.625m`)
-  addInteriorWall(-19.71, frontTier2WallMidY, 8.27, 4.96, frontTier2WallH, 0.24, [
-    warmRoomPlasterMat,
-    warmRoomPlasterMat,
-    warmRoomPlasterMat,
-    warmRoomPlasterMat,
-    warmRoomPlasterMat,
-    farrowAndBallCordMat,
-  ]);
+  addInteriorWall(
+    -19.71,
+    frontTier2WallMidY,
+    8.27,
+    4.96,
+    frontTier2WallH,
+    0.24,
+    [
+      warmRoomPlasterMat,
+      warmRoomPlasterMat,
+      warmRoomPlasterMat,
+      warmRoomPlasterMat,
+      warmRoomPlasterMat,
+      farrowAndBallCordMat,
+    ],
+    { skipSkirting: true }
+  );
 }

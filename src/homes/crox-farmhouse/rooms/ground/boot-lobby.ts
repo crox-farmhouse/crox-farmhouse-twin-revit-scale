@@ -111,7 +111,11 @@ export function buildBootLobby(
 
   // Partition wall between West Store/Cupboard (X = -12.81m..-11.39m) and East Cloakroom WC (X = -11.39m..-9.80m):
   // 0.15m thick centered at X = -11.39m, Z = -2.50m..-0.10m (directly aligned with the center pier & sconce between the two equal-sized doors!)
-  addInteriorWall(-11.39, lowerWallMidY, -1.3, 0.15, lowerWallH, 2.4, warmRoomPlasterMat);
+  addInteriorWall(-11.39, lowerWallMidY, -1.3, 0.15, lowerWallH, 2.4, warmRoomPlasterMat, {
+    skirtingSides: [-1],
+    skirtingMin: -2.5,
+    skirtingMax: -0.258,
+  });
 
   // North Wall of Boot Lobby / South Wall of Downstairs WC & Wine Cellar (0.15m thick at Z = -0.175m, X = -9.80m..-12.81m):
   // - West pier (X = -12.81m..-12.54m, width 0.27m, center X = -12.675m)
@@ -119,45 +123,58 @@ export function buildBootLobby(
   // - Center Pier with Wall Sconce (X = -11.70m..-10.84m, width 0.86m, center X = -11.27m)
   // - Right Door — Wine Cellar Glass Door (Issue #14: shifted right to X = -10.42m, width 0.84m, X = -10.84m..-10.00m so it clears the X = -10.935m Wine Cellar cupboards!)
   // - East return pier (X = -10.00m..-9.80m, width 0.20m, center X = -9.90m) meeting the solid East cross-wall (X = -9.80m)
-  addInteriorWall(-12.675, lowerWallMidY, -0.175, 0.27, lowerWallH, 0.15, warmRoomPlasterMat);
-  addInteriorWall(-11.27, lowerWallMidY, -0.175, 0.86, lowerWallH, 0.15, warmRoomPlasterMat);
-  addInteriorWall(-9.9, lowerWallMidY, -0.175, 0.2, lowerWallH, 0.15, warmRoomPlasterMat);
-  addInteriorWall(-12.12, lowerDoorLintelY, -0.175, 0.84, lowerDoorLintelH, 0.15, warmRoomPlasterMat);
-  addInteriorWall(-10.42, lowerDoorLintelY, -0.175, 0.84, lowerDoorLintelH, 0.15, warmRoomPlasterMat);
+  addInteriorWall(-12.675, lowerWallMidY, -0.175, 0.27, lowerWallH, 0.15, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
+  addInteriorWall(-11.27, lowerWallMidY, -0.175, 0.86, lowerWallH, 0.15, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
+  addInteriorWall(-9.9, lowerWallMidY, -0.175, 0.2, lowerWallH, 0.15, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
+  addInteriorWall(-12.12, lowerDoorLintelY, -0.175, 0.84, lowerDoorLintelH, 0.15, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
+  addInteriorWall(-10.42, lowerDoorLintelY, -0.175, 0.84, lowerDoorLintelH, 0.15, warmRoomPlasterMat, {
+    skipSkirting: true,
+  });
 
-  // Antique-profiled oak skirting boards along the Boot Lobby North piers & solid East cross-wall (Issue #14)
-  for (const [sx, sw] of [
-    [-12.68, 0.24],
-    [-11.31, 0.68],
-    [-9.88, 0.14],
+  // 45°-mitred 146mm antique-profiled oak skirting boards along the Boot Lobby West cross-wall, North piers & East cross-wall (Issue #14)
+  for (const [skirtName, path] of [
+    [
+      'bootLobby.northWestCornerSkirting',
+      [
+        [-12.81, 1.218],
+        [-12.81, -0.1],
+        [-12.622, -0.1],
+      ] as const,
+    ],
+    [
+      'bootLobby.northCenterPierSkirting',
+      [
+        [-11.618, -0.1],
+        [-10.922, -0.1],
+      ] as const,
+    ],
+    [
+      'bootLobby.northEastCornerSkirting',
+      [
+        [-9.918, -0.1],
+        [-9.8, -0.1],
+        [-9.8, 1.258],
+      ] as const,
+    ],
   ] as const) {
-    const northPierSkirt = new THREE.Mesh(
-      new THREE.BoxGeometry(sw, 0.122, 0.022),
+    const skirtMesh = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(path, lowerFloorY),
       antiqueOakSkirtingMat
     );
-    northPierSkirt.position.set(sx, lowerFloorY + 0.061, -0.09);
-    scene.add(northPierSkirt);
-
-    const northPierSkirtCap = new THREE.Mesh(
-      new THREE.BoxGeometry(sw, 0.024, 0.016),
-      antiqueOakSkirtingMat
-    );
-    northPierSkirtCap.position.set(sx, lowerFloorY + 0.134, -0.093);
-    scene.add(northPierSkirtCap);
+    skirtMesh.name = skirtName;
+    skirtMesh.userData.isArchitecturalShell = true;
+    skirtMesh.castShadow = true;
+    skirtMesh.receiveShadow = true;
+    scene.add(skirtMesh);
   }
-
-  const bootLobbyEastSkirting = new THREE.Mesh(
-    new THREE.BoxGeometry(0.022, 0.122, 1.28),
-    antiqueOakSkirtingMat
-  );
-  bootLobbyEastSkirting.position.set(-9.81, lowerFloorY + 0.061, 0.54);
-  scene.add(bootLobbyEastSkirting);
-  const bootLobbyEastSkirtingCap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.016, 0.024, 1.28),
-    antiqueOakSkirtingMat
-  );
-  bootLobbyEastSkirtingCap.position.set(-9.807, lowerFloorY + 0.134, 0.54);
-  scene.add(bootLobbyEastSkirtingCap);
 
   // Issue #4: Framed Country Artwork (`bootLobby.westWallPicture`) on the East (+X = -12.81m) face of the Boot Lobby West Cross-Wall
   // centered at [-12.81, 0.95, 0.55] (between the WC wall at Z = -0.10m and the Entrance Hall doorway at Z = 1.30m)

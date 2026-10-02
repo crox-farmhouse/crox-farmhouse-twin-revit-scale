@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { addCasedArchitravePortal } from '../../../../engine/geometry/index.ts';
+import { addCasedArchitravePortal, buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
@@ -59,7 +59,7 @@ export function buildFamilyBathroom(
   }
 
   // North Exterior Brick Wall of Family Bathroom (Z = -2.78m..-2.50m, X = -12.81m..-9.56m)
-  // Skirting clamped to [-12.81, -9.80] so it butts cleanly against the Cross-Wall West face (Issues #2 & #7)
+  // Skirting is emitted below via `familyBathroom.perimeterMitredSkirting` for 45°-mitred corners
   addUpperBrickWallAlongXWithWindow(
     -12.81,
     -9.56,
@@ -71,11 +71,11 @@ export function buildFamilyBathroom(
     3.94,
     'south',
     2,
-    { skirtingMin: -12.81, skirtingMax: -9.8 }
+    { skipSkirting: true }
   );
 
   // South Courtyard Exterior Brick Wall of Upper Passage (Z = +2.40m..+2.68m, X = -12.93m..-9.56m)
-  // Skirting clamped to [-12.81, -9.80] so it never pokes through the Main Bedroom cross-wall corner (Issue #2!)
+  // Skirting is emitted below via `upperSouthPassage.southMitredSkirting` for 45°-mitred corners
   addUpperBrickWallAlongXWithWindow(
     -12.93,
     -9.56,
@@ -87,7 +87,7 @@ export function buildFamilyBathroom(
     3.9,
     'north',
     1,
-    { skirtingMin: -12.81, skirtingMax: -9.8 }
+    { skipSkirting: true }
   );
 
   const collarCeilingY = 4.52;
@@ -117,70 +117,59 @@ export function buildFamilyBathroom(
     skipCap: true,
   });
 
-  // Clean mitred/wrapped skirting around the Bathroom Bulkhead (`X = -10.77m..-9.80m, Z = -0.01m..+0.832m`)
-  {
-    // 1. North face of bulkhead (`Z = -0.01m`, spanning `X = -10.792m..-9.80m` so it miters cleanly with the West face skirting at `X = -10.792m`)
-    const northSkirtW = -9.8 - -10.792;
-    const northSkirtCx = (-10.792 + -9.8) / 2;
-    const northSkirt = new THREE.Mesh(
-      new THREE.BoxGeometry(northSkirtW, 0.122, 0.022),
+  // Continuous 45°-mitred 146mm antique oak skirtings around the Family Bathroom & Upper South Passage
+  for (const [skirtName, path] of [
+    [
+      'familyBathroom.perimeterMitredSkirting',
+      [
+        [-12.81, -0.3],
+        [-12.81, -2.5],
+        [-9.8, -2.5],
+        [-9.8, -0.01],
+        [-10.77, -0.01],
+        [-10.77, 0.832],
+      ] as const,
+    ],
+    [
+      'familyBathroom.southPierSkirting',
+      [
+        [-11.672, 0.9],
+        [-11.96, 0.9],
+      ] as const,
+    ],
+    [
+      'upperSouthPassage.northWestSkirting',
+      [
+        [-12.81, 1.05],
+        [-11.672, 1.05],
+      ] as const,
+    ],
+    [
+      'upperSouthPassage.northEastPierSkirting',
+      [
+        [-10.688, 1.05],
+        [-10.62, 1.05],
+      ] as const,
+    ],
+    [
+      'upperSouthPassage.southMitredSkirting',
+      [
+        [-9.8, 2.082],
+        [-9.8, 2.4],
+        [-12.81, 2.4],
+        [-12.81, 2.082],
+      ] as const,
+    ],
+  ] as const) {
+    const skirtMesh = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(path, floorTopY),
       antiqueOakSkirtingMat
     );
-    northSkirt.userData.isArchitecturalShell = true;
-    northSkirt.position.set(northSkirtCx, floorTopY + 0.061, -0.01 - 0.011);
-    northSkirt.receiveShadow = true;
-    scene.add(northSkirt);
-
-    const northSkirtCap = new THREE.Mesh(
-      new THREE.BoxGeometry(northSkirtW - 0.006, 0.024, 0.016),
-      antiqueOakSkirtingMat
-    );
-    northSkirtCap.userData.isArchitecturalShell = true;
-    northSkirtCap.position.set(northSkirtCx + 0.003, floorTopY + 0.134, -0.01 - 0.008);
-    northSkirtCap.receiveShadow = true;
-    scene.add(northSkirtCap);
-
-    // 2. West face of bulkhead (`X = -10.77m`, spanning `Z = -0.01m..+0.832m` up to the bathroom door architrave)
-    const westSkirtD = 0.832 - -0.01;
-    const westSkirtCz = (-0.01 + 0.832) / 2;
-    const westSkirt = new THREE.Mesh(
-      new THREE.BoxGeometry(0.022, 0.122, westSkirtD),
-      antiqueOakSkirtingMat
-    );
-    westSkirt.userData.isArchitecturalShell = true;
-    westSkirt.position.set(-10.77 - 0.011, floorTopY + 0.061, westSkirtCz);
-    westSkirt.receiveShadow = true;
-    scene.add(westSkirt);
-
-    const westSkirtCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, 0.024, westSkirtD),
-      antiqueOakSkirtingMat
-    );
-    westSkirtCap.userData.isArchitecturalShell = true;
-    westSkirtCap.position.set(-10.77 - 0.008, floorTopY + 0.134, westSkirtCz);
-    westSkirtCap.receiveShadow = true;
-    scene.add(westSkirtCap);
-
-    // 3. South face of doorway pier (`Z = +1.05m`, between door architrave `X = -10.702m` and Drinks Cabinet `X = -10.62m`)
-    const southPierSkirtW = -10.62 - -10.702;
-    const southPierSkirtCx = (-10.702 + -10.62) / 2;
-    const southPierSkirt = new THREE.Mesh(
-      new THREE.BoxGeometry(southPierSkirtW, 0.122, 0.022),
-      antiqueOakSkirtingMat
-    );
-    southPierSkirt.userData.isArchitecturalShell = true;
-    southPierSkirt.position.set(southPierSkirtCx, floorTopY + 0.061, 1.05 + 0.011);
-    southPierSkirt.receiveShadow = true;
-    scene.add(southPierSkirt);
-
-    const southPierSkirtCap = new THREE.Mesh(
-      new THREE.BoxGeometry(southPierSkirtW, 0.024, 0.016),
-      antiqueOakSkirtingMat
-    );
-    southPierSkirtCap.userData.isArchitecturalShell = true;
-    southPierSkirtCap.position.set(southPierSkirtCx, floorTopY + 0.134, 1.05 + 0.008);
-    southPierSkirtCap.receiveShadow = true;
-    scene.add(southPierSkirtCap);
+    skirtMesh.name = skirtName;
+    skirtMesh.userData.isArchitecturalShell = true;
+    skirtMesh.castShadow = true;
+    skirtMesh.receiveShadow = true;
+    scene.add(skirtMesh);
   }
 
   {
@@ -748,33 +737,9 @@ export function buildFamilyBathroom(
   // Partition wall between Family Bathroom and Upper South Passage (0.15m thick, Z = +0.90m..+1.05m, X = -10.77m..-12.81m)
   // With bathroom entrance doorway at X = -11.18m (`width = 0.82m`, `X = -11.59m..-10.77m`)
   addUpperInteriorWall(-12.2, floorTopY, collarCeilingY, 0.975, 1.22, 0.15, warmRoomPlasterMat, {
-    skirtingSides: [1],
-    skirtingMin: -12.81,
-    skirtingMax: -11.672,
+    skipSkirting: true,
     skipCap: true,
   });
-  // Skirting on the North (Bathroom) face of the South wall (`Z = +0.90m`) between the lengthwise shower tray (`X = -11.96m`) and the door architrave (`X = -11.66m`)
-  {
-    const bathSouthPierSkirtW = -11.66 - -11.96;
-    const bathSouthPierSkirtCx = (-11.96 + -11.66) / 2;
-    const bathSouthPierSkirt = new THREE.Mesh(
-      new THREE.BoxGeometry(bathSouthPierSkirtW, 0.122, 0.022),
-      antiqueOakSkirtingMat
-    );
-    bathSouthPierSkirt.userData.isArchitecturalShell = true;
-    bathSouthPierSkirt.position.set(bathSouthPierSkirtCx, floorTopY + 0.061, 0.9 - 0.011);
-    bathSouthPierSkirt.receiveShadow = true;
-    scene.add(bathSouthPierSkirt);
-
-    const bathSouthPierSkirtCap = new THREE.Mesh(
-      new THREE.BoxGeometry(bathSouthPierSkirtW, 0.024, 0.016),
-      antiqueOakSkirtingMat
-    );
-    bathSouthPierSkirtCap.userData.isArchitecturalShell = true;
-    bathSouthPierSkirtCap.position.set(bathSouthPierSkirtCx, floorTopY + 0.134, 0.9 - 0.008);
-    bathSouthPierSkirtCap.receiveShadow = true;
-    scene.add(bathSouthPierSkirtCap);
-  }
   addUpperInteriorWall(-11.18, floorTopY + doorH, collarCeilingY, 0.975, 0.82, 0.15, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
@@ -1558,38 +1523,31 @@ export function buildFamilyBathroom(
     skipSkirting: true,
     skipCap: true,
   });
-  // Clean skirting segments on the X = -12.93m Cross-Wall (stopping at North stringer Z = -2.478m, East Chimney Breast, and South Landing Wall Z = +2.22m on West side; and Shower on East side)
-  for (const [sideSign, z0, z1] of [
-    [-1, -2.478, -1.34],
-    [-1, 0.46, 1.018],
-    [-1, 2.082, 2.22],
-    [1, -2.5, -0.3],
+  // Clean antique-oak profiled skirting segments on the West (`X = -13.05m`, Upper Landing) face of the X = -12.93m Cross-Wall
+  for (const [z0, z1] of [
+    [-2.478, -1.34],
+    [0.46, 1.018],
+    [2.082, 2.22],
   ] as const) {
-    const sD = z1 - z0;
-    const sCz = (z0 + z1) / 2;
-    const skirt = new THREE.Mesh(
-      new THREE.BoxGeometry(0.022, 0.122, sD),
+    const skirtMesh = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(
+        [
+          [-13.05, z0],
+          [-13.05, z1],
+        ],
+        floorTopY
+      ),
       antiqueOakSkirtingMat
     );
-    skirt.userData.isArchitecturalShell = true;
-    skirt.position.set(-12.93 + sideSign * (0.12 + 0.009), floorTopY + 0.061, sCz);
-    skirt.receiveShadow = true;
-    scene.add(skirt);
-    const skirtCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, 0.024, sD),
-      antiqueOakSkirtingMat
-    );
-    skirtCap.userData.isArchitecturalShell = true;
-    skirtCap.position.set(-12.93 + sideSign * (0.12 + 0.006), floorTopY + 0.134, sCz);
-    skirtCap.receiveShadow = true;
-    scene.add(skirtCap);
+    skirtMesh.userData.isArchitecturalShell = true;
+    skirtMesh.castShadow = true;
+    skirtMesh.receiveShadow = true;
+    scene.add(skirtMesh);
   }
   // Issue #11: Stop the South cross-wall pier at `Z = 2.398m` (`z = 2.199, d = 0.398`) and inset its East face by `2mm` across `Z = 2.22m..2.40m`
   // so it never Z-fights with the `+X` face of the Upper Landing South wall (`Z = 2.22m..2.68m`)!
   addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, 2.199, 0.24, 0.398, warmRoomPlasterMat, {
-    skirtingSides: [1],
-    skirtingMin: 2.082,
-    skirtingMax: 2.4,
+    skipSkirting: true,
     skipCap: true,
   });
   addUpperInteriorWall(-12.93, floorTopY + doorH, upperWallTopY, 1.55, 0.24, 0.9, warmRoomPlasterMat, {

@@ -1,5 +1,10 @@
 import * as THREE from 'three';
-import { addCasedArchitravePortal, buildAngledWallSegment, buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
+import {
+  addCasedArchitravePortal,
+  buildAngledWallSegment,
+  buildMitredWallSkirtingGeometry,
+  buildPolygonalFloorSlab,
+} from '../../../../engine/geometry/index.ts';
 import { createWelshSlateRoofTexture } from '../../../../engine/textures/procedural-textures.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
@@ -162,11 +167,23 @@ export function buildEntranceHall(
     }
 
     if (addSkirt) {
-      const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.14, d), antiqueOakSkirtingMat);
-      skirt.position.set(-22.19 + 0.01, tier2FloorY + 0.07, cz);
-      skirt.receiveShadow = true;
-      skirt.userData.isArchitecturalShell = true;
-      scene.add(skirt);
+      const skirtZMin = Math.max(minZ, minZ < 2.5 ? 2.045 : 3.44);
+      const skirtZMax = Math.min(maxZ, maxZ < 2.5 ? 2.23 : 3.68);
+      if (skirtZMax - skirtZMin > 0.02) {
+        const skirt = new THREE.Mesh(
+          buildMitredWallSkirtingGeometry(
+            [
+              [-22.19, skirtZMax],
+              [-22.19, skirtZMin],
+            ],
+            tier2FloorY
+          ),
+          antiqueOakSkirtingMat
+        );
+        skirt.receiveShadow = true;
+        skirt.userData.isArchitecturalShell = true;
+        scene.add(skirt);
+      }
     }
   };
   addPermanentFrontEntranceBrickPiece(2.045, 2.3, 0, frontWallH, true);
