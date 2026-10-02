@@ -62,7 +62,7 @@ export class EnvironmentLighting {
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.set(2048, 2048);
     this.sunLight.shadow.camera.near = 4.0;
-    this.sunLight.shadow.camera.far = 34.0;
+    this.sunLight.shadow.camera.far = 45.0;
     this.sunLight.shadow.camera.left = -28.0;
     this.sunLight.shadow.camera.right = 8.0;
     this.sunLight.shadow.camera.top = 15.5;
