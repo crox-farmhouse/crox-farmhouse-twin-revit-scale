@@ -1767,8 +1767,9 @@ export function buildDiningRoom(
   // 1G. Main Oak Structural Cross-Beam (Z = -0.85m), Exposed Oak Ceiling Joists (Y = wallH - 0.07m)
   //     & 6 KNX Recessed Warm-Dim Ceiling Downlights (Channel 10: familyRoomSpots, GA 1/1/10 — PH-53..56)
   // The signature Main Structural Oak Cross-Beam spanning East-West at Z = -0.85m
+  // Bears onto the Walk-in Cupboard East structural wall (X = -7.895m, East face -7.82m) and East Chimney Breast North pier (X = -4.64m)
   const mainCreamBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(3.18, 0.18, 0.2),
+    new THREE.BoxGeometry(3.22, 0.18, 0.2),
     oakMat
   );
   mainCreamBeam.name = 'familyRoom.ceilingBeam.main';
@@ -1776,6 +1777,18 @@ export function buildDiningRoom(
   mainCreamBeam.castShadow = true;
   mainCreamBeam.receiveShadow = true;
   groundFloorCeilingGroup.add(mainCreamBeam);
+
+  // North-South Chimney Breast Trimmer Beam along the West face (X = -5.01m) of the East Masonry Chimney Breast (Z = -0.85m..+0.85m)
+  // Carries the hearth trimming between `mainCreamBeam` (Z = -0.85m) and the South alcove joist header (Z = +0.85m)
+  const chimneyTrimmerBeam = new THREE.Mesh(
+    new THREE.BoxGeometry(0.11, 0.14, 1.82),
+    oakMat
+  );
+  chimneyTrimmerBeam.name = 'familyRoom.ceilingBeam.chimneyTrimmer';
+  chimneyTrimmerBeam.position.set(-5.01, wallH - 0.1, 0.0);
+  chimneyTrimmerBeam.castShadow = true;
+  chimneyTrimmerBeam.receiveShadow = true;
+  groundFloorCeilingGroup.add(chimneyTrimmerBeam);
 
   // White plasterboard ceiling backing above the exposed joists (in groundFloorCeilingGroup so it hides when looking from above in Ground Floor mode and appears when inside at eye level!)
   const familyCeilingBacking = new THREE.Mesh(
@@ -1786,21 +1799,56 @@ export function buildDiningRoom(
   familyCeilingBacking.receiveShadow = true;
   groundFloorCeilingGroup.add(familyCeilingBacking);
 
-  // 11 Exposed Natural Timber Oak Ceiling Joists running North-South (Z = -2.50m..+2.35m) across the Dining Room (Issue #9)
+  // 11 Exposed Natural Timber Oak Ceiling Joists running North-South across the Dining Room, Snug Bay & Walk-in Cupboard:
+  // - Bays j = 0..3 (jx = -9.32m..-8.00m): Bear onto the Walk-in Cupboard South partition wall (Z = -0.515m, South face -0.44m)
+  //   and the South exterior brick wall (Z = +2.40m), with matching North-bay joists inside the Walk-in Cupboard (Z = -2.50m..-0.57m).
+  // - Bays j = 4..9 (jx = -7.56m..-5.36m): Span continuously from the North exterior brick wall (Z = -2.50m) over `mainCreamBeam` (Z = -0.85m)
+  //   to the South exterior brick wall (Z = +2.40m).
+  // - Bay j = 10 (jx = -4.92m, aligned with East Chimney Breast X = -4.96m..-4.64m, Z = -0.85m..+0.85m):
+  //   Trimmed cleanly into a South alcove joist (Z = +0.84m..+2.42m) and a North Snug alcove joist (Z = -2.50m..-0.84m)
+  //   bearing against the masonry chimney piers instead of passing through the flue!
   for (let j = 0; j < 11; j++) {
     const jx = -9.32 + j * 0.44;
-    const isSnugX = jx > -7.8;
-    const minJoistZ = isSnugX ? -2.48 : -0.82;
-    const joistLen = 2.34 - minJoistZ;
+    const isCupboardBay = jx <= -7.85;
+    const isChimneyBay = jx >= -4.98;
+    const minJoistZ = isCupboardBay ? -0.46 : isChimneyBay ? 0.84 : -2.5;
+    const maxJoistZ = 2.42;
+    const joistLen = maxJoistZ - minJoistZ;
     const joist = new THREE.Mesh(
       new THREE.BoxGeometry(0.075, 0.1, joistLen),
       oakMat
     );
     joist.name = `familyRoom.ceilingJoist.${j + 1}`;
-    joist.position.set(jx, wallH - 0.07, (minJoistZ + 2.34) / 2);
+    joist.position.set(jx, wallH - 0.07, (minJoistZ + maxJoistZ) / 2);
     joist.castShadow = true;
     joist.receiveShadow = true;
     groundFloorCeilingGroup.add(joist);
+
+    if (isCupboardBay) {
+      const cupMinZ = -2.5;
+      const cupMaxZ = -0.57;
+      const cupJoist = new THREE.Mesh(
+        new THREE.BoxGeometry(0.075, 0.1, cupMaxZ - cupMinZ),
+        oakMat
+      );
+      cupJoist.name = `familyRoom.walkInCupboard.ceilingJoist.${j + 1}`;
+      cupJoist.position.set(jx, wallH - 0.07, (cupMinZ + cupMaxZ) / 2);
+      cupJoist.castShadow = true;
+      cupJoist.receiveShadow = true;
+      groundFloorCeilingGroup.add(cupJoist);
+    } else if (isChimneyBay) {
+      const snugMinZ = -2.5;
+      const snugMaxZ = -0.84;
+      const snugJoist = new THREE.Mesh(
+        new THREE.BoxGeometry(0.075, 0.1, snugMaxZ - snugMinZ),
+        oakMat
+      );
+      snugJoist.name = `familyRoom.ceilingJoist.${j + 1}.north`;
+      snugJoist.position.set(jx, wallH - 0.07, (snugMinZ + snugMaxZ) / 2);
+      snugJoist.castShadow = true;
+      snugJoist.receiveShadow = true;
+      groundFloorCeilingGroup.add(snugJoist);
+    }
   }
 
   // 6 KNX Recessed Ceiling Downlights between the Joists (circuitId: 'familyRoomSpots', Ch 10)

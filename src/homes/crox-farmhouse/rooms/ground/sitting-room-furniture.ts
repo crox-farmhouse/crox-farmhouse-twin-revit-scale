@@ -357,21 +357,30 @@ export function buildSittingRoomFurniture(
     0.5
   ).name = 'sittingRoom.ceilingBacking';
 
-  // Exposed Natural Oak North-South Spine Beam & East-West Ceiling Joists in Living Room (Issue #1: lowered for frontWallH = 1.625m)
+  // Exposed Natural Oak North-South Spine Beam & East-West Ceiling Joists in Sitting Room (Issue #1: lowered for frontWallH = 1.625m)
+  // `livingSpineBeam` bears into the North partition wall (Z = 3.66m) and the North brick face of the Inglenook Chimney Breast (Z = 7.70m)!
   const livingSpineBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(0.2, 0.19, 4.45),
+    new THREE.BoxGeometry(0.2, 0.19, 4.04),
     oakMat
   );
-  livingSpineBeam.position.set(-19.79, frontWallH - 0.15, 5.925);
+  livingSpineBeam.name = 'sittingRoom.spineBeam';
+  livingSpineBeam.position.set(-19.8, frontWallH - 0.15, 5.68);
   livingSpineBeam.castShadow = true;
   groundFloorCeilingGroup.add(livingSpineBeam);
 
-  for (let ljz = 4.05; ljz <= 7.85; ljz += 0.42) {
+  // East-West Ceiling Joists spanning from the West exterior brick wall (X = -22.21m) across `livingSpineBeam`
+  // into the angled East Courtyard brick wall, stopping North of the Z = 7.68m Chimney Breast & alcove bookcases!
+  for (let ljz = 4.05; ljz <= 7.45; ljz += 0.42) {
+    const xWest = -22.21;
+    const xEast =
+      -16.82 + ((-17.25 - -16.82) / (11.77 - 2.4)) * (ljz - 2.4) - 0.12;
+    const joistSpanX = xEast - xWest;
     const livingJoist = new THREE.Mesh(
-      new THREE.BoxGeometry(4.76, 0.11, 0.095),
+      new THREE.BoxGeometry(joistSpanX, 0.11, 0.095),
       oakMat
     );
-    livingJoist.position.set(-19.79, frontWallH - 0.08, ljz);
+    livingJoist.name = 'sittingRoom.ceilingJoist';
+    livingJoist.position.set((xWest + xEast) * 0.5, frontWallH - 0.08, ljz);
     livingJoist.castShadow = true;
     groundFloorCeilingGroup.add(livingJoist);
   }

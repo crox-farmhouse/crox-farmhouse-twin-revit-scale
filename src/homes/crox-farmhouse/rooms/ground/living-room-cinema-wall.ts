@@ -1309,19 +1309,29 @@ export function buildLivingRoomCinemaWall(
   ).name = 'livingRoom.ceilingBacking';
 
   // Natural Dark-Stained Oak East-West Spine Beam & North-South Ceiling Joists in Front Room (New Photo 5 top)
+  // Spans from X = -22.21m, Z = -0.642m (embedded into West exterior brick wall) to X = -17.40m, Z = -0.002m (embedded into angled East Cross-Wall)
   const frontRoomDarkSpineBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(4.8, 0.19, 0.2),
+    new THREE.BoxGeometry(4.85, 0.19, 0.2),
     oakMat
   );
-  frontRoomDarkSpineBeam.position.set(-19.84, frontWallH - 0.15, -0.325);
+  frontRoomDarkSpineBeam.name = 'livingRoom.spineBeam';
+  frontRoomDarkSpineBeam.position.set(-19.805, frontWallH - 0.15, -0.322);
   frontRoomDarkSpineBeam.rotation.y = -Math.atan2(0.705, 5.27);
   frontRoomDarkSpineBeam.castShadow = true;
   groundFloorCeilingGroup.add(frontRoomDarkSpineBeam);
 
-  for (let fjx = -21.95; fjx <= -17.15; fjx += 0.4) {
-    const zNorth = -3.18 + (0.705 / 5.27) * (fjx + 22.19) + 0.02;
-    const zSouthWall = 1.905 + (0.705 / 5.27) * (fjx + 22.19) - 0.15;
-    const zEastCrossWall = -2.469 + ((-16.956 - fjx) / 1.015) * 4.949;
+  // North-South Ceiling Joists spanning across `frontRoomDarkSpineBeam`:
+  // - Joists in the South Chimney Breast bay (fjx = -20.75m, -20.35m, -19.95m) bear into the North face of the masonry chimney breast
+  //   instead of cutting through the flue!
+  // - Joists only run where they cross `frontRoomDarkSpineBeam` (fjx <= -17.55m), bearing into the North wall, Spine Beam, and South/East walls.
+  for (let fjx = -21.95; fjx <= -17.5; fjx += 0.4) {
+    const zNorth = -3.18 + (0.711 / 5.314) * (fjx + 22.19) - 0.02;
+    const hitsSouthChimneyBreast = fjx >= -21.14 && fjx <= -19.86;
+    const zSouthWall =
+      1.905 +
+      (0.575 / 4.299) * (fjx + 22.19) -
+      (hitsSouthChimneyBreast ? 0.525 : 0.12);
+    const zEastCrossWall = -2.469 + ((-16.956 - fjx) / 1.015) * 4.949 - 0.04;
     const zSouth = Math.min(zSouthWall, zEastCrossWall);
     const joistLen = zSouth - zNorth;
     if (joistLen < 0.45) continue;
@@ -1329,6 +1339,7 @@ export function buildLivingRoomCinemaWall(
       new THREE.BoxGeometry(0.095, 0.12, joistLen),
       oakMat
     );
+    darkJoist.name = 'livingRoom.ceilingJoist';
     darkJoist.position.set(fjx, frontWallH - 0.08, (zNorth + zSouth) * 0.5);
     darkJoist.castShadow = true;
     groundFloorCeilingGroup.add(darkJoist);

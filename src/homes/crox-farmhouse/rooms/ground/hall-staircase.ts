@@ -1079,21 +1079,26 @@ export function buildHallStaircase(
   scene.add(stairGroup);
 
   // Exposed Natural Oak Timber Ceiling Spine Beam & Joists in Entrance Hall (Issue #7: aligned with shifted hallSpinePost at Z = +0.46m)
+  // Spans X = -17.68m..-13.00m, bearing into the angled West Cross-Wall and East Cross-Wall / hallSpinePost!
   const hallSpineBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(4.62, 0.18, 0.19),
+    new THREE.BoxGeometry(4.68, 0.18, 0.19),
     oakMat
   );
-  hallSpineBeam.position.set(-15.3, wallH - 0.14, 0.46);
+  hallSpineBeam.name = 'hall.spineBeam';
+  hallSpineBeam.position.set(-15.34, wallH - 0.14, 0.46);
   hallSpineBeam.castShadow = true;
   hallSpineBeam.receiveShadow = true;
   groundFloorCeilingGroup.add(hallSpineBeam);
 
-  // North-South Ceiling Trimmer Beam along the stairwell gallery edge (X = -15.36m, Z = -1.64m..+0.46m)
+  // North-South Ceiling Trimmer Beam along the stairwell gallery edge (X = -15.36m, Z = -2.50m..+0.46m):
+  // Spans continuously from the North exterior brick wall (Z = -2.50m) over `hangingNewelPost` (Z = -1.64m)
+  // right into `hallSpineBeam` (Z = +0.46m), supporting both the upper landing arrival edge and the stairwell void!
   const hallStairTrimmerBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16, 0.16, 2.1),
+    new THREE.BoxGeometry(0.16, 0.16, 2.98),
     oakMat
   );
-  hallStairTrimmerBeam.position.set(-15.36, wallH - 0.12, -0.59);
+  hallStairTrimmerBeam.name = 'hall.stairTrimmerBeam';
+  hallStairTrimmerBeam.position.set(-15.36, wallH - 0.12, -1.02);
   hallStairTrimmerBeam.castShadow = true;
   groundFloorCeilingGroup.add(hallStairTrimmerBeam);
 
@@ -1116,23 +1121,25 @@ export function buildHallStaircase(
   hallNorthEastCeilingBacking.receiveShadow = true;
   groundFloorCeilingGroup.add(hallNorthEastCeilingBacking);
 
-  // Exposed Natural Oak North-South Ceiling Joists South of the Spine Beam (Z = +0.46m..+2.35m — Issue #9 & Issue #7)
+  // Exposed Natural Oak North-South Ceiling Joists South of the Spine Beam (Z = +0.46m..+2.42m, bearing into `hallSpineBeam` and the Z = +2.40m South exterior brick wall!)
   for (let jx = -17.35; jx <= -13.25; jx += 0.44) {
     const joist = new THREE.Mesh(
-      new THREE.BoxGeometry(0.095, 0.11, 1.86),
+      new THREE.BoxGeometry(0.095, 0.11, 1.96),
       oakMat
     );
-    joist.position.set(jx, wallH - 0.07, 1.39);
+    joist.name = 'hall.ceilingJoist.south';
+    joist.position.set(jx, wallH - 0.07, 1.44);
     joist.castShadow = true;
     groundFloorCeilingGroup.add(joist);
   }
-  // Exposed Natural Oak Ceiling Joists North of the Spine Beam (East of Stairwell, X = -15.05m..-13.25m — Issue #9)
-  for (let jx = -15.01; jx <= -13.25; jx += 0.44) {
+  // Exposed Natural Oak Ceiling Joists North of the Spine Beam (Z = -2.50m..+0.46m, X = -14.98m..-13.66m between `hallStairTrimmerBeam` and the Hall Inglenook Chimney Breast!)
+  for (let jx = -14.98; jx <= -13.65; jx += 0.44) {
     const northJoist = new THREE.Mesh(
-      new THREE.BoxGeometry(0.095, 0.11, 2.82),
+      new THREE.BoxGeometry(0.095, 0.11, 2.96),
       oakMat
     );
-    northJoist.position.set(jx, wallH - 0.07, -1.07);
+    northJoist.name = 'hall.ceilingJoist.north';
+    northJoist.position.set(jx, wallH - 0.07, -1.02);
     northJoist.castShadow = true;
     groundFloorCeilingGroup.add(northJoist);
   }

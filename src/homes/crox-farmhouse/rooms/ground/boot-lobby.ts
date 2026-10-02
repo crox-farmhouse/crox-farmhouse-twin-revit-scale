@@ -1889,14 +1889,29 @@ export function buildBootLobby(
   bootLobbyCeilingBacking.receiveShadow = true;
   groundFloorCeilingGroup.add(bootLobbyCeilingBacking);
 
-  // Exposed Natural Oak East-West Ceiling Joists in the Boot Lobby (Issue #11: lowered with wallH)
-  for (let bz = 0.05; bz <= 2.25; bz += 0.38) {
+  // Exposed Natural Oak North-South Ceiling Joists in the Boot Lobby & WC:
+  // Spans the shorter 2.50m North-South distance between the Z = -0.15m load-bearing partition wall and
+  // the Z = +2.40m South exterior brick wall, matching the North-South joist direction of the Hall and Dining Room!
+  for (let bx = -12.585; bx <= -10.005; bx += 0.43) {
     const bootJoist = new THREE.Mesh(
-      new THREE.BoxGeometry(3.0, 0.1, 0.085),
+      new THREE.BoxGeometry(0.085, 0.1, 2.52),
       oakMat
     );
-    bootJoist.position.set(-11.3, wallH - 0.07, bz);
+    bootJoist.name = 'bootLobby.ceilingJoist';
+    bootJoist.position.set(bx, wallH - 0.07, 1.16);
     bootJoist.castShadow = true;
     groundFloorCeilingGroup.add(bootJoist);
+
+    // Matching North-bay ceiling joists in the Downstairs WC (X = -11.65m..-9.80m, Z = -2.50m..-0.15m)
+    if (bx >= -11.55) {
+      const wcJoist = new THREE.Mesh(
+        new THREE.BoxGeometry(0.085, 0.1, 2.3),
+        oakMat
+      );
+      wcJoist.name = 'wc.ceilingJoist';
+      wcJoist.position.set(bx, wallH - 0.07, -1.35);
+      wcJoist.castShadow = true;
+      groundFloorCeilingGroup.add(wcJoist);
+    }
   }
 }
