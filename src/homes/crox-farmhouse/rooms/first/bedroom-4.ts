@@ -10,15 +10,15 @@ import type { createFirstFloorShellKit } from '../../structure/first-floor-shell
 export function buildBedroom4(
   ctx: SceneBuilderContext,
   kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowFrameMat'> &
-    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteriorWall' | 'tagUpperCutawayWall'>
+    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBedroomChimneyBreastWithFireplace' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteriorWall' | 'tagUpperCutawayWall'>
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
   const {
     addFirstFloorSlab,
     addShakerWardrobeDoor,
+    addUpperBedroomChimneyBreastWithFireplace,
     addUpperBrickWallAlongZWithWindow,
     addUpperExteriorBrickWall,
-    addUpperInteriorWall,
     antiqueOakSkirtingMat,
     floorBaseY,
     floorTopY,
@@ -110,17 +110,17 @@ export function buildBedroom4(
     }
   }
 
-  // Bedroom 4 South Chimney Breast rising cleanly to the 4.52m collar ceiling
-  addUpperInteriorWall(-19.85, floorTopY, collarCeilingY, 11.29, 1.2, 0.4, warmRoomPlasterMat, {
-    skipSkirting: true,
+  // Issue #2: Bedroom 4 South Chimney Breast rising cleanly to the 4.52m collar ceiling with 1800s black cast-iron fireplace & small black hearth
+  addUpperBedroomChimneyBreastWithFireplace(scene, {
+    namePrefix: 'bedroom4.southChimneyBreast',
+    zone: 'bedroom4',
+    x: -19.85,
+    z: 11.29,
+    width: 1.2,
+    depth: 0.4,
+    floorY: floorTopY,
+    topY: collarCeilingY,
   });
-  const bed4ChimneyCap = new THREE.Mesh(
-    new THREE.BoxGeometry(1.204, 0.025, 0.404),
-    wallCapMat
-  );
-  bed4ChimneyCap.userData.isArchitecturalShell = true;
-  bed4ChimneyCap.position.set(-19.85, collarCeilingY + 0.012, 11.29);
-  scene.add(bed4ChimneyCap);
 
   // East Courtyard Exterior Brick Wall of Bedroom 4 (X = -17.39m..-17.11m, Z = +8.15m..+11.77m, Y = 2.00m..4.16m)
   addUpperExteriorBrickWall(-17.39, -17.11, 8.15, 11.77, floorBaseY, upperWallTopY, 'west', {
@@ -225,32 +225,44 @@ export function buildBedroom4(
     scene.add(cupGroup);
   }
 
-  // Issue #4, #5 & #7: Continuous 45°-mitred skirting along Bedroom 4 North-East Pier (`Z = 8.39m`), East Wall, South Alcove Cupboards, Chimney Breast, and SW Alcove
+  // Issue #2, #4, #5 & #7: Continuous 45°-mitred skirting along Bedroom 4 North-East Pier (`Z = 8.39m`), East Wall, South Alcove Cupboards,
+  // Chimney Breast, and SW Alcove, terminating cleanly against the East (`X = -19.48m`) and West (`X = -20.22m`) jambs of the 1800s black fireplace!
   {
     const eastWallSlope = (-17.25 - -16.82) / (11.77 - 2.4);
     const getEastInnerX = (wz: number): number =>
       -16.82 + eastWallSlope * (wz - 2.4) - 0.14;
 
-    const bed4SouthMitredSkirt = new THREE.Mesh(
-      buildMitredWallSkirtingGeometry(
+    for (const [skirtName, path] of [
+      [
+        'bedroom4.southWallMitredSkirting',
         [
           [-17.276, 8.39],
           [getEastInnerX(8.39), 8.39],
           [getEastInnerX(10.85), 10.85],
           [-19.25, 10.85],
           [-19.25, 11.09],
+          [-19.48, 11.09],
+        ] as const,
+      ],
+      [
+        'bedroom4.southWestWallMitredSkirting',
+        [
+          [-20.22, 11.09],
           [-20.45, 11.09],
           [-20.45, 11.49],
           [-22.19, 11.49],
-        ],
-        floorTopY
-      ),
-      antiqueOakSkirtingMat
-    );
-    bed4SouthMitredSkirt.name = 'bedroom4.southWallMitredSkirting';
-    bed4SouthMitredSkirt.userData.isArchitecturalShell = true;
-    bed4SouthMitredSkirt.castShadow = true;
-    bed4SouthMitredSkirt.receiveShadow = true;
-    scene.add(bed4SouthMitredSkirt);
+        ] as const,
+      ],
+    ] as const) {
+      const skirtMesh = new THREE.Mesh(
+        buildMitredWallSkirtingGeometry(path, floorTopY),
+        antiqueOakSkirtingMat
+      );
+      skirtMesh.name = skirtName;
+      skirtMesh.userData.isArchitecturalShell = true;
+      skirtMesh.castShadow = true;
+      skirtMesh.receiveShadow = true;
+      scene.add(skirtMesh);
+    }
   }
 }

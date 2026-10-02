@@ -13,11 +13,12 @@ import type { createFirstFloorShellKit } from '../../structure/first-floor-shell
 export function buildBedroom3(
   ctx: SceneBuilderContext,
   kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'floorTopY' | 'oakFloorMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'warmRoomPlasterMat'> &
-    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
+    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addUpperBedroomChimneyBreastWithFireplace' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
 ): void {
   const { firstFloorMeshGroup: scene, interactions } = ctx;
   const {
     addFirstFloorSlab,
+    addUpperBedroomChimneyBreastWithFireplace,
     addUpperBrickWallAlongZWithWindow,
     addUpperInteractiveDoor,
     addUpperInteriorWall,
@@ -138,10 +139,18 @@ export function buildBedroom3(
 
   const collarCeilingY = 4.52;
 
-  // South Chimney Breast in Bedroom 3 (X = -19.85m, Z = +7.925m, rising to Bedroom 3's 4.52m vaulted collar ceiling — Issue #15!)
-  addUpperInteriorWall(-19.85, floorTopY, collarCeilingY + 0.015, 7.925, 1.2, 0.45, warmRoomPlasterMat, {
-    skipSkirting: true,
-    skipCap: true,
+  // Issue #2: South Chimney Breast in Bedroom 3 (`X = -19.80m, width = 1.70m [X = -20.65m..-18.95m], depth = 0.47m [Z = +7.68m..+8.15m]`)
+  // Matches the Sitting Room chimney breast directly downstairs (`X = -20.65m..-18.95m, Z = +7.68m..+8.15m`) 100%,
+  // and includes an 1800s farmhouse black cast-iron bedroom fireplace & small honed black slate hearth!
+  addUpperBedroomChimneyBreastWithFireplace(scene, {
+    namePrefix: 'bedroom3.southChimneyBreast',
+    zone: 'bedroom3',
+    x: -19.8,
+    z: 7.915,
+    width: 1.7,
+    depth: 0.47,
+    floorY: floorTopY,
+    topY: collarCeilingY,
   });
 
   // South Load-Bearing Cross-Wall between Bedroom 3 / Upper Corridor and Bedroom 4
@@ -162,15 +171,13 @@ export function buildBedroom3(
   });
   addUpperInteractiveDoor('x', 8.27, 0.24, -17.75, 0.78, Math.PI * 0.48);
 
-  // Issue #6, #10 & #15: Full-span coplanar vaulted upper gable on the Z = 8.27m wall between Bedroom 3 and Bedroom 4 (Y = 4.14m..4.535m)
+  // Issue #1, #6, #10 & #15: Full-span coplanar vaulted upper gable on the Z = 8.27m wall between Bedroom 3 and Bedroom 4 (`Y = 4.16m..4.52m`, zero Z-fighting or ceiling poke-through!)
   {
     const northGableShape = new THREE.Shape();
-    northGableShape.moveTo(-22.19, upperWallTopY - 0.02);
-    northGableShape.lineTo(-17.22, upperWallTopY - 0.02);
-    northGableShape.lineTo(-17.22, upperWallTopY + 0.015);
-    northGableShape.lineTo(-18.75, collarCeilingY + 0.015);
-    northGableShape.lineTo(-20.85, collarCeilingY + 0.015);
-    northGableShape.lineTo(-22.19, upperWallTopY + 0.015);
+    northGableShape.moveTo(-22.19, upperWallTopY);
+    northGableShape.lineTo(-17.22, upperWallTopY);
+    northGableShape.lineTo(-18.75, collarCeilingY);
+    northGableShape.lineTo(-20.85, collarCeilingY);
     northGableShape.closePath();
     const northGableGeo = new THREE.ExtrudeGeometry(northGableShape, {
       depth: 0.24,
@@ -185,25 +192,37 @@ export function buildBedroom3(
     scene.add(northUpperGable);
   }
 
-  // Issue #6 & #7: Continuous 45°-mitred skirting along the South-East pier (`X = -18.475m`), South wall & Chimney Breast of Bedroom 3
-  const bed3SouthMitredSkirt = new THREE.Mesh(
-    buildMitredWallSkirtingGeometry(
+  // Issue #2, #6 & #7: Continuous 45°-mitred skirting along the South-East pier (`X = -18.475m`), South wall & Chimney Breast of Bedroom 3,
+  // terminating cleanly against the East (`X = -19.43m`) and West (`X = -20.17m`) jambs of the 1800s black cast-iron fireplace!
+  for (const [skirtName, path] of [
+    [
+      'bedroom3.southWallMitredSkirting',
       [
         [-18.475, 7.922],
         [-18.475, 8.15],
-        [-19.25, 8.15],
-        [-19.25, 7.7],
-        [-20.45, 7.7],
-        [-20.45, 8.15],
+        [-18.95, 8.15],
+        [-18.95, 7.68],
+        [-19.43, 7.68],
+      ] as const,
+    ],
+    [
+      'bedroom3.southWestWallMitredSkirting',
+      [
+        [-20.17, 7.68],
+        [-20.65, 7.68],
+        [-20.65, 8.15],
         [-22.19, 8.15],
-      ],
-      floorTopY
-    ),
-    antiqueOakSkirtingMat
-  );
-  bed3SouthMitredSkirt.name = 'bedroom3.southWallMitredSkirting';
-  bed3SouthMitredSkirt.userData.isArchitecturalShell = true;
-  bed3SouthMitredSkirt.castShadow = true;
-  bed3SouthMitredSkirt.receiveShadow = true;
-  scene.add(bed3SouthMitredSkirt);
+      ] as const,
+    ],
+  ] as const) {
+    const skirtMesh = new THREE.Mesh(
+      buildMitredWallSkirtingGeometry(path, floorTopY),
+      antiqueOakSkirtingMat
+    );
+    skirtMesh.name = skirtName;
+    skirtMesh.userData.isArchitecturalShell = true;
+    skirtMesh.castShadow = true;
+    skirtMesh.receiveShadow = true;
+    scene.add(skirtMesh);
+  }
 }

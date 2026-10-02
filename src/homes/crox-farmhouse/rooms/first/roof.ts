@@ -259,7 +259,7 @@ export function buildFirstFloorCeilingsAndRoof(
         [collarEastSouthX, zSouthAtX(collarEastSouthX)],
         [collarWestX, zSouthAtX(collarWestX)],
       ],
-      collarCeilingY + 0.015,
+      collarCeilingY + 0.03,
       0.03,
       upperCeilingMat,
       0.5
@@ -304,62 +304,54 @@ export function buildFirstFloorCeilingsAndRoof(
     );
   }
 
-  // Issue #15: Partially Vaulted Ceiling over Bedroom 3 (`X = -22.25m..-18.40m, Z = 4.10m/4.85m..8.27m`)
-  // Pitches up from the West exterior wall (`X = -22.19m, Y = 4.16m`) and East corridor wall (`X = -18.475m, Y = 4.16m`)
-  // to a raised horizontal collar ceiling at `collarCeilingY = 4.52m` (`X = -20.85m..-19.25m`)!
+  // Issue #15 & Issue #1: Partially Vaulted Ceiling over Bedroom 3 (`X = -22.19m..-18.475m, Z = 4.175m/4.925m..8.15m`)
+  // Pitches up from the West interior wall face (`X = -22.19m, Y = 4.16m`) and East corridor interior wall face (`X = -18.475m, Y = 4.16m`)
+  // to a raised horizontal collar ceiling at `collarCeilingY = 4.52m` (`X = -20.85m..-18.95m`) with flush 4.52m underside!
   {
     const collarCeilingY = 4.52;
     const skeilingBaseY = upperWallTopY; // 4.16m
-    const westWallX = -22.25;
     const westInnerWallX = -22.19;
     const collarWestX = -20.85;
-    const collarEastX = -19.25;
+    const collarEastX = -18.95;
     const eastInnerWallX = -18.475;
-    const eastWallX = -18.4;
+    const zAlcoveNorth = 4.175;
+    const zShowerSouth = 4.925;
+    const zBed3South = 8.15;
 
-    const westWallSkeilingY =
-      skeilingBaseY -
-      ((westInnerWallX - westWallX) / (collarWestX - westInnerWallX)) *
-        (collarCeilingY - skeilingBaseY);
-    const eastWallSkeilingY =
-      skeilingBaseY -
-      ((eastWallX - eastInnerWallX) / (eastInnerWallX - collarEastX)) *
-        (collarCeilingY - skeilingBaseY);
-
-    // 1. West pitched skeiling slope (`X = -22.25m..-20.85m, Z = 4.10m..8.27m`)
+    // 1. West pitched skeiling slope (`X = -22.19m..-20.85m, Z = 4.175m..8.15m`)
     buildVaultedCeilingQuad(
       'bedroom3.vaultedCeiling.westSkeiling',
-      new THREE.Vector3(westWallX, westWallSkeilingY, 4.1),
-      new THREE.Vector3(collarWestX, collarCeilingY, 4.1),
-      new THREE.Vector3(collarWestX, collarCeilingY, 8.27),
-      new THREE.Vector3(westWallX, westWallSkeilingY, 8.27)
+      new THREE.Vector3(westInnerWallX, skeilingBaseY, zAlcoveNorth),
+      new THREE.Vector3(collarWestX, collarCeilingY, zAlcoveNorth),
+      new THREE.Vector3(collarWestX, collarCeilingY, zBed3South),
+      new THREE.Vector3(westInnerWallX, skeilingBaseY, zBed3South)
     );
 
-    // 2. Central L-shaped raised horizontal collar ceiling (`Y = 4.52m` over NW wardrobe alcove + main bedroom)
+    // 2. Central L-shaped raised horizontal collar ceiling (`Y = 4.52m` underside over NW wardrobe alcove + main bedroom)
     const bed3CollarSlab = buildPolygonalFloorSlab(
       ceilingMeshGroup,
       [
-        [collarWestX, 4.1],
-        [-20.25, 4.1],
-        [-20.25, 4.85],
-        [collarEastX, 4.85],
-        [collarEastX, 8.27],
-        [collarWestX, 8.27],
+        [collarWestX, zAlcoveNorth],
+        [-20.325, zAlcoveNorth],
+        [-20.325, zShowerSouth],
+        [collarEastX, zShowerSouth],
+        [collarEastX, zBed3South],
+        [collarWestX, zBed3South],
       ],
-      collarCeilingY + 0.015,
+      collarCeilingY + 0.03,
       0.03,
       upperCeilingMat,
       0.5
     );
     bed3CollarSlab.name = 'bedroom3.vaultedCeiling.collar';
 
-    // 3. East pitched skeiling slope (`X = -19.25m, Y = 4.52m` -> `X = -18.475m, Y = 4.16m` across `Z = 4.85m..8.27m`)
+    // 3. East pitched skeiling slope (`X = -18.95m, Y = 4.52m` -> `X = -18.475m, Y = 4.16m` across `Z = 4.925m..8.15m`)
     buildVaultedCeilingQuad(
       'bedroom3.vaultedCeiling.eastSkeiling',
-      new THREE.Vector3(collarEastX, collarCeilingY, 4.85),
-      new THREE.Vector3(eastWallX, eastWallSkeilingY, 4.85),
-      new THREE.Vector3(eastWallX, eastWallSkeilingY, 8.27),
-      new THREE.Vector3(collarEastX, collarCeilingY, 8.27)
+      new THREE.Vector3(collarEastX, collarCeilingY, zShowerSouth),
+      new THREE.Vector3(eastInnerWallX, skeilingBaseY, zShowerSouth),
+      new THREE.Vector3(eastInnerWallX, skeilingBaseY, zBed3South),
+      new THREE.Vector3(collarEastX, collarCeilingY, zBed3South)
     );
   }
 
@@ -1136,8 +1128,8 @@ export function buildFirstFloorCeilingsAndRoof(
   addVictorianBrickChimneyStack(-13.18, -0.05, 0.58, 1.12, 5.4, 6.62, 2, 'z', ewCeilingMeshGroup);
   // 3. North-South Ridge North Stack (above Bedroom 2 / Living Room fireplace at X = -19.95m, Z = +2.18m — 3 pots along X)
   addVictorianBrickChimneyStack(-19.95, 2.18, 1.22, 0.6, 5.4, 6.66, 3, 'x');
-  // 4. North-South Ridge Middle Stack (above Bedroom 3 / Sitting Room fireplace at X = -19.85m, Z = +7.98m — 3 pots along X)
-  addVictorianBrickChimneyStack(-19.85, 7.98, 1.22, 0.6, 5.4, 6.66, 3, 'x');
+  // 4. North-South Ridge Middle Stack (above Bedroom 3 / Sitting Room fireplace at X = -19.80m, Z = +7.98m — 3 pots along X)
+  addVictorianBrickChimneyStack(-19.8, 7.98, 1.22, 0.6, 5.4, 6.66, 3, 'x');
   // 5. South Gable Apex Stack (above Bedroom 4 / Study South gable at X = -19.79m, Z = +11.29m — flush inside the house, Issue #8!)
   addVictorianBrickChimneyStack(-19.79, 11.29, 0.96, 0.52, 5.43, 6.6, 2, 'x');
 }

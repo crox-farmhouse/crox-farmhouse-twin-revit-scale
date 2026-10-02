@@ -336,10 +336,10 @@ export function buildWestWingCorridor(
     backSkirtingExclusions: [[0.325, 0.995]],
   });
 
-  // 3. Dividing Wall (`X = -20.25m, Z = +4.10m..+4.85m`) between Walk-In Shower Stall (East) and Bedroom 3 North Wardrobe (West)
+  // 3. Dividing Wall (`X = -20.25m, Z = +4.175m..+4.775m`) between Walk-In Shower Stall (East) and Bedroom 3 North Wardrobe (West)
   buildAngledWallSegment(scene, interactions, {
-    start: [-20.25, 4.1],
-    end: [-20.25, 4.85],
+    start: [-20.25, 4.175],
+    end: [-20.25, 4.775],
     thickness: 0.15,
     topY: upperWallTopY,
     frontFloorY: floorTopY,
@@ -1008,7 +1008,7 @@ export function buildWestWingCorridor(
     const centerZ = 4.445;
     const bed3CollarY = 4.52;
     const bed3CollarWestX = -20.85;
-    const bed3CollarEastX = -19.25;
+    const bed3CollarEastX = -18.95;
 
     const getBed3VaultCeilingYAtX = (wx: number): number => {
       if (wx < bed3CollarWestX) {
@@ -1026,13 +1026,13 @@ export function buildWestWingCorridor(
       return bed3CollarY;
     };
 
-    // Full-height vaulted wardrobe carcass (`X = -22.19m..-20.325m, Y = floorTopY..bed3CollarY`)
+    // Full-height vaulted wardrobe carcass (`X = -22.19m..-20.325m, Y = floorTopY..bed3CollarY`, zero ceiling poke-through!)
     const carcassShape = new THREE.Shape();
     carcassShape.moveTo(wardMinX, floorTopY);
     carcassShape.lineTo(wardMaxX, floorTopY);
-    carcassShape.lineTo(wardMaxX, bed3CollarY + 0.015);
-    carcassShape.lineTo(bed3CollarWestX, bed3CollarY + 0.015);
-    carcassShape.lineTo(wardMinX, upperWallTopY + 0.015);
+    carcassShape.lineTo(wardMaxX, bed3CollarY);
+    carcassShape.lineTo(bed3CollarWestX, bed3CollarY);
+    carcassShape.lineTo(wardMinX, upperWallTopY);
     carcassShape.closePath();
     const carcassGeo = new THREE.ExtrudeGeometry(carcassShape, {
       depth: wardD,
@@ -1047,7 +1047,7 @@ export function buildWestWingCorridor(
 
     // Raked Shaker crown cornice moulding following the vaulted ceiling profile along the South face (`Z = 4.725m`)
     for (const [x0, y0, x1, y1] of [
-      [wardMinX, upperWallTopY + 0.008, bed3CollarWestX, bed3CollarY],
+      [wardMinX, upperWallTopY, bed3CollarWestX, bed3CollarY],
       [bed3CollarWestX, bed3CollarY, wardMaxX, bed3CollarY],
     ] as const) {
       const segLen = Math.hypot(x1 - x0, y1 - y0);
@@ -1057,7 +1057,7 @@ export function buildWestWingCorridor(
         wardrobeMat
       );
       corniceSeg.name = 'bedroom3.northWardrobe.cornice';
-      corniceSeg.position.set((x0 + x1) / 2, (y0 + y1) / 2 - 0.02, 4.715 + 0.008);
+      corniceSeg.position.set((x0 + x1) / 2, (y0 + y1) / 2 - 0.022, 4.715 + 0.008);
       corniceSeg.rotation.z = segAngle;
       corniceSeg.castShadow = true;
       bed3WardGroup.add(corniceSeg);
@@ -1091,13 +1091,13 @@ export function buildWestWingCorridor(
       });
     }
 
-    // Upper vaulted gable extensions sealing the Z = 4.10m, X = -20.25m, and Z = 4.85m walls up to Bedroom 3's 4.52m vaulted ceiling (Issue #15)
+    // Issue #1: Clean non-overlapping upper vaulted gable extensions sealing Z = 4.10m, X = -20.25m (Z = 4.175m..4.775m),
+    // and Z = 4.85m from exact Y = 4.16m up to Bedroom 3's 4.52m vaulted ceiling with zero coplanar Z-fighting or ceiling poke-through!
     const northAlcoveGableShape = new THREE.Shape();
-    northAlcoveGableShape.moveTo(-22.19, upperWallTopY - 0.02);
-    northAlcoveGableShape.lineTo(-20.18, upperWallTopY - 0.02);
-    northAlcoveGableShape.lineTo(-20.18, bed3CollarY + 0.015);
-    northAlcoveGableShape.lineTo(bed3CollarWestX, bed3CollarY + 0.015);
-    northAlcoveGableShape.lineTo(-22.19, upperWallTopY + 0.015);
+    northAlcoveGableShape.moveTo(-22.19, upperWallTopY);
+    northAlcoveGableShape.lineTo(-20.175, upperWallTopY);
+    northAlcoveGableShape.lineTo(-20.175, bed3CollarY);
+    northAlcoveGableShape.lineTo(bed3CollarWestX, bed3CollarY);
     northAlcoveGableShape.closePath();
     const northAlcoveGableGeo = new THREE.ExtrudeGeometry(northAlcoveGableShape, {
       depth: 0.15,
@@ -1110,7 +1110,7 @@ export function buildWestWingCorridor(
     scene.add(northAlcoveGable);
 
     const alcoveSideUpperWall = new THREE.Mesh(
-      new THREE.BoxGeometry(0.15, bed3CollarY - upperWallTopY + 0.035, 0.75),
+      new THREE.BoxGeometry(0.15, bed3CollarY - upperWallTopY, 0.6),
       warmRoomPlasterMat
     );
     alcoveSideUpperWall.name = 'bedroom3.alcoveSideUpperGable';
@@ -1119,11 +1119,10 @@ export function buildWestWingCorridor(
     scene.add(alcoveSideUpperWall);
 
     const showerSouthGableShape = new THREE.Shape();
-    showerSouthGableShape.moveTo(-20.325, upperWallTopY - 0.02);
-    showerSouthGableShape.lineTo(-18.475, upperWallTopY - 0.02);
-    showerSouthGableShape.lineTo(-18.475, upperWallTopY + 0.015);
-    showerSouthGableShape.lineTo(bed3CollarEastX, bed3CollarY + 0.015);
-    showerSouthGableShape.lineTo(-20.325, bed3CollarY + 0.015);
+    showerSouthGableShape.moveTo(-20.325, upperWallTopY);
+    showerSouthGableShape.lineTo(-18.475, upperWallTopY);
+    showerSouthGableShape.lineTo(bed3CollarEastX, bed3CollarY);
+    showerSouthGableShape.lineTo(-20.325, bed3CollarY);
     showerSouthGableShape.closePath();
     const showerSouthGableGeo = new THREE.ExtrudeGeometry(showerSouthGableShape, {
       depth: 0.15,
