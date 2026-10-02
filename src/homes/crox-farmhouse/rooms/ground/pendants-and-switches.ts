@@ -277,36 +277,20 @@ export function buildGroundFloorPendantsAndSwitches(
       );
     };
 
-    // Issue #12: Boot Lobby South Wall Light at [-10.363, 1.204, 2.4]
-    buildNorthFacingWallSconce({
-      name: 'bootLobby.southWallLight',
-      zone: 'bootLobby',
-      circuitId: 'bootLobbyPendant',
-      x: -10.363,
-      y: 1.204,
-      z: 2.4,
-      facingZ: -1,
-      spawnPointLight: true,
-      lightIntensity: 7.5,
-      lightDistance: 4.2,
-      cutawayCoord: 2.54,
-      cutawayMinX: -12.81,
-      cutawayMaxX: -9.56,
-    });
-
-    // Issue #2: Moved Boot Lobby Wall Light from the North door pier to the East cross-wall at [-9.662, 1.242, 2.056]
-    // (local x = -9.8, y = 1.242, z = 1.028, facing West into the Boot Lobby out of the way of the doors)
+    // Issue #2 & Issue #3: Boot Lobby South Wall Light removed; East cross-wall light centered on the wall
+    // between the North partition wall (Z = -0.10m) and the Dining Room portal architrave (Z = +1.28m)
+    // at local (x = -9.8, y = 1.242, z = 0.594) -> world [-9.605, 1.242, 1.625], facing West into the Boot Lobby!
     buildNorthFacingWallSconce({
       name: 'bootLobby.northWallLight',
       zone: 'bootLobby',
       circuitId: 'bootLobbyPendant',
       x: -9.8,
       y: 1.242,
-      z: 1.028,
+      z: 0.594,
       facingX: -1,
-      spawnPointLight: false,
-      lightIntensity: 6.5,
-      lightDistance: 4.0,
+      spawnPointLight: true,
+      lightIntensity: 7.5,
+      lightDistance: 4.2,
     });
 
     // Issue #13: Entrance Hall South Wall Light at [-15.941, 0.962, 2.4] (mounted at sconce height Y = 1.12m so shade sits at Y ≈ 0.962m!)
@@ -324,6 +308,24 @@ export function buildGroundFloorPendantsAndSwitches(
       cutawayCoord: 2.54,
       cutawayMinX: -16.973,
       cutawayMaxX: -12.81,
+    });
+
+    // Issue #4: Entrance Hall North Wall Light at [-14.965, 1.06, -2.213]
+    // (local x = -15.622, y = 1.06, z = -2.5, facing South +Z into the Hall between the stairs and North window)
+    buildNorthFacingWallSconce({
+      name: 'hall.northWallLight',
+      zone: 'hall',
+      circuitId: 'hallPendant',
+      x: -15.622,
+      y: 1.06,
+      z: -2.5,
+      facingZ: 1,
+      spawnPointLight: false,
+      lightIntensity: 6.5,
+      lightDistance: 4.6,
+      cutawayCoord: -2.64,
+      cutawayMinX: -17.55,
+      cutawayMaxX: -15.16,
     });
 
     // Matching Staircase Hall East Wall Light on the Hall / Boot Lobby partition (wall face X = -13.05m),
@@ -486,7 +488,7 @@ export function buildGroundFloorPendantsAndSwitches(
     knxPa: '1.1.25',
     indicatorCircuitId: 'wineCellarLeds',
     x: -10.45,
-    ceilingY: wallH,
+    ceilingY: wallH - 0.016,
     z: -1.25,
   });
   buildRoomCeilingPirSensor(eastWingCtx, {
@@ -496,7 +498,7 @@ export function buildGroundFloorPendantsAndSwitches(
     knxPa: '1.1.26',
     indicatorCircuitId: 'cloakroomWcLights',
     x: -12.14,
-    ceilingY: wallH,
+    ceilingY: wallH - 0.016,
     z: -1.35,
   });
 

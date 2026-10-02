@@ -1,18 +1,21 @@
+import * as THREE from 'three';
 import { buildRoomCeilingPendant, buildRoomCorstonToggleSwitch } from '../ground/kitchen-knx-lighting.ts';
-import type { SceneBuilderContext } from '../../../../types/scene.ts';
+import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
+import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
 
 /**
  * KNX ceiling pendants and Corston toggle switches for every first-floor room.
  */
 export function buildFirstFloorPendantsAndSwitches(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'floorTopY' | 'upperWallTopY'>,
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'floorTopY' | 'upperWallTopY'> &
+    Pick<ReturnType<typeof createFirstFloorShellKit>, 'tagUpperCutawayWall'>,
   eastWingCtx: SceneBuilderContext = ctx
 ): void {
-  const { firstFloorMeshGroup: scene } = ctx;
+  const { firstFloorMeshGroup: scene, interactions, lightGroups } = ctx;
   const { firstFloorMeshGroup: ewScene } = eastWingCtx;
-  const { floorTopY } = kit;
+  const { floorTopY, tagUpperCutawayWall } = kit;
   // =========================================================================
   // 9. KNX CEILING PENDANTS & CORSTON TOGGLE SWITCHES FOR ALL FIRST FLOOR ROOMS
   //    (Mounted to `scene` = `firstFloorMeshGroup` so they hide cleanly when
@@ -91,6 +94,190 @@ export function buildFirstFloorPendantsAndSwitches(
     facing: 'west',
     parentGroup: ewScene,
   });
+
+  // Issues #5, #6 & #7: Three Aged-Brass & Parchment-Shade Wall Lights on the Upper Landing (`upperLandingPendant`):
+  // - Issue #5 (`upperLanding.eastWallLight`): East Cross-Wall North of the sculpted chimney breast (`x_ew = -13.05m, y = 3.456m, z_ew = -1.866m`, facing West `-X_ew`, world `[-12.5, 3.456, -1.244]`)
+  // - Issue #6 (`upperLanding.southEastWallLight`): South Wall East Pier (`x_ew = -13.878m, y = 3.456m, z_ew = 2.22m`, facing North `-Z_ew`, world `[-13.862, 3.456, 2.696]`)
+  // - Issue #7 (`upperLanding.southWestWallLight`): South Wall West Pier (`x_ew = -16.77m, y = 3.456m, z_ew = 2.22m`, facing North `-Z_ew`, world `[-16.729, 3.456, 2.313]`)
+  {
+    const landingSconceBrassMat = new THREE.MeshStandardMaterial({
+      color: 0x765535,
+      roughness: 0.3,
+      metalness: 0.76,
+    });
+    const landingSconceTrimMat = new THREE.MeshStandardMaterial({
+      color: 0xd8ccb8,
+      roughness: 0.65,
+    });
+    const landingSconceShadeMat = new THREE.MeshStandardMaterial({
+      color: 0xf7ecd5,
+      emissive: 0xffb85c,
+      emissiveIntensity: 2.1,
+      roughness: 0.58,
+      side: THREE.DoubleSide,
+    });
+    const landingSconceBulbMat = new THREE.MeshStandardMaterial({
+      color: 0xfff6e0,
+      emissive: 0xffb85c,
+      emissiveIntensity: 2.8,
+      roughness: 0.15,
+    });
+    lightGroups.upperLandingPendant.emissives.push(landingSconceShadeMat, landingSconceBulbMat);
+
+    const buildUpperLandingWallSconce = (cfg: {
+      readonly name: string;
+      readonly x: number;
+      readonly y: number;
+      readonly z: number;
+      readonly facingZ?: 1 | -1;
+      readonly facingX?: 1 | -1;
+      readonly cutawayWall?: CutawayWallDescriptor;
+    }): void => {
+      const dirZ = cfg.facingX ? 1 : (cfg.facingZ ?? -1);
+      const sconceGroup = new THREE.Group();
+      sconceGroup.name = cfg.name;
+      sconceGroup.userData.zone = 'upperLanding';
+      sconceGroup.position.set(cfg.x, cfg.y, cfg.z);
+      if (cfg.facingX) {
+        sconceGroup.rotation.y = cfg.facingX * (Math.PI / 2);
+      }
+
+      const armY = 0.08;
+      const dropZ = dirZ * 0.145;
+
+      const backplate = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.052, 0.056, 0.014, 20),
+        landingSconceBrassMat
+      );
+      backplate.name = `${cfg.name}.backplate`;
+      backplate.rotation.x = Math.PI / 2;
+      backplate.position.set(0, armY, dirZ * 0.007);
+      backplate.castShadow = true;
+      sconceGroup.add(backplate);
+
+      const roseBoss = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.022, 0.032, 0.018, 16),
+        landingSconceBrassMat
+      );
+      roseBoss.rotation.x = Math.PI / 2;
+      roseBoss.position.set(0, armY, dirZ * 0.02);
+      sconceGroup.add(roseBoss);
+
+      const armHoriz = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0075, 0.0075, Math.abs(dropZ) - 0.015, 12),
+        landingSconceBrassMat
+      );
+      armHoriz.name = `${cfg.name}.arm`;
+      armHoriz.rotation.x = Math.PI / 2;
+      armHoriz.position.set(0, armY, (dropZ + dirZ * 0.015) * 0.5);
+      armHoriz.castShadow = true;
+      sconceGroup.add(armHoriz);
+
+      const knuckleJoint = new THREE.Mesh(
+        new THREE.SphereGeometry(0.012, 12, 10),
+        landingSconceBrassMat
+      );
+      knuckleJoint.position.set(0, armY, dropZ);
+      sconceGroup.add(knuckleJoint);
+
+      const upperCollar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.014, 0.018, 0.026, 14),
+        landingSconceBrassMat
+      );
+      upperCollar.position.set(0, armY - 0.02, dropZ);
+      sconceGroup.add(upperCollar);
+
+      const lampHolderCup = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.024, 0.024, 0.032, 16),
+        landingSconceBrassMat
+      );
+      lampHolderCup.name = `${cfg.name}.lampHolder`;
+      lampHolderCup.position.set(0, armY - 0.046, dropZ);
+      lampHolderCup.castShadow = true;
+      sconceGroup.add(lampHolderCup);
+
+      const shadeH = 0.165;
+      const shadeTopR = 0.056;
+      const shadeBotR = 0.076;
+      const shadeCenterY = armY - 0.062 - shadeH * 0.5;
+
+      const sconceShade = new THREE.Mesh(
+        new THREE.CylinderGeometry(shadeTopR, shadeBotR, shadeH, 24, 1, true),
+        landingSconceShadeMat
+      );
+      sconceShade.name = `${cfg.name}.shade`;
+      sconceShade.position.set(0, shadeCenterY, dropZ);
+      sconceShade.castShadow = true;
+      sconceGroup.add(sconceShade);
+
+      const topBindingRing = new THREE.Mesh(
+        new THREE.TorusGeometry(shadeTopR, 0.003, 8, 24),
+        landingSconceTrimMat
+      );
+      topBindingRing.rotation.x = Math.PI / 2;
+      topBindingRing.position.set(0, shadeCenterY + shadeH * 0.5, dropZ);
+      sconceGroup.add(topBindingRing);
+
+      const botBindingRing = new THREE.Mesh(
+        new THREE.TorusGeometry(shadeBotR, 0.003, 8, 24),
+        landingSconceTrimMat
+      );
+      botBindingRing.rotation.x = Math.PI / 2;
+      botBindingRing.position.set(0, shadeCenterY - shadeH * 0.5, dropZ);
+      sconceGroup.add(botBindingRing);
+
+      const sconceBulb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.024, 12, 12),
+        landingSconceBulbMat
+      );
+      sconceBulb.name = `${cfg.name}.bulb`;
+      sconceBulb.position.set(0, shadeCenterY + 0.015, dropZ);
+      sconceGroup.add(sconceBulb);
+
+      if (cfg.cutawayWall) {
+        tagUpperCutawayWall(sconceGroup, cfg.cutawayWall);
+      }
+
+      ewScene.add(sconceGroup);
+      interactions.registerLightFixture(sconceGroup, 'upperLandingPendant');
+    };
+
+    buildUpperLandingWallSconce({
+      name: 'upperLanding.eastWallLight',
+      x: -13.05,
+      y: 3.456,
+      z: -1.866,
+      facingX: -1,
+    });
+    buildUpperLandingWallSconce({
+      name: 'upperLanding.southEastWallLight',
+      x: -13.878,
+      y: 3.456,
+      z: 2.22,
+      facingZ: -1,
+      cutawayWall: {
+        axis: 'z',
+        coord: 2.45,
+        minSpan: -14.77,
+        maxSpan: -12.93,
+        floor: 'first',
+      },
+    });
+    buildUpperLandingWallSconce({
+      name: 'upperLanding.southWestWallLight',
+      x: -16.77,
+      y: 3.456,
+      z: 2.22,
+      facingZ: -1,
+      cutawayWall: {
+        axis: 'z',
+        coord: 2.45,
+        minSpan: -17.8,
+        maxSpan: -15.93,
+        floor: 'first',
+      },
+    });
+  }
 
   // 4. Bedroom 2 (Circuit: bedroom2Pendant, Switch PA: 1.2.13)
   buildRoomCeilingPendant(ctx, {

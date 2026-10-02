@@ -1881,11 +1881,11 @@ export function buildBootLobby(
     metalness: 0.01,
   });
   const bootLobbyCeilingBacking = new THREE.Mesh(
-    new THREE.BoxGeometry(3.54, 0.04, 5.18),
+    new THREE.BoxGeometry(3.54, 0.032, 5.18),
     bootLobbyCeilingWhiteMat
   );
   bootLobbyCeilingBacking.name = 'bootLobby.ceilingBacking';
-  bootLobbyCeilingBacking.position.set(-11.31, wallH - 0.005, -0.075);
+  bootLobbyCeilingBacking.position.set(-11.31, wallH, -0.075);
   bootLobbyCeilingBacking.receiveShadow = true;
   groundFloorCeilingGroup.add(bootLobbyCeilingBacking);
 
