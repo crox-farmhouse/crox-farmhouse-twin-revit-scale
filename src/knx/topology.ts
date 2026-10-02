@@ -170,12 +170,12 @@ export const ROOM_ZONES: Readonly<Partial<Record<RoomZoneId, RoomZoneDefinition>
     knxAreaLine: '1.1',
     isInterior: true,
     bounds: {
-      minX: -9.6,
-      maxX: -4.6,
+      minX: -9.85,
+      maxX: -4.4,
       minY: -0.95,
       maxY: 2.26,
       minZ: -2.06,
-      maxZ: 2.54,
+      maxZ: 4.15,
     },
   },
   bootLobby: {
@@ -187,12 +187,12 @@ export const ROOM_ZONES: Readonly<Partial<Record<RoomZoneId, RoomZoneDefinition>
     knxAreaLine: '1.1',
     isInterior: true,
     bounds: {
-      minX: -12.85,
-      maxX: -9.75,
+      minX: -13.05,
+      maxX: -9.5,
       minY: -0.95,
       maxY: 2.26,
       minZ: -2.06,
-      maxZ: 2.54,
+      maxZ: 3.55,
     },
   },
   hall: {
@@ -204,12 +204,12 @@ export const ROOM_ZONES: Readonly<Partial<Record<RoomZoneId, RoomZoneDefinition>
     knxAreaLine: '1.1',
     isInterior: true,
     bounds: {
-      minX: -17.1,
-      maxX: -13.0,
+      minX: -17.85,
+      maxX: -12.8,
       minY: -0.35,
       maxY: 2.26,
       minZ: -2.06,
-      maxZ: 2.94,
+      maxZ: 3.25,
     },
   },
   livingRoom: {

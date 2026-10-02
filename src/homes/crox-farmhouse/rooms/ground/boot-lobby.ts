@@ -1881,35 +1881,35 @@ export function buildBootLobby(
     metalness: 0.01,
   });
   const bootLobbyCeilingBacking = new THREE.Mesh(
-    new THREE.BoxGeometry(3.54, 0.02, 5.18),
+    new THREE.BoxGeometry(3.54, 0.04, 5.18),
     bootLobbyCeilingWhiteMat
   );
   bootLobbyCeilingBacking.name = 'bootLobby.ceilingBacking';
-  bootLobbyCeilingBacking.position.set(-11.31, wallH + 0.005, -0.075);
+  bootLobbyCeilingBacking.position.set(-11.31, wallH - 0.005, -0.075);
   bootLobbyCeilingBacking.receiveShadow = true;
   groundFloorCeilingGroup.add(bootLobbyCeilingBacking);
 
   // Exposed Natural Oak North-South Ceiling Joists in the Boot Lobby & WC:
-  // Spans the shorter 2.50m North-South distance between the Z = -0.15m load-bearing partition wall and
-  // the Z = +2.40m South exterior brick wall, matching the North-South joist direction of the Hall and Dining Room!
+  // Spans the shorter 2.50m North-South distance between the Z = -0.175m load-bearing partition wall and
+  // the Z = +2.40m South exterior brick wall, embedding cleanly into the ceiling backing and both walls (Issue #1)!
   for (let bx = -12.585; bx <= -10.005; bx += 0.43) {
     const bootJoist = new THREE.Mesh(
-      new THREE.BoxGeometry(0.085, 0.1, 2.52),
+      new THREE.BoxGeometry(0.085, 0.11, 2.58),
       oakMat
     );
     bootJoist.name = 'bootLobby.ceilingJoist';
-    bootJoist.position.set(bx, wallH - 0.07, 1.16);
+    bootJoist.position.set(bx, wallH - 0.065, 1.15);
     bootJoist.castShadow = true;
     groundFloorCeilingGroup.add(bootJoist);
 
-    // Matching North-bay ceiling joists in the Downstairs WC (X = -11.65m..-9.80m, Z = -2.50m..-0.15m)
+    // Matching North-bay ceiling joists in the Downstairs WC & Wine Cellar (X = -11.65m..-9.80m, Z = -2.50m..-0.15m)
     if (bx >= -11.55) {
       const wcJoist = new THREE.Mesh(
-        new THREE.BoxGeometry(0.085, 0.1, 2.3),
+        new THREE.BoxGeometry(0.085, 0.11, 2.36),
         oakMat
       );
       wcJoist.name = 'wc.ceilingJoist';
-      wcJoist.position.set(bx, wallH - 0.07, -1.35);
+      wcJoist.position.set(bx, wallH - 0.065, -1.35);
       wcJoist.castShadow = true;
       groundFloorCeilingGroup.add(wcJoist);
     }

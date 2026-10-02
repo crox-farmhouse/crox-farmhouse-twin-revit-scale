@@ -294,21 +294,19 @@ export function buildGroundFloorPendantsAndSwitches(
       cutawayMaxX: -9.56,
     });
 
-    // Issue #3: Boot Lobby North Pier Wall Light at [-11.275, 1.45, -0.1] (backplate at Y = 1.53m, matching bootLobby.southWallLight)
+    // Issue #2: Moved Boot Lobby Wall Light from the North door pier to the East cross-wall at [-9.662, 1.242, 2.056]
+    // (local x = -9.8, y = 1.242, z = 1.028, facing West into the Boot Lobby out of the way of the doors)
     buildNorthFacingWallSconce({
       name: 'bootLobby.northWallLight',
       zone: 'bootLobby',
       circuitId: 'bootLobbyPendant',
-      x: -11.275,
-      y: 1.45,
-      z: -0.1,
-      facingZ: 1,
+      x: -9.8,
+      y: 1.242,
+      z: 1.028,
+      facingX: -1,
       spawnPointLight: false,
       lightIntensity: 6.5,
       lightDistance: 4.0,
-      cutawayCoord: -0.175,
-      cutawayMinX: -12.81,
-      cutawayMaxX: -9.56,
     });
 
     // Issue #13: Entrance Hall South Wall Light at [-15.941, 0.962, 2.4] (mounted at sconce height Y = 1.12m so shade sits at Y ≈ 0.962m!)

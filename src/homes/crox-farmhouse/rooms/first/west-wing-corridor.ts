@@ -400,9 +400,31 @@ export function buildWestWingCorridor(
     const archSpandrelGeo = new THREE.ExtrudeGeometry(archSpandrelShape, {
       depth: archWallD,
       bevelEnabled: false,
-      curveSegments: 32,
+      curveSegments: 64,
     });
     archSpandrelGeo.translate(archCenterX, 0, 4.1 - archWallD / 2);
+    // Issue #5: Compute smooth radial vertex normals along the curved arch intrados soffit
+    // while keeping flat normals on the North/South vertical spandrel faces and top/side edges.
+    {
+      const posAttr = archSpandrelGeo.getAttribute('position');
+      const normAttr = archSpandrelGeo.getAttribute('normal');
+      if (posAttr && normAttr) {
+        for (let i = 0; i < posAttr.count; i++) {
+          const nz = normAttr.getZ(i);
+          const wy = posAttr.getY(i);
+          if (Math.abs(nz) < 0.5 && wy < upperWallTopY - 0.002) {
+            const wx = posAttr.getX(i);
+            const dx = wx - archCenterX;
+            const dy = wy - archSpringY;
+            const r = Math.hypot(dx, dy);
+            if (r > 1e-4 && Math.abs(r - archRadius) < 0.015) {
+              normAttr.setXYZ(i, -dx / r, -dy / r, 0);
+            }
+          }
+        }
+        normAttr.needsUpdate = true;
+      }
+    }
     const archSpandrelMesh = new THREE.Mesh(archSpandrelGeo, warmRoomPlasterMat);
     archSpandrelMesh.name = 'showerRoom.showerArch';
     archSpandrelMesh.userData.isArchitecturalShell = true;

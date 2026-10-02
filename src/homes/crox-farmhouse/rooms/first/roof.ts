@@ -15,7 +15,7 @@ import type { createFirstFloorShellKit } from '../../structure/first-floor-shell
  */
 export function buildFirstFloorCeilingsAndRoof(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'exteriorBrickMat' | 'plasterMat' | 'stoneSillMat' | 'upperWallTopY'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'exteriorBrickMat' | 'stoneSillMat' | 'upperWallTopY'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'applyWorldSpaceBrickUVs'>,
   eastWingCtx: SceneBuilderContext = ctx
 ): void {
@@ -24,7 +24,6 @@ export function buildFirstFloorCeilingsAndRoof(
   const {
     applyWorldSpaceBrickUVs,
     exteriorBrickMat,
-    plasterMat,
     stoneSillMat,
     upperWallTopY,
   } = kit;
@@ -87,8 +86,12 @@ export function buildFirstFloorCeilingsAndRoof(
   // A. First Floor Ceiling Slabs:
   // Issue #5: Vaulted East Wing Ceiling (Upper Landing, Family Bathroom, Main Bedroom: X = -17.90m..-4.52m)
   // Roof starts to pitch inward above the windows (skeilings from Y = 3.86m at Z = -2.52m / +2.42m up to the raised 4.52m collar ceiling across Z = -1.15m..+1.05m)
-  const upperCeilingMat = plasterMat.clone();
-  upperCeilingMat.side = THREE.DoubleSide;
+  const upperCeilingMat = new THREE.MeshStandardMaterial({
+    color: 0xf7f5f0,
+    roughness: 0.88,
+    metalness: 0.01,
+    side: THREE.DoubleSide,
+  });
   // Helper to build an exact 4-corner sloped or horizontal vaulted ceiling quad slab (`0.03m` thick)
   const buildVaultedCeilingQuad = (
     name: string,

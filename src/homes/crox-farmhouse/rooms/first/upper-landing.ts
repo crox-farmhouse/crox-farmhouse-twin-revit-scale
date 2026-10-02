@@ -15,7 +15,7 @@ export function buildUpperLanding(
   kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'skirtingMat' | 'upperWallTopY' | 'wallCapMat' | 'warmRoomPlasterMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addUpperBrickWallAlongXWithWindow' | 'addUpperInteriorWall' | 'applyWorldSpaceBrickUVs' | 'doorH' | 'tagUpperCutawayWall'>
 ): void {
-  const { ceilingMeshGroup, firstFloorMeshGroup: scene, interactions } = ctx;
+  const { firstFloorMeshGroup: scene, interactions } = ctx;
   const {
     addUpperBrickWallAlongXWithWindow,
     antiqueOakSkirtingMat,
@@ -765,40 +765,6 @@ export function buildUpperLanding(
     );
   }
 
-  // Issue #5 & Issue #1: Exposed Natural Seasoned Oak Overhead Ceiling Spine Beams & Collar Joists
-  // along the raised 4.52m collar ceiling fold lines (`Z = -1.15m` North and `Z = +1.05m` South, bearing into the West & East Cross-Walls!)
-  const landingDarkSpineBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(4.64, 0.18, 0.18),
-    darkTimberBeamMat
-  );
-  landingDarkSpineBeam.name = 'upperLanding.darkSpineBeam';
-  landingDarkSpineBeam.position.set(-15.33, collarCeilingY - 0.09, -1.15);
-  landingDarkSpineBeam.castShadow = true;
-  landingDarkSpineBeam.receiveShadow = true;
-  ceilingMeshGroup.add(landingDarkSpineBeam);
-
-  const landingSouthCollarBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(4.79, 0.18, 0.18),
-    darkTimberBeamMat
-  );
-  landingSouthCollarBeam.name = 'upperLanding.southCollarBeam';
-  landingSouthCollarBeam.position.set(-15.405, collarCeilingY - 0.09, 1.05);
-  landingSouthCollarBeam.castShadow = true;
-  landingSouthCollarBeam.receiveShadow = true;
-  ceilingMeshGroup.add(landingSouthCollarBeam);
-
-  // Exposed Natural Oak North-South Collar Ceiling Joists across the Upper Landing (`Z = -1.15m..+1.05m`, seated into both purlins!)
-  for (let jx = -17.35; jx <= -13.35; jx += 0.44) {
-    const collarJoist = new THREE.Mesh(
-      new THREE.BoxGeometry(0.095, 0.11, 2.2),
-      darkTimberBeamMat
-    );
-    collarJoist.name = 'upperLanding.collarJoist';
-    collarJoist.position.set(jx, collarCeilingY - 0.055, -0.05);
-    collarJoist.castShadow = true;
-    collarJoist.receiveShadow = true;
-    ceilingMeshGroup.add(collarJoist);
-  }
 
   // Non-Square West Load-Bearing Cross-Wall between Main Stair Landing and Bedroom 2 / West Wing Hallway
   // (0.24m thick, [-17.55, -2.50] -> [-17.92, +2.68] — aligned with Ground Floor Hall/Front Room cross-wall,
@@ -900,42 +866,16 @@ export function buildUpperLanding(
     scene.add(westUpperGable);
   }
 
-  // Exposed Natural Seasoned Oak Timber Wall Framing on the West Landing Wall (media_1790502987279.webp & Issue #1):
-  // - Full-height vertical oak jamb post (`u = 3.59m`, rising from the landing floor `Y = 2.16m` up to the South Collar Purlin `Y = 4.52m`),
-  //   supporting the South end of `westWallTimberHeadBeam` AND the West bearing of `landingSouthCollarBeam`!
-  // - Horizontal natural oak timber beam with stepped moulding across the middle of the wall (`Y = 3.24m`), tenoned between the North wall (`u = 0`) and the vertical jamb post (`u = 3.59m`)
-  // - Diagonal natural oak timber brace rising from the horizontal beam up to the North Spine Purlin (`u = 1.35m, Y = 4.44m`)!
-  const westWallTimberPost = new THREE.Mesh(
-    new THREE.BoxGeometry(0.13, collarCeilingY - floorTopY, 0.055),
-    darkTimberBeamMat
-  );
-  westWallTimberPost.name = 'upperLanding.westWallTimberPost';
-  westWallTimberPost.position.copy(
-    upperLandingCrossWallFrame.toWorld(
-      3.59,
-      (floorTopY + collarCeilingY) * 0.5,
-      -0.125
-    )
-  );
-  westWallTimberPost.rotation.y = upperLandingCrossWallFrame.rotationY;
-  westWallTimberPost.castShadow = true;
-  westWallTimberPost.receiveShadow = true;
-  tagUpperCutawayWall(westWallTimberPost, {
-    axis: 'x',
-    coord: -17.72,
-    minSpan: -2.5,
-    maxSpan: 2.5,
-    floor: 'first',
-  });
-  scene.add(westWallTimberPost);
-
+  // Exposed Natural Seasoned Oak Timber Wall Framing on the West Landing Wall (media_1790502987279.webp):
+  // - Horizontal natural oak timber beam with stepped moulding across the middle of the wall (`Y = 3.24m`)
+  // - Diagonal natural oak timber brace rising from the horizontal beam up to the ceiling (`u = 1.35m, Y = 4.44m`)
   const westWallTimberHeadBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(3.59, 0.14, 0.055),
+    new THREE.BoxGeometry(3.69, 0.14, 0.055),
     darkTimberBeamMat
   );
   westWallTimberHeadBeam.name = 'upperLanding.westWallTimberBeam';
   westWallTimberHeadBeam.position.copy(
-    upperLandingCrossWallFrame.toWorld(1.795, floorTopY + 1.08, -0.125)
+    upperLandingCrossWallFrame.toWorld(1.845, floorTopY + 1.08, -0.125)
   );
   westWallTimberHeadBeam.rotation.y = upperLandingCrossWallFrame.rotationY;
   westWallTimberHeadBeam.castShadow = true;
@@ -950,12 +890,12 @@ export function buildUpperLanding(
   scene.add(westWallTimberHeadBeam);
 
   const westWallTimberHeadMoulding = new THREE.Mesh(
-    new THREE.BoxGeometry(3.6, 0.036, 0.068),
+    new THREE.BoxGeometry(3.7, 0.036, 0.068),
     antiqueOakSkirtingMat
   );
   westWallTimberHeadMoulding.name = 'upperLanding.westWallTimberBeam.moulding';
   westWallTimberHeadMoulding.position.copy(
-    upperLandingCrossWallFrame.toWorld(1.795, floorTopY + 1.08, -0.13)
+    upperLandingCrossWallFrame.toWorld(1.845, floorTopY + 1.08, -0.13)
   );
   westWallTimberHeadMoulding.rotation.y = upperLandingCrossWallFrame.rotationY;
   westWallTimberHeadMoulding.castShadow = true;
