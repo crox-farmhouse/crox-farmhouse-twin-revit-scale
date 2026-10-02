@@ -25,7 +25,6 @@ export function buildBedroom4(
     oakFloorMat,
     tagUpperCutawayWall,
     upperWallTopY,
-    wallCapMat,
     wardrobeMat,
     warmRoomPlasterMat,
   } = kit;
@@ -60,8 +59,8 @@ export function buildBedroom4(
     skipSkirting: true,
   });
 
-  // Issue #6 & #7: Single one-piece full-height vaulted interior plaster wall (`Y = 2.08m..4.52m`, `Z = 11.476m..11.50m`)
-  // + upper gable backing (`Y = 4.16m..4.545m`, `Z = 11.49m..11.73m`, `collarEastX = -18.62m`) with 3-segment cutaway cap!
+  // Issue #6, #7 & #8: Single one-piece full-height vaulted interior plaster wall (`Y = 2.08m..4.52m`, `Z = 11.476m..11.50m`)
+  // + upper gable backing (`Y = 4.16m..4.52m`, `Z = 11.49m..11.73m`, `collarEastX = -18.62m`) flush with the 4.52m collar ceiling!
   {
     const collarEastX = -18.62;
     const southGableDescriptor = {
@@ -76,10 +75,10 @@ export function buildBedroom4(
     const southInteriorPlasterShape = new THREE.Shape();
     southInteriorPlasterShape.moveTo(-22.25, floorTopY);
     southInteriorPlasterShape.lineTo(-17.22, floorTopY);
-    southInteriorPlasterShape.lineTo(-17.22, upperWallTopY + 0.025);
-    southInteriorPlasterShape.lineTo(collarEastX, collarCeilingY + 0.025);
-    southInteriorPlasterShape.lineTo(-20.85, collarCeilingY + 0.025);
-    southInteriorPlasterShape.lineTo(-22.25, upperWallTopY + 0.025);
+    southInteriorPlasterShape.lineTo(-17.22, upperWallTopY);
+    southInteriorPlasterShape.lineTo(collarEastX, collarCeilingY);
+    southInteriorPlasterShape.lineTo(-20.85, collarCeilingY);
+    southInteriorPlasterShape.lineTo(-22.25, upperWallTopY);
     southInteriorPlasterShape.closePath();
     const southInteriorPlasterGeo = new THREE.ExtrudeGeometry(southInteriorPlasterShape, {
       depth: 0.024,
@@ -94,14 +93,12 @@ export function buildBedroom4(
     tagUpperCutawayWall(southUpperGable, southGableDescriptor);
     scene.add(southUpperGable);
 
-    // 2. Upper gable structural backing (`Y = 4.16m..4.545m`, `Z = 11.49m..11.73m`)
+    // 2. Upper gable structural backing (`Y = 4.16m..4.52m`, `Z = 11.49m..11.73m`)
     const southGableBackingShape = new THREE.Shape();
     southGableBackingShape.moveTo(-22.25, upperWallTopY);
     southGableBackingShape.lineTo(-17.22, upperWallTopY);
-    southGableBackingShape.lineTo(-17.22, upperWallTopY + 0.025);
-    southGableBackingShape.lineTo(collarEastX, collarCeilingY + 0.025);
-    southGableBackingShape.lineTo(-20.85, collarCeilingY + 0.025);
-    southGableBackingShape.lineTo(-22.25, upperWallTopY + 0.025);
+    southGableBackingShape.lineTo(collarEastX, collarCeilingY);
+    southGableBackingShape.lineTo(-20.85, collarCeilingY);
     southGableBackingShape.closePath();
     const southGableBackingGeo = new THREE.ExtrudeGeometry(southGableBackingShape, {
       depth: 0.24,
@@ -115,34 +112,16 @@ export function buildBedroom4(
     southGableBacking.receiveShadow = true;
     tagUpperCutawayWall(southGableBacking, southGableDescriptor);
     scene.add(southGableBacking);
-
-    for (const [x0, y0, x1, y1] of [
-      [-22.25, upperWallTopY, -20.85, collarCeilingY],
-      [-20.85, collarCeilingY, collarEastX, collarCeilingY],
-      [collarEastX, collarCeilingY, -17.22, upperWallTopY],
-    ] as const) {
-      const segLen = Math.hypot(x1 - x0, y1 - y0);
-      const segAngle = Math.atan2(y1 - y0, x1 - x0);
-      const capMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(segLen + 0.01, 0.025, 0.244),
-        wallCapMat
-      );
-      capMesh.userData.isArchitecturalShell = true;
-      capMesh.position.set((x0 + x1) / 2, (y0 + y1) / 2 + 0.012, 11.61);
-      capMesh.rotation.z = segAngle;
-      tagUpperCutawayWall(capMesh, southGableDescriptor);
-      scene.add(capMesh);
-    }
   }
 
-  // Issue #2: Bedroom 4 South Chimney Breast rising cleanly to the 4.52m collar ceiling with compact 1800s black cast-iron fireplace & small black hearth
+  // Issue #2 & #8: Bedroom 4 South Chimney Breast rising cleanly to the 4.52m collar ceiling (`Z = 11.09m..11.476m` flush against `southWallUpperGable` with zero overlap)
   addUpperBedroomChimneyBreastWithFireplace(scene, {
     namePrefix: 'bedroom4.southChimneyBreast',
     zone: 'bedroom4',
     x: -19.85,
-    z: 11.29,
+    z: 11.283,
     width: 1.2,
-    depth: 0.4,
+    depth: 0.386,
     floorY: floorTopY,
     topY: collarCeilingY,
   });
@@ -153,17 +132,16 @@ export function buildBedroom4(
   });
 
   // Issue #7 & #8: Full-Height Vaulted 3-Door Shaker Built-In Wardrobe along the South Gable Wall East of the Chimney Breast
-  // (`X = -19.25m..-17.39m, Z = +10.85m..+11.49m`), rising all the way to Bedroom 4's vaulted ceiling (`Y = 4.52m` collar + East skeiling).
-  // `collarEastX = -18.62m` aligns with the exact dividing stile between `door_1` and `door_2`, so `door_1` is 100% flat-topped
-  // and `door_2`/`door_3` are 100% sloped, with a single one-piece ExtrudeGeometry cornice that never intersects `door_1.rail`!
+  // (`X = -19.25m..-17.34m, Z = +10.85m..+11.476m`), extending all the way into the sheared East Courtyard Wall (`X = -17.348m..-17.376m`) so zero gap exists at the wardrobe edge!
   {
     const cupGroup = new THREE.Group();
     cupGroup.name = 'bedroom4.southEastCupboards';
     const cupMinX = -19.25;
-    const cupMaxX = -17.39;
+    const cupMaxX = -17.34; // Extends 8mm past getEastInnerX(10.85) = -17.3478m into the sheared East wall so zero gap is visible!
+    const eastWallFrontX = -17.348; // Exact interior face of the sheared East Courtyard Wall at Z = 10.85m
     const collarEastX = -18.62;
     const skeilingEastX = -17.22;
-    const cupD = 0.62; // Z = +10.86m .. +11.48m
+    const cupD = 0.626; // Z = +10.85m (flush behind skirting) .. +11.476m (flush against South wall)
 
     const getVaultCeilingYAtX = (wx: number): number => {
       if (wx <= collarEastX) return collarCeilingY;
@@ -171,33 +149,35 @@ export function buildBedroom4(
       return collarCeilingY - t * (collarCeilingY - upperWallTopY);
     };
 
-    // Full-height vaulted wardrobe carcass (`Y = floorTopY..getVaultCeilingYAtX(x)`)
+    // Full-height vaulted wardrobe carcass (`X = -19.25m..-17.34m`, stepping down to `upperWallTopY` inside the East brick wall for `x > -17.348m`)
     const carcassShape = new THREE.Shape();
-    carcassShape.moveTo(cupMinX + 0.01, floorTopY);
-    carcassShape.lineTo(cupMaxX - 0.01, floorTopY);
-    carcassShape.lineTo(cupMaxX - 0.01, getVaultCeilingYAtX(cupMaxX - 0.01));
+    carcassShape.moveTo(cupMinX, floorTopY);
+    carcassShape.lineTo(cupMaxX, floorTopY);
+    carcassShape.lineTo(cupMaxX, upperWallTopY);
+    carcassShape.lineTo(eastWallFrontX, upperWallTopY);
+    carcassShape.lineTo(eastWallFrontX, getVaultCeilingYAtX(eastWallFrontX));
     carcassShape.lineTo(collarEastX, collarCeilingY);
-    carcassShape.lineTo(cupMinX + 0.01, collarCeilingY);
+    carcassShape.lineTo(cupMinX, collarCeilingY);
     carcassShape.closePath();
     const carcassGeo = new THREE.ExtrudeGeometry(carcassShape, {
       depth: cupD,
       bevelEnabled: false,
     });
-    carcassGeo.translate(0, 0, 10.86);
+    carcassGeo.translate(0, 0, 10.85);
     const carcass = new THREE.Mesh(carcassGeo, wardrobeMat);
     carcass.name = 'bedroom4.southEastCupboards.carcass';
     carcass.castShadow = true;
     carcass.receiveShadow = true;
     cupGroup.add(carcass);
 
-    // Single one-piece moulded Shaker top crown cornice (`Z = 10.825m..10.865m`) following the horizontal collar (`-19.25m..-18.62m`) and East skeiling (`-18.62m..-17.39m`)
+    // Single one-piece moulded Shaker top crown cornice (`Z = 10.825m..10.865m`) from the chimney breast (`X = -19.25m`) to the East wall (`X = -17.348m`)
     const corniceH = 0.044;
-    const eastTopY = getVaultCeilingYAtX(cupMaxX);
+    const eastTopY = getVaultCeilingYAtX(eastWallFrontX);
     const corniceShape = new THREE.Shape();
     corniceShape.moveTo(cupMinX, collarCeilingY - corniceH);
     corniceShape.lineTo(collarEastX, collarCeilingY - corniceH);
-    corniceShape.lineTo(cupMaxX, eastTopY - corniceH);
-    corniceShape.lineTo(cupMaxX, eastTopY);
+    corniceShape.lineTo(eastWallFrontX, eastTopY - corniceH);
+    corniceShape.lineTo(eastWallFrontX, eastTopY);
     corniceShape.lineTo(collarEastX, collarCeilingY);
     corniceShape.lineTo(cupMinX, collarCeilingY);
     corniceShape.closePath();
@@ -212,9 +192,9 @@ export function buildBedroom4(
     corniceSeg.receiveShadow = true;
     cupGroup.add(corniceSeg);
 
-    // Three full-height vaulted Shaker wardrobe doors (`door_1`, `door_2`, `door_3`) rising cleanly 2mm below the one-piece cornice (Issue #7 & #8)
+    // Three full-height vaulted Shaker wardrobe doors (`door_1`, `door_2`, `door_3`) spanning `X = -19.21m..-17.39m`
     const numDoors = 3;
-    const totalDoorSpan = 1.78; // X = -19.21m .. -17.43m
+    const totalDoorSpan = 1.82; // X = -19.21m .. -17.39m (leaves a 4cm scribe stile against both the chimney breast and East wall)
     const bayW = totalDoorSpan / numDoors;
     const doorBaseY = floorTopY + 0.15;
     const corniceClearance = 0.046;
@@ -232,7 +212,7 @@ export function buildBedroom4(
       addShakerWardrobeDoor(cupGroup, {
         x: doorCenterX,
         y: doorBaseY + maxDoorH / 2,
-        z: 10.847,
+        z: 10.842,
         width: doorWidth,
         height: maxDoorH,
         heightLeft: hLeft,

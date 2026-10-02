@@ -1181,7 +1181,7 @@ export function createFirstFloorShellKit(
     }
   ): THREE.Group => {
     const { namePrefix, zone, x, z, width, depth, floorY, topY } = options;
-    const includeTopCap = options.includeTopCap ?? true;
+    const includeTopCap = options.includeTopCap ?? false;
 
     const rootGroup = new THREE.Group();
     rootGroup.name = namePrefix;

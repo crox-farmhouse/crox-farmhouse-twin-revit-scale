@@ -283,20 +283,24 @@ export function buildUpperLanding(
     scene.add(southTopFrieze);
   }
 
-  // Interior warm plaster cladding on the South (`z_ew = +2.68m`) corridor-facing segment (`x_ew = -18.04m..-16.956m`)
-  // where the Upper Landing South wall separates the Landing (`Y = 2.16m`) from the West Wing Corridor (`Y = 2.08m`).
+  // Interior warm plaster cladding on the South (`z_ew = +2.68m`) corridor-facing segment (`x_ew = -18.0409m..-16.956m`)
+  // Mitered at its West end (`[-18.0409, 2.688] -> [-17.7988, 2.668]`) so it meets `upperLanding.westWallUpperGable` cleanly with zero exposed edge (Issue #3)!
   {
-    const southCorridorClad = new THREE.Mesh(
-      new THREE.BoxGeometry(1.084, upperWallTopY - floorBaseY, 0.016),
-      warmRoomPlasterMat
-    );
+    const southCladShape = new THREE.Shape();
+    southCladShape.moveTo(-18.0409, -2.688);
+    southCladShape.lineTo(-16.956, -2.688);
+    southCladShape.lineTo(-16.956, -2.668);
+    southCladShape.lineTo(-17.7988, -2.668);
+    southCladShape.closePath();
+    const southCladGeo = new THREE.ExtrudeGeometry(southCladShape, {
+      depth: upperWallTopY - floorBaseY,
+      bevelEnabled: false,
+    });
+    southCladGeo.rotateX(-Math.PI / 2);
+    southCladGeo.translate(0, floorBaseY, 0);
+    const southCorridorClad = new THREE.Mesh(southCladGeo, warmRoomPlasterMat);
     southCorridorClad.name = 'upperLanding.southWallCorridorCladding';
     southCorridorClad.userData.isArchitecturalShell = true;
-    southCorridorClad.position.set(
-      (-18.04 + -16.956) / 2,
-      (floorBaseY + upperWallTopY) / 2,
-      2.688
-    );
     southCorridorClad.receiveShadow = true;
     tagUpperCutawayWall(southCorridorClad, {
       axis: 'z',
@@ -460,16 +464,23 @@ export function buildUpperLanding(
   // Issue #1 & Issue #2: Sculpted Organic White-Plastered East Chimney Breast on Main Stair Landing
   // Wide at the base on the left-hand (North, -Z) side (`Z = -1.34m..+0.46m` at the floor)
   // and sweeping smoothly inward in a continuous hand-plastered curve to the raised 4.52m ceiling (`Z = -0.48m..+0.34m`)!
+  // Uses analytical C1-continuous cross-section normals and an integrated rounded top cap so zero black shading or corner artifacts appear (Issue #1).
   {
-    const wallX = -13.04;
+    const wallX = -13.05; // Flush with the West face of the X = -12.93m (0.24m-thick) East Landing cross-wall
     const breastH = collarCeilingY - floorTopY;
-    const segY = 28;
-    const segProfile = 24;
+    const segY = 32;
+    const segNorth = 8;
+    const segNW = 10;
+    const segFront = 12;
+    const segSW = 10;
+    const segSouth = 8;
+    const segProfile = segNorth + segNW + segFront + segSW + segSouth; // 48
     const positions: number[] = [];
+    const normals: number[] = [];
     const uvs: number[] = [];
     const indices: number[] = [];
 
-    const sampleRingPoint = (t: number, s: number): [number, number] => {
+    const sampleRingPoint = (t: number, ip: number): [number, number] => {
       // Smooth organic S-curve taper along height fraction t in [0, 1]
       const u = Math.pow(t, 1.12);
       const curve = u * u * (3 - 2 * u);
@@ -477,39 +488,41 @@ export function buildUpperLanding(
       const zNorth = THREE.MathUtils.lerp(-1.34, -0.48, curve);
       // Right-hand (South, +Z) side tapers gently from +0.46m at the base to +0.34m at the ceiling
       const zSouth = THREE.MathUtils.lerp(0.46, 0.34, curve);
-      // Westward (-X) projection from wallX tapers from 0.52m at the base to 0.38m at the ceiling
+      // Westward (-X) projection from wallX tapers from 0.51m at the base to 0.37m at the ceiling
       const projW =
-        THREE.MathUtils.lerp(0.52, 0.38, curve) +
+        THREE.MathUtils.lerp(0.51, 0.37, curve) +
         0.01 * Math.sin(t * Math.PI);
-      const cornerR = 0.075;
+      const cornerR = 0.085;
 
-      // Cross-section parameter s in [0, 1] from North-East wall corner -> NW rounded corner -> West face -> SW rounded corner -> South-East wall corner
-      if (s <= 0.22) {
-        const k = s / 0.22;
+      if (ip <= segNorth) {
+        const k = ip / segNorth;
         const x = wallX - k * (projW - cornerR);
-        const z = zNorth;
-        return [x, z];
+        return [x, zNorth];
       }
-      if (s <= 0.34) {
-        const ang = ((s - 0.22) / 0.12) * (Math.PI * 0.5);
+      const ip1 = ip - segNorth;
+      if (ip1 <= segNW) {
+        const ang = (ip1 / segNW) * (Math.PI * 0.5);
         const cx = wallX - (projW - cornerR);
         const cz = zNorth + cornerR;
         return [cx - Math.sin(ang) * cornerR, cz - Math.cos(ang) * cornerR];
       }
-      if (s <= 0.66) {
-        const k = (s - 0.34) / 0.32;
+      const ip2 = ip1 - segNW;
+      if (ip2 <= segFront) {
+        const k = ip2 / segFront;
         const z = THREE.MathUtils.lerp(zNorth + cornerR, zSouth - cornerR, k);
-        // Subtle organic pillowing crown across the front face
-        const pillow = Math.sin(k * Math.PI) * 0.014;
+        // C1-smooth zero-slope cosine pillowing across the front face so corner transitions have zero normal kink
+        const pillow = (1 - Math.cos(k * Math.PI * 2)) * 0.006;
         return [wallX - projW - pillow, z];
       }
-      if (s <= 0.78) {
-        const ang = ((s - 0.66) / 0.12) * (Math.PI * 0.5);
+      const ip3 = ip2 - segFront;
+      if (ip3 <= segSW) {
+        const ang = (ip3 / segSW) * (Math.PI * 0.5);
         const cx = wallX - (projW - cornerR);
         const cz = zSouth - cornerR;
         return [cx - Math.cos(ang) * cornerR, cz + Math.sin(ang) * cornerR];
       }
-      const k = (s - 0.78) / 0.22;
+      const ip4 = ip3 - segSW;
+      const k = ip4 / segSouth;
       const x = THREE.MathUtils.lerp(wallX - (projW - cornerR), wallX, k);
       return [x, zSouth];
     };
@@ -518,16 +531,25 @@ export function buildUpperLanding(
     for (let iy = 0; iy <= segY; iy++) {
       const t = iy / segY;
       const y = floorTopY + t * breastH;
+      const ringPts: Array<[number, number]> = [];
       for (let ip = 0; ip <= segProfile; ip++) {
-        const s = ip / segProfile;
-        const [px, pz] = sampleRingPoint(t, s);
+        ringPts.push(sampleRingPoint(t, ip));
+      }
+      for (let ip = 0; ip <= segProfile; ip++) {
+        const [px, pz] = ringPts[ip];
         positions.push(px, y, pz);
-        uvs.push(s * 2.2, t * 1.6);
+        uvs.push((ip / segProfile) * 2.2, t * 1.6);
+
+        const prev = ringPts[Math.max(0, ip - 1)];
+        const next = ringPts[Math.min(segProfile, ip + 1)];
+        const tx = next[0] - prev[0];
+        const tz = next[1] - prev[1];
+        const len = Math.hypot(tx, tz) || 1;
+        // Outward horizontal normal for path running North -> West -> South is (-tz, 0, tx) / len
+        normals.push(-tz / len, 0, tx / len);
       }
     }
 
-    // Issue #1: Outward-facing counter-clockwise triangle winding (a, b, c, b, d, c) so vertex normals point
-    // West (-X), North (-Z), and South (+Z) into the Upper Landing instead of being backface-culled!
     for (let iy = 0; iy < segY; iy++) {
       for (let ip = 0; ip < segProfile; ip++) {
         const a = iy * stride + ip;
@@ -538,13 +560,22 @@ export function buildUpperLanding(
       }
     }
 
-    // Close the back face along wallX so the chimney breast is a manifold solid
-    for (let iy = 0; iy < segY; iy++) {
-      const nBot = iy * stride;
-      const sBot = iy * stride + segProfile;
-      const nTop = (iy + 1) * stride;
-      const sTop = (iy + 1) * stride + segProfile;
-      indices.push(sBot, nBot, sTop, nBot, nTop, sTop);
+    // Integrated rounded top cap at y = collarCeilingY matching the exact curved top profile (with dedicated +Y normals)
+    const capCenterIdx = positions.length / 3;
+    const topCenterZ = (-0.48 + 0.34) / 2;
+    positions.push(wallX, collarCeilingY, topCenterZ);
+    normals.push(0, 1, 0);
+    uvs.push(0.5, 0.5);
+    for (let ip = 0; ip <= segProfile; ip++) {
+      const [px, pz] = sampleRingPoint(1, ip);
+      positions.push(px, collarCeilingY, pz);
+      normals.push(0, 1, 0);
+      uvs.push(ip / segProfile, 1);
+    }
+    for (let ip = 0; ip < segProfile; ip++) {
+      const r0 = capCenterIdx + 1 + ip;
+      const r1 = r0 + 1;
+      indices.push(capCenterIdx, r0, r1);
     }
 
     const chimneyGeo = new THREE.BufferGeometry();
@@ -552,9 +583,12 @@ export function buildUpperLanding(
       'position',
       new THREE.Float32BufferAttribute(positions, 3)
     );
+    chimneyGeo.setAttribute(
+      'normal',
+      new THREE.Float32BufferAttribute(normals, 3)
+    );
     chimneyGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     chimneyGeo.setIndex(indices);
-    chimneyGeo.computeVertexNormals();
 
     const chimneyMesh = new THREE.Mesh(chimneyGeo, warmRoomPlasterMat);
     chimneyMesh.name = 'upperLanding.eastChimneyBreast';
@@ -562,17 +596,6 @@ export function buildUpperLanding(
     chimneyMesh.castShadow = true;
     chimneyMesh.receiveShadow = true;
     scene.add(chimneyMesh);
-
-    // Cutaway top cap matching the ceiling footprint of the organic chimney breast
-    const topCapDepthZ = 0.34 - -0.48; // 0.82m
-    const topCapCenterZ = (-0.48 + 0.34) / 2; // -0.07m
-    const topCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.38, 0.025, topCapDepthZ),
-      wallCapMat
-    );
-    topCap.userData.isArchitecturalShell = true;
-    topCap.position.set(wallX - 0.19, collarCeilingY - 0.012, topCapCenterZ);
-    scene.add(topCap);
 
     // Curved 2-tier Antique Oak Skirting Board lofted directly along the organic base curve of the East Chimney Breast
     const buildChimneySkirtBand = (
@@ -586,7 +609,7 @@ export function buildUpperLanding(
       const bandIdx: number[] = [];
       const basePts: Array<[number, number]> = [];
       for (let ip = 0; ip <= segProfile; ip++) {
-        basePts.push(sampleRingPoint(0, ip / segProfile));
+        basePts.push(sampleRingPoint(0, ip));
       }
       const outPts: Array<[number, number]> = basePts.map(([px, pz], ip) => {
         const prev = basePts[Math.max(0, ip - 1)];
@@ -676,8 +699,7 @@ export function buildUpperLanding(
   // Non-Square West Load-Bearing Cross-Wall between Main Stair Landing and Bedroom 2 / West Wing Hallway
   // (0.24m thick, [-17.55, -2.50] -> [-17.92, +2.68] — aligned with Ground Floor Hall/Front Room cross-wall,
   // with the cased UP entrance opening `upperLandingToWestWingPortal` at the South end `uCenter = 4.18m, width = 0.86m`!)
-  // Note: for start=[-17.55, -2.5] -> end=[-17.92, 2.68], +normal (front) points WEST into Bedroom 2 / Hallway (Y = 2.08m),
-  // and -normal (back) points EAST into Upper Landing (Y = 2.16m)!
+  // Uses `skipWallBody: true` and `skipCap: true` so the entire vaulted wall from `Y = 2.06m` to `Y = 4.52m` is built as a single seamless one-piece mesh below (Issues #3 & #6)!
   const upperLandingCrossWallFrame = buildAngledWallSegment(scene, interactions, {
     start: [-17.55, -2.5],
     end: [-17.92, 2.68],
@@ -688,6 +710,8 @@ export function buildUpperLanding(
     wallMaterial: warmRoomPlasterMat,
     capMaterial: warmRoomPlasterMat,
     skirtingMaterial: antiqueOakSkirtingMat,
+    skipCap: true,
+    skipWallBody: true,
     addFrontSkirting: false, // Bedroom 2 & West Wing Hallway build continuous 45°-mitred skirtings on the West face
     addBackSkirting: true,
     backSkirtingExclusions: [
@@ -708,22 +732,53 @@ export function buildUpperLanding(
     ],
   });
 
-  // Issue #5, #9 & #10: Full-Span Upper Vaulted Trapezoidal Gable Extension on the West Landing Cross-Wall (Y = 4.14m..4.535m)
-  // Matches the exact North & South skeiling slopes (`Z = -2.54m..+2.44m` at `Y = 4.16m` tapering to `Z = -1.15m..+1.05m` at `Y = 4.52m`)
+  // Issues #3 & #6: Single One-Piece Full-Height Vaulted West Cross-Wall (`Y = floorBaseY..collarCeilingY`, `u = 0..5.2098m`)
+  // Eliminates the horizontal split/cap seam at `Y = 4.16m` (Issue #6) and miters the South end at `z_ew = 2.688m` (Issue #3)!
   {
-    const westGableShape = new THREE.Shape();
-    westGableShape.moveTo(0, upperWallTopY - 0.02);
-    westGableShape.lineTo(4.96, upperWallTopY - 0.02);
-    westGableShape.lineTo(4.96, upperWallTopY + 0.015);
-    westGableShape.lineTo(3.559, collarCeilingY + 0.015);
-    westGableShape.lineTo(1.353, collarCeilingY + 0.015);
-    westGableShape.lineTo(0, upperWallTopY + 0.015);
-    westGableShape.closePath();
-    const westGableGeo = new THREE.ExtrudeGeometry(westGableShape, {
+    const portalU0 = 4.18 - 0.86 / 2; // 3.75m
+    const portalU1 = 4.18 + 0.86 / 2; // 4.61m
+    const portalTopY = floorTopY + doorH;
+    const southMaxU = 5.2098;
+    const westWallShape = new THREE.Shape();
+    westWallShape.moveTo(0, floorBaseY);
+    westWallShape.lineTo(portalU0, floorBaseY);
+    westWallShape.lineTo(portalU0, portalTopY);
+    westWallShape.lineTo(portalU1, portalTopY);
+    westWallShape.lineTo(portalU1, floorBaseY);
+    westWallShape.lineTo(southMaxU, floorBaseY);
+    westWallShape.lineTo(southMaxU, upperWallTopY);
+    westWallShape.lineTo(4.96, upperWallTopY);
+    westWallShape.lineTo(3.559, collarCeilingY);
+    westWallShape.lineTo(1.353, collarCeilingY);
+    westWallShape.lineTo(0, upperWallTopY);
+    westWallShape.closePath();
+
+    const westGableGeo = new THREE.ExtrudeGeometry(westWallShape, {
       depth: 0.24,
       bevelEnabled: false,
     });
     westGableGeo.translate(0, 0, -0.12);
+
+    // Miter the South end (`u ≈ southMaxU`) along the `z_ew = 2.688m..2.668m` plane so the West face (`z = +0.12`) reaches `u = 5.2098` (`[-18.0409, 2.688]`)
+    // and the East face (`z = -0.12`) reaches `u = 5.1726` (`[-17.7988, 2.668]`), forming a razor-clean corner with `upperLanding.southWallCorridorCladding`!
+    const posAttr = westGableGeo.attributes.position;
+    const uvAttr = westGableGeo.attributes.uv;
+    for (let i = 0; i < posAttr.count; i++) {
+      let uCoord = posAttr.getX(i);
+      const yCoord = posAttr.getY(i);
+      const zLocal = posAttr.getZ(i);
+      if (uCoord > 5.05) {
+        uCoord = zLocal >= 0 ? 5.2098 : 5.1726;
+        posAttr.setX(i, uCoord);
+      }
+      if (uvAttr) {
+        uvAttr.setXY(i, uCoord * 0.5, (yCoord - floorBaseY) * 0.5);
+      }
+    }
+    posAttr.needsUpdate = true;
+    if (uvAttr) uvAttr.needsUpdate = true;
+    westGableGeo.computeVertexNormals();
+
     const westUpperGable = new THREE.Mesh(westGableGeo, warmRoomPlasterMat);
     westUpperGable.name = 'upperLanding.westWallUpperGable';
     westUpperGable.userData.isArchitecturalShell = true;

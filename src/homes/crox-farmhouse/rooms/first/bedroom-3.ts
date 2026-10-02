@@ -210,8 +210,8 @@ export function buildBedroom3(
     [
       'bedroom4.northWallMitredSkirting',
       [
-        [-18.224, 8.39],
         [-22.19, 8.39],
+        [-18.224, 8.39],
       ] as const,
     ],
   ] as const) {

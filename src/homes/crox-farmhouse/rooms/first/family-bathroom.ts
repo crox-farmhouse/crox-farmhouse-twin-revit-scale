@@ -29,7 +29,6 @@ export function buildFamilyBathroom(
     floorTopY,
     oakFloorMat,
     upperWallTopY,
-    wardrobeMat,
     warmRoomPlasterMat,
     windowGlassMat,
   } = kit;
@@ -116,10 +115,15 @@ export function buildFamilyBathroom(
       roughness: 0.22,
       metalness: 0.88,
     });
-    const marbleMat = new THREE.MeshStandardMaterial({
-      color: 0xf4f1ec,
-      roughness: 0.25,
-      metalness: 0.02,
+    const oakCabinetMat = new THREE.MeshStandardMaterial({
+      color: 0xa17b55,
+      roughness: 0.46,
+      metalness: 0.04,
+    });
+    const oakCountertopMat = new THREE.MeshStandardMaterial({
+      color: 0x8f6b47,
+      roughness: 0.42,
+      metalness: 0.04,
     });
     const beechShelfMat = new THREE.MeshStandardMaterial({
       color: 0xc89d6c,
@@ -177,10 +181,10 @@ export function buildFamilyBathroom(
       roughness: 0.2,
     });
 
-    // 1. Recessed Joinery Back & Side Cheeks (`Z = 0.36m..1.03m`)
+    // 1. Recessed Oak Joinery Back & Side Cheeks (`Z = 0.36m..1.03m`) (Issue #5: "Make this oak cabinet")
     const backPanel = new THREE.Mesh(
       new THREE.BoxGeometry(cabW, cabH, 0.04),
-      wardrobeMat
+      oakCabinetMat
     );
     backPanel.position.set(cx, floorTopY + cabH / 2, 0.38);
     drinksGroup.add(backPanel);
@@ -188,23 +192,23 @@ export function buildFamilyBathroom(
     for (const sideSign of [-1, 1] as const) {
       const cheek = new THREE.Mesh(
         new THREE.BoxGeometry(0.028, cabH, 0.66),
-        wardrobeMat
+        oakCabinetMat
       );
       cheek.position.set(cx + sideSign * (cabW / 2 - 0.014), floorTopY + cabH / 2, 0.70);
       drinksGroup.add(cheek);
     }
 
-    // Top cornice header & base plinth
+    // Top cornice header & base plinth in matching solid oak
     const topHeader = new THREE.Mesh(
       new THREE.BoxGeometry(cabW + 0.02, 0.09, 0.68),
-      wardrobeMat
+      oakCabinetMat
     );
     topHeader.position.set(cx, upperWallTopY - 0.045, 0.71);
     drinksGroup.add(topHeader);
 
     const basePlinth = new THREE.Mesh(
       new THREE.BoxGeometry(cabW - 0.04, 0.08, 0.60),
-      wardrobeMat
+      oakCabinetMat
     );
     basePlinth.position.set(cx, floorTopY + 0.04, 0.70);
     drinksGroup.add(basePlinth);
@@ -375,11 +379,11 @@ export function buildFamilyBathroom(
 
     drinksGroup.add(coolerGroup);
 
-    // 3. Honed Carrara Marble Countertop (`Y = floorTopY + 0.87m .. 0.905m`) & Upstand
+    // 3. Solid Oiled Oak Countertop (`Y = floorTopY + 0.87m .. 0.905m`) & Upstand (Issue #5: "Make this oak cabinet")
     const counterY = floorTopY + 0.888;
     const marbleCounter = new THREE.Mesh(
       new THREE.BoxGeometry(cabW - 0.04, 0.035, 0.64),
-      marbleMat
+      oakCountertopMat
     );
     marbleCounter.name = 'familyBathroom.drinksCabinet.marbleCountertop';
     marbleCounter.position.set(cx, counterY, 0.71);
@@ -389,7 +393,7 @@ export function buildFamilyBathroom(
 
     const marbleSplash = new THREE.Mesh(
       new THREE.BoxGeometry(cabW - 0.056, 0.48, 0.018),
-      marbleMat
+      oakCabinetMat
     );
     marbleSplash.position.set(cx, counterY + 0.25, 0.41);
     drinksGroup.add(marbleSplash);
@@ -478,7 +482,7 @@ export function buildFamilyBathroom(
     for (const [sIdx, shelfY] of [floorTopY + 1.44, floorTopY + 1.74].entries()) {
       const upperShelf = new THREE.Mesh(
         new THREE.BoxGeometry(cabW - 0.056, 0.024, 0.34),
-        wardrobeMat
+        oakCountertopMat
       );
       upperShelf.position.set(cx, shelfY, 0.56);
       drinksGroup.add(upperShelf);

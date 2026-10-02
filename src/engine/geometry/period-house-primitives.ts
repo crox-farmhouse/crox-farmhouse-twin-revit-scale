@@ -71,6 +71,8 @@ export interface AngledWallSegmentConfig {
   readonly capMaterial: THREE.Material;
   /** Omit horizontal top cap at `topY` when a vaulted upper gable extension sits directly on top of the wall. */
   readonly skipCap?: boolean;
+  /** Omit solid rectangular wall piers and lintels when a single one-piece full-height vaulted wall mesh is built separately. */
+  readonly skipWallBody?: boolean;
   /** Optional u-intervals `[u0, u1]` where the horizontal top cap at `topY` is omitted (e.g. under a partial upper gable wall). */
   readonly skipCapRanges?: readonly (readonly [number, number])[];
   /** Skirting board material (`skirtingMat`). */
@@ -427,18 +429,20 @@ export function buildAngledWallSegment(
     if (segW <= 0.005) return;
     const uMid = (u0 + u1) / 2;
 
-    const pier = new THREE.Mesh(
-      applyLocalWallBrickUVs(
-        new THREE.BoxGeometry(segW, fullWallH, config.thickness),
-        uMid,
-        fullWallMidY
-      ),
-      config.wallMaterial
-    );
-    pier.position.set(uMid, fullWallMidY, 0);
-    pier.castShadow = true;
-    pier.receiveShadow = true;
-    group.add(pier);
+    if (!config.skipWallBody) {
+      const pier = new THREE.Mesh(
+        applyLocalWallBrickUVs(
+          new THREE.BoxGeometry(segW, fullWallH, config.thickness),
+          uMid,
+          fullWallMidY
+        ),
+        config.wallMaterial
+      );
+      pier.position.set(uMid, fullWallMidY, 0);
+      pier.castShadow = true;
+      pier.receiveShadow = true;
+      group.add(pier);
+    }
 
     emitCapSegments(u0, u1);
 
@@ -511,7 +515,7 @@ export function buildAngledWallSegment(
     const highFloorY = op.upperFloorY ?? op.lowerFloorY;
     const headBottomY = highFloorY + op.doorHeight;
     const lintelH = config.topY - headBottomY;
-    if (lintelH > 0.01) {
+    if (lintelH > 0.01 && !config.skipWallBody) {
       const lintelMidY = headBottomY + lintelH / 2;
       const lintel = new THREE.Mesh(
         applyLocalWallBrickUVs(

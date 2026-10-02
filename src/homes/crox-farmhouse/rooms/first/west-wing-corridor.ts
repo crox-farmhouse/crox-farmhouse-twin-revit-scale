@@ -54,14 +54,14 @@ export function buildWestWingCorridor(
   buildPolygonalFloorSlab(
     scene,
     [
-      [-18.995, 0.975],
+      [-18.92, 0.975],
       [-17.65, 0.975],
       [landingSouthWestX, landingSouthWestZ],
       [-16.83, landingSouthEastZ],
       [-17.09, 8.27],
-      [-18.475, 8.27],
-      [-18.475, 4.1],
-      [-18.995, 4.1],
+      [-18.4, 8.27],
+      [-18.4, 4.1],
+      [-18.92, 4.1],
     ],
     floorTopY,
     floorTopY - floorBaseY,
@@ -138,24 +138,37 @@ export function buildWestWingCorridor(
     scene.add(stepGroup);
   }
 
-  // Trapezoidal Shower Room polygonal tiled floor (Issues #3 & #4: widened South to Z = +4.10m, with Walk-In Shower stall at `X = -20.25m..-18.40m, Z = +4.10m..+4.85m`)
+  // Trapezoidal Shower Room polygonal tiled floor (terminated cleanly at the X = -18.92m wall/door centreline so zero tile spills into the hallway — Issue #2)
   buildPolygonalFloorSlab(
     scene,
     [
-      [-22.33, 1.905],
-      [-18.85, 2.34],
-      [-18.85, 4.1],
+      [-22.19, 1.905],
+      [-18.92, 2.34],
+      [-18.92, 4.1],
       [-18.4, 4.1],
       [-18.4, 4.85],
       [-20.25, 4.85],
-      [-20.25, 4.175],
-      [-22.33, 4.175],
+      [-20.25, 4.1],
+      [-22.19, 4.1],
     ],
     floorTopY,
     floorTopY - floorBaseY,
     bathroomTileMat,
     0.5
   );
+
+  // Antique oak threshold transition strip beneath `showerRoomDoor` (`X = -18.92m, Z = 2.98m..3.66m`)
+  {
+    const showerThresholdStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.032, 0.006, 0.68),
+      antiqueOakSkirtingMat
+    );
+    showerThresholdStrip.name = 'showerRoom.doorThresholdStrip';
+    showerThresholdStrip.userData.isArchitecturalShell = true;
+    showerThresholdStrip.position.set(-18.92, floorTopY + 0.003, 3.32);
+    showerThresholdStrip.receiveShadow = true;
+    scene.add(showerThresholdStrip);
+  }
 
   // West Front Exterior Brick Wall of Upstairs Shower Room (X = -22.47m..-22.19m, Z = +1.905m..+4.85m)
   // With 2-pane Georgian casement window centered at Z = +2.92m (directly above the Front Entrance Door IN — Photo 2!)
