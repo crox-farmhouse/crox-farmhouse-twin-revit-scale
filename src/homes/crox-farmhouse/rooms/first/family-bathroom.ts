@@ -36,10 +36,27 @@ export function buildFamilyBathroom(
   // 2. PRINCIPAL FAMILY BATHROOM & UPPER PASSAGE
   //    Directly above Boot Lobby / Store / WC: X = -9.80m..-12.81m, Z = -2.50m..+2.40m
   // =========================================================================
-  // Bathroom tiled floor (Z = -2.50m..+0.98m) & Upper South Passage oak floor (Z = +0.98m..+2.40m)
-  // Extended across [-13.05, -9.56] and into exterior walls [-2.64, 2.54] so thresholds and wall junctions are 100% light-tight (Issues #2, #9 & #10)
-  addFirstFloorSlab(-12.93, -9.68, -2.64, 0.98, bathroomTileMat);
-  addFirstFloorSlab(-13.05, -9.56, 0.98, 2.54, oakFloorMat);
+  // Bathroom tiled floor (L-shaped around the Recessed Drinks Cabinet bulkhead) & Upper South Passage carpet floor:
+  // - West Bathroom zone (`X = -12.93m..-10.695m, Z = -2.64m..+0.975m`, terminating at the bathroom door threshold `Z = 0.975m`)
+  // - East Bathroom zone (`X = -10.695m..-9.68m, Z = -2.64m..+0.05m`, terminating inside the `Z = -0.01m` vanity/bulkhead wall)
+  // - Upper South Passage & Drinks Cabinet recess (`oakFloorMat`, `Z = +0.975m..+2.54m` plus `X = -10.695m..-9.56m, Z = +0.05m..+0.975m`)
+  addFirstFloorSlab(-12.93, -10.695, -2.64, 0.975, bathroomTileMat);
+  addFirstFloorSlab(-10.695, -9.68, -2.64, 0.05, bathroomTileMat);
+  addFirstFloorSlab(-10.695, -9.56, 0.05, 0.975, oakFloorMat);
+  addFirstFloorSlab(-13.05, -9.56, 0.975, 2.54, oakFloorMat);
+
+  // Antique oak threshold transition strip beneath the Family Bathroom doorway (`X = -11.59m..-10.77m, Z = 0.975m`)
+  {
+    const bathThresholdStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.82, 0.006, 0.032),
+      antiqueOakSkirtingMat
+    );
+    bathThresholdStrip.name = 'familyBathroom.doorThresholdStrip';
+    bathThresholdStrip.userData.isArchitecturalShell = true;
+    bathThresholdStrip.position.set(-11.18, floorTopY + 0.003, 0.975);
+    bathThresholdStrip.receiveShadow = true;
+    scene.add(bathThresholdStrip);
+  }
 
   // North Exterior Brick Wall of Family Bathroom (Z = -2.78m..-2.50m, X = -12.81m..-9.56m)
   // Skirting clamped to [-12.81, -9.80] so it butts cleanly against the Cross-Wall West face (Issues #2 & #7)
@@ -76,33 +93,103 @@ export function buildFamilyBathroom(
   const collarCeilingY = 4.52;
 
   // =========================================================================
-  // BESPOKE HOTEL DRINKS & REFRESHMENT CABINET (`X = -10.68m..-9.80m, Z = +0.05m..+1.05m`) (Issue #11)
-  // Open recessed hospitality cabinet facing South (`+Z`) into the Upper South Passage
-  // right outside the Main Bedroom doorway, equipped with:
-  // - Under-counter glazed Wine & Beverage Cooler stocked with San Pellegrino,
-  //   Fiji Water, cans of DASH sparkling water, and chilled Champagne
-  // - Honed Carrara marble countertop & backsplash
-  // - Compact luxury espresso/pod Coffee Machine, hospitality tray & glassware shelves
+  // BESPOKE HOTEL DRINKS & REFRESHMENT CABINET (`X = -10.62m..-9.80m, Z = +0.36m..+1.05m`)
+  // & MANIFOLD L-SHAPED BATHROOM BULKHEAD (`X = -10.77m..-9.80m, Z = -0.01m..+1.05m`) (Issues #1 & #5)
+  // - Single continuous 0.15m-thick West enclosing wall (`X = -10.77m..-10.62m, Z = -0.01m..+1.05m`)
+  //   that forms a 100% flush NW corner at `[-10.77, -0.01]` and forms the East jamb pier of the bathroom doorway
+  //   with zero step-out or overlapping boxes!
+  // - Solid North wall & backing (`X = -10.62m..-9.80m, Z = -0.01m..+0.36m`) whose North face (`Z = -0.01m`)
+  //   is coplanar with `[-10.77, -0.01]` (creating a flat `0.97m`-wide wall for the Bathroom Vanity Unit)
+  //   and whose South face (`Z = +0.36m`) backs the oak Drinks Cabinet with zero hollow void!
+  // - Full-depth upper soffit bulkhead (`X = -10.62m..-9.80m, Z = +0.36m..+1.05m, Y = 4.16m..4.52m`)
+  //   sealing the top of the Drinks Cabinet up to the 4.52m collar ceiling.
   // =========================================================================
-  // North & West enclosing walls of the Recessed Drinks Cabinet (reaching collarCeilingY = 4.52m, skirting only on Bathroom side)
-  addUpperInteriorWall(-10.24, floorTopY, collarCeilingY, 0.05, 0.88, 0.12, warmRoomPlasterMat, {
-    skirtingSides: [-1],
-    skirtingMin: -10.62,
-    skirtingMax: -9.8,
+  addUpperInteriorWall(-10.695, floorTopY, collarCeilingY, 0.52, 0.15, 1.06, warmRoomPlasterMat, {
+    skipSkirting: true,
+    skipCap: true,
   });
-  addUpperInteriorWall(-10.68, floorTopY, collarCeilingY, 0.515, 0.12, 0.93, warmRoomPlasterMat, {
-    skirtingSides: [-1],
-    skirtingMin: 0.01,
-    skirtingMax: 0.9,
+  addUpperInteriorWall(-10.21, floorTopY, collarCeilingY, 0.175, 0.82, 0.37, warmRoomPlasterMat, {
+    skipSkirting: true,
+    skipCap: true,
   });
+  addUpperInteriorWall(-10.21, upperWallTopY, collarCeilingY, 0.705, 0.82, 0.69, warmRoomPlasterMat, {
+    skipSkirting: true,
+    skipCap: true,
+  });
+
+  // Clean mitred/wrapped skirting around the Bathroom Bulkhead (`X = -10.77m..-9.80m, Z = -0.01m..+0.832m`)
+  {
+    // 1. North face of bulkhead (`Z = -0.01m`, spanning `X = -10.792m..-9.80m` so it miters cleanly with the West face skirting at `X = -10.792m`)
+    const northSkirtW = -9.8 - -10.792;
+    const northSkirtCx = (-10.792 + -9.8) / 2;
+    const northSkirt = new THREE.Mesh(
+      new THREE.BoxGeometry(northSkirtW, 0.122, 0.022),
+      antiqueOakSkirtingMat
+    );
+    northSkirt.userData.isArchitecturalShell = true;
+    northSkirt.position.set(northSkirtCx, floorTopY + 0.061, -0.01 - 0.011);
+    northSkirt.receiveShadow = true;
+    scene.add(northSkirt);
+
+    const northSkirtCap = new THREE.Mesh(
+      new THREE.BoxGeometry(northSkirtW - 0.006, 0.024, 0.016),
+      antiqueOakSkirtingMat
+    );
+    northSkirtCap.userData.isArchitecturalShell = true;
+    northSkirtCap.position.set(northSkirtCx + 0.003, floorTopY + 0.134, -0.01 - 0.008);
+    northSkirtCap.receiveShadow = true;
+    scene.add(northSkirtCap);
+
+    // 2. West face of bulkhead (`X = -10.77m`, spanning `Z = -0.01m..+0.832m` up to the bathroom door architrave)
+    const westSkirtD = 0.832 - -0.01;
+    const westSkirtCz = (-0.01 + 0.832) / 2;
+    const westSkirt = new THREE.Mesh(
+      new THREE.BoxGeometry(0.022, 0.122, westSkirtD),
+      antiqueOakSkirtingMat
+    );
+    westSkirt.userData.isArchitecturalShell = true;
+    westSkirt.position.set(-10.77 - 0.011, floorTopY + 0.061, westSkirtCz);
+    westSkirt.receiveShadow = true;
+    scene.add(westSkirt);
+
+    const westSkirtCap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, 0.024, westSkirtD),
+      antiqueOakSkirtingMat
+    );
+    westSkirtCap.userData.isArchitecturalShell = true;
+    westSkirtCap.position.set(-10.77 - 0.008, floorTopY + 0.134, westSkirtCz);
+    westSkirtCap.receiveShadow = true;
+    scene.add(westSkirtCap);
+
+    // 3. South face of doorway pier (`Z = +1.05m`, between door architrave `X = -10.702m` and Drinks Cabinet `X = -10.62m`)
+    const southPierSkirtW = -10.62 - -10.702;
+    const southPierSkirtCx = (-10.702 + -10.62) / 2;
+    const southPierSkirt = new THREE.Mesh(
+      new THREE.BoxGeometry(southPierSkirtW, 0.122, 0.022),
+      antiqueOakSkirtingMat
+    );
+    southPierSkirt.userData.isArchitecturalShell = true;
+    southPierSkirt.position.set(southPierSkirtCx, floorTopY + 0.061, 1.05 + 0.011);
+    southPierSkirt.receiveShadow = true;
+    scene.add(southPierSkirt);
+
+    const southPierSkirtCap = new THREE.Mesh(
+      new THREE.BoxGeometry(southPierSkirtW, 0.024, 0.016),
+      antiqueOakSkirtingMat
+    );
+    southPierSkirtCap.userData.isArchitecturalShell = true;
+    southPierSkirtCap.position.set(southPierSkirtCx, floorTopY + 0.134, 1.05 + 0.008);
+    southPierSkirtCap.receiveShadow = true;
+    scene.add(southPierSkirtCap);
+  }
 
   {
     const drinksGroup = new THREE.Group();
     drinksGroup.name = 'familyBathroom.drinksCabinet';
 
     const cx = -10.21; // Clear alcove X = -10.62m .. -9.80m (width = 0.82m)
-    const cabW = 0.80;
-    const cabH = upperWallTopY - floorTopY; // 2.08m
+    const cabW = 0.82;
+    const cabH = upperWallTopY - floorTopY; // 2.00m
 
     // Materials for the bespoke drinks station
     const darkAnthraciteMat = new THREE.MeshStandardMaterial({
@@ -181,7 +268,7 @@ export function buildFamilyBathroom(
       roughness: 0.2,
     });
 
-    // 1. Recessed Oak Joinery Back & Side Cheeks (`Z = 0.36m..1.03m`) (Issue #5: "Make this oak cabinet")
+    // 1. Recessed Oak Joinery Back & Side Cheeks (`Z = 0.36m..1.05m`, tight against the `0.82m` alcove) (Issues #1 & #5)
     const backPanel = new THREE.Mesh(
       new THREE.BoxGeometry(cabW, cabH, 0.04),
       oakCabinetMat
@@ -191,32 +278,32 @@ export function buildFamilyBathroom(
 
     for (const sideSign of [-1, 1] as const) {
       const cheek = new THREE.Mesh(
-        new THREE.BoxGeometry(0.028, cabH, 0.66),
+        new THREE.BoxGeometry(0.028, cabH, 0.68),
         oakCabinetMat
       );
-      cheek.position.set(cx + sideSign * (cabW / 2 - 0.014), floorTopY + cabH / 2, 0.70);
+      cheek.position.set(cx + sideSign * (cabW / 2 - 0.014), floorTopY + cabH / 2, 0.71);
       drinksGroup.add(cheek);
     }
 
     // Top cornice header & base plinth in matching solid oak
     const topHeader = new THREE.Mesh(
-      new THREE.BoxGeometry(cabW + 0.02, 0.09, 0.68),
+      new THREE.BoxGeometry(cabW, 0.09, 0.69),
       oakCabinetMat
     );
-    topHeader.position.set(cx, upperWallTopY - 0.045, 0.71);
+    topHeader.position.set(cx, upperWallTopY - 0.045, 0.705);
     drinksGroup.add(topHeader);
 
     const basePlinth = new THREE.Mesh(
-      new THREE.BoxGeometry(cabW - 0.04, 0.08, 0.60),
+      new THREE.BoxGeometry(cabW - 0.056, 0.08, 0.63),
       oakCabinetMat
     );
-    basePlinth.position.set(cx, floorTopY + 0.04, 0.70);
+    basePlinth.position.set(cx, floorTopY + 0.04, 0.715);
     drinksGroup.add(basePlinth);
 
     // 2. Under-Counter Glazed Wine & Beverage Cooler (`Y = floorTopY + 0.08m .. floorTopY + 0.87m`)
     const coolerGroup = new THREE.Group();
     coolerGroup.name = 'familyBathroom.drinksCabinet.wineCooler';
-    const coolerW = 0.74;
+    const coolerW = 0.76;
     const coolerH = 0.79;
     const coolerY0 = floorTopY + 0.08;
 
@@ -382,11 +469,11 @@ export function buildFamilyBathroom(
     // 3. Solid Oiled Oak Countertop (`Y = floorTopY + 0.87m .. 0.905m`) & Upstand (Issue #5: "Make this oak cabinet")
     const counterY = floorTopY + 0.888;
     const marbleCounter = new THREE.Mesh(
-      new THREE.BoxGeometry(cabW - 0.04, 0.035, 0.64),
+      new THREE.BoxGeometry(cabW - 0.056, 0.035, 0.65),
       oakCountertopMat
     );
     marbleCounter.name = 'familyBathroom.drinksCabinet.marbleCountertop';
-    marbleCounter.position.set(cx, counterY, 0.71);
+    marbleCounter.position.set(cx, counterY, 0.725);
     marbleCounter.castShadow = true;
     marbleCounter.receiveShadow = true;
     drinksGroup.add(marbleCounter);
@@ -658,80 +745,334 @@ export function buildFamilyBathroom(
     scene.add(drinksGroup);
   }
 
-  // Partition wall between Family Bathroom and Upper South Passage (0.15m thick, Z = +0.90m..+1.05m, X = -9.80m..-12.81m)
-  // With bathroom entrance doorway at X = -11.18m (`width = 0.82m`) and OPEN Drinks Cabinet recess across X = -10.62m..-9.80m (Issue #11)
-  addUpperInteriorWall(-10.695, floorTopY, collarCeilingY, 0.975, 0.15, 0.15, warmRoomPlasterMat, {
-    skipSkirting: true,
-  });
-  addUpperInteriorWall(-10.21, upperWallTopY, collarCeilingY, 0.975, 0.82, 0.15, warmRoomPlasterMat, {
-    skipSkirting: true,
-  });
+  // Partition wall between Family Bathroom and Upper South Passage (0.15m thick, Z = +0.90m..+1.05m, X = -10.77m..-12.81m)
+  // With bathroom entrance doorway at X = -11.18m (`width = 0.82m`, `X = -11.59m..-10.77m`)
   addUpperInteriorWall(-12.2, floorTopY, collarCeilingY, 0.975, 1.22, 0.15, warmRoomPlasterMat, {
     skirtingSides: [1],
     skirtingMin: -12.81,
     skirtingMax: -11.672,
+    skipCap: true,
   });
+  // Skirting on the North (Bathroom) face of the South wall (`Z = +0.90m`) between the lengthwise shower tray (`X = -11.96m`) and the door architrave (`X = -11.66m`)
+  {
+    const bathSouthPierSkirtW = -11.66 - -11.96;
+    const bathSouthPierSkirtCx = (-11.96 + -11.66) / 2;
+    const bathSouthPierSkirt = new THREE.Mesh(
+      new THREE.BoxGeometry(bathSouthPierSkirtW, 0.122, 0.022),
+      antiqueOakSkirtingMat
+    );
+    bathSouthPierSkirt.userData.isArchitecturalShell = true;
+    bathSouthPierSkirt.position.set(bathSouthPierSkirtCx, floorTopY + 0.061, 0.9 - 0.011);
+    bathSouthPierSkirt.receiveShadow = true;
+    scene.add(bathSouthPierSkirt);
+
+    const bathSouthPierSkirtCap = new THREE.Mesh(
+      new THREE.BoxGeometry(bathSouthPierSkirtW, 0.024, 0.016),
+      antiqueOakSkirtingMat
+    );
+    bathSouthPierSkirtCap.userData.isArchitecturalShell = true;
+    bathSouthPierSkirtCap.position.set(bathSouthPierSkirtCx, floorTopY + 0.134, 0.9 - 0.008);
+    bathSouthPierSkirtCap.receiveShadow = true;
+    scene.add(bathSouthPierSkirtCap);
+  }
   addUpperInteriorWall(-11.18, floorTopY + doorH, collarCeilingY, 0.975, 0.82, 0.15, warmRoomPlasterMat, {
     skipSkirting: true,
+    skipCap: true,
   });
   addUpperInteractiveDoor('x', 0.975, 0.15, -11.18, 0.82, -Math.PI * 0.48);
 
   // =========================================================================
-  // PRINCIPAL FAMILY BATHROOM SANITARYWARE (matching `ff_rotated_3d_axes.png`)
-  // 1. Walk-In Glass Shower Enclosure in SW corner (`X = -12.81m..-11.65m, Z = +0.05m..+0.90m`)
-  // 2. Freestanding Sculpted Oval Bathtub in NW quadrant (`X = -11.75m, Z = -1.35m`, oriented East-West)
-  // 3. High-LOD Edwardian Low-Level Vitreous China Toilet in NE corner (`X = -10.22m, Z = -2.50m`, facing South `+Z` — Issue #4)
-  // 4. High-LOD Bespoke Period Shaker Vanity Unit & Mirror on East wall (`X = -9.80m, Z = -0.78m`, facing West `-X` — Issue #4)
+  // PRINCIPAL FAMILY BATHROOM SANITARYWARE
+  // 1. Walk-In Glass Shower Enclosure in SW corner, rotated LENGTHWISE into the room (`X = -12.80m..-11.96m, Z = -0.30m..+0.90m` — Issue #3)
+  // 2. Freestanding Burnished Copper "Tubby Tub" Roll-Top Bath in NW quadrant (`X = -11.65m, Z = -1.52m` — Issue #4)
+  // 3. High-LOD Edwardian Low-Level Vitreous China Toilet in NE corner (`X = -10.22m, Z = -2.50m`, facing South `+Z`)
+  // 4. High-LOD Bespoke Period Shaker Vanity Unit & Mirror against the South-East wall (`X = -10.285m, Z = -0.01m`, facing North `-Z` — Issue #2)
   // =========================================================================
-  // 1. Walk-in Glass Shower Enclosure in SW corner of Bathroom (West of bathroom door)
-  const showerTray = new THREE.Mesh(
-    new THREE.BoxGeometry(1.14, 0.045, 0.84),
-    ceramicWhiteMat
-  );
-  showerTray.name = 'familyBathroom.showerTray';
-  showerTray.position.set(-12.23, floorTopY + 0.022, 0.475);
-  showerTray.receiveShadow = true;
-  scene.add(showerTray);
+  // 1. Walk-in Glass Shower Enclosure in SW corner of Bathroom, oriented LENGTHWISE into the room (`0.84m` wide along X × `1.20m` long along Z) (Issue #3)
+  {
+    const showerTray = new THREE.Mesh(
+      new THREE.BoxGeometry(0.84, 0.045, 1.2),
+      ceramicWhiteMat
+    );
+    showerTray.name = 'familyBathroom.showerTray';
+    showerTray.position.set(-12.38, floorTopY + 0.0225, 0.3);
+    showerTray.receiveShadow = true;
+    scene.add(showerTray);
 
-  const showerGlassScreen = new THREE.Mesh(
-    new THREE.BoxGeometry(0.82, 1.88, 0.018),
-    windowGlassMat
-  );
-  showerGlassScreen.name = 'familyBathroom.showerGlass';
-  showerGlassScreen.position.set(-12.39, floorTopY + 0.94, 0.06);
-  scene.add(showerGlassScreen);
+    const showerDrainGrate = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.045, 0.045, 0.004, 16),
+      brassMat
+    );
+    showerDrainGrate.position.set(-12.52, floorTopY + 0.046, 0.58);
+    scene.add(showerDrainGrate);
 
-  const showerRiser = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.012, 0.012, 1.08, 10),
-    brassMat
-  );
-  showerRiser.position.set(-12.74, floorTopY + 1.38, 0.475);
-  scene.add(showerRiser);
+    // Frameless low-iron glass walk-in screen running lengthwise (North-South) along the East edge (`X = -11.97m, Z = +0.06m..+0.90m`)
+    // leaving a generous walk-in entry at the North end (`Z = -0.30m..+0.06m`)
+    const showerGlassScreen = new THREE.Mesh(
+      new THREE.BoxGeometry(0.018, 1.92, 0.84),
+      windowGlassMat
+    );
+    showerGlassScreen.name = 'familyBathroom.showerGlass';
+    showerGlassScreen.position.set(-11.97, floorTopY + 0.96, 0.48);
+    scene.add(showerGlassScreen);
 
-  // 2. Freestanding Sculpted Oval Feature Bathtub at X = -11.75m, Z = -1.35m (oriented East-West)
-  const bathGroup = new THREE.Group();
-  bathGroup.name = 'familyBathroom.bathtub';
-  bathGroup.position.set(-11.75, floorTopY, -1.35);
-  const bathOuter = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.44, 0.38, 0.58, 24),
-    ceramicWhiteMat
-  );
-  bathOuter.scale.set(1.85, 1.0, 1.0);
-  bathOuter.position.set(0, 0.29, 0);
-  bathOuter.castShadow = true;
-  bathOuter.receiveShadow = true;
-  bathGroup.add(bathOuter);
+    // Brass vertical wall channel at the South wall (`Z = +0.89m`) & horizontal overhead bracing arm to the West wall (`X = -12.81m`)
+    const glassWallChannel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.026, 1.92, 0.024),
+      brassMat
+    );
+    glassWallChannel.position.set(-11.97, floorTopY + 0.96, 0.888);
+    scene.add(glassWallChannel);
 
-  const bathFillerStandpipe = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.018, 0.022, 0.76, 10),
-    brassMat
-  );
-  bathFillerStandpipe.position.set(-0.82, 0.38, 0);
-  bathGroup.add(bathFillerStandpipe);
-  scene.add(bathGroup);
+    const glassSupportArm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.008, 0.008, 0.84, 10),
+      brassMat
+    );
+    glassSupportArm.rotation.z = Math.PI / 2;
+    glassSupportArm.position.set(-12.39, floorTopY + 1.9, 0.1);
+    scene.add(glassSupportArm);
+
+    // Exposed traditional brass thermostatic shower riser & overhead rainfall deluge head on the West wall (`X = -12.74m, Z = +0.42m`)
+    const showerRiser = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 1.08, 12),
+      brassMat
+    );
+    showerRiser.position.set(-12.74, floorTopY + 1.42, 0.42);
+    scene.add(showerRiser);
+
+    const showerValveBar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.022, 0.022, 0.26, 12),
+      brassMat
+    );
+    showerValveBar.rotation.x = Math.PI / 2;
+    showerValveBar.position.set(-12.74, floorTopY + 1.02, 0.42);
+    scene.add(showerValveBar);
+
+    const showerTopArm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.011, 0.011, 0.36, 10),
+      brassMat
+    );
+    showerTopArm.rotation.z = Math.PI / 2;
+    showerTopArm.position.set(-12.56, floorTopY + 1.95, 0.42);
+    scene.add(showerTopArm);
+
+    const rainfallRose = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.11, 0.12, 0.018, 20),
+      brassMat
+    );
+    rainfallRose.position.set(-12.39, floorTopY + 1.92, 0.42);
+    scene.add(rainfallRose);
+  }
+
+  // 2. Freestanding Burnished Copper "Tubby Tub" Bateau Bath at X = -11.62m, Z = -1.52m (Issue #4: "Copper tubby tub bath")
+  {
+    const bathGroup = new THREE.Group();
+    bathGroup.name = 'familyBathroom.bathtub';
+    bathGroup.position.set(-11.62, floorTopY, -1.52);
+
+    const burnishedCopperMat = new THREE.MeshStandardMaterial({
+      color: 0xb86538,
+      roughness: 0.26,
+      metalness: 0.84,
+    });
+    const copperPlinthMat = new THREE.MeshStandardMaterial({
+      color: 0x964e28,
+      roughness: 0.32,
+      metalness: 0.82,
+    });
+    const tinnedInteriorMat = new THREE.MeshStandardMaterial({
+      color: 0xe8e4dc,
+      roughness: 0.18,
+      metalness: 0.38,
+      side: THREE.DoubleSide,
+    });
+
+    // Sculpted double-ended "Tubby Tub" bateau bath shell:
+    // Compact, deep soaking proportions (`1.48m` long × `0.78m` wide × `0.64m..0.71m` high with sweeping bateau ends)
+    const segU = 48;
+    const segV = 20;
+    const outerPos: number[] = [];
+    const outerNorm: number[] = [];
+    const outerUv: number[] = [];
+    const outerIdx: number[] = [];
+
+    const innerPos: number[] = [];
+    const innerUv: number[] = [];
+    const innerIdx: number[] = [];
+
+    const rimPts: THREE.Vector3[] = [];
+
+    const sampleTubRing = (
+      v: number,
+      u: number,
+      inset: number
+    ): [number, number, number] => {
+      const theta = u * Math.PI * 2;
+      const cosT = Math.cos(theta);
+      const sinT = Math.sin(theta);
+      // Superellipse / stadium-like oval profile for authentic Tubby Tub silhouette
+      const signX = Math.sign(cosT);
+      const signZ = Math.sign(sinT);
+      const pow = 1.72;
+      const nx = signX * Math.pow(Math.abs(cosT), 2 / pow);
+      const nz = signZ * Math.pow(Math.abs(sinT), 2 / pow);
+
+      // Gentle flare from base (v = 0) to rolled rim (v = 1)
+      const flare = 0.84 + 0.16 * Math.pow(v, 0.78);
+      const rx = 0.72 * flare - inset;
+      const rz = 0.38 * flare - inset;
+
+      // Bateau / slipper rise at the West and East lounging ends (`cosT^2`)
+      const endRise = 0.068 * Math.pow(cosT, 4);
+      const topY = 0.64 + endRise;
+      const botY = inset > 0 ? 0.085 : 0.0;
+      const y = THREE.MathUtils.lerp(botY, topY, v);
+      return [nx * rx, y, nz * rz];
+    };
+
+    const stride = segU + 1;
+    for (let iv = 0; iv <= segV; iv++) {
+      const v = iv / segV;
+      for (let iu = 0; iu <= segU; iu++) {
+        const u = iu / segU;
+        const [ox, oy, oz] = sampleTubRing(v, u, 0);
+        outerPos.push(ox, oy, oz);
+        outerUv.push(u * 4, v);
+
+        // Outward normal via angular central difference
+        const [px, , pz] = sampleTubRing(v, (iu - 1 + segU) / segU, 0);
+        const [nx, , nz] = sampleTubRing(v, (iu + 1) / segU, 0);
+        const tx = nx - px;
+        const tz = nz - pz;
+        const len = Math.hypot(tx, tz) || 1;
+        outerNorm.push(tz / len, 0.1 * (1 - v), -tx / len);
+
+        const [ix, iy, iz] = sampleTubRing(v, u, 0.032);
+        innerPos.push(ix, iy, iz);
+        innerUv.push(u * 4, v);
+
+        if (iv === segV && iu < segU) {
+          rimPts.push(new THREE.Vector3((ox + ix) / 2, oy + 0.008, (oz + iz) / 2));
+        }
+      }
+    }
+
+    for (let iv = 0; iv < segV; iv++) {
+      for (let iu = 0; iu < segU; iu++) {
+        const a = iv * stride + iu;
+        const b = a + 1;
+        const c = (iv + 1) * stride + iu;
+        const d = c + 1;
+        // Outward-facing winding for outer copper shell
+        outerIdx.push(a, c, b, b, c, d);
+        // Inward-facing winding for tinned interior well
+        innerIdx.push(a, b, c, b, d, c);
+      }
+    }
+
+    // Close the flat interior soaking floor at v = 0 (`y = 0.085m`)
+    const floorCenterIdx = innerPos.length / 3;
+    innerPos.push(0, 0.085, 0);
+    innerUv.push(0.5, 0.5);
+    for (let iu = 0; iu < segU; iu++) {
+      innerIdx.push(floorCenterIdx, iu + 1, iu);
+    }
+
+    const outerGeo = new THREE.BufferGeometry();
+    outerGeo.setAttribute('position', new THREE.Float32BufferAttribute(outerPos, 3));
+    outerGeo.setAttribute('normal', new THREE.Float32BufferAttribute(outerNorm, 3));
+    outerGeo.setAttribute('uv', new THREE.Float32BufferAttribute(outerUv, 2));
+    outerGeo.setIndex(outerIdx);
+    outerGeo.computeVertexNormals();
+
+    const bathOuter = new THREE.Mesh(outerGeo, burnishedCopperMat);
+    bathOuter.name = 'familyBathroom.bathtub.copperShell';
+    bathOuter.castShadow = true;
+    bathOuter.receiveShadow = true;
+    bathGroup.add(bathOuter);
+
+    const innerGeo = new THREE.BufferGeometry();
+    innerGeo.setAttribute('position', new THREE.Float32BufferAttribute(innerPos, 3));
+    innerGeo.setAttribute('uv', new THREE.Float32BufferAttribute(innerUv, 2));
+    innerGeo.setIndex(innerIdx);
+    innerGeo.computeVertexNormals();
+
+    const bathInner = new THREE.Mesh(innerGeo, tinnedInteriorMat);
+    bathInner.name = 'familyBathroom.bathtub.innerWell';
+    bathInner.receiveShadow = true;
+    bathGroup.add(bathInner);
+
+    // Continuous 3D Rolled Copper Bullnose Rim around the bateau top edge
+    const rimCurve = new THREE.CatmullRomCurve3(rimPts, true);
+    const bathRim = new THREE.Mesh(
+      new THREE.TubeGeometry(rimCurve, 64, 0.024, 14, true),
+      burnishedCopperMat
+    );
+    bathRim.name = 'familyBathroom.bathtub.rolledRim';
+    bathRim.castShadow = true;
+    bathGroup.add(bathRim);
+
+    // Molded Copper Skirt Plinth around the base (`y = 0..0.068m`)
+    const plinthPts: THREE.Vector3[] = [];
+    for (let iu = 0; iu < segU; iu++) {
+      const [bx, , bz] = sampleTubRing(0.03, iu / segU, -0.01);
+      plinthPts.push(new THREE.Vector3(bx, 0.022, bz));
+    }
+    const plinthCurve = new THREE.CatmullRomCurve3(plinthPts, true);
+    const bathPlinth = new THREE.Mesh(
+      new THREE.TubeGeometry(plinthCurve, 48, 0.022, 12, true),
+      copperPlinthMat
+    );
+    bathPlinth.name = 'familyBathroom.bathtub.plinth';
+    bathPlinth.castShadow = true;
+    bathGroup.add(bathPlinth);
+
+    // Central brass pop-up waste & overflow rose inside the tub
+    const bathDrain = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.034, 0.034, 0.006, 16),
+      brassMat
+    );
+    bathDrain.position.set(0, 0.088, 0);
+    bathGroup.add(bathDrain);
+
+    // Freestanding Twin-Leg Brass Standpipe Bath-Shower Mixer at the West end (`x = -0.82m`)
+    for (const legZ of [-0.09, 0.09] as const) {
+      const standpipeLeg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.014, 0.016, 0.76, 12),
+        brassMat
+      );
+      standpipeLeg.position.set(-0.82, 0.38, legZ);
+      standpipeLeg.castShadow = true;
+      bathGroup.add(standpipeLeg);
+
+      const floorEscutcheon = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.034, 0.038, 0.018, 14),
+        brassMat
+      );
+      floorEscutcheon.position.set(-0.82, 0.009, legZ);
+      bathGroup.add(floorEscutcheon);
+    }
+
+    const mixerBridge = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.016, 0.016, 0.22, 12),
+      brassMat
+    );
+    mixerBridge.rotation.x = Math.PI / 2;
+    mixerBridge.position.set(-0.82, 0.74, 0);
+    bathGroup.add(mixerBridge);
+
+    const bathSpout = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.018, 0.024),
+      brassMat
+    );
+    bathSpout.position.set(-0.73, 0.75, 0);
+    bathGroup.add(bathSpout);
+
+    scene.add(bathGroup);
+  }
 
   // 3 & 4. High-LOD Edwardian Low-Level Toilet (`X = -10.22m, Z = -2.50m`, facing South `+Z`) &
-  //        Bespoke Period Shaker Vanity Unit (`X = -9.80m, Z = -0.78m`, facing West `-X`) (Issue #4)
+  //        Bespoke Period Shaker Vanity Unit with Mirror against the South-East Wall (`X = -10.285m, Z = -0.01m`, facing North `-Z`) (Issue #2)
   {
     const vanityCabinetMat = new THREE.MeshStandardMaterial({
       color: 0x3b443c,
@@ -754,14 +1095,15 @@ export function buildFamilyBathroom(
       metalness: 0.22,
     });
 
-    // 4. Floor-Standing Bespoke Period Shaker Vanity Unit + Mirror on East Wall (`X = -9.80m, Z = -0.78m`, facing West `-X`)
+    // 4. Floor-Standing Bespoke Period Shaker Vanity Unit + Mirror against the South-East Bathroom Wall
+    // (`X = -10.285m, Z = -0.01m`, facing North `-Z` into the Family Bathroom — Issue #2: "Vanity unit against this wall with mirror")
     const vanityGroup = new THREE.Group();
     vanityGroup.name = 'familyBathroom.vanityUnit';
-    vanityGroup.position.set(-9.8, floorTopY, -0.78);
-    vanityGroup.rotation.y = Math.PI; // local +X points West (-X) into the bathroom
+    vanityGroup.position.set(-10.285, floorTopY, -0.01);
+    vanityGroup.rotation.y = Math.PI / 2; // local +X points North (-Z) into the bathroom; local +Z runs East (+X) along the wall
 
-    const vanityW = 0.88;
-    const vanityD = 0.48;
+    const vanityW = 0.82;
+    const vanityD = 0.46;
     const vanityCarcassH = 0.8;
 
     const vanityPlinth = new THREE.Mesh(
@@ -784,9 +1126,9 @@ export function buildFamilyBathroom(
     vanityGroup.add(vanityCab);
 
     for (const sideZ of [-1, 1] as const) {
-      const doorZ = sideZ * 0.2;
+      const doorZ = sideZ * 0.19;
       const shakerDoorFrame = new THREE.Mesh(
-        new THREE.BoxGeometry(0.022, 0.62, 0.38),
+        new THREE.BoxGeometry(0.022, 0.62, 0.36),
         vanityTrimMat
       );
       shakerDoorFrame.position.set(vanityD + 0.008, 0.44, doorZ);
@@ -794,7 +1136,7 @@ export function buildFamilyBathroom(
       vanityGroup.add(shakerDoorFrame);
 
       const shakerDoorPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(0.014, 0.5, 0.28),
+        new THREE.BoxGeometry(0.014, 0.5, 0.26),
         vanityCabinetMat
       );
       shakerDoorPanel.position.set(vanityD + 0.015, 0.44, doorZ);
@@ -830,14 +1172,14 @@ export function buildFamilyBathroom(
       new THREE.BoxGeometry(0.32, 0.016, 0.52),
       ceramicWhiteMat
     );
-    basinRim.position.set(0.27, 0.843, 0);
+    basinRim.position.set(0.26, 0.843, 0);
     vanityGroup.add(basinRim);
 
     const basinWell = new THREE.Mesh(
       new THREE.BoxGeometry(0.26, 0.018, 0.46),
       new THREE.MeshStandardMaterial({ color: 0xdfe3e6, roughness: 0.14, metalness: 0.06 })
     );
-    basinWell.position.set(0.27, 0.846, 0);
+    basinWell.position.set(0.26, 0.846, 0);
     vanityGroup.add(basinWell);
 
     const tapStem = new THREE.Mesh(
@@ -1221,7 +1563,7 @@ export function buildFamilyBathroom(
     [-1, -2.478, -1.34],
     [-1, 0.46, 1.018],
     [-1, 2.082, 2.22],
-    [1, -2.5, 0.05],
+    [1, -2.5, -0.3],
   ] as const) {
     const sD = z1 - z0;
     const sCz = (z0 + z1) / 2;
@@ -1267,15 +1609,13 @@ export function buildFamilyBathroom(
     namePrefix: 'upperLanding.eastPassagePortal',
   });
 
-  // Issue #5, #9 & #10: Full-Span Trapezoidal Upper Gable Extension on the X = -12.93m Cross-Wall (Y = 4.14m..4.535m)
+  // Issue #5, #9 & #10: Full-Span Trapezoidal Upper Gable Extension on the X = -12.93m Cross-Wall (Y = 4.16m..4.52m)
   {
     const crossGableShape = new THREE.Shape();
-    crossGableShape.moveTo(-2.54, upperWallTopY - 0.02);
-    crossGableShape.lineTo(2.44, upperWallTopY - 0.02);
-    crossGableShape.lineTo(2.44, upperWallTopY + 0.015);
-    crossGableShape.lineTo(1.05, collarCeilingY + 0.015);
-    crossGableShape.lineTo(-1.15, collarCeilingY + 0.015);
-    crossGableShape.lineTo(-2.54, upperWallTopY + 0.015);
+    crossGableShape.moveTo(-2.5, upperWallTopY);
+    crossGableShape.lineTo(2.398, upperWallTopY);
+    crossGableShape.lineTo(1.05, collarCeilingY);
+    crossGableShape.lineTo(-1.15, collarCeilingY);
     crossGableShape.closePath();
     const crossGableGeo = new THREE.ExtrudeGeometry(crossGableShape, {
       depth: 0.24,

@@ -250,19 +250,17 @@ export function buildMainBedroom(
   }
   addUpperInteractiveDoor('z', -9.68, 0.24, 1.55, 0.9, Math.PI * 0.48);
 
-  // Issue #5, #9 & #10: Full-Span Trapezoidal Upper Gable Extensions on the West (X = -9.68m) and East (X = -4.52m) Cross-Walls (Y = 4.14m..4.535m)
-  // Using `rotateY(-Math.PI / 2)` so Shape X maps directly to `+z_ew` (`-2.54m..+2.44m` at `Y = 4.16m` pitching to `-1.15m..+1.05m` at `Y = 4.52m`) with zero gap!
+  // Issue #5, #9 & #10: Full-Span Trapezoidal Upper Gable Extensions on the West (X = -9.68m) and East (X = -4.52m) Cross-Walls (Y = 4.16m..4.52m)
+  // Using `rotateY(-Math.PI / 2)` so Shape X maps directly to `+z_ew` (`-2.50m..+2.40m` at `Y = 4.16m` pitching to `-1.15m..+1.05m` at `Y = 4.52m`) with zero gap or overlap!
   for (const [gableX, gableName] of [
     [-9.68, 'mainBedroom.westWallUpperGable'],
     [-4.52, 'mainBedroom.eastWallUpperGable'],
   ] as const) {
     const gableShape = new THREE.Shape();
-    gableShape.moveTo(-2.54, upperWallTopY - 0.02);
-    gableShape.lineTo(2.44, upperWallTopY - 0.02);
-    gableShape.lineTo(2.44, upperWallTopY + 0.015);
-    gableShape.lineTo(1.05, collarCeilingY + 0.015);
-    gableShape.lineTo(-1.15, collarCeilingY + 0.015);
-    gableShape.lineTo(-2.54, upperWallTopY + 0.015);
+    gableShape.moveTo(-2.5, upperWallTopY);
+    gableShape.lineTo(2.4, upperWallTopY);
+    gableShape.lineTo(1.05, collarCeilingY);
+    gableShape.lineTo(-1.15, collarCeilingY);
     gableShape.closePath();
     const gableGeo = new THREE.ExtrudeGeometry(gableShape, {
       depth: 0.24,
