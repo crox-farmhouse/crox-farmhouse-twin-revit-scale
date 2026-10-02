@@ -41,9 +41,10 @@ export function buildUpperLanding(
   //    - Heavy dark black-stained timber ceiling beam & West wall timber framing posts (Photos 3 & 4)
   //    - South courtyard window with cast-iron column radiator underneath (Photo 4 left)
   // =========================================================================
+  // Warm natural seasoned oak beam material matching the Entrance Hall beams downstairs (`oakMat`: 0xa17b55)
   const darkTimberBeamMat = new THREE.MeshStandardMaterial({
-    color: 0x221e1b,
-    roughness: 0.72,
+    color: 0xa17b55,
+    roughness: 0.52,
     metalness: 0.04,
   });
 
@@ -231,10 +232,10 @@ export function buildUpperLanding(
     tagUpperCutawayWall(northInteriorBrickPanel, northCutawayDescriptor);
     scene.add(northInteriorBrickPanel);
 
-    // Horizontal Dark-Stained Timber Beam going across the middle of the North wall
-    // (Y = floorTopY + 1.05m = 3.21m, X = -17.48m..-13.05m, Z = -2.478m — Issue #1 & media_1790502987279.webp!)
+    // Horizontal Stepped Natural Oak Timber Beam & Framing going across the middle of the North wall
+    // (Y = floorTopY + 1.05m = 3.21m, X = -17.48m..-13.05m, Z = -2.478m — Wooden beams like downstairs!)
     const northWallMidBeam = new THREE.Mesh(
-      new THREE.BoxGeometry(lowerBrickW, 0.13, 0.055),
+      new THREE.BoxGeometry(lowerBrickW, 0.14, 0.058),
       darkTimberBeamMat
     );
     northWallMidBeam.name = 'upperLanding.northWallMiddleBeam';
@@ -243,6 +244,84 @@ export function buildUpperLanding(
     northWallMidBeam.receiveShadow = true;
     tagUpperCutawayWall(northWallMidBeam, northCutawayDescriptor);
     scene.add(northWallMidBeam);
+
+    // Projecting stepped oak moulding fillet along the middle of `northWallMiddleBeam` (matching `hall.fireplaceBeam.midMoulding` downstairs)
+    const northWallMidBeamMoulding = new THREE.Mesh(
+      new THREE.BoxGeometry(lowerBrickW + 0.01, 0.036, 0.072),
+      antiqueOakSkirtingMat
+    );
+    northWallMidBeamMoulding.name = 'upperLanding.northWallMiddleBeam.moulding';
+    northWallMidBeamMoulding.position.set(lowerBrickCx, floorTopY + 1.05, -2.471);
+    northWallMidBeamMoulding.castShadow = true;
+    tagUpperCutawayWall(northWallMidBeamMoulding, northCutawayDescriptor);
+    scene.add(northWallMidBeamMoulding);
+
+    // Upper Natural Oak Eaves Wall-Plate Beam along the top of the North wall (Y = upperWallTopY - 0.06m = 4.10m)
+    const northWallTopPlateBeam = new THREE.Mesh(
+      new THREE.BoxGeometry(lowerBrickW, 0.12, 0.058),
+      darkTimberBeamMat
+    );
+    northWallTopPlateBeam.name = 'upperLanding.northWallTopPlateBeam';
+    northWallTopPlateBeam.position.set(lowerBrickCx, upperWallTopY - 0.06, -2.478);
+    northWallTopPlateBeam.castShadow = true;
+    northWallTopPlateBeam.receiveShadow = true;
+    tagUpperCutawayWall(northWallTopPlateBeam, northCutawayDescriptor);
+    scene.add(northWallTopPlateBeam);
+
+    // Vertical Natural Oak Wall Posts / Studs framing the North wall (West corner, Stairwell Newel alignment at X = -15.38m, and East Chimney Breast corner)
+    for (const [postIdx, postX] of [
+      [1, -17.42],
+      [2, -15.38],
+      [3, -13.38],
+    ] as const) {
+      // Lower oak post across the exposed brick panel (between oak stringer and middle beam)
+      const lowerPostH = (floorTopY + 0.98) - (floorTopY + 0.146);
+      const lowerPost = new THREE.Mesh(
+        new THREE.BoxGeometry(0.115, lowerPostH, 0.052),
+        darkTimberBeamMat
+      );
+      lowerPost.name = `upperLanding.northWallPost.lower.${postIdx}`;
+      lowerPost.position.set(
+        postX,
+        floorTopY + 0.146 + lowerPostH / 2,
+        -2.478
+      );
+      lowerPost.castShadow = true;
+      lowerPost.receiveShadow = true;
+      tagUpperCutawayWall(lowerPost, northCutawayDescriptor);
+      scene.add(lowerPost);
+
+      // Upper oak post between the middle beam and the eaves wall-plate beam
+      const upperPostBottomY = floorTopY + 1.12;
+      const upperPostTopY = upperWallTopY - 0.12;
+      const upperPostH = upperPostTopY - upperPostBottomY;
+      const upperPost = new THREE.Mesh(
+        new THREE.BoxGeometry(0.115, upperPostH, 0.052),
+        darkTimberBeamMat
+      );
+      upperPost.name = `upperLanding.northWallPost.upper.${postIdx}`;
+      upperPost.position.set(
+        postX,
+        (upperPostBottomY + upperPostTopY) / 2,
+        -2.478
+      );
+      upperPost.castShadow = true;
+      upperPost.receiveShadow = true;
+      tagUpperCutawayWall(upperPost, northCutawayDescriptor);
+      scene.add(upperPost);
+    }
+
+    // Diagonal Natural Oak Timber Brace in the upper North wall bay above the stairwell
+    const northWallDiagonalBrace = new THREE.Mesh(
+      new THREE.BoxGeometry(0.11, 1.08, 0.048),
+      darkTimberBeamMat
+    );
+    northWallDiagonalBrace.name = 'upperLanding.northWallDiagonalBrace';
+    northWallDiagonalBrace.position.set(-16.4, floorTopY + 1.54, -2.48);
+    northWallDiagonalBrace.rotation.z = -0.58;
+    northWallDiagonalBrace.castShadow = true;
+    tagUpperCutawayWall(northWallDiagonalBrace, northCutawayDescriptor);
+    scene.add(northWallDiagonalBrace);
   }
 
   // Issues #4, #6 & #11: Continuous 0.46m-thick South Wall of Main Stair Landing (Z = +2.22m..+2.68m, X = -17.80m..-12.93m)
@@ -686,7 +765,8 @@ export function buildUpperLanding(
     );
   }
 
-  // Issue #5: Heavy Dark Black-Stained Overhead Ceiling Spine Beam along the raised 4.52m collar ceiling edge (Photos 3 & 4)
+  // Issue #5 & Issue #1: Exposed Natural Seasoned Oak Overhead Ceiling Spine Beams & Collar Joists
+  // along the raised 4.52m collar ceiling edges (matching the Entrance Hall ceiling beams downstairs!)
   const landingDarkSpineBeam = new THREE.Mesh(
     new THREE.BoxGeometry(4.6, 0.18, 0.18),
     darkTimberBeamMat
@@ -694,7 +774,31 @@ export function buildUpperLanding(
   landingDarkSpineBeam.name = 'upperLanding.darkSpineBeam';
   landingDarkSpineBeam.position.set(-15.35, collarCeilingY - 0.09, -1.12);
   landingDarkSpineBeam.castShadow = true;
+  landingDarkSpineBeam.receiveShadow = true;
   ceilingMeshGroup.add(landingDarkSpineBeam);
+
+  const landingSouthCollarBeam = new THREE.Mesh(
+    new THREE.BoxGeometry(4.68, 0.18, 0.18),
+    darkTimberBeamMat
+  );
+  landingSouthCollarBeam.name = 'upperLanding.southCollarBeam';
+  landingSouthCollarBeam.position.set(-15.39, collarCeilingY - 0.09, 1.05);
+  landingSouthCollarBeam.castShadow = true;
+  landingSouthCollarBeam.receiveShadow = true;
+  ceilingMeshGroup.add(landingSouthCollarBeam);
+
+  // Exposed Natural Oak North-South Collar Ceiling Joists across the Upper Landing (Z = -1.12m..+1.05m, matching downstairs Hall joists!)
+  for (let jx = -17.35; jx <= -13.35; jx += 0.44) {
+    const collarJoist = new THREE.Mesh(
+      new THREE.BoxGeometry(0.095, 0.11, 2.02),
+      darkTimberBeamMat
+    );
+    collarJoist.name = 'upperLanding.collarJoist';
+    collarJoist.position.set(jx, collarCeilingY - 0.055, -0.035);
+    collarJoist.castShadow = true;
+    collarJoist.receiveShadow = true;
+    ceilingMeshGroup.add(collarJoist);
+  }
 
   // Non-Square West Load-Bearing Cross-Wall between Main Stair Landing and Bedroom 2 / West Wing Hallway
   // (0.24m thick, [-17.55, -2.50] -> [-17.92, +2.68] — aligned with Ground Floor Hall/Front Room cross-wall,
@@ -796,11 +900,11 @@ export function buildUpperLanding(
     scene.add(westUpperGable);
   }
 
-  // Exposed Dark Black-Stained Timber Wall Framing on the West Landing Wall (media_1790502987279.webp):
-  // - Horizontal black timber beam across the middle of the wall (Y = 3.24m), stopping at the North architrave of `upperLandingToWestWingPortal` (`u = 3.675m`)
-  // - Diagonal black timber brace rising from the horizontal beam up to the ceiling spine beam!
+  // Exposed Natural Seasoned Oak Timber Wall Framing on the West Landing Wall (media_1790502987279.webp & Issue #1):
+  // - Horizontal natural oak timber beam with stepped moulding across the middle of the wall (Y = 3.24m), stopping at the North architrave of `upperLandingToWestWingPortal` (`u = 3.675m`)
+  // - Diagonal natural oak timber brace rising from the horizontal beam up to the ceiling spine beam!
   const westWallTimberHeadBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(3.625, 0.13, 0.05),
+    new THREE.BoxGeometry(3.625, 0.14, 0.055),
     darkTimberBeamMat
   );
   westWallTimberHeadBeam.name = 'upperLanding.westWallTimberBeam';
@@ -808,6 +912,8 @@ export function buildUpperLanding(
     upperLandingCrossWallFrame.toWorld(1.8625, floorTopY + 1.08, -0.125)
   );
   westWallTimberHeadBeam.rotation.y = upperLandingCrossWallFrame.rotationY;
+  westWallTimberHeadBeam.castShadow = true;
+  westWallTimberHeadBeam.receiveShadow = true;
   tagUpperCutawayWall(westWallTimberHeadBeam, {
     axis: 'x',
     coord: -17.72,
@@ -817,8 +923,27 @@ export function buildUpperLanding(
   });
   scene.add(westWallTimberHeadBeam);
 
+  const westWallTimberHeadMoulding = new THREE.Mesh(
+    new THREE.BoxGeometry(3.635, 0.036, 0.068),
+    antiqueOakSkirtingMat
+  );
+  westWallTimberHeadMoulding.name = 'upperLanding.westWallTimberBeam.moulding';
+  westWallTimberHeadMoulding.position.copy(
+    upperLandingCrossWallFrame.toWorld(1.8625, floorTopY + 1.08, -0.13)
+  );
+  westWallTimberHeadMoulding.rotation.y = upperLandingCrossWallFrame.rotationY;
+  westWallTimberHeadMoulding.castShadow = true;
+  tagUpperCutawayWall(westWallTimberHeadMoulding, {
+    axis: 'x',
+    coord: -17.72,
+    minSpan: -2.5,
+    maxSpan: 2.5,
+    floor: 'first',
+  });
+  scene.add(westWallTimberHeadMoulding);
+
   const westWallDiagonalBrace = new THREE.Mesh(
-    new THREE.BoxGeometry(0.13, 1.24, 0.05),
+    new THREE.BoxGeometry(0.13, 1.24, 0.052),
     darkTimberBeamMat
   );
   westWallDiagonalBrace.name = 'upperLanding.westWallDiagonalBrace';
@@ -827,6 +952,8 @@ export function buildUpperLanding(
   );
   westWallDiagonalBrace.rotation.y = upperLandingCrossWallFrame.rotationY;
   westWallDiagonalBrace.rotation.z = -0.34;
+  westWallDiagonalBrace.castShadow = true;
+  westWallDiagonalBrace.receiveShadow = true;
   tagUpperCutawayWall(westWallDiagonalBrace, {
     axis: 'x',
     coord: -17.72,
