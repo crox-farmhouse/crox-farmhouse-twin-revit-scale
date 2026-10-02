@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { addCasedArchitravePortal, buildMiteredPolylineStrip, buildPolygonalFloorSlab, type Point2D } from '../../../engine/geometry/index.ts';
+import { createWovenWoolCarpetTextures } from '../../../engine/textures/procedural-textures.ts';
 import { buildTraditionalWindowCurtains } from '../../../objects/decor/curtains-and-fiddle-leaf-plant.ts';
 import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../types/scene.ts';
 import { getEastWingSouthWallZ, type createGroundFloorMaterials } from './ground-floor-materials.ts';
@@ -1568,9 +1569,15 @@ export function createGroundFloorShellKit(
     scene.add(radGroup);
   };
 
+  const downstairsWoolCarpetTextures = createWovenWoolCarpetTextures();
   const greyRoomCarpetMat = new THREE.MeshStandardMaterial({
-    color: 0xb8b4ae, // Soft light-grey carpet in both Front Room and Living Room (including inside the canted bays!)
-    roughness: 0.94,
+    name: 'upstairsWovenWoolCarpet',
+    map: downstairsWoolCarpetTextures.colorMap,
+    bumpMap: downstairsWoolCarpetTextures.bumpMap,
+    bumpScale: 0.0025,
+    color: 0xf7f2e8, // Warm creamy-oatmeal herringbone woven wool carpet consistent across stairs, upstairs, and carpeted ground-floor rooms
+    roughness: 0.9,
+    metalness: 0.01,
   });
 
   /**

@@ -106,15 +106,15 @@ export function createFirstFloorMaterials(
     metalness: 0.06,
   });
 
-  // Warm creamy-oatmeal natural British wool bouclé loop-pile carpet throughout upstairs (`media_1790939297671.jpg`)
+  // Warm creamy-oatmeal natural British wool carpet throughout upstairs matching the stair runner weave
   const woolCarpetTextures = createWovenWoolCarpetTextures();
   const oakFloorMat = new THREE.MeshStandardMaterial({
     name: 'upstairsWovenWoolCarpet',
     map: woolCarpetTextures.colorMap,
     bumpMap: woolCarpetTextures.bumpMap,
-    bumpScale: 0.003,
-    color: 0xffffff,
-    roughness: 0.92,
+    bumpScale: 0.0025,
+    color: 0xf7f2e8,
+    roughness: 0.9,
     metalness: 0.01,
   });
 

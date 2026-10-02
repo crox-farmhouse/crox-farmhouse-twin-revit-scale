@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { buildSweptMouldingGeometry, createSkirtingCapProfile } from '../../../../engine/geometry/swept-moulding.ts';
+import { createWovenWoolCarpetTextures } from '../../../../engine/textures/procedural-textures.ts';
 import { buildUnderstairsHeatingManifold } from '../../../../objects/fixtures/hydronic-manifold.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
@@ -100,33 +101,45 @@ export function buildHallStaircase(
     return unit;
   };
 
-  // Issue #16: Woven Herringbone Wool/Sisal Stair Runner Carpet texture with contrast whipped border binding
-  const runnerCanvas = document.createElement('canvas');
-  runnerCanvas.width = 256;
-  runnerCanvas.height = 256;
-  const rCtx = runnerCanvas.getContext('2d');
-  if (rCtx) {
-    rCtx.fillStyle = '#cfc6b8';
-    rCtx.fillRect(0, 0, 256, 256);
-    for (let y = 0; y < 256; y += 4) {
-      for (let x = 0; x < 256; x += 8) {
-        const zig = ((x / 8 + Math.floor(y / 16)) & 1) === 0;
-        rCtx.fillStyle = zig ? '#c2b7a6' : '#dad2c5';
-        rCtx.fillRect(x, y, 6, 3);
-      }
-    }
-  }
-  const runnerTex = new THREE.CanvasTexture(runnerCanvas);
-  runnerTex.wrapS = THREE.RepeatWrapping;
-  runnerTex.wrapT = THREE.RepeatWrapping;
-  runnerTex.repeat.set(4, 12);
-  runnerTex.colorSpace = THREE.SRGBColorSpace;
-
+  // Issue #16: Woven Herringbone Wool Stair Runner Carpet texture matching the upstairs wool carpet at identical 0.5 m^-1 world UV scale
+  const stairWoolCarpetTextures = createWovenWoolCarpetTextures();
   const stairCarpetMat = new THREE.MeshStandardMaterial({
-    map: runnerTex,
-    color: 0xd8d0c5, // Warm oatmeal herringbone woven runner carpet (Issue #16)
+    name: 'upstairsWovenWoolCarpet',
+    map: stairWoolCarpetTextures.colorMap,
+    bumpMap: stairWoolCarpetTextures.bumpMap,
+    bumpScale: 0.0025,
+    color: 0xf7f2e8, // Lighter warm creamy-oatmeal herringbone woven wool runner carpet matching upstairs
     roughness: 0.9,
+    metalness: 0.01,
   });
+  const applyWorldSpaceCarpetUVs = (
+    geo: THREE.BufferGeometry,
+    cx: number,
+    cy: number,
+    cz: number
+  ): THREE.BufferGeometry => {
+    const pos = geo.getAttribute('position');
+    const norm = geo.getAttribute('normal');
+    const uv = geo.getAttribute('uv');
+    if (pos && norm && uv) {
+      for (let i = 0; i < pos.count; i++) {
+        const wx = pos.getX(i) + cx;
+        const wy = pos.getY(i) + cy;
+        const wz = pos.getZ(i) + cz;
+        const ny = Math.abs(norm.getY(i));
+        const nx = Math.abs(norm.getX(i));
+        if (ny >= 0.5) {
+          uv.setXY(i, wx * 0.5, wz * 0.5);
+        } else if (nx > 0.5) {
+          uv.setXY(i, (wx + wy) * 0.5, wz * 0.5);
+        } else {
+          uv.setXY(i, wx * 0.5, (wz + wy) * 0.5);
+        }
+      }
+      uv.needsUpdate = true;
+    }
+    return geo;
+  };
   const stairRunnerBorderMat = new THREE.MeshStandardMaterial({
     color: 0x3d352e, // Dark charcoal-umber cotton tape border binding along both edges of the runner
     roughness: 0.85,
@@ -179,7 +192,12 @@ export function buildHallStaircase(
 
   // Step 1 Central Runner Carpet (tread + riser + border binding + brass stair rod at base of Step 2 riser)
   const step1RunnerTread = new THREE.Mesh(
-    new THREE.BoxGeometry(runnerW, 0.008, 0.244),
+    applyWorldSpaceCarpetUVs(
+      new THREE.BoxGeometry(runnerW, 0.008, 0.244),
+      lowerRunnerCenterX,
+      step1TopY + 0.004,
+      -0.46
+    ),
     stairCarpetMat
   );
   step1RunnerTread.name = 'hall.stairs.runner.step1Tread';
@@ -188,7 +206,12 @@ export function buildHallStaircase(
   stairGroup.add(step1RunnerTread);
 
   const step1RunnerRiser = new THREE.Mesh(
-    new THREE.BoxGeometry(runnerW, lowerRiserH, 0.008),
+    applyWorldSpaceCarpetUVs(
+      new THREE.BoxGeometry(runnerW, lowerRiserH, 0.008),
+      lowerRunnerCenterX,
+      lowerFloorY + lowerRiserH * 0.5,
+      -0.356
+    ),
     stairCarpetMat
   );
   step1RunnerRiser.name = 'hall.stairs.runner.step1Riser';
@@ -247,7 +270,12 @@ export function buildHallStaircase(
 
     // Central Runner Carpet on Riser + Tread (Issue #16)
     const runnerRiser = new THREE.Mesh(
-      new THREE.BoxGeometry(runnerW, lowerRiserH, 0.008),
+      applyWorldSpaceCarpetUVs(
+        new THREE.BoxGeometry(runnerW, lowerRiserH, 0.008),
+        lowerRunnerCenterX,
+        stepBotY + lowerRiserH * 0.5,
+        riserFaceZ + 0.004
+      ),
       stairCarpetMat
     );
     runnerRiser.name = `hall.stairs.runner.step${s + 1}Riser`;
@@ -256,7 +284,12 @@ export function buildHallStaircase(
     stairGroup.add(runnerRiser);
 
     const runnerTread = new THREE.Mesh(
-      new THREE.BoxGeometry(runnerW, 0.008, lowerFlightTreadDepth + 0.024),
+      applyWorldSpaceCarpetUVs(
+        new THREE.BoxGeometry(runnerW, 0.008, lowerFlightTreadDepth + 0.024),
+        lowerRunnerCenterX,
+        stepTopY + 0.004,
+        stepCenterZ + 0.008
+      ),
       stairCarpetMat
     );
     runnerTread.name = `hall.stairs.runner.step${s + 1}Tread`;
@@ -340,7 +373,12 @@ export function buildHallStaircase(
 
   // Step 6 Riser Runner & Brass Stair Rod at Z = -1.62m
   const step6RunnerRiser = new THREE.Mesh(
-    new THREE.BoxGeometry(runnerW, lowerRiserH, 0.008),
+    applyWorldSpaceCarpetUVs(
+      new THREE.BoxGeometry(runnerW, lowerRiserH, 0.008),
+      lowerRunnerCenterX,
+      quarterLandingY - lowerRiserH * 0.5,
+      -1.616
+    ),
     stairCarpetMat
   );
   step6RunnerRiser.position.set(
@@ -375,7 +413,12 @@ export function buildHallStaircase(
 
   // Quarter-Landing L-Turn Runner Carpet Pad (connecting the N-S lower runner to the W-E upper runner)
   const landingRunnerNS = new THREE.Mesh(
-    new THREE.BoxGeometry(runnerW, 0.008, 0.71),
+    applyWorldSpaceCarpetUVs(
+      new THREE.BoxGeometry(runnerW, 0.008, 0.71),
+      lowerRunnerCenterX,
+      quarterLandingY + 0.004,
+      -1.975
+    ),
     stairCarpetMat
   );
   landingRunnerNS.name = 'hall.stairs.runner.quarterLanding';
@@ -384,7 +427,12 @@ export function buildHallStaircase(
   stairGroup.add(landingRunnerNS);
 
   const landingRunnerWE = new THREE.Mesh(
-    new THREE.BoxGeometry(0.46, 0.008, runnerW),
+    applyWorldSpaceCarpetUVs(
+      new THREE.BoxGeometry(0.46, 0.008, runnerW),
+      -16.87,
+      quarterLandingY + 0.004,
+      -2.075
+    ),
     stairCarpetMat
   );
   landingRunnerWE.position.set(-16.87, quarterLandingY + 0.004, -2.075);
@@ -779,6 +827,7 @@ export function buildHallStaircase(
     bevelEnabled: false,
   });
   upperRunnerGeo.translate(0, 0, -2.075 - runnerW * 0.5);
+  applyWorldSpaceCarpetUVs(upperRunnerGeo, 0, 0, 0);
   const upperRunnerMesh = new THREE.Mesh(upperRunnerGeo, stairCarpetMat);
   upperRunnerMesh.name = 'hall.stairs.runner.upperFlight';
   upperRunnerMesh.receiveShadow = true;
