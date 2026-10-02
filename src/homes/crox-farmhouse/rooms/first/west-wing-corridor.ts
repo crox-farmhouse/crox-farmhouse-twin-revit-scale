@@ -336,37 +336,8 @@ export function buildWestWingCorridor(
     backSkirtingExclusions: [[0.325, 0.995]],
   });
 
-  // 3. Dividing Wall (`X = -20.25m, Z = +4.175m..+4.775m`) between Walk-In Shower Stall (East) and Bedroom 3 North Wardrobe (West)
-  buildAngledWallSegment(scene, interactions, {
-    start: [-20.25, 4.175],
-    end: [-20.25, 4.775],
-    thickness: 0.15,
-    topY: upperWallTopY,
-    frontFloorY: floorTopY,
-    backFloorY: floorTopY,
-    wallMaterial: warmRoomPlasterMat,
-    capMaterial: wallCapMat,
-    skipCap: true,
-    skirtingMaterial: antiqueOakSkirtingMat,
-    addFrontSkirting: false,
-    addBackSkirting: false,
-  });
-
-  // 4. South Wall of Walk-In Shower Stall (`Z = +4.85m, X = -20.325m..-18.475m`)
-  buildAngledWallSegment(scene, interactions, {
-    start: [-20.325, 4.85],
-    end: [-18.475, 4.85],
-    thickness: 0.15,
-    topY: upperWallTopY,
-    frontFloorY: floorTopY,
-    backFloorY: floorTopY,
-    wallMaterial: warmRoomPlasterMat,
-    capMaterial: wallCapMat,
-    skipCap: true,
-    skirtingMaterial: antiqueOakSkirtingMat,
-    addFrontSkirting: false, // Bedroom 3 emits one continuous North & East mitred skirting across wardrobe, shower wall, and East wall
-    addBackSkirting: false,  // North (`-Z`) face inside the wet Walk-In Shower
-  });
+  // Note: Dividing Wall #3 (`X = -20.25m, Z = +4.175m..+4.775m`) and Shower South Wall #4 (`Z = +4.85m, X = -20.325m..-18.475m`)
+  // are built below as single one-piece full-height vaulted walls (`Y = floorTopY..bed3CollarY`) so there is zero horizontal split line at Y = 4.16m (Issue #6)!
 
   // =========================================================================
   // ISSUE #3 & #5: STEP-UP WALK-IN SHOWER TRAY & PLASTERED ARCHWAY ENTRANCE
@@ -1045,27 +1016,30 @@ export function buildWestWingCorridor(
     carcass.receiveShadow = true;
     bed3WardGroup.add(carcass);
 
-    // Raked Shaker crown cornice moulding following the vaulted ceiling profile along the South face (`Z = 4.725m`)
-    for (const [x0, y0, x1, y1] of [
-      [wardMinX, upperWallTopY, bed3CollarWestX, bed3CollarY],
-      [bed3CollarWestX, bed3CollarY, wardMaxX, bed3CollarY],
-    ] as const) {
-      const segLen = Math.hypot(x1 - x0, y1 - y0);
-      const segAngle = Math.atan2(y1 - y0, x1 - x0);
-      const corniceSeg = new THREE.Mesh(
-        new THREE.BoxGeometry(segLen + 0.016, 0.044, 0.036),
-        wardrobeMat
-      );
-      corniceSeg.name = 'bedroom3.northWardrobe.cornice';
-      corniceSeg.position.set((x0 + x1) / 2, (y0 + y1) / 2 - 0.022, 4.715 + 0.008);
-      corniceSeg.rotation.z = segAngle;
-      corniceSeg.castShadow = true;
-      bed3WardGroup.add(corniceSeg);
-    }
+    // Single one-piece raked Shaker crown cornice moulding following the vaulted ceiling profile along the South face (`Z = 4.705m..4.745m`)
+    const corniceH = 0.044;
+    const corniceShape = new THREE.Shape();
+    corniceShape.moveTo(wardMinX, upperWallTopY - corniceH);
+    corniceShape.lineTo(bed3CollarWestX, bed3CollarY - corniceH);
+    corniceShape.lineTo(wardMaxX, bed3CollarY - corniceH);
+    corniceShape.lineTo(wardMaxX, bed3CollarY);
+    corniceShape.lineTo(bed3CollarWestX, bed3CollarY);
+    corniceShape.lineTo(wardMinX, upperWallTopY);
+    corniceShape.closePath();
+    const corniceGeo = new THREE.ExtrudeGeometry(corniceShape, {
+      depth: 0.04,
+      bevelEnabled: false,
+    });
+    corniceGeo.translate(0, 0, 4.705);
+    const corniceSeg = new THREE.Mesh(corniceGeo, wardrobeMat);
+    corniceSeg.name = 'bedroom3.northWardrobe.cornice';
+    corniceSeg.castShadow = true;
+    corniceSeg.receiveShadow = true;
+    bed3WardGroup.add(corniceSeg);
 
     // 4 ceiling-height Shaker wardrobe doors (2 pairs) along the South face (`Z = +4.728m`) rising to the vaulted ceiling (Issue #15)
     const doorBaseY = floorTopY + 0.15;
-    const corniceClearance = 0.042;
+    const corniceClearance = 0.046;
     const doorSpanW = wardW - 0.12;
     const doorStep = doorSpanW / 4;
     for (let i = 0; i < 4; i++) {
@@ -1091,8 +1065,8 @@ export function buildWestWingCorridor(
       });
     }
 
-    // Issue #1: Clean non-overlapping upper vaulted gable extensions sealing Z = 4.10m, X = -20.25m (Z = 4.175m..4.775m),
-    // and Z = 4.85m from exact Y = 4.16m up to Bedroom 3's 4.52m vaulted ceiling with zero coplanar Z-fighting or ceiling poke-through!
+    // Issue #1 & #6: Clean one-piece vaulted walls sealing Z = 4.10m, X = -20.25m (Z = 4.175m..4.775m, full height Y = 2.08m..4.52m),
+    // and Z = 4.85m (X = -20.325m..-18.475m, full height Y = 2.08m..4.52m/4.16m) with zero horizontal seam at Y = 4.16m!
     const northAlcoveGableShape = new THREE.Shape();
     northAlcoveGableShape.moveTo(-22.19, upperWallTopY);
     northAlcoveGableShape.lineTo(-20.175, upperWallTopY);
@@ -1107,19 +1081,24 @@ export function buildWestWingCorridor(
     const northAlcoveGable = new THREE.Mesh(northAlcoveGableGeo, warmRoomPlasterMat);
     northAlcoveGable.name = 'bedroom3.northAlcoveUpperGable';
     northAlcoveGable.userData.isArchitecturalShell = true;
+    northAlcoveGable.castShadow = true;
+    northAlcoveGable.receiveShadow = true;
     scene.add(northAlcoveGable);
 
     const alcoveSideUpperWall = new THREE.Mesh(
-      new THREE.BoxGeometry(0.15, bed3CollarY - upperWallTopY, 0.6),
+      new THREE.BoxGeometry(0.15, bed3CollarY - floorTopY, 0.6),
       warmRoomPlasterMat
     );
     alcoveSideUpperWall.name = 'bedroom3.alcoveSideUpperGable';
     alcoveSideUpperWall.userData.isArchitecturalShell = true;
-    alcoveSideUpperWall.position.set(-20.25, (upperWallTopY + bed3CollarY) / 2, 4.475);
+    alcoveSideUpperWall.position.set(-20.25, (floorTopY + bed3CollarY) / 2, 4.475);
+    alcoveSideUpperWall.castShadow = true;
+    alcoveSideUpperWall.receiveShadow = true;
     scene.add(alcoveSideUpperWall);
 
     const showerSouthGableShape = new THREE.Shape();
-    showerSouthGableShape.moveTo(-20.325, upperWallTopY);
+    showerSouthGableShape.moveTo(-20.325, floorTopY);
+    showerSouthGableShape.lineTo(-18.475, floorTopY);
     showerSouthGableShape.lineTo(-18.475, upperWallTopY);
     showerSouthGableShape.lineTo(bed3CollarEastX, bed3CollarY);
     showerSouthGableShape.lineTo(-20.325, bed3CollarY);
@@ -1132,6 +1111,8 @@ export function buildWestWingCorridor(
     const showerSouthGable = new THREE.Mesh(showerSouthGableGeo, warmRoomPlasterMat);
     showerSouthGable.name = 'bedroom3.showerSouthUpperGable';
     showerSouthGable.userData.isArchitecturalShell = true;
+    showerSouthGable.castShadow = true;
+    showerSouthGable.receiveShadow = true;
     scene.add(showerSouthGable);
 
     // Issue #6 & #7: Continuous 45°-mitred North & East skirting board wrapping the inset wardrobe plinth (`Z = +4.73m`),

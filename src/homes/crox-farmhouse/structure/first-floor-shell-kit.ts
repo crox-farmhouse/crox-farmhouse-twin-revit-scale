@@ -1146,9 +1146,9 @@ export function createFirstFloorShellKit(
   });
 
   /**
-   * Builds an upstairs bedroom chimney breast (facing North `-Z` into the bedroom) with a genuinely
-   * recessed firebox opening, a small honed black slate hearth, and an 1800s Victorian/Georgian
-   * black cast-iron bedroom fireplace surround, mantelpiece, and arched hob grate (Issue #2).
+   * Builds an upstairs bedroom chimney breast (facing North `-Z` into the bedroom) as a single
+   * seamless one-piece plaster box (Issue #1 & #5: zero vertical split lines!) with a compact,
+   * low-profile 1800s black cast-iron bedroom fireplace and small honed black slate hearth (Issue #2).
    */
   const addUpperBedroomChimneyBreastWithFireplace = (
     parent: THREE.Object3D,
@@ -1175,57 +1175,18 @@ export function createFirstFloorShellKit(
 
     const totalH = topY - floorY;
     const frontZ = -depth / 2;
-    const openW = 0.5;
-    const openH = 0.72;
-    const recessD = Math.min(0.22, depth - 0.12);
-    const pierW = Math.max(0.18, (width - openW) / 2);
 
-    // 1. Left & Right full-height plastered chimney breast piers flanking the firebox opening
-    for (const [sideSign, sideName] of [
-      [-1, 'westPier'],
-      [1, 'eastPier'],
-    ] as const) {
-      const pierMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(pierW, totalH, depth),
-        warmRoomPlasterMat
-      );
-      pierMesh.name = `${namePrefix}.${sideName}`;
-      pierMesh.userData.isArchitecturalShell = true;
-      pierMesh.position.set(
-        sideSign * (openW / 2 + pierW / 2),
-        floorY + totalH / 2,
-        0
-      );
-      pierMesh.castShadow = true;
-      pierMesh.receiveShadow = true;
-      rootGroup.add(pierMesh);
-    }
-
-    // 2. Upper chimney breast above the firebox opening (`Y = floorY + openH .. topY`)
-    const upperBreastH = Math.max(0.2, totalH - openH);
-    const upperBreastMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(openW, upperBreastH, depth),
+    // 1. Single one-piece full-width plastered chimney breast body (Issue #1 & #5: zero split lines on face!)
+    const breastBodyMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(width, totalH, depth),
       warmRoomPlasterMat
     );
-    upperBreastMesh.name = `${namePrefix}.upperBreast`;
-    upperBreastMesh.userData.isArchitecturalShell = true;
-    upperBreastMesh.position.set(0, floorY + openH + upperBreastH / 2, 0);
-    upperBreastMesh.castShadow = true;
-    upperBreastMesh.receiveShadow = true;
-    rootGroup.add(upperBreastMesh);
-
-    // 3. Rear backing masonry behind the recessed firebox (`Z = frontZ + recessD .. +depth/2`)
-    const rearCoreD = Math.max(0.08, depth - recessD);
-    const rearCoreMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(openW, openH, rearCoreD),
-      warmRoomPlasterMat
-    );
-    rearCoreMesh.name = `${namePrefix}.fireboxBacking`;
-    rearCoreMesh.userData.isArchitecturalShell = true;
-    rearCoreMesh.position.set(0, floorY + openH / 2, depth / 2 - rearCoreD / 2);
-    rearCoreMesh.castShadow = true;
-    rearCoreMesh.receiveShadow = true;
-    rootGroup.add(rearCoreMesh);
+    breastBodyMesh.name = `${namePrefix}.upperBreast`;
+    breastBodyMesh.userData.isArchitecturalShell = true;
+    breastBodyMesh.position.set(0, floorY + totalH / 2, 0);
+    breastBodyMesh.castShadow = true;
+    breastBodyMesh.receiveShadow = true;
+    rootGroup.add(breastBodyMesh);
 
     if (includeTopCap) {
       const capMesh = new THREE.Mesh(
@@ -1239,43 +1200,50 @@ export function createFirstFloorShellKit(
     }
 
     // =========================================================================
-    // 4. 1800s FARMHOUSE BLACK CAST-IRON BEDROOM FIREPLACE & SMALL BLACK HEARTH
+    // 2. COMPACT LOW-PROFILE 1800s FARMHOUSE BLACK CAST-IRON BEDROOM FIREPLACE
+    //    & SMALL BLACK HEARTH (Issue #2: slightly smaller & less protruding)
     // =========================================================================
     const fpGroup = new THREE.Group();
     fpGroup.name = `${namePrefix}.fireplace`;
     fpGroup.userData.zone = zone;
 
-    // A. Small Honed Black Slate Hearth Slab (`0.88m` wide × `0.26m` projection in front of breast)
-    const hearthW = 0.88;
-    const hearthH = 0.028;
-    const hearthFrontProj = 0.26;
-    const hearthTotalD = hearthFrontProj + recessD;
+    const openW = 0.38;
+    const openH = 0.56;
+    const surroundOuterW = 0.56; // Outer jamb edges at X = ±0.28m
+    const jambW = (surroundOuterW - openW) / 2; // 0.09m
+    const jambH = 0.56;
+    const jambD = 0.028; // Shallow 2.8cm projection from chimney breast face
+
+    // A. Small Honed Black Slate Hearth Slab (`0.62m` wide × `0.13m` shallow projection in front of breast)
+    const hearthW = 0.62;
+    const hearthH = 0.02;
+    const hearthFrontProj = 0.13;
     const hearthSlab = new THREE.Mesh(
-      new THREE.BoxGeometry(hearthW, hearthH, hearthTotalD),
+      new THREE.BoxGeometry(hearthW, hearthH, hearthFrontProj),
       blackHearthMat
     );
     hearthSlab.name = `${namePrefix}.fireplace.hearth`;
     hearthSlab.position.set(
       0,
       floorY + hearthH / 2,
-      frontZ - hearthFrontProj + hearthTotalD / 2
+      frontZ - hearthFrontProj / 2 - 0.001
     );
     hearthSlab.castShadow = true;
     hearthSlab.receiveShadow = true;
     fpGroup.add(hearthSlab);
 
-    // Low black cast-iron/slate fender kerb around the front & sides of the small black hearth
-    const kerbH = 0.04;
-    const kerbT = 0.024;
+    // Low black cast-iron fender kerb around the front & sides of the small black hearth
+    const kerbH = 0.026;
+    const kerbT = 0.018;
     const frontKerb = new THREE.Mesh(
-      new THREE.BoxGeometry(hearthW + 0.012, kerbH, kerbT),
+      new THREE.BoxGeometry(hearthW + 0.008, kerbH, kerbT),
       blackCastIronMat
     );
     frontKerb.name = `${namePrefix}.fireplace.hearthKerb`;
     frontKerb.position.set(
       0,
       floorY + kerbH / 2,
-      frontZ - hearthFrontProj + kerbT / 2
+      frontZ - hearthFrontProj + kerbT / 2 - 0.001
     );
     frontKerb.castShadow = true;
     frontKerb.receiveShadow = true;
@@ -1287,60 +1255,38 @@ export function createFirstFloorShellKit(
         blackCastIronMat
       );
       sideKerb.position.set(
-        sideSign * (hearthW / 2 - kerbT / 2 + 0.006),
+        sideSign * (hearthW / 2 - kerbT / 2 + 0.004),
         floorY + kerbH / 2,
-        frontZ - (hearthFrontProj - kerbT) / 2
+        frontZ - (hearthFrontProj - kerbT) / 2 - 0.001
       );
       sideKerb.castShadow = true;
       sideKerb.receiveShadow = true;
       fpGroup.add(sideKerb);
     }
 
-    // B. Soot-Blackened Firebrick Firebox Lining (back & side cheeks)
+    const surroundBaseY = floorY + hearthH;
+
+    // B. Soot-Blackened Firebox Backplate framed inside the cast-iron surround
     const fireboxBack = new THREE.Mesh(
-      new THREE.BoxGeometry(openW - 0.01, openH - hearthH, 0.018),
+      new THREE.BoxGeometry(openW, openH, 0.006),
       sootFireboxMat
     );
     fireboxBack.name = `${namePrefix}.fireplace.fireboxBack`;
-    fireboxBack.position.set(
-      0,
-      floorY + hearthH + (openH - hearthH) / 2,
-      frontZ + recessD - 0.01
-    );
+    fireboxBack.position.set(0, surroundBaseY + openH / 2, frontZ - 0.004);
     fireboxBack.receiveShadow = true;
     fpGroup.add(fireboxBack);
 
-    for (const sideSign of [-1, 1] as const) {
-      const cheek = new THREE.Mesh(
-        new THREE.BoxGeometry(0.018, openH - hearthH, recessD),
-        sootFireboxMat
-      );
-      cheek.position.set(
-        sideSign * (openW / 2 - 0.009),
-        floorY + hearthH + (openH - hearthH) / 2,
-        frontZ + recessD / 2
-      );
-      cheek.receiveShadow = true;
-      fpGroup.add(cheek);
-    }
-
-    // C. 1800s Black Cast-Iron Chimneypiece Surround (Pilaster Jambs, Frieze & Mantelpiece)
-    const surroundOuterW = 0.74; // Outer jamb edges at X = ±0.37m
-    const jambW = (surroundOuterW - openW) / 2; // 0.12m
-    const jambH = 0.74;
-    const jambD = 0.052;
-    const surroundBaseY = floorY + hearthH;
-
+    // C. Compact 1800s Black Cast-Iron Chimneypiece Surround (Pilaster Jambs, Frieze & Mantelpiece)
     for (const sideSign of [-1, 1] as const) {
       const jambX = sideSign * (openW / 2 + jambW / 2);
 
       // Moulded cast-iron plinth block at base of jamb
       const plinth = new THREE.Mesh(
-        new THREE.BoxGeometry(jambW + 0.016, 0.095, jambD + 0.014),
+        new THREE.BoxGeometry(jambW + 0.01, 0.075, jambD + 0.008),
         blackCastIronMat
       );
       plinth.name = `${namePrefix}.fireplace.jambPlinth`;
-      plinth.position.set(jambX, surroundBaseY + 0.0475, frontZ - jambD / 2);
+      plinth.position.set(jambX, surroundBaseY + 0.0375, frontZ - (jambD + 0.008) / 2);
       plinth.castShadow = true;
       plinth.receiveShadow = true;
       fpGroup.add(plinth);
@@ -1351,7 +1297,7 @@ export function createFirstFloorShellKit(
         blackCastIronMat
       );
       jamb.name = `${namePrefix}.fireplace.jamb`;
-      jamb.position.set(jambX, surroundBaseY + jambH / 2, frontZ - jambD / 2 + 0.004);
+      jamb.position.set(jambX, surroundBaseY + jambH / 2, frontZ - jambD / 2);
       jamb.castShadow = true;
       jamb.receiveShadow = true;
       fpGroup.add(jamb);
@@ -1359,55 +1305,55 @@ export function createFirstFloorShellKit(
       // 3 Regency/Victorian vertical reeded flutes on each pilaster jamb
       for (const rIdx of [-1, 0, 1] as const) {
         const reed = new THREE.Mesh(
-          new THREE.BoxGeometry(0.012, jambH - 0.13, 0.008),
+          new THREE.BoxGeometry(0.009, jambH - 0.1, 0.005),
           blackCastIronMat
         );
         reed.position.set(
-          jambX + rIdx * 0.028,
-          surroundBaseY + 0.095 + (jambH - 0.11) / 2,
-          frontZ - jambD
+          jambX + rIdx * 0.022,
+          surroundBaseY + 0.075 + (jambH - 0.085) / 2,
+          frontZ - jambD - 0.002
         );
         fpGroup.add(reed);
       }
     }
 
     // Cast-iron frieze lintel & corner roundel bosses
-    const friezeH = 0.15;
+    const friezeH = 0.11;
     const friezeY = surroundBaseY + jambH + friezeH / 2;
     const frieze = new THREE.Mesh(
       new THREE.BoxGeometry(surroundOuterW, friezeH, jambD),
       blackCastIronMat
     );
     frieze.name = `${namePrefix}.fireplace.frieze`;
-    frieze.position.set(0, friezeY, frontZ - jambD / 2 + 0.004);
+    frieze.position.set(0, friezeY, frontZ - jambD / 2);
     frieze.castShadow = true;
     frieze.receiveShadow = true;
     fpGroup.add(frieze);
 
     // Central raised Regency tablet panel on frieze
     const friezeTablet = new THREE.Mesh(
-      new THREE.BoxGeometry(0.28, 0.092, 0.012),
+      new THREE.BoxGeometry(0.21, 0.068, 0.008),
       blackCastIronMat
     );
-    friezeTablet.position.set(0, friezeY, frontZ - jambD - 0.002);
+    friezeTablet.position.set(0, friezeY, frontZ - jambD - 0.003);
     friezeTablet.castShadow = true;
     fpGroup.add(friezeTablet);
 
     // Turned circular rosette bosses on the left & right corner blocks
     for (const sideSign of [-1, 1] as const) {
       const bossBlock = new THREE.Mesh(
-        new THREE.BoxGeometry(jambW + 0.008, friezeH + 0.006, 0.01),
+        new THREE.BoxGeometry(jambW + 0.006, friezeH + 0.004, 0.006),
         blackCastIronMat
       );
       bossBlock.position.set(
         sideSign * (openW / 2 + jambW / 2),
         friezeY,
-        frontZ - jambD
+        frontZ - jambD - 0.002
       );
       fpGroup.add(bossBlock);
 
       const rosette = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.036, 0.036, 0.014, 16),
+        new THREE.CylinderGeometry(0.026, 0.026, 0.01, 16),
         blackCastIronMat
       );
       rosette.rotation.x = Math.PI / 2;
@@ -1420,28 +1366,28 @@ export function createFirstFloorShellKit(
       fpGroup.add(rosette);
     }
 
-    // Stepped sub-mantel bed moulding + overhanging black cast-iron mantelpiece shelf
-    const subMantelY = surroundBaseY + jambH + friezeH + 0.012;
+    // Stepped sub-mantel bed moulding + shallow black cast-iron mantelpiece shelf (`0.64m` wide × `0.068m` deep)
+    const subMantelY = surroundBaseY + jambH + friezeH + 0.009;
     const subMantel = new THREE.Mesh(
-      new THREE.BoxGeometry(surroundOuterW + 0.05, 0.024, 0.095),
+      new THREE.BoxGeometry(surroundOuterW + 0.036, 0.018, 0.048),
       blackCastIronMat
     );
-    subMantel.position.set(0, subMantelY, frontZ - 0.044);
+    subMantel.position.set(0, subMantelY, frontZ - 0.024);
     subMantel.castShadow = true;
     subMantel.receiveShadow = true;
     fpGroup.add(subMantel);
 
     const mantelShelf = new THREE.Mesh(
-      new THREE.BoxGeometry(0.86, 0.032, 0.135),
+      new THREE.BoxGeometry(0.64, 0.024, 0.068),
       blackCastIronMat
     );
     mantelShelf.name = `${namePrefix}.fireplace.mantelShelf`;
-    mantelShelf.position.set(0, subMantelY + 0.028, frontZ - 0.064);
+    mantelShelf.position.set(0, subMantelY + 0.021, frontZ - 0.034);
     mantelShelf.castShadow = true;
     mantelShelf.receiveShadow = true;
     fpGroup.add(mantelShelf);
 
-    // D. Arched Cast-Iron Register Plate & 4-Bar Bedroom Hob Grate Basket
+    // D. Arched Cast-Iron Register Plate & Shallow 4-Bar Bedroom Hob Grate Basket
     const archPlateShape = new THREE.Shape();
     archPlateShape.moveTo(-openW / 2, 0);
     archPlateShape.lineTo(openW / 2, 0);
@@ -1449,8 +1395,8 @@ export function createFirstFloorShellKit(
     archPlateShape.lineTo(-openW / 2, openH);
     archPlateShape.closePath();
 
-    const innerOpenW = 0.36;
-    const innerSpringH = 0.42;
+    const innerOpenW = 0.28;
+    const innerSpringH = 0.34;
     const innerArchHole = new THREE.Path();
     innerArchHole.moveTo(-innerOpenW / 2, 0);
     innerArchHole.lineTo(-innerOpenW / 2, innerSpringH);
@@ -1460,62 +1406,62 @@ export function createFirstFloorShellKit(
     archPlateShape.holes.push(innerArchHole);
 
     const registerPlateGeo = new THREE.ExtrudeGeometry(archPlateShape, {
-      depth: 0.018,
+      depth: 0.01,
       bevelEnabled: true,
-      bevelThickness: 0.004,
-      bevelSize: 0.004,
+      bevelThickness: 0.003,
+      bevelSize: 0.003,
       bevelSegments: 2,
     });
     const registerPlate = new THREE.Mesh(registerPlateGeo, blackCastIronMat);
     registerPlate.name = `${namePrefix}.fireplace.registerPlate`;
-    registerPlate.position.set(0, surroundBaseY, frontZ - 0.006);
+    registerPlate.position.set(0, surroundBaseY, frontZ - 0.018);
     registerPlate.castShadow = true;
     registerPlate.receiveShadow = true;
     fpGroup.add(registerPlate);
 
-    // Cast-iron ashpan fretwork base + 4 horizontal grate bars + unlit coal bed
-    const grateW = innerOpenW + 0.02;
+    // Shallow cast-iron ashpan fretwork base + 4 horizontal grate bars + unlit coal bed tucked inside the surround depth
+    const grateW = innerOpenW + 0.016;
     const ashFret = new THREE.Mesh(
-      new THREE.BoxGeometry(grateW, 0.068, 0.12),
+      new THREE.BoxGeometry(grateW, 0.052, 0.018),
       blackCastIronMat
     );
     ashFret.name = `${namePrefix}.fireplace.ashFret`;
-    ashFret.position.set(0, surroundBaseY + 0.034, frontZ + 0.035);
+    ashFret.position.set(0, surroundBaseY + 0.026, frontZ - 0.015);
     ashFret.castShadow = true;
     fpGroup.add(ashFret);
 
     for (let b = 0; b < 4; b++) {
-      const barY = surroundBaseY + 0.095 + b * 0.042;
+      const barY = surroundBaseY + 0.075 + b * 0.034;
       const grateBar = new THREE.Mesh(
-        new THREE.BoxGeometry(grateW, 0.014, 0.016),
+        new THREE.BoxGeometry(grateW, 0.011, 0.012),
         blackCastIronMat
       );
       grateBar.name = `${namePrefix}.fireplace.grateBar`;
-      grateBar.position.set(0, barY, frontZ + 0.008);
+      grateBar.position.set(0, barY, frontZ - 0.019);
       grateBar.castShadow = true;
       fpGroup.add(grateBar);
     }
 
     for (const sideSign of [-1, 1] as const) {
       const standard = new THREE.Mesh(
-        new THREE.BoxGeometry(0.024, 0.25, 0.032),
+        new THREE.BoxGeometry(0.018, 0.2, 0.018),
         blackCastIronMat
       );
       standard.position.set(
-        sideSign * (grateW / 2 - 0.012),
-        surroundBaseY + 0.125,
-        frontZ + 0.008
+        sideSign * (grateW / 2 - 0.009),
+        surroundBaseY + 0.1,
+        frontZ - 0.017
       );
       standard.castShadow = true;
       fpGroup.add(standard);
     }
 
     const coalBed = new THREE.Mesh(
-      new THREE.BoxGeometry(innerOpenW - 0.02, 0.14, 0.14),
+      new THREE.BoxGeometry(innerOpenW - 0.016, 0.11, 0.014),
       coalBedMat
     );
     coalBed.name = `${namePrefix}.fireplace.coalBed`;
-    coalBed.position.set(0, surroundBaseY + 0.13, frontZ + 0.09);
+    coalBed.position.set(0, surroundBaseY + 0.105, frontZ - 0.011);
     coalBed.receiveShadow = true;
     fpGroup.add(coalBed);
 

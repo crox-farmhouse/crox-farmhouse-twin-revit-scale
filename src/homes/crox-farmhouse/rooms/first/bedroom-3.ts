@@ -13,7 +13,7 @@ import type { createFirstFloorShellKit } from '../../structure/first-floor-shell
 export function buildBedroom3(
   ctx: SceneBuilderContext,
   kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'floorTopY' | 'oakFloorMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'warmRoomPlasterMat'> &
-    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addUpperBedroomChimneyBreastWithFireplace' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
+    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addUpperBedroomChimneyBreastWithFireplace' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperInteractiveDoor' | 'doorH'>
 ): void {
   const { firstFloorMeshGroup: scene, interactions } = ctx;
   const {
@@ -21,7 +21,6 @@ export function buildBedroom3(
     addUpperBedroomChimneyBreastWithFireplace,
     addUpperBrickWallAlongZWithWindow,
     addUpperInteractiveDoor,
-    addUpperInteriorWall,
     antiqueOakSkirtingMat,
     brassMat,
     doorH,
@@ -155,29 +154,22 @@ export function buildBedroom3(
 
   // South Load-Bearing Cross-Wall between Bedroom 3 / Upper Corridor and Bedroom 4
   // (0.24m thick, Z = +8.15m..+8.39m, X = -17.22m..-22.19m) with doorway centered in the Corridor at X = -17.75m (width = 0.78m)
-  addUpperInteriorWall(-20.205, floorTopY, upperWallTopY, 8.27, 3.97, 0.24, warmRoomPlasterMat, {
-    skirtingSides: [1], // South (+Z) face inside Bedroom 4
-    skirtingMin: -22.19,
-    skirtingMax: -18.224,
-    skipCap: true,
-  });
-  addUpperInteriorWall(-17.29, floorTopY, upperWallTopY, 8.27, 0.14, 0.24, warmRoomPlasterMat, {
-    skipSkirting: true,
-    skipCap: true,
-  });
-  addUpperInteriorWall(-17.75, floorTopY + doorH, upperWallTopY, 8.27, 0.92, 0.24, warmRoomPlasterMat, {
-    skipSkirting: true,
-    skipCap: true,
-  });
+  // Built as a SINGLE unbroken full-height vaulted polygon (`Y = 2.08m..4.52m`) so there is zero horizontal split line at Y = 4.16m!
   addUpperInteractiveDoor('x', 8.27, 0.24, -17.75, 0.78, Math.PI * 0.48);
-
-  // Issue #1, #6, #10 & #15: Full-span coplanar vaulted upper gable on the Z = 8.27m wall between Bedroom 3 and Bedroom 4 (`Y = 4.16m..4.52m`, zero Z-fighting or ceiling poke-through!)
   {
+    const doorMinX = -17.75 - 0.39; // -18.14m
+    const doorMaxX = -17.75 + 0.39; // -17.36m
     const northGableShape = new THREE.Shape();
-    northGableShape.moveTo(-22.19, upperWallTopY);
+    northGableShape.moveTo(-22.19, floorTopY);
+    northGableShape.lineTo(doorMinX, floorTopY);
+    northGableShape.lineTo(doorMinX, floorTopY + doorH);
+    northGableShape.lineTo(doorMaxX, floorTopY + doorH);
+    northGableShape.lineTo(doorMaxX, floorTopY);
+    northGableShape.lineTo(-17.22, floorTopY);
     northGableShape.lineTo(-17.22, upperWallTopY);
-    northGableShape.lineTo(-18.75, collarCeilingY);
+    northGableShape.lineTo(-18.62, collarCeilingY);
     northGableShape.lineTo(-20.85, collarCeilingY);
+    northGableShape.lineTo(-22.19, upperWallTopY);
     northGableShape.closePath();
     const northGableGeo = new THREE.ExtrudeGeometry(northGableShape, {
       depth: 0.24,
@@ -193,7 +185,8 @@ export function buildBedroom3(
   }
 
   // Issue #2, #6 & #7: Continuous 45°-mitred skirting along the South-East pier (`X = -18.475m`), South wall & Chimney Breast of Bedroom 3,
-  // terminating cleanly against the East (`X = -19.43m`) and West (`X = -20.17m`) jambs of the 1800s black cast-iron fireplace!
+  // terminating cleanly against the East (`X = -19.52m`) and West (`X = -20.08m`) jambs of the compact 1800s black cast-iron fireplace,
+  // plus the Bedroom 4 North wall skirting (`Z = 8.39m, X = -22.19m..-18.224m`)!
   for (const [skirtName, path] of [
     [
       'bedroom3.southWallMitredSkirting',
@@ -202,16 +195,23 @@ export function buildBedroom3(
         [-18.475, 8.15],
         [-18.95, 8.15],
         [-18.95, 7.68],
-        [-19.43, 7.68],
+        [-19.52, 7.68],
       ] as const,
     ],
     [
       'bedroom3.southWestWallMitredSkirting',
       [
-        [-20.17, 7.68],
+        [-20.08, 7.68],
         [-20.65, 7.68],
         [-20.65, 8.15],
         [-22.19, 8.15],
+      ] as const,
+    ],
+    [
+      'bedroom4.northWallMitredSkirting',
+      [
+        [-18.224, 8.39],
+        [-22.19, 8.39],
       ] as const,
     ],
   ] as const) {

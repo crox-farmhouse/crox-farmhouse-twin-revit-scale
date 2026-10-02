@@ -71,7 +71,6 @@ export function buildBedroom2(
     frontFloorY: floorTopY, // +normal = South (Bedroom 2 interior at Y = 2.08m)
     backFloorY: 1.625,      // -normal = North (exterior brick above Living Room wall)
     wallMaterial: exteriorBrickMat,
-    frontFaceMaterial: warmRoomPlasterMat,
     capMaterial: wallCapMat,
     skipCap: true,
     skirtingMaterial: antiqueOakSkirtingMat,
@@ -79,45 +78,69 @@ export function buildBedroom2(
     addBackSkirting: false,
   });
 
-  // Issue #2, #5, #6, #7, #8 & #10: High Vaulted Upper Gable Extension on Bedroom 2 North Wall (`Y = 4.16m..5.02m`)
+  // Issue #3: Single one-piece full-height vaulted interior plaster wall (`Y = 2.08m..5.02m`, `z_local = +0.14m..+0.154m`)
+  // + exterior brick gable (`Y = 4.16m..5.02m`, `z_local = -0.14m..+0.14m`) so Bedroom 2's North wall is 100% seamless with zero split at Y = 4.16m!
   {
-    const northGableShape = new THREE.Shape();
-    northGableShape.moveTo(0.24, upperWallTopY - 0.02);
-    northGableShape.lineTo(5.45, upperWallTopY - 0.02);
-    northGableShape.lineTo(5.36, upperWallTopY + 0.02);
-    northGableShape.lineTo(4.38, collarCeilingY + 0.02);
-    northGableShape.lineTo(1.53, collarCeilingY + 0.02);
-    northGableShape.lineTo(0.24, upperWallTopY + 0.02);
-    northGableShape.closePath();
-    const northGableGeo = new THREE.ExtrudeGeometry(northGableShape, {
-      depth: 0.305,
+    const northCutawayDesc = {
+      axis: 'z' as const,
+      coord: -2.98,
+      minSpan: -22.47,
+      maxSpan: -16.858,
+      floor: 'first' as const,
+    };
+
+    const northBrickGableShape = new THREE.Shape();
+    northBrickGableShape.moveTo(0.28, upperWallTopY);
+    northBrickGableShape.lineTo(5.63, upperWallTopY);
+    northBrickGableShape.lineTo(4.35, collarCeilingY);
+    northBrickGableShape.lineTo(1.53, collarCeilingY);
+    northBrickGableShape.closePath();
+    const northBrickGableGeo = new THREE.ExtrudeGeometry(northBrickGableShape, {
+      depth: 0.28,
       bevelEnabled: false,
     });
-    northGableGeo.translate(0, 0, -0.14);
-    const northUpperGable = new THREE.Mesh(northGableGeo, warmRoomPlasterMat);
+    northBrickGableGeo.translate(0, 0, -0.14);
+    const northBrickGable = new THREE.Mesh(northBrickGableGeo, exteriorBrickMat);
+    northBrickGable.name = 'bedroom2.northWallBrickGable';
+    northBrickGable.userData.isArchitecturalShell = true;
+    northBrickGable.position.copy(bed2NorthWallFrame.toWorld(0, 0, 0));
+    northBrickGable.rotation.y = bed2NorthWallFrame.rotationY;
+    northBrickGable.castShadow = true;
+    northBrickGable.receiveShadow = true;
+    tagUpperCutawayWall(northBrickGable, northCutawayDesc);
+    scene.add(northBrickGable);
+
+    const northPlasterShape = new THREE.Shape();
+    northPlasterShape.moveTo(0.28, floorTopY);
+    northPlasterShape.lineTo(5.63, floorTopY);
+    northPlasterShape.lineTo(5.63, upperWallTopY);
+    northPlasterShape.lineTo(4.35, collarCeilingY);
+    northPlasterShape.lineTo(1.53, collarCeilingY);
+    northPlasterShape.lineTo(0.28, upperWallTopY);
+    northPlasterShape.closePath();
+    const northPlasterGeo = new THREE.ExtrudeGeometry(northPlasterShape, {
+      depth: 0.014,
+      bevelEnabled: false,
+    });
+    northPlasterGeo.translate(0, 0, 0.14);
+    const northUpperGable = new THREE.Mesh(northPlasterGeo, warmRoomPlasterMat);
     northUpperGable.name = 'bedroom2.northWallUpperGable';
     northUpperGable.userData.isArchitecturalShell = true;
     northUpperGable.position.copy(bed2NorthWallFrame.toWorld(0, 0, 0));
     northUpperGable.rotation.y = bed2NorthWallFrame.rotationY;
     northUpperGable.castShadow = true;
     northUpperGable.receiveShadow = true;
-    tagUpperCutawayWall(northUpperGable, {
-      axis: 'z',
-      coord: -2.98,
-      minSpan: -22.47,
-      maxSpan: -16.858,
-      floor: 'first',
-    });
+    tagUpperCutawayWall(northUpperGable, northCutawayDesc);
     scene.add(northUpperGable);
   }
 
   // =========================================================================
   // THREE BUILT-IN SHAKER DOUBLE WARDROBES (6 CEILING-HEIGHT DOORS) ALONG THE EAST CROSS-WALL OF BEDROOM 2
-  // (`[-17.200, -2.419] -> [-18.253, +2.664]`, depth = 0.56m West `+Z_local` into Bedroom 2)
-  // Issues #1, #6 & #7 ("Smaller doors and more of them (6 doors)", "Wardrobe doors to the ceiling"):
-  // Because `bedroom2.vaultedCeiling.eastSkeiling` is parallel to the East cross-wall, the ceiling height along
-  // the front face (`frontLocalZ = 0.68m`) is a uniform `Y = 4.756m` (`localY = 2.676m`), allowing all 6 Shaker
-  // wardrobe doors, vertical dividing stiles, and top cornice to rise right up to the vaulted ceiling!
+  // (`[-16.876, -2.469] -> [-17.930, +2.616]`, depth = 0.56m West `+Z_local` into Bedroom 2)
+  // Issues #1, #4, #6 & #7 ("Smaller doors and more of them (6 doors)", "top of the wardrope doors look clipped off by the ceiling"):
+  // Because `bedroom2.vaultedCeiling.eastSkeiling` is parallel to the East cross-wall (`Y = 4.16m` at cross-wall pitching up to `Y = 5.02m`),
+  // the ceiling height along the front face (`frontLocalZ = 0.68m`) is a uniform `Y = 4.600m` (`localY = 2.520m`), allowing all 6 Shaker
+  // wardrobe doors, vertical dividing stiles, and raked top cornice to meet the vaulted ceiling cleanly without clipping!
   // =========================================================================
   {
     const wardGroup = new THREE.Group();
@@ -139,11 +162,10 @@ export function buildBedroom2(
     const wardEavesH = upperWallTopY - floorTopY; // 2.08m at cross-wall (localZ = 0.12m)
     const wardDepth = 0.56;
     const frontLocalZ = 0.12 + wardDepth; // 0.68m from cross-wall centreline
-    const wardFrontTopH = 2.676; // Exact height of planar eastSkeiling at frontLocalZ = 0.68m (world Y = 4.756m)
+    const wardFrontTopH = 2.518; // Exact height of planar eastSkeiling at frontLocalZ = 0.68m (world Y = 4.598m — Issue #4!)
     const uStart = -0.045; // Meets South interior plaster face of bed2NorthWallFrame with zero gap (Issue #1)
     const uEnd = 3.608;    // Lands at Z = 0.975m North face of cut-out hallway wall
     const baySpan = uEnd - uStart; // 3.653m
-    const uMid = (uStart + uEnd) / 2;
 
     // Unified full-height vaulted Shaker wardrobe carcass (`u = uStart..uEnd`, `z_local = +0.12m..+frontLocalZ` West into Bedroom 2)
     const carcassShape = new THREE.Shape();
@@ -166,33 +188,42 @@ export function buildBedroom2(
     carcass.receiveShadow = true;
     wardGroup.add(carcass);
 
-    // Moulded Shaker top cornice header right under the vaulted ceiling line (`localY = wardFrontTopH - 0.024m`)
-    const cornice = new THREE.Mesh(
-      new THREE.BoxGeometry(baySpan + 0.04, 0.048, 0.044),
-      wardrobeMat
-    );
+    // Moulded Shaker top cornice header with raked top edge matching `eastSkeiling` right above the doors (`localY = wardFrontTopH - 0.048m .. wardFrontTopH`)
+    const corniceShape = new THREE.Shape();
+    corniceShape.moveTo(-(frontLocalZ + 0.032), wardFrontTopH - 0.048);
+    corniceShape.lineTo(-frontLocalZ, wardFrontTopH - 0.048);
+    corniceShape.lineTo(-frontLocalZ, wardFrontTopH);
+    corniceShape.lineTo(-(frontLocalZ + 0.032), wardFrontTopH + 0.024);
+    corniceShape.closePath();
+    const corniceGeo = new THREE.ExtrudeGeometry(corniceShape, {
+      depth: baySpan,
+      bevelEnabled: false,
+    });
+    corniceGeo.rotateY(Math.PI / 2);
+    corniceGeo.translate(uStart, 0, 0);
+    const cornice = new THREE.Mesh(corniceGeo, wardrobeMat);
     cornice.name = 'bedroom2.eastWardrobes.cornice';
-    cornice.position.set(uMid, wardFrontTopH - 0.024, frontLocalZ + 0.01);
     cornice.castShadow = true;
+    cornice.receiveShadow = true;
     wardGroup.add(cornice);
 
     // 2 vertical dividing stiles separating the 3 double-door wardrobe bays right up to the ceiling cornice
     for (const bayIdx of [1, 2] as const) {
       const stileU = uStart + (baySpan * bayIdx) / 3;
       const divider = new THREE.Mesh(
-        new THREE.BoxGeometry(0.04, wardFrontTopH, 0.028),
+        new THREE.BoxGeometry(0.04, wardFrontTopH - 0.048, 0.028),
         wardrobeMat
       );
-      divider.position.set(stileU, wardFrontTopH / 2, frontLocalZ + 0.004);
+      divider.position.set(stileU, (wardFrontTopH - 0.048) / 2, frontLocalZ + 0.004);
       wardGroup.add(divider);
     }
 
-    // Issue #6 & #7: 6 ceiling-height Shaker wardrobe doors (3 pairs of double doors) rising right up to the ceiling cornice
+    // Issue #4, #6 & #7: 6 ceiling-height Shaker wardrobe doors (3 pairs of double doors) rising cleanly to the underside of the ceiling cornice
     const numDoors = 6;
     const doorInset = 0.08;
     const doorStep = (baySpan - doorInset * 2) / numDoors;
     const doorLeafW = doorStep - 0.014;
-    const doorLeafH = wardFrontTopH - 0.15 - 0.048; // 2.478m (reaches right to the underside of the ceiling cornice!)
+    const doorLeafH = wardFrontTopH - 0.15 - 0.048; // 2.320m (top of doors at world Y = 4.550m, right below the cornice!)
     for (let i = 0; i < numDoors; i++) {
       const doorU = uStart + doorInset + doorStep * (i + 0.5);
       addShakerWardrobeDoor(wardGroup, {
@@ -362,8 +393,8 @@ export function buildBedroom2(
     cutoutWestGable.receiveShadow = true;
     scene.add(cutoutWestGable);
 
-    // Triangular upper gable (`Y = 5.02m` at X = -18.995m..-18.92m tapering to `Y = 4.16m` at X = -17.918m, the exact East cross-wall at Z = 1.05m — Issue #8!)
-    const cutoutNorthLen = -17.918 - -18.995; // 1.077m
+    // Triangular upper gable (`Y = 5.02m` at X = -18.995m..-18.92m tapering to `Y = 4.16m` at X = -17.625m, the exact East cross-wall at Z = 1.05m — Issue #4 & #8!)
+    const cutoutNorthLen = -17.625 - -18.995; // 1.370m
     const cutoutNorthShape = new THREE.Shape();
     cutoutNorthShape.moveTo(0, upperWallTopY);
     cutoutNorthShape.lineTo(cutoutNorthLen, upperWallTopY);
@@ -384,8 +415,8 @@ export function buildBedroom2(
     scene.add(cutoutNorthGable);
   }
 
-  // Issue #2: Bedroom 2 South Chimney Breast (centered at u = 1.69m, width = 1.20m, depth = 0.44m along bed2SouthWallFrame,
-  // matching the Living Room chimney breast directly downstairs 100%, with 1800s black cast-iron fireplace & small black hearth!)
+  // Issue #1 & #2: Bedroom 2 South Chimney Breast (centered at u = 1.69m, width = 1.20m, depth = 0.44m along bed2SouthWallFrame,
+  // matching the Living Room chimney breast directly downstairs 100%, with compact 1800s black cast-iron fireplace & small black hearth!)
   const bed2ChimneyGroup = bed2SouthWallFrame.createGroup(
     scene,
     'bedroom2.southChimneyBreast',
@@ -405,20 +436,20 @@ export function buildBedroom2(
     topY: collarCeilingY,
   });
 
-  // Issue #2 & #7: 45°-mitred antique oak skirting boards wrapping Bedroom 2 South Chimney Breast and terminating cleanly against the ±0.37m black fireplace jambs
+  // Issue #2 & #7: 45°-mitred antique oak skirting boards wrapping Bedroom 2 South Chimney Breast and terminating cleanly against the ±0.28m black fireplace jambs
   for (const [skirtName, path] of [
     [
       'bedroom2.southChimneyBreast.eastMitredSkirting',
       [
         [0.6, 0.22],
         [0.6, -0.22],
-        [0.37, -0.22],
+        [0.28, -0.22],
       ] as const,
     ],
     [
       'bedroom2.southChimneyBreast.westMitredSkirting',
       [
-        [-0.37, -0.22],
+        [-0.28, -0.22],
         [-0.6, -0.22],
         [-0.6, 0.22],
       ] as const,
