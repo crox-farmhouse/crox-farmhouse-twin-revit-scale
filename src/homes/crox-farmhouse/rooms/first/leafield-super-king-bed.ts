@@ -13,7 +13,6 @@ function createWashedOakTexture(): THREE.CanvasTexture {
     ctx.fillStyle = '#b99d7a';
     ctx.fillRect(0, 0, 256, 256);
 
-    // Subtle warm oak cathedral grain & lime-washed pore streaks
     for (let i = 0; i < 180; i++) {
       const y = (i * 1.43) % 256;
       const isLightPore = i % 3 === 0;
@@ -36,66 +35,682 @@ function createWashedOakTexture(): THREE.CanvasTexture {
 }
 
 /**
- * Creates a procedural botanical block-print floral quilt & cushion fabric texture
- * matching the styled bedding in `media_1790946394645.jpg`.
+ * Creates the warm cream & caramel-ochre pinstriped quilted throw texture
+ * seen folded across the upper-middle of the bed in `media_1790946394645.jpg`.
  */
-function createBotanicalQuiltTexture(): THREE.CanvasTexture {
+function createStripedQuiltTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.fillStyle = '#ece3d3';
+    ctx.fillStyle = '#e7d9c4';
     ctx.fillRect(0, 0, 256, 256);
 
-    // Quilted vertical stitch lines
-    ctx.strokeStyle = 'rgba(175, 160, 138, 0.35)';
-    ctx.lineWidth = 1;
-    for (let x = 8; x < 256; x += 16) {
+    // Fine warm caramel/tan ticking pinstripes running across the throw
+    for (let y = 0; y < 256; y += 6) {
+      ctx.fillStyle = 'rgba(168, 128, 88, 0.55)';
+      ctx.fillRect(0, y, 256, 2.2);
+      ctx.fillStyle = 'rgba(246, 238, 225, 0.45)';
+      ctx.fillRect(0, y + 3, 256, 1.5);
+    }
+
+    // Subtle quilted channel stitching
+    ctx.strokeStyle = 'rgba(132, 98, 66, 0.25)';
+    ctx.lineWidth = 1.2;
+    for (let x = 16; x < 256; x += 24) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, 256);
       ctx.stroke();
     }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 4);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
 
-    // Block-print botanical sprigs (terracotta rose, ochre, and sage leaves)
-    const spacing = 42;
-    for (let gx = 20; gx < 256; gx += spacing) {
-      for (let gy = 20; gy < 256; gy += spacing) {
-        const ox = gx + ((gy / spacing) % 2 === 0 ? 0 : 18);
+/**
+ * Creates a deep charcoal-slate waffle/tufted quilted bedspread texture & bump map
+ * matching the middle dark quilted throw in `media_1790946394645.jpg`.
+ */
+function createCharcoalWaffleQuiltTexture(): {
+  map: THREE.CanvasTexture;
+  bumpMap: THREE.CanvasTexture;
+} {
+  const colorCanvas = document.createElement('canvas');
+  colorCanvas.width = 256;
+  colorCanvas.height = 256;
+  const cCtx = colorCanvas.getContext('2d');
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = 256;
+  bumpCanvas.height = 256;
+  const bCtx = bumpCanvas.getContext('2d');
+
+  const cell = 16;
+  if (cCtx && bCtx) {
+    cCtx.fillStyle = '#484f57';
+    cCtx.fillRect(0, 0, 256, 256);
+
+    bCtx.fillStyle = '#808080';
+    bCtx.fillRect(0, 0, 256, 256);
+
+    for (let gx = 0; gx < 256; gx += cell) {
+      for (let gy = 0; gy < 256; gy += cell) {
+        // Puffy quilted pillow cell
+        const grad = bCtx.createRadialGradient(
+          gx + cell * 0.5,
+          gy + cell * 0.5,
+          1,
+          gx + cell * 0.5,
+          gy + cell * 0.5,
+          cell * 0.65
+        );
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.75, '#a8a8a8');
+        grad.addColorStop(1, '#282828');
+        bCtx.fillStyle = grad;
+        bCtx.fillRect(gx, gy, cell, cell);
+
+        // Subtle highlight/shadow in color map
+        cCtx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+        cCtx.fillRect(gx + 2, gy + 2, cell - 4, cell - 4);
+        cCtx.strokeStyle = 'rgba(28, 32, 38, 0.42)';
+        cCtx.lineWidth = 1.4;
+        cCtx.strokeRect(gx + 0.5, gy + 0.5, cell - 1, cell - 1);
+      }
+    }
+  }
+
+  const map = new THREE.CanvasTexture(colorCanvas);
+  map.wrapS = THREE.RepeatWrapping;
+  map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(3.5, 6.5);
+  map.colorSpace = THREE.SRGBColorSpace;
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.repeat.set(3.5, 6.5);
+
+  return { map, bumpMap };
+}
+
+/**
+ * Creates the Indian block-print botanical floral eiderdown quilt texture with
+ * an integrated multi-band geometric border along the hanging edges (`media_1790946394645.jpg`).
+ */
+function createBotanicalEiderdownTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    // Warm ecru/oatmeal quilted cotton ground
+    ctx.fillStyle = '#eae0ce';
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Fine vertical kantha/quilted running-stitch lines
+    ctx.strokeStyle = 'rgba(165, 148, 124, 0.32)';
+    ctx.lineWidth = 1;
+    for (let x = 6; x < 512; x += 10) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 512);
+      ctx.stroke();
+    }
+
+    // Dense trailing block-print botanical vine & marigold/peony pattern across the field
+    const step = 44;
+    for (let gx = 28; gx < 484; gx += step) {
+      for (let gy = 28; gy < 484; gy += step) {
+        const ox = gx + ((Math.floor(gy / step) % 2) * 18 - 9);
         const oy = gy;
-        // Stem & leaves
-        ctx.strokeStyle = '#6d7f64';
-        ctx.lineWidth = 1.8;
+
+        // Curving leafy vine stems
+        ctx.strokeStyle = '#55664e';
+        ctx.lineWidth = 2.0;
         ctx.beginPath();
-        ctx.moveTo(ox - 6, oy + 10);
-        ctx.quadraticCurveTo(ox, oy, ox + 5, oy - 9);
+        ctx.moveTo(ox - 14, oy + 14);
+        ctx.quadraticCurveTo(ox - 2, oy, ox + 12, oy - 13);
         ctx.stroke();
 
-        ctx.fillStyle = '#7c8e72';
         ctx.beginPath();
-        ctx.ellipse(ox - 5, oy + 2, 5, 2.5, -0.5, 0, Math.PI * 2);
-        ctx.ellipse(ox + 5, oy - 1, 5, 2.5, 0.5, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(ox + 12, oy + 12);
+        ctx.quadraticCurveTo(ox + 2, oy + 2, ox - 10, oy - 11);
+        ctx.stroke();
 
-        // Blossom
-        ctx.fillStyle = (gx + gy) % 84 === 0 ? '#b86b52' : '#c89654';
+        // Sage & olive block-printed leaves
+        ctx.fillStyle = '#687b5e';
+        for (const [lx, ly, ang] of [
+          [-8, 5, -0.5],
+          [7, -2, 0.5],
+          [-6, -7, -0.8],
+          [8, 7, 0.7],
+        ] as const) {
+          ctx.beginPath();
+          ctx.ellipse(ox + lx, oy + ly, 6.5, 3.0, ang, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Terracotta-rose & warm ochre-gold botanical flower heads
+        const isRose = (Math.floor(gx / step) + Math.floor(gy / step)) % 2 === 0;
+        ctx.fillStyle = isRose ? '#b4684e' : '#c69250';
+        for (let p = 0; p < 6; p++) {
+          const a = (p / 6) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.ellipse(
+            ox + Math.cos(a) * 5.2,
+            oy - 4 + Math.sin(a) * 5.2,
+            4.2,
+            2.6,
+            a,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+        }
+        ctx.fillStyle = isRose ? '#d8a968' : '#9c523c';
         ctx.beginPath();
-        ctx.arc(ox + 4, oy - 9, 4.2, 0, Math.PI * 2);
+        ctx.arc(ox, oy - 4, 2.8, 0, Math.PI * 2);
         ctx.fill();
+      }
+    }
+
+    // Decorative multi-band Indian block-print border along the hanging edges:
+    // Left skirt (y near 0), Right skirt (y near 512), and Foot drape (x near 512)
+    const drawBorderStrip = (
+      x0: number,
+      y0: number,
+      w: number,
+      h: number,
+      horizontal: boolean
+    ): void => {
+      // Outer warm terracotta-tan framing bands
+      ctx.fillStyle = '#c48c64';
+      ctx.fillRect(x0, y0, w, h);
+
+      // Inner pale sage-blue & cream geometric block-print vine band
+      const inset = 6;
+      ctx.fillStyle = '#7e8f88';
+      if (horizontal) {
+        ctx.fillRect(x0, y0 + inset, w, h - inset * 2);
+        ctx.fillStyle = '#efe5d4';
+        for (let bx = x0 + 8; bx < x0 + w - 8; bx += 14) {
+          ctx.beginPath();
+          ctx.arc(bx, y0 + h * 0.5, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        ctx.fillRect(x0 + inset, y0, w - inset * 2, h);
+        ctx.fillStyle = '#efe5d4';
+        for (let by = y0 + 8; by < y0 + h - 8; by += 14) {
+          ctx.beginPath();
+          ctx.arc(x0 + w * 0.5, by, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    };
+
+    // Border bands near v = 0 (y = 14..42), v = 1 (y = 470..498), and foot edge u = 1 (x = 466..498)
+    drawBorderStrip(0, 12, 512, 28, true);
+    drawBorderStrip(0, 472, 512, 28, true);
+    drawBorderStrip(468, 12, 30, 488, false);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Creates the mocha/taupe houndstooth check texture for the front-left scatter cushion
+ * (`media_1790946394645.jpg`).
+ */
+function createHoundstoothCushionTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#ede4d5';
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = '#5a4d41';
+    const step = 8;
+    for (let x = 0; x < 128; x += step) {
+      for (let y = 0; y < 128; y += step) {
+        ctx.fillRect(x, y, step * 0.55, step * 0.55);
+        ctx.fillRect(x + step * 0.35, y + step * 0.35, step * 0.35, step * 0.25);
       }
     }
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(2.5, 1.5);
+  tex.repeat.set(3, 2.5);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
 
 /**
- * Helper to create a softly crowned, pillowed 3D cushion/mattress geometry
+ * Creates the cream & dark-olive embroidered leaf-vine stripe texture for the
+ * front-right scatter cushion in `media_1790946394645.jpg`.
+ */
+function createLeafStripeCushionTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#eae0cf';
+    ctx.fillRect(0, 0, 256, 256);
+
+    for (const sx of [52, 128, 204]) {
+      // Flanking woven charcoal/olive pinstripes
+      ctx.fillStyle = '#474b42';
+      ctx.fillRect(sx - 18, 0, 2.5, 256);
+      ctx.fillRect(sx + 16, 0, 2.5, 256);
+
+      // Central stem
+      ctx.fillRect(sx - 1, 0, 2, 256);
+
+      // Opposite pairs of embroidered dark-olive leaves climbing the stripe
+      for (let y = 14; y < 256; y += 22) {
+        ctx.beginPath();
+        ctx.ellipse(sx - 7, y, 6.5, 3.2, -0.55, 0, Math.PI * 2);
+        ctx.ellipse(sx + 7, y - 4, 6.5, 3.2, 0.55, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+interface DrapedBedLayerOptions {
+  /** Start X in bedGroup local coords (head side) */
+  readonly xStart: number;
+  /** End X in bedGroup local coords (foot side) */
+  readonly xEnd: number;
+  /** Normal offset outward from the master mattress/side-rail drape envelope */
+  readonly shellOffset: number;
+  /** Thickness (loft) of the quilted/filled textile layer */
+  readonly loftThickness: number;
+  /** Bottom Y of the hanging side skirt hems */
+  readonly sideHemY: number;
+  /** Outward Z flare at the bottom of the hanging side skirt */
+  readonly sideFlareZ: number;
+  /** Number of natural drapery waves along X on the hanging side skirts */
+  readonly sideWaveCount: number;
+  /** Amplitude of natural drapery waves along the side skirts */
+  readonly sideWaveAmp: number;
+  /** Phase offset for side drapery waves */
+  readonly wavePhaseOffset?: number;
+  /** Whether the layer curves down over the foot shoulder of the mattress */
+  readonly drapeOverFoot?: boolean;
+  /** Whether the head edge (u = 0) has a plump folded-over turn-down roll */
+  readonly headRolledFold?: boolean;
+  readonly segU?: number;
+  readonly segV?: number;
+}
+
+/**
+ * Generates a continuous, thick 3D draped textile layer (duvet, quilted throw, or eiderdown)
+ * evaluated as an offset shell around a master mattress-and-side-rail drape surface.
+ * This guarantees:
+ * 1. Smooth C1 shoulder rolls over both sides of the mattress and down over the oak side rails (`|z| > 0.955m`).
+ * 2. Zero intersection or Z-fighting between stacked layers (`duvet`, `stripedFold`, `charcoalThrow`, `floralQuilt`).
+ * 3. Softly tucked/rolled leading and trailing edges (`u = 0` and `u = 1`) so layers never float like boxes.
+ */
+function createDrapedBedLayerGeometry(
+  opts: DrapedBedLayerOptions
+): THREE.BufferGeometry {
+  const {
+    xStart,
+    xEnd,
+    shellOffset,
+    loftThickness,
+    sideHemY,
+    sideFlareZ,
+    sideWaveCount,
+    sideWaveAmp,
+    wavePhaseOffset = 0,
+    drapeOverFoot = false,
+    headRolledFold = false,
+    segU = 44,
+    segV = 72,
+  } = opts;
+
+  const topHalfWidthZ = 0.855;
+  const shoulderRadius = 0.098; // Exits shoulder at |z| = 0.953m, y = 0.468m (cleanly outside sideRailCap at |z| = 0.948m, y = 0.431m)
+  const centerTopY = 0.598;
+  const crownArchY = 0.032;
+  const vRollStart = 0.46;
+  const vShoulder = 0.60;
+
+  // Evaluates the base master surface + outward normal at (u, v), then applies shellOffset
+  const sampleLayerMidSurface = (u: number, v: number): THREE.Vector3 => {
+    const absV = Math.abs(v);
+    const signV = v < 0 ? -1 : 1;
+
+    let x = THREE.MathUtils.lerp(xStart, xEnd, u);
+
+    // Foot-end mattress shoulder roll (tucking neatly behind the oak footboard at x = 2.076m)
+    let footDropY = 0;
+    let cornerWaterfallFlareZ = 0;
+    let cornerWaterfallDropY = 0;
+    const footShoulderX = 1.88;
+    if (drapeOverFoot && x > footShoulderX) {
+      const ft = Math.min(1, (x - footShoulderX) / Math.max(0.05, xEnd - footShoulderX));
+      const footCurve = ft * ft * (3 - 2 * ft);
+      footDropY = 0.145 * footCurve;
+      x += Math.sin(ft * Math.PI) * 0.008;
+
+      // Flared waterfall corner fold at the two foot corners (`media_1790946394645.jpg` foreground)
+      if (absV > vRollStart) {
+        const st = (absV - vRollStart) / (1 - vRollStart);
+        const cornerWeight = ft * st;
+        cornerWaterfallFlareZ =
+          cornerWeight * (0.042 + 0.018 * Math.sin(st * Math.PI));
+        cornerWaterfallDropY = cornerWeight * 0.048;
+      }
+    }
+
+    // Subtle organic linen billow across the top of the bed
+    const topBillowY =
+      0.0035 *
+      Math.sin(u * Math.PI * 3.0 + wavePhaseOffset) *
+      Math.cos((v / vShoulder) * Math.PI * 1.5) *
+      Math.max(0, 1 - absV / vShoulder);
+
+    const shoulderTopY = centerTopY - crownArchY - footDropY * 0.32;
+
+    let baseZMag: number;
+    let baseY: number;
+    let normY: number;
+    let normZMag: number;
+
+    if (absV <= vRollStart) {
+      const tv = absV / vRollStart; // 0..1 across flat/crowned top
+      baseZMag = tv * topHalfWidthZ;
+      const crownProfile = 1 - tv * tv;
+      baseY =
+        shoulderTopY +
+        crownArchY * crownProfile -
+        footDropY * 0.68 * (1 - 0.3 * tv) +
+        topBillowY;
+
+      // Approximate normal in (Y, |Z|) plane
+      const dyDz = (-2 * crownArchY * tv) / topHalfWidthZ;
+      const len = Math.hypot(1, dyDz);
+      normY = 1 / len;
+      normZMag = -dyDz / len;
+    } else if (absV <= vShoulder) {
+      // Smooth 90° quarter-circle shoulder roll over the edge of the mattress
+      const tr = (absV - vRollStart) / (vShoulder - vRollStart); // 0..1
+      const ang = tr * (Math.PI * 0.47);
+      baseZMag = topHalfWidthZ + Math.sin(ang) * shoulderRadius;
+      baseY =
+        shoulderTopY -
+        (1 - Math.cos(ang)) * shoulderRadius -
+        footDropY * (0.68 - 0.48 * tr);
+      normY = Math.cos(ang);
+      normZMag = Math.sin(ang);
+    } else {
+      // Hanging vertical/flared side skirt from shoulder exit down to sideHemY
+      const ts = (absV - vShoulder) / (1 - vShoulder); // 0..1 down the skirt
+      const maxAng = Math.PI * 0.47;
+      const shoulderExitZ = topHalfWidthZ + Math.sin(maxAng) * shoulderRadius;
+      const shoulderExitY =
+        shoulderTopY -
+        (1 - Math.cos(maxAng)) * shoulderRadius -
+        footDropY * 0.2;
+
+      const wavePhase =
+        u * Math.PI * 2 * sideWaveCount +
+        wavePhaseOffset +
+        (signV < 0 ? 0.3 : 1.6);
+      const waveOffsetZ =
+        (Math.sin(wavePhase) * 0.68 + Math.cos(wavePhase * 1.5) * 0.32) *
+        sideWaveAmp *
+        Math.pow(ts, 1.15);
+
+      const skirtFlareCurve = ts * (0.35 + 0.65 * ts);
+      baseZMag =
+        shoulderExitZ +
+        sideFlareZ * skirtFlareCurve +
+        waveOffsetZ +
+        cornerWaterfallFlareZ;
+
+      const targetHemY =
+        sideHemY -
+        cornerWaterfallDropY +
+        Math.sin(wavePhase) * 0.007 * ts;
+      baseY = THREE.MathUtils.lerp(shoulderExitY, targetHemY, ts);
+
+      normY = Math.cos(maxAng) * (1 - ts) + 0.12 * ts;
+      normZMag = Math.sin(maxAng);
+      const nLen = Math.hypot(normY, normZMag);
+      normY /= nLen;
+      normZMag /= nLen;
+    }
+
+    // Gently tuck the leading/trailing edges (u near 0 or 1) by 4mm and add optional rolled fold swell
+    const edgeTuck =
+      u < 0.035
+        ? -0.004 * (1 - u / 0.035)
+        : !drapeOverFoot && u > 0.965
+          ? -0.004 * ((u - 0.965) / 0.035)
+          : 0;
+    const headFoldSwell =
+      headRolledFold && u < 0.11
+        ? Math.sin((u / 0.11) * Math.PI) * 0.007
+        : 0;
+
+    const totalOffset = shellOffset + edgeTuck + headFoldSwell;
+    const finalY = baseY + normY * totalOffset;
+    const finalZ = signV * (baseZMag + normZMag * totalOffset);
+
+    return new THREE.Vector3(x, finalY, finalZ);
+  };
+
+  const cols = segU + 1;
+  const rows = segV + 1;
+  const midGrid: THREE.Vector3[] = new Array(cols * rows);
+  const normGrid: THREE.Vector3[] = new Array(cols * rows);
+
+  for (let iu = 0; iu <= segU; iu++) {
+    const u = iu / segU;
+    for (let iv = 0; iv <= segV; iv++) {
+      const v = (iv / segV) * 2 - 1;
+      midGrid[iu * rows + iv] = sampleLayerMidSurface(u, v);
+    }
+  }
+
+  // Compute smooth mid-surface normals via central differences
+  const dU = new THREE.Vector3();
+  const dV = new THREE.Vector3();
+  for (let iu = 0; iu <= segU; iu++) {
+    const iuPrev = Math.max(0, iu - 1);
+    const iuNext = Math.min(segU, iu + 1);
+    for (let iv = 0; iv <= segV; iv++) {
+      const ivPrev = Math.max(0, iv - 1);
+      const ivNext = Math.min(segV, iv + 1);
+      dU.subVectors(midGrid[iuNext * rows + iv], midGrid[iuPrev * rows + iv]);
+      dV.subVectors(midGrid[iu * rows + ivNext], midGrid[iu * rows + ivPrev]);
+      const n = new THREE.Vector3().crossVectors(dV, dU).normalize();
+      normGrid[iu * rows + iv] = n;
+    }
+  }
+
+  const halfLoft = loftThickness * 0.5;
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+
+  const getEdgePillowFactor = (u: number, v: number): number => {
+    const distU = Math.min(u, 1 - u);
+    const distV = 1 - Math.abs(v);
+    const fu = Math.min(1, distU / 0.05);
+    const fv = Math.min(1, distV / 0.04);
+    const f = Math.min(fu, fv);
+    return 0.22 + 0.78 * Math.sin(f * (Math.PI * 0.5));
+  };
+
+  // 1. Outer/Top surface (index 0 .. cols*rows - 1)
+  for (let iu = 0; iu <= segU; iu++) {
+    const u = iu / segU;
+    for (let iv = 0; iv <= segV; iv++) {
+      const v = (iv / segV) * 2 - 1;
+      const idx = iu * rows + iv;
+      const p = midGrid[idx];
+      const n = normGrid[idx];
+      const h = halfLoft * getEdgePillowFactor(u, v);
+      positions.push(p.x + n.x * h, p.y + n.y * h, p.z + n.z * h);
+      uvs.push(u, iv / segV);
+    }
+  }
+
+  // 2. Inner/Bottom surface (index cols*rows .. 2*cols*rows - 1)
+  const botOffset = cols * rows;
+  for (let iu = 0; iu <= segU; iu++) {
+    const u = iu / segU;
+    for (let iv = 0; iv <= segV; iv++) {
+      const v = (iv / segV) * 2 - 1;
+      const idx = iu * rows + iv;
+      const p = midGrid[idx];
+      const n = normGrid[idx];
+      const h = halfLoft * getEdgePillowFactor(u, v);
+      positions.push(p.x - n.x * h, p.y - n.y * h, p.z - n.z * h);
+      uvs.push(u, iv / segV);
+    }
+  }
+
+  for (let iu = 0; iu < segU; iu++) {
+    for (let iv = 0; iv < segV; iv++) {
+      const a = iu * rows + iv;
+      const b = a + 1;
+      const c = (iu + 1) * rows + iv;
+      const d = c + 1;
+      indices.push(a, b, c, b, d, c);
+      indices.push(
+        botOffset + a,
+        botOffset + c,
+        botOffset + b,
+        botOffset + b,
+        botOffset + c,
+        botOffset + d
+      );
+    }
+  }
+
+  for (let iv = 0; iv < segV; iv++) {
+    const t0 = iv;
+    const t1 = iv + 1;
+    const b0 = botOffset + iv;
+    const b1 = botOffset + iv + 1;
+    indices.push(t0, b0, t1, t1, b0, b1);
+
+    const ft0 = segU * rows + iv;
+    const ft1 = ft0 + 1;
+    const fb0 = botOffset + ft0;
+    const fb1 = botOffset + ft1;
+    indices.push(ft0, ft1, fb0, ft1, fb1, fb0);
+  }
+
+  for (let iu = 0; iu < segU; iu++) {
+    const t0 = iu * rows;
+    const t1 = (iu + 1) * rows;
+    const b0 = botOffset + t0;
+    const b1 = botOffset + t1;
+    indices.push(t0, t1, b0, t1, b1, b0);
+
+    const st0 = iu * rows + segV;
+    const st1 = (iu + 1) * rows + segV;
+    const sb0 = botOffset + st0;
+    const sb1 = botOffset + st1;
+    indices.push(st0, sb0, st1, st1, sb0, sb1);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Creates a plump, realistic feather pillow geometry with pinched knife-edge seams,
+ * tapered corners, subtle central head indentation, and optional Oxford flange border.
+ */
+function createSculptedPillowGeometry(
+  thicknessX: number,
+  heightY: number,
+  widthZ: number,
+  flangeSize = 0.0
+): THREE.BufferGeometry {
+  const segU = 24;
+  const segV = 20;
+  const geo = new THREE.BoxGeometry(thicknessX, heightY, widthZ, 12, segV, segU);
+  const pos = geo.attributes.position;
+  const halfX = thicknessX / 2;
+  const halfY = heightY / 2;
+  const halfZ = widthZ / 2;
+
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+
+    const nx = halfX > 0 ? x / halfX : 0; // -1..1 front-to-back
+    const ny = halfY > 0 ? y / halfY : 0; // -1..1 bottom-to-top
+    const nz = halfZ > 0 ? z / halfZ : 0; // -1..1 left-to-right
+
+    // Pinched knife-edge pillow envelope: thickness in X tapers smoothly to a pinched seam at |ny|=1 or |nz|=1
+    const cosY = Math.cos(ny * Math.PI * 0.5);
+    const cosZ = Math.cos(nz * Math.PI * 0.5);
+    const plumpEnvelope = Math.pow(Math.max(0, cosY * cosZ), 0.58);
+
+    // Optional flat Oxford flange rim around the outer edge
+    const edgeDist = Math.max(Math.abs(ny), Math.abs(nz));
+    const flangeFactor =
+      flangeSize > 0 && edgeDist > 0.84
+        ? 0.14
+        : 0.12 + 0.88 * plumpEnvelope;
+
+    // Classic pinched-corner dog-ear flare & gentle top-center Karate-chop / lounge dimple
+    const cornerFlare = 1 + 0.045 * (ny * ny * nz * nz);
+    const centerDimpleX =
+      nx > 0
+        ? -0.012 * Math.exp(-(ny * ny * 3.5 + nz * nz * 4.0))
+        : 0;
+    const topCreaseY =
+      ny > 0.3
+        ? -0.008 * Math.exp(-(nz * nz * 6.0)) * ((ny - 0.3) / 0.7)
+        : 0;
+
+    const sx = x * flangeFactor + centerDimpleX;
+    const sy = y * cornerFlare + topCreaseY;
+    const sz = z * cornerFlare;
+
+    pos.setXYZ(i, sx, sy, sz);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Helper to create a softly crowned, pillowed 3D mattress/headboard cushion geometry
  * with rounded edges and smooth normals.
  */
 function createSculptedSoftBoxGeometry(
@@ -144,7 +759,7 @@ function createSculptedSoftBoxGeometry(
  * against the Main Bedroom West Cross-Wall (`X_ew = -9.56m`), facing East (`+X_ew`).
  *
  * Reference photos:
- * - `media_1790946394645.jpg` (overall styled bed with padded linen headboard, fluted arch crest & layered cushions)
+ * - `media_1790946394645.jpg` (overall styled bed with padded linen headboard, fluted arch crest & layered draped bedding)
  * - `media_1790946401209.jpg` (close-up of carved acorn finial, routed fluted corner post & arched fluted fanlight crest)
  * - `media_1790946407558.png` (side profile showing shouldered arch headboard, panelled footboard & turned tapered legs)
  */
@@ -301,22 +916,18 @@ export function buildLeafieldSuperKingBed(
   // 3. SWEEPING ARCHED & SHOULDERED FLUTED FANLIGHT CREST RAIL
   //    (`media_1790946401209.jpg` & `media_1790946407558.png`)
   // =========================================================================
-  // Height profile across z in [-0.892, +0.892]:
-  // - Outer concave scoop shoulders: |z| in [0.76, 0.892], curving from y = 1.208m at the post up to 1.236m at |z| = 0.76m
-  // - Central segmental arch: |z| in [0, 0.76], rising smoothly from y = 1.242m at |z| = 0.76m to y = 1.318m at z = 0
   const halfInnerZ = innerSpanZ / 2; // 0.892m
   const shoulderZ = 0.76;
   const sampleCrestTopY = (z: number): number => {
     const az = Math.abs(z);
     if (az >= shoulderZ) {
-      const t = (az - shoulderZ) / (halfInnerZ - shoulderZ); // 0 at shoulder, 1 at post
+      const t = (az - shoulderZ) / (halfInnerZ - shoulderZ);
       return 1.234 - 0.026 * Math.sin(t * (Math.PI / 2));
     }
     const u = az / shoulderZ;
     return 1.242 + 0.076 * (1 - u * u);
   };
 
-  // Solid arched oak backing board (`x = headX - 0.022 .. headX + 0.012`)
   {
     const crestShape = new THREE.Shape();
     const transomBaseY = 1.125;
@@ -342,7 +953,6 @@ export function buildLeafieldSuperKingBed(
     bedGroup.add(crestBackMesh);
   }
 
-  // Moulded arched top cornice cap following the shouldered arch curve (`x = headX - 0.024 .. headX + 0.030`)
   {
     const capThicknessY = 0.024;
     const capShape = new THREE.Shape();
@@ -373,11 +983,14 @@ export function buildLeafieldSuperKingBed(
     bedGroup.add(crestCapMesh);
   }
 
-  // 52 Vertical Carved Fluted Reeds / Ribs across the arched crescent panel (`media_1790946401209.jpg`)
   const fluteBottomY = 1.166;
   const numFlutes = 53;
   for (let i = 0; i < numFlutes; i++) {
-    const fz = THREE.MathUtils.lerp(-halfInnerZ + 0.022, halfInnerZ - 0.022, i / (numFlutes - 1));
+    const fz = THREE.MathUtils.lerp(
+      -halfInnerZ + 0.022,
+      halfInnerZ - 0.022,
+      i / (numFlutes - 1)
+    );
     const fluteTopY = sampleCrestTopY(fz) - 0.022;
     const fluteH = Math.max(0.02, fluteTopY - fluteBottomY);
     const reed = new THREE.Mesh(
@@ -391,7 +1004,6 @@ export function buildLeafieldSuperKingBed(
     bedGroup.add(reed);
   }
 
-  // Horizontal Moulded Oak Transom Rail directly below the fluted crescent (`y = 1.125m..1.168m`)
   const crestTransomRail = new THREE.Mesh(
     new THREE.BoxGeometry(0.052, 0.043, innerSpanZ),
     washedOakMat
@@ -404,17 +1016,15 @@ export function buildLeafieldSuperKingBed(
 
   // =========================================================================
   // 4. UPHOLSTERED OATMEAL LINEN PADDED HEADBOARD PANEL (`y = 0.54m..1.125m`)
-  //    & LOWER SOLID OAK HEADBOARD PANEL (`y = 0.28m..0.54m`)
   // =========================================================================
   const headBackPanel = new THREE.Mesh(
     new THREE.BoxGeometry(0.026, 0.85, innerSpanZ),
     washedOakMat
   );
-  headBackPanel.position.set(headX - 0.008, 0.70, 0);
+  headBackPanel.position.set(headX - 0.008, 0.7, 0);
   headBackPanel.castShadow = true;
   bedGroup.add(headBackPanel);
 
-  // Softly crowned oatmeal linen upholstered headboard cushion (`y = 0.545m..1.122m`, `z = -0.886m..+0.886m`)
   const linenPanelH = 0.575;
   const linenPanelW = innerSpanZ - 0.012;
   const linenPadGeo = createSculptedSoftBoxGeometry(
@@ -433,7 +1043,6 @@ export function buildLeafieldSuperKingBed(
   linenPadMesh.receiveShadow = true;
   bedGroup.add(linenPadMesh);
 
-  // Tailored perimeter welt/piping around the upholstered linen headboard panel
   for (const py of [0.552, 1.116]) {
     const hWelt = new THREE.Mesh(
       new THREE.CylinderGeometry(0.0045, 0.0045, linenPanelW, 8),
@@ -448,11 +1057,14 @@ export function buildLeafieldSuperKingBed(
       new THREE.CylinderGeometry(0.0045, 0.0045, linenPanelH - 0.01, 8),
       oatmealPipingMat
     );
-    vWelt.position.set(headX + 0.036, 0.545 + linenPanelH / 2, pzSign * (linenPanelW / 2 - 0.004));
+    vWelt.position.set(
+      headX + 0.036,
+      0.545 + linenPanelH / 2,
+      pzSign * (linenPanelW / 2 - 0.004)
+    );
     bedGroup.add(vWelt);
   }
 
-  // Lower solid oak headboard rail below the linen panel (`y = 0.26m..0.545m`)
   const lowerHeadRail = new THREE.Mesh(
     new THREE.BoxGeometry(0.044, 0.285, innerSpanZ),
     washedOakMat
@@ -479,7 +1091,6 @@ export function buildLeafieldSuperKingBed(
     sideRail.receiveShadow = true;
     bedGroup.add(sideRail);
 
-    // Moulded top lip along each side rail
     const sideRailCap = new THREE.Mesh(
       new THREE.BoxGeometry(sideRailLen, 0.018, 0.048),
       washedOakMat
@@ -489,7 +1100,6 @@ export function buildLeafieldSuperKingBed(
     bedGroup.add(sideRailCap);
   }
 
-  // Footboard corner posts (`x = footX, z = ±postZ, y = 0.245m..0.432m`) with vertical fluted grooves & pyramid cap
   const footPostH = 0.188;
   for (const sideSign of [-1, 1] as const) {
     const fz = sideSign * postZ;
@@ -525,7 +1135,6 @@ export function buildLeafieldSuperKingBed(
     }
   }
 
-  // Framed & Panelled Footboard Rail (`x = footX, z = -0.892m..+0.892m, y = 0.245m..0.415m`)
   const footboardCore = new THREE.Mesh(
     new THREE.BoxGeometry(0.038, railHeight, innerSpanZ),
     washedOakMat
@@ -536,7 +1145,6 @@ export function buildLeafieldSuperKingBed(
   footboardCore.receiveShadow = true;
   bedGroup.add(footboardCore);
 
-  // Recessed footboard panelling stiles & rails (`media_1790946407558.png`)
   for (const ry of [railBottomY + 0.024, railTopY - 0.024]) {
     const fbHoriRail = new THREE.Mesh(
       new THREE.BoxGeometry(0.048, 0.044, innerSpanZ),
@@ -564,7 +1172,8 @@ export function buildLeafieldSuperKingBed(
   bedGroup.add(footboardCap);
 
   // =========================================================================
-  // 6. SUPER KING MATTRESS, LAYERED LINEN DUVET, QUILTED BEDSPREAD & PILLOWS
+  // 6. SCULPTED DRAPED SUPER KING DUVET, STRIPED QUILT FOLD, CHARCOAL WAFFLE
+  //    BEDSPREAD, BOTANICAL WATERFALL EIDERDOWN & PINCHED FEATHER PILLOWS
   //    (`media_1790946394645.jpg`)
   // =========================================================================
   const ivorySheetMat = new THREE.MeshStandardMaterial({
@@ -577,97 +1186,181 @@ export function buildLeafieldSuperKingBed(
     roughness: 0.88,
     metalness: 0.01,
   });
+  const stripedQuiltMat = new THREE.MeshStandardMaterial({
+    map: createStripedQuiltTexture(),
+    color: 0xffffff,
+    roughness: 0.85,
+    metalness: 0.01,
+  });
+  const charcoalWaffleTex = createCharcoalWaffleQuiltTexture();
   const charcoalQuiltMat = new THREE.MeshStandardMaterial({
-    color: 0x4b525a, // Deep slate-charcoal quilted throw (`media_1790946394645.jpg`)
+    map: charcoalWaffleTex.map,
+    bumpMap: charcoalWaffleTex.bumpMap,
+    bumpScale: 0.012,
+    color: 0xffffff,
     roughness: 0.86,
     metalness: 0.02,
   });
   const slateBlueLinenMat = new THREE.MeshStandardMaterial({
-    color: 0x73828e, // Muted slate-blue Oxford linen pillow
+    color: 0x6f7f8c, // Muted slate-blue Oxford linen pillow
     roughness: 0.86,
     metalness: 0.01,
   });
   const houndstoothCushionMat = new THREE.MeshStandardMaterial({
-    color: 0x8e7c68, // Warm taupe/mocha houndstooth scatter cushion
+    map: createHoundstoothCushionTexture(),
+    color: 0xffffff,
     roughness: 0.85,
     metalness: 0.01,
   });
-  const botanicalQuiltMat = new THREE.MeshStandardMaterial({
-    map: createBotanicalQuiltTexture(),
+  const botanicalEiderdownMat = new THREE.MeshStandardMaterial({
+    map: createBotanicalEiderdownTexture(),
     color: 0xffffff,
     roughness: 0.86,
     metalness: 0.01,
   });
+  const leafStripeCushionMat = new THREE.MeshStandardMaterial({
+    map: createLeafStripeCushionTexture(),
+    color: 0xffffff,
+    roughness: 0.85,
+    metalness: 0.01,
+  });
 
-  // Super King Mattress (`1.80m W × 1.98m L`, `y = 0.34m..0.58m`)
-  const mattressGeo = createSculptedSoftBoxGeometry(1.98, 0.24, 1.82, 20, 8, 20, 0.022);
+  // 6A. Fitted Super King Mattress (`1.70m W × 1.88m L`, `y = 0.34m..0.555m`)
+  //     Visible at the head end (`x = 0.08m..0.46m`) under the pillows; stays cleanly inside the draped duvet shoulder!
+  const mattressGeo = createSculptedSoftBoxGeometry(
+    1.88,
+    0.215,
+    1.7,
+    24,
+    8,
+    24,
+    0.014
+  );
   const mattressMesh = new THREE.Mesh(mattressGeo, ivorySheetMat);
   mattressMesh.name = 'mainBedroom.leafieldSuperKingBed.mattress';
-  mattressMesh.position.set(1.065, 0.46, 0);
+  mattressMesh.position.set(1.02, 0.448, 0);
   mattressMesh.castShadow = true;
   mattressMesh.receiveShadow = true;
   bedGroup.add(mattressMesh);
 
-  // Draped Pale Duck-Egg Linen Duvet (`x = 0.50m..2.06m, z = -0.92m..+0.92m, y = 0.44m..0.625m`)
-  const duvetGeo = createSculptedSoftBoxGeometry(1.56, 0.155, 1.85, 20, 8, 22, 0.032);
+  // 6B. Layer 1 — Draped Pale Duck-Egg / Sage Linen Duvet (`x = 0.44m..2.04m`, `shellOffset = 0.000m`)
+  //     Crowns softly across the bed and drapes smoothly over the left & right mattress shoulders
+  //     down over the oak side rails to `y = 0.255m` with natural linen folds (`media_1790946394645.jpg` left!)
+  const duvetGeo = createDrapedBedLayerGeometry({
+    xStart: 0.44,
+    xEnd: 2.04,
+    shellOffset: 0.0,
+    loftThickness: 0.022,
+    sideHemY: 0.255,
+    sideFlareZ: 0.024,
+    sideWaveCount: 3.5,
+    sideWaveAmp: 0.009,
+    wavePhaseOffset: 0.0,
+    drapeOverFoot: true,
+    headRolledFold: true,
+    segU: 48,
+    segV: 72,
+  });
   const duvetMesh = new THREE.Mesh(duvetGeo, duckEggDuvetMat);
   duvetMesh.name = 'mainBedroom.leafieldSuperKingBed.duvet';
-  duvetMesh.position.set(1.28, 0.545, 0);
   duvetMesh.castShadow = true;
   duvetMesh.receiveShadow = true;
   bedGroup.add(duvetMesh);
 
-  // Crisp Ivory Sheet Turn-Down Fold at the top edge of the duvet (`x = 0.46m..0.68m`)
-  const turnDownGeo = createSculptedSoftBoxGeometry(0.24, 0.055, 1.86, 10, 6, 20, 0.014);
-  const turnDownMesh = new THREE.Mesh(turnDownGeo, ivorySheetMat);
-  turnDownMesh.name = 'mainBedroom.leafieldSuperKingBed.sheetTurnDown';
-  turnDownMesh.position.set(0.57, 0.618, 0);
-  turnDownMesh.castShadow = true;
-  turnDownMesh.receiveShadow = true;
-  bedGroup.add(turnDownMesh);
+  // 6C. Layer 2 — Warm Cream & Caramel Pinstriped Quilted Throw Fold (`x = 0.78m..1.52m`, `shellOffset = +0.014m`)
+  //     Wraps continuously over the duvet and cascades down both sides (`media_1790946394645.jpg` center-left!)
+  const stripedFoldGeo = createDrapedBedLayerGeometry({
+    xStart: 0.78,
+    xEnd: 1.52,
+    shellOffset: 0.014,
+    loftThickness: 0.013,
+    sideHemY: 0.23,
+    sideFlareZ: 0.028,
+    sideWaveCount: 2.0,
+    sideWaveAmp: 0.008,
+    wavePhaseOffset: 0.7,
+    drapeOverFoot: false,
+    headRolledFold: true,
+    segU: 34,
+    segV: 68,
+  });
+  const stripedFoldMesh = new THREE.Mesh(stripedFoldGeo, stripedQuiltMat);
+  stripedFoldMesh.name = 'mainBedroom.leafieldSuperKingBed.sheetTurnDown';
+  stripedFoldMesh.castShadow = true;
+  stripedFoldMesh.receiveShadow = true;
+  bedGroup.add(stripedFoldMesh);
 
-  // Deep Slate-Charcoal Quilted Bedspread folded across the lower half (`x = 1.18m..2.05m`)
-  const charcoalThrowGeo = createSculptedSoftBoxGeometry(0.86, 0.065, 1.87, 14, 6, 20, 0.016);
+  // 6D. Layer 3 — Deep Slate-Charcoal Waffle-Quilted Bedspread (`x = 0.94m..1.96m`, `shellOffset = +0.025m`)
+  //     Drapes over the striped quilt and hangs down both sides to `y = 0.205m` with 3D waffle quilting!
+  const charcoalThrowGeo = createDrapedBedLayerGeometry({
+    xStart: 0.94,
+    xEnd: 1.96,
+    shellOffset: 0.025,
+    loftThickness: 0.014,
+    sideHemY: 0.205,
+    sideFlareZ: 0.032,
+    sideWaveCount: 3.0,
+    sideWaveAmp: 0.009,
+    wavePhaseOffset: 1.4,
+    drapeOverFoot: false,
+    headRolledFold: true,
+    segU: 40,
+    segV: 72,
+  });
   const charcoalThrowMesh = new THREE.Mesh(charcoalThrowGeo, charcoalQuiltMat);
   charcoalThrowMesh.name = 'mainBedroom.leafieldSuperKingBed.charcoalBedspread';
-  charcoalThrowMesh.position.set(1.61, 0.615, 0);
   charcoalThrowMesh.castShadow = true;
   charcoalThrowMesh.receiveShadow = true;
   bedGroup.add(charcoalThrowMesh);
 
-  // Folded Botanical Block-Print Floral Eiderdown Quilt at the foot of the bed (`x = 1.54m..2.04m`)
-  const floralQuiltGeo = createSculptedSoftBoxGeometry(0.48, 0.072, 1.84, 12, 6, 20, 0.018);
-  const floralQuiltMesh = new THREE.Mesh(floralQuiltGeo, botanicalQuiltMat);
+  // 6E. Layer 4 — Botanical Block-Print Floral Eiderdown Quilt at the Foot (`x = 1.30m..2.055m`, `shellOffset = +0.036m`)
+  //     Drapes across the foot third of the bed, down both sides, AND over the foot shoulder with
+  //     flared waterfall corner folds hanging beside the footboard posts (`media_1790946394645.jpg` foreground!)
+  const floralQuiltGeo = createDrapedBedLayerGeometry({
+    xStart: 1.3,
+    xEnd: 2.055,
+    shellOffset: 0.036,
+    loftThickness: 0.015,
+    sideHemY: 0.185,
+    sideFlareZ: 0.038,
+    sideWaveCount: 2.5,
+    sideWaveAmp: 0.011,
+    wavePhaseOffset: 2.1,
+    drapeOverFoot: true,
+    headRolledFold: true,
+    segU: 44,
+    segV: 76,
+  });
+  const floralQuiltMesh = new THREE.Mesh(floralQuiltGeo, botanicalEiderdownMat);
   floralQuiltMesh.name = 'mainBedroom.leafieldSuperKingBed.botanicalEiderdown';
-  floralQuiltMesh.position.set(1.79, 0.642, 0);
   floralQuiltMesh.castShadow = true;
   floralQuiltMesh.receiveShadow = true;
   bedGroup.add(floralQuiltMesh);
 
-  // Layered Pillows & Scatter Cushions against the Padded Linen Headboard (`media_1790946394645.jpg`)
-  const backPillowGeo = createSculptedSoftBoxGeometry(0.18, 0.34, 0.74, 10, 10, 14, 0.028);
-  const midPillowGeo = createSculptedSoftBoxGeometry(0.17, 0.33, 0.72, 10, 10, 14, 0.026);
-  const scatterCushionGeo = createSculptedSoftBoxGeometry(0.14, 0.28, 0.44, 10, 10, 12, 0.024);
-  const lumbarCushionGeo = createSculptedSoftBoxGeometry(0.14, 0.24, 0.56, 10, 8, 14, 0.022);
+  // 6F. Sculpted Pinched-Seam Feather Pillows & Scatter Cushions against the Headboard (`media_1790946394645.jpg`)
+  const backPillowGeo = createSculptedPillowGeometry(0.19, 0.42, 0.78, 0.0);
+  const oxfordPillowGeo = createSculptedPillowGeometry(0.18, 0.43, 0.78, 0.035);
+  const scatterCushionGeo = createSculptedPillowGeometry(0.15, 0.34, 0.48, 0.0);
+  const lumbarCushionGeo = createSculptedPillowGeometry(0.14, 0.27, 0.62, 0.0);
 
   for (const [pIdx, pz, matMid] of [
-    [1, -0.43, duckEggDuvetMat],
-    [2, 0.43, slateBlueLinenMat],
+    [1, -0.44, duckEggDuvetMat],
+    [2, 0.44, slateBlueLinenMat],
   ] as const) {
     // Back sleeping pillow (Ivory)
     const backPillow = new THREE.Mesh(backPillowGeo, ivorySheetMat);
     backPillow.name = `mainBedroom.leafieldSuperKingBed.pillow.back.${pIdx}`;
-    backPillow.position.set(0.18, 0.71, pz);
-    backPillow.rotation.z = 0.22;
+    backPillow.position.set(0.175, 0.72, pz);
+    backPillow.rotation.z = 0.24;
     backPillow.castShadow = true;
     backPillow.receiveShadow = true;
     bedGroup.add(backPillow);
 
-    // Middle Oxford pillow (Duck-egg left / Slate-blue right)
-    const midPillow = new THREE.Mesh(midPillowGeo, matMid);
+    // Middle Oxford-edge linen pillow (Duck-egg left / Slate-blue right)
+    const midPillow = new THREE.Mesh(oxfordPillowGeo, matMid);
     midPillow.name = `mainBedroom.leafieldSuperKingBed.pillow.mid.${pIdx}`;
-    midPillow.position.set(0.32, 0.70, pz);
-    midPillow.rotation.z = 0.28;
+    midPillow.position.set(0.305, 0.71, pz);
+    midPillow.rotation.z = 0.32;
     midPillow.castShadow = true;
     midPillow.receiveShadow = true;
     bedGroup.add(midPillow);
@@ -676,29 +1369,30 @@ export function buildLeafieldSuperKingBed(
   // Front row of 3 styled scatter/lumbar cushions (`media_1790946394645.jpg`)
   const leftScatter = new THREE.Mesh(scatterCushionGeo, houndstoothCushionMat);
   leftScatter.name = 'mainBedroom.leafieldSuperKingBed.cushion.left';
-  leftScatter.position.set(0.45, 0.67, -0.46);
-  leftScatter.rotation.z = 0.34;
-  leftScatter.rotation.y = 0.08;
+  leftScatter.position.set(0.435, 0.695, -0.25);
+  leftScatter.rotation.z = 0.38;
+  leftScatter.rotation.y = 0.05;
   leftScatter.castShadow = true;
   leftScatter.receiveShadow = true;
   bedGroup.add(leftScatter);
 
-  const centerLumbar = new THREE.Mesh(lumbarCushionGeo, botanicalQuiltMat);
-  centerLumbar.name = 'mainBedroom.leafieldSuperKingBed.cushion.center';
-  centerLumbar.position.set(0.47, 0.655, 0.0);
-  centerLumbar.rotation.z = 0.36;
-  centerLumbar.castShadow = true;
-  centerLumbar.receiveShadow = true;
-  bedGroup.add(centerLumbar);
-
-  const rightScatter = new THREE.Mesh(scatterCushionGeo, botanicalQuiltMat);
+  const rightScatter = new THREE.Mesh(scatterCushionGeo, leafStripeCushionMat);
   rightScatter.name = 'mainBedroom.leafieldSuperKingBed.cushion.right';
-  rightScatter.position.set(0.45, 0.67, 0.46);
-  rightScatter.rotation.z = 0.34;
-  rightScatter.rotation.y = -0.08;
+  rightScatter.position.set(0.435, 0.695, 0.27);
+  rightScatter.rotation.z = 0.38;
+  rightScatter.rotation.y = -0.05;
   rightScatter.castShadow = true;
   rightScatter.receiveShadow = true;
   bedGroup.add(rightScatter);
+
+  const centerLumbar = new THREE.Mesh(lumbarCushionGeo, botanicalEiderdownMat);
+  centerLumbar.name = 'mainBedroom.leafieldSuperKingBed.cushion.center';
+  centerLumbar.position.set(0.545, 0.665, -0.22);
+  centerLumbar.rotation.z = 0.44;
+  centerLumbar.rotation.y = 0.04;
+  centerLumbar.castShadow = true;
+  centerLumbar.receiveShadow = true;
+  bedGroup.add(centerLumbar);
 
   // =========================================================================
   // 7. PAIR OF MATCHING LEAFIELD WASHED OAK BEDSIDE TABLES & CERAMIC LAMPS
@@ -732,10 +1426,9 @@ export function buildLeafieldSuperKingBed(
     const nsW = 0.48; // along Z
     const nsD = 0.38; // along X
     const nsBodyBottomY = 0.24;
-    const nsBodyTopY = 0.60;
+    const nsBodyTopY = 0.6;
     const nsBodyH = nsBodyTopY - nsBodyBottomY;
 
-    // 4 turned tapered legs matching the bed legs
     for (const [lx, lz] of [
       [-nsD / 2 + 0.035, -nsW / 2 + 0.035],
       [nsD / 2 - 0.035, -nsW / 2 + 0.035],
@@ -749,7 +1442,6 @@ export function buildLeafieldSuperKingBed(
       nsGroup.add(nsLeg);
     }
 
-    // Carcass & overhanging bevelled oak top
     const nsCarcass = new THREE.Mesh(
       new THREE.BoxGeometry(nsD, nsBodyH, nsW),
       washedOakMat
@@ -768,7 +1460,6 @@ export function buildLeafieldSuperKingBed(
     nsTop.receiveShadow = true;
     nsGroup.add(nsTop);
 
-    // 2 Drawer fronts + aged brass knobs
     for (const dy of [0.335, 0.505]) {
       const drawerFront = new THREE.Mesh(
         new THREE.BoxGeometry(0.016, 0.135, nsW - 0.06),
@@ -786,7 +1477,6 @@ export function buildLeafieldSuperKingBed(
       nsGroup.add(knob);
     }
 
-    // Turned stoneware bedside lamp + linen empire shade (`media_1790946394645.jpg`)
     const lampBase = new THREE.Mesh(
       new THREE.CylinderGeometry(0.055, 0.078, 0.21, 16),
       ceramicLampMat
