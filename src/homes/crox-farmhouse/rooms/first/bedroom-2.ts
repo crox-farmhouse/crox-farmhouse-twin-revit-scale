@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildKingCastIronBed } from './king-cast-iron-bed.ts';
 import {
   buildAngledWallSegment,
   buildMitredWallSkirtingGeometry,
@@ -464,5 +465,17 @@ export function buildBedroom2(
     skirtMesh.castShadow = true;
     skirtMesh.receiveShadow = true;
     bed2ChimneyGroup.add(skirtMesh);
+  }
+
+  // King Size Cast-Iron & Aged-Brass Bedstead centered on the North Gable Wall facing South
+  {
+    const bed2HeadPos = bed2NorthWallFrame.toWorld(2.48, floorTopY, 0.175);
+    buildKingCastIronBed(scene, {
+      name: 'bedroom2.kingCastIronBed',
+      zone: 'bedroom2',
+      position: [bed2HeadPos.x, floorTopY, bed2HeadPos.z],
+      rotationY: bed2NorthWallFrame.rotationY - Math.PI / 2,
+      palette: 'sageOlive',
+    });
   }
 }

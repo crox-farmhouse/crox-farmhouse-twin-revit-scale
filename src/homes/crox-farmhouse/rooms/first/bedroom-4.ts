@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildKingCastIronBed } from './king-cast-iron-bed.ts';
 import { buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
@@ -267,4 +268,13 @@ export function buildBedroom4(
       scene.add(skirtMesh);
     }
   }
+
+  // King Size Cast-Iron & Aged-Brass Bedstead against the North Wall (`Z = +8.39m`) facing South
+  buildKingCastIronBed(scene, {
+    name: 'bedroom4.kingCastIronBed',
+    zone: 'bedroom4',
+    position: [-20.2, floorTopY, 8.41],
+    rotationY: -Math.PI / 2,
+    palette: 'warmOatmealTerracotta',
+  });
 }
