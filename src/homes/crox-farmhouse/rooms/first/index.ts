@@ -29,12 +29,16 @@ export function buildMainHouseFirstFloorAndRoof(ctx: SceneBuilderContext): void 
   });
   const kit0 = createFirstFloorMaterials(ctx);
   const eastWingKit1 = { ...kit0, ...createFirstFloorShellKit(eastWingCtx, kit0) };
+  // The Main Bedroom (East of X_ew = -9.68m, above the +0.30m stepped-up Ground Floor Dining Room)
+  // steps UP by +0.18m (from Y = 2.16m in the Upper South Passage to Y = 2.34m in the Main Bedroom)
+  const mainBedroomKit0 = { ...kit0, floorBaseY: 2.24, floorTopY: 2.34 };
+  const mainBedroomKit1 = { ...mainBedroomKit0, ...createFirstFloorShellKit(eastWingCtx, mainBedroomKit0) };
   // The 3-Bedroom West Wing (Bedroom 2, Shower Room, West Wing Corridor, Bedroom 3, Bedroom 4)
   // sits one small 8cm step (Y = 2.08m) lower than the Main Staircase Landing & East Wing (Y = 2.16m)
   const westWingKit0 = { ...kit0, floorBaseY: 2.0, floorTopY: 2.08 };
   const westWingKit1 = { ...westWingKit0, ...createFirstFloorShellKit(ctx, westWingKit0) };
 
-  buildMainBedroom(eastWingCtx, eastWingKit1);
+  buildMainBedroom(eastWingCtx, mainBedroomKit1);
   buildFamilyBathroom(eastWingCtx, eastWingKit1);
   buildUpperLanding(eastWingCtx, eastWingKit1);
   buildBedroom2(ctx, westWingKit1);

@@ -101,6 +101,17 @@ export function buildBedroom2(
       bevelEnabled: false,
     });
     northBrickGableGeo.translate(0, 0, -0.14);
+    const northBrickUv = northBrickGableGeo.attributes.uv;
+    if (northBrickUv) {
+      for (let i = 0; i < northBrickUv.count; i++) {
+        northBrickUv.setXY(
+          i,
+          northBrickUv.getX(i) * 0.45,
+          northBrickUv.getY(i) * 0.45
+        );
+      }
+      northBrickUv.needsUpdate = true;
+    }
     const northBrickGable = new THREE.Mesh(northBrickGableGeo, exteriorBrickMat);
     northBrickGable.name = 'bedroom2.northWallBrickGable';
     northBrickGable.userData.isArchitecturalShell = true;

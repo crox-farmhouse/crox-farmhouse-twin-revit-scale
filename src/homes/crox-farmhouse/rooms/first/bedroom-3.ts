@@ -137,7 +137,7 @@ export function buildBedroom3(
     scene.add(skirtMesh);
   }
 
-  const collarCeilingY = 4.52;
+  const collarCeilingY = 5.02;
 
   // Issue #2: South Chimney Breast in Bedroom 3 (`X = -19.80m, width = 1.70m [X = -20.65m..-18.95m], depth = 0.47m [Z = +7.68m..+8.15m]`)
   // Matches the Sitting Room chimney breast directly downstairs (`X = -20.65m..-18.95m, Z = +7.68m..+8.15m`) 100%,
@@ -155,7 +155,7 @@ export function buildBedroom3(
 
   // South Load-Bearing Cross-Wall between Bedroom 3 / Upper Corridor and Bedroom 4
   // (0.24m thick, Z = +8.15m..+8.39m, X = -17.22m..-22.19m) with doorway centered in the Corridor at X = -17.75m (width = 0.78m)
-  // Built as a SINGLE unbroken full-height vaulted polygon (`Y = 2.08m..4.52m`) so there is zero horizontal split line at Y = 4.16m!
+  // Built as a SINGLE unbroken full-height vaulted polygon (`Y = 2.08m..5.02m`) so there is zero horizontal split line at Y = 4.16m!
   addUpperInteractiveDoor('x', 8.27, 0.24, -17.75, 0.78, Math.PI * 0.48);
   {
     const doorMinX = -17.75 - 0.39; // -18.14m

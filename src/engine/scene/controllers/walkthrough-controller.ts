@@ -99,7 +99,7 @@ export const DEFAULT_WALKTHROUGH_SPAWNS: readonly WalkthroughSpawnPoint[] = [
     id: 'mainBedroom',
     label: 'Main Bedroom',
     zoneId: 'mainBedroom',
-    position: ewSpawnPos(-7.2, 2.16, 0.5),
+    position: ewSpawnPos(-7.2, 2.34, 0.5),
     yawDeg: -98,
   },
   {
@@ -836,7 +836,14 @@ export class WalkthroughController {
     const inWestWingFirstFloor =
       x >= -22.5 && x <= -16.88 && z >= -3.25 && z <= 11.75;
     if (refFootY >= 1.65 && (inEastWingFirstFloor || inWestWingFirstFloor)) {
-      return inEastWingFirstFloor ? 2.16 : 2.08;
+      if (inEastWingFirstFloor) {
+        if (ewX >= -9.56) return 2.34;
+        if (ewX >= -9.8) {
+          return THREE.MathUtils.lerp(2.16, 2.34, (ewX - -9.8) / 0.24);
+        }
+        return 2.16;
+      }
+      return 2.08;
     }
 
     // 3. Ground Floor East Wing (Kitchen +0.05m -> Dining Room 0.00m -> Boot Lobby & Main Hall -0.30m)

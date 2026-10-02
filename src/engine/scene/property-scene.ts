@@ -194,9 +194,11 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
           if (x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) {
             // Map sub-floor UFH/cellar bounding-box minYs to actual room walking floor elevations
             const walkingFloorY =
-              b.minY >= 1.5
-                ? 2.16
-                : reg.zoneId === 'familyRoom'
+              reg.zoneId === 'mainBedroom'
+                ? 2.34
+                : b.minY >= 1.5
+                  ? 2.16
+                  : reg.zoneId === 'familyRoom'
                   ? 0.0
                   : reg.zoneId === 'bootLobby' || reg.zoneId === 'hall'
                     ? -0.3

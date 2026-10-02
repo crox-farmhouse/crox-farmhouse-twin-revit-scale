@@ -10,8 +10,8 @@ import type { createFirstFloorShellKit } from '../../structure/first-floor-shell
  */
 export function buildBedroom4(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowFrameMat'> &
-    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBedroomChimneyBreastWithFireplace' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteriorWall' | 'tagUpperCutawayWall'>
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowFrameMat'> &
+    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBedroomChimneyBreastWithFireplace' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteriorWall' | 'applyWorldSpaceBrickUVs' | 'tagUpperCutawayWall'>
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
   const {
@@ -21,6 +21,8 @@ export function buildBedroom4(
     addUpperBrickWallAlongZWithWindow,
     addUpperExteriorBrickWall,
     antiqueOakSkirtingMat,
+    applyWorldSpaceBrickUVs,
+    exteriorBrickMat,
     floorBaseY,
     floorTopY,
     oakFloorMat,
@@ -30,7 +32,7 @@ export function buildBedroom4(
     warmRoomPlasterMat,
   } = kit;
 
-  const collarCeilingY = 4.52;
+  const collarCeilingY = 5.02;
 
   // =========================================================================
   // 7. BEDROOM 4 (4.95m x 3.20m / 16'3" x 10'6")
@@ -55,13 +57,15 @@ export function buildBedroom4(
   );
 
   // South Exterior Brick Gable Wall of Bedroom 4 (Z = +11.49m..+11.77m, X = -22.47m..-17.11m, Y = 1.88m..4.16m)
-  // Interior plaster lining is built below as a single full-height vaulted polygon (`Y = 2.08m..4.52m`) so there is zero horizontal split line at Y = 4.16m!
+  // `skipCap: true` so the lower brick wall merges seamlessly into `bedroom4.southWallBrickGable` (`Y = 4.16m..5.02m`)!
   addUpperExteriorBrickWall(-22.47, -17.11, 11.49, 11.77, floorBaseY - 0.12, upperWallTopY, 'north', {
     skipSkirting: true,
+    skipCap: true,
   });
 
-  // Issue #6, #7 & #8: Single one-piece full-height vaulted interior plaster wall (`Y = 2.08m..4.52m`, `Z = 11.476m..11.50m`)
-  // + upper gable backing (`Y = 4.16m..4.52m`, `Z = 11.49m..11.73m`, `collarEastX = -18.62m`) flush with the 4.52m collar ceiling!
+  // Issue #6, #7 & #8: Single one-piece full-height vaulted interior plaster wall (`Y = 2.08m..5.02m`, `Z = 11.476m..11.49m`)
+  // + full-thickness exterior brick gable (`bedroom4.southWallBrickGable`, `Y = 4.16m..5.02m`, `Z = 11.49m..11.77m`, `collarEastX = -18.62m`)
+  // going all the way up to the 5.02m vaulted ceiling top in cutout view (`firstFloorMeshGroup`), just like Bedroom 2!
   {
     const collarEastX = -18.62;
     const southGableDescriptor = {
@@ -72,17 +76,17 @@ export function buildBedroom4(
       floor: 'first' as const,
     };
 
-    // 1. One-piece full-height interior plaster lining (`Y = floorTopY..collarCeilingY`, `Z = 11.476m..11.50m`)
+    // 1. One-piece full-height interior plaster lining (`Y = floorTopY..collarCeilingY`, `Z = 11.476m..11.49m`)
     const southInteriorPlasterShape = new THREE.Shape();
-    southInteriorPlasterShape.moveTo(-22.25, floorTopY);
+    southInteriorPlasterShape.moveTo(-22.19, floorTopY);
     southInteriorPlasterShape.lineTo(-17.22, floorTopY);
     southInteriorPlasterShape.lineTo(-17.22, upperWallTopY);
     southInteriorPlasterShape.lineTo(collarEastX, collarCeilingY);
     southInteriorPlasterShape.lineTo(-20.85, collarCeilingY);
-    southInteriorPlasterShape.lineTo(-22.25, upperWallTopY);
+    southInteriorPlasterShape.lineTo(-22.19, upperWallTopY);
     southInteriorPlasterShape.closePath();
     const southInteriorPlasterGeo = new THREE.ExtrudeGeometry(southInteriorPlasterShape, {
-      depth: 0.024,
+      depth: 0.014,
       bevelEnabled: false,
     });
     southInteriorPlasterGeo.translate(0, 0, 11.476);
@@ -94,28 +98,29 @@ export function buildBedroom4(
     tagUpperCutawayWall(southUpperGable, southGableDescriptor);
     scene.add(southUpperGable);
 
-    // 2. Upper gable structural backing (`Y = 4.16m..4.52m`, `Z = 11.49m..11.73m`)
-    const southGableBackingShape = new THREE.Shape();
-    southGableBackingShape.moveTo(-22.25, upperWallTopY);
-    southGableBackingShape.lineTo(-17.22, upperWallTopY);
-    southGableBackingShape.lineTo(collarEastX, collarCeilingY);
-    southGableBackingShape.lineTo(-20.85, collarCeilingY);
-    southGableBackingShape.closePath();
-    const southGableBackingGeo = new THREE.ExtrudeGeometry(southGableBackingShape, {
-      depth: 0.24,
+    // 2. Full-thickness exterior brick gable wall (`Y = 4.16m..5.02m`, `Z = 11.49m..11.77m`)
+    const southBrickGableShape = new THREE.Shape();
+    southBrickGableShape.moveTo(-22.19, upperWallTopY);
+    southBrickGableShape.lineTo(-17.22, upperWallTopY);
+    southBrickGableShape.lineTo(collarEastX, collarCeilingY);
+    southBrickGableShape.lineTo(-20.85, collarCeilingY);
+    southBrickGableShape.closePath();
+    const southBrickGableGeo = new THREE.ExtrudeGeometry(southBrickGableShape, {
+      depth: 0.28,
       bevelEnabled: false,
     });
-    southGableBackingGeo.translate(0, 0, 11.49);
-    const southGableBacking = new THREE.Mesh(southGableBackingGeo, warmRoomPlasterMat);
-    southGableBacking.name = 'bedroom4.southWallUpperGable.backing';
-    southGableBacking.userData.isArchitecturalShell = true;
-    southGableBacking.castShadow = true;
-    southGableBacking.receiveShadow = true;
-    tagUpperCutawayWall(southGableBacking, southGableDescriptor);
-    scene.add(southGableBacking);
+    southBrickGableGeo.translate(0, 0, 11.49);
+    applyWorldSpaceBrickUVs(southBrickGableGeo, 0, 0, 0);
+    const southBrickGable = new THREE.Mesh(southBrickGableGeo, exteriorBrickMat);
+    southBrickGable.name = 'bedroom4.southWallBrickGable';
+    southBrickGable.userData.isArchitecturalShell = true;
+    southBrickGable.castShadow = true;
+    southBrickGable.receiveShadow = true;
+    tagUpperCutawayWall(southBrickGable, southGableDescriptor);
+    scene.add(southBrickGable);
   }
 
-  // Issue #2 & #8: Bedroom 4 South Chimney Breast rising cleanly to the 4.52m collar ceiling (`Z = 11.09m..11.476m` flush against `southWallUpperGable` with zero overlap)
+  // Issue #2 & #8: Bedroom 4 South Chimney Breast rising cleanly to the 5.02m collar ceiling (`Z = 11.09m..11.476m` flush against `southWallUpperGable` with zero overlap)
   addUpperBedroomChimneyBreastWithFireplace(scene, {
     namePrefix: 'bedroom4.southChimneyBreast',
     zone: 'bedroom4',

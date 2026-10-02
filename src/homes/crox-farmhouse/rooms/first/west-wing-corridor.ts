@@ -1032,7 +1032,7 @@ export function buildWestWingCorridor(
     const wardW = wardMaxX - wardMinX; // 1.865m
     const wardD = 0.54; // Z = +4.175m .. +4.715m (inset 21cm from Z = +4.925m alcove front)
     const centerZ = 4.445;
-    const bed3CollarY = 4.52;
+    const bed3CollarY = 5.02;
     const bed3CollarWestX = -20.85;
     const bed3CollarEastX = -18.95;
 

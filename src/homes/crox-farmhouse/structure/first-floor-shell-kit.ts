@@ -369,6 +369,7 @@ export function createFirstFloorShellKit(
       readonly skirtingMin?: number;
       readonly skirtingMax?: number;
       readonly floorY?: number;
+      readonly skipCap?: boolean;
     }
   ): void => {
     const w = maxX - minX;
@@ -409,7 +410,7 @@ export function createFirstFloorShellKit(
     tagUpperCutawayWall(brickMesh, descriptor);
     scene.add(brickMesh);
 
-    if (Math.abs(yTop - upperWallTopY) < 0.05) {
+    if (!options?.skipCap && Math.abs(yTop - upperWallTopY) < 0.05) {
       const cap = new THREE.Mesh(
         shearGeometryAlongZ(
           new THREE.BoxGeometry(Math.max(0.02, w - 0.012), 0.016, Math.max(0.02, d - 0.012)),
@@ -466,13 +467,14 @@ export function createFirstFloorShellKit(
     const winLeft = winCenterX - winWidth / 2;
     const winRight = winCenterX + winWidth / 2;
 
+    const baseWallY = Math.min(floorBaseY, 2.06);
     if (winLeft > minX + 0.02) {
-      addUpperExteriorBrickWall(minX, winLeft, minZ, maxZ, floorBaseY, upperWallTopY, interiorSide, { skipSkirting: true });
+      addUpperExteriorBrickWall(minX, winLeft, minZ, maxZ, baseWallY, upperWallTopY, interiorSide, { skipSkirting: true });
     }
     if (winRight < maxX - 0.02) {
-      addUpperExteriorBrickWall(winRight, maxX, minZ, maxZ, floorBaseY, upperWallTopY, interiorSide, { skipSkirting: true });
+      addUpperExteriorBrickWall(winRight, maxX, minZ, maxZ, baseWallY, upperWallTopY, interiorSide, { skipSkirting: true });
     }
-    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, floorBaseY, effSillY, interiorSide, { skipSkirting: true });
+    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, baseWallY, effSillY, interiorSide, { skipSkirting: true });
     addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, effHeadY, upperWallTopY, interiorSide, { skipSkirting: true });
 
     const cz = (minZ + maxZ) / 2;
@@ -780,10 +782,20 @@ export function createFirstFloorShellKit(
     wallThickness: number,
     doorCenter: number,
     doorWidth: number,
-    openAngle: number
+    openAngle: number,
+    options?: {
+      readonly frontFloorY?: number;
+      readonly backFloorY?: number;
+      readonly doorFloorY?: number;
+      readonly doorH?: number;
+    }
   ): void => {
+    const effDoorH = options?.doorH ?? doorH;
+    const effDoorFloorY = options?.doorFloorY ?? floorTopY;
+    const effFrontFloorY = options?.frontFloorY ?? effDoorFloorY;
+    const effBackFloorY = options?.backFloorY ?? effDoorFloorY;
     const leafW = doorWidth - 0.04;
-    const leafH = doorH - 0.02;
+    const leafH = effDoorH - 0.02;
     const stileW = 0.095;
     const topRailH = 0.11;
     const lockRailH = 0.16;
@@ -896,16 +908,16 @@ export function createFirstFloorShellKit(
       wallThickness,
       openingCenter: doorCenter,
       openingWidth: doorWidth,
-      frontFloorY: floorTopY,
-      backFloorY: floorTopY,
-      headY: floorTopY + doorH,
+      frontFloorY: effFrontFloorY,
+      backFloorY: effBackFloorY,
+      headY: effDoorFloorY + effDoorH,
       material: antiqueOakSkirtingMat,
       namePrefix: 'firstFloorDoor',
     });
 
     if (axis === 'z') {
       const doorObj = new THREE.Group();
-      doorObj.position.set(wallCoord, floorTopY + doorH / 2, doorCenter);
+      doorObj.position.set(wallCoord, effDoorFloorY + effDoorH / 2, doorCenter);
       populateFourPanelLeaf(doorObj, true);
 
       scene.add(doorObj);
@@ -919,7 +931,7 @@ export function createFirstFloorShellKit(
       );
     } else {
       const doorObj = new THREE.Group();
-      doorObj.position.set(doorCenter, floorTopY + doorH / 2, wallCoord);
+      doorObj.position.set(doorCenter, effDoorFloorY + effDoorH / 2, wallCoord);
       populateFourPanelLeaf(doorObj, false);
 
       scene.add(doorObj);

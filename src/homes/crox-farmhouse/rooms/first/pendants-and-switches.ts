@@ -22,15 +22,17 @@ export function buildFirstFloorPendantsAndSwitches(
   //    First Floor visibility is toggled off)
   // =========================================================================
   const ewCollarCeilingY = 4.52;
+  const mainBedCollarCeilingY = 5.02;
+  const mainBedFloorTopY = 2.34;
 
   // 1. Main Bedroom (Circuit: mainBedroomPendant, Switch PA: 1.2.10)
   buildRoomCeilingPendant(eastWingCtx, {
     circuitId: 'mainBedroomPendant',
     x: -7.1,
-    z: 0.15,
-    ceilingY: ewCollarCeilingY,
-    dropLength: 0.42,
-    floorY: floorTopY,
+    z: -0.05,
+    ceilingY: mainBedCollarCeilingY,
+    dropLength: 0.48,
+    floorY: mainBedFloorTopY,
     pointLightIntensity: 13.5,
     pointLightDistance: 7.4,
     addPointLight: false,
@@ -41,7 +43,7 @@ export function buildFirstFloorPendantsAndSwitches(
     switchPa: '1.2.10',
     location: 'Main Bedroom — West Wall (by Door)',
     x: -9.56,
-    y: floorTopY + 1.15,
+    y: mainBedFloorTopY + 1.15,
     z: 0.92,
     facing: 'east',
     parentGroup: ewScene,
@@ -308,8 +310,8 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'bedroom3Pendant',
     x: -20.05,
     z: 6.38,
-    ceilingY: ewCollarCeilingY,
-    dropLength: 0.42,
+    ceilingY: 5.02,
+    dropLength: 0.56,
     floorY: floorTopY,
     pointLightIntensity: 13.0,
     pointLightDistance: 7.0,
@@ -332,8 +334,8 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'bedroom4Pendant',
     x: -19.85,
     z: 9.94,
-    ceilingY: ewCollarCeilingY,
-    dropLength: 0.42,
+    ceilingY: 5.02,
+    dropLength: 0.56,
     floorY: floorTopY,
     pointLightIntensity: 13.0,
     pointLightDistance: 7.0,
