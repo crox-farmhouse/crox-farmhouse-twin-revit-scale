@@ -308,7 +308,9 @@ export function classifyProceduralPattern(
     hint.includes('velvet') ||
     hint.includes('curtain') ||
     hint.includes('upholster') ||
-    hint.includes('bed')
+    hint.includes('bed') ||
+    hint.includes('carpet') ||
+    hint.includes('wool')
   ) {
     return {
       kind: 'woven_fabric',

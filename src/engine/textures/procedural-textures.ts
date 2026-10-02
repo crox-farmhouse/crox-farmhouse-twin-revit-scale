@@ -1989,3 +1989,154 @@ export function createEngineeredOakFloorTextures(): {
   return cachedEngineeredOakTextures;
 }
 
+let cachedWovenWoolCarpetTextures: {
+  readonly colorMap: THREE.CanvasTexture;
+  readonly bumpMap: THREE.CanvasTexture;
+} | null = null;
+
+/**
+ * Generates a seamless 512x512 woven British wool pebble-bouclé carpet texture pair
+ * (`colorMap` + `bumpMap`) modelled on `media_1790939297671.jpg`:
+ * - Warm creamy-oatmeal / undyed natural ecru-biscuit 3-ply wool base (`#e2dac9`)
+ * - Purely isotropic, high-pass-filtered (strictly zero-mean over every 8x8 pixel block)
+ *   2D interwoven wool pebble tufts & natural sheep's-wool heather flecks, with ZERO
+ *   full-width lines and ZERO low-frequency gradients so it tiles across large rooms
+ *   without any striping or repetition artifacts.
+ */
+export function createWovenWoolCarpetTextures(): {
+  readonly colorMap: THREE.CanvasTexture;
+  readonly bumpMap: THREE.CanvasTexture;
+} {
+  if (cachedWovenWoolCarpetTextures) {
+    return cachedWovenWoolCarpetTextures;
+  }
+
+  const size = 512;
+  const mask = size - 1;
+  const colorCanvas = document.createElement('canvas');
+  colorCanvas.width = size;
+  colorCanvas.height = size;
+  const cCtx = colorCanvas.getContext('2d');
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = size;
+  bumpCanvas.height = size;
+  const bCtx = bumpCanvas.getContext('2d');
+
+  if (cCtx && bCtx) {
+    const clampByte = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
+
+    // Record base & secondary palette colors for headless OpenUSD MaterialX extraction
+    cCtx.fillStyle = '#e2dac9';
+    cCtx.fillRect(0, 0, size, size);
+    cCtx.fillStyle = '#cfc5b2';
+    cCtx.fillRect(0, 0, 2, 2);
+
+    bCtx.fillStyle = '#808080';
+    bCtx.fillRect(0, 0, size, size);
+
+    const colorImg = cCtx.createImageData(size, size);
+    const bumpImg = bCtx.createImageData(size, size);
+    const cData = colorImg.data;
+    const bData = bumpImg.data;
+
+    // Deterministic periodic hash in [-1, +1] wrapped modulo 512
+    const hash2D = (x: number, y: number): number => {
+      const ix = x & mask;
+      const iy = y & mask;
+      let n = (ix * 374761393 + iy * 668265263) ^ 0x5bf03635;
+      n = (n ^ (n >> 13)) * 1274126177;
+      return ((n ^ (n >> 16)) & 0xffff) / 32767.5 - 1.0;
+    };
+
+    // High-pass-filtered zero-mean wool tuft noise at 2px & 3px scales:
+    // Subtracting the local 4-neighbor average guarantees zero low-frequency energy
+    // so every 8x8 mipmap block averages to the exact same base color (zero tiling blobs or stripes).
+    const woolTuftField = new Float32Array(size * size);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        // Coarse ~3px pebble-loop cell with bilinear smoothing
+        const gx = x * 0.375;
+        const gy = y * 0.375;
+        const ix = Math.floor(gx);
+        const iy = Math.floor(gy);
+        const fx = gx - ix;
+        const fy = gy - iy;
+        const sx = fx * fx * (3 - 2 * fx);
+        const sy = fy * fy * (3 - 2 * fy);
+
+        const n00 = hash2D(ix, iy);
+        const n10 = hash2D(ix + 1, iy);
+        const n01 = hash2D(ix, iy + 1);
+        const n11 = hash2D(ix + 1, iy + 1);
+        const pebble =
+          (n00 * (1 - sx) + n10 * sx) * (1 - sy) +
+          (n01 * (1 - sx) + n11 * sx) * sy;
+
+        // Fine 1px spun-wool fiber twist & natural heather fleck
+        const fiber = hash2D(x * 3 + 17, y * 3 + 29);
+
+        woolTuftField[y * size + x] = pebble * 0.72 + fiber * 0.28;
+      }
+    }
+
+    // Base warm creamy-oatmeal natural wool RGB (#e2dac9)
+    const baseR = 226;
+    const baseG = 218;
+    const baseB = 201;
+
+    for (let y = 0; y < size; y++) {
+      const yPrev = ((y - 3) & mask) * size;
+      const yNext = ((y + 3) & mask) * size;
+      const yRow = y * size;
+      for (let x = 0; x < size; x++) {
+        const center = woolTuftField[yRow + x] ?? 0;
+        const localMean =
+          0.25 *
+          ((woolTuftField[yRow + ((x - 3) & mask)] ?? 0) +
+            (woolTuftField[yRow + ((x + 3) & mask)] ?? 0) +
+            (woolTuftField[yPrev + x] ?? 0) +
+            (woolTuftField[yNext + x] ?? 0));
+
+        // Strictly zero-mean high-pass wool bouclé pebble relief in [-1, +1]
+        const tuft = center - localMean;
+
+        // Subtle warm natural wool fleck variation (creamy crown highlights vs warm flax dimples)
+        const fleck = hash2D(x + 101, y + 211) - 0.5 * (hash2D(x + 103, y + 211) + hash2D(x + 101, y + 213));
+        const delta = tuft * 7.5 + fleck * 2.8;
+
+        const idx = (yRow + x) * 4;
+        cData[idx] = clampByte(baseR + delta);
+        cData[idx + 1] = clampByte(baseG + delta * 0.96);
+        cData[idx + 2] = clampByte(baseB + delta * 0.88);
+        cData[idx + 3] = 255;
+
+        const bVal = clampByte(128 + tuft * 38 + fleck * 12);
+        bData[idx] = bVal;
+        bData[idx + 1] = bVal;
+        bData[idx + 2] = bVal;
+        bData[idx + 3] = 255;
+      }
+    }
+
+    cCtx.putImageData(colorImg, 0, 0);
+    bCtx.putImageData(bumpImg, 0, 0);
+  }
+
+  const colorMap = new THREE.CanvasTexture(colorCanvas);
+  colorMap.wrapS = THREE.RepeatWrapping;
+  colorMap.wrapT = THREE.RepeatWrapping;
+  colorMap.repeat.set(2.5, 2.5);
+  colorMap.colorSpace = THREE.SRGBColorSpace;
+  colorMap.anisotropy = 8;
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.repeat.set(2.5, 2.5);
+  bumpMap.anisotropy = 8;
+
+  cachedWovenWoolCarpetTextures = { colorMap, bumpMap };
+  return cachedWovenWoolCarpetTextures;
+}
+

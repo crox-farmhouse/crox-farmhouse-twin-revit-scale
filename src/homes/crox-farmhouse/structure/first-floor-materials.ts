@@ -1,5 +1,9 @@
 import * as THREE from 'three';
-import { createCourtyardStoneTexture, createImperialBrickTextures } from '../../../engine/textures/procedural-textures.ts';
+import {
+  createCourtyardStoneTexture,
+  createImperialBrickTextures,
+  createWovenWoolCarpetTextures,
+} from '../../../engine/textures/procedural-textures.ts';
 import type { SceneBuilderContext } from '../../../types/scene.ts';
 
 /**
@@ -102,10 +106,16 @@ export function createFirstFloorMaterials(
     metalness: 0.06,
   });
 
-  // Issue #9: Upstairs bedrooms, landing & corridor are all carpeted the same as the Living Room (`greyRoomCarpetMat`)
+  // Warm creamy-oatmeal natural British wool bouclé loop-pile carpet throughout upstairs (`media_1790939297671.jpg`)
+  const woolCarpetTextures = createWovenWoolCarpetTextures();
   const oakFloorMat = new THREE.MeshStandardMaterial({
-    color: 0xb8b4ae,
-    roughness: 0.94,
+    name: 'upstairsWovenWoolCarpet',
+    map: woolCarpetTextures.colorMap,
+    bumpMap: woolCarpetTextures.bumpMap,
+    bumpScale: 0.003,
+    color: 0xffffff,
+    roughness: 0.92,
+    metalness: 0.01,
   });
 
   const bathStoneTex = createCourtyardStoneTexture();

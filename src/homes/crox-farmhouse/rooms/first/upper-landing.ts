@@ -12,7 +12,7 @@ import type { createFirstFloorShellKit } from '../../structure/first-floor-shell
  */
 export function buildUpperLanding(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'skirtingMat' | 'upperWallTopY' | 'wallCapMat' | 'warmRoomPlasterMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'skirtingMat' | 'upperWallTopY' | 'wallCapMat' | 'warmRoomPlasterMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addUpperBrickWallAlongXWithWindow' | 'addUpperInteriorWall' | 'applyWorldSpaceBrickUVs' | 'doorH' | 'tagUpperCutawayWall'>
 ): void {
   const { ceilingMeshGroup, firstFloorMeshGroup: scene, interactions } = ctx;
@@ -24,6 +24,7 @@ export function buildUpperLanding(
     exteriorBrickMat,
     floorBaseY,
     floorTopY,
+    oakFloorMat,
     skirtingMat,
     tagUpperCutawayWall,
     upperWallTopY,
@@ -34,17 +35,12 @@ export function buildUpperLanding(
   // 3. MAIN STAIRCASE LANDING (DN) — Matching New Photos 3 & 4
   //    Directly above Entrance Hall with Stairs: X = -13.05m..-17.73m, Z = -2.50m..+2.40m
   //    With open Stairwell Void (X = -17.73m..-15.05m, Z = -2.50m..-0.58m) above the Quarter-Turn Staircase:
-  //    - Soft light-grey landing carpet (0xb8b4ae)
+  //    - Warm woven British wool loop-pile carpet (`oakFloorMat`) continuous throughout upstairs
   //    - Organic lime-plastered East chimney breast wide at the base on the left (North) side
   //    - Solid North brick wall with exposed lower brickwork and horizontal middle timber beam
   //    - Heavy dark black-stained timber ceiling beam & West wall timber framing posts (Photos 3 & 4)
-  //    - South courtyard window with white convector radiator underneath (Photo 4 left)
+  //    - South courtyard window with cast-iron column radiator underneath (Photo 4 left)
   // =========================================================================
-  const landingCarpetMat = new THREE.MeshStandardMaterial({
-    color: 0xb8b4ae,
-    roughness: 0.92,
-    metalness: 0.01,
-  });
   const darkTimberBeamMat = new THREE.MeshStandardMaterial({
     color: 0x221e1b,
     roughness: 0.72,
@@ -71,7 +67,7 @@ export function buildUpperLanding(
     ],
     floorTopY,
     floorTopY - floorBaseY,
-    landingCarpetMat,
+    oakFloorMat,
     0.5
   );
 

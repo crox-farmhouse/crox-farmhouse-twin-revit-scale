@@ -100,6 +100,22 @@ export function createFirstFloorShellKit(
     const cy = (floorBaseY + floorTopY) / 2;
     const cz = (minZ + maxZ) / 2;
 
+    const geo = new THREE.BoxGeometry(w, h, d);
+    const pos = geo.attributes.position;
+    const norm = geo.attributes.normal;
+    const uv = geo.attributes.uv;
+    if (pos && norm && uv) {
+      const uvScale = 0.5;
+      for (let i = 0; i < pos.count; i++) {
+        if (Math.abs(norm.getY(i)) > 0.5) {
+          const wx = pos.getX(i) + cx;
+          const wz = pos.getZ(i) + cz;
+          uv.setXY(i, wx * uvScale, wz * uvScale);
+        }
+      }
+      uv.needsUpdate = true;
+    }
+
     const mats: THREE.Material[] = [
       plasterMat,
       plasterMat,
@@ -108,7 +124,7 @@ export function createFirstFloorShellKit(
       plasterMat,
       plasterMat,
     ];
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mats);
+    const slab = new THREE.Mesh(geo, mats);
     slab.position.set(cx, cy, cz);
     slab.castShadow = true;
     slab.receiveShadow = true;

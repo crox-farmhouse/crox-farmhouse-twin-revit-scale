@@ -91,10 +91,19 @@ export function buildWestWingCorridor(
     );
     stepGroup.rotation.y = stepAngleY;
 
-    const riserMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(stepLen, stepRise, 0.028),
-      oakFloorMat
-    );
+    const riserGeo = new THREE.BoxGeometry(stepLen, stepRise, 0.028);
+    const riserUv = riserGeo.attributes.uv;
+    if (riserUv) {
+      for (let i = 0; i < riserUv.count; i++) {
+        riserUv.setXY(
+          i,
+          riserUv.getX(i) * stepLen * 0.5,
+          riserUv.getY(i) * stepRise * 0.5
+        );
+      }
+      riserUv.needsUpdate = true;
+    }
+    const riserMesh = new THREE.Mesh(riserGeo, oakFloorMat);
     riserMesh.name = 'westWingCorridor.upStepToLanding.riser';
     riserMesh.position.set(0, stepRise / 2, 0);
     riserMesh.castShadow = true;
@@ -108,6 +117,17 @@ export function buildWestWingCorridor(
       14
     );
     nosingGeo.rotateZ(Math.PI / 2);
+    const nosingUv = nosingGeo.attributes.uv;
+    if (nosingUv) {
+      for (let i = 0; i < nosingUv.count; i++) {
+        nosingUv.setXY(
+          i,
+          nosingUv.getX(i) * 0.05,
+          nosingUv.getY(i) * stepLen * 0.5
+        );
+      }
+      nosingUv.needsUpdate = true;
+    }
     const nosingMesh = new THREE.Mesh(nosingGeo, oakFloorMat);
     nosingMesh.name = 'westWingCorridor.upStepToLanding.nosing';
     nosingMesh.position.set(0, stepRise - 0.014, 0.012);
