@@ -7,17 +7,34 @@ import {
   type createGroundFloorMaterials,
 } from '../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
+import {
+  buildOutbuildingsAndBarns,
+  getOutbuildingNorthWallWorldZ,
+} from './outbuildings-and-barns.ts';
 
 /**
- * Graded cobbled courtyard, planting, ivy, boundary walls and split car gates.
- *
- * Extracted verbatim from `buildMainHouseGroundFloorRooms` (ground-floor-rooms.ts). Statement order and
- * geometry are unchanged; shared locals flow in via `kit` and out via the return value.
+ * Graded cobbled courtyard, planting, ivy, boundary walls, split car gates, and the southern
+ * 5-bay Outbuilding / Barn Range (`GYM`, `Garage`, `Store`, `Barn + First Floor`, `Stable`).
  */
 export function buildCourtyardAndGates(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'castIronMat' | 'courtyardDoorMat' | 'courtyardDoorRecessMat' | 'exteriorBrickMat' | 'stoneSillMat'> &
-    Pick<ReturnType<typeof createGroundFloorShellKit>, 'applyWorldSpaceBrickUVs' | 'getCourtyardGroundY' | 'getEastCourtyardWallCenterX'>
+  kit: Pick<
+    ReturnType<typeof createGroundFloorMaterials>,
+    | 'castIronMat'
+    | 'courtyardDoorMat'
+    | 'courtyardDoorRecessMat'
+    | 'engineeredOakFloorMat'
+    | 'exteriorBrickMat'
+    | 'stoneSillMat'
+    | 'wallCapMat'
+    | 'warmRoomPlasterMat'
+    | 'windowFrameMat'
+    | 'windowGlassMat'
+  > &
+    Pick<
+      ReturnType<typeof createGroundFloorShellKit>,
+      'applyWorldSpaceBrickUVs' | 'getCourtyardGroundY' | 'getEastCourtyardWallCenterX'
+    >
 ): void {
   const { interactions, scene } = ctx;
   const {
@@ -25,10 +42,15 @@ export function buildCourtyardAndGates(
     castIronMat,
     courtyardDoorMat,
     courtyardDoorRecessMat,
+    engineeredOakFloorMat,
     exteriorBrickMat,
     getCourtyardGroundY,
     getEastCourtyardWallCenterX,
     stoneSillMat,
+    wallCapMat,
+    warmRoomPlasterMat,
+    windowFrameMat,
+    windowGlassMat,
   } = kit;
   // =========================================================================
   // 8. GRADED COBBLED COURTYARD (0.00m AT KITCHEN -> -0.60m AT PLANT ROOM & GATE),
@@ -336,9 +358,21 @@ export function buildCourtyardAndGates(
             }
           }
         } else if (isSouthEastApronPiece) {
-          const minAllowedTerraceSouthZ = getEastWingSouthWallZ(wx) + 4.79;
+          const minAllowedTerraceSouthZ =
+            wx >= -0.45 && wx <= 4.75
+              ? getEastWingSouthWallZ(wx) + 5.62
+              : getEastWingSouthWallZ(wx) + 4.79;
           if (wz < minAllowedTerraceSouthZ) {
             wz = minAllowedTerraceSouthZ;
+            pos.setZ(i, wz - offsetZ);
+          }
+        }
+        // Clip the South (+Z) edge of all courtyard cobble pieces along the angled North wall
+        // of the 5-Bay Outbuilding / Barn Range so zero cobbles enter GYM, Garage, Store, Barn, or Stable.
+        if (offsetX > -23.0) {
+          const maxAllowedSouthZ = getOutbuildingNorthWallWorldZ(wx) - 0.02;
+          if (wz > maxAllowedSouthZ) {
+            wz = maxAllowedSouthZ;
             pos.setZ(i, wz - offsetZ);
           }
         }
@@ -417,15 +451,16 @@ export function buildCourtyardAndGates(
   gateCourtyardBaySlab.receiveShadow = true;
   scene.add(gateCourtyardBaySlab);
 
-  // Lower South-East Courtyard Apron extending South of the Raised Limestone Terrace (X = -4.52m..+6.74m, Z = getEastWingSouthWallZ(x)+4.79m..+16.05m)
+  // Lower South-East Courtyard Apron & Cobbled Alleyway between the Raised Rattan Patio / Walled Grape-Vine Pergola
+  // and the Barn / Stable North Wall (X = -4.64m..+6.60m, Photo 10)
   const southEastCourtyardApron = new THREE.Mesh(
     createGradedCourtyardGeometry(
       11.26,
       0.105,
       7.1,
-      1.11,
+      0.98,
       12.5,
-      24,
+      28,
       24,
       true
     ),
@@ -433,7 +468,7 @@ export function buildCourtyardAndGates(
   );
   southEastCourtyardApron.name = 'courtyard.southEastCobbleApron';
   southEastCourtyardApron.userData.isArchitecturalShell = true;
-  southEastCourtyardApron.position.set(1.11, -0.064, 12.5);
+  southEastCourtyardApron.position.set(0.98, -0.064, 12.5);
   southEastCourtyardApron.receiveShadow = true;
   scene.add(southEastCourtyardApron);
 
@@ -453,14 +488,13 @@ export function buildCourtyardAndGates(
   drivewayApron.receiveShadow = true;
   scene.add(drivewayApron);
 
-  // Stone Sett Drainage Channels & Car Gate Wheel Tracks following the graded Cobbled Courtyard (visible in Photos 1 & 2)
+  // Stone Sett Drainage Channels & Car Gate Wheel Tracks following the graded Cobbled Courtyard (visible in Photos 1, 2, 5, 7, 10)
   for (const [cx, cz, w, d, sx, sz] of [
     [-10.68, 4.45, 12.08, 0.16, 28, 2],    // East-West sett channel continuing the line of the Kitchen cobble path
     [-10.78, 7.6, 12.28, 0.16, 28, 2],     // Middle East-West courtyard drainage sett band
-    [-13.41, 13.05, 17.75, 0.22, 36, 2],   // Double-row stone sett track starting at the Split Gate post (X=-22.28m) into the courtyard (Photos 1 & 2)
+    [-13.41, 13.05, 17.75, 0.22, 36, 2],   // Double-row stone sett track starting at the Split Gate post (X=-22.28m) into the courtyard (Photos 1, 2, 7)
     [-16.15, 9.4, 0.16, 13.0, 2, 28],      // North-South sett drainage channel along West courtyard wing
     [-8.78, 9.9, 0.16, 12.0, 2, 28],       // North-South sett drainage channel aligned with Dining Room Courtyard Door
-    [-7.795, 16.05, 29.07, 0.16, 48, 2],   // Southern courtyard boundary stone kerb (X = -22.33m..+6.74m)
   ] as const) {
     const band = new THREE.Mesh(
       createGradedCourtyardGeometry(w, 0.11, d, cx, cz, sx, sz, false),
@@ -534,7 +568,7 @@ export function buildCourtyardAndGates(
   }
   scene.add(benchGroup);
 
-  // Terracotta & Weathered Stone Planters along the Courtyard Walls (seated on the sloped courtyard cobbles, Photos 1 & 3)
+  // Terracotta & Weathered Stone Planters along the Courtyard Walls (seated on the sloped courtyard cobbles, Photos 1, 3, 5)
   const ivyDarkGreenMat = new THREE.MeshStandardMaterial({
     color: 0x2d4e28,
     roughness: 0.78,
@@ -545,25 +579,32 @@ export function buildCourtyardAndGates(
     roughness: 0.74,
     metalness: 0.02,
   });
+  const greyPlanterMat = new THREE.MeshStandardMaterial({
+    color: 0x767a7e,
+    roughness: 0.68,
+    metalness: 0.08,
+  });
 
   const pPlanter1 = transformEastWingPoint(-8.12, 0, 2.94);
   const pPlanter2 = transformEastWingPoint(-9.42, 0, 2.94);
   const pPlanter3 = transformEastWingPoint(-12.65, 0, 2.98);
   const pPlanter4 = transformEastWingPoint(-15.65, 0, 2.98);
+  const pPlanter5 = transformEastWingPoint(-14.15, 0, 2.98);
 
-  for (const [px, pz, potR, crownR] of [
-    [pPlanter1.x, pPlanter1.z, 0.22, 0.28],  // Right of Dining Room Exterior Courtyard Door (Photo 1)
-    [pPlanter2.x, pPlanter2.z, 0.2, 0.25],   // Left of Dining Room Exterior Courtyard Door (Photo 1)
-    [pPlanter3.x, pPlanter3.z, 0.22, 0.28],  // Left of Garden Bench (Photo 1)
-    [pPlanter4.x, pPlanter4.z, 0.21, 0.27],  // Left of Hall Courtyard Door (Photo 1)
-    [getEastCourtyardWallCenterX(4.35) + 0.44, 4.35, 0.23, 0.3],   // Along Sitting Room Courtyard Wall (Photo 1 & 3 — Issue #1)
-    [getEastCourtyardWallCenterX(7.65) + 0.44, 7.65, 0.22, 0.28],  // North of Plant Room Courtyard Door (Photo 3 — Issue #1)
-    [getEastCourtyardWallCenterX(10.75) + 0.44, 10.75, 0.22, 0.28],// South of Plant Room Courtyard Door (Photo 3 — Issue #1)
+  for (const [px, pz, potR, crownR, isGrey] of [
+    [pPlanter1.x, pPlanter1.z, 0.22, 0.28, false],  // Right of Dining Room Exterior Courtyard Door (Photo 1)
+    [pPlanter2.x, pPlanter2.z, 0.2, 0.25, false],   // Left of Dining Room Exterior Courtyard Door (Photo 1)
+    [pPlanter3.x, pPlanter3.z, 0.22, 0.28, true],   // Left of Garden Bench — Grey cylindrical planter (Photo 5)
+    [pPlanter5.x, pPlanter5.z, 0.21, 0.26, true],   // Right of Hall Courtyard Door — Grey cylindrical planter (Photo 5)
+    [pPlanter4.x, pPlanter4.z, 0.21, 0.27, true],   // Left of Hall Courtyard Door — Grey cylindrical planter (Photo 5)
+    [getEastCourtyardWallCenterX(4.35) + 0.44, 4.35, 0.23, 0.3, false],   // Along Sitting Room Courtyard Wall (Photo 1 & 3 — Issue #1)
+    [getEastCourtyardWallCenterX(7.65) + 0.44, 7.65, 0.22, 0.28, false],  // North of Plant Room Courtyard Door (Photo 3 — Issue #1)
+    [getEastCourtyardWallCenterX(10.75) + 0.44, 10.75, 0.22, 0.28, false],// South of Plant Room Courtyard Door (Photo 3 — Issue #1)
   ] as const) {
     const potGroundY = getCourtyardGroundY(px, pz);
     const pot = new THREE.Mesh(
-      new THREE.CylinderGeometry(potR, potR * 0.74, potR * 1.65, 12),
-      terracottaPotMat
+      new THREE.CylinderGeometry(potR, potR * (isGrey ? 0.88 : 0.74), potR * 1.65, 12),
+      isGrey ? greyPlanterMat : terracottaPotMat
     );
     pot.position.set(px, potGroundY + potR * 0.825, pz);
     pot.castShadow = true;
@@ -579,6 +620,20 @@ export function buildCourtyardAndGates(
     shrub.castShadow = true;
     scene.add(shrub);
   }
+
+  // Dark-grey Oval Sky Satellite Dish on the upper South Courtyard Brick Wall above Boot Lobby / Hall (Photo 5)
+  const satWorldPos = transformEastWingPoint(-13.85, 3.12, 2.71);
+  const satDish = new THREE.Mesh(
+    new THREE.SphereGeometry(0.28, 14, 10),
+    castIronMat
+  );
+  satDish.name = 'courtyard.satelliteDish';
+  satDish.userData.isArchitecturalShell = true;
+  satDish.scale.set(1.18, 0.88, 0.22);
+  satDish.position.set(satWorldPos.x, satWorldPos.y, satWorldPos.z + 0.08);
+  satDish.rotation.set(0.24, MAIN_EAST_WING_ROTATION_Y + 0.35, 0);
+  satDish.castShadow = true;
+  scene.add(satDish);
 
   // -------------------------------------------------------------------------
   // High-LOD Botanical Climbing English Ivy (Hedera helix) on Courtyard & Front Bay Walls (Issue #4)
@@ -786,12 +841,107 @@ export function buildCourtyardAndGates(
   addWallClimbingIvy(-22.47, 4.25, 'x', 1.1, 3.45, 101);
   addWallClimbingIvy(-22.47, 7.65, 'x', 1.15, 3.45, 127);
 
+  // Reusable local-space climbing ivy cluster helper for the Outbuildings / Barns
+  const addWallClimbingIvyCluster = (
+    parent: THREE.Object3D,
+    localX: number,
+    localY: number,
+    localZ: number,
+    normalAxis: 'x' | 'z',
+    outwardSign: 1 | -1,
+    spanW: number,
+    spanH: number,
+    seed: number
+  ): void => {
+    const clusterGroup = new THREE.Group();
+    clusterGroup.name = `outbuildings.climbingIvy.${seed}`;
+    clusterGroup.userData.isArchitecturalShell = true;
+
+    const getLocalWallPoint = (lat: number, y: number, outDist: number): THREE.Vector3 => {
+      if (normalAxis === 'x') {
+        return new THREE.Vector3(
+          localX + outwardSign * outDist,
+          localY + y,
+          localZ + lat
+        );
+      }
+      return new THREE.Vector3(
+        localX + lat,
+        localY + y,
+        localZ + outwardSign * outDist
+      );
+    };
+
+    for (let b = 0; b < 3; b++) {
+      const branchLateralBase = (b - 1) * (spanW * 0.22);
+      const stemPts: THREE.Vector3[] = [];
+      const steps = 6;
+      for (let s = 0; s <= steps; s++) {
+        const st = s / steps;
+        const sy = 0.04 + st * (spanH - 0.1) * (b === 1 ? 1.0 : 0.88);
+        const wave = Math.sin(st * Math.PI * 2.5 + seed * 0.17 + b * 1.9) * (spanW * 0.12);
+        const lat = branchLateralBase * (1 - 0.22 * st) + wave;
+        stemPts.push(getLocalWallPoint(lat, sy, 0.009));
+      }
+      const stemCurve = new THREE.CatmullRomCurve3(stemPts);
+      const stemMesh = new THREE.Mesh(
+        new THREE.TubeGeometry(stemCurve, 12, b === 1 ? 0.0085 : 0.0065, 5, false),
+        ivyStemMat
+      );
+      stemMesh.castShadow = true;
+      clusterGroup.add(stemMesh);
+    }
+
+    const count = Math.floor(spanW * spanH * 10);
+    const sprayMats = [ivyDarkGreenMat, ivyMidGreenMat, ivyYoungGreenMat];
+    const baseRotY =
+      normalAxis === 'x'
+        ? outwardSign > 0
+          ? 0
+          : Math.PI
+        : outwardSign > 0
+          ? -Math.PI / 2
+          : Math.PI / 2;
+
+    for (let i = 0; i < count; i++) {
+      const t = (i + 0.5) / count;
+      const hash1 = Math.sin((i + seed) * 12.9898) * 43758.5453;
+      const frac1 = hash1 - Math.floor(hash1);
+      const hash2 = Math.sin((i + seed) * 78.233) * 19341.123;
+      const frac2 = hash2 - Math.floor(hash2);
+      const hash3 = Math.sin((i + seed) * 39.425) * 27183.456;
+      const frac3 = hash3 - Math.floor(hash3);
+
+      const y = 0.1 + t * (spanH - 0.14);
+      const widthAtY = spanW * (1.0 - 0.28 * Math.pow(t, 1.35));
+      const branchSnap =
+        Math.sin(t * Math.PI * 2.5 + seed * 0.17 + (i % 3) * 1.9) * (spanW * 0.09);
+      const lateral = (frac1 - 0.5) * widthAtY * 0.88 + branchSnap * 0.45;
+      const scale = (0.82 + frac2 * 0.52) * (1.06 - 0.2 * t);
+      const matIdx = t > 0.76 && i % 2 === 0 ? 2 : i % 3;
+
+      const leafSpray = new THREE.Mesh(ivySprayGeo, sprayMats[matIdx]!);
+      leafSpray.position.copy(getLocalWallPoint(lateral, y, 0.008 + frac3 * 0.015));
+      leafSpray.rotation.set(
+        (frac3 - 0.5) * 0.38,
+        baseRotY + (frac1 - 0.5) * 0.28,
+        (frac2 - 0.5) * 0.18
+      );
+      leafSpray.scale.set(scale, scale, scale);
+      leafSpray.castShadow = true;
+      leafSpray.receiveShadow = true;
+      clusterGroup.add(leafSpray);
+    }
+
+    parent.add(clusterGroup);
+  };
+
   // -------------------------------------------------------------------------
   // Interactive Split Courtyard Gate (Pedestrian Entrance + Double Car Entrance)
   // Flush with the West Front Facade of the Main House at X = -22.33m (X = -22.19m..-22.47m),
   // spanning South from the SW Front corner of the Study (Z = +11.77m)
-  // to the NW corner of the Outbuilding/GYM (Z = +16.05m) at the lowered courtyard elevation
-  // (Y = -0.60m, 60cm below the Kitchen!) — matching Photos 1, 2, 3 & Floorplan!
+  // to the NW corner of the Outbuilding/GYM (Z = +16.00m) at the lowered courtyard elevation
+  // (Y = -0.60m, 60cm below the Kitchen!) — matching Photos 1, 2, 3, 7 & Floorplan!
   // -------------------------------------------------------------------------
   const gateX = -22.33;
   const gateH = 1.88;
@@ -800,7 +950,7 @@ export function buildCourtyardAndGates(
   // 3 Painted Timber Gate Posts along X = -22.33m (seated on the Y = -0.60m courtyard threshold):
   // - North post against the Study SW front brick corner (Z = +11.82m)
   // - Intermediate split post between the Pedestrian Entrance and Car Entrance (Z = +12.96m)
-  // - South post at the Outbuilding corner (Z = +16.00m)
+  // - South post at the Outbuilding/GYM NW corner (Z = +16.00m)
   for (const postZ of [11.82, 12.96, 16.0]) {
     const post = new THREE.Mesh(
       new THREE.BoxGeometry(0.12, gateH + 0.08, 0.12),
@@ -819,27 +969,10 @@ export function buildCourtyardAndGates(
     scene.add(postCap);
   }
 
-  // Red-Brick Pier at the South end of the Car Gate (X = -22.33m, Z = +16.26m, seated at gateGroundY = -0.60m)
-  const southGatePierGeo = new THREE.BoxGeometry(0.42, 2.08, 0.42);
-  applyWorldSpaceBrickUVs(southGatePierGeo, gateX, gateGroundY + 1.04, 16.26);
-  const southGatePier = new THREE.Mesh(southGatePierGeo, exteriorBrickMat);
-  southGatePier.position.set(gateX, gateGroundY + 1.04, 16.26);
-  southGatePier.castShadow = true;
-  southGatePier.receiveShadow = true;
-  scene.add(southGatePier);
-
-  const southGatePierCap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.48, 0.08, 0.48),
-    stoneSillMat
-  );
-  southGatePierCap.position.set(gateX, gateGroundY + 2.12, 16.26);
-  southGatePierCap.castShadow = true;
-  scene.add(southGatePierCap);
-
   /**
    * Helper to build a gate leaf group along X = gateX (at gateGroundY = -0.60m):
    * - Smooth vertical T&G boarding + capping rail on the West (-X, driveway) side (Photo 2)
-   * - Framed ledged-and-braced horizontal rails + diagonal cross-braces on the East (+X, courtyard) side (Photo 3)
+   * - Framed ledged-and-braced horizontal rails + diagonal cross-braces on the East (+X, courtyard) side (Photo 3 & 7)
    */
   const buildSplitGateLeafGroup = (
     minZ: number,
@@ -880,7 +1013,7 @@ export function buildCourtyardAndGates(
       leafGroup.add(stile);
     }
 
-    // Top, middle, and bottom horizontal ledges on the courtyard (+X) side (visible in Photo 3!)
+    // Top, middle, and bottom horizontal ledges on the courtyard (+X) side (visible in Photo 3 & 7!)
     for (const ly of [-gateH / 2 + 0.14, 0.0, gateH / 2 - 0.14]) {
       const ledge = new THREE.Mesh(
         new THREE.BoxGeometry(0.032, 0.11, leafW - 0.14),
@@ -891,7 +1024,7 @@ export function buildCourtyardAndGates(
       leafGroup.add(ledge);
     }
 
-    // Lower and upper diagonal timber braces on the courtyard (+X) side (rising from the hinge side, Photo 3!)
+    // Lower and upper diagonal timber braces on the courtyard (+X) side (rising from the hinge side, Photo 3 & 7!)
     const braceSpanZ = leafW - 0.18;
     const braceSpanY = gateH / 2 - 0.24;
     const braceLen = Math.hypot(braceSpanZ, braceSpanY);
@@ -962,4 +1095,22 @@ export function buildCourtyardAndGates(
     -Math.PI * 0.46,
     10.0
   );
+
+  // -------------------------------------------------------------------------
+  // 9. SOUTHERN 5-BAY OUTBUILDING / BARN RANGE (GYM, GARAGE, STORE, BARN + FIRST FLOOR, STABLE)
+  // -------------------------------------------------------------------------
+  buildOutbuildingsAndBarns(ctx, {
+    exteriorBrickMat,
+    stoneSillMat,
+    courtyardDoorMat,
+    courtyardDoorRecessMat,
+    castIronMat,
+    windowFrameMat,
+    windowGlassMat,
+    warmRoomPlasterMat,
+    oakFloorMat: engineeredOakFloorMat,
+    wallCapMat,
+    applyWorldSpaceBrickUVs,
+    addWallClimbingIvyCluster,
+  });
 }
