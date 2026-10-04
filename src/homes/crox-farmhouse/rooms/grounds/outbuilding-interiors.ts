@@ -184,11 +184,13 @@ function createBevelledHexHeadGeometry(radius: number, length: number): THREE.Bu
 }
 
 /**
- * Generates a seamless poured polyurethane/epoxy workshop resin floor texture (`#84898e`)
- * with subtle self-levelling mineral quartz micro-flecks and trowelled satin depth.
+ * Issue #4 ("Make this floor less tesselated / repeated" at `[-11.439, -0.5, 17.001]`, `outbuildings.garage.resinFloor`):
+ * Generates a monolithic, non-repeating `1024x1024` self-levelling poured polyurethane/epoxy workshop resin floor
+ * texture (`#888d92`) mapped `1:1` across the entire garage slab (`tex.repeat.set(1, 1)`) with zero periodic grid waves
+ * and ultra-fine, barely perceptible mineral micro-speckle.
  */
 export function createPouredResinFloorMaterial(): THREE.MeshStandardMaterial {
-  const size = 512;
+  const size = 1024;
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
@@ -197,22 +199,21 @@ export function createPouredResinFloorMaterial(): THREE.MeshStandardMaterial {
   const img = ctx.createImageData(size, size);
   const data = img.data;
   for (let y = 0; y < size; y++) {
-    const ny = (y / size) * Math.PI * 2;
+    const uy = y / size - 0.5;
     for (let x = 0; x < size; x++) {
-      const nx = (x / size) * Math.PI * 2;
+      const ux = x / size - 0.5;
       const idx = (y * size + x) * 4;
-      const swirl =
-        Math.sin(nx * 2 + ny) * 3.5 +
-        Math.cos(nx * 3 - ny * 2) * 2.5 +
-        Math.sin(nx * 6 + ny * 5) * 1.5;
+      // Gentle, non-repeating monolithic radial ambient grading across the whole garage slab
+      const radialLift = (0.35 - (ux * ux + uy * uy)) * 4.5;
+      // Ultra-subtle aperiodic micro-quartz resin grain (±1.5 RGB values)
       const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
       const f = h - Math.floor(h);
-      const microFleck = f > 0.92 ? 9 : f < 0.08 ? -7 : (f - 0.5) * 4;
+      const microFleck = (f - 0.5) * 2.6;
 
-      const base = 134 + swirl + microFleck;
-      data[idx] = Math.max(100, Math.min(175, Math.round(base - 2)));
-      data[idx + 1] = Math.max(104, Math.min(178, Math.round(base)));
-      data[idx + 2] = Math.max(108, Math.min(182, Math.round(base + 3)));
+      const base = 137 + radialLift + microFleck;
+      data[idx] = Math.max(122, Math.min(152, Math.round(base - 2)));
+      data[idx + 1] = Math.max(126, Math.min(156, Math.round(base)));
+      data[idx + 2] = Math.max(130, Math.min(160, Math.round(base + 3)));
       data[idx + 3] = 255;
     }
   }
@@ -220,22 +221,23 @@ export function createPouredResinFloorMaterial(): THREE.MeshStandardMaterial {
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(3, 3);
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.repeat.set(1, 1);
 
   return new THREE.MeshStandardMaterial({
     map: tex,
     color: 0xffffff,
-    roughness: 0.22,
-    metalness: 0.08,
+    roughness: 0.24,
+    metalness: 0.06,
   });
 }
 
 /**
  * Generates a Widescreen (`16:10` / `4.48m x 2.80m`) TrackMan iO Virtual Golf 3 (VG3)
  * championship course projection texture featuring signature TrackMan Orange (`#ff6b00`)
- * telemetry data tiles, minimap, and sunlit championship fairway & green.
+ * telemetry data tiles, minimap, layered mountain ridges, botanical pine & oak tree line,
+ * contoured fairway striping, water reflections, and sunlit championship green.
  */
 function createTrackManWidescreenTexture(): THREE.CanvasTexture {
   const w = 1280;
@@ -245,67 +247,123 @@ function createTrackManWidescreenTexture(): THREE.CanvasTexture {
   canvas.height = h;
   const ctx = canvas.getContext('2d')!;
 
-  // 1. Crisp summer sky gradient
+  // 1. Crisp summer sky gradient with warm horizon haze
   const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.48);
-  skyGrad.addColorStop(0, '#3572c6');
-  skyGrad.addColorStop(0.55, '#6ca6dc');
-  skyGrad.addColorStop(1, '#d2e6f8');
+  skyGrad.addColorStop(0, '#2a62b5');
+  skyGrad.addColorStop(0.5, '#649ed6');
+  skyGrad.addColorStop(0.85, '#b8d7f2');
+  skyGrad.addColorStop(1, '#dcebf8');
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, w, h * 0.5);
 
-  // Soft cumulus clouds across the wide horizon
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
-  for (const [cx, cy, rx, ry] of [
-    [220, 120, 115, 30],
-    [290, 112, 85, 34],
-    [640, 138, 95, 24],
-    [920, 102, 130, 28],
-    [1010, 94, 96, 32],
+  // Layered soft cumulus clouds across the wide horizon
+  for (const [cx, cy, rx, ry, alpha] of [
+    [210, 118, 125, 28, 0.72],
+    [285, 108, 90, 34, 0.82],
+    [620, 134, 110, 24, 0.68],
+    [680, 126, 78, 28, 0.76],
+    [930, 102, 138, 26, 0.74],
+    [1015, 92, 96, 32, 0.84],
   ] as const) {
+    const cGrad = ctx.createLinearGradient(cx, cy - ry, cx, cy + ry);
+    cGrad.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+    cGrad.addColorStop(0.7, `rgba(242, 247, 252, ${alpha * 0.88})`);
+    cGrad.addColorStop(1, `rgba(195, 212, 230, ${alpha * 0.55})`);
+    ctx.fillStyle = cGrad;
     ctx.beginPath();
     ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // 2. Distant rolling tree line & hills
-  ctx.fillStyle = '#2c583a';
+  // 2. Distant atmospheric mountain ridges & layered pine/oak woodland tree line
+  ctx.fillStyle = '#5c7f99';
   ctx.beginPath();
   ctx.moveTo(0, h * 0.46);
-  for (let x = 0; x <= w; x += 32) {
-    const treeH =
-      Math.sin(x * 0.015) * 28 +
-      Math.cos(x * 0.042) * 18 +
-      Math.sin(x * 0.095) * 10;
-    ctx.lineTo(x, h * 0.43 - Math.abs(treeH));
+  for (let x = 0; x <= w; x += 24) {
+    const ridgeH =
+      Math.sin(x * 0.006 + 0.4) * 34 +
+      Math.cos(x * 0.015 - 0.8) * 18 +
+      Math.sin(x * 0.032) * 8;
+    ctx.lineTo(x, h * 0.41 - Math.max(0, ridgeH));
+  }
+  ctx.lineTo(w, h * 0.48);
+  ctx.lineTo(0, h * 0.48);
+  ctx.closePath();
+  ctx.fill();
+
+  // Midground forested hills
+  ctx.fillStyle = '#2d5938';
+  ctx.beginPath();
+  ctx.moveTo(0, h * 0.47);
+  for (let x = 0; x <= w; x += 20) {
+    const hillH =
+      Math.sin(x * 0.012 + 1.2) * 24 +
+      Math.cos(x * 0.035) * 14 +
+      Math.sin(x * 0.08) * 6;
+    ctx.lineTo(x, h * 0.435 - Math.abs(hillH));
   }
   ctx.lineTo(w, h * 0.52);
   ctx.lineTo(0, h * 0.52);
   ctx.closePath();
   ctx.fill();
 
-  for (let i = 0; i < 48; i++) {
-    const tx = (i / 47) * w;
-    const ty = h * 0.44 - Math.abs(Math.sin(i * 1.7)) * 36;
-    const tr = 24 + (i % 5) * 8;
-    ctx.fillStyle = i % 2 === 0 ? '#1f472b' : '#35663f';
-    ctx.beginPath();
-    ctx.arc(tx, ty, tr, 0, Math.PI * 2);
-    ctx.fill();
+  // Detailed multi-tiered pine & broadleaf tree silhouettes along the woodland margin
+  for (let i = 0; i < 68; i++) {
+    const tx = (i / 67) * w;
+    // Leave a natural fairway vista corridor around the central green (`w * 0.42..0.60`)
+    const centerGap = Math.exp(-Math.pow((tx - w * 0.51) / (w * 0.14), 2));
+    const baseTreeY = h * 0.455 - (1 - centerGap * 0.55) * (12 + Math.abs(Math.sin(i * 1.9)) * 22);
+    const treeH = (26 + (i % 5) * 9) * (1 - centerGap * 0.42);
+
+    // Trunk
+    ctx.fillStyle = '#3b2d22';
+    ctx.fillRect(tx - 1.5, baseTreeY - treeH * 0.25, 3, treeH * 0.35);
+
+    if (i % 3 === 0) {
+      // Layered coniferous pine tiers
+      for (let tier = 0; tier < 4; tier++) {
+        const ty = baseTreeY - treeH * (0.22 + tier * 0.2);
+        const tw = (treeH * 0.48) * (1 - tier * 0.18);
+        ctx.fillStyle = tier % 2 === 0 ? '#1b4226' : '#265432';
+        ctx.beginPath();
+        ctx.moveTo(tx, ty - treeH * 0.28);
+        ctx.lineTo(tx - tw, ty);
+        ctx.lineTo(tx + tw, ty);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else {
+      // Multi-lobe oak/broadleaf crown with sunlit top highlight & lower shadow
+      const crownR = treeH * 0.36;
+      const cy = baseTreeY - treeH * 0.55;
+      for (const [ox, oy, rScale, col] of [
+        [-crownR * 0.45, crownR * 0.15, 0.78, '#1a3d22'],
+        [crownR * 0.45, crownR * 0.12, 0.82, '#214a2b'],
+        [0, 0, 0.95, '#2b5c34'],
+        [-crownR * 0.2, -crownR * 0.28, 0.72, '#3c7342'],
+      ] as const) {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.ellipse(tx + ox, cy + oy, crownR * rScale, crownR * rScale * 0.82, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
 
-  // 3. Widescreen Rough & Striped Fairway Perspective
+  // 3. Widescreen Rough & Contoured Mowed Fairway Perspective
   const roughGrad = ctx.createLinearGradient(0, h * 0.44, 0, h);
-  roughGrad.addColorStop(0, '#3d7a35');
-  roughGrad.addColorStop(0.5, '#346b2d');
-  roughGrad.addColorStop(1, '#254f1f');
+  roughGrad.addColorStop(0, '#3a7532');
+  roughGrad.addColorStop(0.5, '#31652a');
+  roughGrad.addColorStop(1, '#22491d');
   ctx.fillStyle = roughGrad;
   ctx.fillRect(0, h * 0.44, w, h * 0.56);
 
   const fwGrad = ctx.createLinearGradient(0, h * 0.46, 0, h);
-  fwGrad.addColorStop(0, '#59a946');
-  fwGrad.addColorStop(0.6, '#4c993b');
-  fwGrad.addColorStop(1, '#3f8630');
+  fwGrad.addColorStop(0, '#59aa46');
+  fwGrad.addColorStop(0.6, '#4b983a');
+  fwGrad.addColorStop(1, '#3c822d');
   ctx.fillStyle = fwGrad;
+  ctx.save();
   ctx.beginPath();
   ctx.moveTo(w * 0.12, h);
   ctx.quadraticCurveTo(w * 0.26, h * 0.68, w * 0.35, h * 0.48);
@@ -313,46 +371,78 @@ function createTrackManWidescreenTexture(): THREE.CanvasTexture {
   ctx.quadraticCurveTo(w * 0.76, h * 0.68, w * 0.88, h);
   ctx.closePath();
   ctx.fill();
+  ctx.clip();
 
-  // Mowed fairway cross-stripes
-  for (let s = 0; s < 10; s++) {
+  // Clipped diagonal & horizontal mowed fairway stripes
+  for (let s = 0; s < 14; s++) {
     if (s % 2 === 0) continue;
-    const y0 = h * 0.48 + (s / 10) * (h * 0.52);
-    const y1 = h * 0.48 + ((s + 1) / 10) * (h * 0.52);
-    ctx.fillStyle = 'rgba(135, 220, 100, 0.16)';
-    ctx.fillRect(w * 0.16, y0, w * 0.68, y1 - y0);
+    const y0 = h * 0.48 + (s / 14) * (h * 0.52);
+    const y1 = h * 0.48 + ((s + 1) / 14) * (h * 0.52);
+    ctx.fillStyle = 'rgba(148, 228, 112, 0.17)';
+    ctx.fillRect(w * 0.1, y0, w * 0.8, y1 - y0);
   }
+  ctx.restore();
 
-  // Water hazard pond on left
-  const waterGrad = ctx.createLinearGradient(w * 0.08, h * 0.52, w * 0.36, h * 0.64);
-  waterGrad.addColorStop(0, '#1c5391');
-  waterGrad.addColorStop(1, '#2989d8');
-  ctx.fillStyle = waterGrad;
+  // Water hazard pond on left with stone/turf bank & sky reflections
+  ctx.fillStyle = '#5c5242';
   ctx.beginPath();
-  ctx.ellipse(w * 0.2, h * 0.58, 165, 38, -0.06, 0, Math.PI * 2);
+  ctx.ellipse(w * 0.2, h * 0.578, 168, 41, -0.06, 0, Math.PI * 2);
   ctx.fill();
 
-  // Sculpted white sand bunkers
+  const waterGrad = ctx.createLinearGradient(w * 0.08, h * 0.52, w * 0.36, h * 0.64);
+  waterGrad.addColorStop(0, '#16467d');
+  waterGrad.addColorStop(0.6, '#2673ba');
+  waterGrad.addColorStop(1, '#4896dc');
+  ctx.fillStyle = waterGrad;
+  ctx.beginPath();
+  ctx.ellipse(w * 0.2, h * 0.58, 164, 37, -0.06, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Shimmering water surface ripples
+  ctx.strokeStyle = 'rgba(210, 238, 255, 0.35)';
+  ctx.lineWidth = 1.4;
+  for (let r = 0; r < 9; r++) {
+    const ry = h * 0.555 + r * 5.5;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.11 + (r % 3) * 14, ry);
+    ctx.lineTo(w * 0.27 - (r % 2) * 18, ry);
+    ctx.stroke();
+  }
+
+  // Sculpted white sand bunkers with grass lip overhang & inner shadow gradient
   for (const [bx, by, brx, bry, ang] of [
     [w * 0.35, h * 0.51, 72, 18, -0.12],
     [w * 0.68, h * 0.52, 84, 21, 0.15],
     [w * 0.62, h * 0.47, 54, 14, -0.05],
   ] as const) {
-    ctx.fillStyle = '#6b5c43';
+    ctx.fillStyle = '#5c4d36';
     ctx.beginPath();
-    ctx.ellipse(bx, by - 3, brx + 4, bry + 4, ang, 0, Math.PI * 2);
+    ctx.ellipse(bx, by - 3.5, brx + 4.5, bry + 4.5, ang, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#f2ead8';
+    const sandGrad = ctx.createLinearGradient(bx, by - bry, bx, by + bry);
+    sandGrad.addColorStop(0, '#d8ccb4');
+    sandGrad.addColorStop(0.45, '#f4ecdc');
+    sandGrad.addColorStop(1, '#e6dcc6');
+    ctx.fillStyle = sandGrad;
     ctx.beginPath();
     ctx.ellipse(bx, by, brx, bry, ang, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // 4. Putting Green, Pin Flag & TrackMan Orange Ball-Flight Tracer
-  ctx.fillStyle = '#6fd155';
+  // 4. Putting Green, Apron Collar, Pin Flag & TrackMan Orange Ball-Flight Tracer
+  ctx.fillStyle = '#52b43d';
   ctx.beginPath();
-  ctx.ellipse(w * 0.51, h * 0.49, 155, 27, 0, 0, Math.PI * 2);
+  ctx.ellipse(w * 0.51, h * 0.49, 166, 30, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const greenGrad = ctx.createLinearGradient(w * 0.38, h * 0.47, w * 0.64, h * 0.51);
+  greenGrad.addColorStop(0, '#6cd152');
+  greenGrad.addColorStop(0.5, '#7ae060');
+  greenGrad.addColorStop(1, '#5ec446');
+  ctx.fillStyle = greenGrad;
+  ctx.beginPath();
+  ctx.ellipse(w * 0.51, h * 0.49, 155, 26, 0, 0, Math.PI * 2);
   ctx.fill();
 
   const pinX = w * 0.52;
@@ -2280,12 +2370,6 @@ export function buildBarnSpiralStaircase(
     roughness: 0.36,
     metalness: 0.05,
   });
-  const spindleOakMat = new THREE.MeshStandardMaterial({
-    map: oakTex,
-    color: 0x946b45,
-    roughness: 0.38,
-    metalness: 0.04,
-  });
   const agedBronzeMat = new THREE.MeshStandardMaterial({
     color: 0x46382b,
     roughness: 0.34,
@@ -2573,8 +2657,29 @@ export function buildBarnSpiralStaircase(
 
   // ---------------------------------------------------------------------------
   // 5. Continuous Helical Solid American White Oak Handrail (`outbuildings.barn.spiralStaircase.handrail`)
-  //    & Turned Balusters (`outbuildings.barn.spiralStaircase.spindle`)
+  //    & Curved Toughened Glass Banister Panels (`outbuildings.barn.spiralStaircase.glassBanister` — Issue #3!)
   // ---------------------------------------------------------------------------
+  const glassBanisterMat = new THREE.MeshStandardMaterial({
+    color: 0xd8eef5,
+    roughness: 0.06,
+    metalness: 0.12,
+    transparent: true,
+    opacity: 0.34,
+    side: THREE.DoubleSide,
+  });
+  const glassEdgeTintMat = new THREE.MeshStandardMaterial({
+    color: 0x8fd4c1,
+    roughness: 0.14,
+    metalness: 0.18,
+    transparent: true,
+    opacity: 0.62,
+  });
+  const stainlessClampMat = new THREE.MeshStandardMaterial({
+    color: 0xd8dde4,
+    roughness: 0.2,
+    metalness: 0.9,
+  });
+
   const handrailRadius = 0.835;
   const handrailHeightAboveTread = 0.94;
   const handrailCurvePoints: THREE.Vector3[] = [];
@@ -2640,7 +2745,7 @@ export function buildBarnSpiralStaircase(
     new THREE.CylinderGeometry(0.036, 0.042, bottomNewelH, 20),
     oakHandrailMat
   );
-  bottomNewel.name = 'outbuildings.barn.spiralStaircase.spindle';
+  bottomNewel.name = 'outbuildings.barn.spiralStaircase.newelPost';
   bottomNewel.position.set(
     voluteCenterX,
     bottomNewelBaseY + bottomNewelH * 0.5,
@@ -2654,7 +2759,7 @@ export function buildBarnSpiralStaircase(
     new THREE.CylinderGeometry(0.04, 0.044, topNewelH, 20),
     oakHandrailMat
   );
-  topNewel.name = 'outbuildings.barn.spiralStaircase.spindle';
+  topNewel.name = 'outbuildings.barn.spiralStaircase.newelPost';
   topNewel.position.set(-0.92, totalRise + topNewelH * 0.5 - 0.02, 0.44);
   topNewel.castShadow = true;
   stairGroup.add(topNewel);
@@ -2666,41 +2771,153 @@ export function buildBarnSpiralStaircase(
   topNewelCap.position.set(-0.92, totalRise + topNewelH + 0.015, 0.44);
   stairGroup.add(topNewelCap);
 
-  const totalSpindles = numSteps * 3;
-  for (let s = 0; s < totalSpindles; s++) {
-    const t = (s + 0.35) / totalSpindles;
-    const a = thetaStart + t * (thetaEnd - thetaStart);
-    const stepIdx = Math.min(numSteps - 1, Math.floor(t * numSteps));
-    const baseTreadY = (stepIdx + 1) * riserH - 0.004;
-    const topRailY = riserH + t * (totalRise - riserH) + handrailHeightAboveTread;
-    const spindleH = topRailY - baseTreadY;
+  // Issue #3 ("Glass banniesters (see the link I sent)" at `[0.916, 0.734, 19.272]`):
+  // Build 6 Curved Helical Toughened Clear Glass Balustrade Panels (`outbuildings.barn.spiralStaircase.glassBanister`)
+  // rising from the outer oak stringer/treads (`r = handrailRadius = 0.835m`) up into the underside of the helical
+  // solid American white oak handrail, secured with brushed stainless-steel cylindrical glass stand-off clamps (`glassClamp`)!
+  const numGlassPanels = 6;
+  const panelGapRad = 0.018;
+  const totalThetaSpan = thetaEnd - thetaStart;
+  const glassThickR = 0.014;
+  const gRIn = handrailRadius - glassThickR * 0.5;
+  const gROut = handrailRadius + glassThickR * 0.5;
 
-    const sx = handrailRadius * Math.cos(a);
-    const sz = handrailRadius * Math.sin(a);
+  for (let p = 0; p < numGlassPanels; p++) {
+    const tPanel0 = p / numGlassPanels;
+    const tPanel1 = (p + 1) / numGlassPanels;
+    const aPanelStart = thetaStart + tPanel0 * totalThetaSpan + panelGapRad * 0.5;
+    const aPanelEnd = thetaStart + tPanel1 * totalThetaSpan - panelGapRad * 0.5;
 
-    const spindleMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.013, 0.015, spindleH, 12),
-      spindleOakMat
-    );
-    spindleMesh.name = 'outbuildings.barn.spiralStaircase.spindle';
-    spindleMesh.position.set(sx, baseTreadY + spindleH * 0.5, sz);
-    spindleMesh.castShadow = true;
-    stairGroup.add(spindleMesh);
+    const panelSegs = 16;
+    const gPositions: number[] = [];
+    const gNormals: number[] = [];
+    const gUvs: number[] = [];
+    const gIndices: number[] = [];
 
-    const baseShoe = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.02, 0.022, 0.022, 12),
-      agedBronzeMat
-    );
-    baseShoe.position.set(sx, baseTreadY + 0.011, sz);
-    stairGroup.add(baseShoe);
+    const pushGlassQuad = (
+      p0: readonly [number, number, number],
+      p1: readonly [number, number, number],
+      p2: readonly [number, number, number],
+      p3: readonly [number, number, number],
+      nx: number,
+      ny: number,
+      nz: number,
+      u0: number,
+      u1: number
+    ): void => {
+      const base = gPositions.length / 3;
+      gPositions.push(
+        p0[0], p0[1], p0[2],
+        p1[0], p1[1], p1[2],
+        p2[0], p2[1], p2[2],
+        p3[0], p3[1], p3[2]
+      );
+      for (let k = 0; k < 4; k++) {
+        gNormals.push(nx, ny, nz);
+      }
+      gUvs.push(u0, 0, u1, 0, u1, 1, u0, 1);
+      gIndices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    };
 
-    const midRing = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.018, 0.018, 0.024, 12),
-      agedBronzeMat
-    );
-    midRing.position.set(sx, baseTreadY + spindleH * 0.52, sz);
-    stairGroup.add(midRing);
+    for (let s = 0; s < panelSegs; s++) {
+      const s0 = s / panelSegs;
+      const s1 = (s + 1) / panelSegs;
+      const a0 = aPanelStart + s0 * (aPanelEnd - aPanelStart);
+      const a1 = aPanelStart + s1 * (aPanelEnd - aPanelStart);
+      const gt0 = (a0 - thetaStart) / totalThetaSpan;
+      const gt1 = (a1 - thetaStart) / totalThetaSpan;
+
+      const yBot0 = riserH * 0.72 + gt0 * (totalRise - riserH * 0.72) + 0.04;
+      const yBot1 = riserH * 0.72 + gt1 * (totalRise - riserH * 0.72) + 0.04;
+      const yTop0 = riserH + gt0 * (totalRise - riserH) + handrailHeightAboveTread - 0.022;
+      const yTop1 = riserH + gt1 * (totalRise - riserH) + handrailHeightAboveTread - 0.022;
+
+      const c0 = Math.cos(a0);
+      const sn0 = Math.sin(a0);
+      const c1 = Math.cos(a1);
+      const sn1 = Math.sin(a1);
+      const cm = Math.cos((a0 + a1) * 0.5);
+      const snm = Math.sin((a0 + a1) * 0.5);
+
+      const outBot0: [number, number, number] = [gROut * c0, yBot0, gROut * sn0];
+      const outBot1: [number, number, number] = [gROut * c1, yBot1, gROut * sn1];
+      const outTop1: [number, number, number] = [gROut * c1, yTop1, gROut * sn1];
+      const outTop0: [number, number, number] = [gROut * c0, yTop0, gROut * sn0];
+
+      const inBot0: [number, number, number] = [gRIn * c0, yBot0, gRIn * sn0];
+      const inBot1: [number, number, number] = [gRIn * c1, yBot1, gRIn * sn1];
+      const inTop1: [number, number, number] = [gRIn * c1, yTop1, gRIn * sn1];
+      const inTop0: [number, number, number] = [gRIn * c0, yTop0, gRIn * sn0];
+
+      pushGlassQuad(outBot0, outBot1, outTop1, outTop0, cm, 0, snm, s0, s1);
+      pushGlassQuad(inBot1, inBot0, inTop0, inTop1, -cm, 0, -snm, s0, s1);
+      pushGlassQuad(inTop0, outTop0, outTop1, inTop1, 0, 1, 0, s0, s1);
+      pushGlassQuad(outBot0, inBot0, inBot1, outBot1, 0, -1, 0, s0, s1);
+    }
+
+    const glassGeo = new THREE.BufferGeometry();
+    glassGeo.setAttribute('position', new THREE.Float32BufferAttribute(gPositions, 3));
+    glassGeo.setAttribute('normal', new THREE.Float32BufferAttribute(gNormals, 3));
+    glassGeo.setAttribute('uv', new THREE.Float32BufferAttribute(gUvs, 2));
+    glassGeo.setIndex(gIndices);
+
+    const glassPanelMesh = new THREE.Mesh(glassGeo, glassBanisterMat);
+    glassPanelMesh.name = 'outbuildings.barn.spiralStaircase.glassBanister';
+    stairGroup.add(glassPanelMesh);
+
+    // Polished green-tinted vertical toughened glass edge strips at start and end of each curved glass panel
+    for (const edgeAng of [aPanelStart, aPanelEnd] as const) {
+      const gt = (edgeAng - thetaStart) / totalThetaSpan;
+      const yBot = riserH * 0.72 + gt * (totalRise - riserH * 0.72) + 0.04;
+      const yTop = riserH + gt * (totalRise - riserH) + handrailHeightAboveTread - 0.022;
+      const edgeH = yTop - yBot;
+      const edgeStrip = new THREE.Mesh(
+        new THREE.BoxGeometry(glassThickR, edgeH, 0.005),
+        glassEdgeTintMat
+      );
+      edgeStrip.position.set(
+        handrailRadius * Math.cos(edgeAng),
+        yBot + edgeH * 0.5,
+        handrailRadius * Math.sin(edgeAng)
+      );
+      edgeStrip.rotation.y = -edgeAng;
+      stairGroup.add(edgeStrip);
+    }
+
+    // 4 Brushed Stainless-Steel Cylindrical Glass Stand-Off Spigot Clamps per curved glass panel (2 bottom stringer + 2 top handrail)
+    for (const clampFrac of [0.18, 0.82] as const) {
+      const ca = aPanelStart + clampFrac * (aPanelEnd - aPanelStart);
+      const gt = (ca - thetaStart) / totalThetaSpan;
+      const yBotClamp = riserH * 0.72 + gt * (totalRise - riserH * 0.72) + 0.075;
+      const yTopClamp = riserH + gt * (totalRise - riserH) + handrailHeightAboveTread - 0.065;
+
+      for (const cy of [yBotClamp, yTopClamp] as const) {
+        const clampMesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.016, 0.016, 0.036, 14),
+          stainlessClampMat
+        );
+        clampMesh.name = 'outbuildings.barn.spiralStaircase.glassClamp';
+        clampMesh.position.set(
+          handrailRadius * Math.cos(ca),
+          cy,
+          handrailRadius * Math.sin(ca)
+        );
+        clampMesh.rotation.z = Math.PI / 2;
+        clampMesh.rotation.y = -ca;
+        stairGroup.add(clampMesh);
+      }
+    }
   }
+
+  // Top landing return glass banister panel bridging from the spiral curve end to the top landing newel post (`z = 0.06..0.42m`)
+  const topReturnGlass = new THREE.Mesh(
+    new THREE.BoxGeometry(glassThickR, 0.84, 0.36),
+    glassBanisterMat
+  );
+  topReturnGlass.name = 'outbuildings.barn.spiralStaircase.glassBanister';
+  topReturnGlass.position.set(-0.88, totalRise + 0.48, 0.24);
+  topReturnGlass.rotation.y = -0.14;
+  stairGroup.add(topReturnGlass);
 }
 
 /**
@@ -3135,7 +3352,7 @@ export function buildBarnGolfSimulator(
   const projectorGroup = new THREE.Group();
   projectorGroup.name = 'outbuildings.barn.golfSimulator.projector';
   projectorGroup.position.set(0.28, 2.74, 0);
-  simGroup.add(projectorGroup);
+  simCeilingGroup.add(projectorGroup);
 
   const dropPole = new THREE.Mesh(
     new THREE.CylinderGeometry(0.022, 0.022, 1.68, 12),
@@ -3169,7 +3386,7 @@ export function buildBarnGolfSimulator(
   const tmGroup = new THREE.Group();
   tmGroup.name = 'outbuildings.barn.golfSimulator.trackmanIO';
   tmGroup.position.set(0.92, 2.98, 0);
-  simGroup.add(tmGroup);
+  simCeilingGroup.add(tmGroup);
 
   const tmDropTube = new THREE.Mesh(
     new THREE.CylinderGeometry(0.02, 0.02, 1.44, 12),

@@ -473,7 +473,8 @@ export function buildOutbuildingsAndBarns(
     height: number,
     isDoubleLeaf: boolean,
     mat: THREE.Material = courtyardDoorMat,
-    doorLabel: string = 'Outbuilding Door'
+    doorLabel: string = 'Outbuilding Door',
+    hasUpperGlazing: boolean = false
   ): void => {
     const doorGroup = new THREE.Group();
     doorGroup.position.set(uCenter, yBase, vWallCenter);
@@ -514,7 +515,8 @@ export function buildOutbuildingsAndBarns(
     sill.receiveShadow = true;
     doorGroup.add(sill);
 
-    // Hinged door leaf panel(s) with vertical boarding grooves & black wrought-iron strap hinges
+    // Hinged door leaf panel(s) with vertical boarding grooves, optional upper multi-pane coach-house glazing (Issue #5),
+    // & black wrought-iron strap hinges
     const clearW = width - jambW * 2;
     const clearH = height - headH - sillH;
     const numLeaves = isDoubleLeaf ? 2 : 1;
@@ -530,31 +532,149 @@ export function buildOutbuildingsAndBarns(
       leafPivot.position.set(hingePivotX, sillH, -0.04);
       doorGroup.add(leafPivot);
 
-      const leafPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(leafW, clearH - 0.006, 0.052),
-        mat
-      );
-      leafPanel.position.set(leafOffsetX, clearH * 0.5, 0);
-      leafPanel.castShadow = true;
-      leafPanel.receiveShadow = true;
-      leafPivot.add(leafPanel);
+      if (hasUpperGlazing) {
+        // Issue #5 ("Add some glass to these garage doors" at `[-11.93, 0.262, 15.221]`):
+        // Traditional English coach-house half-glazed door leaf:
+        // - Lower solid vertical tongue-and-groove timber apron (`y = 0.003m .. 1.12m`)
+        // - Upper 6-pane (`3x2`) multi-light glazed casement window (`y = 1.12m .. clearH - 0.118m`) framed by
+        //   solid timber stiles (`0.115m`), top head rail (`0.115m`), and mid lock rail with chamfered drip bead!
+        const lowerBoardH = clearH * 0.545; // ~1.12m
+        const stileW = 0.115;
+        const topRailH = 0.115;
+        const winBottomY = lowerBoardH;
+        const winTopY = clearH - 0.003 - topRailH;
+        const winH = winTopY - winBottomY;
+        const winW = leafW - stileW * 2;
+        const winCenterY = winBottomY + winH * 0.5;
 
-      // Vertical tongue-and-groove shadow battens along the front (-v) face
-      const numPlanks = Math.max(4, Math.round(leafW / 0.14));
-      for (let p = 1; p < numPlanks; p++) {
-        const px = leafOffsetX - leafW * 0.5 + (p / numPlanks) * leafW;
-        const groove = new THREE.Mesh(
-          new THREE.BoxGeometry(0.012, clearH - 0.04, 0.058),
+        // 1. Lower solid boarded timber apron panel
+        const lowerPanel = new THREE.Mesh(
+          new THREE.BoxGeometry(leafW, lowerBoardH - 0.003, 0.052),
+          mat
+        );
+        lowerPanel.position.set(leafOffsetX, (lowerBoardH + 0.003) * 0.5, 0);
+        lowerPanel.castShadow = true;
+        lowerPanel.receiveShadow = true;
+        leafPivot.add(lowerPanel);
+
+        // Vertical tongue-and-groove shadow battens on the lower boarded apron
+        const numPlanks = Math.max(4, Math.round(leafW / 0.14));
+        for (let p = 1; p < numPlanks; p++) {
+          const px = leafOffsetX - leafW * 0.5 + (p / numPlanks) * leafW;
+          const groove = new THREE.Mesh(
+            new THREE.BoxGeometry(0.012, lowerBoardH - 0.06, 0.058),
+            courtyardDoorRecessMat
+          );
+          groove.position.set(px, lowerBoardH * 0.5, 0);
+          leafPivot.add(groove);
+        }
+
+        // Moulded mid lock-rail & weather-drip sill bar at `y = lowerBoardH`
+        const lockRail = new THREE.Mesh(
+          new THREE.BoxGeometry(leafW + 0.004, 0.068, 0.064),
           courtyardDoorRecessMat
         );
-        groove.position.set(px, clearH * 0.5, 0);
-        leafPivot.add(groove);
+        lockRail.position.set(leafOffsetX, lowerBoardH - 0.018, 0);
+        lockRail.castShadow = true;
+        leafPivot.add(lockRail);
+
+        // 2. Left & right upper solid timber door stiles framing the glazed opening
+        for (const sSide of [-1, 1] as const) {
+          const upperStile = new THREE.Mesh(
+            new THREE.BoxGeometry(stileW, clearH - 0.003 - lowerBoardH, 0.052),
+            mat
+          );
+          upperStile.position.set(
+            leafOffsetX + sSide * (leafW * 0.5 - stileW * 0.5),
+            lowerBoardH + (clearH - 0.003 - lowerBoardH) * 0.5,
+            0
+          );
+          upperStile.castShadow = true;
+          upperStile.receiveShadow = true;
+          leafPivot.add(upperStile);
+        }
+
+        // 3. Top solid timber head rail
+        const topRail = new THREE.Mesh(
+          new THREE.BoxGeometry(winW + 0.004, topRailH, 0.052),
+          mat
+        );
+        topRail.position.set(leafOffsetX, clearH - 0.003 - topRailH * 0.5, 0);
+        topRail.castShadow = true;
+        topRail.receiveShadow = true;
+        leafPivot.add(topRail);
+
+        // 4. Recessed dark timber glazing bead frame inside the window aperture
+        for (const gSide of [-1, 1] as const) {
+          const vBead = new THREE.Mesh(
+            new THREE.BoxGeometry(0.022, winH, 0.056),
+            courtyardDoorRecessMat
+          );
+          vBead.position.set(leafOffsetX + gSide * (winW * 0.5 - 0.011), winCenterY, 0);
+          leafPivot.add(vBead);
+
+          const hBead = new THREE.Mesh(
+            new THREE.BoxGeometry(winW, 0.022, 0.056),
+            courtyardDoorRecessMat
+          );
+          hBead.position.set(leafOffsetX, winCenterY + gSide * (winH * 0.5 - 0.011), 0);
+          leafPivot.add(hBead);
+        }
+
+        // 5. Clear architectural coach-house window glass pane (`outbuildings.garageDoor.glass`)
+        const glassPane = new THREE.Mesh(
+          new THREE.BoxGeometry(winW - 0.02, winH - 0.02, 0.014),
+          windowGlassMat
+        );
+        glassPane.name = 'outbuildings.garageDoor.glass';
+        glassPane.position.set(leafOffsetX, winCenterY, 0);
+        leafPivot.add(glassPane);
+
+        // 6. Traditional 6-light (`3 columns x 2 rows`) coach-house glazing bars (muntins)
+        for (const colOffset of [-winW / 6, winW / 6] as const) {
+          const vMuntin = new THREE.Mesh(
+            new THREE.BoxGeometry(0.022, winH - 0.02, 0.034),
+            courtyardDoorRecessMat
+          );
+          vMuntin.position.set(leafOffsetX + colOffset, winCenterY, 0);
+          vMuntin.castShadow = true;
+          leafPivot.add(vMuntin);
+        }
+        const hMuntin = new THREE.Mesh(
+          new THREE.BoxGeometry(winW - 0.02, 0.022, 0.034),
+          courtyardDoorRecessMat
+        );
+        hMuntin.position.set(leafOffsetX, winCenterY, 0);
+        hMuntin.castShadow = true;
+        leafPivot.add(hMuntin);
+      } else {
+        const leafPanel = new THREE.Mesh(
+          new THREE.BoxGeometry(leafW, clearH - 0.006, 0.052),
+          mat
+        );
+        leafPanel.position.set(leafOffsetX, clearH * 0.5, 0);
+        leafPanel.castShadow = true;
+        leafPanel.receiveShadow = true;
+        leafPivot.add(leafPanel);
+
+        // Vertical tongue-and-groove shadow battens along the front (-v) face
+        const numPlanks = Math.max(4, Math.round(leafW / 0.14));
+        for (let p = 1; p < numPlanks; p++) {
+          const px = leafOffsetX - leafW * 0.5 + (p / numPlanks) * leafW;
+          const groove = new THREE.Mesh(
+            new THREE.BoxGeometry(0.012, clearH - 0.04, 0.058),
+            courtyardDoorRecessMat
+          );
+          groove.position.set(px, clearH * 0.5, 0);
+          leafPivot.add(groove);
+        }
       }
 
       // Upper and lower black wrought-iron strap hinges on the courtyard (-v) face
       const strapSpan = Math.min(0.36, leafW * 0.45);
       const strapCenterX = -hingeSide * (strapSpan * 0.5 + 0.02);
-      for (const hy of [clearH * 0.22, clearH * 0.78]) {
+      const upperStrapY = hasUpperGlazing ? clearH * 0.51 : clearH * 0.78;
+      for (const hy of [clearH * 0.18, upperStrapY]) {
         const strap = new THREE.Mesh(
           new THREE.BoxGeometry(strapSpan, 0.036, 0.014),
           castIronMat
@@ -567,7 +687,7 @@ export function buildOutbuildingsAndBarns(
       if (!isDoubleLeaf || l === 1) {
         const latch = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.14, 0.025), castIronMat);
         latch.position.set(
-          leafOffsetX - hingeSide * (leafW * 0.5 - 0.08),
+          leafOffsetX - hingeSide * (leafW * 0.5 - 0.06),
           clearH * 0.48,
           -0.032
         );
@@ -1569,7 +1689,7 @@ export function buildOutbuildingsAndBarns(
   // Pier between GYM glazed screen and Garage Double Door #1 (u = 5.45m..6.08m)
   addOutbuildingBrickWall(groundGroup, 5.45, 6.08, baseY0 - 0.14, northWestWallTopY, 0, wallT, ['+z']);
 
-  // Garage Double Coach/Garage Door #1 (u = 6.08m..8.72m, width = 2.64m, seated flush at `garageFloorTopY = -0.50m` — Issue #7!)
+  // Garage Double Coach/Garage Door #1 (u = 6.08m..8.72m, width = 2.64m, seated flush at `garageFloorTopY = -0.50m` — Issue #7 & Issue #5!)
   const garageDoorHeight = 2.14;
   const garageDoorTopY = garageFloorTopY + garageDoorHeight; // 1.64m
   addOutbuildingBrickWall(groundGroup, 6.08, 8.72, garageDoorTopY, northWestWallTopY, 0, wallT, ['+z']);
@@ -1582,13 +1702,14 @@ export function buildOutbuildingsAndBarns(
     garageDoorHeight,
     true,
     courtyardDoorMat,
-    'Garage West Double Door'
+    'Garage West Double Door',
+    true
   );
 
   // Central Brick Pier between the two Double Garage Doors (u = 8.72m..9.12m)
   addOutbuildingBrickWall(groundGroup, 8.72, 9.12, garageFloorTopY - 0.12, northWestWallTopY, 0, wallT, ['+z']);
 
-  // Garage Double Coach/Garage Door #2 (u = 9.12m..11.76m, width = 2.64m, seated flush at `garageFloorTopY = -0.50m` — Issue #7!)
+  // Garage Double Coach/Garage Door #2 (u = 9.12m..11.76m, width = 2.64m, seated flush at `garageFloorTopY = -0.50m` — Issue #7 & Issue #5!)
   addOutbuildingBrickWall(groundGroup, 9.12, 11.76, garageDoorTopY, northWestWallTopY, 0, wallT, ['+z']);
   addBoardedBarnDoor(
     groundGroup,
@@ -1599,7 +1720,8 @@ export function buildOutbuildingsAndBarns(
     garageDoorHeight,
     true,
     courtyardDoorMat,
-    'Garage East Double Door'
+    'Garage East Double Door',
+    true
   );
 
   // East Pier of Garage up to Step #1 at u = 12.07m
@@ -2884,6 +3006,13 @@ export function buildOutbuildingsAndBarns(
   );
   swWestBotRail.position.set(21.12, mezzanineFloorY + 0.08, swWestMidV);
   stairwellGuardrailGroup.add(swWestBotRail);
+
+  const swWestGlass = new THREE.Mesh(
+    new THREE.BoxGeometry(0.016, 0.78, swWestLenV - 0.12),
+    windowGlassMat
+  );
+  swWestGlass.position.set(21.12, mezzanineFloorY + 0.5, swWestMidV);
+  stairwellGuardrailGroup.add(swWestGlass);
 
   for (const [pu, pv] of [
     [21.12, 3.54],
