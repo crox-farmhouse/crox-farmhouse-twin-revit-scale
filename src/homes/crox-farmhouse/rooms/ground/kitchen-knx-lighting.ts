@@ -596,25 +596,26 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
   });
   lightGroups.courtyardFestoons.emissives.push(festoonBulbMat);
 
-  // Wrought-iron festoon support poles rising from the outer edge of the Limestone Slab Terrace (Z = +6.28m)
+  // Wrought-iron festoon support poles rising from the outer South edge of the wider Limestone Slab Terrace (Z = +7.55m, Issue #6!)
+  const patioPoleZ = 7.55;
   for (const poleX of [-1.85, 1.56, 4.82]) {
     const poleBaseCollar = new THREE.Mesh(
       new THREE.CylinderGeometry(0.055, 0.075, 0.12, 10),
       castIronMat
     );
-    poleBaseCollar.position.set(poleX, 0.06, 6.28);
+    poleBaseCollar.position.set(poleX, 0.06, patioPoleZ);
     scene.add(poleBaseCollar);
 
     const pole = new THREE.Mesh(
       new THREE.CylinderGeometry(0.022, 0.032, 2.75, 10),
       castIronMat
     );
-    pole.position.set(poleX, 1.375, 6.28);
+    pole.position.set(poleX, 1.375, patioPoleZ);
     pole.castShadow = true;
     scene.add(pole);
 
     const finialBall = new THREE.Mesh(new THREE.SphereGeometry(0.036, 10, 10), brassMat);
-    finialBall.position.set(poleX, 2.78, 6.28);
+    finialBall.position.set(poleX, 2.78, patioPoleZ);
     scene.add(finialBall);
   }
 
@@ -642,58 +643,58 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
   }> = [
     {
       start: new THREE.Vector3(1.56, 2.66, 2.28),
-      end: new THREE.Vector3(1.56, 2.72, 6.28),
-      sag: 0.32,
-      bulbCount: 6,
+      end: new THREE.Vector3(1.56, 2.72, patioPoleZ),
+      sag: 0.34,
+      bulbCount: 7,
     },
     {
       start: new THREE.Vector3(4.82, 2.66, 2.28),
-      end: new THREE.Vector3(4.82, 2.72, 6.28),
-      sag: 0.32,
-      bulbCount: 6,
+      end: new THREE.Vector3(4.82, 2.72, patioPoleZ),
+      sag: 0.34,
+      bulbCount: 7,
     },
     {
       start: new THREE.Vector3(1.56, 2.66, 2.28),
-      end: new THREE.Vector3(4.82, 2.72, 6.28),
+      end: new THREE.Vector3(4.82, 2.72, patioPoleZ),
       sag: 0.38,
-      bulbCount: 7,
-    },
-    {
-      start: new THREE.Vector3(-1.85, 2.72, 6.28),
-      end: new THREE.Vector3(1.56, 2.66, 2.28),
-      sag: 0.35,
-      bulbCount: 6,
-    },
-    // Issue #3 ("Have the festoons go over to the barn from these poles too"):
-    {
-      start: new THREE.Vector3(-1.85, 2.72, 6.28),
-      end: new THREE.Vector3(-1.85, 2.82, 12.28),
-      sag: 0.42,
       bulbCount: 8,
     },
     {
-      start: new THREE.Vector3(1.56, 2.72, 6.28),
-      end: new THREE.Vector3(1.56, 2.82, 11.58),
+      start: new THREE.Vector3(-1.85, 2.72, patioPoleZ),
+      end: new THREE.Vector3(1.56, 2.66, 2.28),
       sag: 0.38,
       bulbCount: 7,
     },
+    // Issue #3 ("Have the festoons go over to the barn from these poles too"):
     {
-      start: new THREE.Vector3(4.82, 2.72, 6.28),
-      end: new THREE.Vector3(4.82, 2.82, 10.88),
+      start: new THREE.Vector3(-1.85, 2.72, patioPoleZ),
+      end: new THREE.Vector3(-1.85, 2.82, 12.28),
       sag: 0.36,
       bulbCount: 7,
     },
     {
-      start: new THREE.Vector3(-1.85, 2.72, 6.28),
+      start: new THREE.Vector3(1.56, 2.72, patioPoleZ),
       end: new THREE.Vector3(1.56, 2.82, 11.58),
-      sag: 0.44,
-      bulbCount: 8,
+      sag: 0.34,
+      bulbCount: 6,
     },
     {
-      start: new THREE.Vector3(1.56, 2.72, 6.28),
+      start: new THREE.Vector3(4.82, 2.72, patioPoleZ),
       end: new THREE.Vector3(4.82, 2.82, 10.88),
-      sag: 0.42,
-      bulbCount: 8,
+      sag: 0.32,
+      bulbCount: 6,
+    },
+    {
+      start: new THREE.Vector3(-1.85, 2.72, patioPoleZ),
+      end: new THREE.Vector3(1.56, 2.82, 11.58),
+      sag: 0.38,
+      bulbCount: 7,
+    },
+    {
+      start: new THREE.Vector3(1.56, 2.72, patioPoleZ),
+      end: new THREE.Vector3(4.82, 2.82, 10.88),
+      sag: 0.36,
+      bulbCount: 7,
     },
   ];
 

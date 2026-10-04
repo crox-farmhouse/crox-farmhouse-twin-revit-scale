@@ -484,41 +484,77 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   granitePathReliefTop.receiveShadow = true;
   scene.add(granitePathReliefTop);
 
-  // East wrap-around cobblestone path running all the way North along the East wall
-  // in front of the Full-Height East Window AND the Utility Room Split Stable Exit Door (X = +5.28m..+6.74m, Z = -2.78m..+2.27m)
+  // Issue #4 ("Boundary shrinks at this point to edge of pergola" at `[6.488, -0.01, 1.326]`)
+  // & Issue #1 ("There is a path between the house and the pergola" at `[5.387, 0.523, 4.643]`):
+  // East wrap-around cobblestone path running from the Utility Room Split Stable Exit Door (`Z = -1.85m`)
+  // past the Kitchen East Window (`Z = -1.85m..+2.27m`) AND continuing South (`Z = +3.73m..+8.65m`)
+  // right between the House/Patio (`X <= +5.26m`) and the Walled Grape-Vine Pergola (`X >= +6.82m`)!
   const eastCobblePath = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.BoxGeometry(1.46, 0.105, 5.05),
+      new THREE.BoxGeometry(1.46, 0.105, 4.12),
       6.01,
-      -0.255,
+      0.21,
       false
     ),
     graniteSettMat
   );
-  eastCobblePath.position.set(6.01, -0.064, -0.255);
+  eastCobblePath.position.set(6.01, -0.064, 0.21);
   eastCobblePath.receiveShadow = true;
   scene.add(eastCobblePath);
 
   const eastCobblePathReliefTop = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.PlaneGeometry(1.46, 5.05, 24, 84),
+      new THREE.PlaneGeometry(1.46, 4.12, 24, 68),
       6.01,
-      -0.255,
+      0.21,
       true
     ),
     graniteSettTopReliefMat
   );
   eastCobblePathReliefTop.rotation.x = -Math.PI / 2;
-  eastCobblePathReliefTop.position.set(6.01, -0.01, -0.255);
+  eastCobblePathReliefTop.position.set(6.01, -0.01, 0.21);
   eastCobblePathReliefTop.receiveShadow = true;
   scene.add(eastCobblePathReliefTop);
 
-  // Limestone border kerb running along the outer East edge and North return of the wrap-around cobblestone path
+  // Southern continuation of the cobbled path between the Patio Shrub Bank (`X = +5.26m`) and the Pergola (`X = +6.82m`)
+  // (`X = +5.28m..+6.74m, Z = +3.73m..+8.65m`, Issue #1: "There is a path between the house and the pergola"!)
+  const pergolaWestCobblePath = new THREE.Mesh(
+    applyWorldSpaceCobbleLPathUVs(
+      new THREE.BoxGeometry(1.46, 0.105, 4.92),
+      6.01,
+      6.19,
+      false
+    ),
+    graniteSettMat
+  );
+  pergolaWestCobblePath.name = 'courtyard.pergolaWestCobblePath';
+  pergolaWestCobblePath.userData.isArchitecturalShell = true;
+  pergolaWestCobblePath.position.set(6.01, -0.064, 6.19);
+  pergolaWestCobblePath.receiveShadow = true;
+  scene.add(pergolaWestCobblePath);
+
+  const pergolaWestCobblePathReliefTop = new THREE.Mesh(
+    applyWorldSpaceCobbleLPathUVs(
+      new THREE.PlaneGeometry(1.46, 4.92, 24, 80),
+      6.01,
+      6.19,
+      true
+    ),
+    graniteSettTopReliefMat
+  );
+  pergolaWestCobblePathReliefTop.name = 'courtyard.pergolaWestCobblePathReliefTop';
+  pergolaWestCobblePathReliefTop.userData.isArchitecturalShell = true;
+  pergolaWestCobblePathReliefTop.rotation.x = -Math.PI / 2;
+  pergolaWestCobblePathReliefTop.position.set(6.01, -0.01, 6.19);
+  pergolaWestCobblePathReliefTop.receiveShadow = true;
+  scene.add(pergolaWestCobblePathReliefTop);
+
+  // Limestone border kerb running along the outer East edge and North boundary return of the cobblestone path
   const eastPathOuterKerb = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.115, 6.54),
+    new THREE.BoxGeometry(0.08, 0.115, 10.5),
     limestoneEdgingMat
   );
-  eastPathOuterKerb.position.set(6.78, -0.056, 0.48);
+  eastPathOuterKerb.position.set(6.78, -0.056, 3.4);
   eastPathOuterKerb.receiveShadow = true;
   scene.add(eastPathOuterKerb);
 
@@ -526,7 +562,7 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
     new THREE.BoxGeometry(1.54, 0.115, 0.08),
     limestoneEdgingMat
   );
-  eastPathNorthKerb.position.set(6.05, -0.056, -2.82);
+  eastPathNorthKerb.position.set(6.05, -0.056, -1.89);
   eastPathNorthKerb.receiveShadow = true;
   scene.add(eastPathNorthKerb);
 

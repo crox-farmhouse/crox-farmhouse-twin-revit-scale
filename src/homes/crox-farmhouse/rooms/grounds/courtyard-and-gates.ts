@@ -497,9 +497,11 @@ export function buildCourtyardAndGates(
             }
           }
         } else if (isSouthEastApronPiece) {
-          // Both the Raised Patio Shrub Bank (wx <= 4.8m) and the enlarged Walled Grape-Vine Pergola
-          // (wx > 4.8m, Issue #2) extend South to z_ew = +7.35m (`getEastWingSouthWallZ(wx) + 4.72`)!
-          const minAllowedTerraceSouthZ = getEastWingSouthWallZ(wx) + 4.72;
+          // Issue #6 ("This section is a little wider") & Issue #7 ("Tis section is narrower"):
+          // Both the wider Raised Patio Shrub Bank (wx <= 5.5m) and the Walled Grape-Vine Pergola
+          // extend South to z_ew = +8.65m (`getEastWingSouthWallZ(wx) + 6.02`), making the rough-cobbled
+          // alleyway (`courtyard.southEastCobbleApron`) a realistic ~3.1m-wide cobbled lane!
+          const minAllowedTerraceSouthZ = getEastWingSouthWallZ(wx) + 6.02;
           if (wz < minAllowedTerraceSouthZ) {
             wz = minAllowedTerraceSouthZ;
             pos.setZ(i, wz - offsetZ);
