@@ -597,7 +597,7 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
   lightGroups.courtyardFestoons.emissives.push(festoonBulbMat);
 
   // Wrought-iron festoon support poles rising from the outer South edge of the wider Limestone Slab Terrace (Z = +7.55m, Issue #6!)
-  const patioPoleZ = 7.55;
+  const patioPoleZ = 7.0;
   for (const poleX of [-1.85, 1.56, 4.82]) {
     const poleBaseCollar = new THREE.Mesh(
       new THREE.CylinderGeometry(0.055, 0.075, 0.12, 10),
@@ -749,12 +749,12 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
 
   // =========================================================================
   // CIRCUIT 8: Traditional Reclaimed Cast-Iron Victorian Lamp Post (GA 1/2/8)
-  //            Standing on the SW corner of the Limestone Paving Slabs at X = -4.024m, Z = +6.689m (Issue #6)
+  //            Standing on the SW corner of the Limestone Paving Slabs at X = -4.024m, Z = +6.30m (Issue #6)
   // =========================================================================
   const lampPostGroup = new THREE.Group();
   lampPostGroup.name = 'courtyard.reclaimedLampPost';
   const lampX = -4.024;
-  const lampZ = 6.689;
+  const lampZ = 6.3;
   lampPostGroup.position.set(lampX, 0, lampZ);
 
   const agedCopperMat = new THREE.MeshStandardMaterial({

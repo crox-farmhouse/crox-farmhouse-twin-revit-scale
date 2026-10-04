@@ -429,7 +429,7 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
       const worldMinX = -4.64;
       const worldSpanX = 11.38;
       const worldMinZ = -2.78;
-      const worldSpanZ = 6.51;
+      const worldSpanZ = 10.13;
 
       for (let i = 0; i < posAttr.count; i++) {
         const lx = posAttr.getX(i);
@@ -452,11 +452,12 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
     roughness: 0.78,
   });
 
-  // South cobblestone path (X = -4.64m to +6.74m, width 11.38m, Z = +2.27m to +3.73m)
+  // South cobblestone path in front of Kitchen (X = -4.64m to +5.28m, width 9.92m, Z = +2.27m to +3.73m;
+  // butts cleanly against the East path at X = +5.28m so relief planes never overlap at [5.633, -0.01, 6.632], Issue #2!)
   const granitePath = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.BoxGeometry(11.38, 0.105, 1.46),
-      1.05,
+      new THREE.BoxGeometry(9.92, 0.105, 1.46),
+      0.32,
       3.0,
       false
     ),
@@ -464,14 +465,14 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   );
   granitePath.name = 'courtyard.southCobblePath';
   granitePath.userData.isArchitecturalShell = true;
-  granitePath.position.set(1.05, -0.064, 3.0);
+  granitePath.position.set(0.32, -0.064, 3.0);
   granitePath.receiveShadow = true;
   scene.add(granitePath);
 
   const granitePathReliefTop = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.PlaneGeometry(11.38, 1.46, 186, 24),
-      1.05,
+      new THREE.PlaneGeometry(9.92, 1.46, 160, 24),
+      0.32,
       3.0,
       true
     ),
@@ -480,64 +481,65 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   granitePathReliefTop.name = 'courtyard.southCobblePathReliefTop';
   granitePathReliefTop.userData.isArchitecturalShell = true;
   granitePathReliefTop.rotation.x = -Math.PI / 2;
-  granitePathReliefTop.position.set(1.05, -0.01, 3.0);
+  granitePathReliefTop.position.set(0.32, -0.01, 3.0);
   granitePathReliefTop.receiveShadow = true;
   scene.add(granitePathReliefTop);
 
-  // Issue #4 ("Boundary shrinks at this point to edge of pergola" at `[6.488, -0.01, 1.326]`)
-  // & Issue #1 ("There is a path between the house and the pergola" at `[5.387, 0.523, 4.643]`):
-  // East wrap-around cobblestone path running from the Utility Room Split Stable Exit Door (`Z = -1.85m`)
-  // past the Kitchen East Window (`Z = -1.85m..+2.27m`) AND continuing South (`Z = +3.73m..+8.65m`)
+  // Issue #4 ("Boundary shrinks at this point to edge of pergola" at `[6.488, -0.01, 1.326]`),
+  // Issue #1 ("There is a path between the house and the pergola" at `[5.387, 0.523, 4.643]`),
+  // & Issue #2 ("Its a bit messed up around here" at `[5.633, -0.01, 6.632]`):
+  // East cobblestone path running from the Utility Room Split Stable Exit Door (`Z = -1.85m`)
+  // past the Kitchen East Window (`Z = -1.85m..+3.73m`) AND continuing South (`Z = +3.73m..+7.25m`)
   // right between the House/Patio (`X <= +5.26m`) and the Walled Grape-Vine Pergola (`X >= +6.82m`)!
   const eastCobblePath = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.BoxGeometry(1.46, 0.105, 4.12),
+      new THREE.BoxGeometry(1.46, 0.105, 5.58),
       6.01,
-      0.21,
+      0.94,
       false
     ),
     graniteSettMat
   );
-  eastCobblePath.position.set(6.01, -0.064, 0.21);
+  eastCobblePath.position.set(6.01, -0.064, 0.94);
   eastCobblePath.receiveShadow = true;
   scene.add(eastCobblePath);
 
   const eastCobblePathReliefTop = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.PlaneGeometry(1.46, 4.12, 24, 68),
+      new THREE.PlaneGeometry(1.46, 5.58, 24, 90),
       6.01,
-      0.21,
+      0.94,
       true
     ),
     graniteSettTopReliefMat
   );
   eastCobblePathReliefTop.rotation.x = -Math.PI / 2;
-  eastCobblePathReliefTop.position.set(6.01, -0.01, 0.21);
+  eastCobblePathReliefTop.position.set(6.01, -0.01, 0.94);
   eastCobblePathReliefTop.receiveShadow = true;
   scene.add(eastCobblePathReliefTop);
 
   // Southern continuation of the cobbled path between the Patio Shrub Bank (`X = +5.26m`) and the Pergola (`X = +6.82m`)
-  // (`X = +5.28m..+6.74m, Z = +3.73m..+8.65m`, Issue #1: "There is a path between the house and the pergola"!)
+  // (`X = +5.28m..+6.74m, Z = +3.73m..+7.25m`, Issue #1 & Issue #3!)
   const pergolaWestCobblePath = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.BoxGeometry(1.46, 0.105, 4.92),
+      new THREE.BoxGeometry(1.46, 0.105, 3.52),
       6.01,
-      6.19,
+      5.49,
       false
     ),
     graniteSettMat
   );
   pergolaWestCobblePath.name = 'courtyard.pergolaWestCobblePath';
   pergolaWestCobblePath.userData.isArchitecturalShell = true;
-  pergolaWestCobblePath.position.set(6.01, -0.064, 6.19);
+  pergolaWestCobblePath.position.set(6.01, -0.064, 5.49);
   pergolaWestCobblePath.receiveShadow = true;
   scene.add(pergolaWestCobblePath);
 
   const pergolaWestCobblePathReliefTop = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.PlaneGeometry(1.46, 4.92, 24, 80),
+      new THREE.PlaneGeometry(1.46, 3.52, 24, 58),
       6.01,
-      6.19,
+      5.49,
       true
     ),
     graniteSettTopReliefMat
@@ -545,18 +547,24 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   pergolaWestCobblePathReliefTop.name = 'courtyard.pergolaWestCobblePathReliefTop';
   pergolaWestCobblePathReliefTop.userData.isArchitecturalShell = true;
   pergolaWestCobblePathReliefTop.rotation.x = -Math.PI / 2;
-  pergolaWestCobblePathReliefTop.position.set(6.01, -0.01, 6.19);
+  pergolaWestCobblePathReliefTop.position.set(6.01, -0.01, 5.49);
   pergolaWestCobblePathReliefTop.receiveShadow = true;
   scene.add(pergolaWestCobblePathReliefTop);
 
-  // Limestone border kerb running along the outer East edge and North boundary return of the cobblestone path
-  const eastPathOuterKerb = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.115, 10.5),
-    limestoneEdgingMat
-  );
-  eastPathOuterKerb.position.set(6.78, -0.056, 3.4);
-  eastPathOuterKerb.receiveShadow = true;
-  scene.add(eastPathOuterKerb);
+  // Limestone border kerb segments along the outer East edge (with clean gaps at the Pergola entrance steps)
+  for (const [zMin, zMax] of [
+    [-1.85, 1.72],
+    [3.58, 5.75],
+  ] as const) {
+    const segLen = zMax - zMin;
+    const eastPathOuterKerb = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.115, segLen),
+      limestoneEdgingMat
+    );
+    eastPathOuterKerb.position.set(6.78, -0.056, (zMin + zMax) * 0.5);
+    eastPathOuterKerb.receiveShadow = true;
+    scene.add(eastPathOuterKerb);
+  }
 
   const eastPathNorthKerb = new THREE.Mesh(
     new THREE.BoxGeometry(1.54, 0.115, 0.08),

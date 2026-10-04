@@ -63,28 +63,63 @@ export function buildCourtyardAndGates(
   });
 
   /**
-   * Issue #3 ("Use this cobbled pattern on the entire couryard" at `[-3.721, -0.01, 5.139]`, `courtyard.southCobblePathReliefTop`)
-   * & Issue #6 ("Make sure it has a repeating element (see pictures)" at `[-10.452, -0.204, 6.336]`, `courtyard.mainCobbleSlab`):
-   * Generates a seamlessly tileable (`THREE.RepeatWrapping`) 512x512 arched granite sett fan ("Bogenpflaster")
-   * color + 3D depth texture pair using the EXACT same Canvas2D `roundRect` cobble rendering, `#cbb894` sandy-buff
-   * mortar, `#7d8186..#5b6066` 10-color granite palette, and 4-ring stepped depth map as `createGraniteSettLPathTextures()`,
-   * repeating in parallel `1.46m` scalloped fan-arc bands across the entire courtyard!
+   * Issue #1 ("This looks good but maybe a little "too" uniform and procedural, how can we make it look more natural"
+   * at `[-9.511, -0.235, 7.804]`, `courtyard.mainCobbleSlab`),
+   * Issue #3 ("Use this cobbled pattern on the entire couryard"), &
+   * Issue #6 ("Make sure it has a repeating element (see pictures)"):
+   * Generates a seamlessly tileable (`THREE.RepeatWrapping`) 1024x1024 multi-band (`2.3000944m x 2.92m`,
+   * 16 arched fan courses x 2 adjacent `1.46m` scalloped fan bands) hand-cleaved granite-sett ("Bogenpflaster")
+   * color + 3D depth texture pair with per-stone size (`±14%`), position (`±3mm`), and angle (`±3.4°`) jitter,
+   * 8-point irregular chamfered stone contours, diagonal mineral cleavage shading, quartz/feldspar speckles,
+   * and weathered sandy-lime mortar with subtle mossy/earth patina.
    */
   const createContinuousCourtyardCobbleTextures = (): {
     readonly colorMap: THREE.CanvasTexture;
     readonly depthMap: THREE.CanvasTexture;
   } => {
-    const width = 512;
-    const height = 512;
-    const pathW = 1.46;
+    const width = 1024;
+    const height = 1024;
+    const bandW = 1.46;
+    const bandsPerTile = 2;
+    const tileSpanU = bandW * bandsPerTile; // 2.92m across 2 adjacent fan bands
     const courseStep = 0.1437559;
-    const coursesPerTile = 8;
-    const tileSpanS = coursesPerTile * courseStep; // 1.1500472m (8 arched fan courses per repeating tile)
-    const numRows = 8;
-    const cobbleStepU = pathW / numRows; // 0.1825m
-    const arcPivotR = 1.18; // Pronounced repeating scalloped fan-arc curvature matching Photos 1, 5 & 10
+    const coursesPerTile = 16;
+    const tileSpanS = coursesPerTile * courseStep; // 2.3000944m along 16 arched fan courses
+    const rowsPerBand = 8;
+    const cobbleStepU = bandW / rowsPerBand; // 0.1825m
     const pxPerMeterS = width / tileSpanS;
-    const pxPerMeterU = height / pathW;
+    const pxPerMeterU = height / tileSpanU;
+
+    const stoneHash = (seed: number): number => {
+      const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453123;
+      return x - Math.floor(x);
+    };
+
+    const traceOrganicCobblePath = (
+      ctx: CanvasRenderingContext2D,
+      w: number,
+      h: number,
+      seed: number,
+      inset = 0
+    ): void => {
+      const hw = Math.max(2, w * 0.5 - inset);
+      const hh = Math.max(2, h * 0.5 - inset);
+      const chX = Math.min(hw * 0.42, (2.8 + stoneHash(seed + 1) * 3.4) * (1 - inset * 0.08));
+      const chY = Math.min(hh * 0.42, (2.6 + stoneHash(seed + 2) * 3.2) * (1 - inset * 0.08));
+      const j = (k: number): number =>
+        (stoneHash(seed + k * 19.3) - 0.5) * 1.9 * Math.max(0.25, 1 - inset * 0.12);
+
+      ctx.beginPath();
+      ctx.moveTo(-hw + chX + j(3), -hh + j(4));
+      ctx.lineTo(hw - chX + j(5), -hh + j(6));
+      ctx.lineTo(hw + j(7), -hh + chY + j(8));
+      ctx.lineTo(hw + j(9), hh - chY + j(10));
+      ctx.lineTo(hw - chX + j(11), hh + j(12));
+      ctx.lineTo(-hw + chX + j(13), hh + j(14));
+      ctx.lineTo(-hw + j(15), hh - chY + j(16));
+      ctx.lineTo(-hw + j(17), -hh + chY + j(18));
+      ctx.closePath();
+    };
 
     const colorCanvas = document.createElement('canvas');
     colorCanvas.width = width;
@@ -96,121 +131,207 @@ export function buildCourtyardAndGates(
     depthCanvas.height = height;
     const dCtx = depthCanvas.getContext('2d')!;
 
-    // 1. Warm sandy lime/sand mortar pointing base in colorMap & recessed mortar channels in depthMap
-    //    (100% identical to `createGraniteSettLPathTextures` in `procedural-textures.ts`!)
-    cCtx.fillStyle = '#cbb894';
+    // 1. Weathered sandy-lime mortar base with multi-scale grit, damp earth crevices & subtle mossy patina
+    cCtx.fillStyle = '#c4b18d';
     cCtx.fillRect(0, 0, width, height);
 
-    dCtx.fillStyle = '#141414';
+    dCtx.fillStyle = '#121212';
     dCtx.fillRect(0, 0, width, height);
 
     for (let y = 0; y < height; y += 4) {
+      const ny = (y / height) * Math.PI * 2;
       for (let x = 0; x < width; x += 4) {
-        const delta = (((x % width) * 17 + (y % height) * 31) % 14) - 7;
-        cCtx.fillStyle = `rgb(${203 + delta}, ${184 + delta}, ${148 + delta})`;
+        const nx = (x / width) * Math.PI * 2;
+        const macroWave =
+          Math.sin(nx * 2 + ny) * 6 +
+          Math.cos(nx * 3 - ny * 2) * 5 +
+          Math.sin(nx * 5 + ny * 4) * 3;
+        const grit = (((x * 19 + y * 37) ^ (x * 7)) % 15) - 7;
+        const mossSignal =
+          Math.sin(nx * 3 + 0.8) * Math.cos(ny * 3 - 0.5) +
+          Math.sin(nx * 7 - ny * 5) * 0.45;
+        const isMossy = mossSignal > 0.68;
+
+        const r = Math.max(
+          135,
+          Math.min(222, Math.round(196 + macroWave + grit - (isMossy ? 22 : 0)))
+        );
+        const g = Math.max(
+          130,
+          Math.min(212, Math.round(177 + macroWave + grit - (isMossy ? 6 : 0)))
+        );
+        const b = Math.max(
+          105,
+          Math.min(182, Math.round(141 + macroWave + grit - (isMossy ? 26 : 0)))
+        );
+        cCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
         cCtx.fillRect(x, y, 4, 4);
 
-        const dv = Math.max(8, Math.min(34, 20 + Math.round(delta * 0.7)));
+        const dv = Math.max(8, Math.min(36, 19 + Math.round((macroWave + grit) * 0.55)));
         dCtx.fillStyle = `rgb(${dv}, ${dv}, ${dv})`;
         dCtx.fillRect(x, y, 4, 4);
       }
     }
 
-    const granitePalette = [
-      '#7d8186',
-      '#6c737b',
-      '#8f7b74',
-      '#928879',
-      '#62666c',
-      '#86898e',
-      '#7f6d67',
-      '#74797e',
-      '#9b8f80',
-      '#5b6066',
+    // Heritage hand-cleaved granite, porphyry, warm sandstone & blue-grey basalt RGB palette
+    const granitePaletteRgb: ReadonlyArray<readonly [number, number, number]> = [
+      [125, 129, 134], // Weathered silver-grey granite
+      [108, 115, 123], // Cool blue-grey granite
+      [143, 123, 116], // Warm pinkish-taupe porphyry
+      [146, 136, 121], // Warm buff-grey sandstone sett
+      [98, 102, 108],  // Dark charcoal-slate sett
+      [134, 137, 142], // Pale ash granite
+      [127, 109, 103], // Russet-brown ironstone sett
+      [116, 121, 126], // Mid quarry grey
+      [155, 143, 128], // Golden-oatmeal weathered sett
+      [91, 96, 102],   // Deep blue-basalt sett
+      [138, 127, 114], // Warm greige sett
+      [112, 118, 114], // Lichen-tinted olive-grey granite
+      [149, 131, 118], // Warm terracotta-flecked granite
+      [104, 108, 115], // Steely blue sett
     ];
 
-    const cobbleW = (courseStep - 0.026) * pxPerMeterS;
-    const cobbleH = (cobbleStepU - 0.026) * pxPerMeterU;
-    const rx = -cobbleW * 0.5;
-    const ry = -cobbleH * 0.5;
-    const cornerR = 3.5;
+    const baseCobbleW = (courseStep - 0.024) * pxPerMeterS;
+    const baseCobbleH = (cobbleStepU - 0.024) * pxPerMeterU;
 
-    // 2. Render repeating scalloped fan-arc granite setts across the 8x8 tile, wrapping horizontally
-    //    around S = 0..tileSpanS so `THREE.RepeatWrapping` tiles seamlessly with zero edge seams!
-    for (let c = -3; c <= coursesPerTile + 3; c++) {
-      const wrappedC = ((c % coursesPerTile) + coursesPerTile) % coursesPerTile;
-      const staggerU = (wrappedC % 2) * (cobbleStepU * 0.5);
+    // 2. Render repeating scalloped fan-arc granite setts across the 2-band x 16-course tile,
+    //    wrapping around both S (0..tileSpanS) and U (0..tileSpanU) so `THREE.RepeatWrapping` is 100% seamless!
+    for (let band = 0; band < bandsPerTile; band++) {
+      const bandOffsetU = band * bandW;
+      // Subtle organic difference between adjacent fan bands so adjacent rows of fans don't look like rigid clones
+      const bandArcPivotR = band === 0 ? 1.16 : 1.23;
+      const bandCoursePhase = band === 0 ? 0.0 : 0.18;
 
-      for (let r = 0; r < numRows; r++) {
-        const u = (r + 0.5) * cobbleStepU + staggerU * 0.35;
-        if (u < 0.04 || u > pathW - 0.04) continue;
+      for (let c = -3; c <= coursesPerTile + 3; c++) {
+        const wrappedC = ((c % coursesPerTile) + coursesPerTile) % coursesPerTile;
+        const courseWave = Math.sin((wrappedC / coursesPerTile) * Math.PI * 4 + band * 1.7) * 0.008;
 
-        const du = u - pathW * 0.5;
-        const clampedDu = Math.max(-arcPivotR + 0.15, Math.min(arcPivotR - 0.15, du));
-        const arcBow = arcPivotR - Math.sqrt(arcPivotR * arcPivotR - clampedDu * clampedDu);
-        const arcTangentAngle = Math.asin(clampedDu / arcPivotR);
+        for (let r = 0; r < rowsPerBand; r++) {
+          const seed = band * 4099 + wrappedC * 131 + r * 17 + 23;
+          const staggerU = (wrappedC % 2) * (cobbleStepU * 0.42);
+          const jitterU = (stoneHash(seed + 1) - 0.5) * 0.014;
+          const localU = (r + 0.46) * cobbleStepU + staggerU * 0.36 + jitterU;
+          if (localU < 0.032 || localU > bandW - 0.032) continue;
 
-        const s = (c + 0.5) * courseStep - arcBow;
-        const cxPx = (s / tileSpanS) * width;
-        const cyPx = (u / pathW) * height;
-        if (cxPx < -cobbleW || cxPx > width + cobbleW) continue;
+          const du = localU - bandW * 0.5;
+          const clampedDu = Math.max(-bandArcPivotR + 0.14, Math.min(bandArcPivotR - 0.14, du));
+          const arcBow =
+            bandArcPivotR - Math.sqrt(bandArcPivotR * bandArcPivotR - clampedDu * clampedDu);
+          const arcTangentAngle =
+            Math.asin(clampedDu / bandArcPivotR) + (stoneHash(seed + 2) - 0.5) * 0.062;
 
-        const colorIdx = Math.abs((wrappedC * 17 + r * 11 + 7) % granitePalette.length);
-        const baseColor = granitePalette[colorIdx] ?? '#7d8186';
-        const cobbleHeightBias = ((wrappedC * 23 + r * 13) % 26) - 12;
+          const jitterS = (stoneHash(seed + 3) - 0.5) * 0.015 + courseWave;
+          const s = (c + 0.5 + bandCoursePhase) * courseStep - arcBow + jitterS;
+          const u = bandOffsetU + localU;
 
-        // Draw cobble in Color Map
-        cCtx.save();
-        cCtx.translate(cxPx, cyPx);
-        cCtx.rotate(arcTangentAngle);
+          const cxPx = (s / tileSpanS) * width;
+          const cyPx = (u / tileSpanU) * height;
+          if (cxPx < -baseCobbleW || cxPx > width + baseCobbleW) continue;
 
-        cCtx.fillStyle = baseColor;
-        cCtx.beginPath();
-        cCtx.roundRect(rx, ry, cobbleW, cobbleH, cornerR);
-        cCtx.fill();
+          const cobbleW = baseCobbleW * (0.87 + stoneHash(seed + 4) * 0.25);
+          const cobbleH = baseCobbleH * (0.86 + stoneHash(seed + 5) * 0.24);
+          const rx = -cobbleW * 0.5;
+          const ry = -cobbleH * 0.5;
 
-        cCtx.strokeStyle = 'rgba(255, 248, 235, 0.18)';
-        cCtx.lineWidth = 1.1;
-        cCtx.stroke();
+          const palIdx = Math.floor(stoneHash(seed + 6) * granitePaletteRgb.length);
+          const [br, bg, bb] = granitePaletteRgb[palIdx] ?? [125, 129, 134];
+          const toneShift = Math.round((stoneHash(seed + 7) - 0.5) * 24);
+          const warmShift = Math.round((stoneHash(seed + 8) - 0.5) * 12);
+          const sr = Math.max(62, Math.min(188, br + toneShift + warmShift));
+          const sg = Math.max(62, Math.min(184, bg + toneShift));
+          const sb = Math.max(60, Math.min(182, bb + toneShift - warmShift));
 
-        cCtx.fillStyle = 'rgba(30, 32, 36, 0.12)';
-        cCtx.fillRect(rx + 3, ry + 4, 3, 3);
-        cCtx.fillRect(rx + cobbleW - 7, ry + cobbleH - 8, 3, 3);
-        cCtx.restore();
+          const cobbleHeightBias = Math.round((stoneHash(seed + 9) - 0.5) * 34);
 
-        // Draw cobble in 3D Depth Map
-        dCtx.save();
-        dCtx.translate(cxPx, cyPx);
-        dCtx.rotate(arcTangentAngle);
+          // Draw cobble in Color Map
+          cCtx.save();
+          cCtx.translate(cxPx, cyPx);
+          cCtx.rotate(arcTangentAngle);
 
-        const rings: ReadonlyArray<readonly [number, number, number]> = [
-          [0.0, 3.5, 95],
-          [1.4, 3.2, 155],
-          [2.8, 2.8, 205],
-          [4.5, 2.2, 238],
-        ];
-        for (const [inset, cr, baseLum] of rings) {
-          const lum = Math.max(45, Math.min(255, baseLum + cobbleHeightBias));
-          dCtx.fillStyle = `rgb(${lum}, ${lum}, ${lum})`;
-          dCtx.beginPath();
-          dCtx.roundRect(
-            rx + inset,
-            ry + inset,
-            Math.max(2, cobbleW - inset * 2),
-            Math.max(2, cobbleH - inset * 2),
-            cr
+          // Subtle recessed mortar shadow halo around each stone base
+          cCtx.fillStyle = 'rgba(42, 36, 28, 0.26)';
+          traceOrganicCobblePath(cCtx, cobbleW + 3.2, cobbleH + 3.2, seed, 0);
+          cCtx.fill();
+
+          // Cleaved granite crown with natural diagonal mineral gradient
+          const grad = cCtx.createLinearGradient(rx, ry, -rx, -ry);
+          grad.addColorStop(
+            0,
+            `rgb(${Math.min(215, sr + 14)}, ${Math.min(210, sg + 13)}, ${Math.min(205, sb + 11)})`
           );
-          dCtx.fill();
-        }
+          grad.addColorStop(0.55, `rgb(${sr}, ${sg}, ${sb})`);
+          grad.addColorStop(
+            1,
+            `rgb(${Math.max(45, sr - 16)}, ${Math.max(45, sg - 16)}, ${Math.max(45, sb - 14)})`
+          );
+          cCtx.fillStyle = grad;
+          traceOrganicCobblePath(cCtx, cobbleW, cobbleH, seed, 0);
+          cCtx.fill();
 
-        const crownLum = Math.max(60, Math.min(255, 246 + cobbleHeightBias));
-        dCtx.fillStyle = `rgb(${crownLum}, ${crownLum}, ${crownLum})`;
-        dCtx.fillRect(rx + 5, ry + 5, Math.max(2, cobbleW - 10), 4);
-        const pitLum = Math.max(40, Math.min(230, 178 + cobbleHeightBias));
-        dCtx.fillStyle = `rgb(${pitLum}, ${pitLum}, ${pitLum})`;
-        dCtx.fillRect(rx + 4, ry + 4, 3, 3);
-        dCtx.fillRect(rx + cobbleW - 7, ry + cobbleH - 8, 3, 3);
-        dCtx.restore();
+          // Sunlit top/left hand-dressed bevel edge & shaded bottom/right cleavage edge
+          cCtx.strokeStyle = 'rgba(255, 248, 232, 0.22)';
+          cCtx.lineWidth = 1.25;
+          cCtx.stroke();
+
+          // Inner riven facet & mineral grain mottling (feldspar, quartz & dark biotite flecks)
+          for (let sp = 0; sp < 6; sp++) {
+            const spX = (stoneHash(seed + 20 + sp * 3) - 0.5) * (cobbleW * 0.68);
+            const spY = (stoneHash(seed + 21 + sp * 3) - 0.5) * (cobbleH * 0.68);
+            const spR = 1.3 + stoneHash(seed + 22 + sp * 3) * 2.4;
+            cCtx.fillStyle =
+              sp % 2 === 0 ? 'rgba(248, 242, 228, 0.16)' : 'rgba(28, 30, 34, 0.17)';
+            cCtx.beginPath();
+            cCtx.arc(spX, spY, spR, 0, Math.PI * 2);
+            cCtx.fill();
+          }
+
+          // Occasional subtle natural quartz vein or weathered cleavage line across ~30% of setts
+          if (stoneHash(seed + 45) > 0.68) {
+            cCtx.strokeStyle =
+              stoneHash(seed + 46) > 0.5
+                ? 'rgba(235, 226, 210, 0.18)'
+                : 'rgba(42, 38, 34, 0.20)';
+            cCtx.lineWidth = 0.9;
+            cCtx.beginPath();
+            cCtx.moveTo(rx * 0.65, (stoneHash(seed + 47) - 0.5) * cobbleH * 0.5);
+            cCtx.lineTo(-rx * 0.65, (stoneHash(seed + 48) - 0.5) * cobbleH * 0.5);
+            cCtx.stroke();
+          }
+          cCtx.restore();
+
+          // Draw cobble in 3D Depth Map
+          dCtx.save();
+          dCtx.translate(cxPx, cyPx);
+          dCtx.rotate(arcTangentAngle);
+
+          const rings: ReadonlyArray<readonly [number, number]> = [
+            [0.0, 92],
+            [1.6, 154],
+            [3.2, 204],
+            [5.0, 238],
+          ];
+          for (const [inset, baseLum] of rings) {
+            const lum = Math.max(42, Math.min(255, baseLum + cobbleHeightBias));
+            dCtx.fillStyle = `rgb(${lum}, ${lum}, ${lum})`;
+            traceOrganicCobblePath(dCtx, cobbleW, cobbleH, seed, inset);
+            dCtx.fill();
+          }
+
+          // Riven stone crown & natural cleavage micro-pits in depth map
+          const crownLum = Math.max(60, Math.min(255, 246 + cobbleHeightBias));
+          dCtx.fillStyle = `rgb(${crownLum}, ${crownLum}, ${crownLum})`;
+          dCtx.fillRect(
+            rx + cobbleW * 0.22,
+            ry + cobbleH * 0.24,
+            Math.max(2, cobbleW * 0.52),
+            Math.max(2, cobbleH * 0.36)
+          );
+          const pitLum = Math.max(40, Math.min(228, 174 + cobbleHeightBias));
+          dCtx.fillStyle = `rgb(${pitLum}, ${pitLum}, ${pitLum})`;
+          dCtx.fillRect(rx + 4, ry + 4, 3, 3);
+          dCtx.fillRect(rx + cobbleW - 7, ry + cobbleH - 8, 3, 3);
+          dCtx.restore();
+        }
       }
     }
 
@@ -233,9 +354,9 @@ export function buildCourtyardAndGates(
   const courtyardCobbleMat = new THREE.MeshStandardMaterial({
     map: cobbleColorTex,
     bumpMap: cobbleBumpTex,
-    bumpScale: 0.038,
-    roughness: 0.82,
-    metalness: 0.06,
+    bumpScale: 0.042,
+    roughness: 0.84,
+    metalness: 0.05,
   });
 
   /**
@@ -318,8 +439,8 @@ export function buildCourtyardAndGates(
 
   /**
    * Creates a subdivided BoxGeometry for a courtyard slab whose vertices follow the continuous
-   * 2D courtyard elevation gradient `getCourtyardGroundY(wx, wz)` and continuous world-space
-   * repeating arched granite sett UVs (Issue #3 & Issue #6).
+   * 2D courtyard elevation gradient `getCourtyardGroundY(wx, wz)`, subtle organic stone-bed
+   * micro-undulation (`Issue #1`), and continuous world-space repeating arched granite sett UVs.
    */
   const createGradedCourtyardGeometry = (
     w: number,
@@ -364,10 +485,12 @@ export function buildCourtyardAndGates(
             }
           }
         } else if (isSouthEastApronPiece) {
-          // Both the wider Raised Patio Shrub Bank (wx <= 5.5m) and the Walled Grape-Vine Pergola
-          // extend South to z_ew = +8.65m (`getEastWingSouthWallZ(wx) + 6.02`), making the cobbled
-          // alleyway (`courtyard.southEastCobbleApron`) a realistic ~3.1m-wide cobbled lane!
-          const minAllowedTerraceSouthZ = getEastWingSouthWallZ(wx) + 6.02;
+          // Issue #3 ("This section seems to get a bit to narrow, look again at the arial shots" at `[5.699, -0.061, 13.178]`):
+          // The Raised Patio Shrub Bank (`wx <= 5.15m`) extends South to `z_ew = +7.82m` (`getEastWingSouthWallZ(wx) + 5.20`)
+          // and the Walled Grape-Vine Pergola (`wx > 5.15m`) extends South to `z_ew = +7.20m` (+ `0.44m` herb bed = `getEastWingSouthWallZ(wx) + 5.01`),
+          // widening `courtyard.southEastCobbleApron` to a generous ~3.3m–3.9m cobbled lane matching the aerial photos!
+          const minAllowedTerraceSouthZ =
+            getEastWingSouthWallZ(wx) + (wx <= 5.15 ? 5.2 : 5.01);
           if (wz < minAllowedTerraceSouthZ) {
             wz = minAllowedTerraceSouthZ;
             pos.setZ(i, wz - offsetZ);
@@ -383,13 +506,21 @@ export function buildCourtyardAndGates(
           }
         }
         const groundY = getCourtyardGroundY(wx, wz);
-        pos.setY(i, pos.getY(i) + groundY);
+        // Subtle natural hand-laid stone bed micro-undulation (±3.5mm) across top surface vertices (Issue #1)
+        const isTopVertex = pos.getY(i) > 0;
+        const microUndulation = isTopVertex
+          ? Math.sin(wx * 1.9 + wz * 1.6) * 0.0022 + Math.cos(wx * 3.7 - wz * 3.1) * 0.0014
+          : 0;
+        pos.setY(i, pos.getY(i) + groundY + microUndulation);
         if (applyCobbleUVs && uv) {
-          // Issue #3 & Issue #6: Unified repeating arched granite sett fan UVs across the ENTIRE courtyard!
+          // Issue #1: Map onto the 2.3000944m x 2.92m (16 courses x 2 fan bands) organic hand-cleaved sett tile
+          // with subtle low-frequency course wander so fan lines have natural hand-laid character!
+          const organicWanderS = Math.sin(wz * 0.65 + wx * 0.25) * 0.035;
+          const organicWanderU = Math.cos(wx * 0.55 - wz * 0.35) * 0.028;
           uv.setXY(
             i,
-            (4.72875 - wx) / 1.1500472,
-            1 - (wz - (getEastWingSouthWallZ(wx) - 0.41)) / 1.46
+            (4.72875 - wx + organicWanderS) / 2.3000944,
+            1 - (wz - (getEastWingSouthWallZ(wx) - 0.41) + organicWanderU) / 2.92
           );
         }
       }
@@ -455,7 +586,7 @@ export function buildCourtyardAndGates(
   gateCourtyardBaySlab.receiveShadow = true;
   scene.add(gateCourtyardBaySlab);
 
-  // Issue #3 ("Use this cobbled pattern on the entire couryard"):
+  // Issue #3 ("This section seems to get a bit to narrow, look again at the arial shots" at `[5.699, -0.061, 13.178]`):
   // Lower South-East Courtyard Apron & Cobbled Alleyway between the Raised Limestone Patio / Walled Grape-Vine Pergola
   // and the Barn / 2-Storey Stable North Wall (X = -4.64m..+10.80m) using the same repeating arched granite sett pattern!
   const southEastCourtyardApron = new THREE.Mesh(
@@ -574,13 +705,13 @@ export function buildCourtyardAndGates(
     48
   );
 
-  // 2. Continuation of the 3-row stone-sett drainage runner down the center of the South-East cobbled alleyway (Photo 10)
+  // 2. Continuation of the 3-row stone-sett drainage runner down the center of the widened South-East cobbled alleyway (Photo 10)
   addGradedDrainageChannelRun(
     'courtyard.drainageChannel.alleyway',
     -4.64,
     9.26,
     8.2,
-    10.45,
+    12.15,
     0.32,
     36
   );

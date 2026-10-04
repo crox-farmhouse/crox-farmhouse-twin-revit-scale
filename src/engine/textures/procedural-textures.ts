@@ -1151,16 +1151,17 @@ export function createGraniteSettLPathTextures(): {
     return cachedGraniteSettLPathTextures;
   }
 
-  // World-space bounds of the L-shaped cobblestone path (aligned with sitting-and-courtyard.ts):
+  // World-space bounds of the T-shaped cobblestone path around the Kitchen, Patio & Pergola:
   // X: -4.64m to +6.74m (span 11.38m)
-  // Z: -2.78m to +3.73m (span 6.51m)
+  // Z: -2.78m to +7.35m (span 10.13m — covers North Utility door at -2.78m, South Kitchen path at 2.27..3.73m,
+  //                      and the full South branch between the Patio and Pergola down to Z = +7.35m, Issue #2!)
   const worldMinX = -4.64;
   const worldSpanX = 11.38;
   const worldMinZ = -2.78;
-  const worldSpanZ = 6.51;
+  const worldSpanZ = 10.13;
 
-  const width = 2048;
-  const height = 1172; // Matches 11.38 : 6.51 aspect ratio (~180 px/m in both X and Z)
+  const width = 1600;
+  const height = 1424; // Matches 11.38 : 10.13 aspect ratio (~140.6 px/m in both X and Z)
   const pxPerMeterX = width / worldSpanX;
   const pxPerMeterZ = height / worldSpanZ;
   const pxPerMeter = (pxPerMeterX + pxPerMeterZ) * 0.5;
@@ -1176,8 +1177,13 @@ export function createGraniteSettLPathTextures(): {
   const dCtx = depthCanvas.getContext('2d');
 
   if (cCtx && dCtx) {
-    // 1. Warm sandy lime/sand mortar pointing base in colorMap & recessed mortar channels in depthMap
-    cCtx.fillStyle = '#cbb894';
+    const hash01 = (n: number): number => {
+      const s = Math.sin(n * 127.1 + 311.7) * 43758.5453123;
+      return s - Math.floor(s);
+    };
+
+    // 1. Weathered sandy-lime mortar bed with organic earth/moss patina variation & recessed mortar depth
+    cCtx.fillStyle = '#c6b38e';
     cCtx.fillRect(0, 0, width, height);
 
     dCtx.fillStyle = '#141414';
@@ -1185,171 +1191,235 @@ export function createGraniteSettLPathTextures(): {
 
     for (let y = 0; y < height; y += 4) {
       for (let x = 0; x < width; x += 4) {
-        const delta = ((x * 17 + y * 31) % 14) - 7;
-        cCtx.fillStyle = `rgb(${203 + delta}, ${184 + delta}, ${148 + delta})`;
+        const h1 = hash01(x * 17 + y * 31);
+        const h2 = hash01(x * 41 + y * 19 + 11);
+        const macro =
+          Math.sin(x * 0.012 + y * 0.009) * 6 +
+          Math.cos(x * 0.021 - y * 0.017) * 5;
+        const delta = Math.round((h1 - 0.5) * 18 + macro);
+        // Occasional subtle mossy/earthy joint patina (~14% of mortar cells)
+        const mossShift = h2 > 0.86 ? 12 : 0;
+        const mr = Math.max(145, Math.min(225, 198 + delta - mossShift));
+        const mg = Math.max(135, Math.min(210, 179 + delta + Math.round(mossShift * 0.4)));
+        const mb = Math.max(105, Math.min(180, 142 + delta - mossShift));
+        cCtx.fillStyle = `rgb(${mr}, ${mg}, ${mb})`;
         cCtx.fillRect(x, y, 4, 4);
 
-        const dv = Math.max(8, Math.min(34, 20 + Math.round(delta * 0.7)));
+        const dv = Math.max(8, Math.min(36, 20 + Math.round(delta * 0.65)));
         dCtx.fillStyle = `rgb(${dv}, ${dv}, ${dv})`;
         dCtx.fillRect(x, y, 4, 4);
       }
     }
 
-    const granitePalette = [
-      '#7d8186',
-      '#6c737b',
-      '#8f7b74',
-      '#928879',
-      '#62666c',
-      '#86898e',
-      '#7f6d67',
-      '#74797e',
-      '#9b8f80',
-      '#5b6066',
+    const granitePalette: ReadonlyArray<readonly [number, number, number]> = [
+      [125, 129, 134], // Weathered silver-grey granite
+      [108, 115, 123], // Blue-grey Leicestershire sett
+      [143, 123, 116], // Warm porphyry rose-grey
+      [146, 136, 121], // Buff-taupe weathered gritstone
+      [98, 102, 108],  // Dark charcoal-slate sett
+      [134, 137, 142], // Pale quartz-grey granite
+      [127, 109, 103], // Earthy brown-rose granite
+      [116, 121, 126], // Mid steel-grey granite
+      [155, 143, 128], // Warm honey-sandstone sett
+      [91, 96, 102],   // Deep basalt-grey sett
+      [138, 128, 118], // Weathered warm greige
+      [112, 106, 100], // Smoked umber-grey sett
     ];
+
+    // Helper to trace an organic, hand-cleaved granite sett contour (8-point irregular chamfered polygon)
+    const traceOrganicCobblePath = (
+      ctx: CanvasRenderingContext2D,
+      w: number,
+      h: number,
+      seed: number,
+      inset = 0
+    ): void => {
+      const hw = Math.max(2, w * 0.5 - inset);
+      const hh = Math.max(2, h * 0.5 - inset);
+      const cTL = Math.min(hw * 0.45, hh * 0.45, 2.2 + hash01(seed + 1) * 2.6);
+      const cTR = Math.min(hw * 0.45, hh * 0.45, 2.2 + hash01(seed + 2) * 2.6);
+      const cBR = Math.min(hw * 0.45, hh * 0.45, 2.2 + hash01(seed + 3) * 2.6);
+      const cBL = Math.min(hw * 0.45, hh * 0.45, 2.2 + hash01(seed + 4) * 2.6);
+      const skewT = (hash01(seed + 5) - 0.5) * 1.6;
+      const skewB = (hash01(seed + 6) - 0.5) * 1.6;
+      const skewL = (hash01(seed + 7) - 0.5) * 1.4;
+      const skewR = (hash01(seed + 8) - 0.5) * 1.4;
+
+      ctx.beginPath();
+      ctx.moveTo(-hw + cTL, -hh + skewT * 0.4);
+      ctx.lineTo(0, -hh - skewT * 0.5);
+      ctx.lineTo(hw - cTR, -hh + skewT * 0.3);
+      ctx.quadraticCurveTo(hw, -hh, hw + skewR * 0.3, -hh + cTR);
+      ctx.lineTo(hw - skewR * 0.4, 0);
+      ctx.lineTo(hw + skewR * 0.2, hh - cBR);
+      ctx.quadraticCurveTo(hw, hh, hw - cBR, hh + skewB * 0.3);
+      ctx.lineTo(0, hh - skewB * 0.5);
+      ctx.lineTo(-hw + cBL, hh + skewB * 0.4);
+      ctx.quadraticCurveTo(-hw, hh, -hw + skewL * 0.3, hh - cBL);
+      ctx.lineTo(-hw - skewL * 0.4, 0);
+      ctx.lineTo(-hw + skewL * 0.2, -hh + cTL);
+      ctx.quadraticCurveTo(-hw, -hh, -hw + cTL, -hh + skewT * 0.4);
+      ctx.closePath();
+    };
+
+    const drawSingleGraniteSett = (
+      wx: number,
+      wz: number,
+      totalAngle: number,
+      baseCobbleW: number,
+      baseCobbleH: number,
+      seed: number
+    ): void => {
+      // Organic per-stone position, angle & dimensional jitter (Issue #1: natural hand-laid look)
+      const jitterS = (hash01(seed * 13 + 1) - 0.5) * 0.009;
+      const jitterU = (hash01(seed * 17 + 2) - 0.5) * 0.008;
+      const cxPx = (wx + jitterS - worldMinX) * pxPerMeterX;
+      const cyPx = (wz + jitterU - worldMinZ) * pxPerMeterZ;
+      if (cxPx < -24 || cxPx > width + 24 || cyPx < -24 || cyPx > height + 24) {
+        return;
+      }
+
+      const angleJitter = (hash01(seed * 19 + 3) - 0.5) * 0.095;
+      const wScale = 0.88 + hash01(seed * 23 + 4) * 0.24;
+      const hScale = 0.90 + hash01(seed * 29 + 5) * 0.20;
+      const cobbleW = Math.max(9, baseCobbleW * wScale);
+      const cobbleH = Math.max(9, baseCobbleH * hScale);
+
+      const [r0, g0, b0] =
+        granitePalette[Math.abs(seed * 7) % granitePalette.length] ?? [125, 129, 134];
+      // Macro spatial weathering + per-stone tonal variation
+      const macroTone =
+        Math.sin(wx * 1.15 + wz * 0.95) * 8 +
+        Math.cos(wx * 0.65 - wz * 1.35) * 6;
+      const stoneDelta = Math.round((hash01(seed * 31 + 6) - 0.5) * 24 + macroTone);
+      const warmShift = Math.round((hash01(seed * 37 + 7) - 0.5) * 10);
+      const cr = Math.max(55, Math.min(205, r0 + stoneDelta + warmShift));
+      const cg = Math.max(55, Math.min(200, g0 + stoneDelta));
+      const cb = Math.max(55, Math.min(198, b0 + stoneDelta - warmShift));
+      const cobbleHeightBias = Math.round((hash01(seed * 41 + 8) - 0.5) * 34);
+
+      // Draw cobble in Color Map
+      cCtx.save();
+      cCtx.translate(cxPx, cyPx);
+      cCtx.rotate(totalAngle + angleJitter);
+
+      // 1. Dark mortar-edge perimeter rim
+      cCtx.fillStyle = `rgb(${Math.max(40, cr - 22)}, ${Math.max(40, cg - 22)}, ${Math.max(40, cb - 22)})`;
+      traceOrganicCobblePath(cCtx, cobbleW, cobbleH, seed, 0);
+      cCtx.fill();
+
+      // 2. Riven granite body with natural diagonal mineral gradient
+      const grad = cCtx.createLinearGradient(
+        -cobbleW * 0.5,
+        -cobbleH * 0.5,
+        cobbleW * 0.5,
+        cobbleH * 0.5
+      );
+      grad.addColorStop(
+        0,
+        `rgb(${Math.min(225, cr + 12)}, ${Math.min(220, cg + 11)}, ${Math.min(218, cb + 10)})`
+      );
+      grad.addColorStop(0.55, `rgb(${cr}, ${cg}, ${cb})`);
+      grad.addColorStop(
+        1,
+        `rgb(${Math.max(42, cr - 14)}, ${Math.max(42, cg - 14)}, ${Math.max(42, cb - 14)})`
+      );
+      cCtx.fillStyle = grad;
+      traceOrganicCobblePath(cCtx, cobbleW, cobbleH, seed, 1.1);
+      cCtx.fill();
+
+      // 3. Natural quartz/feldspar mineral speckles & riven cleavage facets
+      for (let k = 0; k < 3; k++) {
+        const sx = (hash01(seed * 43 + k * 7) - 0.5) * (cobbleW * 0.55);
+        const sy = (hash01(seed * 47 + k * 11) - 0.5) * (cobbleH * 0.55);
+        const isLightSpeck = (seed + k) % 2 === 0;
+        cCtx.fillStyle = isLightSpeck
+          ? 'rgba(245, 238, 225, 0.16)'
+          : 'rgba(28, 30, 34, 0.16)';
+        cCtx.fillRect(sx - 1.5, sy - 1.5, 3, 2.5);
+      }
+
+      cCtx.strokeStyle = 'rgba(255, 248, 235, 0.16)';
+      cCtx.lineWidth = 0.9;
+      cCtx.stroke();
+      cCtx.restore();
+
+      // Draw cobble in 3D Depth Map
+      dCtx.save();
+      dCtx.translate(cxPx, cyPx);
+      dCtx.rotate(totalAngle + angleJitter);
+
+      const rings: ReadonlyArray<readonly [number, number]> = [
+        [0.0, 92],
+        [1.3, 152],
+        [2.6, 204],
+        [4.2, 236],
+      ];
+      for (const [inset, baseLum] of rings) {
+        const lum = Math.max(42, Math.min(255, baseLum + cobbleHeightBias));
+        dCtx.fillStyle = `rgb(${lum}, ${lum}, ${lum})`;
+        traceOrganicCobblePath(dCtx, cobbleW, cobbleH, seed, inset);
+        dCtx.fill();
+      }
+      dCtx.restore();
+    };
 
     // Path geometry & continuous repeating arc parameters in meters:
     const pathW = 1.46;
     const numRows = 8;
     const cobbleStepU = pathW / numRows; // 0.1825m across path width
     const courseStep = 0.1437559;        // 0.1438m per arc course along path
+    const arcPivotR = 1.18;
+    const baseCobbleW = (courseStep - 0.026) * pxPerMeter;
+    const baseCobbleH = (cobbleStepU - 0.026) * pxPerMeter;
 
-    // Smooth 90-degree corner pivot inside the SE building corner (5.28, 2.27)
-    // Chosen so the 90-degree centerline arc (u = 0.73m) spans exactly N_corner = 14 courses:
-    const cornerCourses = 14;
-    const cornerLenMid = cornerCourses * courseStep; // 2.01258m
-    const rMid = cornerLenMid / (Math.PI * 0.5);     // 1.28125m
-    const rInner = rMid - pathW * 0.5;               // 0.55125m
-    const pivotX = 5.28 - rInner;                    // 4.72875m
-    const pivotZ = 2.27 - rInner;                    // 1.71875m
-
-    // Repeating scalloped fan-arc bow across the 1.46m path width ("Bogenpflaster" — Issue #3 & Issue #6)
-    const arcPivotR = 1.18; // 1.18m arc radius across the 1.46m band width for clear repeating fan arcs
-
-    // Course index c runs continuously:
-    //   c = -72 .. 0   -> South leg (X = -4.64m .. +4.73m)
-    //   c = 0   .. 14  -> 90-degree SE corner fan (turning smoothly from East to North)
-    //   c = 14  .. 52  -> East leg (Z = +1.72m .. -2.78m)
-    for (let c = -72; c <= 54; c++) {
+    // 1) Continuous North-to-South East Cobble Path (X = +5.28m..+6.74m, Z = -2.78m..+7.35m)
+    //    Runs smoothly from the Utility Room door (Z = -1.85m) past the Kitchen East window
+    //    AND straight South between the Patio East brick wall (X = +5.20m) and Pergola (X = +6.82m)
+    //    with zero corner distortion and zero UV clamping at [5.633, -0.01, 6.632] (Issue #2)!
+    for (let c = -22; c <= 54; c++) {
       const staggerU = (Math.abs(c) % 2) * (cobbleStepU * 0.5);
-
-      // In the 90-degree corner region, extend s out to 12 so concentric arc courses
-      // completely fill the square outer corner out to (X = +6.74m, Z = +3.73m).
-      const maxRow = c >= -2 && c <= cornerCourses + 2 ? 12 : numRows;
-
-      for (let s = -1; s <= maxRow; s++) {
-        const u = s * cobbleStepU + staggerU; // Distance across path from inner wall edge
-        if (u < -0.14) continue;
-        if (c < -2 || c > cornerCourses + 2) {
-          if (u > pathW + 0.14) continue;
-        }
-
+      for (let s = 0; s < numRows; s++) {
+        const u = (s + 0.5) * cobbleStepU + (staggerU - cobbleStepU * 0.25) * 0.55;
         const du = u - pathW * 0.5;
         const clampedDu = Math.max(-arcPivotR + 0.15, Math.min(arcPivotR - 0.15, du));
         const arcBow = arcPivotR - Math.sqrt(arcPivotR * arcPivotR - clampedDu * clampedDu);
         const arcTangentAngle = Math.asin(clampedDu / arcPivotR);
 
-        // Continuous path-along coordinate S (including the repeating arc bow!)
-        const S = c * courseStep - arcBow;
+        const wx = 5.28 + u;
+        const wz = c * courseStep - arcBow;
+        if (wz < -2.85 || wz > 7.42) continue;
 
-        let wx = 0;
-        let wz = 0;
-        let pathHeading = 0;
-        let taperScale = 1.0;
+        const seed = (c + 64) * 37 + (s + 12) * 19 + 101;
+        drawSingleGraniteSett(
+          wx,
+          wz,
+          -Math.PI * 0.5 + arcTangentAngle,
+          baseCobbleW,
+          baseCobbleH,
+          seed
+        );
+      }
+    }
 
-        if (S <= 0) {
-          // South straight section
-          wx = pivotX + S;
-          wz = 2.27 + u;
-          pathHeading = 0;
-        } else if (S < cornerLenMid) {
-          // 90-degree SE corner section: C1-smooth transition in position, angle & arc curvature
-          const theta = (S / cornerLenMid) * (Math.PI * 0.5);
-          const r = rInner + u;
-          wx = pivotX + r * Math.sin(theta);
-          wz = pivotZ + r * Math.cos(theta);
-          pathHeading = -theta;
-          // Smoothly taper cobble width in the middle of the 90-degree turn so mortar joints stay uniform
-          taperScale = 1 + (r / rMid - 1) * Math.sin(theta * 2);
-        } else {
-          // East straight section running North past the window & utility door
-          wx = 5.28 + u;
-          wz = pivotZ - (S - cornerLenMid);
-          pathHeading = -Math.PI * 0.5;
-        }
+    // 2) South Cobble Path in front of the Kitchen Bifold Doors (X = -4.64m..+5.28m, Z = +2.27m..+3.73m)
+    //    Meets the East Cobble Path cleanly along the X = +5.28m threshold line!
+    for (let c = -72; c <= 38; c++) {
+      const staggerU = (Math.abs(c) % 2) * (cobbleStepU * 0.5);
+      for (let s = 0; s < numRows; s++) {
+        const u = (s + 0.5) * cobbleStepU + (staggerU - cobbleStepU * 0.25) * 0.55;
+        const du = u - pathW * 0.5;
+        const clampedDu = Math.max(-arcPivotR + 0.15, Math.min(arcPivotR - 0.15, du));
+        const arcBow = arcPivotR - Math.sqrt(arcPivotR * arcPivotR - clampedDu * clampedDu);
+        const arcTangentAngle = Math.asin(clampedDu / arcPivotR);
 
-        // Cull cobbles that fall outside the L-shaped path footprint (with small margin)
-        const inSouthBand = wz >= 2.15 && wz <= 3.85 && wx >= -4.78 && wx <= 6.88;
-        const inEastBand = wx >= 5.15 && wx <= 6.88 && wz >= -2.9 && wz <= 3.85;
-        if (!inSouthBand && !inEastBand) continue;
+        const wx = c * courseStep - arcBow;
+        const wz = 2.27 + u;
+        // Stop cleanly at X = 5.26m so it never overlaps the continuous East path (X = 5.28..6.74m)
+        if (wx < -4.75 || wx > 5.24) continue;
 
-        const cxPx = (wx - worldMinX) * pxPerMeterX;
-        const cyPx = (wz - worldMinZ) * pxPerMeterZ;
-        const totalAngle = pathHeading + arcTangentAngle;
-
-        const baseCobbleW = (courseStep - 0.026) * pxPerMeter;
-        const cobbleW = Math.max(12, baseCobbleW * Math.max(0.58, Math.min(1.38, taperScale)));
-        const cobbleH = (cobbleStepU - 0.026) * pxPerMeter;
-        const rx = -cobbleW * 0.5;
-        const ry = -cobbleH * 0.5;
-        const cornerR = 3.5;
-
-        const colorIdx = Math.abs(((c + 128) * 17 + (s + 16) * 11) % granitePalette.length);
-        const baseColor = granitePalette[colorIdx] ?? '#7d8186';
-        const cobbleHeightBias = (((c + 128) * 23 + (s + 16) * 13) % 26) - 12;
-
-        // Draw cobble in Color Map
-        cCtx.save();
-        cCtx.translate(cxPx, cyPx);
-        cCtx.rotate(totalAngle);
-
-        cCtx.fillStyle = baseColor;
-        cCtx.beginPath();
-        cCtx.roundRect(rx, ry, cobbleW, cobbleH, cornerR);
-        cCtx.fill();
-
-        cCtx.strokeStyle = 'rgba(255, 248, 235, 0.18)';
-        cCtx.lineWidth = 1.1;
-        cCtx.stroke();
-
-        cCtx.fillStyle = 'rgba(30, 32, 36, 0.12)';
-        cCtx.fillRect(rx + 3, ry + 4, 3, 3);
-        cCtx.fillRect(rx + cobbleW - 7, ry + cobbleH - 8, 3, 3);
-        cCtx.restore();
-
-        // Draw cobble in 3D Depth Map
-        dCtx.save();
-        dCtx.translate(cxPx, cyPx);
-        dCtx.rotate(totalAngle);
-
-        const rings: ReadonlyArray<readonly [number, number, number]> = [
-          [0.0, 3.5, 95],
-          [1.4, 3.2, 155],
-          [2.8, 2.8, 205],
-          [4.5, 2.2, 238],
-        ];
-        for (const [inset, cr, baseLum] of rings) {
-          const lum = Math.max(45, Math.min(255, baseLum + cobbleHeightBias));
-          dCtx.fillStyle = `rgb(${lum}, ${lum}, ${lum})`;
-          dCtx.beginPath();
-          dCtx.roundRect(
-            rx + inset,
-            ry + inset,
-            Math.max(2, cobbleW - inset * 2),
-            Math.max(2, cobbleH - inset * 2),
-            cr
-          );
-          dCtx.fill();
-        }
-
-        const crownLum = Math.max(60, Math.min(255, 246 + cobbleHeightBias));
-        dCtx.fillStyle = `rgb(${crownLum}, ${crownLum}, ${crownLum})`;
-        dCtx.fillRect(rx + 5, ry + 5, Math.max(2, cobbleW - 10), 4);
-        const pitLum = Math.max(40, Math.min(230, 178 + cobbleHeightBias));
-        dCtx.fillStyle = `rgb(${pitLum}, ${pitLum}, ${pitLum})`;
-        dCtx.fillRect(rx + 4, ry + 4, 3, 3);
-        dCtx.fillRect(rx + cobbleW - 7, ry + cobbleH - 8, 3, 3);
-        dCtx.restore();
+        const seed = (c + 128) * 41 + (s + 16) * 23 + 17;
+        drawSingleGraniteSett(wx, wz, arcTangentAngle, baseCobbleW, baseCobbleH, seed);
       }
     }
   }
@@ -1358,10 +1428,12 @@ export function createGraniteSettLPathTextures(): {
   colorMap.wrapS = THREE.ClampToEdgeWrapping;
   colorMap.wrapT = THREE.ClampToEdgeWrapping;
   colorMap.colorSpace = THREE.SRGBColorSpace;
+  colorMap.anisotropy = 8;
 
   const depthMap = new THREE.CanvasTexture(depthCanvas);
   depthMap.wrapS = THREE.ClampToEdgeWrapping;
   depthMap.wrapT = THREE.ClampToEdgeWrapping;
+  depthMap.anisotropy = 8;
 
   cachedGraniteSettLPathTextures = { colorMap, depthMap };
   return cachedGraniteSettLPathTextures;
