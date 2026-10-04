@@ -160,8 +160,11 @@ export function buildEntranceHall(
     scene.add(mesh);
 
     if (Math.abs(yTop - frontWallH) < 0.05) {
-      const cap = new THREE.Mesh(new THREE.BoxGeometry(w + 0.01, 0.028, d + 0.01), wallCapMat);
-      cap.position.set(cx, frontWallH + 0.014, cz);
+      const cap = new THREE.Mesh(
+        new THREE.BoxGeometry(Math.max(0.02, w - 0.016), 0.016, Math.max(0.02, d - 0.012)),
+        wallCapMat
+      );
+      cap.position.set(cx, frontWallH - 0.006, cz);
       cap.userData.isArchitecturalShell = true;
       scene.add(cap);
     }
@@ -186,7 +189,7 @@ export function buildEntranceHall(
       }
     }
   };
-  addPermanentFrontEntranceBrickPiece(2.045, 2.3, 0, frontWallH, true);
+  addPermanentFrontEntranceBrickPiece(1.905, 2.3, 0, frontWallH, true);
   addPermanentFrontEntranceBrickPiece(3.37, 3.7, 0, frontWallH, true);
   addPermanentFrontEntranceBrickPiece(2.3, 3.37, frontDoorHeadY, frontWallH, false);
 

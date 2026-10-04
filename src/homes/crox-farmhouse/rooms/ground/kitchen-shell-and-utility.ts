@@ -557,27 +557,28 @@ export function buildArchitecturalShellAndUtilityRoom(
   const crossWallThick = 0.24; // 240mm load-bearing cross-wall between Kitchen & Family Room
   const partWallThick = 0.15;  // 150mm internal partition wall
 
-  // North Back Wall (9.92m span X = -4.64m to +5.28m at Z = -2.50m..-2.78m, centered at X = +0.32m, Z = -2.64m)
+  // North Back Wall (9.64m span X = -4.64m to +5.00m at Z = -2.50m..-2.78m, centered at X = +0.18m, Z = -2.64m;
+  // stops at X = +5.00m where the East exterior wall X = +5.00m..+5.28m begins so there is zero NE corner overlap)
   // Interior face is +Z (inside kitchen & utility); exterior faces are -Z, +X (Imperial Brick)
   const backWallLowBase = createExteriorBrickWallBox(
-    9.92,
+    9.64,
     0.18,
     extWallThick,
-    0.32,
+    0.18,
     0.09,
     -2.5 - extWallThick / 2,
-    ['+z', '+y']
+    ['+z']
   );
   scene.add(backWallLowBase);
 
   const backWall = createExteriorBrickWallBox(
-    9.92,
-    wallHeight,
+    9.64,
+    wallHeight - 0.18,
     extWallThick,
-    0.32,
-    wallHeight / 2,
+    0.18,
+    0.18 + (wallHeight - 0.18) / 2,
     -2.5 - extWallThick / 2,
-    ['+z', '+y']
+    ['+z']
   );
   cutawayWallGroups.north.add(backWall);
 
@@ -673,29 +674,40 @@ export function buildArchitecturalShellAndUtilityRoom(
     eastWallCenterX,
     0.09,
     -2.2925,
-    ['-x', '+y']
+    ['-x']
   );
   scene.add(eastWallLowBaseNorth);
+
+  const eastWallLowBaseMid = createExteriorBrickWallBox(
+    extWallThick,
+    0.18,
+    0.575,
+    eastWallCenterX,
+    0.09,
+    -0.6375,
+    ['-x']
+  );
+  scene.add(eastWallLowBaseMid);
 
   const eastWallLowBaseSouth = createExteriorBrickWallBox(
     extWallThick,
     0.18,
-    3.195,
+    0.62,
     eastWallCenterX,
     0.09,
-    0.6725,
-    ['-x', '+y']
+    1.96,
+    ['-x']
   );
   scene.add(eastWallLowBaseSouth);
 
   const eastWallUtilNorthPier = createExteriorBrickWallBox(
     extWallThick,
-    wallHeight,
+    wallHeight - 0.18,
     0.975,
     eastWallCenterX,
-    wallHeight / 2,
+    0.18 + (wallHeight - 0.18) / 2,
     -2.2925,
-    ['-x', '+y']
+    ['-x']
   );
   cutawayWallGroups.east.add(eastWallUtilNorthPier);
 
@@ -706,18 +718,18 @@ export function buildArchitecturalShellAndUtilityRoom(
     eastWallCenterX,
     2.57,
     -1.365,
-    ['-x', '+y']
+    ['-x']
   );
   cutawayWallGroups.east.add(eastWallUtilDoorHeader);
 
   const eastWallMidPier = createExteriorBrickWallBox(
     extWallThick,
-    wallHeight,
+    wallHeight - 0.18,
     0.575,
     eastWallCenterX,
-    wallHeight / 2,
+    0.18 + (wallHeight - 0.18) / 2,
     -0.6375,
-    ['-x', '+y']
+    ['-x']
   );
   cutawayWallGroups.east.add(eastWallMidPier);
 
@@ -732,12 +744,12 @@ export function buildArchitecturalShellAndUtilityRoom(
 
   const eastWallSouthPier = createExteriorBrickWallBox(
     extWallThick,
-    wallHeight,
+    wallHeight - 0.18,
     0.62,
     eastWallCenterX,
-    wallHeight / 2,
+    0.18 + (wallHeight - 0.18) / 2,
     1.96,
-    ['-x', '+y']
+    ['-x']
   );
   cutawayWallGroups.east.add(eastWallSouthPier);
 
@@ -748,7 +760,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     eastWallCenterX,
     2.76,
     0.65,
-    ['-x', '+y']
+    ['-x']
   );
   cutawayWallGroups.east.add(eastWindowHeader);
 
@@ -1584,7 +1596,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     -3.16,
     0.09,
     southWallCenterZ,
-    ['-z', '+y', '-x']
+    ['-z', '-x']
   );
   scene.add(southLowCutaway);
 
@@ -1595,7 +1607,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     -3.16,
     0.18 + (wallHeight - 0.18) / 2,
     southWallCenterZ,
-    ['-z', '+y', '-x']
+    ['-z', '-x']
   );
   cutawayWallGroups.southWest.add(southWestFullWall);
 
@@ -1607,7 +1619,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     -0.43,
     2.87,
     southWallCenterZ,
-    ['-z', '+y']
+    ['-z']
   );
   cutawayWallGroups.southWest.add(southWindowHeader);
 
@@ -1619,7 +1631,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     3.19,
     2.87,
     southWallCenterZ,
-    ['-z', '+y']
+    ['-z']
   );
   cutawayWallGroups.southWest.add(bifoldHeader);
 
@@ -1630,7 +1642,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     1.25,
     wallHeight / 2,
     southWallCenterZ,
-    ['-z', '+y']
+    ['-z']
   );
   cutawayWallGroups.southWest.add(bifoldLeftPier);
 
@@ -1641,7 +1653,7 @@ export function buildArchitecturalShellAndUtilityRoom(
     4.97,
     wallHeight / 2,
     southWallCenterZ,
-    ['-z', '+y']
+    ['-z']
   );
   cutawayWallGroups.southWest.add(bifoldRightPier);
 
@@ -1706,14 +1718,15 @@ export function buildArchitecturalShellAndUtilityRoom(
     [3.15, -0.85],
   ]);
 
-  // Smooth Plaster Ceiling over the 9.40m x 4.49m Kitchen & Utility Wing (spanning X = -4.64m..+5.22m, Z = -2.74m..+2.23m)
+  // Smooth Plaster Ceiling over the 9.40m x 4.49m Kitchen & Utility Wing (spanning interior X = -4.64m..+5.00m, Z = -2.50m..+1.99m,
+  // tucked inside the 0.28m exterior brick walls so it never pokes through the East Gable End — Issue #7)
   const ceilingMat = new THREE.MeshStandardMaterial({
     color: 0xf2eee6,
     roughness: 0.9,
     side: THREE.DoubleSide,
   });
-  const fullCeiling = new THREE.Mesh(new THREE.BoxGeometry(9.86, 0.08, 4.97), ceilingMat);
-  fullCeiling.position.set(0.29, 3.04, -0.255);
+  const fullCeiling = new THREE.Mesh(new THREE.BoxGeometry(9.64, 0.08, 4.49), ceilingMat);
+  fullCeiling.position.set(0.18, 3.04, -0.255);
   ceilingMeshGroup.add(fullCeiling);
 
   // =========================================================================
@@ -1818,10 +1831,10 @@ export function buildArchitecturalShellAndUtilityRoom(
     return mesh;
   };
 
-  // 1. Cross-Wall & East Gable End Imperial Brick Masonry Pentagons (starting at Y = 3.08m above the Kitchen ceiling slab)
+  // 1. Cross-Wall & East Gable End Imperial Brick Masonry Pentagons (starting flush at Y = 3.00m on top of the 3.00m brick walls — Issue #7)
   const gablePointsZY: ReadonlyArray<readonly [number, number]> = [
-    [wallNorthZ, 3.08],
-    [wallSouthZ, 3.08],
+    [wallNorthZ, 3.0],
+    [wallSouthZ, 3.0],
     [wallSouthZ, wallDeckY],
     [roofCenterZ, ridgeDeckY],
     [wallNorthZ, wallDeckY],

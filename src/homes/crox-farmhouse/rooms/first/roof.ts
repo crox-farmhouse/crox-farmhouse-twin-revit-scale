@@ -550,8 +550,8 @@ export function buildFirstFloorCeilingsAndRoof(
   const nsRidgeX = -19.79;
   const westEaveX = -22.69;
   const eastEaveX = -16.89;
-  const northGableZ = -3.751;
-  const northGableRidgeZ = -3.363;
+  const northGableZ = -3.75124;
+  const northGableRidgeZ = -3.36329;
   const southGableZ = 11.95;
 
   const ewRidgeZ = -0.05;
@@ -562,13 +562,15 @@ export function buildFirstFloorCeilingsAndRoof(
   const ewRidgeJunctionLocalX = -20.162;
   // Local East-West X where the East-West South eave (z_ew = 2.90m) meets the angled East Courtyard eave (0.22m East of the brick wall)
   const ewCourtyardValleyLocalX = -16.435;
-  // Local East-West X where the East-West North eave (z_ew = -3.00m) meets the North-East Gable eave (world X = -16.841m, Z = -2.969m — Issue #1!)
-  const ewNorthValleyLocalX = -17.582;
+  // Local East-West X where the East-West North eave (z_ew = -3.00m) meets the North-East Gable eave at exact world X = eastEaveX = -16.890m (Issues #5 & #6!)
+  const ewNorthValleyLocalX = -17.630852;
+  const ewNorthGableRidgeLocalX = -20.556686;
+  const ewNorthGableWestLocalX = -23.482521;
 
   // Key 3D Roof Junction Points (transformed from East-West Wing local frame into world space):
   const pRidgeJunction = transformEastWingPoint(ewRidgeJunctionLocalX, ridgeY, ewRidgeZ);
   const pRidgeEastGable = transformEastWingPoint(ewEastGableX, ridgeY, ewRidgeZ);
-  const pRidgeNorthGable = new THREE.Vector3(nsRidgeX, ridgeY, northGableRidgeZ);
+  const pRidgeNorthGable = transformEastWingPoint(ewNorthGableRidgeLocalX, ridgeY, ewNorthEaveZ);
   const pRidgeSouthGable = new THREE.Vector3(nsRidgeX, ridgeY, southGableZ);
 
   const pCourtyardValleyEave = transformEastWingPoint(ewCourtyardValleyLocalX, eaveY, ewSouthEaveZ);
@@ -624,26 +626,29 @@ export function buildFirstFloorCeilingsAndRoof(
   // -------------------------------------------------------------------------
   // C. Lead Ridge Caps & Lead-Lined Valley Flashing Channels (Photos 1 & 2)
   // -------------------------------------------------------------------------
-  // East-West Lead Ridge Roll Cap (local X = -20.162m to -4.40m at local Z = ewRidgeZ, Y = 5.83m)
-  const ewRidgeLen = ewEastGableX - ewRidgeJunctionLocalX;
+  // East-West Lead Ridge Roll Cap (local X = -20.162m to -4.41m at local Z = ewRidgeZ, Y = 5.83m)
+  const ewRidgeEndLocalX = ewEastGableX - 0.01;
+  const ewRidgeLen = ewRidgeEndLocalX - ewRidgeJunctionLocalX;
   const ewRidgeCap = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.062, 0.062, ewRidgeLen + 0.04, 16, 1, false, 0, Math.PI),
+    new THREE.CylinderGeometry(0.062, 0.062, ewRidgeLen, 16, 1, false, 0, Math.PI),
     ridgeLeadMat
   );
   ewRidgeCap.rotation.z = Math.PI / 2;
-  ewRidgeCap.position.set((ewRidgeJunctionLocalX + ewEastGableX) / 2, ridgeY + 0.01, ewRidgeZ);
+  ewRidgeCap.position.set((ewRidgeJunctionLocalX + ewRidgeEndLocalX) / 2, ridgeY + 0.01, ewRidgeZ);
   ewRidgeCap.castShadow = true;
   ewCeilingMeshGroup.add(ewRidgeCap);
 
-  // North-South Lead Ridge Roll Cap (Z = northGableRidgeZ to +11.95m at X = -19.79m, Y = 5.83m)
-  const nsRidgeLen = southGableZ - northGableRidgeZ;
+  // North-South Lead Ridge Roll Cap (Z = northGableRidgeZ + 0.015m to southGableZ - 0.015m at X = -19.79m, Y = 5.83m)
+  const nsRidgeStartZ = northGableRidgeZ + 0.015;
+  const nsRidgeEndZ = southGableZ - 0.015;
+  const nsRidgeLen = nsRidgeEndZ - nsRidgeStartZ;
   const nsRidgeCap = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.062, 0.062, nsRidgeLen + 0.04, 16, 1, false, 0, Math.PI),
+    new THREE.CylinderGeometry(0.062, 0.062, nsRidgeLen, 16, 1, false, 0, Math.PI),
     ridgeLeadMat
   );
   nsRidgeCap.rotation.x = Math.PI / 2;
   nsRidgeCap.rotation.z = Math.PI;
-  nsRidgeCap.position.set(nsRidgeX, ridgeY + 0.01, (northGableRidgeZ + southGableZ) / 2);
+  nsRidgeCap.position.set(nsRidgeX, ridgeY + 0.01, (nsRidgeStartZ + nsRidgeEndZ) / 2);
   nsRidgeCap.castShadow = true;
   ceilingMeshGroup.add(nsRidgeCap);
 
@@ -719,11 +724,11 @@ export function buildFirstFloorCeilingsAndRoof(
   ewEastGable.receiveShadow = true;
   ewCeilingMeshGroup.add(ewEastGable);
 
-  // 2. North Gable Upper Brick Apex above `bedroom2.northWallBrickGable` (`Y = 5.02m..5.82m`, `u = 1.42m..3.91m` -> apex `u = 2.68m`)
+  // 2. North Gable Upper Brick Apex above `bedroom2.northWallBrickGable` (`Y = 5.02m..5.745m`, `u = 1.41m..3.997m` -> apex `u = 2.704m` at `X = -19.79m`)
   const nsNorthGableShape = new THREE.Shape();
-  nsNorthGableShape.moveTo(1.42, gableCollarY);
-  nsNorthGableShape.lineTo(3.91, gableCollarY);
-  nsNorthGableShape.lineTo(2.68, ridgeY);
+  nsNorthGableShape.moveTo(1.41, gableCollarY);
+  nsNorthGableShape.lineTo(3.997, gableCollarY);
+  nsNorthGableShape.lineTo(2.704, 5.745);
   nsNorthGableShape.closePath();
   const nsNorthGableGeo = new THREE.ExtrudeGeometry(nsNorthGableShape, {
     depth: 0.28,
@@ -752,7 +757,7 @@ export function buildFirstFloorCeilingsAndRoof(
   const nsSouthGableShape = new THREE.Shape();
   nsSouthGableShape.moveTo(-20.99, gableCollarY);
   nsSouthGableShape.lineTo(-18.62, gableCollarY);
-  nsSouthGableShape.lineTo(nsRidgeX, ridgeY);
+  nsSouthGableShape.lineTo(nsRidgeX, 5.745);
   nsSouthGableShape.closePath();
   const nsSouthGableGeo = new THREE.ExtrudeGeometry(nsSouthGableShape, {
     depth: 0.28,
@@ -765,72 +770,138 @@ export function buildFirstFloorCeilingsAndRoof(
   nsSouthGable.receiveShadow = true;
   ceilingMeshGroup.add(nsSouthGable);
 
-  // White Painted Verge Bargeboards along all 3 Gables (East, North & South) using an exact right-handed orthonormal basis (Issue #3)
-  const addVergeBargeboard = (
-    pStart: THREE.Vector3,
-    pEnd: THREE.Vector3,
-    targetGroup: THREE.Group = ceilingMeshGroup
+  // Plumb-Mitered White Painted Verge Bargeboards + Sloped Boxed Verge Soffits along all 3 Gables (Issues #5 & #6):
+  // Eliminates the X-crossing / V-notch at the ridge apex and closes the underside overhang between the bargeboard and brick gable wall!
+  const addMiteredGableBargeboardsAndSoffit = (
+    uLeft: number,
+    uRidge: number,
+    uRight: number,
+    bargeZMin: number,
+    bargeZMax: number,
+    soffitZMin: number,
+    soffitZMax: number,
+    rotateY90: boolean,
+    targetGroup: THREE.Group
   ): void => {
-    const len = pStart.distanceTo(pEnd);
-    const mid = new THREE.Vector3().addVectors(pStart, pEnd).multiplyScalar(0.5);
-    const xAxis = new THREE.Vector3().subVectors(pEnd, pStart).normalize();
-    const horizLen = Math.hypot(xAxis.x, xAxis.z);
-    const zAxis =
-      horizLen > 1e-5
-        ? new THREE.Vector3(-xAxis.z / horizLen, 0, xAxis.x / horizLen)
-        : new THREE.Vector3(0, 0, 1);
-    const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
-    const basisMat = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+    const eaveTopY = eaveY + 0.035; // 4.215m (matches horizontal eaves fascia top!)
+    const eaveBotY = eaveY - 0.116; // 4.064m (matches horizontal eaves fascia & soffit bottom!)
+    const ridgeTopY = ridgeY + 0.035; // 5.855m
+    const ridgeBotY = ridgeY - 0.116; // 5.704m
+    const soffitThickY = 0.022;
 
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(len + 0.04, 0.15, 0.038),
-      soffitFasciaMat
+    const addExtrudedSlopeStrip = (
+      u0: number,
+      yBot0: number,
+      yTop0: number,
+      u1: number,
+      yBot1: number,
+      yTop1: number,
+      zMin: number,
+      zMax: number
+    ): void => {
+      const shape = new THREE.Shape();
+      shape.moveTo(u0, yBot0);
+      shape.lineTo(u1, yBot1);
+      shape.lineTo(u1, yTop1);
+      shape.lineTo(u0, yTop0);
+      shape.closePath();
+
+      const depth = zMax - zMin;
+      const geo = new THREE.ExtrudeGeometry(shape, {
+        depth,
+        bevelEnabled: false,
+      });
+      geo.translate(0, 0, zMin);
+      if (rotateY90) {
+        // Map (u, y, z) -> (-z, y, u) so u runs along local Z and zMin..zMax runs along local X!
+        geo.rotateY(Math.PI / 2);
+      }
+      geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, soffitFasciaMat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      targetGroup.add(mesh);
+    };
+
+    // Left & Right Plumb-Mitered Verge Bargeboards (meet along exact vertical plumb line u = uRidge!)
+    addExtrudedSlopeStrip(uLeft, eaveBotY, eaveTopY, uRidge, ridgeBotY, ridgeTopY, bargeZMin, bargeZMax);
+    addExtrudedSlopeStrip(uRidge, ridgeBotY, ridgeTopY, uRight, eaveBotY, eaveTopY, bargeZMin, bargeZMax);
+
+    // Left & Right Sloped Boxed Verge Soffits (close the 0.22m overhang between the bargeboard and brick gable wall!)
+    addExtrudedSlopeStrip(
+      uLeft,
+      eaveBotY,
+      eaveBotY + soffitThickY,
+      uRidge,
+      ridgeBotY,
+      ridgeBotY + soffitThickY,
+      soffitZMin,
+      soffitZMax
     );
-    mesh.position.set(mid.x, mid.y - 0.05, mid.z);
-    mesh.quaternion.setFromRotationMatrix(basisMat);
-    mesh.castShadow = true;
-    targetGroup.add(mesh);
+    addExtrudedSlopeStrip(
+      uRidge,
+      ridgeBotY,
+      ridgeBotY + soffitThickY,
+      uRight,
+      eaveBotY,
+      eaveBotY + soffitThickY,
+      soffitZMin,
+      soffitZMax
+    );
   };
 
-  // East Gable Bargeboards (at local X = -4.41m in ewCeilingMeshGroup)
-  addVergeBargeboard(
-    new THREE.Vector3(-4.41, eaveY, ewNorthEaveZ),
-    new THREE.Vector3(-4.41, ridgeY, ewRidgeZ),
-    ewCeilingMeshGroup
-  );
-  addVergeBargeboard(
-    new THREE.Vector3(-4.41, eaveY, ewSouthEaveZ),
-    new THREE.Vector3(-4.41, ridgeY, ewRidgeZ),
+  // 1. North Gable Plumb-Mitered Bargeboards & Sloped Verge Soffit (in ewCeilingMeshGroup at z_ew = -2.992m..-2.750m — Issues #5 & #6!)
+  addMiteredGableBargeboardsAndSoffit(
+    ewNorthGableWestLocalX,
+    ewNorthGableRidgeLocalX,
+    ewNorthValleyLocalX,
+    ewNorthEaveZ + 0.008, // -2.992m (coplanar with East-West North Eaves Fascia front face!)
+    ewNorthEaveZ + 0.046, // -2.954m (0.038m thick)
+    ewNorthEaveZ + 0.01,  // -2.990m (coplanar with East-West North Eaves Soffit front edge!)
+    ewNorthEaveZ + 0.25,  // -2.750m (0.240m deep into North brick wall at z_ew = -2.780m!)
+    false,
     ewCeilingMeshGroup
   );
 
-  // North & South Gable Bargeboards
-  for (const [ridgePt, westPt, eastPt] of [
-    [
-      new THREE.Vector3(nsRidgeX, ridgeY, northGableRidgeZ + 0.01),
-      new THREE.Vector3(westEaveX, eaveY, northGableZ + 0.01),
-      new THREE.Vector3(pNorthValleyEave.x, eaveY, pNorthValleyEave.z + 0.01),
-    ],
-    [
-      new THREE.Vector3(nsRidgeX, ridgeY, southGableZ - 0.01),
-      new THREE.Vector3(westEaveX, eaveY, southGableZ - 0.01),
-      new THREE.Vector3(eastEaveX, eaveY, southGableZ - 0.01),
-    ],
-  ] as const) {
-    addVergeBargeboard(westPt, ridgePt, ceilingMeshGroup);
-    addVergeBargeboard(eastPt, ridgePt, ceilingMeshGroup);
-  }
+  // 2. South Gable Plumb-Mitered Bargeboards & Sloped Verge Soffit (in ceilingMeshGroup at Z = 11.750m..11.950m)
+  addMiteredGableBargeboardsAndSoffit(
+    westEaveX,
+    nsRidgeX,
+    eastEaveX,
+    southGableZ - 0.046,
+    southGableZ - 0.008,
+    southGableZ - 0.25,
+    southGableZ - 0.01,
+    false,
+    ceilingMeshGroup
+  );
 
-  // White Painted Eaves Fascia Boards, Boxed Eaves Soffits & Pale Sage-Green Half-Round Gutters at Y = 4.18m (Issue #11, Issue #3 & Issue #1 L-corner join)
+  // 3. East Gable Plumb-Mitered Bargeboards & Sloped Verge Soffit (in ewCeilingMeshGroup at x_ew = -4.650m..-4.392m)
+  // Note: with rotateY(Math.PI / 2), (u, y, z) maps to (z, y, -u), so u = -ewSouthEaveZ..-ewNorthEaveZ maps to z_ew = +2.90m..-3.00m!
+  addMiteredGableBargeboardsAndSoffit(
+    -ewSouthEaveZ,
+    -ewRidgeZ,
+    -ewNorthEaveZ,
+    ewEastGableX - 0.028, // -4.428m
+    ewEastGableX + 0.01,  // -4.390m
+    ewEastGableX - 0.25,  // -4.650m (into East brick wall at x_ew = -4.640m)
+    ewEastGableX - 0.01,  // -4.410m
+    true,
+    ewCeilingMeshGroup
+  );
+
+  // White Painted Eaves Fascia Boards, Boxed Eaves Soffits & Pale Sage-Green Half-Round Gutters at Y = 4.18m (Issue #11, Issue #3, Issue #1 & Issue #6)
+  const ewNorthEaveSpanX = ewEastGableX - ewNorthValleyLocalX; // 13.230852m (from -17.630852m to -4.400m)
+  const ewNorthEaveMidX = (ewNorthValleyLocalX + ewEastGableX) * 0.5; // -11.015426m
   for (const [fasciaZ, signZ, fasciaSpanX, fasciaMidX, soffitSpanX, soffitMidX, gutterSpanX, gutterMidX] of [
-    [ewNorthEaveZ + 0.02, -1, 13.182, -10.991, 13.182, -10.991, 13.182, -10.991],    // East-West North eaves extended to North Valley (local X = -17.582m..-4.40m — Issue #1!)
+    [ewNorthEaveZ + 0.02, -1, ewNorthEaveSpanX, ewNorthEaveMidX, ewNorthEaveSpanX, ewNorthEaveMidX, ewNorthEaveSpanX, ewNorthEaveMidX], // East-West North eaves joined seamlessly at North Valley (x_ew = -17.630852m — Issue #6!)
     [ewSouthEaveZ - 0.02, 1, 12.057, -10.4285, 12.275, -10.5375, 12.087, -10.4435],  // East-West South courtyard eaves extended cleanly into L-corner
   ] as const) {
     const fascia = new THREE.Mesh(
-      new THREE.BoxGeometry(fasciaSpanX, 0.15, 0.024),
+      new THREE.BoxGeometry(fasciaSpanX, 0.151, 0.024),
       soffitFasciaMat
     );
-    fascia.position.set(fasciaMidX, eaveY - 0.04, fasciaZ);
+    fascia.position.set(fasciaMidX, eaveY - 0.0405, fasciaZ);
     fascia.castShadow = true;
     ewCeilingMeshGroup.add(fascia);
 
@@ -849,6 +920,18 @@ export function buildFirstFloorCeilingsAndRoof(
     gutter.rotation.z = Math.PI / 2;
     gutter.position.set(gutterMidX, eaveY - 0.01, fasciaZ + signZ * 0.068);
     ewCeilingMeshGroup.add(gutter);
+  }
+
+  // North Eave Brick Wall-Plate Backing (`x_ew = -17.78m..-4.64m, y = 4.064m..4.22m, z_ew = -2.78m..-2.50m`)
+  // Closes any vertical gap between the 4.16m North brick wall and the 4.064m..4.22m boxed eaves soffit & slate roof at the North Valley (Issue #6)
+  {
+    const northBackingW = -4.64 - -17.78;
+    const northBackingCx = (-17.78 + -4.64) * 0.5;
+    const northBackingGeo = new THREE.BoxGeometry(northBackingW, 0.156, 0.28);
+    applyWorldSpaceBrickUVs(northBackingGeo, northBackingCx, 4.142, -2.64);
+    const northEaveBacking = new THREE.Mesh(northBackingGeo, exteriorBrickMat);
+    northEaveBacking.position.set(northBackingCx, 4.142, -2.64);
+    ewCeilingMeshGroup.add(northEaveBacking);
   }
 
   // West Front Eaves Fascia, Soffit & Gutter (straight along X = westEaveX = -22.69m)

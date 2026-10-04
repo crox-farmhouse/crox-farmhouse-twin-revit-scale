@@ -92,22 +92,35 @@ export function buildBedroom2(
 
     const northBrickGableShape = new THREE.Shape();
     northBrickGableShape.moveTo(0, upperWallTopY);
-    northBrickGableShape.lineTo(5.36, upperWallTopY);
-    northBrickGableShape.lineTo(3.91, collarCeilingY);
-    northBrickGableShape.lineTo(1.42, collarCeilingY);
+    northBrickGableShape.lineTo(5.662, upperWallTopY);
+    northBrickGableShape.lineTo(5.532, 4.23);
+    northBrickGableShape.lineTo(3.997, collarCeilingY);
+    northBrickGableShape.lineTo(1.41, collarCeilingY);
+    northBrickGableShape.lineTo(0, 4.229);
     northBrickGableShape.closePath();
     const northBrickGableGeo = new THREE.ExtrudeGeometry(northBrickGableShape, {
       depth: 0.28,
       bevelEnabled: false,
     });
     northBrickGableGeo.translate(0, 0, -0.14);
+    const gablePos = northBrickGableGeo.attributes.position;
+    if (gablePos) {
+      const nwShearDuPerZ = -bed2NorthWallFrame.normal[0] / bed2NorthWallFrame.tangent[0];
+      for (let i = 0; i < gablePos.count; i++) {
+        if (gablePos.getX(i) < 0.05) {
+          gablePos.setX(i, gablePos.getX(i) + gablePos.getZ(i) * nwShearDuPerZ);
+        }
+      }
+      gablePos.needsUpdate = true;
+      northBrickGableGeo.computeVertexNormals();
+    }
     const northBrickUv = northBrickGableGeo.attributes.uv;
-    if (northBrickUv) {
+    if (northBrickUv && gablePos) {
       for (let i = 0; i < northBrickUv.count; i++) {
         northBrickUv.setXY(
           i,
-          northBrickUv.getX(i) / 1.35,
-          northBrickUv.getY(i) / 1.2
+          gablePos.getX(i) / 1.35,
+          gablePos.getY(i) / 1.2
         );
       }
       northBrickUv.needsUpdate = true;

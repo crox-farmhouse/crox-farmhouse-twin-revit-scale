@@ -422,6 +422,17 @@ export function buildAngledWallSegment(
     }
   };
 
+  // When an angled exterior wall starts at the West facade outer plane (X = -22.47m),
+  // shear its u = 0 end cap flush to world X = -22.47m and inset its interior (+normal)
+  // cladding & skirting by 0.285m so they start at the inner West wall face (X = -22.19m)
+  // and never poke through the West exterior brick wall (Issues #1 & #2).
+  const isNorthWestExteriorCorner =
+    Math.abs(config.start[0] - -22.47) < 0.01 && Math.abs(frame.tangent[0]) > 0.5;
+  const nwShearDuPerZ = isNorthWestExteriorCorner
+    ? -frame.normal[0] / frame.tangent[0]
+    : 0;
+  const frontInsetStartU = isNorthWestExteriorCorner ? 0.285 : 0;
+
   // Helper to add a solid wall pier from u0 to u1
   const addWallPier = (
     u0: number,
@@ -434,12 +445,23 @@ export function buildAngledWallSegment(
     const uMid = (u0 + u1) / 2;
 
     if (!config.skipWallBody) {
+      const pierGeo = new THREE.BoxGeometry(segW, fullWallH, config.thickness);
+      if (isNorthWestExteriorCorner && u0 < 0.005) {
+        const posAttr = pierGeo.attributes.position;
+        if (posAttr) {
+          for (let i = 0; i < posAttr.count; i++) {
+            if (posAttr.getX(i) < 0) {
+              const zLocal = posAttr.getZ(i);
+              posAttr.setX(i, -segW / 2 + zLocal * nwShearDuPerZ);
+            }
+          }
+          posAttr.needsUpdate = true;
+          pierGeo.computeVertexNormals();
+          pierGeo.userData.isSheared = true;
+        }
+      }
       const pier = new THREE.Mesh(
-        applyLocalWallBrickUVs(
-          new THREE.BoxGeometry(segW, fullWallH, config.thickness),
-          uMid,
-          fullWallMidY
-        ),
+        applyLocalWallBrickUVs(pierGeo, uMid, fullWallMidY),
         config.wallMaterial
       );
       pier.position.set(uMid, fullWallMidY, 0);
@@ -467,22 +489,27 @@ export function buildAngledWallSegment(
     }
 
     if (config.frontFaceMaterial) {
-      const frontH = config.topY - config.frontFloorY;
-      const frontMidY = (config.frontFloorY + config.topY) / 2;
-      const frontClad = new THREE.Mesh(
-        applyLocalWallBrickUVs(new THREE.BoxGeometry(segW, frontH, 0.014), uMid, frontMidY),
-        config.frontFaceMaterial
-      );
-      frontClad.position.set(
-        uMid,
-        frontMidY,
-        config.thickness / 2 + 0.007
-      );
-      frontClad.receiveShadow = true;
-      group.add(frontClad);
+      const cladU0 = Math.max(u0, frontInsetStartU);
+      const cladW = u1 - cladU0;
+      if (cladW > 0.005) {
+        const cladMidU = (cladU0 + u1) / 2;
+        const frontH = config.topY - config.frontFloorY;
+        const frontMidY = (config.frontFloorY + config.topY) / 2;
+        const frontClad = new THREE.Mesh(
+          applyLocalWallBrickUVs(new THREE.BoxGeometry(cladW, frontH, 0.014), cladMidU, frontMidY),
+          config.frontFaceMaterial
+        );
+        frontClad.position.set(
+          cladMidU,
+          frontMidY,
+          config.thickness / 2 + 0.007
+        );
+        frontClad.receiveShadow = true;
+        group.add(frontClad);
+      }
     }
 
-    const skirtU0 = u0 + (trimLeftArchitrave ? 0.082 : 0);
+    const skirtU0 = Math.max(u0 + (trimLeftArchitrave ? 0.082 : 0), frontInsetStartU);
     const skirtU1 = u1 - (trimRightArchitrave ? 0.082 : 0);
 
     if (config.skirtingMaterial && config.addFrontSkirting) {
@@ -888,7 +915,18 @@ export function buildMiteredPolylineStrip(
   const miters: [number, number][] = [];
   for (let k = 0; k <= segCount; k++) {
     if (k === 0) {
-      miters.push(normals[0]);
+      // At the NW corner of the Front Room ([-22.19, -3.18]), miter the start cap along the
+      // 7.62° angled North exterior brick wall so the outer face (X = -22.47m) extends to Z = -3.2177m
+      // and meets the North wall with zero gap and zero overlap (Issues #1 & #2).
+      if (
+        Math.abs(points[0][0] - -22.19) < 0.01 &&
+        Math.abs(points[0][1] - -3.18) < 0.05 &&
+        Math.abs(normals[0][0] - 1) < 0.01
+      ) {
+        miters.push([1, 0.133771]);
+      } else {
+        miters.push(normals[0]);
+      }
     } else if (k === segCount) {
       miters.push(normals[segCount - 1]);
     } else {
@@ -922,15 +960,113 @@ export function buildMiteredPolylineStrip(
 
     const outerLen = Math.hypot(bx - ax, bz - az);
     const innerLen = Math.hypot(cx - dx, cz - dz);
-    const u0 = outerArcU / tileW;
-    const u1 = (outerArcU + outerLen) / tileW;
-    outerArcU += outerLen;
+    const isStraightAlongZ = Math.abs(ax - bx) < 1e-4;
+    const u0 = isStraightAlongZ ? az / tileW : outerArcU / tileW;
+    const u1 = isStraightAlongZ ? bz / tileW : (outerArcU + outerLen) / tileW;
+    outerArcU = isStraightAlongZ ? bz : outerArcU + outerLen;
 
     if (i < startSeg || i >= endSeg) continue;
 
-
     const v0 = yBottom / tileH;
     const v1 = yTop / tileH;
+
+    if (Array.isArray(materials) && materials[0] !== materials[1]) {
+      // Emit separate single-material meshes for the interior face (+N) and the exterior/cap faces (-N, ±Y, ±T)
+      // so OpenUSD export, raycast inspection, and static batching bind the exact exterior brick material (Issues #2 & #3).
+      const innerPositions = new Float32Array([
+        dx, yBottom, dz,
+        dx, yTop, dz,
+        cx, yTop, cz,
+        cx, yBottom, cz,
+      ]);
+      const innerUvs = new Float32Array([
+        0, v0,
+        0, v1,
+        innerLen / tileW, v1,
+        innerLen / tileW, v0,
+      ]);
+      const innerGeo = new THREE.BufferGeometry();
+      innerGeo.setAttribute('position', new THREE.BufferAttribute(innerPositions, 3));
+      innerGeo.setAttribute('uv', new THREE.BufferAttribute(innerUvs, 2));
+      innerGeo.setIndex([0, 1, 2, 0, 2, 3]);
+      innerGeo.computeVertexNormals();
+      const innerMesh = new THREE.Mesh(innerGeo, materials[0]);
+      innerMesh.castShadow = castShadow;
+      innerMesh.receiveShadow = receiveShadow;
+      stripGroup.add(innerMesh);
+
+      const outerPositions = new Float32Array([
+        // 0..3: Outer Face (-N): A0, B0, B1, A1
+        ax, yBottom, az,
+        bx, yBottom, bz,
+        bx, yTop, bz,
+        ax, yTop, az,
+        // 4..7: Top Face (+Y): A1, B1, C1, D1
+        ax, yTop, az,
+        bx, yTop, bz,
+        cx, yTop, cz,
+        dx, yTop, dz,
+        // 8..11: Bottom Face (-Y): A0, D0, C0, B0
+        ax, yBottom, az,
+        dx, yBottom, dz,
+        cx, yBottom, cz,
+        bx, yBottom, bz,
+        // 12..15: Start Cap (-T): A0, A1, D1, D0
+        ax, yBottom, az,
+        ax, yTop, az,
+        dx, yTop, dz,
+        dx, yBottom, dz,
+        // 16..19: End Cap (+T): B0, C0, C1, B1
+        bx, yBottom, bz,
+        cx, yBottom, cz,
+        cx, yTop, cz,
+        bx, yTop, bz,
+      ]);
+      const outerUvs = new Float32Array([
+        // Outer Face
+        u0, v0,
+        u1, v0,
+        u1, v1,
+        u0, v1,
+        // Top Face
+        ax / tileW, az / tileH,
+        bx / tileW, bz / tileH,
+        cx / tileW, cz / tileH,
+        dx / tileW, dz / tileH,
+        // Bottom Face
+        ax / tileW, az / tileH,
+        dx / tileW, dz / tileH,
+        cx / tileW, cz / tileH,
+        bx / tileW, bz / tileH,
+        // Start Cap
+        0, v0,
+        0, v1,
+        (dIn - dOut) / tileW, v1,
+        (dIn - dOut) / tileW, v0,
+        // End Cap
+        0, v0,
+        (dIn - dOut) / tileW, v0,
+        (dIn - dOut) / tileW, v1,
+        0, v1,
+      ]);
+      const outerIndices = [
+        0, 1, 2, 0, 2, 3,       // Outer Face
+        4, 5, 6, 4, 6, 7,       // Top Face
+        8, 9, 10, 8, 10, 11,    // Bottom Face
+        12, 13, 14, 12, 14, 15, // Start Cap
+        16, 17, 18, 16, 18, 19, // End Cap
+      ];
+      const outerGeo = new THREE.BufferGeometry();
+      outerGeo.setAttribute('position', new THREE.BufferAttribute(outerPositions, 3));
+      outerGeo.setAttribute('uv', new THREE.BufferAttribute(outerUvs, 2));
+      outerGeo.setIndex(outerIndices);
+      outerGeo.computeVertexNormals();
+      const outerMesh = new THREE.Mesh(outerGeo, materials[1]);
+      outerMesh.castShadow = castShadow;
+      outerMesh.receiveShadow = receiveShadow;
+      stripGroup.add(outerMesh);
+      continue;
+    }
 
     // 24 vertices (4 per face * 6 faces) for crisp flat normals and per-face UVs
     const positions = new Float32Array([
@@ -1015,15 +1151,8 @@ export function buildMiteredPolylineStrip(
     geo.setIndex(indices);
     geo.computeVertexNormals();
 
-    let mesh: THREE.Mesh;
-    if (Array.isArray(materials)) {
-      geo.addGroup(0, 6, 0);
-      geo.addGroup(6, 6, 1);
-      geo.addGroup(12, 24, 2);
-      mesh = new THREE.Mesh(geo, [materials[0], materials[1], materials[2]]);
-    } else {
-      mesh = new THREE.Mesh(geo, materials as THREE.Material);
-    }
+    const singleMat = Array.isArray(materials) ? materials[0] : (materials as THREE.Material);
+    const mesh = new THREE.Mesh(geo, singleMat);
     mesh.castShadow = castShadow;
     mesh.receiveShadow = receiveShadow;
     stripGroup.add(mesh);

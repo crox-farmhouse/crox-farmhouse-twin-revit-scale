@@ -1670,45 +1670,45 @@ export function createGroundFloorShellKit(
       metalness: 0.38,
     });
 
-    // Interior ceiling soffit & overhanging white eaves fascia deck (Y = frontWallH..frontWallH + 0.055m)
-    buildPolygonalFloorSlab(
-      bayWallGroup,
-      [
-        [wallInnerX + 0.02, centerZ - bayHalfZ - 0.04],
-        [bayInnerFrontX - 0.28, centerZ - frontW / 2 - 0.14],
-        [bayInnerFrontX - 0.28, centerZ + frontW / 2 + 0.14],
-        [wallInnerX + 0.02, centerZ + bayHalfZ + 0.04],
-      ],
-      frontWallH + 0.02,
-      0.04,
-      skirtingMat,
-      0.5
-    );
-    buildPolygonalFloorSlab(
-      bayWallGroup,
-      [
-        [wallInnerX - 0.26, centerZ - bayHalfZ - 0.18],
-        [bayInnerFrontX - 0.36, centerZ - frontW / 2 - 0.22],
-        [bayInnerFrontX - 0.36, centerZ + frontW / 2 + 0.22],
-        [wallInnerX - 0.26, centerZ + bayHalfZ + 0.18],
-      ],
-      frontWallH + 0.055,
-      0.035,
-      skirtingMat,
-      0.5
-    );
-
-    // True 3-Facet Pitched Hipped Bay Roof sloping from the main West brick wall (X = -22.46m, Y = frontWallH + 0.32m)
+    // True 3-Facet Pitched Hipped Bay Roof sloping from the main West brick wall exterior face (X = -22.47m, Y = frontWallH + 0.32m)
     // down to the overhanging canted eaves (Y = frontWallH + 0.055m)
     const eaveRoofY = frontWallH + 0.055;
     const ridgeRoofY = frontWallH + 0.32;
-    const wallApexX = wallInnerX - 0.265; // Flush against exterior face of West brick wall (-22.455m)
+    const wallApexX = wallInnerX - 0.28; // Exact exterior face of West brick wall (-22.47m — Issues #2 & #3)
     const eaveFrontX = bayInnerFrontX - 0.36; // Overhanging front eaves (-22.88m)
 
-    const e0 = new THREE.Vector3(wallApexX, eaveRoofY, centerZ - bayHalfZ - 0.18);
-    const e1 = new THREE.Vector3(eaveFrontX, eaveRoofY, centerZ - frontW / 2 - 0.22);
-    const e2 = new THREE.Vector3(eaveFrontX, eaveRoofY, centerZ + frontW / 2 + 0.22);
-    const e3 = new THREE.Vector3(wallApexX, eaveRoofY, centerZ + bayHalfZ + 0.18);
+    // Interior bay ceiling soffit (strictly inside the bay walls) & exterior overhanging 3-facet white eaves fascia deck (X <= -22.47m)
+    buildPolygonalFloorSlab(
+      bayWallGroup,
+      [
+        [wallInnerX, centerZ - bayHalfZ],
+        [bayInnerFrontX - 0.14, centerZ - frontW / 2],
+        [bayInnerFrontX - 0.14, centerZ + frontW / 2],
+        [wallInnerX, centerZ + bayHalfZ],
+      ],
+      frontWallH + 0.01,
+      0.03,
+      skirtingMat,
+      0.5
+    );
+    buildPolygonalFloorSlab(
+      bayWallGroup,
+      [
+        [wallApexX, centerZ - bayHalfZ - 0.14],
+        [eaveFrontX, centerZ - frontW / 2 - 0.2],
+        [eaveFrontX, centerZ + frontW / 2 + 0.2],
+        [wallApexX, centerZ + bayHalfZ + 0.14],
+      ],
+      eaveRoofY,
+      0.055,
+      skirtingMat,
+      0.5
+    );
+
+    const e0 = new THREE.Vector3(wallApexX, eaveRoofY, centerZ - bayHalfZ - 0.14);
+    const e1 = new THREE.Vector3(eaveFrontX, eaveRoofY, centerZ - frontW / 2 - 0.2);
+    const e2 = new THREE.Vector3(eaveFrontX, eaveRoofY, centerZ + frontW / 2 + 0.2);
+    const e3 = new THREE.Vector3(wallApexX, eaveRoofY, centerZ + bayHalfZ + 0.14);
     const rNorth = new THREE.Vector3(wallApexX, ridgeRoofY, centerZ - frontW * 0.42);
     const rSouth = new THREE.Vector3(wallApexX, ridgeRoofY, centerZ + frontW * 0.42);
 
@@ -1737,12 +1737,17 @@ export function createGroundFloorShellKit(
     bayWallGroup.add(bayRoofMesh);
 
     // Rounded lead hip roll batten caps along the two diagonal hip ridges (rNorth->e1, rSouth->e2) & wall flashing ridge
+    const flashApexX = wallApexX - 0.012;
+    const fE0 = new THREE.Vector3(flashApexX, eaveRoofY, centerZ - bayHalfZ - 0.14);
+    const fE3 = new THREE.Vector3(flashApexX, eaveRoofY, centerZ + bayHalfZ + 0.14);
+    const fRNorth = new THREE.Vector3(flashApexX, ridgeRoofY, centerZ - frontW * 0.42);
+    const fRSouth = new THREE.Vector3(flashApexX, ridgeRoofY, centerZ + frontW * 0.42);
     for (const [pStart, pEnd, rad] of [
-      [rNorth, e1, 0.022],
-      [rSouth, e2, 0.022],
-      [e0, rNorth, 0.02],
-      [rNorth, rSouth, 0.024],
-      [rSouth, e3, 0.02],
+      [fRNorth, e1, 0.02],
+      [fRSouth, e2, 0.02],
+      [fE0, fRNorth, 0.012],
+      [fRNorth, fRSouth, 0.014],
+      [fRSouth, fE3, 0.012],
     ] as const) {
       const curve = new THREE.LineCurve3(pStart, pEnd);
       const rollMesh = new THREE.Mesh(
@@ -1755,7 +1760,7 @@ export function createGroundFloorShellKit(
 
     // Vertical standing-seam lead bay roof ribs on the front slope for period authenticity
     for (const seamZOff of [-0.42, 0, 0.42] as const) {
-      const pTop = new THREE.Vector3(wallApexX, ridgeRoofY, centerZ + seamZOff);
+      const pTop = new THREE.Vector3(wallApexX - 0.008, ridgeRoofY, centerZ + seamZOff);
       const pBot = new THREE.Vector3(eaveFrontX, eaveRoofY, centerZ + seamZOff);
       const seamCurve = new THREE.LineCurve3(pTop, pBot);
       const seamRoll = new THREE.Mesh(
@@ -1793,26 +1798,15 @@ export function createGroundFloorShellKit(
       exteriorBrickMat,
     ];
 
-    // 1. Continuous Mitered Lower Wall across the full room West wall + bay (y = bayBaseY - 0.04 .. sillY, d = -0.28..0)
+    // 1. One-piece Full-Height West Wall Flanks on North (segment 0) and South (segment 4) of the bay window
+    //    (y = bayBaseY - 0.04 .. frontWallH, d = -0.28..0 — eliminates horizontal seam splits at sillY/headY, Issues #2 & #3!)
     buildMiteredPolylineStrip(
       bayWallGroup,
       bayPolyline,
       -0.28,
       0,
       bayBaseY - 0.04,
-      sillY,
-      wallMatTuple
-    );
-
-    // 2. Mid-Height Full West Wall Flanks (segments 0 and 4: y = sillY .. headY, d = -0.28..0)
-    //    Terminates at the exact miter plane at P1 and P4 against the white window jamb linings!
-    buildMiteredPolylineStrip(
-      bayWallGroup,
-      bayPolyline,
-      -0.28,
-      0,
-      sillY,
-      headY,
+      frontWallH,
       wallMatTuple,
       true,
       true,
@@ -1823,15 +1817,29 @@ export function createGroundFloorShellKit(
       bayPolyline,
       -0.28,
       0,
-      sillY,
-      headY,
+      bayBaseY - 0.04,
+      frontWallH,
       wallMatTuple,
       true,
       true,
       [4, 5]
     );
 
-    // 3. Continuous Mitered Upper Header Wall (y = headY .. frontWallH, d = -0.28..0),
+    // 2. Continuous Mitered Lower Spandrel Wall across the 3 projecting bay facets (segments 1..4: y = bayBaseY - 0.04 .. sillY, d = -0.28..0)
+    buildMiteredPolylineStrip(
+      bayWallGroup,
+      bayPolyline,
+      -0.28,
+      0,
+      bayBaseY - 0.04,
+      sillY,
+      wallMatTuple,
+      true,
+      true,
+      [1, 4]
+    );
+
+    // 3. Continuous Mitered Upper Header Spandrel Wall across the 3 projecting bay facets (segments 1..4: y = headY .. frontWallH, d = -0.28..0),
     //    PLUS Flat Interior Header Reveal Wall all the way across X = wallInnerX & Trapezoidal Bay Ceiling Reveal Soffit (Issues #6 & #15)
     buildMiteredPolylineStrip(
       bayWallGroup,
@@ -1840,7 +1848,10 @@ export function createGroundFloorShellKit(
       0,
       headY,
       frontWallH,
-      wallMatTuple
+      wallMatTuple,
+      true,
+      true,
+      [1, 4]
     );
 
     // Flat interior header wall across the bay opening at X = wallInnerX (-22.19m), Y = headY..frontWallH,
@@ -1862,14 +1873,14 @@ export function createGroundFloorShellKit(
     flatHeaderWall.receiveShadow = true;
     bayWallGroup.add(flatHeaderWall);
 
-    // Flat cutaway top cap across the bay opening at X = wallInnerX
+    // Flat cutaway top cap across the bay opening at X = wallInnerX (recessed so it never pokes above frontWallH)
     const flatHeaderCap = new THREE.Mesh(
-      new THREE.BoxGeometry(flatHeaderDepthX + 0.008, 0.028, flatHeaderLenZ),
+      new THREE.BoxGeometry(flatHeaderDepthX - 0.012, 0.016, flatHeaderLenZ - 0.012),
       wallCapMat
     );
     flatHeaderCap.position.set(
       wallInnerX - flatHeaderDepthX / 2,
-      frontWallH + 0.014,
+      frontWallH - 0.006,
       centerZ
     );
     bayWallGroup.add(flatHeaderCap);
@@ -1908,26 +1919,14 @@ export function createGroundFloorShellKit(
       bayWallGroup.add(bayRevealSoffit);
     }
 
-    // Moulded white exterior eaves fascia around the 3 projecting bay facets (segments 1..4) under the lead roof
+    // Recessed cutaway top caps on segments 0 and 4 (strictly inside d = -0.268..-0.012 and below frontWallH so they never protrude out of the brick wall — Issues #2 & #3)
     buildMiteredPolylineStrip(
       bayWallGroup,
       bayPolyline,
-      -0.315,
-      -0.18,
-      frontWallH - 0.02,
-      frontWallH + 0.045,
-      skirtingMat,
-      true,
-      true,
-      [1, 4]
-    );
-    buildMiteredPolylineStrip(
-      bayWallGroup,
-      bayPolyline,
-      -0.284,
-      0.004,
-      frontWallH,
-      frontWallH + 0.028,
+      -0.268,
+      -0.012,
+      frontWallH - 0.016,
+      frontWallH - 0.002,
       wallCapMat,
       false,
       false,
@@ -1936,10 +1935,10 @@ export function createGroundFloorShellKit(
     buildMiteredPolylineStrip(
       bayWallGroup,
       bayPolyline,
-      -0.284,
-      0.004,
-      frontWallH,
-      frontWallH + 0.028,
+      -0.268,
+      -0.012,
+      frontWallH - 0.016,
+      frontWallH - 0.002,
       wallCapMat,
       false,
       false,

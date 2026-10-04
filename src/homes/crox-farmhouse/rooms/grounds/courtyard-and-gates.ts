@@ -581,9 +581,102 @@ export function buildCourtyardAndGates(
   }
 
   // -------------------------------------------------------------------------
-  // Climbing Green Ivy / Virginia Creeper on the Courtyard & Front Bay Walls (Photos 1, 2 & 3)
+  // High-LOD Botanical Climbing English Ivy (Hedera helix) on Courtyard & Front Bay Walls (Issue #4)
+  // Built from branching woody climbing stems (TubeGeometry) + shingled 3-lobed palmate ivy leaf sprays
   // -------------------------------------------------------------------------
-  const ivyFoliageGeo = new THREE.DodecahedronGeometry(1, 0);
+  const ivyStemMat = new THREE.MeshStandardMaterial({
+    color: 0x4d3b2c,
+    roughness: 0.88,
+    metalness: 0.02,
+  });
+  const ivyYoungGreenMat = new THREE.MeshStandardMaterial({
+    color: 0x4b7a3a,
+    roughness: 0.64,
+    metalness: 0.03,
+    side: THREE.DoubleSide,
+  });
+
+  // Builds a single reusable multi-leaf shingled botanical ivy spray geometry (5 overlapping 3-lobed cordate ivy blades)
+  // in wall-local coordinates where +X is outward from the wall, +Y is up, and Z is lateral along the wall.
+  const createBotanicalIvySprayGeometry = (): THREE.BufferGeometry => {
+    const positions: number[] = [];
+    const normals: number[] = [];
+    const indices: number[] = [];
+
+    const addLobedIvyBlade = (
+      ox: number,
+      oy: number,
+      oz: number,
+      len: number,
+      width: number,
+      yawRad: number,
+      pitchRad: number,
+      rollRad: number
+    ): void => {
+      const baseVertex = positions.length / 3;
+      const euler = new THREE.Euler(rollRad, yawRad, pitchRad, 'YXZ');
+      const quat = new THREE.Quaternion().setFromEuler(euler);
+      const vTmp = new THREE.Vector3();
+
+      // 11-vertex 3-lobed palmate/cordate ivy leaf blade:
+      // 0: petiole base, 1: center midrib, 2: main apex tip,
+      // 3: left basal lobe, 4: left lateral lobe tip, 5: left sinus notch, 6: left upper shoulder,
+      // 7: right basal lobe, 8: right lateral lobe tip, 9: right sinus notch, 10: right upper shoulder
+      const localPts: ReadonlyArray<readonly [number, number, number]> = [
+        [0.0, 0.0, 0.0],
+        [0.012 * len, -0.44 * len, 0.0],
+        [0.028 * len, -1.0 * len, 0.0],
+        [0.006 * len, 0.14 * len, -0.32 * width],
+        [0.018 * len, -0.32 * len, -0.52 * width],
+        [0.014 * len, -0.46 * len, -0.26 * width],
+        [0.022 * len, -0.72 * len, -0.30 * width],
+        [0.006 * len, 0.14 * len, 0.32 * width],
+        [0.018 * len, -0.32 * len, 0.52 * width],
+        [0.014 * len, -0.46 * len, 0.26 * width],
+        [0.022 * len, -0.72 * len, 0.30 * width],
+      ];
+
+      for (const [lx, ly, lz] of localPts) {
+        vTmp.set(lx, ly, lz).applyQuaternion(quat);
+        positions.push(ox + vTmp.x, oy + vTmp.y, oz + vTmp.z);
+        normals.push(1, 0, 0);
+      }
+
+      const bladeTris: ReadonlyArray<readonly [number, number, number]> = [
+        [0, 3, 1],
+        [3, 4, 1],
+        [4, 5, 1],
+        [5, 6, 1],
+        [6, 2, 1],
+        [0, 1, 7],
+        [1, 8, 7],
+        [1, 9, 8],
+        [1, 10, 9],
+        [1, 2, 10],
+      ];
+      for (const [a, b, c] of bladeTris) {
+        indices.push(baseVertex + a, baseVertex + b, baseVertex + c);
+      }
+    };
+
+    // 6 shingled overlapping ivy blades per spray cluster
+    addLobedIvyBlade(0.018, 0.0, 0.0, 0.14, 0.13, 0.0, 0.22, 0.0);
+    addLobedIvyBlade(0.014, 0.045, -0.055, 0.125, 0.115, -0.32, 0.18, -0.28);
+    addLobedIvyBlade(0.014, 0.042, 0.058, 0.125, 0.115, 0.32, 0.18, 0.28);
+    addLobedIvyBlade(0.010, -0.048, -0.048, 0.115, 0.108, -0.24, 0.26, -0.18);
+    addLobedIvyBlade(0.010, -0.045, 0.050, 0.115, 0.108, 0.24, 0.26, 0.18);
+    addLobedIvyBlade(0.022, 0.072, 0.004, 0.105, 0.098, 0.06, 0.15, 0.05);
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  };
+
+  const ivySprayGeo = createBotanicalIvySprayGeometry();
+
   const addWallClimbingIvy = (
     wallX: number,
     wallZ: number,
@@ -593,59 +686,105 @@ export function buildCourtyardAndGates(
     seedOffset: number
   ): void => {
     const ivyGroup = new THREE.Group();
+    ivyGroup.name = `courtyard.climbingIvy.${seedOffset}`;
     ivyGroup.userData.isArchitecturalShell = true;
     const baseGroundY = getCourtyardGroundY(wallX, wallZ);
-    const count = Math.floor(spanWidth * maxHeight * 9);
+    const outwardSign = normalAxis === 'x' ? (wallX > -19.0 ? 1 : -1) : 1;
+
+    const getWallSurfacePoint = (lateral: number, y: number, outDist: number): THREE.Vector3 => {
+      if (normalAxis === 'x') {
+        const wz = wallZ + lateral;
+        const baseWallX =
+          wallX > -18.0 ? getEastCourtyardWallCenterX(wz) + 0.14 : -22.47;
+        return new THREE.Vector3(baseWallX + outwardSign * outDist, y, wz);
+      }
+      const wx = wallX + lateral;
+      const baseWallZ = getEastWingSouthWallZ(wx);
+      return new THREE.Vector3(wx, y, baseWallZ + outwardSign * outDist);
+    };
+
+    // 1. Three branching woody climbing vine stems clinging to the brick surface
+    for (let b = 0; b < 3; b++) {
+      const branchLateralBase = (b - 1) * (spanWidth * 0.22);
+      const stemPts: THREE.Vector3[] = [];
+      const steps = 6;
+      for (let s = 0; s <= steps; s++) {
+        const st = s / steps;
+        const sy = baseGroundY + 0.04 + st * (maxHeight - 0.12) * (b === 1 ? 1.0 : 0.86);
+        const wave = Math.sin(st * Math.PI * 2.5 + seedOffset * 0.17 + b * 1.9) * (spanWidth * 0.12);
+        const lat = branchLateralBase * (1 - 0.25 * st) + wave;
+        stemPts.push(getWallSurfacePoint(lat, sy, 0.009));
+      }
+      const stemCurve = new THREE.CatmullRomCurve3(stemPts);
+      const stemRadius = b === 1 ? 0.0085 : 0.0065;
+      const stemMesh = new THREE.Mesh(
+        new THREE.TubeGeometry(stemCurve, 14, stemRadius, 5, false),
+        ivyStemMat
+      );
+      stemMesh.castShadow = true;
+      stemMesh.receiveShadow = true;
+      ivyGroup.add(stemMesh);
+    }
+
+    // 2. Shingled botanical 3-lobed ivy leaf spray clusters along the vine branches
+    const count = Math.floor(spanWidth * maxHeight * 11);
+    const sprayMats = [ivyDarkGreenMat, ivyMidGreenMat, ivyYoungGreenMat];
     for (let i = 0; i < count; i++) {
       const t = (i + 0.5) / count;
       const hash1 = Math.sin((i + seedOffset) * 12.9898) * 43758.5453;
       const frac1 = hash1 - Math.floor(hash1);
       const hash2 = Math.sin((i + seedOffset) * 78.233) * 19341.123;
       const frac2 = hash2 - Math.floor(hash2);
+      const hash3 = Math.sin((i + seedOffset) * 39.425) * 27183.456;
+      const frac3 = hash3 - Math.floor(hash3);
 
-      const y = baseGroundY + 0.22 + t * (maxHeight - 0.25);
-      // Taper width slightly towards the top of the climbing vine
-      const widthAtY = spanWidth * (1.0 - 0.28 * Math.pow(t, 1.5));
-      const lateral = (frac1 - 0.5) * widthAtY;
-      const r = 0.12 + frac2 * 0.11;
+      const y = baseGroundY + 0.14 + t * (maxHeight - 0.18);
+      // Taper width organically toward the upper climbing shoots
+      const widthAtY = spanWidth * (1.0 - 0.36 * Math.pow(t, 1.35));
+      const branchSnap = Math.sin(t * Math.PI * 2.5 + seedOffset * 0.17 + (i % 3) * 1.9) * (spanWidth * 0.1);
+      const lateral = (frac1 - 0.5) * widthAtY * 0.85 + branchSnap * 0.45;
+      const scale = (0.78 + frac2 * 0.52) * (1.05 - 0.22 * t);
+      const matIdx = t > 0.78 && i % 2 === 0 ? 2 : i % 3;
 
-      const leafCluster = new THREE.Mesh(
-        ivyFoliageGeo,
-        i % 2 === 0 ? ivyDarkGreenMat : ivyMidGreenMat
-      );
+      const leafSpray = new THREE.Mesh(ivySprayGeo, sprayMats[matIdx]!);
+      const pos = getWallSurfacePoint(lateral, y, 0.008 + frac3 * 0.014);
+      leafSpray.position.copy(pos);
+
       if (normalAxis === 'x') {
-        const zLeaf = wallZ + lateral;
-        // Issue #1: Follow the angled East Courtyard Wall exterior face (`getEastCourtyardWallCenterX(zLeaf) + 0.182`)
-        // so zero ivy foliage ever protrudes through the wall into the Sitting Room interior!
-        const xLeaf =
-          wallX > -18.0 ? getEastCourtyardWallCenterX(zLeaf) + 0.182 : wallX;
-        leafCluster.scale.set(0.065, r, r * 1.15);
-        leafCluster.position.set(xLeaf, y, zLeaf);
+        const baseRotY = outwardSign > 0 ? 0 : Math.PI;
+        const wallAngle = wallX > -18.0 ? Math.atan2(-0.43, 9.37) : 0;
+        leafSpray.rotation.set(
+          (frac3 - 0.5) * 0.38,
+          baseRotY + wallAngle + (frac1 - 0.5) * 0.28,
+          (frac2 - 0.5) * 0.18
+        );
       } else {
-        const xLeaf = wallX + lateral;
-        const zLeaf = getEastWingSouthWallZ(xLeaf) + 0.015;
-        leafCluster.scale.set(r * 1.15, r, 0.065);
-        leafCluster.rotation.y = MAIN_EAST_WING_ROTATION_Y;
-        leafCluster.position.set(xLeaf, y, zLeaf);
+        leafSpray.rotation.set(
+          (frac3 - 0.5) * 0.38,
+          -Math.PI / 2 + MAIN_EAST_WING_ROTATION_Y + (frac1 - 0.5) * 0.28,
+          (frac2 - 0.5) * 0.18
+        );
       }
-      leafCluster.receiveShadow = true;
-      ivyGroup.add(leafCluster);
+      leafSpray.scale.set(scale, scale, scale);
+      leafSpray.castShadow = true;
+      leafSpray.receiveShadow = true;
+      ivyGroup.add(leafSpray);
     }
     scene.add(ivyGroup);
   };
 
   // 1. Lush climbing ivy on the East Courtyard Wall of Sitting Room & Plant Room (Photos 1 & 3 — Issue #1: strictly on exterior courtyard face)
-  addWallClimbingIvy(getEastCourtyardWallCenterX(4.45) + 0.182, 4.45, 'x', 1.45, 3.35, 11);
-  addWallClimbingIvy(getEastCourtyardWallCenterX(7.55) + 0.182, 7.55, 'x', 1.55, 3.45, 29);
+  addWallClimbingIvy(getEastCourtyardWallCenterX(4.45) + 0.14, 4.45, 'x', 1.45, 3.35, 11);
+  addWallClimbingIvy(getEastCourtyardWallCenterX(7.55) + 0.14, 7.55, 'x', 1.55, 3.45, 29);
   // 2. Climbing ivy on the South Courtyard Wall around the Dining Room & Boot Lobby (Photo 1)
   const pIvySouth1 = transformEastWingPoint(-5.25, 0, 2.69);
   const pIvySouth2 = transformEastWingPoint(-13.55, 0, 2.69);
   addWallClimbingIvy(pIvySouth1.x, pIvySouth1.z, 'z', 1.15, 2.75, 47);
   addWallClimbingIvy(pIvySouth2.x, pIvySouth2.z, 'z', 1.2, 3.15, 63);
   // 3. Climbing ivy on the West Front Facade around the twin Victorian bay windows (Photo 2)
-  addWallClimbingIvy(-22.51, 1.55, 'x', 1.1, 3.45, 83);
-  addWallClimbingIvy(-22.51, 4.25, 'x', 1.1, 3.45, 101);
-  addWallClimbingIvy(-22.51, 7.65, 'x', 1.15, 3.45, 127);
+  addWallClimbingIvy(-22.47, 1.55, 'x', 1.1, 3.45, 83);
+  addWallClimbingIvy(-22.47, 4.25, 'x', 1.1, 3.45, 101);
+  addWallClimbingIvy(-22.47, 7.65, 'x', 1.15, 3.45, 127);
 
   // -------------------------------------------------------------------------
   // Interactive Split Courtyard Gate (Pedestrian Entrance + Double Car Entrance)

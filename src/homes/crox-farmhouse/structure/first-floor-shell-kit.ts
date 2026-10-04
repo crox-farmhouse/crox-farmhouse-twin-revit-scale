@@ -389,6 +389,22 @@ export function createFirstFloorShellKit(
       : { axis: 'x', coord: rawCx, minSpan: minZ, maxSpan: maxZ, floor: 'first' };
 
     const geo = new THREE.BoxGeometry(w, h, d);
+    // At the NW corner of Bedroom 2 (rawCx = -22.33, minZ = -3.18), shear the North (-Z) end face
+    // so the outer West face (X = -22.47m) extends North to Z = -3.2177m and meets the angled North wall flush (Issue #1).
+    if (!isAlongX && Math.abs(rawCx - -22.33) < 0.02 && Math.abs(minZ - -3.18) < 0.02) {
+      const posAttr = geo.attributes.position;
+      if (posAttr) {
+        for (let i = 0; i < posAttr.count; i++) {
+          if (posAttr.getZ(i) < 0) {
+            const xLocal = posAttr.getX(i); // -0.14 at X=-22.47, +0.14 at X=-22.19
+            posAttr.setZ(i, -d / 2 + (xLocal - w / 2) * 0.133771);
+          }
+        }
+        posAttr.needsUpdate = true;
+        geo.computeVertexNormals();
+        geo.userData.isSheared = true;
+      }
+    }
     applyWorldSpaceBrickUVs(geo, cx, cy, cz);
     shearGeometryAlongZ(geo, slopeXPerZ);
 
@@ -398,7 +414,7 @@ export function createFirstFloorShellKit(
         ? warmRoomPlasterMat
         : exteriorBrickMat,
       exteriorBrickMat,
-      warmRoomPlasterMat,
+      exteriorBrickMat,
       interiorSide === 'south' ? warmRoomPlasterMat : exteriorBrickMat,
       interiorSide === 'north' ? warmRoomPlasterMat : exteriorBrickMat,
     ];
