@@ -324,7 +324,7 @@ export function buildCourtyardAndGates(
     const pos = geo.attributes.position;
     const uv = geo.attributes.uv;
     const isMainCourtyardPiece = offsetX > -18.0 && offsetX < -4.0;
-    const isSouthEastApronPiece = offsetX >= -4.0 && offsetX < 4.0;
+    const isSouthEastApronPiece = offsetX >= -4.0 && offsetX < 10.0;
     if (pos) {
       for (let i = 0; i < pos.count; i++) {
         let wx = pos.getX(i) + offsetX;
@@ -359,9 +359,11 @@ export function buildCourtyardAndGates(
           }
         } else if (isSouthEastApronPiece) {
           const minAllowedTerraceSouthZ =
-            wx >= -0.45 && wx <= 4.75
-              ? getEastWingSouthWallZ(wx) + 5.62
-              : getEastWingSouthWallZ(wx) + 4.79;
+            wx <= 4.15
+              ? getEastWingSouthWallZ(wx) + 4.72
+              : wx <= 5.85
+                ? getEastWingSouthWallZ(wx) + 1.16
+                : getEastWingSouthWallZ(wx) + 0.68;
           if (wz < minAllowedTerraceSouthZ) {
             wz = minAllowedTerraceSouthZ;
             pos.setZ(i, wz - offsetZ);
@@ -451,24 +453,24 @@ export function buildCourtyardAndGates(
   gateCourtyardBaySlab.receiveShadow = true;
   scene.add(gateCourtyardBaySlab);
 
-  // Lower South-East Courtyard Apron & Cobbled Alleyway between the Raised Rattan Patio / Walled Grape-Vine Pergola
-  // and the Barn / Stable North Wall (X = -4.64m..+6.60m, Photo 10)
+  // Lower South-East Courtyard Apron & Cobbled Alleyway between the Raised Limestone Patio / Walled Grape-Vine Pergola
+  // and the Barn / 2-Storey Stable North Wall (X = -4.64m..+10.80m, Photo 10)
   const southEastCourtyardApron = new THREE.Mesh(
     createGradedCourtyardGeometry(
-      11.26,
+      15.44,
       0.105,
-      7.1,
-      0.98,
-      12.5,
+      9.4,
+      3.08,
+      11.35,
+      36,
       28,
-      24,
       true
     ),
     courtyardCobbleMat
   );
   southEastCourtyardApron.name = 'courtyard.southEastCobbleApron';
   southEastCourtyardApron.userData.isArchitecturalShell = true;
-  southEastCourtyardApron.position.set(0.98, -0.064, 12.5);
+  southEastCourtyardApron.position.set(3.08, -0.064, 11.35);
   southEastCourtyardApron.receiveShadow = true;
   scene.add(southEastCourtyardApron);
 
