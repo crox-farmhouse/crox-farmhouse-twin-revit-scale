@@ -846,6 +846,25 @@ export class WalkthroughController {
       return 2.08;
     }
 
+    // 2b. Outbuilding Barn Mezzanine (`1.54m`), 6 `UP` Steps (`1.54m..2.66m`), and Stable Top Floor (`2.66m`)
+    const obRot = Math.atan2(2.49, 28.98);
+    const obCos = Math.cos(obRot);
+    const obSin = Math.sin(obRot);
+    const obDx = x - -22.47;
+    const obDz = z - 16.0;
+    const obU = obDx * obCos - obDz * obSin;
+    const obV = obDx * obSin + obDz * obCos;
+    if (refFootY >= 1.15 && obU >= 18.65 && obU <= 28.8 && obV >= 0.25 && obV <= 5.45) {
+      if (obU >= 23.22) {
+        return 2.66;
+      }
+      if (obU >= 21.85 && obV >= 2.35 && obV <= 3.35) {
+        const tUp = THREE.MathUtils.clamp((obU - 21.9) / (23.22 - 21.9), 0, 1);
+        return THREE.MathUtils.lerp(1.54, 2.66, tUp);
+      }
+      return 1.54;
+    }
+
     // 3. Ground Floor East Wing (Kitchen +0.05m -> Dining Room 0.00m -> Boot Lobby & Main Hall -0.30m)
     if (ewX >= -17.62 && ewX <= 4.35 && ewZ >= -2.85 && ewZ <= 2.62) {
       if (ewX >= -4.45) return 0.05;
@@ -945,6 +964,7 @@ export class WalkthroughController {
           typeof cur.name === 'string' &&
           (cur.name.endsWith('.groundCeiling') ||
             cur.name.endsWith('.roof') ||
+            cur.name === 'outbuildings.roofTrusses' ||
             cur.name.startsWith('hall.stairs') ||
             cur.name.includes('ufh'))
         ) {
