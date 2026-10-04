@@ -377,12 +377,6 @@ export function buildOutbuildingsAndBarns(
 
   const coursedStoneTex = createCourtyardStoneTexture();
 
-  const darkBarnDoorMat = new THREE.MeshStandardMaterial({
-    color: 0x3b332d,
-    roughness: 0.76,
-    metalness: 0.04,
-  });
-
   const barnFloorMat = new THREE.MeshStandardMaterial({
     map: coursedStoneTex,
     color: 0x9e988e,
@@ -1199,10 +1193,11 @@ export function buildOutbuildingsAndBarns(
   );
 
   // Continuous Flush Reclaimed Red-Brick North Courtyard Wall of Store, Barn & 2-Storey Stable
-  // (Ground Floor: v = 0.14m..0.42m, u = 12.07m..28.77m — Issue #8!):
-  // - Store Single Door at u = 12.85m..13.75m (0 windows in Store!)
-  // - Barn Single Door at u = 15.85m..16.85m (0 ground-floor windows on Barn North wall!)
-  // - Stable Single Casement Window at u = 25.45m (with true brick cutout!) + Dark Timber Stable Door at u = 27.15m..28.05m
+  // (Ground Floor: v = 0.14m..0.42m, u = 12.07m..28.77m — Issue #1, Issue #2 & Issue #8!):
+  // - Store Single White Door at u = 12.85m..13.75m (0 windows in Store!)
+  // - Barn Single White Door at u = 15.85m..16.85m (0 ground-floor windows on Barn North wall!)
+  // - Stable Single White Door on the West side of the Stable at u = 23.80m..24.70m (`u = 24.25m`, world `[1.694, 0.816, 14.064]` — Issue #1 & Issue #2!)
+  // - Stable Single Casement Window on the East side of the Stable at u = 26.55m (with true brick cutout — Issue #1 & Floorplan!)
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -1262,29 +1257,27 @@ export function buildOutbuildingsAndBarns(
     1.0,
     2.02,
     false,
-    darkBarnDoorMat
+    courtyardDoorMat
   );
 
-  // Continuous flush red-brick wall from Barn door (u = 16.85m) to Stable door (u = 27.15m),
-  // with ONLY the single Stable ground-floor casement window at u = 25.45m cut cleanly into the brickwork (Issue #8 & Photo 10!)
-  addOutbuildingBrickWallWithWindows(
+  // Continuous flush red-brick wall from Barn door (u = 16.85m) to Stable West door (u = 23.80m)
+  addOutbuildingBrickWall(
     groundGroup,
     16.85,
-    27.15,
+    23.8,
     baseYBarnMid - 0.14,
     eastRangeGroundTopY,
     vEastRangeNorth,
     vEastRangeNorth + wallT,
-    ['+z'],
-    [{ uCenter: 25.45, yCenter: baseYStableMid + 1.24, width: 0.92, height: 1.02 }]
+    ['+z']
   );
 
-  // Dark-stained Stable Door at u = 27.15m..28.05m (Photo 10 mid-left & Floorplan)
+  // White Stable Door on the West side of the 2-Storey Stable at u = 23.80m..24.70m (`u = 24.25m`, world `[1.694, 0.816, 14.064]` — Issue #1 & Issue #2!)
   addOutbuildingBrickWall(
     groundGroup,
-    27.15,
-    28.05,
-    baseYStableEnd + 2.04,
+    23.8,
+    24.7,
+    baseYStableMid + 2.04,
     eastRangeGroundTopY,
     vEastRangeNorth,
     vEastRangeNorth + wallT,
@@ -1292,24 +1285,26 @@ export function buildOutbuildingsAndBarns(
   );
   addBoardedBarnDoor(
     groundGroup,
-    27.6,
-    baseYStableEnd,
+    24.25,
+    baseYStableMid,
     vEastRangeNorth + wallT * 0.5,
     0.9,
     2.04,
     false,
-    darkBarnDoorMat
+    courtyardDoorMat
   );
 
-  addOutbuildingBrickWall(
+  // East portion of Stable North wall (u = 24.70m..28.77m) with the single Stable Ground-Floor Casement Window at u = 26.55m (Issue #1 & Photo 10!)
+  addOutbuildingBrickWallWithWindows(
     groundGroup,
-    28.05,
+    24.7,
     uStableEnd - wallT,
     baseYStableEnd - 0.14,
     eastRangeGroundTopY,
     vEastRangeNorth,
     vEastRangeNorth + wallT,
-    ['+z']
+    ['+z'],
+    [{ uCenter: 26.55, yCenter: baseYStableMid + 1.24, width: 0.92, height: 1.02 }]
   );
 
   // East Gable End of 2-Storey Stable (Ground Floor: u = 28.77m..29.05m, v = 0.14m..5.55m) with Large Gable Window

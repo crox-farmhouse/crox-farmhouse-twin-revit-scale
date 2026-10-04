@@ -1223,8 +1223,8 @@ export function createGraniteSettLPathTextures(): {
     const pivotX = 5.28 - rInner;                    // 4.72875m
     const pivotZ = 2.27 - rInner;                    // 1.71875m
 
-    // Subtle large-radius repeating arc bow across the 1.46m path width
-    const arcPivotR = 2.16; // 2.16m arc radius across the 1.46m path width
+    // Repeating scalloped fan-arc bow across the 1.46m path width ("Bogenpflaster" — Issue #3 & Issue #6)
+    const arcPivotR = 1.18; // 1.18m arc radius across the 1.46m band width for clear repeating fan arcs
 
     // Course index c runs continuously:
     //   c = -72 .. 0   -> South leg (X = -4.64m .. +4.73m)

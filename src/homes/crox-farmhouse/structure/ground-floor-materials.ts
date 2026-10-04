@@ -142,15 +142,15 @@ export function createGroundFloorMaterials(
     metalness: 0.04,
   });
 
-  // Warm heritage sage-putty exterior paint finish for the Courtyard Doors & Driveway Gates (from Photos 1 & 3)
+  // Crisp warm architectural white exterior paint finish for all Courtyard & Outbuilding Doors (Issue #2: "Make all of the doors white")
   const courtyardDoorMat = new THREE.MeshStandardMaterial({
-    color: 0xb6b3a8,
-    roughness: 0.44,
+    color: 0xf2eee4,
+    roughness: 0.42,
     metalness: 0.04,
   });
   const courtyardDoorRecessMat = new THREE.MeshStandardMaterial({
-    color: 0xa4a196,
-    roughness: 0.48,
+    color: 0xd8d2c5,
+    roughness: 0.46,
     metalness: 0.04,
   });
 

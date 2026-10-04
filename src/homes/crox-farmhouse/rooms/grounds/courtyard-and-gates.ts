@@ -63,223 +63,156 @@ export function buildCourtyardAndGates(
   });
 
   /**
-   * Issue #10: Generates a seamlessly tileable (THREE.RepeatWrapping) 1024x1024 arched
-   * granite sett fan ("Bogenpflaster") color + bump texture pair for the Courtyard that
-   * matches `createGraniteSettLPathTextures` in front of the kitchen and repeats in parallel
-   * 1.46m fan bands across the courtyard (stopping cleanly where each 1.46m path band meets).
+   * Issue #3 ("Use this cobbled pattern on the entire couryard" at `[-3.721, -0.01, 5.139]`, `courtyard.southCobblePathReliefTop`)
+   * & Issue #6 ("Make sure it has a repeating element (see pictures)" at `[-10.452, -0.204, 6.336]`, `courtyard.mainCobbleSlab`):
+   * Generates a seamlessly tileable (`THREE.RepeatWrapping`) 512x512 arched granite sett fan ("Bogenpflaster")
+   * color + 3D depth texture pair using the EXACT same Canvas2D `roundRect` cobble rendering, `#cbb894` sandy-buff
+   * mortar, `#7d8186..#5b6066` 10-color granite palette, and 4-ring stepped depth map as `createGraniteSettLPathTextures()`,
+   * repeating in parallel `1.46m` scalloped fan-arc bands across the entire courtyard!
    */
   const createContinuousCourtyardCobbleTextures = (): {
     readonly colorMap: THREE.CanvasTexture;
     readonly depthMap: THREE.CanvasTexture;
   } => {
-    const size = 1024;
-    const colorCanvas = document.createElement('canvas');
-    colorCanvas.width = size;
-    colorCanvas.height = size;
-    const cCtx = colorCanvas.getContext('2d')!;
-
-    const bumpCanvas = document.createElement('canvas');
-    bumpCanvas.width = size;
-    bumpCanvas.height = size;
-    const bCtx = bumpCanvas.getContext('2d')!;
-
-    const cImg = cCtx.createImageData(size, size);
-    const bImg = bCtx.createImageData(size, size);
-    const cData = cImg.data;
-    const bData = bImg.data;
-
-    // Match exact stone dimensions and palette from `createGraniteSettLPathTextures` in `src/scene/textures.ts`
+    const width = 512;
+    const height = 512;
     const pathW = 1.46;
     const courseStep = 0.1437559;
     const coursesPerTile = 8;
-    const tileSpanX = coursesPerTile * courseStep; // 1.1500472m (8 arched fan courses per repeating tile)
+    const tileSpanS = coursesPerTile * courseStep; // 1.1500472m (8 arched fan courses per repeating tile)
     const numRows = 8;
     const cobbleStepU = pathW / numRows; // 0.1825m
-    const mortarHalfW = 0.0085;
-    const arcPivotR = 2.16;
+    const arcPivotR = 1.18; // Pronounced repeating scalloped fan-arc curvature matching Photos 1, 5 & 10
+    const pxPerMeterS = width / tileSpanS;
+    const pxPerMeterU = height / pathW;
 
-    const granitePalette: ReadonlyArray<readonly [number, number, number]> = [
-      [198, 190, 178], // Light warm silver-buff granite
-      [172, 165, 154], // Weathered medium warm grey granite
-      [212, 196, 174], // Warm honey-sandstone / oatmeal granite
-      [148, 142, 135], // Charcoal-taupe granite sett
-      [186, 174, 158], // Pale greige-buff sett
-      [160, 150, 138], // Muted olive-taupe granite
-      [204, 184, 162], // Warm pinkish-sand granite
-      [136, 130, 124], // Deep slate-grey granite
-      [190, 182, 170], // Classic silver-oatmeal granite
-      [178, 162, 144], // Warm russet-buff stone
+    const colorCanvas = document.createElement('canvas');
+    colorCanvas.width = width;
+    colorCanvas.height = height;
+    const cCtx = colorCanvas.getContext('2d')!;
+
+    const depthCanvas = document.createElement('canvas');
+    depthCanvas.width = width;
+    depthCanvas.height = height;
+    const dCtx = depthCanvas.getContext('2d')!;
+
+    // 1. Warm sandy lime/sand mortar pointing base in colorMap & recessed mortar channels in depthMap
+    //    (100% identical to `createGraniteSettLPathTextures` in `procedural-textures.ts`!)
+    cCtx.fillStyle = '#cbb894';
+    cCtx.fillRect(0, 0, width, height);
+
+    dCtx.fillStyle = '#141414';
+    dCtx.fillRect(0, 0, width, height);
+
+    for (let y = 0; y < height; y += 4) {
+      for (let x = 0; x < width; x += 4) {
+        const delta = (((x % width) * 17 + (y % height) * 31) % 14) - 7;
+        cCtx.fillStyle = `rgb(${203 + delta}, ${184 + delta}, ${148 + delta})`;
+        cCtx.fillRect(x, y, 4, 4);
+
+        const dv = Math.max(8, Math.min(34, 20 + Math.round(delta * 0.7)));
+        dCtx.fillStyle = `rgb(${dv}, ${dv}, ${dv})`;
+        dCtx.fillRect(x, y, 4, 4);
+      }
+    }
+
+    const granitePalette = [
+      '#7d8186',
+      '#6c737b',
+      '#8f7b74',
+      '#928879',
+      '#62666c',
+      '#86898e',
+      '#7f6d67',
+      '#74797e',
+      '#9b8f80',
+      '#5b6066',
     ];
 
-    const hash2 = (a: number, b: number): number => {
-      const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453123;
-      return x - Math.floor(x);
-    };
+    const cobbleW = (courseStep - 0.026) * pxPerMeterS;
+    const cobbleH = (cobbleStepU - 0.026) * pxPerMeterU;
+    const rx = -cobbleW * 0.5;
+    const ry = -cobbleH * 0.5;
+    const cornerR = 3.5;
 
-    // Precompute the 8x8 repeating cell attributes so the 1,048,576-pixel loop
-    // never recomputes trigonometric hash2() or palette lookups per pixel.
-    const cellJitterALut = new Float64Array(coursesPerTile * numRows);
-    const cellJitterBLut = new Float64Array(coursesPerTile * numRows);
-    const halfLenSLut = new Float64Array(coursesPerTile * numRows);
-    const halfWidULut = new Float64Array(coursesPerTile * numRows);
-    const palIdxLut = new Uint8Array(coursesPerTile * numRows);
+    // 2. Render repeating scalloped fan-arc granite setts across the 8x8 tile, wrapping horizontally
+    //    around S = 0..tileSpanS so `THREE.RepeatWrapping` tiles seamlessly with zero edge seams!
+    for (let c = -3; c <= coursesPerTile + 3; c++) {
+      const wrappedC = ((c % coursesPerTile) + coursesPerTile) % coursesPerTile;
+      const staggerU = (wrappedC % 2) * (cobbleStepU * 0.5);
 
-    for (let c = 0; c < coursesPerTile; c++) {
       for (let r = 0; r < numRows; r++) {
-        const cellIdx = c * numRows + r;
-        const jA = hash2(c * 19 + 3, r * 37 + 11);
-        const jB = hash2(c * 43 + 7, r * 23 + 5);
-        cellJitterALut[cellIdx] = jA;
-        cellJitterBLut[cellIdx] = jB;
-        halfLenSLut[cellIdx] = Math.max(
-          0.01,
-          courseStep * 0.5 - mortarHalfW * (0.9 + 0.25 * jA)
-        );
-        halfWidULut[cellIdx] = Math.max(
-          0.01,
-          cobbleStepU * 0.5 - mortarHalfW * (0.9 + 0.25 * jB)
-        );
-        palIdxLut[cellIdx] =
-          Math.floor(jA * granitePalette.length) % granitePalette.length;
-      }
-    }
+        const u = (r + 0.5) * cobbleStepU + staggerU * 0.35;
+        if (u < 0.04 || u > pathW - 0.04) continue;
 
-    for (let py = 0; py < size; py++) {
-      // py = 0 corresponds to uv.y = 1 (north edge of a 1.46m band), py = size - 1 to uv.y = 0 (south edge)
-      const u = (py / size) * pathW;
-      const du = u - pathW * 0.5;
-      const arcBow =
-        arcPivotR - Math.sqrt(Math.max(0.01, arcPivotR * arcPivotR - du * du));
-      const arcTangentAngle = Math.asin(
-        Math.max(-0.95, Math.min(0.95, du / arcPivotR))
-      );
-      const cosA = Math.cos(arcTangentAngle);
-      const sinA = Math.sin(arcTangentAngle);
+        const du = u - pathW * 0.5;
+        const clampedDu = Math.max(-arcPivotR + 0.15, Math.min(arcPivotR - 0.15, du));
+        const arcBow = arcPivotR - Math.sqrt(arcPivotR * arcPivotR - clampedDu * clampedDu);
+        const arcTangentAngle = Math.asin(clampedDu / arcPivotR);
 
-      // Edge border joint where adjacent 1.46m parallel fan bands meet
-      const bandSeamDist = Math.min(u, pathW - u);
-      const isBandSeam = bandSeamDist < mortarHalfW * 0.85;
+        const s = (c + 0.5) * courseStep - arcBow;
+        const cxPx = (s / tileSpanS) * width;
+        const cyPx = (u / pathW) * height;
+        if (cxPx < -cobbleW || cxPx > width + cobbleW) continue;
 
-      for (let px = 0; px < size; px++) {
-        const s = (px / size) * tileSpanX;
-        const idx = (py * size + px) * 4;
+        const colorIdx = Math.abs((wrappedC * 17 + r * 11 + 7) % granitePalette.length);
+        const baseColor = granitePalette[colorIdx] ?? '#7d8186';
+        const cobbleHeightBias = ((wrappedC * 23 + r * 13) % 26) - 12;
 
-        const sCurved = s - arcBow;
-        const coursePos = sCurved / courseStep;
-        const courseIndex = Math.round(coursePos);
-        const wrappedCourseIdx =
-          ((courseIndex % coursesPerTile) + coursesPerTile) % coursesPerTile;
-        const distFromCourseCenter = (coursePos - courseIndex) * courseStep;
+        // Draw cobble in Color Map
+        cCtx.save();
+        cCtx.translate(cxPx, cyPx);
+        cCtx.rotate(arcTangentAngle);
 
-        const rowStagger = (wrappedCourseIdx & 1) === 1 ? 0.5 * cobbleStepU : 0;
-        const uStaggered = u + rowStagger;
-        const rowPos = uStaggered / cobbleStepU;
-        const cobbleRow = Math.floor(rowPos);
-        const wrappedRowIdx = ((cobbleRow % numRows) + numRows) % numRows;
-        const distFromRowCenter = (rowPos - (cobbleRow + 0.5)) * cobbleStepU;
+        cCtx.fillStyle = baseColor;
+        cCtx.beginPath();
+        cCtx.roundRect(rx, ry, cobbleW, cobbleH, cornerR);
+        cCtx.fill();
 
-        const cellIdx = wrappedCourseIdx * numRows + wrappedRowIdx;
-        const cellJitterA = cellJitterALut[cellIdx]!;
-        const cellJitterB = cellJitterBLut[cellIdx]!;
+        cCtx.strokeStyle = 'rgba(255, 248, 235, 0.18)';
+        cCtx.lineWidth = 1.1;
+        cCtx.stroke();
 
-        const normS = Math.abs(distFromCourseCenter) / halfLenSLut[cellIdx]!;
-        const normU = Math.abs(distFromRowCenter) / halfWidULut[cellIdx]!;
-        const superEllipse =
-          isBandSeam || normS > 1.0 || normU > 1.0
-            ? 1.1
-            : Math.pow(Math.pow(normS, 4.5) + Math.pow(normU, 4.5), 1 / 4.5);
+        cCtx.fillStyle = 'rgba(30, 32, 36, 0.12)';
+        cCtx.fillRect(rx + 3, ry + 4, 3, 3);
+        cCtx.fillRect(rx + cobbleW - 7, ry + cobbleH - 8, 3, 3);
+        cCtx.restore();
 
-        const grain1 =
-          Math.sin(s * 195 + u * 210) *
-          Math.cos(s * 140 - u * 165) *
-          Math.sin((s + u) * 310);
-        const grain2 = Math.sin(s * 520 + u * 480) * 0.5;
+        // Draw cobble in 3D Depth Map
+        dCtx.save();
+        dCtx.translate(cxPx, cyPx);
+        dCtx.rotate(arcTangentAngle);
 
-        if (superEllipse > 1.0 || isBandSeam) {
-          // Sandy-buff lime mortar bed (#cbb894) matching `createGraniteSettLPathTextures`
-          const sandGrain = grain1 * 9 + grain2 * 5;
-          cData[idx] = Math.max(0, Math.min(255, Math.round(203 + sandGrain)));
-          cData[idx + 1] = Math.max(0, Math.min(255, Math.round(184 + sandGrain * 0.92)));
-          cData[idx + 2] = Math.max(0, Math.min(255, Math.round(148 + sandGrain * 0.82)));
-          cData[idx + 3] = 255;
-
-          const jointDepth = Math.max(18, Math.round(42 + grain1 * 10));
-          bData[idx] = jointDepth;
-          bData[idx + 1] = jointDepth;
-          bData[idx + 2] = jointDepth;
-          bData[idx + 3] = 255;
-        } else {
-          const baseRGB = granitePalette[palIdxLut[cellIdx]!]!;
-          const shadeShift = (cellJitterB - 0.5) * 24;
-
-          const localX =
-            distFromCourseCenter * cosA - distFromRowCenter * sinA;
-          const localY =
-            distFromCourseCenter * sinA + distFromRowCenter * cosA;
-          const domeProfile = Math.max(
-            0,
-            1.0 - 0.55 * Math.pow(superEllipse, 2.2)
+        const rings: ReadonlyArray<readonly [number, number, number]> = [
+          [0.0, 3.5, 95],
+          [1.4, 3.2, 155],
+          [2.8, 2.8, 205],
+          [4.5, 2.2, 238],
+        ];
+        for (const [inset, cr, baseLum] of rings) {
+          const lum = Math.max(45, Math.min(255, baseLum + cobbleHeightBias));
+          dCtx.fillStyle = `rgb(${lum}, ${lum}, ${lum})`;
+          dCtx.beginPath();
+          dCtx.roundRect(
+            rx + inset,
+            ry + inset,
+            Math.max(2, cobbleW - inset * 2),
+            Math.max(2, cobbleH - inset * 2),
+            cr
           );
-          const edgeBevel =
-            superEllipse > 0.82 ? (1.0 - superEllipse) / 0.18 : 1.0;
-
-          const crystalSpeckle =
-            Math.sin(localX * 420 + cellJitterA * 50) *
-              Math.cos(localY * 420 + cellJitterB * 50) *
-              11 +
-            grain2 * 7;
-
-          const domeLight = (domeProfile - 0.35) * 18 * edgeBevel;
-          const r = Math.max(
-            0,
-            Math.min(
-              255,
-              Math.round(baseRGB[0] + shadeShift + domeLight + crystalSpeckle)
-            )
-          );
-          const g = Math.max(
-            0,
-            Math.min(
-              255,
-              Math.round(
-                baseRGB[1] + shadeShift * 0.96 + domeLight + crystalSpeckle * 0.95
-              )
-            )
-          );
-          const b = Math.max(
-            0,
-            Math.min(
-              255,
-              Math.round(
-                baseRGB[2] + shadeShift * 0.9 + domeLight + crystalSpeckle * 0.88
-              )
-            )
-          );
-
-          cData[idx] = r;
-          cData[idx + 1] = g;
-          cData[idx + 2] = b;
-          cData[idx + 3] = 255;
-
-          const hVal = Math.max(
-            65,
-            Math.min(
-              255,
-              Math.round(
-                125 + domeProfile * 110 * edgeBevel + crystalSpeckle * 1.4
-              )
-            )
-          );
-          bData[idx] = hVal;
-          bData[idx + 1] = hVal;
-          bData[idx + 2] = hVal;
-          bData[idx + 3] = 255;
+          dCtx.fill();
         }
+
+        const crownLum = Math.max(60, Math.min(255, 246 + cobbleHeightBias));
+        dCtx.fillStyle = `rgb(${crownLum}, ${crownLum}, ${crownLum})`;
+        dCtx.fillRect(rx + 5, ry + 5, Math.max(2, cobbleW - 10), 4);
+        const pitLum = Math.max(40, Math.min(230, 178 + cobbleHeightBias));
+        dCtx.fillStyle = `rgb(${pitLum}, ${pitLum}, ${pitLum})`;
+        dCtx.fillRect(rx + 4, ry + 4, 3, 3);
+        dCtx.fillRect(rx + cobbleW - 7, ry + cobbleH - 8, 3, 3);
+        dCtx.restore();
       }
     }
-
-    cCtx.putImageData(cImg, 0, 0);
-    bCtx.putImageData(bImg, 0, 0);
 
     const colorMap = new THREE.CanvasTexture(colorCanvas);
     colorMap.colorSpace = THREE.SRGBColorSpace;
@@ -287,7 +220,7 @@ export function buildCourtyardAndGates(
     colorMap.wrapT = THREE.RepeatWrapping;
     colorMap.anisotropy = 8;
 
-    const depthMap = new THREE.CanvasTexture(bumpCanvas);
+    const depthMap = new THREE.CanvasTexture(depthCanvas);
     depthMap.wrapS = THREE.RepeatWrapping;
     depthMap.wrapT = THREE.RepeatWrapping;
     depthMap.anisotropy = 8;
@@ -306,128 +239,68 @@ export function buildCourtyardAndGates(
   });
 
   /**
-   * Issue #7 ("Along here is a much more rough cobblestone texture" at `[2.062, -0.059, 12.624]`):
-   * Generates a rough, hand-laid, deeply-jointed rustic fieldstone/granite cobblestone texture + high-relief
-   * bump map for the South-East Courtyard Apron & Alleyway between the Patio/Pergola and the Barn/Stable
-   * (matching `media_1791117103770_2d2c87d9.jpg` bottom-left and `media_1791117141917_9863a9c5.jpg`).
+   * Issue #5 ("Add the drainage channel (see pictures)" at `[-7.462, -0.154, 9.973]`):
+   * Generates a 3-row coursed warm buff-stone / Yorkstone sett material for the recessed surface-water
+   * drainage channel (valley gutter) running diagonally across the Courtyard from the Split Driveway Gate
+   * through `[-7.462, -0.154, 9.973]` into the cobbled lane (visible in Photos 1, 5 & 10).
    */
-  const createRoughAlleyCobblestoneMaterial = (): THREE.MeshStandardMaterial => {
-    const size = 512;
-    const colorCanvas = document.createElement('canvas');
-    colorCanvas.width = size;
-    colorCanvas.height = size;
-    const cCtx = colorCanvas.getContext('2d')!;
+  const createDrainageChannelSettMaterial = (): THREE.MeshStandardMaterial => {
+    const w = 256;
+    const h = 128;
+    const cCanvas = document.createElement('canvas');
+    cCanvas.width = w;
+    cCanvas.height = h;
+    const cCtx = cCanvas.getContext('2d')!;
 
-    const bumpCanvas = document.createElement('canvas');
-    bumpCanvas.width = size;
-    bumpCanvas.height = size;
-    const bCtx = bumpCanvas.getContext('2d')!;
+    const bCanvas = document.createElement('canvas');
+    bCanvas.width = w;
+    bCanvas.height = h;
+    const bCtx = bCanvas.getContext('2d')!;
 
-    const cImg = cCtx.createImageData(size, size);
-    const bImg = bCtx.createImageData(size, size);
-    const cData = cImg.data;
-    const bData = bImg.data;
+    cCtx.fillStyle = '#8e7f68';
+    cCtx.fillRect(0, 0, w, h);
+    bCtx.fillStyle = '#222222';
+    bCtx.fillRect(0, 0, w, h);
 
-    const cols = 10;
-    const rows = 12;
-    const roughPalette: ReadonlyArray<readonly [number, number, number]> = [
-      [156, 144, 128], // Weathered warm grey-buff cobble
-      [132, 122, 110], // Dark taupe-grey fieldstone
-      [174, 156, 134], // Warm ochre-sandstone cobble
-      [114, 108, 102], // Charcoal-slate cobble
-      [164, 142, 122], // Russet-brown ironstone cobble
-      [142, 136, 124], // Moss-tinted olive-grey stone
-      [182, 168, 148], // Pale weathered gritstone
-      [122, 112, 98],  // Deep umber-grey cobble
-    ];
+    const settColors = ['#d2c3a8', '#c6b598', '#dcd0b8', '#bca98c', '#cec0a4'];
+    const numRows = 3;
+    const numCols = 4;
+    const rowH = h / numRows;
+    const colW = w / numCols;
 
-    const hash = (a: number, b: number): number => {
-      const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
-      return x - Math.floor(x);
-    };
+    for (let r = 0; r < numRows; r++) {
+      const staggerX = (r % 2) * (colW * 0.5);
+      for (let c = -1; c <= numCols; c++) {
+        const sx = c * colW + staggerX + 3;
+        const sy = r * rowH + 3;
+        const sw = colW - 6;
+        const sh = rowH - 6;
+        const idx = Math.abs((r * 7 + c * 13) % settColors.length);
 
-    for (let py = 0; py < size; py++) {
-      const v = (py / size) * rows;
-      const rowIdx = Math.floor(v);
-      const fy = v - rowIdx;
-      const rowShift = (rowIdx & 1) * 0.45 + (hash(rowIdx, 7) - 0.5) * 0.25;
+        cCtx.fillStyle = settColors[idx] ?? '#cec0a4';
+        cCtx.beginPath();
+        cCtx.roundRect(sx, sy, sw, sh, 3);
+        cCtx.fill();
 
-      for (let px = 0; px < size; px++) {
-        const idx = (py * size + px) * 4;
-        const u = (px / size) * cols + rowShift;
-        const colIdx = Math.floor(u);
-        const fx = u - colIdx;
+        cCtx.strokeStyle = 'rgba(255, 250, 238, 0.25)';
+        cCtx.lineWidth = 1;
+        cCtx.stroke();
 
-        const wCol = ((colIdx % cols) + cols) % cols;
-        const wRow = ((rowIdx % rows) + rows) % rows;
-        const jA = hash(wCol * 17 + 3, wRow * 31 + 11);
-        const jB = hash(wCol * 41 + 9, wRow * 19 + 5);
-        const jC = hash(wCol * 23 + 1, wRow * 53 + 7);
-
-        // Irregular organic cobble center & crooked edges
-        const cx = 0.5 + (jA - 0.5) * 0.14;
-        const cy = 0.5 + (jB - 0.5) * 0.14;
-        const warpX = Math.sin(fy * Math.PI * 2 + jA * 6.28) * 0.055;
-        const warpY = Math.cos(fx * Math.PI * 2 + jB * 6.28) * 0.055;
-        const dx = Math.abs(fx - cx + warpX) / (0.41 - jC * 0.05);
-        const dy = Math.abs(fy - cy + warpY) / (0.39 - jA * 0.05);
-        const dist = Math.pow(Math.pow(dx, 3.2) + Math.pow(dy, 3.2), 1 / 3.2);
-
-        const craggyNoise =
-          Math.sin((px + jA * 40) * 0.28) * Math.cos((py + jB * 40) * 0.28) * 14 +
-          Math.sin(px * 0.65 - py * 0.55) * 8;
-
-        if (dist > 1.0) {
-          // Deep, rough, dark earthy & mossy mortar recess between irregular cobbles
-          const mossHint = hash(px * 0.15, py * 0.15);
-          const mr = Math.round(78 + craggyNoise * 0.6 - (mossHint > 0.65 ? 12 : 0));
-          const mg = Math.round(74 + craggyNoise * 0.6 + (mossHint > 0.65 ? 8 : 0));
-          const mb = Math.round(60 + craggyNoise * 0.5 - (mossHint > 0.65 ? 10 : 0));
-          cData[idx] = Math.max(0, Math.min(255, mr));
-          cData[idx + 1] = Math.max(0, Math.min(255, mg));
-          cData[idx + 2] = Math.max(0, Math.min(255, mb));
-          cData[idx + 3] = 255;
-
-          const jointB = Math.max(8, Math.min(55, Math.round(22 + craggyNoise * 0.8)));
-          bData[idx] = jointB;
-          bData[idx + 1] = jointB;
-          bData[idx + 2] = jointB;
-          bData[idx + 3] = 255;
-        } else {
-          // Uneven, weathered, hand-split rough cobblestone dome
-          const baseRGB = roughPalette[Math.floor(jC * roughPalette.length) % roughPalette.length]!;
-          const dome = Math.max(0, 1.0 - 0.72 * Math.pow(dist, 1.85));
-          const bevel = dist > 0.76 ? (1.0 - dist) / 0.24 : 1.0;
-          const stoneHeightBias = (jB - 0.5) * 32;
-          const shade = (dome - 0.4) * 34 * bevel + stoneHeightBias + craggyNoise;
-
-          cData[idx] = Math.max(0, Math.min(255, Math.round(baseRGB[0] + shade)));
-          cData[idx + 1] = Math.max(0, Math.min(255, Math.round(baseRGB[1] + shade * 0.95)));
-          cData[idx + 2] = Math.max(0, Math.min(255, Math.round(baseRGB[2] + shade * 0.88)));
-          cData[idx + 3] = 255;
-
-          const hVal = Math.max(
-            60,
-            Math.min(255, Math.round(115 + dome * 125 * bevel + stoneHeightBias + craggyNoise * 1.3))
-          );
-          bData[idx] = hVal;
-          bData[idx + 1] = hVal;
-          bData[idx + 2] = hVal;
-          bData[idx + 3] = 255;
-        }
+        const lum = r === 1 ? 185 : 225; // Center row slightly recessed as valley gutter
+        bCtx.fillStyle = `rgb(${lum}, ${lum}, ${lum})`;
+        bCtx.beginPath();
+        bCtx.roundRect(sx + 1, sy + 1, sw - 2, sh - 2, 2.5);
+        bCtx.fill();
       }
     }
 
-    cCtx.putImageData(cImg, 0, 0);
-    bCtx.putImageData(bImg, 0, 0);
-
-    const colorMap = new THREE.CanvasTexture(colorCanvas);
+    const colorMap = new THREE.CanvasTexture(cCanvas);
     colorMap.colorSpace = THREE.SRGBColorSpace;
     colorMap.wrapS = THREE.RepeatWrapping;
     colorMap.wrapT = THREE.RepeatWrapping;
     colorMap.anisotropy = 8;
 
-    const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+    const bumpMap = new THREE.CanvasTexture(bCanvas);
     bumpMap.wrapS = THREE.RepeatWrapping;
     bumpMap.wrapT = THREE.RepeatWrapping;
     bumpMap.anisotropy = 8;
@@ -435,18 +308,18 @@ export function buildCourtyardAndGates(
     return new THREE.MeshStandardMaterial({
       map: colorMap,
       bumpMap,
-      bumpScale: 0.058,
-      roughness: 0.9,
-      metalness: 0.02,
+      bumpScale: 0.028,
+      roughness: 0.78,
+      metalness: 0.04,
     });
   };
 
-  const roughAlleyCobbleMat = createRoughAlleyCobblestoneMaterial();
+  const drainageChannelMat = createDrainageChannelSettMaterial();
 
   /**
-   * Creates a subdivided BoxGeometry for a courtyard slab or stone sett band whose vertices
-   * follow the continuous 2D courtyard elevation gradient `getCourtyardGroundY(wx, wz)`
-   * and continuous world-space arched granite sett UVs (Issue #10, #6, #7).
+   * Creates a subdivided BoxGeometry for a courtyard slab whose vertices follow the continuous
+   * 2D courtyard elevation gradient `getCourtyardGroundY(wx, wz)` and continuous world-space
+   * repeating arched granite sett UVs (Issue #3 & Issue #6).
    */
   const createGradedCourtyardGeometry = (
     w: number,
@@ -456,8 +329,7 @@ export function buildCourtyardAndGates(
     offsetZ: number,
     segX: number,
     segZ: number,
-    applyCobbleUVs: boolean,
-    isRoughCobbleApron: boolean = false
+    applyCobbleUVs: boolean
   ): THREE.BufferGeometry => {
     const geo = new THREE.BoxGeometry(w, h, d, segX, 1, segZ);
     const pos = geo.attributes.position;
@@ -468,20 +340,15 @@ export function buildCourtyardAndGates(
       for (let i = 0; i < pos.count; i++) {
         let wx = pos.getX(i) + offsetX;
         let wz = pos.getZ(i) + offsetZ;
-        // Issue #10: Clip the West edge of the courtyard slab & stone sett bands along the angled
-        // West Wing exterior brick wall (`getEastCourtyardWallCenterX(wz) + 0.04`) and the North edge
-        // along the rotated East-West Wing South brick wall (`getEastWingSouthWallZ(wx) + 0.04`) so the
-        // courtyard floor never spills into the Front Entrance Hallway, Hall, Boot Lobby, Dining Room,
-        // Sitting Room, or Plant Room!
+        // Clip the West edge of the courtyard slab along the angled West Wing exterior brick wall
+        // and the North edge along the rotated East-West Wing South brick wall so the courtyard floor
+        // never spills into the Front Entrance Hallway, Hall, Boot Lobby, Dining Room, Sitting Room, or Plant Room!
         if (isMainCourtyardPiece) {
           const minAllowedNorthZ = getEastWingSouthWallZ(wx) + 0.04;
           if (wz < minAllowedNorthZ) {
             wz = minAllowedNorthZ;
             pos.setZ(i, wz - offsetZ);
           }
-          // Issue #4: Wrap courtyard cobbles cleanly around the Ground Floor Entrance Hallway
-          // East jut-out (X = -17.00m..-16.16m, Z = 2.68m..3.83m) so cobbles at Y = -0.32m
-          // never poke through the -0.60m Entrance Hallway floor while keeping full coverage South of Z = 3.75m.
           const isInsideJutOutZ = wz < 3.75;
           if ((isInsideJutOutZ && wz > 3.4) || (!isInsideJutOutZ && wz < 4.1 && wx < -16.22)) {
             wz = 3.75;
@@ -497,9 +364,8 @@ export function buildCourtyardAndGates(
             }
           }
         } else if (isSouthEastApronPiece) {
-          // Issue #6 ("This section is a little wider") & Issue #7 ("Tis section is narrower"):
           // Both the wider Raised Patio Shrub Bank (wx <= 5.5m) and the Walled Grape-Vine Pergola
-          // extend South to z_ew = +8.65m (`getEastWingSouthWallZ(wx) + 6.02`), making the rough-cobbled
+          // extend South to z_ew = +8.65m (`getEastWingSouthWallZ(wx) + 6.02`), making the cobbled
           // alleyway (`courtyard.southEastCobbleApron`) a realistic ~3.1m-wide cobbled lane!
           const minAllowedTerraceSouthZ = getEastWingSouthWallZ(wx) + 6.02;
           if (wz < minAllowedTerraceSouthZ) {
@@ -517,24 +383,14 @@ export function buildCourtyardAndGates(
           }
         }
         const groundY = getCourtyardGroundY(wx, wz);
-        const roughMicroRelief =
-          isRoughCobbleApron && pos.getY(i) > 0
-            ? Math.sin(wx * 5.2 + wz * 4.7) * Math.cos(wx * 3.8 - wz * 6.1) * 0.006
-            : 0;
-        pos.setY(i, pos.getY(i) + groundY + roughMicroRelief);
+        pos.setY(i, pos.getY(i) + groundY);
         if (applyCobbleUVs && uv) {
-          if (isRoughCobbleApron) {
-            // Issue #7: Rough irregular cobblestone UVs aligned with the Barn/Alleyway axis
-            uv.setXY(i, wx / 1.35, wz / 1.35);
-          } else {
-            // Issue #10 & #6: Align world-space UVs with the rotated Kitchen South Cobble Path (band width 1.46m,
-            // 8 arched courses = 1.1500472m from pivotX = 4.72875m) so the arched fan bands align across the courtyard & driveway!
-            uv.setXY(
-              i,
-              (4.72875 - wx) / 1.1500472,
-              1 - (wz - (getEastWingSouthWallZ(wx) - 0.41)) / 1.46
-            );
-          }
+          // Issue #3 & Issue #6: Unified repeating arched granite sett fan UVs across the ENTIRE courtyard!
+          uv.setXY(
+            i,
+            (4.72875 - wx) / 1.1500472,
+            1 - (wz - (getEastWingSouthWallZ(wx) - 0.41)) / 1.46
+          );
         }
       }
       pos.needsUpdate = true;
@@ -547,7 +403,6 @@ export function buildCourtyardAndGates(
   };
 
   // Main Cobbled Courtyard Slab enclosed by the L-shaped house (X = getEastCourtyardWallCenterX(z)..-4.64m, Z = getEastWingSouthWallZ(x)..+16.05m)
-  // Clipped along the angled West Wing wall & rotated East-West Wing South wall so zero cobbles spill into the house (Issue #10)
   const mainCourtyardSlab = new THREE.Mesh(
     createGradedCourtyardGeometry(
       12.47,
@@ -555,8 +410,8 @@ export function buildCourtyardAndGates(
       13.35,
       -10.875,
       9.375,
-      32,
-      32,
+      36,
+      36,
       true
     ),
     courtyardCobbleMat
@@ -568,7 +423,7 @@ export function buildCourtyardAndGates(
   scene.add(mainCourtyardSlab);
 
   // North-East Courtyard Cobble Strip connecting the Dining Room South threshold (X = -9.56m..-4.64m)
-  // seamlessly to the Kitchen South Cobble Path at X = -4.64m without entering the Hall, Boot Lobby, or Dining Room
+  // seamlessly to the Kitchen South Cobble Path at X = -4.64m
   const northEastCourtyardLink = new THREE.Mesh(
     createGradedCourtyardGeometry(
       4.92,
@@ -600,9 +455,9 @@ export function buildCourtyardAndGates(
   gateCourtyardBaySlab.receiveShadow = true;
   scene.add(gateCourtyardBaySlab);
 
-  // Issue #7 ("Along here is a much more rough cobblestone texture" at `[2.062, -0.059, 12.624]`):
+  // Issue #3 ("Use this cobbled pattern on the entire couryard"):
   // Lower South-East Courtyard Apron & Cobbled Alleyway between the Raised Limestone Patio / Walled Grape-Vine Pergola
-  // and the Barn / 2-Storey Stable North Wall (X = -4.64m..+10.80m, Photo 10)
+  // and the Barn / 2-Storey Stable North Wall (X = -4.64m..+10.80m) using the same repeating arched granite sett pattern!
   const southEastCourtyardApron = new THREE.Mesh(
     createGradedCourtyardGeometry(
       15.44,
@@ -612,10 +467,9 @@ export function buildCourtyardAndGates(
       11.35,
       42,
       30,
-      true,
       true
     ),
-    roughAlleyCobbleMat
+    courtyardCobbleMat
   );
   southEastCourtyardApron.name = 'courtyard.southEastCobbleApron';
   southEastCourtyardApron.userData.isArchitecturalShell = true;
@@ -623,7 +477,6 @@ export function buildCourtyardAndGates(
   southEastCourtyardApron.receiveShadow = true;
   scene.add(southEastCourtyardApron);
 
-  // Issue #6 ("This texture should be used on the driveway too"):
   // Arched Granite-Sett Driveway Apron in front of (West of) the Split Gate (X = -27.85m..-22.33m, Z = +11.77m..+16.25m)
   const drivewayApron = new THREE.Mesh(
     createGradedCourtyardGeometry(5.52, 0.095, 4.48, -25.09, 14.01, 16, 14, true),
@@ -635,23 +488,132 @@ export function buildCourtyardAndGates(
   drivewayApron.receiveShadow = true;
   scene.add(drivewayApron);
 
-  // Stone Sett Drainage Channels & Car Gate Wheel Tracks following the graded Cobbled Courtyard (visible in Photos 1, 2, 5, 7, 10)
-  for (const [cx, cz, w, d, sx, sz] of [
-    [-10.68, 4.45, 12.08, 0.16, 28, 2],    // East-West sett channel continuing the line of the Kitchen cobble path
-    [-10.78, 7.6, 12.28, 0.16, 28, 2],     // Middle East-West courtyard drainage sett band
-    [-13.41, 13.05, 17.75, 0.22, 36, 2],   // Double-row stone sett track starting at the Split Gate post (X=-22.28m) into the courtyard (Photos 1, 2, 7)
-    [-16.15, 9.4, 0.16, 13.0, 2, 28],      // North-South sett drainage channel along West courtyard wing
-    [-8.78, 9.9, 0.16, 12.0, 2, 28],       // North-South sett drainage channel aligned with Dining Room Courtyard Door
+  // -------------------------------------------------------------------------
+  // Issue #4 ("Get rid of this one" at `[-10.268, -0.316, 8.879]`) &
+  // Issue #5 ("Add the drainage channel (see pictures)" at `[-7.462, -0.154, 9.973]`):
+  // Authentic 3-Course Buff-Stone Sett Surface-Water Drainage Channel (`courtyard.drainageChannel`)
+  // following the graded Courtyard from the Split Driveway Gate (`X = -22.25m, Z = 13.71m`)
+  // straight through `[-7.462, -0.154, 9.973]` to the SW corner of the Patio Shrub Bed (`X = -4.64m, Z = 9.26m`)
+  // and continuing down the center of the cobbled alleyway (`X = -4.64m..+8.20m`, Photos 1, 5 & 10).
+  // -------------------------------------------------------------------------
+  const drainageGroup = new THREE.Group();
+  drainageGroup.name = 'courtyard.drainageChannel';
+  drainageGroup.userData.isArchitecturalShell = true;
+
+  const addGradedDrainageChannelRun = (
+    runName: string,
+    x0: number,
+    z0: number,
+    x1: number,
+    z1: number,
+    channelWidth: number,
+    segLen: number
+  ): void => {
+    const dx = x1 - x0;
+    const dz = z1 - z0;
+    const runLen = Math.hypot(dx, dz);
+    const nx = -dz / runLen;
+    const nz = dx / runLen;
+    const segAcross = 4; // 4 transverse segments to dish the center valley row slightly
+
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+
+    for (let il = 0; il <= segLen; il++) {
+      const t = il / segLen;
+      const cx = x0 + dx * t;
+      const cz = z0 + dz * t;
+      const uCoord = (t * runLen) / 0.56;
+
+      for (let iw = 0; iw <= segAcross; iw++) {
+        const s = iw / segAcross - 0.5; // -0.5 .. +0.5
+        const wx = cx + nx * (s * channelWidth);
+        const wz = cz + nz * (s * channelWidth);
+        // Subtle dished valley gutter profile: edges sit +5mm proud of cobbles, center row dips -3mm
+        const dishOffset = 0.005 - (1 - 4 * s * s) * 0.007;
+        const wy = getCourtyardGroundY(wx, wz) + dishOffset;
+
+        positions.push(wx, wy, wz);
+        uvs.push(uCoord, iw / segAcross);
+      }
+    }
+
+    const stride = segAcross + 1;
+    for (let il = 0; il < segLen; il++) {
+      for (let iw = 0; iw < segAcross; iw++) {
+        const a = il * stride + iw;
+        const b = (il + 1) * stride + iw;
+        const c = (il + 1) * stride + (iw + 1);
+        const d = il * stride + (iw + 1);
+        indices.push(a, c, b, a, d, c);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+
+    const mesh = new THREE.Mesh(geo, drainageChannelMat);
+    mesh.name = runName;
+    mesh.userData.isArchitecturalShell = true;
+    mesh.receiveShadow = true;
+    drainageGroup.add(mesh);
+  };
+
+  // 1. Main diagonal courtyard drainage channel from Split Gate (-22.25, 13.71) right through Issue #5 (-7.462, 9.973) to Patio/Alleyway corner (-4.64, 9.26)
+  addGradedDrainageChannelRun(
+    'courtyard.drainageChannel.main',
+    -22.25,
+    13.71,
+    -4.64,
+    9.26,
+    0.34,
+    48
+  );
+
+  // 2. Continuation of the 3-row stone-sett drainage runner down the center of the South-East cobbled alleyway (Photo 10)
+  addGradedDrainageChannelRun(
+    'courtyard.drainageChannel.alleyway',
+    -4.64,
+    9.26,
+    8.2,
+    10.45,
+    0.32,
+    36
+  );
+
+  // 3. Garage-apron stone-sett threshold channel in front of the double garage doors meeting the main drainage channel (Photo 5)
+  addGradedDrainageChannelRun(
+    'courtyard.drainageChannel.garageApron',
+    -16.45,
+    14.65,
+    -7.462,
+    9.973,
+    0.28,
+    28
+  );
+
+  // Recessed cast-iron slotted surface-water gully grates set into the drainage channel (at Issue #5 junction and lower gate run)
+  for (const [gx, gz, gAngle] of [
+    [-7.462, 9.973, Math.atan2(9.26 - 13.71, -4.64 - -22.25)],
+    [-15.2, 11.93, Math.atan2(9.26 - 13.71, -4.64 - -22.25)],
   ] as const) {
-    const band = new THREE.Mesh(
-      createGradedCourtyardGeometry(w, 0.11, d, cx, cz, sx, sz, false),
-      stoneSillMat
+    const gy = getCourtyardGroundY(gx, gz);
+    const grate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.32, 0.016, 0.32),
+      castIronMat
     );
-    band.userData.isArchitecturalShell = true;
-    band.position.set(cx, -0.058, cz);
-    band.receiveShadow = true;
-    scene.add(band);
+    grate.name = 'courtyard.drainageChannel.gullyGrate';
+    grate.position.set(gx, gy + 0.002, gz);
+    grate.rotation.y = -gAngle;
+    grate.receiveShadow = true;
+    drainageGroup.add(grate);
   }
+
+  scene.add(drainageGroup);
 
   // -------------------------------------------------------------------------
   // Slatted Teak/Oak Garden Bench & Flanking Terracotta Planters under the Boot Lobby
