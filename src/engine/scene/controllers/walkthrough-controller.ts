@@ -846,7 +846,8 @@ export class WalkthroughController {
       return 2.08;
     }
 
-    // 2b. Outbuilding Barn Mezzanine (`1.54m`), 6 `UP` Steps (`1.54m..2.66m`), and Stable Top Floor (`2.66m`)
+    // 2b. Outbuilding Barn Mezzanine (`1.54m`), 3 `UP` Steps (`1.54m..2.08m`), Stable Top Floor (`2.08m`),
+    //     and Outbuilding Ground Floor rooms (`GYM`, `Garage`, `Store`, `Barn` with 2-step drop to `-0.70m`, and `Stable` at `-0.44m`)
     const obRot = Math.atan2(2.49, 28.98);
     const obCos = Math.cos(obRot);
     const obSin = Math.sin(obRot);
@@ -854,15 +855,27 @@ export class WalkthroughController {
     const obDz = z - 16.0;
     const obU = obDx * obCos - obDz * obSin;
     const obV = obDx * obSin + obDz * obCos;
-    if (refFootY >= 1.15 && obU >= 18.65 && obU <= 28.8 && obV >= 0.25 && obV <= 5.45) {
-      if (obU >= 23.22) {
-        return 2.66;
+    if (obV >= 0.25 && obV <= 5.45 && obU >= 0.25 && obU <= 28.8) {
+      if (refFootY >= 1.15 && obU >= 18.65) {
+        if (obU >= 23.22) {
+          return 2.08;
+        }
+        if (obU >= 22.45 && obV >= 2.35 && obV <= 3.35) {
+          const tUp = THREE.MathUtils.clamp((obU - 22.5) / (23.22 - 22.5), 0, 1);
+          return THREE.MathUtils.lerp(1.54, 2.08, tUp);
+        }
+        return 1.54;
       }
-      if (obU >= 21.85 && obV >= 2.35 && obV <= 3.35) {
-        const tUp = THREE.MathUtils.clamp((obU - 21.9) / (23.22 - 21.9), 0, 1);
-        return THREE.MathUtils.lerp(1.54, 2.66, tUp);
+      if (obU < 5.87) return -0.588;
+      if (obU < 12.19) return -0.5;
+      if (obU < 15.08) return -0.4;
+      if (obU < 18.68) return -0.34;
+      if (obU < 18.96) {
+        const tDrop = THREE.MathUtils.clamp((obU - 18.68) / 0.28, 0, 1);
+        return THREE.MathUtils.lerp(-0.34, -0.7, tDrop);
       }
-      return 1.54;
+      if (obU < 23.12) return -0.7;
+      return -0.44;
     }
 
     // 3. Ground Floor East Wing (Kitchen +0.05m -> Dining Room 0.00m -> Boot Lobby & Main Hall -0.30m)
