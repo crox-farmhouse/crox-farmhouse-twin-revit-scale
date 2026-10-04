@@ -1184,26 +1184,32 @@ function createDeWaltLogoTexture(): THREE.CanvasTexture {
 }
 
 /**
- * Issue #5 ("High qulality tool bench here with drawers and power rools" at `[-11.123, 0.378, 20.475]`) +
- * Issue #1 ("stainless steel" at `[-11.567, 0.262, 19.762]`, `outbuildings.garage.toolBench.drawer`) +
- * Issue #2 ("Better mesh on top, dewal powertools, slightly wider" at `[-12.332, 0.406, 20.235]`,
- * `outbuildings.garage.toolBench.butcherBlockTop`):
- * Builds a wider `3.16m` 4-Bay Heavy-Duty Commercial Stainless-Steel & Laminated Butcher-Block Workshop Tool Bench
- * (`outbuildings.garage.toolBench`) centered at `u = 10.30m, v = 5.04m` (`u = 8.72..11.88m`), featuring:
- * - Brushed 304 stainless-steel drawer fronts & cabinet doors across 4 bays (16 ball-bearing drawers + double-door bay)
- * - Multi-stave finger-jointed hardwood butcher-block worktop assembly with bullnose front edge, end-grain side caps,
- *   30mm brushed stainless rear/side perimeter upstand lip, and inlaid magnetic stainless parts tray
- * - Full suite of recognizable **DeWALT 18V XR / 54V FLEXVOLT** (`#febd17` yellow & `#181a1d` matte black) power tools:
- *   DWS780 305mm Compound Mitre Saw, DW752 Twin-Wheel Bench Grinder, DWE4257 Angle Grinder, DCW210 Orbit Sander,
- *   DCB132 Dual XR Fast Charger, DCD996 Hammer Drill, DCF887 Impact Driver, and DeWALT TSTAK case.
+ * Issue #4 ("Shift this right over" at `[-11.294, 0.045, 19.729]`) &
+ * Issue #5 ("Put it against this wall and cut it in to make use of the dead space behind, make it slightly longer"
+ * at `[-10.226, -0.27, 17.512]` -> Outbuilding `(u = 12.07m, y = -0.27m, v = 2.555m)`, `-u` West face of Garage East Wall):
+ * Builds a `3.88m` 5-Bay Heavy-Duty Commercial Stainless-Steel & Laminated Butcher-Block Workshop Tool Bench
+ * (`outbuildings.garage.toolBench`) recessed into the Garage East Wall (`u = 12.07..12.31m`) and utilizing the
+ * dead space behind (`u = 12.31..12.82m` on the West side of the Store room behind the Golf Simulator), featuring:
+ * - Recessed Alcove Lining Enclosure (`outbuildings.garage.toolBench.alcoveEnclosure`) with plasterboard inner jambs,
+ *   soffit head lining, and a plastered studwork back & side housing box on the Store room side
+ * - Brushed 304 stainless-steel drawer fronts & cabinet doors across 5 bays (`3.88m` total width, `bayCenters = [-1.51, -0.755, 0.0, 0.755, 1.51]`)
+ * - Multi-stave finger-jointed hardwood butcher-block worktop assembly (`3.88m x 0.052m x 0.78m`) with bullnose front edge,
+ *   30mm brushed stainless perimeter upstand lip, and inlaid magnetic stainless parts tray
+ * - Full suite of recognizable **DeWALT 18V XR / 54V FLEXVOLT** (`#febd17` yellow & `#181a1d` matte black) power tools
+ *   spread across the `3.88m` workbench.
  */
-export function buildGarageWorkshopToolBench(
+export function buildGarageToolBench(
   groundGroup: THREE.Group,
   garageFloorTopY: number
 ): void {
   const benchGroup = new THREE.Group();
   benchGroup.name = 'outbuildings.garage.toolBench';
-  benchGroup.position.set(10.3, garageFloorTopY, 5.04);
+  // Positioned along the Garage East Wall (`u = 12.07m`, centered at `v = 3.16m` spanning `v = 1.22..5.10m`).
+  // With `rotation.y = Math.PI / 2`, local `-Z` (the front of the drawers & tools) faces `-u` (West into the Garage at `u = 12.04m`)
+  // and local `+Z` (the back of the bench, pegboard & alcove housing) recesses East (`+u`) into the wall cutout (`u = 12.07..12.31m`)
+  // and Store room dead space (`u = 12.31..12.82m`)!
+  benchGroup.position.set(12.41, garageFloorTopY, 3.16);
+  benchGroup.rotation.y = Math.PI / 2;
   groundGroup.add(benchGroup);
 
   const anthraciteSteelMat = new THREE.MeshStandardMaterial({
@@ -1232,6 +1238,11 @@ export function buildGarageWorkshopToolBench(
     color: 0x2b3e50,
     roughness: 0.44,
     metalness: 0.74,
+  });
+  const alcovePlasterMat = new THREE.MeshStandardMaterial({
+    color: 0xf2ede2,
+    roughness: 0.86,
+    metalness: 0.02,
   });
   // Authentic DeWALT Industrial Yellow (#febd17) & Matte Black (#181a1d)
   const dewaltYellowMat = new THREE.MeshStandardMaterial({
@@ -1273,13 +1284,39 @@ export function buildGarageWorkshopToolBench(
     opacity: 0.48,
   });
 
-  // Wider 4-bay commercial workbench (`totalW = 3.16m`, spanning `u = 8.72..11.88m`)
-  const totalW = 3.16;
+  // Longer 5-bay commercial workbench (`totalW = 3.88m`, spanning `v = 1.22..5.10m`)
+  const totalW = 3.88;
   const benchD = 0.74;
   const cabinetH = 0.86;
-  const topT = 0.048;
+  const topT = 0.052;
   const worktopY = cabinetH + topT;
 
+  // ---------------------------------------------------------------------------
+  // Recessed Alcove Jamb Linings (`outbuildings.garage.toolBench.alcoveEnclosure`)
+  // ---------------------------------------------------------------------------
+  const alcoveGroup = new THREE.Group();
+  alcoveGroup.name = 'outbuildings.garage.toolBench.alcoveEnclosure';
+  alcoveGroup.userData.isArchitecturalShell = true;
+  benchGroup.add(alcoveGroup);
+
+  const alcoveH = 1.92;
+  const alcoveHalfW = totalW * 0.5 + 0.02; // 1.96m (matches v = 1.20..5.12m cutout)
+  for (const sideX of [-1, 1] as const) {
+    const jambLining = new THREE.Mesh(
+      new THREE.BoxGeometry(0.024, alcoveH, 0.73),
+      alcovePlasterMat
+    );
+    jambLining.userData.isArchitecturalShell = true;
+    jambLining.position.set(sideX * (alcoveHalfW - 0.008), alcoveH * 0.5, 0.025);
+    jambLining.castShadow = true;
+    jambLining.receiveShadow = true;
+    alcoveGroup.add(jambLining);
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // 5-Bay Cabinet Carcass, Plinth & Brushed 304 Stainless-Steel Drawers (`totalW = 3.88m`)
+  // ---------------------------------------------------------------------------
   const carcass = new THREE.Mesh(
     new THREE.BoxGeometry(totalW - 0.04, cabinetH - 0.05, benchD - 0.04),
     anthraciteSteelMat
@@ -1289,9 +1326,23 @@ export function buildGarageWorkshopToolBench(
   carcass.receiveShadow = true;
   benchGroup.add(carcass);
 
-  // Vertical stainless-steel Mullion Stile Dividers between the 4 bays
+  const plinth = new THREE.Mesh(
+    new THREE.BoxGeometry(totalW - 0.08, 0.05, benchD - 0.08),
+    dewaltBlackMat
+  );
+  plinth.position.set(0, 0.025, 0.02);
+  benchGroup.add(plinth);
+
   const frontZ = -benchD * 0.5 + 0.012;
-  for (const mx of [-1.54, -0.77, 0.0, 0.77, 1.54]) {
+  const postPositionsX = [
+    -totalW * 0.5 + 0.025,
+    -1.1325,
+    -0.3775,
+    0.3775,
+    1.1325,
+    totalW * 0.5 - 0.025,
+  ] as const;
+  for (const mx of postPositionsX) {
     const stile = new THREE.Mesh(
       new THREE.BoxGeometry(0.022, cabinetH - 0.05, 0.016),
       anthraciteSteelMat
@@ -1300,8 +1351,7 @@ export function buildGarageWorkshopToolBench(
     benchGroup.add(stile);
   }
 
-  // 5 Pairs of Heavy-Duty Adjustable Stainless Leveling Feet
-  for (const fx of [-totalW * 0.5 + 0.08, -0.77, 0.0, 0.77, totalW * 0.5 - 0.08]) {
+  for (const fx of postPositionsX) {
     for (const fz of [-benchD * 0.5 + 0.07, benchD * 0.5 - 0.07]) {
       const footPad = new THREE.Mesh(
         new THREE.CylinderGeometry(0.036, 0.038, 0.014, 14),
@@ -1319,26 +1369,32 @@ export function buildGarageWorkshopToolBench(
     }
   }
 
-  // Issue #1: Brushed 304 Stainless-Steel Drawers across 4 Bays (3 drawer banks + 1 cupboard bank)
+  const drawerW = 0.735;
+  const bayCenters = [-1.51, -0.755, 0.0, 0.755, 1.51] as const;
   const bankSpecs = [
     {
-      cx: -1.155,
-      w: 0.735,
-      drawerHeights: [0.075, 0.075, 0.095, 0.115, 0.155, 0.215] as const,
-    },
-    {
-      cx: -0.385,
-      w: 0.735,
+      cx: bayCenters[0],
+      w: drawerW,
       drawerHeights: [0.085, 0.105, 0.135, 0.185, 0.22] as const,
     },
     {
-      cx: 0.385,
-      w: 0.735,
+      cx: bayCenters[1],
+      w: drawerW,
       drawerHeights: [0.085, 0.105, 0.135, 0.185, 0.22] as const,
     },
     {
-      cx: 1.155,
-      w: 0.735,
+      cx: bayCenters[2],
+      w: drawerW,
+      drawerHeights: [0.085, 0.105, 0.135, 0.185, 0.22] as const,
+    },
+    {
+      cx: bayCenters[3],
+      w: drawerW,
+      drawerHeights: [0.085, 0.105, 0.135, 0.185, 0.22] as const,
+    },
+    {
+      cx: bayCenters[4],
+      w: drawerW,
       drawerHeights: [0.095, 0.135] as const,
     },
   ] as const;
@@ -1346,7 +1402,6 @@ export function buildGarageWorkshopToolBench(
   for (const bank of bankSpecs) {
     let cursorY = cabinetH - 0.025;
 
-    // Stainless cylinder key lock at the top-right of each drawer bank
     const keyLock = new THREE.Mesh(
       new THREE.CylinderGeometry(0.009, 0.009, 0.026, 12),
       aluminumTrimMat
@@ -1368,7 +1423,6 @@ export function buildGarageWorkshopToolBench(
       drawerFront.receiveShadow = true;
       benchGroup.add(drawerFront);
 
-      // Full-width extruded anodized-aluminum finger-pull rail
       const pullBar = new THREE.Mesh(
         new THREE.BoxGeometry(bank.w - 0.024, 0.016, 0.026),
         aluminumTrimMat
@@ -1376,7 +1430,6 @@ export function buildGarageWorkshopToolBench(
       pullBar.position.set(bank.cx, dy + dh * 0.5 - 0.015, frontZ - 0.012);
       benchGroup.add(pullBar);
 
-      // Recessed dark-grey index label strip on the pull bar
       const labelStrip = new THREE.Mesh(
         new THREE.BoxGeometry(bank.w * 0.42, 0.007, 0.004),
         dewaltBlackMat
@@ -1388,7 +1441,6 @@ export function buildGarageWorkshopToolBench(
     }
   }
 
-  // Bay 4 Lower Double-Door Brushed Stainless Cupboard (`cx = +1.155m`)
   for (const sideX of [-1, 1] as const) {
     const doorW = 0.362;
     const doorPanel = new THREE.Mesh(
@@ -1396,7 +1448,7 @@ export function buildGarageWorkshopToolBench(
       brushedStainlessMat
     );
     doorPanel.name = 'outbuildings.garage.toolBench.drawer';
-    doorPanel.position.set(1.155 + sideX * (doorW * 0.5 + 0.004), 0.325, frontZ);
+    doorPanel.position.set(1.51 + sideX * (doorW * 0.5 + 0.004), 0.325, frontZ);
     doorPanel.castShadow = true;
     doorPanel.receiveShadow = true;
     benchGroup.add(doorPanel);
@@ -1405,15 +1457,16 @@ export function buildGarageWorkshopToolBench(
       new THREE.BoxGeometry(0.014, 0.15, 0.026),
       aluminumTrimMat
     );
-    vHandle.position.set(1.155 + sideX * 0.032, 0.42, frontZ - 0.012);
+    vHandle.position.set(1.51 + sideX * 0.032, 0.42, frontZ - 0.012);
     benchGroup.add(vHandle);
   }
 
   // ---------------------------------------------------------------------------
-  // Issue #2 ("Better mesh on top"): Multi-Part Laminated Hardwood Butcher-Block Worktop Assembly
+  // Multi-Part Laminated Hardwood Butcher-Block Worktop Assembly (`3.88m x 0.052m x 0.78m`)
   // ---------------------------------------------------------------------------
+  const topD = 0.78;
   const butcherTop = new THREE.Mesh(
-    new THREE.BoxGeometry(totalW, topT, benchD),
+    new THREE.BoxGeometry(totalW, topT, topD),
     butcherBlockMat
   );
   butcherTop.name = 'outbuildings.garage.toolBench.butcherBlockTop';
@@ -1422,7 +1475,6 @@ export function buildGarageWorkshopToolBench(
   butcherTop.receiveShadow = true;
   benchGroup.add(butcherTop);
 
-  // Rounded Front Bullnose Hardwood Edge Moulding along `-Z`
   const bullnoseRadius = topT * 0.5;
   const frontBullnose = new THREE.Mesh(
     new THREE.CylinderGeometry(bullnoseRadius, bullnoseRadius, totalW, 16),
@@ -1430,22 +1482,20 @@ export function buildGarageWorkshopToolBench(
   );
   frontBullnose.name = 'outbuildings.garage.toolBench.butcherBlockTop';
   frontBullnose.rotation.z = Math.PI / 2;
-  frontBullnose.position.set(0, cabinetH + topT * 0.5, -benchD * 0.5);
+  frontBullnose.position.set(0, cabinetH + topT * 0.5, -topD * 0.5);
   frontBullnose.castShadow = true;
   frontBullnose.receiveShadow = true;
   benchGroup.add(frontBullnose);
 
-  // End-Grain Hardwood Edge Banding Caps + Brushed-Stainless Corner Tie Plates on `-X` and `+X`
   for (const sideX of [-1, 1] as const) {
     const endCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, topT + 0.002, benchD + 0.012),
+      new THREE.BoxGeometry(0.012, topT + 0.002, topD + 0.012),
       butcherEdgeMat
     );
     endCap.position.set(sideX * (totalW * 0.5 + 0.004), cabinetH + topT * 0.5, 0);
     endCap.castShadow = true;
     benchGroup.add(endCap);
 
-    // Stainless corner reinforcement bracket at the front corners
     const cornerBracket = new THREE.Mesh(
       new THREE.BoxGeometry(0.065, topT + 0.004, 0.065),
       brushedStainlessMat
@@ -1453,16 +1503,15 @@ export function buildGarageWorkshopToolBench(
     cornerBracket.position.set(
       sideX * (totalW * 0.5 - 0.026),
       cabinetH + topT * 0.5,
-      -benchD * 0.5 + 0.022
+      -topD * 0.5 + 0.022
     );
     benchGroup.add(cornerBracket);
   }
 
-  // Brushed 304 Stainless-Steel 30mm Rear & Side Perimeter Upstand Splash Lip
   const upstandH = 0.032;
   const upstandT = 0.012;
   const rearUpstand = new THREE.Mesh(
-    new THREE.BoxGeometry(totalW + 0.016, upstandH, upstandT),
+    new THREE.BoxGeometry(totalW, upstandH, upstandT),
     brushedStainlessMat
   );
   rearUpstand.position.set(0, worktopY + upstandH * 0.5, benchD * 0.5 - upstandT * 0.5);
@@ -1474,16 +1523,15 @@ export function buildGarageWorkshopToolBench(
       brushedStainlessMat
     );
     sideUpstand.position.set(
-      sideX * (totalW * 0.5 + 0.002),
+      sideX * (totalW * 0.5 - upstandT * 0.5),
       worktopY + upstandH * 0.5,
       benchD * 0.5 - (benchD * 0.65) * 0.5
     );
     benchGroup.add(sideUpstand);
   }
 
-  // Recessed Brushed-Stainless Magnetic Parts & Fastener Tray (`x = -0.96m, z = -0.22m`)
   const magTrayGroup = new THREE.Group();
-  magTrayGroup.position.set(-0.96, worktopY, -0.22);
+  magTrayGroup.position.set(-1.24, worktopY, -0.22);
   benchGroup.add(magTrayGroup);
 
   const trayRim = new THREE.Mesh(
@@ -1500,7 +1548,6 @@ export function buildGarageWorkshopToolBench(
   trayWell.position.set(0, 0.008, 0);
   magTrayGroup.add(trayWell);
 
-  // Chrome drive sockets & fasteners inside the magnetic tray
   for (let s = 0; s < 6; s++) {
     const socket = new THREE.Mesh(
       new THREE.CylinderGeometry(0.008 + s * 0.0012, 0.008 + s * 0.0012, 0.028, 12),
@@ -1510,7 +1557,6 @@ export function buildGarageWorkshopToolBench(
     magTrayGroup.add(socket);
   }
 
-  // Full-Width Perforated Steel Pegboard Backwall & Upper Stainless Wall Cabinets (`3.16m` wide)
   const pegboardH = 0.64;
   const pegboard = new THREE.Mesh(
     new THREE.BoxGeometry(totalW - 0.04, pegboardH, 0.024),
@@ -1521,15 +1567,15 @@ export function buildGarageWorkshopToolBench(
   benchGroup.add(pegboard);
 
   const powerStrip = new THREE.Mesh(
-    new THREE.BoxGeometry(0.68, 0.062, 0.036),
+    new THREE.BoxGeometry(0.78, 0.062, 0.036),
     aluminumTrimMat
   );
   powerStrip.name = 'outbuildings.garage.toolBench.powerStrip';
-  powerStrip.position.set(0.05, worktopY + 0.11, benchD * 0.5 - 0.045);
+  powerStrip.position.set(0.0, worktopY + 0.11, benchD * 0.5 - 0.045);
   benchGroup.add(powerStrip);
 
   for (let s = 0; s < 6; s++) {
-    const sx = 0.05 - 0.25 + s * 0.1;
+    const sx = -0.25 + s * 0.1;
     const socketFace = new THREE.Mesh(
       new THREE.BoxGeometry(0.048, 0.044, 0.008),
       dewaltBlackMat
@@ -1559,10 +1605,9 @@ export function buildGarageWorkshopToolBench(
   upperCab.castShadow = true;
   benchGroup.add(upperCab);
 
-  // 4 Overhead Brushed Stainless-Steel Flip-Up Locker Doors matching the 4 lower bays
-  for (const ux of [-1.155, -0.385, 0.385, 1.155]) {
+  for (const ux of bayCenters) {
     const upperDoor = new THREE.Mesh(
-      new THREE.BoxGeometry(0.735, upperCabH - 0.03, 0.018),
+      new THREE.BoxGeometry(drawerW, upperCabH - 0.03, 0.018),
       brushedStainlessMat
     );
     upperDoor.name = 'outbuildings.garage.toolBench.drawer';
@@ -1592,20 +1637,20 @@ export function buildGarageWorkshopToolBench(
     roughness: 0.2,
   });
   const ledTaskBar = new THREE.Mesh(
-    new THREE.BoxGeometry(totalW - 0.24, 0.014, 0.038),
+    new THREE.BoxGeometry(3.7, 0.014, 0.038),
     ledStripMat
   );
   ledTaskBar.position.set(0, worktopY + pegboardH - 0.007, benchD * 0.5 - upperCabD + 0.05);
   benchGroup.add(ledTaskBar);
 
   // ---------------------------------------------------------------------------
-  // Issue #2 ("dewal powertools"): Authentic DeWALT 18V XR / 54V FLEXVOLT Suite
+  // Authentic DeWALT 18V XR / 54V FLEXVOLT Suite spread across the `3.88m` worktop
   // ---------------------------------------------------------------------------
 
-  // A. Heavy Cast-Iron Engineer's Bench Vice (`x = -1.32m, z = -0.24m`)
+  // A. Heavy Cast-Iron Engineer's Bench Vice (`x = -1.66m, z = -0.24m`)
   const viceGroup = new THREE.Group();
   viceGroup.name = 'outbuildings.garage.toolBench.vice';
-  viceGroup.position.set(-1.32, worktopY, -0.24);
+  viceGroup.position.set(-1.66, worktopY, -0.24);
   benchGroup.add(viceGroup);
 
   const viceBase = new THREE.Mesh(
@@ -1654,13 +1699,12 @@ export function buildGarageWorkshopToolBench(
   tommyBar.position.set(0, 0.075, -0.168);
   viceGroup.add(tommyBar);
 
-  // B. DeWALT DWS780 305mm Double-Bevel Sliding Compound Mitre Saw (`x = -0.52m, z = -0.02m`)
+  // B. DeWALT DWS780 305mm Double-Bevel Sliding Compound Mitre Saw (`x = -0.68m, z = -0.02m`)
   const sawGroup = new THREE.Group();
   sawGroup.name = 'outbuildings.garage.toolBench.mitreSaw';
-  sawGroup.position.set(-0.52, worktopY, -0.02);
+  sawGroup.position.set(-0.68, worktopY, -0.02);
   benchGroup.add(sawGroup);
 
-  // Cast-aluminum base & side material extension wings
   const sawBase = new THREE.Mesh(
     new THREE.CylinderGeometry(0.22, 0.24, 0.048, 24),
     castAluminumMat
@@ -1679,7 +1723,6 @@ export function buildGarageWorkshopToolBench(
     sawGroup.add(extWing);
   }
 
-  // Yellow kerf throat plate & front mitre lock arm with yellow DeWALT twist grip
   const kerfPlate = new THREE.Mesh(
     new THREE.BoxGeometry(0.056, 0.004, 0.34),
     dewaltYellowMat
@@ -1702,7 +1745,6 @@ export function buildGarageWorkshopToolBench(
   mitreLockKnob.position.set(0, 0.032, -0.31);
   sawGroup.add(mitreLockKnob);
 
-  // Tall machined sliding fence with DeWALT yellow warning accents
   const fenceBar = new THREE.Mesh(
     new THREE.BoxGeometry(0.54, 0.078, 0.032),
     dewaltBlackMat
@@ -1710,7 +1752,6 @@ export function buildGarageWorkshopToolBench(
   fenceBar.position.set(0, 0.086, 0.068);
   sawGroup.add(fenceBar);
 
-  // Twin horizontal chrome slide rails + rear cast-iron bevel trunnion
   for (const rx of [-0.036, 0.036]) {
     const slideRod = new THREE.Mesh(
       new THREE.CylinderGeometry(0.013, 0.013, 0.36, 12),
@@ -1721,7 +1762,6 @@ export function buildGarageWorkshopToolBench(
     sawGroup.add(slideRod);
   }
 
-  // 305mm Tungsten-Carbide Circular Saw Blade with DeWALT yellow arbor ring
   const sawBlade = new THREE.Mesh(
     new THREE.CylinderGeometry(0.145, 0.145, 0.005, 28),
     aluminumTrimMat
@@ -1730,7 +1770,6 @@ export function buildGarageWorkshopToolBench(
   sawBlade.position.set(0, 0.2, -0.015);
   sawGroup.add(sawBlade);
 
-  // Sculpted DeWALT Yellow & Matte-Black Upper Blade Guard with DeWALT Logo Badge
   const bladeGuard = new THREE.Mesh(
     new THREE.CylinderGeometry(0.158, 0.158, 0.044, 24, 1, false, 0, Math.PI * 1.22),
     dewaltYellowMat
@@ -1748,7 +1787,6 @@ export function buildGarageWorkshopToolBench(
   sawBadge.position.set(-0.024, 0.24, -0.015);
   sawGroup.add(sawBadge);
 
-  // DeWALT Yellow & Black Direct-Drive Motor Housing
   const sawMotor = new THREE.Mesh(
     new THREE.CylinderGeometry(0.062, 0.062, 0.16, 18),
     dewaltYellowMat
@@ -1766,7 +1804,6 @@ export function buildGarageWorkshopToolBench(
   sawMotorEndCap.position.set(0.195, 0.245, -0.015);
   sawGroup.add(sawMotorEndCap);
 
-  // Ergonomic D-Handle with Yellow Trigger & Yellow DeWALT Dust Collection Bag
   const sawHandle = new THREE.Mesh(
     new THREE.BoxGeometry(0.048, 0.038, 0.15),
     dewaltBlackMat
@@ -1783,10 +1820,10 @@ export function buildGarageWorkshopToolBench(
   dustBag.position.set(0, 0.27, 0.16);
   sawGroup.add(dustBag);
 
-  // C. DeWALT DW752 Heavy-Duty Twin-Wheel Bench Grinder (`x = +0.16m, z = -0.06m`)
+  // C. DeWALT DW752 Heavy-Duty Twin-Wheel Bench Grinder (`x = +0.12m, z = -0.06m`)
   const grinderGroup = new THREE.Group();
   grinderGroup.name = 'outbuildings.garage.toolBench.benchGrinder';
-  grinderGroup.position.set(0.16, worktopY, -0.06);
+  grinderGroup.position.set(0.12, worktopY, -0.06);
   benchGroup.add(grinderGroup);
 
   const grinderPedestal = new THREE.Mesh(
@@ -1796,7 +1833,6 @@ export function buildGarageWorkshopToolBench(
   grinderPedestal.position.set(0, 0.021, 0);
   grinderGroup.add(grinderPedestal);
 
-  // Yellow/Black front toggle switch plate
   const switchPlate = new THREE.Mesh(
     new THREE.BoxGeometry(0.052, 0.026, 0.012),
     dewaltYellowMat
@@ -1804,7 +1840,6 @@ export function buildGarageWorkshopToolBench(
   switchPlate.position.set(0, 0.022, -0.078);
   grinderGroup.add(switchPlate);
 
-  // DeWALT Yellow Induction Motor Barrel
   const grinderMotor = new THREE.Mesh(
     new THREE.CylinderGeometry(0.072, 0.072, 0.17, 18),
     dewaltYellowMat
@@ -1822,7 +1857,6 @@ export function buildGarageWorkshopToolBench(
   grinderGroup.add(grinderBadge);
 
   for (const sideX of [-1, 1] as const) {
-    // Matte-black cast wheel guards with yellow outer hub accents
     const wheelGuard = new THREE.Mesh(
       new THREE.CylinderGeometry(0.098, 0.098, 0.044, 20),
       dewaltBlackMat
@@ -1840,7 +1874,6 @@ export function buildGarageWorkshopToolBench(
     abrasiveWheel.position.set(sideX * 0.13, 0.12, -0.014);
     grinderGroup.add(abrasiveWheel);
 
-    // Adjustable steel tool rest & transparent polycarbonate eye shield
     const toolRest = new THREE.Mesh(
       new THREE.BoxGeometry(0.038, 0.008, 0.045),
       aluminumTrimMat
@@ -1857,13 +1890,12 @@ export function buildGarageWorkshopToolBench(
     grinderGroup.add(eyeShield);
   }
 
-  // D. DeWALT DWE4257 125mm Angle Grinder & DeWALT DCW210 18V XR Random Orbit Sander (`x = +0.68m, z = -0.10m`)
+  // D. DeWALT DWE4257 125mm Angle Grinder & DeWALT DCW210 18V XR Random Orbit Sander (`x = +0.78m, z = -0.10m`)
   const grinderSanderGroup = new THREE.Group();
   grinderSanderGroup.name = 'outbuildings.garage.toolBench.angleGrinderAndSander';
-  grinderSanderGroup.position.set(0.68, worktopY, -0.1);
+  grinderSanderGroup.position.set(0.78, worktopY, -0.1);
   benchGroup.add(grinderSanderGroup);
 
-  // 1) DeWALT DWE4257 125mm Angle Grinder
   const agUnit = new THREE.Group();
   agUnit.position.set(-0.1, 0, -0.04);
   agUnit.rotation.y = 0.42;
@@ -1915,7 +1947,6 @@ export function buildGarageWorkshopToolBench(
   agSideHandle.position.set(-0.105, 0.046, -0.072);
   agUnit.add(agSideHandle);
 
-  // 2) DeWALT DCW210 18V XR Brushless Random Orbit Palm Sander
   const sanderUnit = new THREE.Group();
   sanderUnit.position.set(0.13, 0, 0.05);
   sanderUnit.rotation.y = -0.28;
@@ -1950,18 +1981,17 @@ export function buildGarageWorkshopToolBench(
   sanderBattery.position.set(0, 0.052, 0.062);
   sanderUnit.add(sanderBattery);
 
-  // E. DeWALT DCB132 Dual-Port 18V XR Charger + DeWALT DCD996 Hammer Drill, DCF887 Impact Driver & TSTAK Case (`x = +1.18m`)
+  // E. DeWALT DCB132 Dual-Port 18V XR Charger + DeWALT DCD996 Hammer Drill, DCF887 Impact Driver & TSTAK Case (`x = +1.46m`)
   const drillsGroup = new THREE.Group();
   drillsGroup.name = 'outbuildings.garage.toolBench.cordlessDrills';
-  drillsGroup.position.set(1.18, worktopY, -0.06);
+  drillsGroup.position.set(1.46, worktopY, -0.06);
   benchGroup.add(drillsGroup);
 
-  // DeWALT TSTAK II Heavy-Duty Modular Tool Box Case at rear-right (`x = 0.14m, z = 0.15m`)
   const tstakCase = new THREE.Mesh(
     new THREE.BoxGeometry(0.32, 0.135, 0.22),
     dewaltBlackMat
   );
-  tstakCase.position.set(0.12, 0.0675, 0.16);
+  tstakCase.position.set(0.14, 0.0675, 0.16);
   tstakCase.castShadow = true;
   drillsGroup.add(tstakCase);
 
@@ -1969,17 +1999,16 @@ export function buildGarageWorkshopToolBench(
     new THREE.BoxGeometry(0.28, 0.016, 0.18),
     dewaltYellowMat
   );
-  tstakLidAccent.position.set(0.12, 0.138, 0.16);
+  tstakLidAccent.position.set(0.14, 0.138, 0.16);
   drillsGroup.add(tstakLidAccent);
 
   const tstakBadge = new THREE.Mesh(
     new THREE.PlaneGeometry(0.14, 0.05),
     dewaltBadgeMat
   );
-  tstakBadge.position.set(0.12, 0.072, 0.049);
+  tstakBadge.position.set(0.14, 0.072, 0.049);
   drillsGroup.add(tstakBadge);
 
-  // DeWALT DCB132 Dual-Port XR Li-Ion Fast Charger Station (`x = -0.18m, z = 0.13m`)
   const chargerDock = new THREE.Mesh(
     new THREE.BoxGeometry(0.24, 0.058, 0.165),
     dewaltBlackMat
@@ -1996,7 +2025,6 @@ export function buildGarageWorkshopToolBench(
   drillsGroup.add(chargerYellowTrim);
 
   for (const bx of [-0.235, -0.125]) {
-    // 18V XR 5.0Ah Li-Ion Battery Pack (Matte Black base + DeWALT Yellow top cap)
     const batteryBase = new THREE.Mesh(
       new THREE.BoxGeometry(0.078, 0.038, 0.112),
       dewaltBlackMat
@@ -2019,7 +2047,6 @@ export function buildGarageWorkshopToolBench(
     drillsGroup.add(chargeLed);
   }
 
-  // Standing DeWALT DCD996 18V XR Brushless Hammer Drill & DCF887 18V XR Impact Driver
   for (const [dx, dz, yaw, bodyLen, isHammerDrill] of [
     [-0.08, -0.08, -0.32, 0.185, true],
     [0.14, -0.06, -0.52, 0.135, false],
@@ -2029,7 +2056,6 @@ export function buildGarageWorkshopToolBench(
     drillUnit.rotation.y = yaw;
     drillsGroup.add(drillUnit);
 
-    // 18V XR 5.0Ah Slide Battery Base (Black lower shell + DeWALT Yellow upper slide rail)
     const battBlack = new THREE.Mesh(
       new THREE.BoxGeometry(0.078, 0.036, 0.118),
       dewaltBlackMat
@@ -2045,7 +2071,6 @@ export function buildGarageWorkshopToolBench(
     battYellow.position.set(0, 0.045, 0);
     drillUnit.add(battYellow);
 
-    // Contoured DeWALT Yellow & Black Overmoulded Pistol Grip
     const grip = new THREE.Mesh(
       new THREE.CylinderGeometry(0.019, 0.022, 0.13, 12),
       dewaltYellowMat
@@ -2063,7 +2088,6 @@ export function buildGarageWorkshopToolBench(
     gripRubber.rotation.x = -0.18;
     drillUnit.add(gripRubber);
 
-    // DeWALT Yellow Brushless Motor Clamshell Barrel with Black Rear Vent Cap
     const barrel = new THREE.Mesh(
       new THREE.CylinderGeometry(0.034, 0.034, bodyLen, 16),
       dewaltYellowMat
@@ -2081,7 +2105,6 @@ export function buildGarageWorkshopToolBench(
     rearCap.position.set(0, 0.192, -0.01 + bodyLen * 0.5 + 0.012);
     drillUnit.add(rearCap);
 
-    // Metal Gearbox Nose & Chuck / Hex Collet
     const noseCone = new THREE.Mesh(
       new THREE.CylinderGeometry(0.024, 0.032, 0.032, 14),
       castAluminumMat
@@ -2103,7 +2126,6 @@ export function buildGarageWorkshopToolBench(
     drillUnit.add(chuck);
 
     if (isHammerDrill) {
-      // 360-degree side auxiliary handle on the DCD996 Hammer Drill
       const auxHandle = new THREE.Mesh(
         new THREE.CylinderGeometry(0.013, 0.011, 0.12, 10),
         dewaltBlackMat
@@ -2114,11 +2136,11 @@ export function buildGarageWorkshopToolBench(
     }
   }
 
-  // F. Organized Hand Tools on Pegboard (with DeWALT Yellow & Black accents)
+  // F. Organized Hand Tools on Pegboard (`3.84m` width, with DeWALT Yellow & Black accents)
   const pegZ = benchD * 0.5 - 0.038;
-  for (let wIdx = 0; wIdx < 10; wIdx++) {
-    const wx = -1.25 + wIdx * 0.056;
-    const wLen = 0.12 + wIdx * 0.015;
+  for (let wIdx = 0; wIdx < 12; wIdx++) {
+    const wx = -1.55 + wIdx * 0.058;
+    const wLen = 0.12 + wIdx * 0.014;
     const wrench = new THREE.Mesh(
       new THREE.BoxGeometry(0.016, wLen, 0.006),
       aluminumTrimMat
@@ -2126,8 +2148,8 @@ export function buildGarageWorkshopToolBench(
     wrench.position.set(wx, worktopY + 0.36, pegZ);
     benchGroup.add(wrench);
   }
-  for (let sIdx = 0; sIdx < 8; sIdx++) {
-    const sx = -0.45 + sIdx * 0.054;
+  for (let sIdx = 0; sIdx < 10; sIdx++) {
+    const sx = -0.52 + sIdx * 0.056;
     const handle = new THREE.Mesh(
       new THREE.CylinderGeometry(0.012, 0.01, 0.088, 10),
       sIdx % 2 === 0 ? dewaltYellowMat : dewaltBlackMat
@@ -2143,139 +2165,743 @@ export function buildGarageWorkshopToolBench(
     benchGroup.add(shaft);
   }
   const spiritLevel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.92, 0.05, 0.022),
+    new THREE.BoxGeometry(1.12, 0.05, 0.022),
     dewaltYellowMat
   );
-  spiritLevel.position.set(0.74, worktopY + 0.45, pegZ);
+  spiritLevel.position.set(0.88, worktopY + 0.45, pegZ);
   benchGroup.add(spiritLevel);
 }
 
+export const buildGarageWorkshopToolBench = buildGarageToolBench;
+
 /**
- * Issue #8 ("Ladder here" at `[-3.459, 1.519, 19.056]`, `u = 18.68m, v = 4.43m, y = 1.519m`):
- * Builds a fixed angled Solid Oak & Forged Black-Steel Mezzanine Loft Access Ladder
- * (`outbuildings.barn.mezzanineLadder`) at `v = 4.66m`, rising from the Barn West Floor (`y = -0.34m`)
- * up to the front edge of the Barn Mezzanine (`u = 18.68m, y = 1.54m`), with twin upper safety grab handrails.
+ * Generates a realistic clear-lacquered Solid American White Oak wood-grain texture
+ * (`#9c744f` / `#8c6440`) with fine quarter-sawn medullary rays and warm cathedral grain lines
+ * for the Haldane UK bespoke wooden spiral staircase.
  */
-export function buildBarnMezzanineLadder(
-  groundGroup: THREE.Group,
-  uMezzanineFront: number,
-  barnWestFloorY: number,
-  mezzanineFloorY: number,
-  oakMat: THREE.Material,
-  castIronMat: THREE.Material
-): void {
-  const ladderGroup = new THREE.Group();
-  ladderGroup.name = 'outbuildings.barn.mezzanineLadder';
-  const uFoot = uMezzanineFront - 0.78; // 17.90m (sits on the flat `barnWestFloorY = -0.34m` floor!)
-  const uTop = uMezzanineFront + 0.02; // 18.70m
-  const riseY = mezzanineFloorY - barnWestFloorY; // 1.88m
-  const runU = uTop - uFoot; // 0.80m
-  const stringerLen = Math.hypot(runU, riseY);
-  const ladderPitch = Math.atan2(runU, riseY);
-  const ladderWidthV = 0.54;
+function createAmericanWhiteOakTexture(): THREE.CanvasTexture {
+  const w = 512;
+  const h = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
 
-  ladderGroup.position.set(uFoot, barnWestFloorY, 4.66);
-  groundGroup.add(ladderGroup);
+  const baseGrad = ctx.createLinearGradient(0, 0, w, h);
+  baseGrad.addColorStop(0, '#a67d56');
+  baseGrad.addColorStop(0.5, '#9c744f');
+  baseGrad.addColorStop(1, '#8f6743');
+  ctx.fillStyle = baseGrad;
+  ctx.fillRect(0, 0, w, h);
 
-  for (const sideV of [-1, 1] as const) {
-    const vz = sideV * (ladderWidthV * 0.5);
-    const stringer = new THREE.Mesh(
-      new THREE.BoxGeometry(0.11, stringerLen + 0.08, 0.036),
-      oakMat
-    );
-    stringer.position.set(runU * 0.5, riseY * 0.5, vz);
-    stringer.rotation.z = -ladderPitch;
-    stringer.castShadow = true;
-    stringer.receiveShadow = true;
-    ladderGroup.add(stringer);
-
-    const footShoe = new THREE.Mesh(
-      new THREE.BoxGeometry(0.14, 0.04, 0.052),
-      castIronMat
-    );
-    footShoe.position.set(0.02, 0.02, vz);
-    ladderGroup.add(footShoe);
-
-    const topBracket = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 0.045, 0.05),
-      castIronMat
-    );
-    topBracket.position.set(runU + 0.04, riseY - 0.02, vz);
-    ladderGroup.add(topBracket);
-
-    const grabPost = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.016, 0.016, 0.68, 12),
-      castIronMat
-    );
-    grabPost.position.set(runU - 0.02, riseY + 0.32, vz);
-    grabPost.castShadow = true;
-    ladderGroup.add(grabPost);
-
-    const grabReturn = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.016, 0.016, 0.22, 12),
-      castIronMat
-    );
-    grabReturn.rotation.z = Math.PI / 2;
-    grabReturn.position.set(runU + 0.08, riseY + 0.65, vz);
-    ladderGroup.add(grabReturn);
-
-    const deckFlange = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.016, 0.016, 0.66, 12),
-      castIronMat
-    );
-    deckFlange.position.set(runU + 0.18, riseY + 0.33, vz);
-    ladderGroup.add(deckFlange);
+  for (let i = 0; i < 180; i++) {
+    const y0 = (i / 180) * h;
+    ctx.strokeStyle =
+      i % 3 === 0
+        ? 'rgba(68, 42, 18, 0.14)'
+        : i % 3 === 1
+          ? 'rgba(235, 200, 155, 0.09)'
+          : 'rgba(92, 58, 28, 0.10)';
+    ctx.lineWidth = 1.2 + (i % 3) * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, y0);
+    for (let x = 0; x <= w; x += 32) {
+      const wave =
+        Math.sin(x * 0.018 + i * 0.7) * 3.5 +
+        Math.cos(x * 0.045 - i * 1.1) * 1.4;
+      ctx.lineTo(x, y0 + wave);
+    }
+    ctx.stroke();
   }
 
-  const numTreads = 8;
-  for (let t = 1; t <= numTreads; t++) {
-    const frac = t / (numTreads + 1);
-    const tread = new THREE.Mesh(
-      new THREE.BoxGeometry(0.105, 0.032, ladderWidthV - 0.036),
-      oakMat
+  for (let r = 0; r < 140; r++) {
+    const h1 = Math.sin(r * 12.9898) * 43758.5453;
+    const f1 = h1 - Math.floor(h1);
+    const h2 = Math.sin(r * 78.233) * 29183.127;
+    const f2 = h2 - Math.floor(h2);
+    ctx.fillStyle = 'rgba(225, 190, 145, 0.11)';
+    ctx.fillRect(f1 * w, f2 * h, 18 + (r % 24), 2.2);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+/**
+ * Issue #2 ("Remove the ladder" at `[-3.328, 1.428, 18.92]`) &
+ * Issue #3 ("Spiral staircase here https://haldaneuk.com/projects/wooden-spiral-staircase/"
+ * at `[-0.025, 1.428, 18.785]` -> Outbuilding `(u = 22.124m, y = 1.428m, v = 4.696m)` in the SE corner of the Barn):
+ * Builds a showroom-quality **Haldane UK Bespoke Freestanding Solid American White Oak Spiral Staircase**
+ * (`outbuildings.barn.spiralStaircase`) centered at `(centerU = 22.08m, centerV = 4.50m)`, rising from
+ * `barnLowerFloorY = -0.70m` to `mezzanineFloorY = 1.54m` (`totalRise = 2.24m`), complete with:
+ * - Turned Solid American White Oak Central Column (`outbuildings.barn.spiralStaircase.centerColumn`, `170mm` diameter)
+ *   with stacked turned drum spacers, shadow V-grooves, steel/oak base plinth, and turned oak top newel finial
+ * - 12 Bespoke Fan-Shaped Solid American White Oak Treads (`outbuildings.barn.spiralStaircase.tread`) built with
+ *   `THREE.ExtrudeGeometry` bullnose fan sectors and sculpted solid-oak underneath support brackets
+ * - Custom Solid Oak Quadrant Top Landing Platform (`outbuildings.barn.spiralStaircase.topLanding`) at `y = 2.24m`
+ *   bridging from the center column to the Mezzanine landing edge (`u = 21.14m, v = 3.56..4.95m`)
+ * - Continuous Helical Laminated Solid-Oak Outer Stringer Ribbon (`outbuildings.barn.spiralStaircase.outerStringer`)
+ *   tying the outer tips of the treads together (`r = 0.875m`, `4–5cm` clear of the Barn South & East walls)
+ * - Continuous Helical Solid American White Oak Handrail (`outbuildings.barn.spiralStaircase.handrail`) with a classic
+ *   Haldane UK **scrolled horizontal bullnose volute curl** at the bottom entry and turned balusters (`outbuildings.barn.spiralStaircase.spindle`).
+ */
+export function buildBarnSpiralStaircase(
+  groundGroup: THREE.Group,
+  barnLowerFloorY: number,
+  mezzanineFloorY: number
+): void {
+  const centerU = 22.08;
+  const centerV = 4.5;
+  const totalRise = mezzanineFloorY - barnLowerFloorY; // 2.24m (-0.70m to +1.54m)
+  const numSteps = 12;
+  const riserH = totalRise / numSteps; // 0.1867m per step
+  const innerRadius = 0.082;
+  const columnRadius = 0.085; // 170mm diameter turned oak central column
+  const outerRadius = 0.88; // Spans u = 21.20..22.96m (4cm clear of u=23.00m wall) & v = 3.62..5.38m (5cm clear of v=5.43m wall)
+
+  const stairGroup = new THREE.Group();
+  stairGroup.name = 'outbuildings.barn.spiralStaircase';
+  stairGroup.position.set(centerU, barnLowerFloorY, centerV);
+  groundGroup.add(stairGroup);
+
+  const oakTex = createAmericanWhiteOakTexture();
+  const oakTreadMat = new THREE.MeshStandardMaterial({
+    map: oakTex,
+    color: 0x9c744f,
+    roughness: 0.42,
+    metalness: 0.04,
+  });
+  const oakHandrailMat = new THREE.MeshStandardMaterial({
+    map: oakTex,
+    color: 0x8c6440,
+    roughness: 0.36,
+    metalness: 0.05,
+  });
+  const spindleOakMat = new THREE.MeshStandardMaterial({
+    map: oakTex,
+    color: 0x946b45,
+    roughness: 0.38,
+    metalness: 0.04,
+  });
+  const agedBronzeMat = new THREE.MeshStandardMaterial({
+    color: 0x46382b,
+    roughness: 0.34,
+    metalness: 0.78,
+  });
+  const baseFlangeMat = new THREE.MeshStandardMaterial({
+    color: 0x23272d,
+    roughness: 0.38,
+    metalness: 0.74,
+  });
+
+  // ---------------------------------------------------------------------------
+  // 1. Central Turned American White Oak Column (`outbuildings.barn.spiralStaircase.centerColumn`)
+  // ---------------------------------------------------------------------------
+  const columnGroup = new THREE.Group();
+  columnGroup.name = 'outbuildings.barn.spiralStaircase.centerColumn';
+  stairGroup.add(columnGroup);
+
+  const steelBaseFlange = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.165, 0.175, 0.018, 28),
+    baseFlangeMat
+  );
+  steelBaseFlange.position.set(0, 0.009, 0);
+  steelBaseFlange.receiveShadow = true;
+  columnGroup.add(steelBaseFlange);
+
+  const oakBasePlinth = new THREE.Mesh(
+    new THREE.CylinderGeometry(columnRadius + 0.018, columnRadius + 0.042, 0.068, 28),
+    oakHandrailMat
+  );
+  oakBasePlinth.name = 'outbuildings.barn.spiralStaircase.centerColumn';
+  oakBasePlinth.position.set(0, 0.048, 0);
+  oakBasePlinth.castShadow = true;
+  oakBasePlinth.receiveShadow = true;
+  columnGroup.add(oakBasePlinth);
+
+  const totalColumnH = totalRise + 1.02;
+  const numDrums = numSteps + 5;
+  const drumPitchH = totalColumnH / numDrums;
+  for (let d = 0; d < numDrums; d++) {
+    const dy = (d + 0.5) * drumPitchH;
+    const drumMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(columnRadius, columnRadius, drumPitchH - 0.008, 28),
+      oakHandrailMat
     );
-    tread.position.set(frac * runU, frac * riseY, 0);
-    tread.castShadow = true;
-    tread.receiveShadow = true;
-    ladderGroup.add(tread);
+    drumMesh.name = 'outbuildings.barn.spiralStaircase.centerColumn';
+    drumMesh.position.set(0, dy, 0);
+    drumMesh.castShadow = true;
+    drumMesh.receiveShadow = true;
+    columnGroup.add(drumMesh);
+
+    const shadowNeck = new THREE.Mesh(
+      new THREE.CylinderGeometry(columnRadius - 0.006, columnRadius - 0.006, 0.01, 24),
+      agedBronzeMat
+    );
+    shadowNeck.position.set(0, (d + 1) * drumPitchH, 0);
+    columnGroup.add(shadowNeck);
+  }
+
+  const capitalCollar = new THREE.Mesh(
+    new THREE.CylinderGeometry(columnRadius + 0.022, columnRadius + 0.008, 0.042, 28),
+    oakHandrailMat
+  );
+  capitalCollar.position.set(0, totalColumnH + 0.021, 0);
+  columnGroup.add(capitalCollar);
+
+  const topFinial = new THREE.Mesh(
+    new THREE.SphereGeometry(columnRadius + 0.014, 24, 18),
+    oakHandrailMat
+  );
+  topFinial.name = 'outbuildings.barn.spiralStaircase.centerColumn';
+  topFinial.scale.set(1, 1.18, 1);
+  topFinial.position.set(0, totalColumnH + 0.1, 0);
+  topFinial.castShadow = true;
+  columnGroup.add(topFinial);
+
+  // ---------------------------------------------------------------------------
+  // 2. 12 Bespoke Fan-Shaped Solid American White Oak Treads (`outbuildings.barn.spiralStaircase.tread`)
+  // ---------------------------------------------------------------------------
+  const thetaStart = -Math.PI * 0.65;
+  const thetaEnd = Math.PI * 0.96;
+  const treadSweep = 0.42;
+  const treadThickness = 0.036;
+
+  const fanShape = new THREE.Shape();
+  const halfSweep = treadSweep * 0.5;
+  const arcSegs = 18;
+  fanShape.moveTo(innerRadius * Math.cos(-halfSweep), -innerRadius * Math.sin(-halfSweep));
+  fanShape.lineTo(outerRadius * Math.cos(-halfSweep), -outerRadius * Math.sin(-halfSweep));
+  for (let s = 1; s <= arcSegs; s++) {
+    const a = -halfSweep + (s / arcSegs) * treadSweep;
+    fanShape.lineTo(outerRadius * Math.cos(a), -outerRadius * Math.sin(a));
+  }
+  fanShape.lineTo(innerRadius * Math.cos(halfSweep), -innerRadius * Math.sin(halfSweep));
+  for (let s = arcSegs - 1; s >= 0; s--) {
+    const a = -halfSweep + (s / arcSegs) * treadSweep;
+    fanShape.lineTo(innerRadius * Math.cos(a), -innerRadius * Math.sin(a));
+  }
+  fanShape.closePath();
+
+  const treadGeo = new THREE.ExtrudeGeometry(fanShape, {
+    depth: treadThickness,
+    bevelEnabled: true,
+    bevelThickness: 0.005,
+    bevelSize: 0.005,
+    bevelSegments: 3,
+  });
+  treadGeo.rotateX(-Math.PI / 2);
+
+  for (let i = 0; i < numSteps; i++) {
+    const frac = i / (numSteps - 1);
+    const theta = thetaStart + frac * (thetaEnd - thetaStart);
+    const treadTopY = (i + 1) * riserH;
+    const treadBaseY = treadTopY - treadThickness;
+
+    const stepContainer = new THREE.Group();
+    stepContainer.position.set(0, treadBaseY, 0);
+    stepContainer.rotation.y = -theta;
+    stairGroup.add(stepContainer);
+
+    const treadMesh = new THREE.Mesh(treadGeo, oakTreadMat);
+    treadMesh.name = 'outbuildings.barn.spiralStaircase.tread';
+    treadMesh.castShadow = true;
+    treadMesh.receiveShadow = true;
+    stepContainer.add(treadMesh);
+
+    const spineBracket = new THREE.Mesh(
+      new THREE.BoxGeometry(outerRadius - columnRadius - 0.08, 0.044, 0.052),
+      oakHandrailMat
+    );
+    spineBracket.position.set(
+      columnRadius + (outerRadius - columnRadius - 0.08) * 0.5,
+      -0.022,
+      0
+    );
+    spineBracket.castShadow = true;
+    stepContainer.add(spineBracket);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. Custom Solid Oak Quadrant Top Landing Platform (`outbuildings.barn.spiralStaircase.topLanding`)
+  // ---------------------------------------------------------------------------
+  const landingShape = new THREE.Shape();
+  landingShape.moveTo(-columnRadius, -0.06);
+  landingShape.lineTo(-outerRadius, -0.45);
+  landingShape.lineTo(-0.94, -0.45);
+  landingShape.lineTo(-0.94, 0.94);
+  landingShape.lineTo(-0.08, 0.94);
+  landingShape.lineTo(-columnRadius * 0.7, columnRadius * 0.7);
+  landingShape.closePath();
+
+  const landingDepth = 0.044;
+  const landingGeo = new THREE.ExtrudeGeometry(landingShape, {
+    depth: landingDepth,
+    bevelEnabled: true,
+    bevelThickness: 0.005,
+    bevelSize: 0.005,
+    bevelSegments: 3,
+  });
+  landingGeo.rotateX(-Math.PI / 2);
+
+  const topLandingMesh = new THREE.Mesh(landingGeo, oakTreadMat);
+  topLandingMesh.name = 'outbuildings.barn.spiralStaircase.topLanding';
+  topLandingMesh.position.set(0, totalRise - landingDepth, 0);
+  topLandingMesh.castShadow = true;
+  topLandingMesh.receiveShadow = true;
+  stairGroup.add(topLandingMesh);
+
+  const landingApron = new THREE.Mesh(
+    new THREE.BoxGeometry(0.86, 0.11, 0.028),
+    oakHandrailMat
+  );
+  landingApron.position.set(-0.48, totalRise - 0.065, 0.22);
+  landingApron.rotation.y = -0.46;
+  stairGroup.add(landingApron);
+
+  // ---------------------------------------------------------------------------
+  // 4. Curved Helical Laminated Solid-Oak Outer Stringer Ribbon (`outbuildings.barn.spiralStaircase.outerStringer`)
+  // ---------------------------------------------------------------------------
+  const stringerGroup = new THREE.Group();
+  stringerGroup.name = 'outbuildings.barn.spiralStaircase.outerStringer';
+  stairGroup.add(stringerGroup);
+
+  const stringerRadius = outerRadius - 0.006;
+  const stringerThetaMin = thetaStart - halfSweep * 0.85;
+  const stringerThetaMax = thetaEnd + halfSweep * 0.55;
+  const stringerSegs = 64;
+  const stringerHalfH = 0.115;
+  const stringerThickR = 0.028;
+
+  const strPositions: number[] = [];
+  const strNormals: number[] = [];
+  const strUvs: number[] = [];
+  const strIndices: number[] = [];
+
+  const pushQuad = (
+    p0: readonly [number, number, number],
+    p1: readonly [number, number, number],
+    p2: readonly [number, number, number],
+    p3: readonly [number, number, number],
+    nx: number,
+    ny: number,
+    nz: number,
+    u0: number,
+    u1: number
+  ): void => {
+    const base = strPositions.length / 3;
+    strPositions.push(
+      p0[0], p0[1], p0[2],
+      p1[0], p1[1], p1[2],
+      p2[0], p2[1], p2[2],
+      p3[0], p3[1], p3[2]
+    );
+    for (let k = 0; k < 4; k++) {
+      strNormals.push(nx, ny, nz);
+    }
+    strUvs.push(u0, 0, u1, 0, u1, 1, u0, 1);
+    strIndices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  };
+
+  const rIn = stringerRadius - stringerThickR * 0.5;
+  const rOut = stringerRadius + stringerThickR * 0.5;
+  const yStringerStart = riserH * 0.65;
+  const yStringerEnd = totalRise - 0.02;
+
+  for (let s = 0; s < stringerSegs; s++) {
+    const t0 = s / stringerSegs;
+    const t1 = (s + 1) / stringerSegs;
+    const a0 = stringerThetaMin + t0 * (stringerThetaMax - stringerThetaMin);
+    const a1 = stringerThetaMin + t1 * (stringerThetaMax - stringerThetaMin);
+    const yc0 = yStringerStart + t0 * (yStringerEnd - yStringerStart);
+    const yc1 = yStringerStart + t1 * (yStringerEnd - yStringerStart);
+
+    const c0 = Math.cos(a0);
+    const s0 = Math.sin(a0);
+    const c1 = Math.cos(a1);
+    const s1 = Math.sin(a1);
+    const cm = Math.cos((a0 + a1) * 0.5);
+    const sm = Math.sin((a0 + a1) * 0.5);
+
+    const outBot0: [number, number, number] = [rOut * c0, yc0 - stringerHalfH, rOut * s0];
+    const outBot1: [number, number, number] = [rOut * c1, yc1 - stringerHalfH, rOut * s1];
+    const outTop1: [number, number, number] = [rOut * c1, yc1 + stringerHalfH, rOut * s1];
+    const outTop0: [number, number, number] = [rOut * c0, yc0 + stringerHalfH, rOut * s0];
+
+    const inBot0: [number, number, number] = [rIn * c0, yc0 - stringerHalfH, rIn * s0];
+    const inBot1: [number, number, number] = [rIn * c1, yc1 - stringerHalfH, rIn * s1];
+    const inTop1: [number, number, number] = [rIn * c1, yc1 + stringerHalfH, rIn * s1];
+    const inTop0: [number, number, number] = [rIn * c0, yc0 + stringerHalfH, rIn * s0];
+
+    pushQuad(outBot0, outBot1, outTop1, outTop0, cm, 0, sm, t0 * 6, t1 * 6);
+    pushQuad(inBot1, inBot0, inTop0, inTop1, -cm, 0, -sm, t0 * 6, t1 * 6);
+    pushQuad(inTop0, outTop0, outTop1, inTop1, 0, 1, 0, t0 * 6, t1 * 6);
+    pushQuad(outBot0, inBot0, inBot1, outBot1, 0, -1, 0, t0 * 6, t1 * 6);
+  }
+
+  const stringerRibbonGeo = new THREE.BufferGeometry();
+  stringerRibbonGeo.setAttribute('position', new THREE.Float32BufferAttribute(strPositions, 3));
+  stringerRibbonGeo.setAttribute('normal', new THREE.Float32BufferAttribute(strNormals, 3));
+  stringerRibbonGeo.setAttribute('uv', new THREE.Float32BufferAttribute(strUvs, 2));
+  stringerRibbonGeo.setIndex(strIndices);
+
+  const stringerRibbonMesh = new THREE.Mesh(stringerRibbonGeo, oakHandrailMat);
+  stringerRibbonMesh.name = 'outbuildings.barn.spiralStaircase.outerStringer';
+  stringerRibbonMesh.castShadow = true;
+  stringerRibbonMesh.receiveShadow = true;
+  stringerGroup.add(stringerRibbonMesh);
+
+  for (const yOffset of [-stringerHalfH, stringerHalfH] as const) {
+    const beadPts: THREE.Vector3[] = [];
+    for (let s = 0; s <= 40; s++) {
+      const t = s / 40;
+      const a = stringerThetaMin + t * (stringerThetaMax - stringerThetaMin);
+      const yc = yStringerStart + t * (yStringerEnd - yStringerStart) + yOffset;
+      beadPts.push(new THREE.Vector3(rOut * Math.cos(a), yc, rOut * Math.sin(a)));
+    }
+    const beadCurve = new THREE.CatmullRomCurve3(beadPts);
+    const beadMesh = new THREE.Mesh(
+      new THREE.TubeGeometry(beadCurve, 56, 0.011, 10, false),
+      oakHandrailMat
+    );
+    beadMesh.name = 'outbuildings.barn.spiralStaircase.outerStringer';
+    stringerGroup.add(beadMesh);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 5. Continuous Helical Solid American White Oak Handrail (`outbuildings.barn.spiralStaircase.handrail`)
+  //    & Turned Balusters (`outbuildings.barn.spiralStaircase.spindle`)
+  // ---------------------------------------------------------------------------
+  const handrailRadius = 0.835;
+  const handrailHeightAboveTread = 0.94;
+  const handrailCurvePoints: THREE.Vector3[] = [];
+
+  const voluteCenterTheta = thetaStart - 0.11;
+  const voluteCenterR = handrailRadius - 0.065;
+  const voluteY = riserH + handrailHeightAboveTread - 0.04;
+  const voluteCenterX = voluteCenterR * Math.cos(voluteCenterTheta);
+  const voluteCenterZ = voluteCenterR * Math.sin(voluteCenterTheta);
+
+  for (let v = 0; v < 6; v++) {
+    const vt = v / 5;
+    const spiralAng = voluteCenterTheta + Math.PI * 1.35 * (1 - vt);
+    const spiralR = 0.018 + vt * 0.062;
+    handrailCurvePoints.push(
+      new THREE.Vector3(
+        voluteCenterX + spiralR * Math.cos(spiralAng),
+        voluteY - (1 - vt) * 0.015,
+        voluteCenterZ + spiralR * Math.sin(spiralAng)
+      )
+    );
+  }
+
+  const climbSamples = 32;
+  for (let k = 0; k <= climbSamples; k++) {
+    const t = k / climbSamples;
+    const a = thetaStart + t * (thetaEnd - thetaStart);
+    const treadY = riserH + t * (totalRise - riserH);
+    handrailCurvePoints.push(
+      new THREE.Vector3(
+        handrailRadius * Math.cos(a),
+        treadY + handrailHeightAboveTread,
+        handrailRadius * Math.sin(a)
+      )
+    );
+  }
+
+  handrailCurvePoints.push(
+    new THREE.Vector3(-0.88, totalRise + 0.96, 0.34),
+    new THREE.Vector3(-0.92, totalRise + 0.96, 0.44)
+  );
+
+  const handrailCurve = new THREE.CatmullRomCurve3(handrailCurvePoints);
+  const handrailTubeGeo = new THREE.TubeGeometry(handrailCurve, 120, 0.028, 16, false);
+  const handrailMesh = new THREE.Mesh(handrailTubeGeo, oakHandrailMat);
+  handrailMesh.name = 'outbuildings.barn.spiralStaircase.handrail';
+  handrailMesh.castShadow = true;
+  handrailMesh.receiveShadow = true;
+  stairGroup.add(handrailMesh);
+
+  const voluteEyeCap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.038, 0.034, 0.048, 20),
+    oakHandrailMat
+  );
+  voluteEyeCap.name = 'outbuildings.barn.spiralStaircase.handrail';
+  voluteEyeCap.position.set(voluteCenterX, voluteY - 0.008, voluteCenterZ);
+  voluteEyeCap.castShadow = true;
+  stairGroup.add(voluteEyeCap);
+
+  const bottomNewelBaseY = riserH * 0.85;
+  const bottomNewelH = voluteY - bottomNewelBaseY;
+  const bottomNewel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.036, 0.042, bottomNewelH, 20),
+    oakHandrailMat
+  );
+  bottomNewel.name = 'outbuildings.barn.spiralStaircase.spindle';
+  bottomNewel.position.set(
+    voluteCenterX,
+    bottomNewelBaseY + bottomNewelH * 0.5,
+    voluteCenterZ
+  );
+  bottomNewel.castShadow = true;
+  stairGroup.add(bottomNewel);
+
+  const topNewelH = 1.02;
+  const topNewel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.044, topNewelH, 20),
+    oakHandrailMat
+  );
+  topNewel.name = 'outbuildings.barn.spiralStaircase.spindle';
+  topNewel.position.set(-0.92, totalRise + topNewelH * 0.5 - 0.02, 0.44);
+  topNewel.castShadow = true;
+  stairGroup.add(topNewel);
+
+  const topNewelCap = new THREE.Mesh(
+    new THREE.SphereGeometry(0.048, 18, 14),
+    oakHandrailMat
+  );
+  topNewelCap.position.set(-0.92, totalRise + topNewelH + 0.015, 0.44);
+  stairGroup.add(topNewelCap);
+
+  const totalSpindles = numSteps * 3;
+  for (let s = 0; s < totalSpindles; s++) {
+    const t = (s + 0.35) / totalSpindles;
+    const a = thetaStart + t * (thetaEnd - thetaStart);
+    const stepIdx = Math.min(numSteps - 1, Math.floor(t * numSteps));
+    const baseTreadY = (stepIdx + 1) * riserH - 0.004;
+    const topRailY = riserH + t * (totalRise - riserH) + handrailHeightAboveTread;
+    const spindleH = topRailY - baseTreadY;
+
+    const sx = handrailRadius * Math.cos(a);
+    const sz = handrailRadius * Math.sin(a);
+
+    const spindleMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.013, 0.015, spindleH, 12),
+      spindleOakMat
+    );
+    spindleMesh.name = 'outbuildings.barn.spiralStaircase.spindle';
+    spindleMesh.position.set(sx, baseTreadY + spindleH * 0.5, sz);
+    spindleMesh.castShadow = true;
+    stairGroup.add(spindleMesh);
+
+    const baseShoe = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02, 0.022, 0.022, 12),
+      agedBronzeMat
+    );
+    baseShoe.position.set(sx, baseTreadY + 0.011, sz);
+    stairGroup.add(baseShoe);
+
+    const midRing = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.018, 0.018, 0.024, 12),
+      agedBronzeMat
+    );
+    midRing.position.set(sx, baseTreadY + spindleH * 0.52, sz);
+    stairGroup.add(midRing);
   }
 }
 
 /**
- * Issue #9 ("2.8m tall golf simulator here cut into the wall, 4m wide, backs into the store room") +
- * Issue #4 ("Cut a little deeper into the store room so there is at least 60cm clearance in front of the ladder"
- * at `[-7.986, 2.56, 15.704]`) +
- * Issue #5 ("Trackman looks like its blocking the projector" at `[-5.446, 2.563, 17.371]`):
+ * Issue #9 ("Better texture on the astroturf" at `[-6.711, -0.306, 16.014]`, `outbuildings.barn.golfSimulator.turfMat`):
+ * Generates rich, high-resolution (`1024x1024`) procedural **Synthetic Golf Astroturf & Putting Green Turf Textures**:
+ * - Dense multi-directional micro-blade thatch noise (thousands of short crisp grass-blade strokes in layered
+ *   emerald `#1f592c`, lush turf green `#276b36`, deep root shadow `#143d1d`, and sunlit tip highlights `#388246`),
+ * - Subtle cross-mowed fairway stripes & putting apron fringe collar border around the perimeter,
+ * - Subtle inlaid white putting alignment line & cup target ring toward the screen,
+ * - Matching high-frequency fiber-pile `bumpMap` (`bumpScale: 0.018`) so the astroturf catches the overhead spotlights
+ *   with realistic short-pile synthetic turf texture.
+ */
+function createGolfAstroturfTextures(): {
+  fairwayMap: THREE.CanvasTexture;
+  hittingMap: THREE.CanvasTexture;
+  bumpMap: THREE.CanvasTexture;
+} {
+  const size = 1024;
+
+  const fwCanvas = document.createElement('canvas');
+  fwCanvas.width = size;
+  fwCanvas.height = size;
+  const fwCtx = fwCanvas.getContext('2d')!;
+
+  fwCtx.fillStyle = '#1f592c';
+  fwCtx.fillRect(0, 0, size, size);
+
+  const numStripes = 8;
+  const stripeW = size / numStripes;
+  for (let s = 0; s < numStripes; s++) {
+    fwCtx.fillStyle = s % 2 === 0 ? 'rgba(56, 130, 70, 0.16)' : 'rgba(20, 61, 29, 0.14)';
+    fwCtx.fillRect(s * stripeW, 0, stripeW, size);
+  }
+
+  const borderW = 54;
+  fwCtx.strokeStyle = 'rgba(20, 56, 26, 0.42)';
+  fwCtx.lineWidth = borderW;
+  fwCtx.strokeRect(borderW * 0.5, borderW * 0.5, size - borderW, size - borderW);
+
+  const hitSize = 512;
+  const hitCanvas = document.createElement('canvas');
+  hitCanvas.width = hitSize;
+  hitCanvas.height = hitSize;
+  const hitCtx = hitCanvas.getContext('2d')!;
+  hitCtx.fillStyle = '#194a23';
+  hitCtx.fillRect(0, 0, hitSize, hitSize);
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = hitSize;
+  bumpCanvas.height = hitSize;
+  const bumpCtx = bumpCanvas.getContext('2d')!;
+  const bumpImg = bumpCtx.createImageData(hitSize, hitSize);
+  const bData = bumpImg.data;
+
+  for (let y = 0; y < hitSize; y++) {
+    for (let x = 0; x < hitSize; x++) {
+      const idx = (y * hitSize + x) * 4;
+      const h1 = Math.sin(x * 19.173 + y * 83.419) * 43758.5453;
+      const f1 = h1 - Math.floor(h1);
+      const h2 = Math.sin(x * 61.91 + y * 27.13) * 19283.713;
+      const f2 = h2 - Math.floor(h2);
+      const val = Math.max(0, Math.min(255, Math.round(90 + f1 * 110 + (f2 - 0.5) * 50)));
+      bData[idx] = val;
+      bData[idx + 1] = val;
+      bData[idx + 2] = val;
+      bData[idx + 3] = 255;
+    }
+  }
+  bumpCtx.putImageData(bumpImg, 0, 0);
+
+  const bladeColors = [
+    '#143d1d',
+    '#1f592c',
+    '#276b36',
+    '#2e783d',
+    '#388246',
+    '#1b4f26',
+  ] as const;
+
+  fwCtx.lineWidth = 1.6;
+  for (let i = 0; i < 18000; i++) {
+    const h1 = Math.sin(i * 12.9898 + 1.7) * 43758.5453;
+    const f1 = h1 - Math.floor(h1);
+    const h2 = Math.sin(i * 78.233 + 3.1) * 29183.127;
+    const f2 = h2 - Math.floor(h2);
+    const h3 = Math.sin(i * 41.137 + 7.3) * 17391.831;
+    const f3 = h3 - Math.floor(h3);
+
+    const bx = f1 * size;
+    const by = f2 * size;
+    const ang = f3 * Math.PI * 2;
+    const bladeLen = 4.0 + (i % 5) * 1.4;
+    fwCtx.strokeStyle = bladeColors[i % bladeColors.length]!;
+    fwCtx.beginPath();
+    fwCtx.moveTo(bx, by);
+    fwCtx.lineTo(bx + Math.cos(ang) * bladeLen, by + Math.sin(ang) * bladeLen);
+    fwCtx.stroke();
+  }
+
+  fwCtx.strokeStyle = 'rgba(235, 245, 238, 0.32)';
+  fwCtx.lineWidth = 3;
+  fwCtx.beginPath();
+  fwCtx.moveTo(size * 0.22, size * 0.5);
+  fwCtx.lineTo(size * 0.78, size * 0.5);
+  fwCtx.stroke();
+
+  fwCtx.beginPath();
+  fwCtx.arc(size * 0.22, size * 0.5, 16, 0, Math.PI * 2);
+  fwCtx.stroke();
+
+  hitCtx.lineWidth = 1.8;
+  for (let i = 0; i < 8000; i++) {
+    const h1 = Math.sin(i * 17.391 + 2.3) * 43758.5453;
+    const f1 = h1 - Math.floor(h1);
+    const h2 = Math.sin(i * 63.719 + 5.9) * 29183.127;
+    const f2 = h2 - Math.floor(h2);
+    const h3 = Math.sin(i * 29.817 + 1.1) * 17391.831;
+    const f3 = h3 - Math.floor(h3);
+
+    const bx = f1 * hitSize;
+    const by = f2 * hitSize;
+    const ang = f3 * Math.PI * 2;
+    const bladeLen = 4.5 + (i % 4) * 1.6;
+    hitCtx.strokeStyle = bladeColors[(i + 1) % bladeColors.length]!;
+    hitCtx.beginPath();
+    hitCtx.moveTo(bx, by);
+    hitCtx.lineTo(bx + Math.cos(ang) * bladeLen, by + Math.sin(ang) * bladeLen);
+    hitCtx.stroke();
+  }
+
+  const fairwayMap = new THREE.CanvasTexture(fwCanvas);
+  fairwayMap.colorSpace = THREE.SRGBColorSpace;
+  fairwayMap.wrapS = THREE.RepeatWrapping;
+  fairwayMap.wrapT = THREE.RepeatWrapping;
+  fairwayMap.repeat.set(3, 4);
+
+  const hittingMap = new THREE.CanvasTexture(hitCanvas);
+  hittingMap.colorSpace = THREE.SRGBColorSpace;
+  hittingMap.wrapS = THREE.RepeatWrapping;
+  hittingMap.wrapT = THREE.RepeatWrapping;
+  hittingMap.repeat.set(2, 4);
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.repeat.set(6, 8);
+
+  return { fairwayMap, hittingMap, bumpMap };
+}
+
+/**
+ * Issue #6 ("When in cutaway mode hide the top of the mezzanine / ceiling when looking at the ground floor"),
+ * Issue #9 ("Better texture on the astroturf" at `[-6.711, -0.306, 16.014]`, `outbuildings.barn.golfSimulator.turfMat`), &
+ * Issue #10 (Pin on top of `outbuildings.barn.golfSimulator` at `[-8.437, 2.56, 15.397]`):
  * Builds a Widescreen (`4.48m` wide x `2.80m` tall, `16:10` Widescreen aspect ratio) **TrackMan iO**
  * Indoor Golf Simulator Bay (`outbuildings.barn.golfSimulator`) cut into the Store/Barn cross-wall
  * (`u = 14.96..15.20m, v = 0.615..5.095m`) and backing **`2.16m`** into the Store room (`u = 13.04..15.20m`), complete with:
- * - Outer painted studwork enclosure housing in the Store room (`u = 13.04..14.96m`)
- * - Upholstered matte-black acoustic side & ceiling baffles lining the `2.16m` deep recessed bay
- * - Taut `4.48m x 2.80m` Widescreen HD Golf Impact Projection Screen (`outbuildings.barn.golfSimulator.screen`) at `u = 13.18m`
- * - Continuous artificial fairway & putting turf floor extending only to `x = +1.82m` (`u = 17.02m`), leaving
- *   **`0.88m` (`88cm`, exceeding the required `60cm`) of unobstructed stone floor clearance in front of the Mezzanine Ladder** (`u = 17.90m`)!
- * - Ceiling-Mounted 4K Short-Throw Laser Projector at `x = 0.28m, y = 2.74m` (`u = 15.48m`, ahead of the TrackMan iO)
- * - Ceiling-Mounted **TrackMan iO (Indoor Optimized)** overhead launch monitor at `x = 0.92m, y = 2.98m` (`u = 16.12m`,
- *   mounted behind and higher than the projector so it never blocks the projector's throw cone!).
+ * - Dedicated ceiling sub-group (`outbuildings.barn.golfSimulator.ceiling`) attached to `groundCeilingGroup ?? groundGroup`
+ *   containing `storeRoofLid` and the ceiling acoustic baffles (`ceilBaffle`) so they hide automatically in Ground-Floor Cutaway mode!
+ * - High-resolution procedural Synthetic Golf Astroturf & Putting Green textures (`createGolfAstroturfTextures()`) with
+ *   fiber-pile bump mapping (`bumpScale: 0.018`) on `outbuildings.barn.golfSimulator.turfMat` and `outbuildings.barn.golfSimulator.hittingStrip`.
  */
 export function buildBarnGolfSimulator(
   groundGroup: THREE.Group,
-  uWallMin: number, // 14.96m
-  uWallMax: number, // 15.20m
-  barnWestFloorY: number, // -0.34m
-  plasterMat: THREE.Material
+  arg2: number,
+  arg3: number,
+  arg4?: number | THREE.Group,
+  arg5?: THREE.Material | THREE.Group,
+  arg6?: THREE.Group
 ): void {
+  const isFiveArgCall = typeof arg4 === 'number';
+  const uWallMin = isFiveArgCall ? arg2 : 14.96;
+  const uWallMax = isFiveArgCall ? arg3 : 15.2;
+  const barnWestFloorY = isFiveArgCall ? arg4 : -0.34;
+  const plasterMat: THREE.Material =
+    isFiveArgCall && arg5 instanceof THREE.Material
+      ? arg5
+      : new THREE.MeshStandardMaterial({
+          color: 0xf2ede2,
+          roughness: 0.86,
+          metalness: 0.02,
+        });
+  const groundCeilingGroup: THREE.Group | undefined =
+    arg6 ??
+    (arg4 instanceof THREE.Group ? arg4 : undefined) ??
+    (arg5 instanceof THREE.Group ? arg5 : undefined);
+
   const simGroup = new THREE.Group();
   simGroup.name = 'outbuildings.barn.golfSimulator';
-  // Centered horizontally across the `5.15m` internal width of the Barn (`v = 0.28..5.43m`, center `v = 2.855m`),
-  // spanning `v = 0.615..5.095m` (`4.48m` Widescreen width x `2.80m` height = 16:10 Widescreen!).
   simGroup.position.set(uWallMax, barnWestFloorY, 2.855);
   groundGroup.add(simGroup);
 
-  const clearW = 4.48; // Widescreen 16:10 width (`4.48m` x `2.80m`)
-  const clearH = 2.8; // 2.80m height (`y = -0.34..+2.46m`)
-  const recessDepthU = 2.16; // Issue #4: Cuts 0.68m deeper into the Store room (`u = 13.04..15.20m`)
-  const wallT = uWallMax - uWallMin; // 0.24m
+  const simCeilingGroup = new THREE.Group();
+  simCeilingGroup.name = 'outbuildings.barn.golfSimulator.ceiling';
+  simCeilingGroup.position.set(uWallMax, barnWestFloorY, 2.855);
+  (groundCeilingGroup ?? groundGroup).add(simCeilingGroup);
+
+  const clearW = 4.48;
+  const clearH = 2.8;
+  const recessDepthU = 2.16;
+  const wallT = uWallMax - uWallMin;
 
   const acousticBaffleMat = new THREE.MeshStandardMaterial({
     color: 0x1a1c20,
@@ -2287,14 +2913,22 @@ export function buildBarnGolfSimulator(
     roughness: 0.88,
     metalness: 0.04,
   });
+
+  const { fairwayMap, hittingMap, bumpMap } = createGolfAstroturfTextures();
   const fairwayTurfMat = new THREE.MeshStandardMaterial({
-    color: 0x2d6a32,
-    roughness: 0.86,
+    map: fairwayMap,
+    bumpMap,
+    bumpScale: 0.018,
+    color: 0xffffff,
+    roughness: 0.82,
     metalness: 0.02,
   });
   const hittingStripMat = new THREE.MeshStandardMaterial({
-    color: 0x1f4e24,
-    roughness: 0.9,
+    map: hittingMap,
+    bumpMap,
+    bumpScale: 0.022,
+    color: 0xffffff,
+    roughness: 0.86,
     metalness: 0.02,
   });
   const stanceSurroundMat = new THREE.MeshStandardMaterial({
@@ -2317,7 +2951,7 @@ export function buildBarnGolfSimulator(
     metalness: 0.58,
   });
   const trackManOrangeMat = new THREE.MeshStandardMaterial({
-    color: 0xff6b00, // Signature TrackMan Orange
+    color: 0xff6b00,
     emissive: new THREE.Color(0xff5500),
     emissiveIntensity: 0.25,
     roughness: 0.3,
@@ -2329,8 +2963,7 @@ export function buildBarnGolfSimulator(
     metalness: 0.05,
   });
 
-  // 1. Exterior Painted Studwork Enclosure Box backing deeper into the Store Room (`x = -recessDepthU..-wallT`, i.e. `u = 13.04..14.96m`)
-  const storeBoxDepth = recessDepthU - wallT; // 1.92m
+  const storeBoxDepth = recessDepthU - wallT;
   const storeBackWall = new THREE.Mesh(
     new THREE.BoxGeometry(0.09, clearH + 0.1, clearW + 0.18),
     plasterMat
@@ -2361,11 +2994,11 @@ export function buildBarnGolfSimulator(
     new THREE.BoxGeometry(storeBoxDepth + 0.09, 0.09, clearW + 0.18),
     plasterMat
   );
+  storeRoofLid.name = 'outbuildings.barn.golfSimulator.roofLid';
   storeRoofLid.userData.isArchitecturalShell = true;
   storeRoofLid.position.set(-wallT - (storeBoxDepth + 0.09) * 0.5, clearH + 0.055, 0);
-  simGroup.add(storeRoofLid);
+  simCeilingGroup.add(storeRoofLid);
 
-  // 2. Interior Padded Acoustic Baffle Walls & Ceiling inside the Deeper Recessed Simulator Tunnel (`x = -2.16..0`)
   const numBaffleCols = 6;
   const baffleColW = recessDepthU / numBaffleCols;
   for (let c = 0; c < numBaffleCols; c++) {
@@ -2386,11 +3019,11 @@ export function buildBarnGolfSimulator(
       new THREE.BoxGeometry(baffleColW - 0.015, 0.055, clearW - 0.08),
       acousticBaffleMat
     );
+    ceilBaffle.name = 'outbuildings.barn.golfSimulator.ceilingBaffle';
     ceilBaffle.position.set(bx, clearH - 0.028, 0);
-    simGroup.add(ceilBaffle);
+    simCeilingGroup.add(ceilBaffle);
   }
 
-  // Chamfered Black Velvet Perimeter Trim Frame flush with the Barn Wall (`x = 0`, `u = 15.20m`)
   const frameTrimW = 0.095;
   for (const sideZ of [-1, 1] as const) {
     const sideTrim = new THREE.Mesh(
@@ -2405,9 +3038,8 @@ export function buildBarnGolfSimulator(
     velvetFrameMat
   );
   topTrim.position.set(0.01, clearH + frameTrimW * 0.3, 0);
-  simGroup.add(topTrim);
+  simCeilingGroup.add(topTrim);
 
-  // 3. `4.48m x 2.80m` Widescreen Taut HD Golf Impact Projection Screen (`outbuildings.barn.golfSimulator.screen`) at `x = -2.02m`
   const screenMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(clearW - 0.1, clearH - 0.08),
     impactScreenMat
@@ -2425,12 +3057,10 @@ export function buildBarnGolfSimulator(
   screenBacking.position.set(-recessDepthU + 0.12, clearH * 0.5, 0);
   simGroup.add(screenBacking);
 
-  // 4. Issue #4: Continuous Artificial Golf Fairway Turf & Hitting Mat (`x = -2.04m..+1.82m`, `u = 13.16m..17.02m`)
-  //    Leaves `0.88m` (`88cm` > `60cm`) of clear stone floor in front of the Mezzanine Ladder foot (`u = 17.90m`)!
-  const turfStartX = -recessDepthU + 0.12; // -2.04m
-  const turfEndX = 1.82; // u = 15.20 + 1.82 = 17.02m
-  const totalTurfLenX = turfEndX - turfStartX; // 3.86m
-  const turfCenterX = (turfStartX + turfEndX) * 0.5; // -0.11m
+  const turfStartX = -recessDepthU + 0.12;
+  const turfEndX = 1.82;
+  const totalTurfLenX = turfEndX - turfStartX;
+  const turfCenterX = (turfStartX + turfEndX) * 0.5;
 
   const surroundBase = new THREE.Mesh(
     new THREE.BoxGeometry(totalTurfLenX + 0.08, 0.028, clearW),
@@ -2461,7 +3091,6 @@ export function buildBarnGolfSimulator(
     simGroup.add(cup);
   }
 
-  // Heavy-Pile Hitting Strip (`0.36m x 1.04m`) at `x = +1.12m` (`3.14m` in front of the `x = -2.02m` screen)
   const hittingX = 1.12;
   const hittingStrip = new THREE.Mesh(
     new THREE.BoxGeometry(0.36, 0.038, 1.04),
@@ -2487,7 +3116,6 @@ export function buildBarnGolfSimulator(
   teedBall.castShadow = true;
   simGroup.add(teedBall);
 
-  // Rubber golf ball tray (`x = +1.12m, z = -0.78m`)
   const ballTray = new THREE.Mesh(
     new THREE.BoxGeometry(0.28, 0.028, 0.42),
     stanceSurroundMat
@@ -2504,8 +3132,6 @@ export function buildBarnGolfSimulator(
     simGroup.add(ball);
   }
 
-  // 5. Issue #5: Overhead Ceiling-Mounted 4K Widescreen Short-Throw Laser Projector (`x = 0.28m, y = 2.74m, z = 0.00m`)
-  //    Mounted AHEAD of the TrackMan iO unit so its downward projection beam to the `x = -2.02m` screen is 100% unobstructed!
   const projectorGroup = new THREE.Group();
   projectorGroup.name = 'outbuildings.barn.golfSimulator.projector';
   projectorGroup.position.set(0.28, 2.74, 0);
@@ -2540,15 +3166,11 @@ export function buildBarnGolfSimulator(
   projectorLens.position.set(-0.195, -0.025, 0);
   projectorGroup.add(projectorLens);
 
-  // 6. Issue #5: Ceiling-Mounted **TrackMan iO (Indoor Optimized)** Overhead Launch Monitor (`outbuildings.barn.golfSimulator.trackmanIO`)
-  //    Mounted BEHIND the projector and slightly higher (`x = 0.92m, y = 2.98m, z = 0.00m`), directly ahead of the `x = 1.12m` hitting tee,
-  //    so it never blocks the projector's light cone!
   const tmGroup = new THREE.Group();
   tmGroup.name = 'outbuildings.barn.golfSimulator.trackmanIO';
   tmGroup.position.set(0.92, 2.98, 0);
   simGroup.add(tmGroup);
 
-  // Ceiling suspension pole to vaulted ridge (`1.44m` tall)
   const tmDropTube = new THREE.Mesh(
     new THREE.CylinderGeometry(0.02, 0.02, 1.44, 12),
     projectorBodyMat
@@ -2556,16 +3178,14 @@ export function buildBarnGolfSimulator(
   tmDropTube.position.set(0, 0.72, 0);
   tmGroup.add(tmDropTube);
 
-  // Sleek aerodynamic TrackMan iO V-wing chassis (`0.28m` deep x `0.075m` high x `0.58m` wide)
   const tmCore = new THREE.Mesh(
     new THREE.BoxGeometry(0.26, 0.072, 0.34),
     projectorBodyMat
   );
-  tmCore.rotation.z = -0.18; // Angled down toward the hitting tee at `x = 1.12m`
+  tmCore.rotation.z = -0.18;
   tmCore.castShadow = true;
   tmGroup.add(tmCore);
 
-  // Left & Right swept optical camera wings of the TrackMan iO
   for (const sideZ of [-1, 1] as const) {
     const tmWing = new THREE.Mesh(
       new THREE.BoxGeometry(0.22, 0.058, 0.16),
@@ -2577,7 +3197,6 @@ export function buildBarnGolfSimulator(
     tmWing.castShadow = true;
     tmGroup.add(tmWing);
 
-    // Dual infrared/high-speed optical camera windows on the underside of each wing
     const camGlass = new THREE.Mesh(
       new THREE.CylinderGeometry(0.026, 0.026, 0.012, 14),
       velvetFrameMat
@@ -2586,7 +3205,6 @@ export function buildBarnGolfSimulator(
     tmGroup.add(camGlass);
   }
 
-  // Signature TrackMan Orange (`#ff6b00`) perimeter accent trim bar & front radar face
   const tmOrangeAccent = new THREE.Mesh(
     new THREE.BoxGeometry(0.268, 0.016, 0.56),
     trackManOrangeMat
@@ -2595,4 +3213,3 @@ export function buildBarnGolfSimulator(
   tmOrangeAccent.rotation.z = -0.18;
   tmGroup.add(tmOrangeAccent);
 }
-

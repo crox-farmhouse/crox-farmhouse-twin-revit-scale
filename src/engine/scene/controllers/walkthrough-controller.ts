@@ -856,19 +856,32 @@ export class WalkthroughController {
     const obU = obDx * obCos - obDz * obSin;
     const obV = obDx * obSin + obDz * obCos;
     if (obV >= 0.25 && obV <= 5.45 && obU >= 0.25 && obU <= 28.8) {
-      // Issue #8 ("Make this ladder climable in first person view" at `[-3.837, 0.688, 19.349]`):
-      // Smooth continuous climb up & down the Barn Mezzanine Ladder (`obU = 17.68..18.76m, obV = 4.22..5.08m`)
-      if (
-        obV >= 4.22 &&
-        obV <= 5.08 &&
-        obU >= 17.65 &&
-        obU <= 18.8 &&
-        refFootY >= -0.45
-      ) {
-        const tLadder = THREE.MathUtils.clamp((obU - 17.68) / (18.74 - 17.68), 0, 1);
-        return THREE.MathUtils.lerp(-0.34, 1.54, tLadder);
+      // Issues #2 & #3: Smooth continuous climb up & down the SE Barn Spiral Staircase
+      // (`centerU = 22.08m, centerV = 4.50m, radius <= 0.96m`, rising from `-0.70m` to `+1.54m`)
+      const stairDu = obU - 22.08;
+      const stairDv = obV - 4.5;
+      const stairDist = Math.hypot(stairDu, stairDv);
+      if (stairDist <= 0.96) {
+        if (obU <= 21.65 && obV >= 4.05 && obV <= 4.98 && refFootY >= 0.75) {
+          return 1.54;
+        }
+        let theta = Math.atan2(stairDv, stairDu); // [-PI, +PI]
+        const thetaStart = -Math.PI * 0.65;
+        if (theta < thetaStart) {
+          theta += Math.PI * 2;
+        }
+        const tStair = THREE.MathUtils.clamp(
+          (theta - thetaStart) / (Math.PI - thetaStart),
+          0,
+          1
+        );
+        const stairY = THREE.MathUtils.lerp(-0.7, 1.54, tStair);
+        if (Math.abs(stairY - refFootY) <= 0.95 || refFootY >= -0.75) {
+          return stairY;
+        }
       }
-      if (refFootY >= 1.15 && obU >= 18.65) {
+      const inSpiralStairwellCutout = obU >= 21.14 && obU <= 23.02 && obV >= 3.56;
+      if (refFootY >= 1.15 && obU >= 18.65 && !inSpiralStairwellCutout) {
         if (obU >= 23.22) {
           return 2.08;
         }
@@ -958,6 +971,7 @@ export class WalkthroughController {
         typeof obj.name === 'string' &&
         (obj.name.startsWith('hall.stairs') ||
           obj.name.startsWith('outbuildings.barn.mezzanineLadder') ||
+          obj.name.startsWith('outbuildings.barn.spiralStaircase') ||
           obj.name.startsWith('outbuildings.firstFloor.stableUpStep') ||
           obj.name.includes('cobblePath'))
       ) {
@@ -994,6 +1008,7 @@ export class WalkthroughController {
             cur.name.endsWith('.roof') ||
             cur.name === 'outbuildings.roofTrusses' ||
             cur.name === 'outbuildings.barn.mezzanineLadder' ||
+            cur.name === 'outbuildings.barn.spiralStaircase' ||
             cur.name.startsWith('hall.stairs') ||
             cur.name.includes('ufh'))
         ) {

@@ -6,12 +6,13 @@ import {
 } from '../../../../engine/textures/procedural-textures.ts';
 import {
   buildBarnGolfSimulator,
-  buildBarnMezzanineLadder,
+  buildBarnSpiralStaircase,
   buildGarageWorkshopToolBench,
   buildGymOakDoorAndSkirting,
   buildNikeGrindDumbbellRack,
   createPouredResinFloorMaterial,
 } from './outbuilding-interiors.ts';
+import { buildPorsche992TurboS } from './porsche-992-turbo-s.ts';
 
 export interface OutbuildingsBuilderKit {
   readonly exteriorBrickMat: THREE.Material;
@@ -359,6 +360,19 @@ export function buildOutbuildingsAndBarns(
   roofGroup.position.set(OUTBUILDING_ORIGIN_X, 0, OUTBUILDING_ORIGIN_Z);
   roofGroup.rotation.y = OUTBUILDING_ROTATION_Y;
   ceilingMeshGroup.add(roofGroup);
+
+  // Issue #6 ("When in cutaway mode hide the top of the mezzanine / ceiling when looking at the ground floor"
+  // at `[-2.175, 1.428, 17.324]`, `outbuildings.barn.mezzanineCeilingSoffit`) &
+  // Issue #10 (Golf Simulator top ceiling lid at `[-8.437, 2.56, 15.397]`):
+  // Attached to `ctx.groundFloorCeilingGroup` so `CutawayController` automatically hides the mezzanine soffit,
+  // front bressummer beam, golf simulator ceiling lid, and stable ground ceiling soffit in ground-floor cutaway mode.
+  const groundCeilingGroup = new THREE.Group();
+  groundCeilingGroup.name = 'outbuildings.groundCeiling';
+  groundCeilingGroup.userData.isArchitecturalShell = true;
+  groundCeilingGroup.userData.zone = 'courtyard';
+  groundCeilingGroup.position.set(OUTBUILDING_ORIGIN_X, 0, OUTBUILDING_ORIGIN_Z);
+  groundCeilingGroup.rotation.y = OUTBUILDING_ROTATION_Y;
+  (ctx.groundFloorCeilingGroup ?? scene).add(groundCeilingGroup);
 
   // Materials for the Outbuilding Range
   const slateTex = createWelshSlateRoofTexture();
@@ -1524,9 +1538,13 @@ export function buildOutbuildingsAndBarns(
   // 3-Tier Commercial Nike Grind Hex Dumbbell Rack (`outbuildings.gym.nikeGrindDumbbellRack`) with 10 pairs (`5–50`) of light-grey multicolour-speckled Nike Grind hex dumbbells
   buildNikeGrindDumbbellRack(groundGroup, baseY0 + 0.012);
 
-  // Issue #5 ("High qulality tool bench here with drawers and power rools" at `[-11.123, 0.378, 20.475]`):
-  // Heavy-Duty Modular Steel & Butcher-Block Workshop Tool Bench (`outbuildings.garage.toolBench`) with 13 drawers & power tools against the Garage South wall
+  // Issue #4 & #5 ("Put it against this wall and cut it in to make use of the dead space behind, make it slightly longer"
+  // at `[-10.226, -0.27, 17.512]`):
+  // Heavy-Duty 5-Bay Stainless-Steel & Butcher-Block Workshop Tool Bench (`outbuildings.garage.toolBench`) recessed into the Garage East wall
   buildGarageWorkshopToolBench(groundGroup, garageFloorTopY);
+
+  // Issue #1 ("Porsche 992.2 Turbo S in ocean Blue metalic here" at `[-15.013, -0.5, 18.708]`):
+  buildPorsche992TurboS(groundGroup, garageFloorTopY);
 
   // North Courtyard Wall of GYM & Garage (v = 0.00m..0.28m, u = 0.28m..12.07m):
   // - Small GYM casement window at u = 1.49m (`0.68m x 0.78m`, clean cutout!)
@@ -1677,20 +1695,43 @@ export function buildOutbuildingsAndBarns(
   const stableCeilEaveY =
     stableCeilRidgeY - 2.575 * ((stableRidgeH - stableUpperEaveH) / 3.055); // 3.507m vaulted ceiling eave in Stable
 
-  // Store Ground Floor Slab (`u = 12.31..14.96m`)
+  // Issue #4 & #5: Seamless Garage Resin Floor extension into the recessed East Wall Workbench Alcove (`u = 12.07..12.82m, v = 1.20..5.12m`)
+  const benchAlcoveFloor = new THREE.Mesh(
+    new THREE.BoxGeometry(0.75, garageFloorThickness, 3.92),
+    garageResinFloorMat
+  );
+  benchAlcoveFloor.name = 'outbuildings.garage.resinFloor.alcove';
+  benchAlcoveFloor.position.set(
+    uStoreStart + 0.375,
+    garageFloorTopY - garageFloorThickness * 0.5,
+    (1.2 + 5.12) * 0.5
+  );
+  benchAlcoveFloor.receiveShadow = true;
+  groundGroup.add(benchAlcoveFloor);
+
+  // Store Ground Floor Slab (`u = 12.82..14.96m` main floor + `u = 12.31..12.82m, v = 0.28..1.20m` North entry strip)
   const storeFloorTopY = -0.4;
   const storeFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(2.65, 0.12, eastRangeInternalV),
+    new THREE.BoxGeometry(2.14, 0.12, eastRangeInternalV),
     barnFloorMat
   );
   storeFloor.name = 'outbuildings.store.floor';
   storeFloor.position.set(
-    uStoreStart + 0.24 + 2.65 * 0.5,
+    12.82 + 2.14 * 0.5,
     storeFloorTopY - 0.06,
     vEastRangeNorth + wallT + eastRangeInternalV * 0.5
   );
   storeFloor.receiveShadow = true;
   groundGroup.add(storeFloor);
+
+  const storeNorthEntryFloor = new THREE.Mesh(
+    new THREE.BoxGeometry(0.51, 0.12, 0.92),
+    barnFloorMat
+  );
+  storeNorthEntryFloor.name = 'outbuildings.store.floor.northEntry';
+  storeNorthEntryFloor.position.set(12.31 + 0.51 * 0.5, storeFloorTopY - 0.06, 0.28 + 0.92 * 0.5);
+  storeNorthEntryFloor.receiveShadow = true;
+  groundGroup.add(storeNorthEntryFloor);
 
   // Barn West Floor (`u = 15.20..18.68m`, width `3.48m`, top at `barnWestFloorY = -0.34m` in front of the mezzanine)
   const barnWestFloorSpanU = uMezzanineFront - (uBarnStart + 0.24); // 3.48m
@@ -1774,17 +1815,102 @@ export function buildOutbuildingsAndBarns(
   stableFloor.receiveShadow = true;
   groundGroup.add(stableFloor);
 
-  // Issue #7 ("Paint this wall" at `[-10.211, 2.681, 17.684]`, `u = 12.07m`):
-  // Internal Cross-Wall at u = 12.07m..12.31m (Garage/Store Step #1):
-  // All faces use `warmRoomPlasterMat` (`overrideExteriorMat = warmRoomPlasterMat`) with `0.002m` `v` inset!
+  // Issue #4 & Issue #5 ("Put it against this wall and cut it in to make use of the dead space behind, make it slightly longer"
+  // at `[-10.226, -0.27, 17.512]`, `u = 12.07m..12.31m` Garage-to-Store partition wall):
+  // Cut a recessed workbench alcove opening across `v = 1.20m..5.12m, y = garageFloorTopY (-0.50m) .. 1.42m`
+  // using 4 non-overlapping wall segments so the `3.88m` long (`v = 1.22..5.10m`) tool bench recesses cleanly
+  // through `u = 12.07..12.31m` into the Store room dead space (`u = 12.31..12.82m`):
+  // 1. Lower sill / step wall (`y = barnLowerFloorY (-0.70m) .. garageFloorTopY (-0.50m)`): full span `vInnerNorth .. vInnerSouth`
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
     uStoreStart + 0.24,
-    garageFloorTopY - 0.12,
-    eastRangeGroundTopY,
+    barnLowerFloorY,
+    garageFloorTopY,
     vEastRangeNorth + wallT + 0.002,
     vEastRangeSouth - wallT - 0.002,
+    ['+x', '-x', '+z', '-z'],
+    warmRoomPlasterMat
+  );
+  // 2. North pier (`v = 0.282m .. 1.20m`): `y = garageFloorTopY (-0.50m) .. eastRangeGroundTopY (1.94m)`
+  addOutbuildingBrickWall(
+    groundGroup,
+    uStoreStart,
+    uStoreStart + 0.24,
+    garageFloorTopY,
+    eastRangeGroundTopY,
+    vEastRangeNorth + wallT + 0.002,
+    1.2,
+    ['+x', '-x', '+z', '-z'],
+    warmRoomPlasterMat
+  );
+  // 3. South pier (`v = 5.12m .. 5.428m`): `y = garageFloorTopY (-0.50m) .. eastRangeGroundTopY (1.94m)`
+  addOutbuildingBrickWall(
+    groundGroup,
+    uStoreStart,
+    uStoreStart + 0.24,
+    garageFloorTopY,
+    eastRangeGroundTopY,
+    5.12,
+    vEastRangeSouth - wallT - 0.002,
+    ['+x', '-x', '+z', '-z'],
+    warmRoomPlasterMat
+  );
+  // 4. Upper lintel header above the recessed workbench (`v = 1.20m .. 5.12m, y = 1.42m .. eastRangeGroundTopY (1.94m)`)
+  // Attached to `groundCeilingGroup` so top-down cutaway mode hides the lintel above the recessed workbench!
+  addOutbuildingBrickWall(
+    groundCeilingGroup,
+    uStoreStart,
+    uStoreStart + 0.24,
+    1.42,
+    eastRangeGroundTopY,
+    1.2,
+    5.12,
+    ['+x', '-x', '+z', '-z'],
+    warmRoomPlasterMat
+  );
+  // Painted plasterboard studwork alcove enclosure inside the Store dead space (`u = 12.31..12.84m, v = 1.16..5.16m`)
+  addOutbuildingBrickWall(
+    groundGroup,
+    12.8,
+    12.85,
+    garageFloorTopY,
+    1.42,
+    1.16,
+    5.16,
+    ['+x', '-x', '+z', '-z'],
+    warmRoomPlasterMat
+  );
+  addOutbuildingBrickWall(
+    groundGroup,
+    uStoreStart + 0.24,
+    12.8,
+    garageFloorTopY,
+    1.42,
+    1.16,
+    1.2,
+    ['+x', '-x', '+z', '-z'],
+    warmRoomPlasterMat
+  );
+  addOutbuildingBrickWall(
+    groundGroup,
+    uStoreStart + 0.24,
+    12.8,
+    garageFloorTopY,
+    1.42,
+    5.12,
+    5.16,
+    ['+x', '-x', '+z', '-z'],
+    warmRoomPlasterMat
+  );
+  addOutbuildingBrickWall(
+    groundCeilingGroup,
+    uStoreStart + 0.24,
+    12.85,
+    1.42,
+    1.47,
+    1.16,
+    5.16,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
@@ -1843,7 +1969,7 @@ export function buildOutbuildingsAndBarns(
     warmRoomPlasterMat
   );
   addOutbuildingBrickWall(
-    groundGroup,
+    groundCeilingGroup,
     uBarnStart,
     uBarnStart + 0.24,
     simCutoutTopY,
@@ -1868,22 +1994,15 @@ export function buildOutbuildingsAndBarns(
   // Build the Recessed Widescreen TrackMan iO Golf Simulator (`outbuildings.barn.golfSimulator`) backing into the Store room
   buildBarnGolfSimulator(
     groundGroup,
-    uBarnStart,
-    uBarnStart + 0.24,
-    barnWestFloorY,
-    warmRoomPlasterMat
+    barnLowerFloorY,
+    eastRangeInternalV,
+    groundCeilingGroup
   );
 
-  // Issue #8 ("Ladder here" at `[-3.459, 1.519, 19.056]`, `u = 18.68m, v = 4.43m`):
-  // Bespoke Solid European Oak & Forged Black-Steel Mezzanine Loft Access Ladder (`outbuildings.barn.mezzanineLadder`)
-  buildBarnMezzanineLadder(
-    groundGroup,
-    uMezzanineFront,
-    barnWestFloorY,
-    mezzanineFloorY,
-    oakFloorMat,
-    castIronMat
-  );
+  // Issue #2 ("Remove the ladder" at `[-3.328, 1.428, 18.92]`) &
+  // Issue #3 ("Spiral staircase here https://haldaneuk.com/projects/wooden-spiral-staircase/" at `[-0.025, 1.428, 18.785]`):
+  // Haldane UK Bespoke Freestanding Solid American White Oak Spiral Staircase (`outbuildings.barn.spiralStaircase`) in the SE corner of the Barn
+  buildBarnSpiralStaircase(groundGroup, barnLowerFloorY, mezzanineFloorY);
 
   // Internal Cross-Wall at u = 23.02m..23.22m (Barn/Stable Step #2):
   // - Below the Barn Mezzanine (`y = barnLowerFloorY - 0.12 .. mezzanineFloorY = 1.54m`): full width `v = 0.28..5.43m`.
@@ -1957,7 +2076,7 @@ export function buildOutbuildingsAndBarns(
     vEastRangeSouth - wallT,
     vEastRangeSouth,
     ['-z'],
-    [{ uCenter: 26.35, yCenter: stableGroundFloorY + 1.24, width: 0.96, height: 1.02 }]
+    [{ uCenter: 26.35, yCenter: 1.18, width: 0.96, height: 0.92 }]
   );
 
   // North Courtyard Wall of Store & Barn (Ground Floor: v = 0.00m..0.28m, u = 12.07m..23.22m, y = baseY..1.94m)
@@ -2035,7 +2154,7 @@ export function buildOutbuildingsAndBarns(
     vEastRangeNorth,
     vEastRangeNorth + wallT,
     ['+z'],
-    [{ uCenter: 20.06, yCenter: 0.48, width: 0.92, height: 0.88 }]
+    [{ uCenter: 20.06, yCenter: 0.98, width: 0.92, height: 0.76 }]
   );
 
   // North Courtyard Wall of 2-Storey Stable (Ground Floor: u = 23.22m..28.77m, rising to `stableGroundTopY = 1.96m` — Issue #11!)
@@ -2081,7 +2200,7 @@ export function buildOutbuildingsAndBarns(
     vEastRangeNorth,
     vEastRangeNorth + wallT,
     ['+z'],
-    [{ uCenter: 26.55, yCenter: stableGroundFloorY + 1.24, width: 0.92, height: 1.02 }]
+    [{ uCenter: 26.55, yCenter: 1.18, width: 0.92, height: 0.92 }]
   );
 
   // East Gable End of 2-Storey Stable (Ground Floor: u = 28.77m..29.05m, v = 0.00m..5.71m, rising to `stableGroundTopY = 1.96m`) with Large Gable Window
@@ -2101,7 +2220,7 @@ export function buildOutbuildingsAndBarns(
     uStableEnd - wallT,
     uStableEnd,
     stableGroundFloorY - 0.14,
-    stableGroundFloorY + 0.62,
+    0.72,
     vEastRangeMid - 0.62,
     vEastRangeMid + 0.62,
     ['-x']
@@ -2110,7 +2229,7 @@ export function buildOutbuildingsAndBarns(
     groundGroup,
     uStableEnd - wallT,
     uStableEnd,
-    stableGroundFloorY + 1.82,
+    1.64,
     stableGroundTopY,
     vEastRangeMid - 0.62,
     vEastRangeMid + 0.62,
@@ -2129,10 +2248,10 @@ export function buildOutbuildingsAndBarns(
   addOutbuildingWindow(
     groundGroup,
     uStableEnd - wallT * 0.5,
-    stableGroundFloorY + 1.22,
+    1.18,
     vEastRangeMid,
     1.24,
-    1.2,
+    0.92,
     true
   );
 
@@ -2546,24 +2665,36 @@ export function buildOutbuildingsAndBarns(
 
   // =========================================================================
   // 2C. BARN MEZZANINE LOWERED DECK, UNDER-CEILING SOFFIT & STABLE GROUND-FLOOR CEILING SOFFIT
+  //     (Issues #2, #3 & #6: SE Corner Stairwell Opening `u = 21.14..23.016m, v = 3.56..5.426m` +
+  //      attached to `groundCeilingGroup` so ground-floor cutaway hides the soffit & front beam!)
   // =========================================================================
-  // Issue #9 ("Weird dithering on this end" at `[-3.55, 1.511, 17.993]`, `outbuildings.firstFloor.westRoomSlab`):
-  // Start `mezzanineCeilingSoffit` behind `mezzanineFrontBressummer` (`u = uMezzanineFront + 0.182 .. uBarnEnd - partT - 0.004`,
-  // `y = 1.395..1.428m`) and position `mezzanineFrontBressummer` cleanly underneath `westUpperRoomSlab` (`y = 1.29..1.428m`)
-  // between the North & South Barn pilasters (`widthV = eastRangeInternalV - pilasterD * 2 - 0.008 = 4.822m`) with zero coplanar overlap!
-  const mezzanineSoffitLenU = 4.154;
+  // 1. West full-width soffit (`u = 18.862m .. 21.14m`, `v = 0.284m .. 5.426m`)
   const mezzanineCeilingSoffit = new THREE.Mesh(
-    new THREE.BoxGeometry(mezzanineSoffitLenU, 0.033, eastRangeInternalV - 0.008),
+    new THREE.BoxGeometry(2.278, 0.033, 5.142),
     warmRoomPlasterMat
   );
   mezzanineCeilingSoffit.name = 'outbuildings.barn.mezzanineCeilingSoffit';
   mezzanineCeilingSoffit.position.set(
-    uMezzanineFront + 0.182 + mezzanineSoffitLenU * 0.5,
+    20.001,
     mezzanineUndersideY + 0.0115,
-    vMidCenter()
+    2.855
   );
   mezzanineCeilingSoffit.receiveShadow = true;
-  groundGroup.add(mezzanineCeilingSoffit);
+  groundCeilingGroup.add(mezzanineCeilingSoffit);
+
+  // 2. East North-side soffit (`u = 21.14m .. 23.016m`, `v = 0.284m .. 3.56m`) leaving the SE stairwell opening clear
+  const mezzanineCeilingSoffitEastNorth = new THREE.Mesh(
+    new THREE.BoxGeometry(1.876, 0.033, 3.276),
+    warmRoomPlasterMat
+  );
+  mezzanineCeilingSoffitEastNorth.name = 'outbuildings.barn.mezzanineCeilingSoffit.eastNorth';
+  mezzanineCeilingSoffitEastNorth.position.set(
+    22.078,
+    mezzanineUndersideY + 0.0115,
+    1.922
+  );
+  mezzanineCeilingSoffitEastNorth.receiveShadow = true;
+  groundCeilingGroup.add(mezzanineCeilingSoffitEastNorth);
 
   const bressummerSpanV = eastRangeInternalV - pilasterD * 2 - 0.008; // 4.822m between North & South pilasters
   const mezzanineFrontBressummer = new THREE.Mesh(
@@ -2577,7 +2708,7 @@ export function buildOutbuildingsAndBarns(
     vMidCenter()
   );
   mezzanineFrontBressummer.castShadow = true;
-  groundGroup.add(mezzanineFrontBressummer);
+  groundCeilingGroup.add(mezzanineFrontBressummer);
 
   // Plastered ground-floor ceiling soffit in the 2-Storey Stable (`y = 1.96m`, `2.40m` headroom above `-0.44m` Stable floor)
   const stableGroundCeilingSoffit = new THREE.Mesh(
@@ -2591,24 +2722,58 @@ export function buildOutbuildingsAndBarns(
     vMidCenter()
   );
   stableGroundCeilingSoffit.receiveShadow = true;
-  groundGroup.add(stableGroundCeilingSoffit);
+  groundCeilingGroup.add(stableGroundCeilingSoffit);
 
   // =========================================================================
   // 3. OUTBUILDING FIRST FLOOR OVER BARN MEZZANINE (`1.54m`) & 2-STOREY STABLE (`2.08m` — Issue #11!)
+  //    With SE Corner Stairwell Cutout (`u = 21.14..23.016m, v = 3.56..5.426m`) for Haldane UK Spiral Staircase
   // =========================================================================
-  // West First-Floor Room (Barn Mezzanine) Timber Slab (`4.332m x 5.142m`, u = 18.684m..23.016m, y = 1.43m..1.54m — Issue #9!)
+  // 1. West full-width floor slab (`u = 18.684m .. 21.14m`, `v = 0.284m .. 5.426m`)
   const westUpperRoomSlab = new THREE.Mesh(
-    new THREE.BoxGeometry(4.332, 0.11, eastRangeInternalV - 0.008),
+    new THREE.BoxGeometry(2.456, 0.11, 5.142),
     oakFloorMat
   );
   westUpperRoomSlab.name = 'outbuildings.firstFloor.westRoomSlab';
   westUpperRoomSlab.position.set(
-    uMezzanineFront + 2.17,
+    19.912,
     mezzanineFloorY - 0.055,
-    vEastRangeNorth + wallT + eastRangeInternalV * 0.5
+    2.855
   );
   westUpperRoomSlab.receiveShadow = true;
   firstFloorGroup.add(westUpperRoomSlab);
+
+  // 2. East North-side floor slab (`u = 21.14m .. 23.016m`, `v = 0.284m .. 3.56m`)
+  const westUpperRoomSlabEastNorth = new THREE.Mesh(
+    new THREE.BoxGeometry(1.876, 0.11, 3.276),
+    oakFloorMat
+  );
+  westUpperRoomSlabEastNorth.name = 'outbuildings.firstFloor.westRoomSlab.eastNorth';
+  westUpperRoomSlabEastNorth.position.set(
+    22.078,
+    mezzanineFloorY - 0.055,
+    1.922
+  );
+  westUpperRoomSlabEastNorth.receiveShadow = true;
+  firstFloorGroup.add(westUpperRoomSlabEastNorth);
+
+  // 3. Solid oak stairwell edge fascia trim boards (`0.022m` thick x `0.145m` high, `y = 1.395..1.54m`) along the stairwell cutout edges
+  const stairwellWestFascia = new THREE.Mesh(
+    new THREE.BoxGeometry(0.022, 0.145, 5.426 - 3.56),
+    oakFloorMat
+  );
+  stairwellWestFascia.name = 'outbuildings.firstFloor.stairwellFascia.west';
+  stairwellWestFascia.position.set(21.14, 1.4675, (3.56 + 5.426) * 0.5);
+  stairwellWestFascia.castShadow = true;
+  firstFloorGroup.add(stairwellWestFascia);
+
+  const stairwellNorthFascia = new THREE.Mesh(
+    new THREE.BoxGeometry(23.016 - 21.14, 0.145, 0.022),
+    oakFloorMat
+  );
+  stairwellNorthFascia.name = 'outbuildings.firstFloor.stairwellFascia.north';
+  stairwellNorthFascia.position.set(22.078, 1.4675, 3.56);
+  stairwellNorthFascia.castShadow = true;
+  firstFloorGroup.add(stairwellNorthFascia);
 
   // Solid oak front fascia trim strip along the Barn Mezzanine leading edge between the pilasters (`u = uMezzanineFront - 0.005`)
   const mezzanineFrontFascia = new THREE.Mesh(
@@ -2624,38 +2789,115 @@ export function buildOutbuildingsAndBarns(
   mezzanineFrontFascia.castShadow = true;
   firstFloorGroup.add(mezzanineFrontFascia);
 
-  // Open Mezzanine Timber Guardrail / Balustrade along the front edge of the Barn Mezzanine (`u = 18.74m, v = 0.28..4.26m`, leaving opening at `v = 4.26..5.06m` for the ladder!)
-  const handrailLenV = 3.98;
-  const handrailCenterV = vInnerNorth + handrailLenV * 0.5;
+  // Issue #2 ("Remove the ladder"): Full-width Front Mezzanine Oak & Toughened Glass Balustrade (`v = 0.34..5.37m`, `handrailLenV = 5.03m`)
+  const handrailLenV = eastRangeInternalV - 0.12; // 5.03m
+  const handrailCenterV = vMidCenter(); // 2.855m
   const mezzanineTopRail = new THREE.Mesh(
     new THREE.BoxGeometry(0.08, 0.065, handrailLenV),
     trussOakMat
   );
   mezzanineTopRail.name = 'outbuildings.firstFloor.mezzanineHandrail';
   mezzanineTopRail.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.92, handrailCenterV);
+  mezzanineTopRail.castShadow = true;
   firstFloorGroup.add(mezzanineTopRail);
 
   const mezzanineBottomRail = new THREE.Mesh(
     new THREE.BoxGeometry(0.07, 0.05, handrailLenV),
     trussOakMat
   );
+  mezzanineBottomRail.name = 'outbuildings.firstFloor.mezzanineBottomRail';
   mezzanineBottomRail.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.08, handrailCenterV);
   firstFloorGroup.add(mezzanineBottomRail);
 
-  const numBalusters = 16;
-  for (let b = 0; b <= numBalusters; b++) {
-    const bv = vInnerNorth + 0.06 + (b / numBalusters) * (handrailLenV - 0.12);
-    const isNewel = b === 0 || b === numBalusters || b === 8;
-    const baluster = new THREE.Mesh(
-      new THREE.BoxGeometry(isNewel ? 0.085 : 0.038, isNewel ? 0.98 : 0.84, isNewel ? 0.085 : 0.038),
-      isNewel ? trussDarkOakMat : trussOakMat
+  for (const [pIdx, pv] of [
+    [1, 0.36],
+    [2, 2.855],
+    [3, 5.35],
+  ] as const) {
+    const newelPost = new THREE.Mesh(
+      new THREE.BoxGeometry(0.085, 0.98, 0.085),
+      trussDarkOakMat
     );
-    baluster.position.set(
-      uMezzanineFront + 0.08,
-      mezzanineFloorY + (isNewel ? 0.49 : 0.48),
-      bv
+    newelPost.name = `outbuildings.firstFloor.mezzaninePost.${pIdx}`;
+    newelPost.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.49, pv);
+    newelPost.castShadow = true;
+    firstFloorGroup.add(newelPost);
+  }
+
+  for (const [gIdx, gv] of [
+    [1, 1.6075],
+    [2, 4.1025],
+  ] as const) {
+    const glassPanel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, 0.78, 2.38),
+      windowGlassMat
     );
-    firstFloorGroup.add(baluster);
+    glassPanel.name = `outbuildings.firstFloor.mezzanineGlassPanel.${gIdx}`;
+    glassPanel.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.5, gv);
+    firstFloorGroup.add(glassPanel);
+  }
+
+  // Matching Stairwell Guardrail (`outbuildings.barn.mezzanineStairwellGuardrail`) around the SE Corner Stairwell Cutout
+  const stairwellGuardrailGroup = new THREE.Group();
+  stairwellGuardrailGroup.name = 'outbuildings.barn.mezzanineStairwellGuardrail';
+  firstFloorGroup.add(stairwellGuardrailGroup);
+
+  // North edge of stairwell opening (`v = 3.54m, u = 21.12..23.00m`, length = 1.88m)
+  const swNorthLenU = 1.88;
+  const swNorthMidU = 22.06;
+  const swNorthTopRail = new THREE.Mesh(
+    new THREE.BoxGeometry(swNorthLenU, 0.065, 0.08),
+    trussOakMat
+  );
+  swNorthTopRail.position.set(swNorthMidU, mezzanineFloorY + 0.92, 3.54);
+  swNorthTopRail.castShadow = true;
+  stairwellGuardrailGroup.add(swNorthTopRail);
+
+  const swNorthBotRail = new THREE.Mesh(
+    new THREE.BoxGeometry(swNorthLenU, 0.05, 0.07),
+    trussOakMat
+  );
+  swNorthBotRail.position.set(swNorthMidU, mezzanineFloorY + 0.08, 3.54);
+  stairwellGuardrailGroup.add(swNorthBotRail);
+
+  const swNorthGlass = new THREE.Mesh(
+    new THREE.BoxGeometry(swNorthLenU - 0.16, 0.78, 0.016),
+    windowGlassMat
+  );
+  swNorthGlass.position.set(swNorthMidU, mezzanineFloorY + 0.5, 3.54);
+  stairwellGuardrailGroup.add(swNorthGlass);
+
+  // South segment of West stairwell edge (`u = 21.12m, v = 4.95..5.37m`, leaving `v = 3.56..4.95m` open for spiral stair top landing!)
+  const swWestLenV = 0.42;
+  const swWestMidV = (4.95 + 5.37) * 0.5;
+  const swWestTopRail = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.065, swWestLenV),
+    trussOakMat
+  );
+  swWestTopRail.position.set(21.12, mezzanineFloorY + 0.92, swWestMidV);
+  swWestTopRail.castShadow = true;
+  stairwellGuardrailGroup.add(swWestTopRail);
+
+  const swWestBotRail = new THREE.Mesh(
+    new THREE.BoxGeometry(0.07, 0.05, swWestLenV),
+    trussOakMat
+  );
+  swWestBotRail.position.set(21.12, mezzanineFloorY + 0.08, swWestMidV);
+  stairwellGuardrailGroup.add(swWestBotRail);
+
+  for (const [pu, pv] of [
+    [21.12, 3.54],
+    [22.98, 3.54],
+    [21.12, 4.95],
+    [21.12, 5.37],
+  ] as const) {
+    const swPost = new THREE.Mesh(
+      new THREE.BoxGeometry(0.082, 0.98, 0.082),
+      trussDarkOakMat
+    );
+    swPost.position.set(pu, mezzanineFloorY + 0.49, pv);
+    swPost.castShadow = true;
+    stairwellGuardrailGroup.add(swPost);
   }
 
   // Issue #11 ("Lower the floor height here there is only about 3 steps between the mezzanine and the upper floor of the stable" at `[2.052, 2.66, 15.82]`):
