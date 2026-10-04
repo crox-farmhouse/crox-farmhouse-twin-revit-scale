@@ -25,35 +25,22 @@ export interface PatioAndGrapeVinePergolaKit {
 }
 
 /**
- * Builds the Courtyard Patio Terrace (South of the Kitchen) and the Walled Grape-Vine Pergola
- * Dining Court (East / behind the Kitchen), matching the aerial & courtyard reference photos
- * (`Photos 1, 5, 8, 10, 11, 12` and Issue #1):
+ * Builds:
+ * 1. **South of the Kitchen (`X = -4.52m..+5.35m, Z = +3.84m..+7.35m`): Raised Limestone Flagstone Patio & Cottage Shrub Bank (Issue #5)**:
+ *    - Removed the previous owner's rattan corner sofa (`Issue #5`).
+ *    - Low reclaimed red-brick retaining kerb wall along `Z = +3.84m` with step-through openings, planted North perennial/Hydrangea border,
+ *      Campagna Lion-Head Urn, and Old Reclaimed Yorkstone Grindstone (`Photo 9`).
+ *    - Black wrought-iron vertical-spindle boundary railing along `X = -4.52m`, weathered timber garden bench facing the main courtyard (`Photo 5`),
+ *      and lush multi-layered South & East cottage shrub bank (`Choisya ternata 'Sundance'`, multi-stem `Viburnum` tree, and evergreen mounds, `Photos 9, 10, 11`).
  *
- * 1. **South of the Kitchen (`X = -4.52m..+5.55m, Z = +3.84m..+7.35m`): Raised Rattan Sofa Lounge & Limestone Patio Terrace**:
- *    - Low reclaimed red-brick retaining wall along `Z = +3.84m` topped with dark slate-grey/blue engineering brick coping,
- *      with a `1.30m`-wide step-through opening (`X = +2.45m..+3.75m`) aligned with the Kitchen 4-leaf bifold doors,
- *      and square red-brick corner piers (`-4.52, +3.84` and `+5.55, +3.84`) with stepped stone caps.
- *    - Black wrought-iron boundary railings along the West return (`X = -4.52m`), weathered timber garden bench at
- *      `(-4.84, +5.65)` facing the main cobbled courtyard (`Photo 5`), and rusted cast-iron circular fire-bowl planter
- *      on a low ring stand at `(-5.05, +6.92)`.
- *    - Raised riven flagstone patio (`X = -4.42m..+5.45m, Z = +3.95m..+7.35m`) bordered by a reclaimed red-brick kerb,
- *      with the L-shaped charcoal woven rattan corner sofa & square glass-topped rattan coffee table (`-2.25, +5.65`),
- *      Campagna Lion-Head Trophy Urn, Old Reclaimed Yorkstone Grindstone, golden-yellow `Choisya` bush (`NW`),
- *      multi-stem pale sage ornamental shrub/tree (`W`), bright-green bush (`SW`), and Hydrangea + 5-pot cluster (`Photos 11 & 12`).
+ * 2. **Behind & South-East of the Kitchen (`X = +5.65m..+11.55m, Z = -1.15m..+7.35m`): Enlarged, 2-Step Raised Walled Grape-Vine Pergola (`Issues #2 & #10`)**:
+ *    - Enlarged to span `5.90m x 8.50m` so its South red-brick wall reaches `Z = +7.35m` (world `[7.44, -0.012, 10.574]`, `Issue #2`).
+ *    - Raised inside by **2 stone steps (`pergFloorY = +0.32m`, `Issue #10`)** with 2 stone steps at the West entrance, South-West wrought-iron gate,
+ *      and East vegetable-garden opening, raising the pergola floor, walls, piers, oak beams, grape-vine canopy, and teak dining set `+0.32m` higher overall.
  *
- * 2. **Behind (East `+X` of) the Kitchen (`X = +6.80m..+11.65m, Z = -2.55m..+2.85m`): Walled Grape-Vine Pergola Dining Court (Issue #1)**:
- *    - Positioned directly behind the Kitchen East Gable Wall (`X = +5.28m`) across the East wrap-around cobble path (`X = +5.28m..+6.74m`),
- *      matching the aerial view (`media_1791117139446_c727cd76.jpg`).
- *    - **West Side (`X = +6.80m`)**: Open colonnade of 4 red-brick piers (`Z = -2.55m, -0.85m, +1.05m, +2.85m`) with low brick dwarf walls,
- *      cobalt-blue glazed ceramic pots, and terracotta planters facing the Kitchen East Gable Window.
- *    - **North Side (`Z = -2.55m`)**: Coursed honey-buff fieldstone wall (`2.22m` high) with low projecting interior stone bench ledge holding pots (`Photo 8` left).
- *    - **East Side (`X = +11.65m`)**: Coursed fieldstone wall with a `1.20m`-wide walk-through opening (`Z = -1.35m..-0.15m`) to the East lawn.
- *    - **South Side (`Z = +2.85m`)**: Tall reclaimed red-brick wall (`2.22m` high) with stone coping (`Photo 8` back & `Photo 10` right),
- *      an open gateway at the West end (`X = +7.05m..+7.95m`) fitted with an **ornate black wrought-iron scrollwork garden gate** (`Photo 8` back-right),
- *      and an exterior South raised brick herb/flower border facing the cobbled alleyway (`Photo 10` right).
- *    - **Heavy Weathered-Oak Overhead Pergola Beams & Rafters (`Y = 2.26m..2.48m`)**, **Festoon Café Globe String Lights**,
- *      **gnarled woody grape-vine trunks (`Vitis vinifera`)**, dense **5-lobed palmate grape-vine leaf canopy**,
- *      **pendant grape clusters**, and the **slatted weathered-teak rectangular outdoor dining table & 6 armchairs** centered at `(+9.25, +0.15)`.
+ * 3. **Through the Pergola (`X = +8.50m..+16.20m, Z = -4.60m..+3.80m`, world `[11.959, 0, 3.104]`): Vegetable Garden & Glazed Greenhouse (`Issue #11`)**:
+ *    - Pitched-roof aluminum & clear-glass Greenhouse (`2.60m x 3.20m`) with low brick base and interior staging benches (`media_1791117139446_c727cd76.jpg`).
+ *    - Walled Kitchen Vegetable Garden with gravel paths, 6 timber-sleeper raised vegetable beds, leafy crops, and bamboo runner-bean wigwams (`media_1791117124804_7f8fb9b7.jpg`).
  */
 export function buildPatioAndGrapeVinePergola(
   scene: THREE.Scene,
@@ -119,94 +106,113 @@ export function buildPatioAndGrapeVinePergola(
     return geo;
   };
 
-  // West section of the low brick retaining wall: X = -4.52m to +2.45m (width 6.97m, Photo 12 right)
+  // West section of the low brick retaining wall: X = -4.52m to -1.75m (width 2.77m)
   const lowBrickWallWest = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(6.97, 0.24, 0.22), -1.035, 0.11, 3.84),
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(2.77, 0.24, 0.22), -3.135, 0.11, 3.84),
     brickWallMat
   );
-  lowBrickWallWest.position.set(-1.035, 0.11, 3.84);
+  lowBrickWallWest.position.set(-3.135, 0.11, 3.84);
   lowBrickWallWest.castShadow = true;
   lowBrickWallWest.receiveShadow = true;
   scene.add(lowBrickWallWest);
 
   const lowBrickCopingWest = new THREE.Mesh(
-    new THREE.BoxGeometry(7.01, 0.048, 0.25),
+    new THREE.BoxGeometry(2.81, 0.048, 0.25),
     blueBrickCopingMat
   );
-  lowBrickCopingWest.position.set(-1.035, 0.254, 3.84);
+  lowBrickCopingWest.position.set(-3.135, 0.254, 3.84);
   lowBrickCopingWest.castShadow = true;
   lowBrickCopingWest.receiveShadow = true;
   scene.add(lowBrickCopingWest);
 
-  // East section of the low brick retaining wall: X = +3.75m to +5.55m (width 1.80m)
-  const lowBrickWallEast = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(1.8, 0.24, 0.22), 4.65, 0.11, 3.84),
+  // Middle section of the low brick retaining wall retaining the North flower/Urn bed: X = -0.45m to +2.45m (width 2.90m, Photo 9 right!)
+  const lowBrickWallMid = new THREE.Mesh(
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(2.9, 0.24, 0.22), 1.0, 0.11, 3.84),
     brickWallMat
   );
-  lowBrickWallEast.position.set(4.65, 0.11, 3.84);
+  lowBrickWallMid.position.set(1.0, 0.11, 3.84);
+  lowBrickWallMid.castShadow = true;
+  lowBrickWallMid.receiveShadow = true;
+  scene.add(lowBrickWallMid);
+
+  const lowBrickCopingMid = new THREE.Mesh(
+    new THREE.BoxGeometry(2.94, 0.048, 0.25),
+    blueBrickCopingMat
+  );
+  lowBrickCopingMid.position.set(1.0, 0.254, 3.84);
+  lowBrickCopingMid.castShadow = true;
+  lowBrickCopingMid.receiveShadow = true;
+  scene.add(lowBrickCopingMid);
+
+  // East section of the low brick retaining wall: X = +3.75m to +5.25m (width 1.50m)
+  const lowBrickWallEast = new THREE.Mesh(
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(1.5, 0.24, 0.22), 4.5, 0.11, 3.84),
+    brickWallMat
+  );
+  lowBrickWallEast.position.set(4.5, 0.11, 3.84);
   lowBrickWallEast.castShadow = true;
   lowBrickWallEast.receiveShadow = true;
   scene.add(lowBrickWallEast);
 
   const lowBrickCopingEast = new THREE.Mesh(
-    new THREE.BoxGeometry(1.84, 0.048, 0.25),
+    new THREE.BoxGeometry(1.54, 0.048, 0.25),
     blueBrickCopingMat
   );
-  lowBrickCopingEast.position.set(4.65, 0.254, 3.84);
+  lowBrickCopingEast.position.set(4.5, 0.254, 3.84);
   lowBrickCopingEast.castShadow = true;
   lowBrickCopingEast.receiveShadow = true;
   scene.add(lowBrickCopingEast);
 
-  // Flush stone threshold step in the walk-through opening (X = +2.45m..+3.75m) aligned with the Kitchen Bifolds
-  const thresholdStep = new THREE.Mesh(
-    new THREE.BoxGeometry(1.3, 0.12, 0.26),
-    limestoneEdgingMat
-  );
-  thresholdStep.position.set(3.1, -0.04, 3.84);
-  thresholdStep.receiveShadow = true;
-  scene.add(thresholdStep);
-
-  // Square Red-Brick Corner Piers with Stepped Stone Pyramid Caps at the NW (-4.52, +3.84) & NE (+5.55, +3.84) corners of the Patio
-  for (const pierX of [-4.52, 5.55]) {
-    const cornerPier = new THREE.Mesh(
-      applyCourtyardBrickUVs(new THREE.BoxGeometry(0.38, 0.56, 0.38), pierX, 0.26, 3.84),
-      brickWallMat
-    );
-    cornerPier.position.set(pierX, 0.26, 3.84);
-    cornerPier.castShadow = true;
-    cornerPier.receiveShadow = true;
-    scene.add(cornerPier);
-
-    const cornerPierCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.44, 0.07, 0.44),
+  // Stone threshold steps in the two walk-through openings (X = -1.75m..-0.45m and X = +2.45m..+3.75m)
+  for (const stepX of [-1.1, 3.1]) {
+    const thresholdStep = new THREE.Mesh(
+      new THREE.BoxGeometry(1.3, 0.12, 0.28),
       limestoneEdgingMat
     );
-    cornerPierCap.position.set(pierX, 0.575, 3.84);
-    cornerPierCap.castShadow = true;
-    scene.add(cornerPierCap);
+    thresholdStep.position.set(stepX, 0.03, 3.84);
+    thresholdStep.receiveShadow = true;
+    scene.add(thresholdStep);
   }
 
-  // West Return of the Low Brick Retaining Wall separating the Raised Patio
-  // from the Main Cobbled Courtyard (X = -4.52m, Z = +3.84m..+7.38m, Photo 5 & 12)
-  const lowBrickReturnWest = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.22, 0.28, 3.54), -4.52, 0.08, 5.61),
+  // Square Red-Brick Corner Pier at the NW (-4.52, +3.84) corner of the Patio
+  const cornerPier = new THREE.Mesh(
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.38, 0.56, 0.38), -4.52, 0.26, 3.84),
     brickWallMat
   );
-  lowBrickReturnWest.position.set(-4.52, 0.08, 5.61);
+  cornerPier.position.set(-4.52, 0.26, 3.84);
+  cornerPier.castShadow = true;
+  cornerPier.receiveShadow = true;
+  scene.add(cornerPier);
+
+  const cornerPierCap = new THREE.Mesh(
+    new THREE.BoxGeometry(0.44, 0.07, 0.44),
+    limestoneEdgingMat
+  );
+  cornerPierCap.position.set(-4.52, 0.575, 3.84);
+  cornerPierCap.castShadow = true;
+  scene.add(cornerPierCap);
+
+  // West Return of the Low Brick Retaining Wall separating the Raised Patio
+  // from the Main Cobbled Courtyard (X = -4.52m, Z = +3.84m..+6.85m, Photo 5 & 9)
+  const lowBrickReturnWest = new THREE.Mesh(
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.22, 0.28, 3.02), -4.52, 0.08, 5.34),
+    brickWallMat
+  );
+  lowBrickReturnWest.position.set(-4.52, 0.08, 5.34);
   lowBrickReturnWest.castShadow = true;
   lowBrickReturnWest.receiveShadow = true;
   scene.add(lowBrickReturnWest);
 
   const lowBrickReturnCopingWest = new THREE.Mesh(
-    new THREE.BoxGeometry(0.25, 0.048, 3.56),
+    new THREE.BoxGeometry(0.25, 0.048, 3.06),
     blueBrickCopingMat
   );
-  lowBrickReturnCopingWest.position.set(-4.52, 0.244, 5.61);
+  lowBrickReturnCopingWest.position.set(-4.52, 0.244, 5.34);
   lowBrickReturnCopingWest.castShadow = true;
   lowBrickReturnCopingWest.receiveShadow = true;
   scene.add(lowBrickReturnCopingWest);
 
-  // Black Wrought-Iron Boundary Railings along the West Return of the Patio (X = -4.52m, Z = +4.10m..+7.28m, Photo 5 center)
+  // Black Wrought-Iron Boundary Railings along the West Return of the Patio (X = -4.52m, Z = +4.05m..+6.75m, Photo 5 & 9)
   const wroughtIronMat = new THREE.MeshStandardMaterial({
     color: 0x1c1e22,
     roughness: 0.44,
@@ -214,14 +220,14 @@ export function buildPatioAndGrapeVinePergola(
   });
   for (const railY of [0.48, 0.82]) {
     const railBar = new THREE.Mesh(
-      new THREE.BoxGeometry(0.025, 0.025, 3.2),
+      new THREE.BoxGeometry(0.025, 0.025, 2.72),
       wroughtIronMat
     );
-    railBar.position.set(-4.52, railY, 5.68);
+    railBar.position.set(-4.52, railY, 5.4);
     railBar.castShadow = true;
     scene.add(railBar);
   }
-  for (let rz = 4.12; rz <= 7.28; rz += 0.26) {
+  for (let rz = 4.08; rz <= 6.74; rz += 0.24) {
     const spindle = new THREE.Mesh(
       new THREE.CylinderGeometry(0.008, 0.008, 0.62, 6),
       wroughtIronMat
@@ -232,10 +238,10 @@ export function buildPatioAndGrapeVinePergola(
   }
 
   // Weathered Timber Garden Bench & Rusted Cast-Iron Fire-Bowl Planter along the West side of the Patio
-  // facing the main cobbled courtyard (X = -4.84m, Z = +5.65m, Photo 5 center!)
+  // facing the main cobbled courtyard (X = -4.84m, Z = +5.40m, Photo 5 center!)
   const westPatioBenchGroup = new THREE.Group();
   westPatioBenchGroup.name = 'courtyard.rattanPatioWestBench';
-  westPatioBenchGroup.position.set(-4.84, -0.14, 5.65);
+  westPatioBenchGroup.position.set(-4.84, -0.14, 5.4);
   westPatioBenchGroup.rotation.y = -Math.PI / 2;
   const weatheredBenchMat = new THREE.MeshStandardMaterial({
     color: 0x8a755c,
@@ -270,7 +276,7 @@ export function buildPatioAndGrapeVinePergola(
   }
   scene.add(westPatioBenchGroup);
 
-  // Rusted Cast-Iron Circular Fire-Bowl Planter on a low ring stand (X = -5.05m, Z = +6.92m, Photo 5 center-left)
+  // Rusted Cast-Iron Circular Fire-Bowl Planter on a low ring stand (X = -5.05m, Z = +6.62m, Photo 5 center-left)
   const rustedBowlMat = new THREE.MeshStandardMaterial({
     color: 0x6e3b28,
     roughness: 0.84,
@@ -280,14 +286,14 @@ export function buildPatioAndGrapeVinePergola(
     new THREE.CylinderGeometry(0.26, 0.3, 0.14, 16),
     wroughtIronMat
   );
-  fireBowlStand.position.set(-5.05, -0.11, 6.92);
+  fireBowlStand.position.set(-5.05, -0.11, 6.62);
   scene.add(fireBowlStand);
   const fireBowl = new THREE.Mesh(
     new THREE.SphereGeometry(0.42, 18, 12, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5),
     rustedBowlMat
   );
   fireBowl.scale.set(1.0, 0.52, 1.0);
-  fireBowl.position.set(-5.05, 0.14, 6.92);
+  fireBowl.position.set(-5.05, 0.14, 6.62);
   fireBowl.castShadow = true;
   scene.add(fireBowl);
 
@@ -328,8 +334,8 @@ export function buildPatioAndGrapeVinePergola(
   });
 
   // =========================================================================
-  // 3. SOUTH OF KITCHEN: RAISED RIVEN FLAGSTONE PATIO TERRACE, BRICK KERB & SHRUBS
-  //    (X = -4.52m..+5.55m, Z = +3.95m..+7.35m -- Photos 1, 5, 11, 12)
+  // 3. SOUTH OF KITCHEN: RAISED RIVEN FLAGSTONE PATIO TERRACE & COTTAGE SHRUB BANK
+  //    (Issue #5: "Look closer at the pictures for how this section should be, remove the sofa thats the previous owners.")
   // =========================================================================
   const limestoneSlabTex = createCourtyardStoneTexture();
   const limestoneSlabMat = new THREE.MeshStandardMaterial({
@@ -338,43 +344,69 @@ export function buildPatioAndGrapeVinePergola(
     metalness: 0.04,
   });
 
-  // Raised Limestone Flagstone Patio Slab South of the Kitchen (X = -4.42m..+5.48m, Z = +3.95m..+7.32m)
+  // Raised Limestone Flagstone Patio Slab (`X = -4.40m..+3.85m, Z = +3.95m..+6.68m`, raised +0.08m above the cobble path, Photo 9!)
+  // No rattan sofa is placed here (Issue #5: "remove the sofa thats the previous owners").
   const rattanPatioSlab = new THREE.Mesh(
-    new THREE.BoxGeometry(9.9, 0.14, 3.37),
+    new THREE.BoxGeometry(8.25, 0.16, 2.73),
     limestoneSlabMat
   );
   rattanPatioSlab.name = 'courtyard.rattanPatioSlab';
-  rattanPatioSlab.position.set(0.53, -0.02, 5.635);
+  rattanPatioSlab.position.set(-0.275, 0.01, 5.315);
   rattanPatioSlab.receiveShadow = true;
   scene.add(rattanPatioSlab);
 
-  // Reclaimed Red-Brick Kerb Edging along the East (X = +5.52m) & South (Z = +7.36m) borders of the Patio (Photos 11 & 12)
-  const rattanEastBrickKerb = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.14, 0.15, 3.5), 5.52, -0.01, 5.65),
-    brickSoldierCopingMat
+  // Stepped Red-Brick Retaining Wall & Mulched Shrub Bank wrapping the South (`Z = +6.68m..+7.35m`)
+  // and East (`X = +3.85m..+5.25m`) borders of the Raised Patio Terrace (Photos 9, 10, 11!)
+  const patioSouthBrickWall = new THREE.Mesh(
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(9.75, 0.28, 0.18), 0.42, 0.05, 7.32),
+    brickWallMat
   );
-  rattanEastBrickKerb.position.set(5.52, -0.01, 5.65);
-  rattanEastBrickKerb.castShadow = true;
-  rattanEastBrickKerb.receiveShadow = true;
-  scene.add(rattanEastBrickKerb);
+  patioSouthBrickWall.position.set(0.42, 0.05, 7.32);
+  patioSouthBrickWall.castShadow = true;
+  patioSouthBrickWall.receiveShadow = true;
+  scene.add(patioSouthBrickWall);
 
-  const rattanSouthBrickKerb = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(10.12, 0.15, 0.14), 0.5, -0.01, 7.36),
+  const patioSouthBrickCoping = new THREE.Mesh(
+    new THREE.BoxGeometry(9.8, 0.045, 0.22),
     brickSoldierCopingMat
   );
-  rattanSouthBrickKerb.position.set(0.5, -0.01, 7.36);
-  rattanSouthBrickKerb.castShadow = true;
-  rattanSouthBrickKerb.receiveShadow = true;
-  scene.add(rattanSouthBrickKerb);
+  patioSouthBrickCoping.position.set(0.42, 0.21, 7.32);
+  patioSouthBrickCoping.castShadow = true;
+  scene.add(patioSouthBrickCoping);
+
+  const patioSouthSoilBed = new THREE.Mesh(
+    new THREE.BoxGeometry(9.5, 0.2, 0.68),
+    soilMat
+  );
+  patioSouthSoilBed.position.set(0.35, 0.04, 6.95);
+  patioSouthSoilBed.receiveShadow = true;
+  scene.add(patioSouthSoilBed);
+
+  const patioEastBrickWall = new THREE.Mesh(
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.18, 0.28, 3.45), 5.26, 0.05, 5.62),
+    brickWallMat
+  );
+  patioEastBrickWall.position.set(5.26, 0.05, 5.62);
+  patioEastBrickWall.castShadow = true;
+  patioEastBrickWall.receiveShadow = true;
+  scene.add(patioEastBrickWall);
+
+  const patioEastSoilBed = new THREE.Mesh(
+    new THREE.BoxGeometry(1.32, 0.2, 3.3),
+    soilMat
+  );
+  patioEastSoilBed.position.set(4.52, 0.04, 5.6);
+  patioEastSoilBed.receiveShadow = true;
+  scene.add(patioEastSoilBed);
 
   const clumpSphereGeo = new THREE.SphereGeometry(1, 14, 12);
   const bloomSphereGeo = new THREE.SphereGeometry(0.055, 8, 8);
 
-  // 1) Golden-Yellow Choisya ternata 'Sundance' Shrub in the NW corner right behind the brick corner pier (Photo 12 right-center & Photo 1)
+  // 1) Golden-Yellow Choisya ternata 'Sundance' Shrub in the SW/West border (Photo 9 center-left & Photo 5)
   for (const [dx, dy, dz, rx, ry, rz] of [
-    [-3.82, 0.34, 4.35, 0.48, 0.38, 0.44],
-    [-3.42, 0.3, 4.28, 0.38, 0.32, 0.36],
-    [-4.12, 0.32, 4.52, 0.36, 0.34, 0.38],
+    [-3.65, 0.44, 6.62, 0.62, 0.48, 0.56],
+    [-3.12, 0.38, 6.78, 0.48, 0.4, 0.46],
+    [-4.05, 0.4, 6.25, 0.46, 0.38, 0.44],
   ] as const) {
     const choisyaMound = new THREE.Mesh(clumpSphereGeo, goldenChoisyaMat);
     choisyaMound.scale.set(rx, ry, rz);
@@ -384,25 +416,26 @@ export function buildPatioAndGrapeVinePergola(
     scene.add(choisyaMound);
   }
 
-  // 2) Multi-Stem Pale Sage/Olive Ornamental Shrub / Small Tree on the West border (X = -4.15m, Z = +5.55m -- Photo 12 back-right & Photo 1)
+  // 2) Multi-Stem Dome-Crowned Ornamental Shrub / Small Tree on the South Patio Bank (`X = -1.95m, Z = +6.85m` -- Photo 9 center-left!)
   for (const [sx, sz, rotZ, rotX] of [
-    [-4.18, 5.48, 0.14, -0.08],
-    [-4.1, 5.62, -0.12, 0.1],
-    [-4.22, 5.68, 0.08, 0.14],
+    [-2.08, 6.78, 0.16, -0.08],
+    [-1.92, 6.88, -0.14, 0.1],
+    [-1.82, 6.82, 0.09, 0.14],
+    [-2.0, 6.92, -0.06, -0.12],
   ] as const) {
     const stem = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.018, 0.028, 0.95, 8),
+      new THREE.CylinderGeometry(0.022, 0.034, 1.05, 8),
       structuralOakMat
     );
-    stem.position.set(sx, 0.48, sz);
+    stem.position.set(sx, 0.54, sz);
     stem.rotation.set(rotX, 0, rotZ);
     stem.castShadow = true;
     scene.add(stem);
   }
   for (const [cx, cy, cz, rx, ry, rz] of [
-    [-4.15, 1.05, 5.55, 0.56, 0.42, 0.54],
-    [-3.88, 0.96, 5.38, 0.42, 0.34, 0.42],
-    [-4.25, 0.98, 5.82, 0.44, 0.36, 0.44],
+    [-1.95, 1.15, 6.85, 0.78, 0.48, 0.68],
+    [-2.45, 1.04, 6.75, 0.56, 0.4, 0.52],
+    [-1.42, 1.06, 6.88, 0.58, 0.42, 0.54],
   ] as const) {
     const canopy = new THREE.Mesh(clumpSphereGeo, sageFoliageMat);
     canopy.scale.set(rx, ry, rz);
@@ -412,48 +445,38 @@ export function buildPatioAndGrapeVinePergola(
     scene.add(canopy);
   }
 
-  // 3) Rounded Bright-Green Evergreen Shrub in the SW corner of the Rattan Patio (X = -3.98m, Z = +6.92m -- Photo 12 back-left & Photo 1)
-  for (const [bx, by, bz, rx, ry, rz] of [
-    [-3.98, 0.38, 6.92, 0.52, 0.42, 0.48],
-    [-3.62, 0.32, 7.05, 0.38, 0.32, 0.36],
+  // 3) Large Rounded Bright-Green Bush on the South-Center Bank & Lush East Shrub Bank (`X = -0.15m..+4.85m`, Photos 9, 10, 11!)
+  for (const [bx, by, bz, rx, ry, rz, mat] of [
+    [-0.15, 0.58, 6.78, 0.76, 0.58, 0.68, brightShrubGreenMat],
+    [0.52, 0.48, 6.88, 0.56, 0.44, 0.52, deepGreenFoliageMat],
+    [1.85, 0.52, 6.92, 0.64, 0.48, 0.56, sageFoliageMat],
+    [3.15, 0.56, 6.95, 0.68, 0.52, 0.58, brightShrubGreenMat],
+    [4.35, 0.62, 6.75, 0.72, 0.56, 0.64, deepGreenFoliageMat],
+    [4.55, 0.58, 5.55, 0.66, 0.52, 0.62, sageFoliageMat],
+    [4.48, 0.54, 4.45, 0.58, 0.46, 0.54, brightShrubGreenMat],
   ] as const) {
-    const swBush = new THREE.Mesh(clumpSphereGeo, brightShrubGreenMat);
-    swBush.scale.set(rx, ry, rz);
-    swBush.position.set(bx, by, bz);
-    swBush.castShadow = true;
-    swBush.receiveShadow = true;
-    scene.add(swBush);
+    const bankBush = new THREE.Mesh(clumpSphereGeo, mat);
+    bankBush.scale.set(rx, ry, rz);
+    bankBush.position.set(bx, by, bz);
+    bankBush.castShadow = true;
+    bankBush.receiveShadow = true;
+    scene.add(bankBush);
   }
 
-  // 4) North Border Perennials along the inside of the low brick wall (X = -2.75m..+1.65m and +4.25m..+5.15m, Z = +4.22m -- Photos 11 & 12)
+  // 4) North Border Perennials & Hydrangea Bed just inside the low brick wall (`X = -0.35m..+2.35m, Z = +4.35m` -- Photo 9 foreground!)
   for (const [px, pz, r, h, mat] of [
-    [-2.75, 4.22, 0.34, 0.28, sageFoliageMat],
-    [-1.95, 4.24, 0.36, 0.32, deepGreenFoliageMat],
-    [-1.15, 4.22, 0.32, 0.28, brightShrubGreenMat],
-    [-0.35, 4.24, 0.34, 0.3, sageFoliageMat],
-    [0.55, 4.22, 0.35, 0.32, deepGreenFoliageMat],
-    [1.42, 4.24, 0.36, 0.34, brightShrubGreenMat],
-    [4.35, 4.22, 0.34, 0.3, sageFoliageMat],
-    [5.05, 4.24, 0.36, 0.32, deepGreenFoliageMat],
+    [-3.85, 4.22, 0.36, 0.32, sageFoliageMat],
+    [-2.95, 4.24, 0.38, 0.34, deepGreenFoliageMat],
+    [-0.15, 4.32, 0.42, 0.36, sageFoliageMat],
+    [0.55, 4.45, 0.52, 0.44, deepGreenFoliageMat],
+    [1.25, 4.48, 0.56, 0.48, brightShrubGreenMat],
+    [1.95, 4.36, 0.46, 0.38, deepGreenFoliageMat],
   ] as const) {
     const clump = new THREE.Mesh(clumpSphereGeo, mat);
-    clump.scale.set(r, h, r * 0.88);
-    clump.position.set(px, h * 0.48, pz);
+    clump.scale.set(r, h, r * 0.92);
+    clump.position.set(px, h * 0.55 + 0.06, pz);
     clump.castShadow = true;
     scene.add(clump);
-  }
-
-  // 5) Hydrangea Bush & 5-Pot Cluster on the Patio (Photos 11 & 12 foreground!)
-  for (const [hx, hy, hz, rx, ry, rz] of [
-    [0.35, 0.36, 6.85, 0.48, 0.38, 0.44],
-    [0.72, 0.34, 6.98, 0.42, 0.34, 0.38],
-  ] as const) {
-    const hydrangea = new THREE.Mesh(clumpSphereGeo, deepGreenFoliageMat);
-    hydrangea.scale.set(rx, ry, rz);
-    hydrangea.position.set(hx, hy, hz);
-    hydrangea.castShadow = true;
-    hydrangea.receiveShadow = true;
-    scene.add(hydrangea);
   }
 
   const darkGlazedPotMat = new THREE.MeshStandardMaterial({
@@ -466,33 +489,40 @@ export function buildPatioAndGrapeVinePergola(
     roughness: 0.56,
     metalness: 0.24,
   });
+  const creamPotMat = new THREE.MeshStandardMaterial({
+    color: 0xd8cfc0,
+    roughness: 0.52,
+    metalness: 0.06,
+  });
   const potMat = new THREE.MeshStandardMaterial({ color: 0xa45a3f, roughness: 0.75 });
 
-  for (const [px, pz, rTop, rBot, potH, pMat, cMat, hasRedBlooms] of [
-    [0.95, 6.32, 0.22, 0.15, 0.36, darkGlazedPotMat, brightShrubGreenMat, false],
-    [1.38, 6.52, 0.16, 0.14, 0.32, zincPotMat, sageFoliageMat, false],
-    [1.42, 6.94, 0.15, 0.11, 0.26, potMat, deepGreenFoliageMat, true],
-    [1.18, 7.16, 0.14, 0.1, 0.24, potMat, deepGreenFoliageMat, true],
+  // Cluster of pots along the North Urn Bed & South Brick Corner (matching Photo 9 foreground & bottom-left!)
+  for (const [px, pz, rTop, rBot, potH, pMat, cMat, hasWhiteBlooms, hasRedBlooms] of [
+    [2.28, 4.18, 0.23, 0.16, 0.38, darkGlazedPotMat, deepGreenFoliageMat, true, false], // Large dark-glazed pot with white flowers on right of Photo 9!
+    [1.52, 4.15, 0.16, 0.13, 0.3, zincPotMat, sageFoliageMat, false, false],
+    [1.18, 4.12, 0.14, 0.1, 0.24, potMat, brightShrubGreenMat, false, true],
+    [0.82, 7.08, 0.18, 0.13, 0.3, creamPotMat, brightShrubGreenMat, false, false], // Cream pot at South brick step in Photo 9 bottom-left!
   ] as const) {
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, potH, 14), pMat);
-    pot.position.set(px, potH / 2 + 0.04, pz);
+    pot.position.set(px, potH / 2 + 0.08, pz);
     pot.castShadow = true;
     pot.receiveShadow = true;
     scene.add(pot);
 
     const foliage = new THREE.Mesh(clumpSphereGeo, cMat);
-    foliage.scale.set(rTop * 1.15, rTop * 0.95, rTop * 1.15);
-    foliage.position.set(px, potH + rTop * 0.55, pz);
+    foliage.scale.set(rTop * 1.18, rTop * 0.96, rTop * 1.18);
+    foliage.position.set(px, potH + rTop * 0.6 + 0.08, pz);
     foliage.castShadow = true;
     scene.add(foliage);
 
-    if (hasRedBlooms) {
+    if (hasWhiteBlooms || hasRedBlooms) {
+      const bMat = hasWhiteBlooms ? whiteBloomMat : geraniumRedBloomMat;
       for (const [bx, by, bz] of [
-        [-0.05, potH + rTop * 1.05, 0.03],
-        [0.06, potH + rTop * 1.1, -0.04],
-        [0.0, potH + rTop * 1.18, 0.01],
+        [-0.06, potH + rTop * 1.1 + 0.08, 0.04],
+        [0.07, potH + rTop * 1.14 + 0.08, -0.04],
+        [0.0, potH + rTop * 1.22 + 0.08, 0.02],
       ] as const) {
-        const bloom = new THREE.Mesh(bloomSphereGeo, geraniumRedBloomMat);
+        const bloom = new THREE.Mesh(bloomSphereGeo, bMat);
         bloom.position.set(px + bx, by, pz + bz);
         scene.add(bloom);
       }
@@ -501,14 +531,14 @@ export function buildPatioAndGrapeVinePergola(
 
   // =========================================================================
   // 4. DECORATIVE TROPHY / CUP PLANTER WITH SCULPTED LION HEADS (Campagna / Medici Urn)
-  //    & OLD RECLAIMED YORKSTONE GRINDSTONE (Photos 11 & 12)
+  //    & OLD RECLAIMED YORKSTONE GRINDSTONE IN THE NORTH BORDER (Photo 9 foreground!)
   // =========================================================================
-  buildLionHeadTrophyUrn(scene, 3.95, 5.08, deepGreenFoliageMat, whiteBloomMat, blushBloomMat);
-  buildOldGrindstone(scene, 2.05, 4.25, structuralOakMat);
+  buildLionHeadTrophyUrn(scene, 1.88, 4.48, deepGreenFoliageMat, whiteBloomMat, blushBloomMat);
+  buildOldGrindstone(scene, 0.62, 4.28, structuralOakMat);
 
   // =========================================================================
   // 5. PAIR OF CLIPPED BAY LEAF TOPIARY TREES BY UTILITY SPLIT STABLE DOOR
-  //    & CLIMBING GREEN IVY ON THE KITCHEN SOUTH BRICK PIER (Photos 1, 3, 11)
+  //    & CLIMBING GREEN IVY ON THE KITCHEN SOUTH BRICK PIER (Photos 1, 3, 9)
   // =========================================================================
   const bayLeafDarkMat = new THREE.MeshStandardMaterial({
     color: 0x2d4d2a,
@@ -604,178 +634,29 @@ export function buildPatioAndGrapeVinePergola(
   }
 
   // =========================================================================
-  // 6. L-SHAPED CHARCOAL WOVEN RATTAN OUTDOOR CORNER SOFA & SQUARE COFFEE TABLE
-  //    ON THE WEST SIDE OF THE RAISED FLAGSTONE PATIO (X = -2.25m, Z = +5.65m -- Photos 1, 11, 12)
-  // =========================================================================
-  const rattanGroup = new THREE.Group();
-  rattanGroup.name = 'courtyard.rattanCornerSofa';
-  rattanGroup.position.set(-2.25, 0.05, 5.65);
-
-  const charcoalRattanMat = new THREE.MeshStandardMaterial({
-    color: 0x2c2e32,
-    roughness: 0.76,
-    metalness: 0.06,
-  });
-  const outdoorCushionMat = new THREE.MeshStandardMaterial({
-    color: 0xd8d5ce,
-    roughness: 0.82,
-    metalness: 0.02,
-  });
-  const outdoorAccentPillowMat = new THREE.MeshStandardMaterial({
-    color: 0x56636e,
-    roughness: 0.78,
-  });
-
-  const sofaNorthBase = new THREE.Mesh(
-    new THREE.BoxGeometry(2.24, 0.28, 0.84),
-    charcoalRattanMat
-  );
-  sofaNorthBase.position.set(0, 0.16, -0.62);
-  sofaNorthBase.castShadow = true;
-  sofaNorthBase.receiveShadow = true;
-  rattanGroup.add(sofaNorthBase);
-
-  const sofaNorthBack = new THREE.Mesh(
-    new THREE.BoxGeometry(2.24, 0.46, 0.14),
-    charcoalRattanMat
-  );
-  sofaNorthBack.position.set(0, 0.53, -0.97);
-  sofaNorthBack.castShadow = true;
-  rattanGroup.add(sofaNorthBack);
-
-  const sofaNorthEastArm = new THREE.Mesh(
-    new THREE.BoxGeometry(0.14, 0.38, 0.84),
-    charcoalRattanMat
-  );
-  sofaNorthEastArm.position.set(1.05, 0.49, -0.62);
-  sofaNorthEastArm.castShadow = true;
-  rattanGroup.add(sofaNorthEastArm);
-
-  const sofaWestBase = new THREE.Mesh(
-    new THREE.BoxGeometry(0.84, 0.28, 1.34),
-    charcoalRattanMat
-  );
-  sofaWestBase.position.set(-0.7, 0.16, 0.47);
-  sofaWestBase.castShadow = true;
-  sofaWestBase.receiveShadow = true;
-  rattanGroup.add(sofaWestBase);
-
-  const sofaWestBack = new THREE.Mesh(
-    new THREE.BoxGeometry(0.14, 0.46, 2.04),
-    charcoalRattanMat
-  );
-  sofaWestBack.position.set(-1.05, 0.53, 0.04);
-  sofaWestBack.castShadow = true;
-  rattanGroup.add(sofaWestBack);
-
-  const sofaSouthArm = new THREE.Mesh(
-    new THREE.BoxGeometry(0.84, 0.38, 0.14),
-    charcoalRattanMat
-  );
-  sofaSouthArm.position.set(-0.7, 0.49, 1.07);
-  sofaSouthArm.castShadow = true;
-  rattanGroup.add(sofaSouthArm);
-
-  for (const cx of [-0.65, 0.0, 0.65]) {
-    const seatCushion = new THREE.Mesh(
-      new THREE.BoxGeometry(0.62, 0.11, 0.68),
-      outdoorCushionMat
-    );
-    seatCushion.position.set(cx, 0.355, -0.55);
-    seatCushion.castShadow = true;
-    seatCushion.receiveShadow = true;
-    rattanGroup.add(seatCushion);
-
-    const backCushion = new THREE.Mesh(
-      new THREE.BoxGeometry(0.6, 0.32, 0.13),
-      outdoorCushionMat
-    );
-    backCushion.position.set(cx, 0.56, -0.83);
-    backCushion.rotation.x = 0.12;
-    backCushion.castShadow = true;
-    rattanGroup.add(backCushion);
-  }
-
-  for (const cz of [0.1, 0.7]) {
-    const seatCushion = new THREE.Mesh(
-      new THREE.BoxGeometry(0.68, 0.11, 0.58),
-      outdoorCushionMat
-    );
-    seatCushion.position.set(-0.63, 0.355, cz);
-    seatCushion.castShadow = true;
-    seatCushion.receiveShadow = true;
-    rattanGroup.add(seatCushion);
-
-    const backCushion = new THREE.Mesh(
-      new THREE.BoxGeometry(0.13, 0.32, 0.56),
-      outdoorCushionMat
-    );
-    backCushion.position.set(-0.9, 0.56, cz);
-    backCushion.rotation.z = -0.12;
-    backCushion.castShadow = true;
-    rattanGroup.add(backCushion);
-  }
-
-  for (const [px, pz, rotY] of [
-    [-0.82, -0.76, 0.78],
-    [0.82, -0.72, -0.45],
-    [-0.76, 0.84, 1.2],
-  ] as const) {
-    const pillow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.32, 0.28, 0.1),
-      outdoorAccentPillowMat
-    );
-    pillow.position.set(px, 0.54, pz);
-    pillow.rotation.y = rotY;
-    pillow.castShadow = true;
-    rattanGroup.add(pillow);
-  }
-
-  // Matching Square Woven Charcoal Rattan Coffee Table / Ottoman (Photo 12 center)
-  const rattanTableBase = new THREE.Mesh(
-    new THREE.BoxGeometry(0.88, 0.36, 0.88),
-    charcoalRattanMat
-  );
-  rattanTableBase.position.set(0.24, 0.18, 0.34);
-  rattanTableBase.castShadow = true;
-  rattanTableBase.receiveShadow = true;
-  rattanGroup.add(rattanTableBase);
-
-  const rattanTableGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(0.84, 0.018, 0.84),
-    glassMat
-  );
-  rattanTableGlass.position.set(0.24, 0.37, 0.34);
-  rattanGroup.add(rattanTableGlass);
-
-  scene.add(rattanGroup);
-
-  // =========================================================================
-  // 7. BEHIND (EAST OF) THE KITCHEN: WALLED GRAPE-VINE PERGOLA DINING COURT,
-  //    BRICK & FIELDSTONE WALLS, WROUGHT-IRON SCROLLWORK GATE, TEAK DINING TABLE & 6 CHAIRS,
-  //    AND LUSH VITIS VINIFERA GRAPE-VINE CANOPY (X = +6.80m..+11.65m, Z = -2.55m..+2.85m -- Issue #1 & Photos 1, 5, 8, 10)
+  // 6. ENLARGED & 2-STEP RAISED WALLED GRAPE-VINE PERGOLA DINING COURT
+  //    (X = +5.65m..+11.55m, Z = -1.15m..+7.35m, Floor raised +0.32m via 2 steps!)
+  //    - Issue #2 ("Pergola is much larger, comes out to about here" at `[7.44, -0.012, 10.574]`):
+  //      Extends South all the way to Z = +7.35m (world `[7.44, -0.012, 10.574]`) so its South red-brick wall
+  //      lines up with the South edge of the Patio shrub bank along the cobbled alleyway (`Photo 10` right)!
+  //    - Issue #10 ("The inside of the pergola is slightly raised, 2 steps up, so its higher overall" at `[8.146, 0, 3.912]`):
+  //      Interior flagstone floor is raised +0.32m (`2 x 0.16m` steps up), with 2 stone steps at the West entrance,
+  //      South-West wrought-iron gate, and East vegetable garden opening, and all walls, piers, beams, vines & furniture
+  //      raised +0.32m higher overall!
   // =========================================================================
   const pergolaGroup = new THREE.Group();
   pergolaGroup.name = 'courtyard.grapeVinePergola';
-  const pergMinX = 6.8;
-  const pergMaxX = 11.65;
-  const pergMinZ = -2.55;
-  const pergMaxZ = 2.85;
-  const pergWallH = 2.22;
-  const pergBeamY = 2.3;
-  const pergRafterY = 2.42;
+  const pergMinX = 5.65;
+  const pergMaxX = 11.55;
+  const pergMinZ = -1.15;
+  const pergMaxZ = 7.35;
+  const pergFloorY = 0.32; // 2 steps up (2 x 0.16m risers = +0.32m above the cobble path!)
+  const pergWallH = 2.24; // Wall height above the raised pergola floor (top at Y = +2.56m)
+  const pergWallTotalH = pergFloorY + pergWallH; // 2.56m from base Y = 0.00m
+  const pergBeamY = pergFloorY + 2.32; // 2.64m
+  const pergRafterY = pergFloorY + 2.44; // 2.76m
 
-  // Riven Limestone Flagstone Court Floor inside the Walled Grape-Vine Pergola (X = +6.68m..+11.78m, Z = -2.68m..+2.98m)
-  const pergolaCourtFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(5.1, 0.11, 5.66),
-    limestoneSlabMat
-  );
-  pergolaCourtFloor.name = 'courtyard.grapeVinePergola.floor';
-  pergolaCourtFloor.position.set(9.23, -0.055, 0.15);
-  pergolaCourtFloor.receiveShadow = true;
-  pergolaGroup.add(pergolaCourtFloor);
-
-  // Coursed Honey-Buff Fieldstone / Limestone Rubble Material for the North & East Walls (Photo 8 left)
+  // Coursed Honey-Buff Fieldstone / Limestone Rubble Material for the North & East Walls & Plinth (Photo 8 left)
   const fieldstoneWallMat = new THREE.MeshStandardMaterial({
     color: 0xc8b598,
     map: limestoneSlabTex,
@@ -783,129 +664,207 @@ export function buildPatioAndGrapeVinePergola(
     metalness: 0.02,
   });
 
-  // 7a. North Coursed Fieldstone Wall (Z = -2.55m, X = +6.80m..+11.65m) with Low Projecting Stone Bench Ledge (Photo 8 left)
-  const northStoneWall = new THREE.Mesh(
-    new THREE.BoxGeometry(4.85, pergWallH, 0.28),
+  // Solid Raised Retaining Plinth & Riven Limestone Flagstone Court Floor (`Y = -0.12m..+0.32m`, Issue #10!)
+  const pergolaRetainingPlinth = new THREE.Mesh(
+    new THREE.BoxGeometry(pergMaxX - pergMinX + 0.16, pergFloorY + 0.06, pergMaxZ - pergMinZ + 0.16),
     fieldstoneWallMat
   );
-  northStoneWall.position.set(9.225, pergWallH / 2, pergMinZ);
-  northStoneWall.castShadow = true;
-  northStoneWall.receiveShadow = true;
-  pergolaGroup.add(northStoneWall);
-
-  const northStoneCoping = new THREE.Mesh(
-    new THREE.BoxGeometry(4.92, 0.06, 0.34),
-    limestoneEdgingMat
+  pergolaRetainingPlinth.position.set(
+    (pergMinX + pergMaxX) * 0.5,
+    (pergFloorY - 0.14) * 0.5,
+    (pergMinZ + pergMaxZ) * 0.5
   );
-  northStoneCoping.position.set(9.225, pergWallH + 0.03, pergMinZ);
-  northStoneCoping.castShadow = true;
-  pergolaGroup.add(northStoneCoping);
+  pergolaRetainingPlinth.receiveShadow = true;
+  pergolaGroup.add(pergolaRetainingPlinth);
 
-  // Projecting Low Interior Stone Bench Ledge along the North Stone Wall (Z = -2.24m, X = +7.35m..+10.25m, Photo 8 bottom-left)
-  const northStoneBenchBase = new THREE.Mesh(
-    new THREE.BoxGeometry(2.9, 0.38, 0.34),
+  const pergolaCourtFloor = new THREE.Mesh(
+    new THREE.BoxGeometry(pergMaxX - pergMinX + 0.2, 0.08, pergMaxZ - pergMinZ + 0.2),
+    limestoneSlabMat
+  );
+  pergolaCourtFloor.name = 'courtyard.grapeVinePergola.floor';
+  pergolaCourtFloor.position.set(
+    (pergMinX + pergMaxX) * 0.5,
+    pergFloorY - 0.04,
+    (pergMinZ + pergMaxZ) * 0.5
+  );
+  pergolaCourtFloor.receiveShadow = true;
+  pergolaGroup.add(pergolaCourtFloor);
+
+  // Issue #10: 2 Reclaimed Stone Steps (`Step 1` at Y = 0.00..0.16m, `Step 2` at Y = 0.16..0.32m)
+  // at the West Entrance (from the Kitchen/East Cobble Path), South-West Wrought-Iron Gate, and East Vegetable Garden Opening!
+  for (let s = 0; s < 2; s++) {
+    const stepTopY = (s + 1) * 0.16;
+    const stepH = 0.16;
+    // 1. West Colonnade Entrance Steps (`X = pergMinX - (2 - s) * 0.30`, `Z = +1.60m..+3.60m`)
+    const westStep = new THREE.Mesh(
+      new THREE.BoxGeometry(0.32, stepH, 2.05),
+      limestoneEdgingMat
+    );
+    westStep.position.set(pergMinX - (1.5 - s) * 0.3, stepTopY - stepH * 0.5, 2.6);
+    westStep.castShadow = true;
+    westStep.receiveShadow = true;
+    pergolaGroup.add(westStep);
+
+    // 2. South-West Wrought-Iron Gate Steps from the Cobbled Alleyway (`X = +6.05m..+7.15m`, `Z = pergMaxZ + (1.5 - s) * 0.30m`)
+    const southGateStep = new THREE.Mesh(
+      new THREE.BoxGeometry(1.12, stepH, 0.32),
+      limestoneEdgingMat
+    );
+    southGateStep.position.set(6.6, stepTopY - stepH * 0.5, pergMaxZ + (1.5 - s) * 0.3);
+    southGateStep.castShadow = true;
+    southGateStep.receiveShadow = true;
+    pergolaGroup.add(southGateStep);
+
+    // 3. East Opening Steps down into the Vegetable Garden & Greenhouse (`X = pergMaxX + (0.5 + s) * 0.30m`, `Z = +0.25m..+1.75m`)
+    const eastGardenStep = new THREE.Mesh(
+      new THREE.BoxGeometry(0.32, stepH, 1.5),
+      limestoneEdgingMat
+    );
+    eastGardenStep.position.set(pergMaxX + (0.5 + (1 - s)) * 0.3, stepTopY - stepH * 0.5, 1.0);
+    eastGardenStep.castShadow = true;
+    eastGardenStep.receiveShadow = true;
+    pergolaGroup.add(eastGardenStep);
+  }
+
+  // 6a. North Coursed Fieldstone Wall (Z = -1.15m, X = +5.65m..+11.55m, with 1.25m gateway opening at X = +8.85m..+10.10m to the Greenhouse!)
+  for (const [xMin, xMax] of [
+    [pergMinX, 8.85],
+    [10.1, pergMaxX],
+  ] as const) {
+    const segW = xMax - xMin;
+    const segMidX = (xMin + xMax) * 0.5;
+    const northStoneWall = new THREE.Mesh(
+      new THREE.BoxGeometry(segW, pergWallTotalH, 0.28),
+      fieldstoneWallMat
+    );
+    northStoneWall.position.set(segMidX, pergWallTotalH * 0.5, pergMinZ);
+    northStoneWall.castShadow = true;
+    northStoneWall.receiveShadow = true;
+    pergolaGroup.add(northStoneWall);
+
+    const northStoneCoping = new THREE.Mesh(
+      new THREE.BoxGeometry(segW + 0.06, 0.06, 0.34),
+      limestoneEdgingMat
+    );
+    northStoneCoping.position.set(segMidX, pergWallTotalH + 0.03, pergMinZ);
+    northStoneCoping.castShadow = true;
+    pergolaGroup.add(northStoneCoping);
+  }
+
+  // Projecting Low Interior Stone Bench Ledge along the East & North Stone Walls (seated on pergFloorY = +0.32m, Photo 8 left!)
+  const eastStoneBenchBase = new THREE.Mesh(
+    new THREE.BoxGeometry(0.34, 0.38, 4.2),
     fieldstoneWallMat
   );
-  northStoneBenchBase.position.set(8.8, 0.19, pergMinZ + 0.3);
-  northStoneBenchBase.castShadow = true;
-  northStoneBenchBase.receiveShadow = true;
-  pergolaGroup.add(northStoneBenchBase);
+  eastStoneBenchBase.position.set(pergMaxX - 0.3, pergFloorY + 0.19, 4.35);
+  eastStoneBenchBase.castShadow = true;
+  eastStoneBenchBase.receiveShadow = true;
+  pergolaGroup.add(eastStoneBenchBase);
 
-  const northStoneBenchSlab = new THREE.Mesh(
-    new THREE.BoxGeometry(2.96, 0.05, 0.38),
+  const eastStoneBenchSlab = new THREE.Mesh(
+    new THREE.BoxGeometry(0.38, 0.05, 4.26),
     limestoneEdgingMat
   );
-  northStoneBenchSlab.position.set(8.8, 0.405, pergMinZ + 0.3);
-  northStoneBenchSlab.castShadow = true;
-  pergolaGroup.add(northStoneBenchSlab);
+  eastStoneBenchSlab.position.set(pergMaxX - 0.3, pergFloorY + 0.405, 4.35);
+  eastStoneBenchSlab.castShadow = true;
+  pergolaGroup.add(eastStoneBenchSlab);
 
-  for (const [px, r, h, pMat] of [
-    [7.75, 0.11, 0.2, zincPotMat],
-    [8.65, 0.12, 0.22, potMat],
-    [9.65, 0.1, 0.18, zincPotMat],
+  const cobaltBluePotMat = new THREE.MeshStandardMaterial({
+    color: 0x1d4e89,
+    roughness: 0.28,
+    metalness: 0.14,
+  });
+
+  for (const [pz, r, h, pMat] of [
+    [2.65, 0.16, 0.26, creamPotMat],
+    [3.85, 0.12, 0.22, zincPotMat],
+    [5.15, 0.13, 0.24, potMat],
+    [6.15, 0.11, 0.2, zincPotMat],
   ] as const) {
     const ledgePot = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.76, h, 12), pMat);
-    ledgePot.position.set(px, 0.43 + h / 2, pergMinZ + 0.28);
+    ledgePot.position.set(pergMaxX - 0.28, pergFloorY + 0.43 + h / 2, pz);
     ledgePot.castShadow = true;
     pergolaGroup.add(ledgePot);
 
     const ledgePlant = new THREE.Mesh(clumpSphereGeo, sageFoliageMat);
-    ledgePlant.scale.set(r * 1.15, r * 0.95, r * 1.15);
-    ledgePlant.position.set(px, 0.43 + h + r * 0.45, pergMinZ + 0.28);
+    ledgePlant.scale.set(r * 1.2, r * 0.95, r * 1.2);
+    ledgePlant.position.set(pergMaxX - 0.28, pergFloorY + 0.43 + h + r * 0.45, pz);
     pergolaGroup.add(ledgePlant);
   }
 
-  // 7b. East Coursed Fieldstone Wall (X = +11.65m, Z = -2.55m..+2.85m) with a 1.20m garden walk-through opening (Z = -1.35m..-0.15m) to the East Lawn
-  const eastStoneWallNorth = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, pergWallH, 1.2),
-    fieldstoneWallMat
-  );
-  eastStoneWallNorth.position.set(pergMaxX, pergWallH / 2, -1.95);
-  eastStoneWallNorth.castShadow = true;
-  eastStoneWallNorth.receiveShadow = true;
-  pergolaGroup.add(eastStoneWallNorth);
+  // 6b. East Coursed Fieldstone Wall (X = +11.55m, Z = -1.15m..+7.35m) with a 1.50m walk-through opening (Z = +0.25m..+1.75m) to the Vegetable Garden!
+  for (const [zMin, zMax] of [
+    [pergMinZ, 0.25],
+    [1.75, pergMaxZ],
+  ] as const) {
+    const segD = zMax - zMin;
+    const segMidZ = (zMin + zMax) * 0.5;
+    const eastStoneWall = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, pergWallTotalH, segD),
+      fieldstoneWallMat
+    );
+    eastStoneWall.position.set(pergMaxX, pergWallTotalH * 0.5, segMidZ);
+    eastStoneWall.castShadow = true;
+    eastStoneWall.receiveShadow = true;
+    pergolaGroup.add(eastStoneWall);
 
-  const eastStoneCopingNorth = new THREE.Mesh(
-    new THREE.BoxGeometry(0.34, 0.06, 1.26),
-    limestoneEdgingMat
-  );
-  eastStoneCopingNorth.position.set(pergMaxX, pergWallH + 0.03, -1.95);
-  eastStoneCopingNorth.castShadow = true;
-  pergolaGroup.add(eastStoneCopingNorth);
+    const eastStoneCoping = new THREE.Mesh(
+      new THREE.BoxGeometry(0.34, 0.06, segD + 0.06),
+      limestoneEdgingMat
+    );
+    eastStoneCoping.position.set(pergMaxX, pergWallTotalH + 0.03, segMidZ);
+    eastStoneCoping.castShadow = true;
+    pergolaGroup.add(eastStoneCoping);
+  }
 
-  const eastStoneWallSouth = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, pergWallH, 3.0),
-    fieldstoneWallMat
-  );
-  eastStoneWallSouth.position.set(pergMaxX, pergWallH / 2, 1.35);
-  eastStoneWallSouth.castShadow = true;
-  eastStoneWallSouth.receiveShadow = true;
-  pergolaGroup.add(eastStoneWallSouth);
-
-  const eastStoneCopingSouth = new THREE.Mesh(
-    new THREE.BoxGeometry(0.34, 0.06, 3.06),
-    limestoneEdgingMat
-  );
-  eastStoneCopingSouth.position.set(pergMaxX, pergWallH + 0.03, 1.35);
-  eastStoneCopingSouth.castShadow = true;
-  pergolaGroup.add(eastStoneCopingSouth);
-
-  // 7c. South Tall Reclaimed Red-Brick Wall (Z = +2.85m, X = +8.02m..+11.65m, height = 2.22m -- Photo 8 back & Photo 10 right)
+  // 6c. South Tall Reclaimed Red-Brick Wall (Z = +7.35m, X = +7.22m..+11.55m, top at Y = +2.56m -- Photo 8 back & Photo 10 right!)
+  const southWallSpanX = pergMaxX - 7.22;
+  const southWallMidX = (7.22 + pergMaxX) * 0.5;
   const southPergolaBrickWall = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(3.63, pergWallH, 0.26), 9.835, pergWallH / 2, pergMaxZ),
+    applyCourtyardBrickUVs(
+      new THREE.BoxGeometry(southWallSpanX, pergWallTotalH, 0.26),
+      southWallMidX,
+      pergWallTotalH * 0.5,
+      pergMaxZ
+    ),
     brickWallMat
   );
   southPergolaBrickWall.name = 'courtyard.grapeVinePergola.southBrickWall';
-  southPergolaBrickWall.position.set(9.835, pergWallH / 2, pergMaxZ);
+  southPergolaBrickWall.position.set(southWallMidX, pergWallTotalH * 0.5, pergMaxZ);
   southPergolaBrickWall.castShadow = true;
   southPergolaBrickWall.receiveShadow = true;
   pergolaGroup.add(southPergolaBrickWall);
 
   const southPergolaBrickCoping = new THREE.Mesh(
-    new THREE.BoxGeometry(3.69, 0.06, 0.32),
+    new THREE.BoxGeometry(southWallSpanX + 0.06, 0.06, 0.32),
     limestoneEdgingMat
   );
-  southPergolaBrickCoping.position.set(9.835, pergWallH + 0.03, pergMaxZ);
+  southPergolaBrickCoping.position.set(southWallMidX, pergWallTotalH + 0.03, pergMaxZ);
   southPergolaBrickCoping.castShadow = true;
   pergolaGroup.add(southPergolaBrickCoping);
 
   // Exterior South Raised Brick Herb & Flower Border along the outer South face of the Pergola Wall facing the Cobbled Alleyway (Photo 10 right!)
   const southAlleyHerbBedKerb = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(3.6, 0.26, 0.12), 9.84, 0.06, pergMaxZ + 0.44),
+    applyCourtyardBrickUVs(
+      new THREE.BoxGeometry(southWallSpanX, 0.26, 0.12),
+      southWallMidX,
+      0.06,
+      pergMaxZ + 0.44
+    ),
     brickWallMat
   );
-  southAlleyHerbBedKerb.position.set(9.84, 0.06, pergMaxZ + 0.44);
+  southAlleyHerbBedKerb.position.set(southWallMidX, 0.06, pergMaxZ + 0.44);
   southAlleyHerbBedKerb.castShadow = true;
   pergolaGroup.add(southAlleyHerbBedKerb);
 
   const southAlleyHerbSoil = new THREE.Mesh(
-    new THREE.BoxGeometry(3.52, 0.2, 0.32),
+    new THREE.BoxGeometry(southWallSpanX - 0.08, 0.2, 0.32),
     soilMat
   );
-  southAlleyHerbSoil.position.set(9.84, 0.04, pergMaxZ + 0.26);
+  southAlleyHerbSoil.position.set(southWallMidX, 0.04, pergMaxZ + 0.26);
   pergolaGroup.add(southAlleyHerbSoil);
 
-  for (let hx = 8.25; hx <= 11.4; hx += 0.62) {
+  for (let hx = 7.55; hx <= 11.25; hx += 0.62) {
     const herbMound = new THREE.Mesh(
       clumpSphereGeo,
       Math.round(hx * 2) % 2 === 0 ? sageFoliageMat : deepGreenFoliageMat
@@ -916,12 +875,12 @@ export function buildPatioAndGrapeVinePergola(
     pergolaGroup.add(herbMound);
   }
 
-  // 7d. Ornate Black Wrought-Iron Scrollwork Garden Gate in the South-West Gateway (X = +7.02m..+7.92m, Z = +2.85m -- Photo 8 back-right!)
+  // 6d. Ornate Black Wrought-Iron Scrollwork Garden Gate in the South-West Gateway (X = +6.15m..+7.05m, Z = +7.35m -- Photo 8 back-right!)
   const ironGateGroup = new THREE.Group();
   ironGateGroup.name = 'courtyard.grapeVinePergola.wroughtIronGate';
-  ironGateGroup.position.set(7.47, 0.02, pergMaxZ);
+  ironGateGroup.position.set(6.6, pergFloorY + 0.02, pergMaxZ);
   const gateW = 0.88;
-  const gateH = 1.82;
+  const gateH = 1.86;
   for (const gx of [-gateW / 2, gateW / 2]) {
     const stile = new THREE.Mesh(new THREE.BoxGeometry(0.032, gateH, 0.032), wroughtIronMat);
     stile.position.set(gx, gateH / 2, 0);
@@ -953,19 +912,25 @@ export function buildPatioAndGrapeVinePergola(
   ironGateGroup.add(gateCrest);
   pergolaGroup.add(ironGateGroup);
 
-  // 7e. Red-Brick Support Piers along the West Open Colonnade (X = +6.80m) facing the Kitchen East Gable Window (Photo 8 right & media_1791117139446_c727cd76.jpg)
+  // 6e. Red-Brick Support Piers along the West Open Colonnade (X = +5.65m) & South Gate Jamb (Photo 8 right & media_1791117139446_c727cd76.jpg)
   for (const [px, pz, pw, pd] of [
-    [pergMinX, pergMinZ, 0.38, 0.38], // NW Corner Brick Pier (X = +6.80m, Z = -2.55m)
-    [pergMinX, -0.82, 0.38, 0.38],    // West-North Entrance Pier (X = +6.80m, Z = -0.82m)
-    [pergMinX, 1.05, 0.38, 0.38],     // West-South Entrance Pier (X = +6.80m, Z = +1.05m)
-    [pergMinX, pergMaxZ, 0.38, 0.38], // SW Gate Brick Pier (X = +6.80m, Z = +2.85m)
-    [8.02, pergMaxZ, 0.36, 0.36],     // South Gate East Jamb Pier (X = +8.02m, Z = +2.85m)
+    [pergMinX, pergMinZ, 0.38, 0.38], // NW Corner Brick Pier
+    [pergMinX, 1.45, 0.38, 0.38],     // West-North Entrance Pier
+    [pergMinX, 3.75, 0.38, 0.38],     // West-Center Entrance Pier
+    [pergMinX, 5.65, 0.38, 0.38],     // West-South Pier
+    [pergMinX, pergMaxZ, 0.38, 0.38], // SW Gate Brick Pier
+    [7.22, pergMaxZ, 0.36, 0.36],     // South Gate East Jamb Pier
   ] as const) {
     const pier = new THREE.Mesh(
-      applyCourtyardBrickUVs(new THREE.BoxGeometry(pw, pergWallH, pd), px, pergWallH / 2, pz),
+      applyCourtyardBrickUVs(
+        new THREE.BoxGeometry(pw, pergWallTotalH, pd),
+        px,
+        pergWallTotalH * 0.5,
+        pz
+      ),
       brickWallMat
     );
-    pier.position.set(px, pergWallH / 2, pz);
+    pier.position.set(px, pergWallTotalH * 0.5, pz);
     pier.castShadow = true;
     pier.receiveShadow = true;
     pergolaGroup.add(pier);
@@ -974,21 +939,22 @@ export function buildPatioAndGrapeVinePergola(
       new THREE.BoxGeometry(pw + 0.06, 0.06, pd + 0.06),
       limestoneEdgingMat
     );
-    pierCap.position.set(px, pergWallH + 0.03, pz);
+    pierCap.position.set(px, pergWallTotalH + 0.03, pz);
     pierCap.castShadow = true;
     pergolaGroup.add(pierCap);
   }
 
-  // Low Brick Dwarf Walls between the West Piers (X = +6.80m, Z = -2.35m..-1.00m and Z = +1.24m..+2.66m)
+  // Low Brick Dwarf Walls between the West Piers (`X = +5.65m`, leaving the 2-step West entrance open at `Z = +1.65m..+3.55m`)
   for (const [wz, wd] of [
-    [-1.68, 1.36],
-    [1.95, 1.44],
+    [0.15, 2.22],
+    [4.7, 1.52],
+    [6.5, 1.34],
   ] as const) {
     const dwarfWall = new THREE.Mesh(
-      applyCourtyardBrickUVs(new THREE.BoxGeometry(0.24, 0.38, wd), pergMinX, 0.19, wz),
+      applyCourtyardBrickUVs(new THREE.BoxGeometry(0.24, 0.38, wd), pergMinX, pergFloorY + 0.19, wz),
       brickWallMat
     );
-    dwarfWall.position.set(pergMinX, 0.19, wz);
+    dwarfWall.position.set(pergMinX, pergFloorY + 0.19, wz);
     dwarfWall.castShadow = true;
     dwarfWall.receiveShadow = true;
     pergolaGroup.add(dwarfWall);
@@ -997,40 +963,35 @@ export function buildPatioAndGrapeVinePergola(
       new THREE.BoxGeometry(0.28, 0.05, wd + 0.04),
       limestoneEdgingMat
     );
-    dwarfCoping.position.set(pergMinX, 0.405, wz);
+    dwarfCoping.position.set(pergMinX, pergFloorY + 0.405, wz);
     pergolaGroup.add(dwarfCoping);
   }
 
-  // Cobalt-Blue Glazed Ceramic Pots & Terracotta Pots clustered around the West Pergola Brick Piers (Photo 8 right & media_1791117139446_c727cd76.jpg!)
-  const cobaltBluePotMat = new THREE.MeshStandardMaterial({
-    color: 0x1d4e89,
-    roughness: 0.28,
-    metalness: 0.14,
-  });
+  // Cobalt-Blue Glazed Ceramic Pots & Terracotta Pots on the raised pergola floor inside the West Piers (Photo 8 right!)
   for (const [px, pz, rTop, rBot, h, pMat, fMat] of [
-    [7.14, 1.38, 0.19, 0.13, 0.34, cobaltBluePotMat, brightShrubGreenMat],
-    [7.12, 0.72, 0.16, 0.11, 0.28, potMat, sageFoliageMat],
-    [7.14, -0.52, 0.18, 0.12, 0.32, cobaltBluePotMat, deepGreenFoliageMat],
-    [7.12, -1.25, 0.17, 0.12, 0.3, potMat, brightShrubGreenMat],
-    [7.12, 2.25, 0.18, 0.13, 0.32, potMat, sageFoliageMat],
+    [6.02, 1.15, 0.19, 0.13, 0.34, cobaltBluePotMat, brightShrubGreenMat],
+    [6.0, 4.15, 0.19, 0.13, 0.34, cobaltBluePotMat, deepGreenFoliageMat],
+    [6.02, 4.75, 0.16, 0.11, 0.28, potMat, sageFoliageMat],
+    [6.0, 5.35, 0.15, 0.11, 0.26, zincPotMat, brightShrubGreenMat],
+    [6.02, 6.25, 0.18, 0.13, 0.32, potMat, sageFoliageMat],
   ] as const) {
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, 14), pMat);
-    pot.position.set(px, h / 2, pz);
+    pot.position.set(px, pergFloorY + h / 2, pz);
     pot.castShadow = true;
     pot.receiveShadow = true;
     pergolaGroup.add(pot);
 
     const bush = new THREE.Mesh(clumpSphereGeo, fMat);
     bush.scale.set(rTop * 1.2, rTop * 1.05, rTop * 1.2);
-    bush.position.set(px, h + rTop * 0.55, pz);
+    bush.position.set(px, pergFloorY + h + rTop * 0.55, pz);
     bush.castShadow = true;
     pergolaGroup.add(bush);
   }
 
-  // 7f. Heavy Weathered-Oak Overhead Pergola Beams, Cross-Rafters & Vine Battens (Y = 2.26m..2.48m -- Photo 8 top)
+  // 6f. Heavy Weathered-Oak Overhead Pergola Beams, Cross-Rafters & Vine Battens (raised +0.32m to Y = 2.64m..2.84m -- Photo 8 top)
   const beamSpanX = pergMaxX - pergMinX + 0.52;
   const beamMidX = (pergMinX + pergMaxX) / 2;
-  for (const bz of [pergMinZ, 0.15, pergMaxZ]) {
+  for (const bz of [pergMinZ, 1.45, 3.75, 5.65, pergMaxZ]) {
     const mainBeam = new THREE.Mesh(
       new THREE.BoxGeometry(beamSpanX, 0.15, 0.14),
       structuralOakMat
@@ -1043,7 +1004,7 @@ export function buildPatioAndGrapeVinePergola(
 
   const rafterSpanZ = pergMaxZ - pergMinZ + 0.56;
   const rafterMidZ = (pergMinZ + pergMaxZ) / 2;
-  for (let rx = pergMinX; rx <= pergMaxX + 0.05; rx += 0.606) {
+  for (let rx = pergMinX; rx <= pergMaxX + 0.05; rx += 0.59) {
     const rafter = new THREE.Mesh(
       new THREE.BoxGeometry(0.08, 0.13, rafterSpanZ),
       structuralOakMat
@@ -1054,7 +1015,7 @@ export function buildPatioAndGrapeVinePergola(
     pergolaGroup.add(rafter);
   }
 
-  for (let bz = pergMinZ + 0.45; bz <= pergMaxZ - 0.35; bz += 0.78) {
+  for (let bz = pergMinZ + 0.5; bz <= pergMaxZ - 0.35; bz += 0.85) {
     const batten = new THREE.Mesh(
       new THREE.BoxGeometry(beamSpanX - 0.12, 0.036, 0.045),
       structuralOakMat
@@ -1063,7 +1024,7 @@ export function buildPatioAndGrapeVinePergola(
     pergolaGroup.add(batten);
   }
 
-  // 7g. Festoon Café Globe String Lights draped across the Pergola Rafters (Photo 8 top)
+  // 6g. Festoon Café Globe String Lights draped across the Raised Pergola Rafters (Photo 8 top)
   const festoonCordMat = new THREE.MeshStandardMaterial({ color: 0x232528, roughness: 0.6 });
   const festoonBulbMat = new THREE.MeshStandardMaterial({
     color: 0xfff5d6,
@@ -1072,7 +1033,7 @@ export function buildPatioAndGrapeVinePergola(
     roughness: 0.2,
   });
   const festoonBulbGeo = new THREE.SphereGeometry(0.024, 8, 8);
-  for (const fz of [-1.25, 0.15, 1.55]) {
+  for (const fz of [0.35, 2.55, 4.75, 6.35]) {
     const cordPts: THREE.Vector3[] = [];
     for (let s = 0; s <= 12; s++) {
       const t = s / 12;
@@ -1093,8 +1054,8 @@ export function buildPatioAndGrapeVinePergola(
     pergolaGroup.add(cordMesh);
   }
 
-  // 7h. Gnarled Woody Grape-Vine Trunks & Cordons + High-LOD 5-Lobed Botanical Grape-Vine Leaf Canopy
-  //     (Vitis vinifera) + Pendant Grape Clusters (Photos 1, 5, 8, 10)
+  // 6h. Gnarled Woody Grape-Vine Trunks & Cordons + High-LOD 5-Lobed Botanical Grape-Vine Leaf Canopy
+  //     (Vitis vinifera) + Pendant Grape Clusters across the enlarged 5.90m x 8.50m pergola (Photos 1, 5, 8, 10)
   const vineBarkMat = new THREE.MeshStandardMaterial({
     color: 0x543e2b,
     roughness: 0.9,
@@ -1136,36 +1097,36 @@ export function buildPatioAndGrapeVinePergola(
     {
       radius: 0.042,
       pts: [
-        [8.95, 0.0, 2.66],
-        [8.88, 0.75, 2.64],
-        [9.02, 1.55, 2.65],
-        [8.96, 2.28, 2.55],
-        [8.85, 2.46, 0.95],
-        [8.72, 2.48, -0.85],
-        [8.65, 2.45, -2.35],
+        [8.45, pergFloorY, 7.12],
+        [8.38, pergFloorY + 0.85, 7.1],
+        [8.52, pergFloorY + 1.65, 7.11],
+        [8.46, pergBeamY - 0.02, 6.95],
+        [8.35, pergRafterY + 0.04, 4.25],
+        [8.22, pergRafterY + 0.05, 1.35],
+        [8.15, pergRafterY + 0.02, -0.85],
       ],
     },
     {
       radius: 0.038,
       pts: [
-        [10.55, 0.0, 2.66],
-        [10.62, 0.82, 2.64],
-        [10.48, 1.62, 2.65],
-        [10.56, 2.32, 2.52],
-        [10.35, 2.47, 0.85],
-        [10.15, 2.48, -0.95],
-        [10.02, 2.44, -2.38],
+        [10.35, pergFloorY, 7.12],
+        [10.42, pergFloorY + 0.88, 7.1],
+        [10.28, pergFloorY + 1.72, 7.11],
+        [10.36, pergBeamY, 6.92],
+        [10.15, pergRafterY + 0.04, 4.15],
+        [9.95, pergRafterY + 0.05, 1.25],
+        [9.82, pergRafterY + 0.02, -0.88],
       ],
     },
     {
-      radius: 0.034,
+      radius: 0.036,
       pts: [
-        [7.02, 0.0, 1.05],
-        [7.06, 0.85, 1.02],
-        [7.0, 1.68, 1.08],
-        [7.08, 2.34, 0.98],
-        [7.75, 2.47, 0.45],
-        [7.65, 2.46, -1.45],
+        [5.88, pergFloorY, 3.78],
+        [5.92, pergFloorY + 0.88, 3.75],
+        [5.86, pergFloorY + 1.72, 3.8],
+        [5.95, pergBeamY, 3.68],
+        [6.85, pergRafterY + 0.04, 2.85],
+        [6.75, pergRafterY + 0.03, 0.25],
       ],
     },
   ];
@@ -1258,8 +1219,8 @@ export function buildPatioAndGrapeVinePergola(
   const grapeSprayGeo = createGrapeVineLeafSprayGeometry();
   const grapeCanopyMats = [grapeDeepGreenMat, grapeSunlitGreenMat, grapeFreshLimeMat];
 
-  // Dense Overhead Grape-Vine Canopy Blanketing the Pergola Rafters (Photos 1, 5, 8, 10)
-  for (let i = 0; i < 165; i++) {
+  // Dense Overhead Grape-Vine Canopy Blanketing the Enlarged Pergola Rafters (Photos 1, 5, 8, 10)
+  for (let i = 0; i < 220; i++) {
     const h1 = Math.sin((i + 17) * 12.9898) * 43758.5453;
     const f1 = h1 - Math.floor(h1);
     const h2 = Math.sin((i + 17) * 78.233) * 19341.123;
@@ -1270,7 +1231,7 @@ export function buildPatioAndGrapeVinePergola(
     const gx = pergMinX - 0.18 + f1 * (pergMaxX - pergMinX + 0.42);
     const gz = pergMinZ - 0.15 + f2 * (pergMaxZ - pergMinZ + 0.45);
     const gy = pergRafterY + 0.02 + f3 * 0.24;
-    const scale = 1.15 + (i % 4) * 0.22;
+    const scale = 1.2 + (i % 4) * 0.24;
 
     const spray = new THREE.Mesh(grapeSprayGeo, grapeCanopyMats[i % 3]!);
     spray.position.set(gx, gy, gz);
@@ -1282,9 +1243,9 @@ export function buildPatioAndGrapeVinePergola(
   }
 
   // Trailing Grape-Vine Shoots Cascading Over the South Brick Wall (Photo 10 right!)
-  // and Over the West Piers facing the Kitchen East Gable (Photo 8 right & media_1791117139446_c727cd76.jpg!)
-  for (let i = 0; i < 68; i++) {
-    const t = i / 68;
+  // and Over the West Piers (Photo 8 right & media_1791117139446_c727cd76.jpg!)
+  for (let i = 0; i < 84; i++) {
+    const t = i / 84;
     const h1 = Math.sin((i + 91) * 19.13) * 31415.926;
     const f1 = h1 - Math.floor(h1);
     const h2 = Math.sin((i + 91) * 53.71) * 27182.818;
@@ -1293,21 +1254,21 @@ export function buildPatioAndGrapeVinePergola(
     let gx = 0;
     let gy = 0;
     let gz = 0;
-    if (i < 28) {
-      gx = 7.75 + (i / 28) * 3.85;
-      gy = 1.68 + f1 * 0.78;
+    if (i < 34) {
+      gx = 6.85 + (i / 34) * 4.65;
+      gy = pergFloorY + 1.68 + f1 * 0.78;
       gz = pergMaxZ + 0.14 + f2 * 0.16;
-    } else if (i < 52) {
+    } else if (i < 66) {
       gx = pergMinX - 0.12 + f2 * 0.24;
-      gy = 1.48 + f1 * 0.96;
-      gz = pergMinZ + ((i - 28) / 24) * (pergMaxZ - pergMinZ);
+      gy = pergFloorY + 1.48 + f1 * 0.96;
+      gz = pergMinZ + ((i - 34) / 32) * (pergMaxZ - pergMinZ);
     } else {
-      gx = pergMinX + ((i - 52) / 16) * (pergMaxX - pergMinX);
-      gy = 1.82 + f1 * 0.62;
+      gx = pergMinX + ((i - 66) / 18) * (pergMaxX - pergMinX);
+      gy = pergFloorY + 1.82 + f1 * 0.62;
       gz = pergMinZ - 0.12 + f2 * 0.2;
     }
 
-    const scale = 1.05 + (i % 3) * 0.22;
+    const scale = 1.1 + (i % 3) * 0.22;
     const trailingSpray = new THREE.Mesh(grapeSprayGeo, grapeCanopyMats[(i + 1) % 3]!);
     trailingSpray.position.set(gx, gy, gz);
     trailingSpray.rotation.set(0.65 + f1 * 0.5, t * Math.PI * 4, (f2 - 0.5) * 0.6);
@@ -1316,16 +1277,16 @@ export function buildPatioAndGrapeVinePergola(
     pergolaGroup.add(trailingSpray);
   }
 
-  // Pendant Clusters of Grapes hanging beneath the Pergola Rafters (Photo 8 top)
+  // Pendant Clusters of Grapes hanging beneath the Raised Pergola Rafters (Photo 8 top)
   const grapeBerryGeo = new THREE.SphereGeometry(0.016, 6, 6);
   const bunchPositions: ReadonlyArray<readonly [number, number, number, boolean]> = [
-    [8.35, 2.18, -0.75, true],
-    [9.05, 2.16, -0.25, false],
-    [9.75, 2.19, 0.35, true],
-    [8.65, 2.17, 0.95, true],
-    [10.15, 2.18, -0.55, false],
-    [10.45, 2.16, 1.05, true],
-    [7.85, 2.18, 0.45, false],
+    [7.35, pergBeamY - 0.12, 1.25, true],
+    [8.45, pergBeamY - 0.14, 2.35, false],
+    [9.35, pergBeamY - 0.11, 3.45, true],
+    [8.05, pergBeamY - 0.13, 4.65, true],
+    [9.85, pergBeamY - 0.12, 1.85, false],
+    [10.15, pergBeamY - 0.14, 5.15, true],
+    [7.25, pergBeamY - 0.12, 5.45, false],
   ];
   for (const [bx, by, bz, isRipe] of bunchPositions) {
     const bMat = isRipe ? ripeGrapeMat : greenGrapeMat;
@@ -1345,11 +1306,11 @@ export function buildPatioAndGrapeVinePergola(
     }
   }
 
-  // 7i. Slatted Weathered-Teak Outdoor Dining Table & 6 Slatted Teak Armchairs
-  //     Centered under the Walled Grape-Vine Pergola at (X = +9.25m, Z = +0.15m -- Photo 8 center!)
+  // 6i. Slatted Weathered-Teak Outdoor Dining Table & 6 Slatted Teak Armchairs
+  //     Centered on the +0.32m Raised Pergola Floor at (X = +8.65m, Y = +0.32m, Z = +3.35m -- Photo 8 center!)
   const diningSetGroup = new THREE.Group();
   diningSetGroup.name = 'courtyard.grapeVinePergola.diningSet';
-  diningSetGroup.position.set(9.25, 0.0, 0.15);
+  diningSetGroup.position.set(8.65, pergFloorY, 3.35);
 
   const pergolaTeakMat = new THREE.MeshStandardMaterial({
     color: 0x91795e,
@@ -1357,35 +1318,35 @@ export function buildPatioAndGrapeVinePergola(
     metalness: 0.03,
   });
 
-  const tableW = 2.08;
-  const tableD = 0.98;
+  const tableW = 0.98;
+  const tableD = 2.08;
   const tableH = 0.75;
 
   for (let s = -4; s <= 4; s++) {
     const slat = new THREE.Mesh(
-      new THREE.BoxGeometry(tableW - 0.08, 0.028, 0.092),
+      new THREE.BoxGeometry(0.092, 0.028, tableD - 0.08),
       pergolaTeakMat
     );
-    slat.position.set(0, tableH - 0.014, s * 0.104);
+    slat.position.set(s * 0.104, tableH - 0.014, 0);
     slat.castShadow = true;
     slat.receiveShadow = true;
     diningSetGroup.add(slat);
   }
-  for (const sideZ of [-tableD / 2 + 0.04, tableD / 2 - 0.04]) {
+  for (const sideX of [-tableW / 2 + 0.04, tableW / 2 - 0.04]) {
     const sideApron = new THREE.Mesh(
-      new THREE.BoxGeometry(tableW - 0.12, 0.075, 0.032),
-      pergolaTeakMat
-    );
-    sideApron.position.set(0, tableH - 0.055, sideZ);
-    sideApron.castShadow = true;
-    diningSetGroup.add(sideApron);
-  }
-  for (const endX of [-tableW / 2 + 0.04, tableW / 2 - 0.04]) {
-    const endApron = new THREE.Mesh(
       new THREE.BoxGeometry(0.032, 0.075, tableD - 0.12),
       pergolaTeakMat
     );
-    endApron.position.set(endX, tableH - 0.055, 0);
+    sideApron.position.set(sideX, tableH - 0.055, 0);
+    sideApron.castShadow = true;
+    diningSetGroup.add(sideApron);
+  }
+  for (const endZ of [-tableD / 2 + 0.04, tableD / 2 - 0.04]) {
+    const endApron = new THREE.Mesh(
+      new THREE.BoxGeometry(tableW - 0.12, 0.075, 0.032),
+      pergolaTeakMat
+    );
+    endApron.position.set(0, tableH - 0.055, endZ);
     endApron.castShadow = true;
     diningSetGroup.add(endApron);
   }
@@ -1402,12 +1363,12 @@ export function buildPatioAndGrapeVinePergola(
   }
 
   const chairConfigs: ReadonlyArray<readonly [number, number, number]> = [
-    [-0.52, -0.78, 0],
-    [0.52, -0.78, 0],
-    [-0.52, 0.78, Math.PI],
-    [0.52, 0.78, Math.PI],
-    [-1.32, 0.0, Math.PI / 2],
-    [1.32, 0.0, -Math.PI / 2],
+    [-0.78, -0.52, Math.PI / 2],
+    [-0.78, 0.52, Math.PI / 2],
+    [0.78, -0.52, -Math.PI / 2],
+    [0.78, 0.52, -Math.PI / 2],
+    [0.0, -1.32, 0],
+    [0.0, 1.32, Math.PI],
   ];
   for (let c = 0; c < chairConfigs.length; c++) {
     const [cx, cz, rotY] = chairConfigs[c]!;
@@ -1473,4 +1434,290 @@ export function buildPatioAndGrapeVinePergola(
 
   pergolaGroup.add(diningSetGroup);
   scene.add(pergolaGroup);
+
+  // =========================================================================
+  // 7. WALLED VEGETABLE GARDEN & GLAZED GREENHOUSE THROUGH THE PERGOLA
+  //    (Issue #11: "Vegetable garden & greenhouse through here" at `[11.959, 0, 3.104]`)
+  //    - Pitched-Roof Aluminum & Glass Greenhouse (`2.60m x 3.20m`) just North of the pergola (`X = +9.45m, Z = -3.05m`,
+  //      visible in `media_1791117139446_c727cd76.jpg` and `media_1791117140254_b92da505.jpg`!)
+  //    - Walled Vegetable Garden (`X = +11.65m..+16.20m, Z = -3.60m..+3.60m`, centered right at world `[11.959, 0, 3.104]`
+  //      = `x_ew = +12.44m, z_ew = -0.90m`, visible in `media_1791117124804_7f8fb9b7.jpg` bottom-right!)
+  // =========================================================================
+  const vegGardenGroup = new THREE.Group();
+  vegGardenGroup.name = 'courtyard.vegetableGardenAndGreenhouse';
+
+  const gravelPathMat = new THREE.MeshStandardMaterial({
+    color: 0xc2b59e,
+    roughness: 0.92,
+    metalness: 0.02,
+  });
+  const aluminumFrameMat = new THREE.MeshStandardMaterial({
+    color: 0xbac2c8,
+    roughness: 0.34,
+    metalness: 0.68,
+  });
+
+  // 7a. Gravel / Pea-Shingle Kitchen Garden Floor (`X = +8.20m..+16.20m, Z = -4.55m..+3.65m`)
+  const vegGardenGravelPad = new THREE.Mesh(
+    new THREE.BoxGeometry(8.0, 0.08, 8.2),
+    gravelPathMat
+  );
+  vegGardenGravelPad.name = 'courtyard.vegetableGarden.gravelFloor';
+  vegGardenGravelPad.position.set(12.2, -0.04, -0.45);
+  vegGardenGravelPad.receiveShadow = true;
+  vegGardenGroup.add(vegGardenGravelPad);
+
+  // Low Reclaimed Brick & Stone Enclosure Wall around the Vegetable Garden (`X = +11.55m..+16.20m`)
+  for (const [wx, wz, ww, wd] of [
+    [13.88, -4.55, 4.65, 0.24], // North garden wall
+    [13.88, 3.65, 4.65, 0.24],  // South garden wall
+    [16.2, -0.45, 0.24, 8.2],   // East garden boundary wall with gate gap
+  ] as const) {
+    const gWall = new THREE.Mesh(
+      applyCourtyardBrickUVs(new THREE.BoxGeometry(ww, 0.92, wd), wx, 0.46, wz),
+      brickWallMat
+    );
+    gWall.position.set(wx, 0.46, wz);
+    gWall.castShadow = true;
+    gWall.receiveShadow = true;
+    vegGardenGroup.add(gWall);
+
+    const gCoping = new THREE.Mesh(
+      new THREE.BoxGeometry(ww + 0.04, 0.045, wd + 0.04),
+      limestoneEdgingMat
+    );
+    gCoping.position.set(wx, 0.94, wz);
+    vegGardenGroup.add(gCoping);
+  }
+
+  // 7b. Pitched-Roof Aluminum & Clear-Glass Greenhouse (`2.60m W x 3.20m D`, Eave 1.58m, Ridge 2.34m)
+  //     Positioned at (`X = +9.50m, Z = -2.95m`, visible in `media_1791117139446_c727cd76.jpg`!)
+  const greenhouseGroup = new THREE.Group();
+  greenhouseGroup.name = 'courtyard.greenhouse';
+  greenhouseGroup.position.set(9.5, 0.0, -2.95);
+
+  const ghW = 2.6;
+  const ghD = 3.2;
+  const ghBrickH = 0.42;
+  const ghEaveH = 1.58;
+  const ghRidgeH = 2.34;
+  const ghSlopeRise = ghRidgeH - ghEaveH;
+  const ghHalfW = ghW * 0.5;
+  const ghSlopeLen = Math.hypot(ghHalfW, ghSlopeRise);
+  const ghPitch = Math.atan2(ghSlopeRise, ghHalfW);
+
+  // Low brick dwarf base walls around the greenhouse (leaving South entrance doorway open at X = -0.38..+0.38)
+  for (const [bx, bz, bw, bd] of [
+    [-ghHalfW, 0, 0.12, ghD],
+    [ghHalfW, 0, 0.12, ghD],
+    [0, -ghD * 0.5, ghW, 0.12],
+    [-0.82, ghD * 0.5, 0.96, 0.12],
+    [0.82, ghD * 0.5, 0.96, 0.12],
+  ] as const) {
+    const dwarfBase = new THREE.Mesh(
+      new THREE.BoxGeometry(bw, ghBrickH, bd),
+      brickWallMat
+    );
+    dwarfBase.position.set(bx, ghBrickH * 0.5, bz);
+    dwarfBase.castShadow = true;
+    dwarfBase.receiveShadow = true;
+    greenhouseGroup.add(dwarfBase);
+  }
+
+  // Side glass walls (`X = ±ghHalfW`) & North/South glass gables
+  const ghWallGlassH = ghEaveH - ghBrickH;
+  for (const sideX of [-1, 1]) {
+    const sideGlass = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, ghWallGlassH, ghD - 0.08),
+      glassMat
+    );
+    sideGlass.position.set(sideX * ghHalfW, ghBrickH + ghWallGlassH * 0.5, 0);
+    greenhouseGroup.add(sideGlass);
+
+    const eaveBar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.04, ghD + 0.04),
+      aluminumFrameMat
+    );
+    eaveBar.position.set(sideX * ghHalfW, ghEaveH, 0);
+    greenhouseGroup.add(eaveBar);
+
+    for (let gz = -ghD * 0.5; gz <= ghD * 0.5 + 0.01; gz += 0.64) {
+      const mullion = new THREE.Mesh(
+        new THREE.BoxGeometry(0.032, ghWallGlassH, 0.032),
+        aluminumFrameMat
+      );
+      mullion.position.set(sideX * ghHalfW, ghBrickH + ghWallGlassH * 0.5, gz);
+      greenhouseGroup.add(mullion);
+    }
+
+    // Pitched glass roof slope + aluminum roof rafters
+    const roofGlass = new THREE.Mesh(
+      new THREE.BoxGeometry(ghSlopeLen, 0.016, ghD - 0.06),
+      glassMat
+    );
+    roofGlass.position.set(
+      sideX * (ghHalfW * 0.5),
+      ghEaveH + ghSlopeRise * 0.5,
+      0
+    );
+    roofGlass.rotation.z = -sideX * ghPitch;
+    greenhouseGroup.add(roofGlass);
+
+    for (let gz = -ghD * 0.5; gz <= ghD * 0.5 + 0.01; gz += 0.64) {
+      const roofBar = new THREE.Mesh(
+        new THREE.BoxGeometry(ghSlopeLen + 0.04, 0.032, 0.032),
+        aluminumFrameMat
+      );
+      roofBar.position.set(
+        sideX * (ghHalfW * 0.5),
+        ghEaveH + ghSlopeRise * 0.5,
+        gz
+      );
+      roofBar.rotation.z = -sideX * ghPitch;
+      greenhouseGroup.add(roofBar);
+    }
+  }
+
+  // Aluminum ridge bar & South sliding glass door frame
+  const ghRidgeBar = new THREE.Mesh(
+    new THREE.BoxGeometry(0.045, 0.055, ghD + 0.06),
+    aluminumFrameMat
+  );
+  ghRidgeBar.position.set(0, ghRidgeH, 0);
+  greenhouseGroup.add(ghRidgeBar);
+
+  for (const endZ of [-ghD * 0.5, ghD * 0.5]) {
+    const endGlass = new THREE.Mesh(
+      new THREE.BoxGeometry(ghW - 0.08, ghWallGlassH, 0.016),
+      glassMat
+    );
+    endGlass.position.set(0, ghBrickH + ghWallGlassH * 0.5, endZ);
+    greenhouseGroup.add(endGlass);
+
+    for (const gx of [-0.65, -0.36, 0.36, 0.65]) {
+      const stile = new THREE.Mesh(
+        new THREE.BoxGeometry(0.032, ghEaveH, 0.036),
+        aluminumFrameMat
+      );
+      stile.position.set(gx, ghEaveH * 0.5, endZ);
+      greenhouseGroup.add(stile);
+    }
+  }
+
+  // Interior potting staging benches & tomato plants inside the Greenhouse
+  for (const sideX of [-0.88, 0.88]) {
+    const stagingBench = new THREE.Mesh(
+      new THREE.BoxGeometry(0.62, 0.035, ghD - 0.32),
+      weatheredBenchMat
+    );
+    stagingBench.position.set(sideX, 0.78, 0);
+    greenhouseGroup.add(stagingBench);
+
+    for (let pz = -1.1; pz <= 1.1; pz += 0.55) {
+      const ghPot = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.11, 0.08, 0.18, 10),
+        potMat
+      );
+      ghPot.position.set(sideX, 0.89, pz);
+      greenhouseGroup.add(ghPot);
+
+      const tomatoFoliage = new THREE.Mesh(clumpSphereGeo, brightShrubGreenMat);
+      tomatoFoliage.scale.set(0.18, 0.28, 0.18);
+      tomatoFoliage.position.set(sideX, 1.12, pz);
+      greenhouseGroup.add(tomatoFoliage);
+    }
+  }
+
+  vegGardenGroup.add(greenhouseGroup);
+
+  // 7c. 6 Oak-Sleeper Raised Vegetable Beds (`2.05m x 1.12m x 0.32m`) in a 2 x 3 Kitchen Garden Grid
+  //     at `X = +12.85m` and `+15.10m`, `Z = -2.85m, -0.45m, +1.95m` (right at `[11.959, 0, 3.104]`, Issue #11!)
+  const bedW = 1.85;
+  const bedD = 1.65;
+  const bedH = 0.32;
+  const vegBedCenters: ReadonlyArray<readonly [number, number, boolean]> = [
+    [12.75, -2.75, false],
+    [14.95, -2.75, true],
+    [12.75, -0.45, true],
+    [14.95, -0.45, false],
+    [12.75, 1.85, false],
+    [14.95, 1.85, true],
+  ];
+
+  for (const [bx, bz, hasBeanWigwam] of vegBedCenters) {
+    const bedGroup = new THREE.Group();
+    bedGroup.position.set(bx, 0, bz);
+
+    // Timber sleeper perimeter walls
+    for (const sz of [-bedD * 0.5 + 0.05, bedD * 0.5 - 0.05]) {
+      const sleeperFB = new THREE.Mesh(
+        new THREE.BoxGeometry(bedW, bedH, 0.1),
+        structuralOakMat
+      );
+      sleeperFB.position.set(0, bedH * 0.5, sz);
+      sleeperFB.castShadow = true;
+      sleeperFB.receiveShadow = true;
+      bedGroup.add(sleeperFB);
+    }
+    for (const sx of [-bedW * 0.5 + 0.05, bedW * 0.5 - 0.05]) {
+      const sleeperLR = new THREE.Mesh(
+        new THREE.BoxGeometry(0.1, bedH, bedD - 0.2),
+        structuralOakMat
+      );
+      sleeperLR.position.set(sx, bedH * 0.5, 0);
+      sleeperLR.castShadow = true;
+      sleeperLR.receiveShadow = true;
+      bedGroup.add(sleeperLR);
+    }
+
+    // Dark organic compost soil fill
+    const soilFill = new THREE.Mesh(
+      new THREE.BoxGeometry(bedW - 0.18, bedH - 0.04, bedD - 0.18),
+      soilMat
+    );
+    soilFill.position.set(0, (bedH - 0.04) * 0.5, 0);
+    soilFill.receiveShadow = true;
+    bedGroup.add(soilFill);
+
+    // Rows of leafy green vegetables (cabbages, kale, courgettes, lettuces)
+    for (const rx of [-0.52, 0.0, 0.52]) {
+      for (const rz of [-0.48, 0.0, 0.48]) {
+        const cropMound = new THREE.Mesh(
+          clumpSphereGeo,
+          (Math.round((rx + rz) * 10) & 1) === 0 ? brightShrubGreenMat : deepGreenFoliageMat
+        );
+        cropMound.scale.set(0.22, 0.16, 0.22);
+        cropMound.position.set(rx, bedH + 0.08, rz);
+        cropMound.castShadow = true;
+        bedGroup.add(cropMound);
+      }
+    }
+
+    // Bamboo cane runner-bean / sweet-pea wigwam trellis on alternating beds
+    if (hasBeanWigwam) {
+      for (let c = 0; c < 6; c++) {
+        const ang = (c / 6) * Math.PI * 2;
+        const cane = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.01, 0.014, 1.55, 6),
+          weatheredBenchMat
+        );
+        cane.position.set(Math.cos(ang) * 0.22, bedH + 0.72, Math.sin(ang) * 0.22);
+        cane.rotation.z = Math.cos(ang) * 0.18;
+        cane.rotation.x = -Math.sin(ang) * 0.18;
+        cane.castShadow = true;
+        bedGroup.add(cane);
+      }
+      const vineClimber = new THREE.Mesh(
+        new THREE.ConeGeometry(0.32, 1.15, 8),
+        grapeSunlitGreenMat
+      );
+      vineClimber.position.set(0, bedH + 0.62, 0);
+      vineClimber.castShadow = true;
+      bedGroup.add(vineClimber);
+    }
+
+    vegGardenGroup.add(bedGroup);
+  }
+
+  scene.add(vegGardenGroup);
 }

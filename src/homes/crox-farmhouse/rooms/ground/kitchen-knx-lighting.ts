@@ -618,7 +618,22 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     scene.add(finialBall);
   }
 
-  // 4 catenary festoon spans crisscrossing over the cobbled path, flower bed & limestone slabs
+  // Wall anchor eye-bolts along the Barn & Stable North wall eaves (`z_ew = 12.28m, 11.58m, 10.88m`) where the festoon cables terminate (Issue #3)
+  for (const [bx, by, bz] of [
+    [-1.85, 2.82, 12.28],
+    [1.56, 2.82, 11.58],
+    [4.82, 2.82, 10.88],
+  ] as const) {
+    const barnAnchor = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.024, 0.024, 0.06, 8),
+      castIronMat
+    );
+    barnAnchor.rotation.x = Math.PI / 2;
+    barnAnchor.position.set(bx, by, bz);
+    scene.add(barnAnchor);
+  }
+
+  // 9 catenary festoon spans crisscrossing from the Kitchen to the 3 patio poles AND from the patio poles over to the Barn (Issue #3!)
   const festoonSpans: ReadonlyArray<{
     readonly start: THREE.Vector3;
     readonly end: THREE.Vector3;
@@ -648,6 +663,37 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
       end: new THREE.Vector3(1.56, 2.66, 2.28),
       sag: 0.35,
       bulbCount: 6,
+    },
+    // Issue #3 ("Have the festoons go over to the barn from these poles too"):
+    {
+      start: new THREE.Vector3(-1.85, 2.72, 6.28),
+      end: new THREE.Vector3(-1.85, 2.82, 12.28),
+      sag: 0.42,
+      bulbCount: 8,
+    },
+    {
+      start: new THREE.Vector3(1.56, 2.72, 6.28),
+      end: new THREE.Vector3(1.56, 2.82, 11.58),
+      sag: 0.38,
+      bulbCount: 7,
+    },
+    {
+      start: new THREE.Vector3(4.82, 2.72, 6.28),
+      end: new THREE.Vector3(4.82, 2.82, 10.88),
+      sag: 0.36,
+      bulbCount: 7,
+    },
+    {
+      start: new THREE.Vector3(-1.85, 2.72, 6.28),
+      end: new THREE.Vector3(1.56, 2.82, 11.58),
+      sag: 0.44,
+      bulbCount: 8,
+    },
+    {
+      start: new THREE.Vector3(1.56, 2.72, 6.28),
+      end: new THREE.Vector3(4.82, 2.82, 10.88),
+      sag: 0.42,
+      bulbCount: 8,
     },
   ];
 

@@ -300,15 +300,153 @@ export function buildCourtyardAndGates(
   const courtyardCobbleMat = new THREE.MeshStandardMaterial({
     map: cobbleColorTex,
     bumpMap: cobbleBumpTex,
-    bumpScale: 0.026,
-    roughness: 0.8,
-    metalness: 0.03,
+    bumpScale: 0.038,
+    roughness: 0.82,
+    metalness: 0.06,
   });
+
+  /**
+   * Issue #7 ("Along here is a much more rough cobblestone texture" at `[2.062, -0.059, 12.624]`):
+   * Generates a rough, hand-laid, deeply-jointed rustic fieldstone/granite cobblestone texture + high-relief
+   * bump map for the South-East Courtyard Apron & Alleyway between the Patio/Pergola and the Barn/Stable
+   * (matching `media_1791117103770_2d2c87d9.jpg` bottom-left and `media_1791117141917_9863a9c5.jpg`).
+   */
+  const createRoughAlleyCobblestoneMaterial = (): THREE.MeshStandardMaterial => {
+    const size = 512;
+    const colorCanvas = document.createElement('canvas');
+    colorCanvas.width = size;
+    colorCanvas.height = size;
+    const cCtx = colorCanvas.getContext('2d')!;
+
+    const bumpCanvas = document.createElement('canvas');
+    bumpCanvas.width = size;
+    bumpCanvas.height = size;
+    const bCtx = bumpCanvas.getContext('2d')!;
+
+    const cImg = cCtx.createImageData(size, size);
+    const bImg = bCtx.createImageData(size, size);
+    const cData = cImg.data;
+    const bData = bImg.data;
+
+    const cols = 10;
+    const rows = 12;
+    const roughPalette: ReadonlyArray<readonly [number, number, number]> = [
+      [156, 144, 128], // Weathered warm grey-buff cobble
+      [132, 122, 110], // Dark taupe-grey fieldstone
+      [174, 156, 134], // Warm ochre-sandstone cobble
+      [114, 108, 102], // Charcoal-slate cobble
+      [164, 142, 122], // Russet-brown ironstone cobble
+      [142, 136, 124], // Moss-tinted olive-grey stone
+      [182, 168, 148], // Pale weathered gritstone
+      [122, 112, 98],  // Deep umber-grey cobble
+    ];
+
+    const hash = (a: number, b: number): number => {
+      const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+      return x - Math.floor(x);
+    };
+
+    for (let py = 0; py < size; py++) {
+      const v = (py / size) * rows;
+      const rowIdx = Math.floor(v);
+      const fy = v - rowIdx;
+      const rowShift = (rowIdx & 1) * 0.45 + (hash(rowIdx, 7) - 0.5) * 0.25;
+
+      for (let px = 0; px < size; px++) {
+        const idx = (py * size + px) * 4;
+        const u = (px / size) * cols + rowShift;
+        const colIdx = Math.floor(u);
+        const fx = u - colIdx;
+
+        const wCol = ((colIdx % cols) + cols) % cols;
+        const wRow = ((rowIdx % rows) + rows) % rows;
+        const jA = hash(wCol * 17 + 3, wRow * 31 + 11);
+        const jB = hash(wCol * 41 + 9, wRow * 19 + 5);
+        const jC = hash(wCol * 23 + 1, wRow * 53 + 7);
+
+        // Irregular organic cobble center & crooked edges
+        const cx = 0.5 + (jA - 0.5) * 0.14;
+        const cy = 0.5 + (jB - 0.5) * 0.14;
+        const warpX = Math.sin(fy * Math.PI * 2 + jA * 6.28) * 0.055;
+        const warpY = Math.cos(fx * Math.PI * 2 + jB * 6.28) * 0.055;
+        const dx = Math.abs(fx - cx + warpX) / (0.41 - jC * 0.05);
+        const dy = Math.abs(fy - cy + warpY) / (0.39 - jA * 0.05);
+        const dist = Math.pow(Math.pow(dx, 3.2) + Math.pow(dy, 3.2), 1 / 3.2);
+
+        const craggyNoise =
+          Math.sin((px + jA * 40) * 0.28) * Math.cos((py + jB * 40) * 0.28) * 14 +
+          Math.sin(px * 0.65 - py * 0.55) * 8;
+
+        if (dist > 1.0) {
+          // Deep, rough, dark earthy & mossy mortar recess between irregular cobbles
+          const mossHint = hash(px * 0.15, py * 0.15);
+          const mr = Math.round(78 + craggyNoise * 0.6 - (mossHint > 0.65 ? 12 : 0));
+          const mg = Math.round(74 + craggyNoise * 0.6 + (mossHint > 0.65 ? 8 : 0));
+          const mb = Math.round(60 + craggyNoise * 0.5 - (mossHint > 0.65 ? 10 : 0));
+          cData[idx] = Math.max(0, Math.min(255, mr));
+          cData[idx + 1] = Math.max(0, Math.min(255, mg));
+          cData[idx + 2] = Math.max(0, Math.min(255, mb));
+          cData[idx + 3] = 255;
+
+          const jointB = Math.max(8, Math.min(55, Math.round(22 + craggyNoise * 0.8)));
+          bData[idx] = jointB;
+          bData[idx + 1] = jointB;
+          bData[idx + 2] = jointB;
+          bData[idx + 3] = 255;
+        } else {
+          // Uneven, weathered, hand-split rough cobblestone dome
+          const baseRGB = roughPalette[Math.floor(jC * roughPalette.length) % roughPalette.length]!;
+          const dome = Math.max(0, 1.0 - 0.72 * Math.pow(dist, 1.85));
+          const bevel = dist > 0.76 ? (1.0 - dist) / 0.24 : 1.0;
+          const stoneHeightBias = (jB - 0.5) * 32;
+          const shade = (dome - 0.4) * 34 * bevel + stoneHeightBias + craggyNoise;
+
+          cData[idx] = Math.max(0, Math.min(255, Math.round(baseRGB[0] + shade)));
+          cData[idx + 1] = Math.max(0, Math.min(255, Math.round(baseRGB[1] + shade * 0.95)));
+          cData[idx + 2] = Math.max(0, Math.min(255, Math.round(baseRGB[2] + shade * 0.88)));
+          cData[idx + 3] = 255;
+
+          const hVal = Math.max(
+            60,
+            Math.min(255, Math.round(115 + dome * 125 * bevel + stoneHeightBias + craggyNoise * 1.3))
+          );
+          bData[idx] = hVal;
+          bData[idx + 1] = hVal;
+          bData[idx + 2] = hVal;
+          bData[idx + 3] = 255;
+        }
+      }
+    }
+
+    cCtx.putImageData(cImg, 0, 0);
+    bCtx.putImageData(bImg, 0, 0);
+
+    const colorMap = new THREE.CanvasTexture(colorCanvas);
+    colorMap.colorSpace = THREE.SRGBColorSpace;
+    colorMap.wrapS = THREE.RepeatWrapping;
+    colorMap.wrapT = THREE.RepeatWrapping;
+    colorMap.anisotropy = 8;
+
+    const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+    bumpMap.wrapS = THREE.RepeatWrapping;
+    bumpMap.wrapT = THREE.RepeatWrapping;
+    bumpMap.anisotropy = 8;
+
+    return new THREE.MeshStandardMaterial({
+      map: colorMap,
+      bumpMap,
+      bumpScale: 0.058,
+      roughness: 0.9,
+      metalness: 0.02,
+    });
+  };
+
+  const roughAlleyCobbleMat = createRoughAlleyCobblestoneMaterial();
 
   /**
    * Creates a subdivided BoxGeometry for a courtyard slab or stone sett band whose vertices
    * follow the continuous 2D courtyard elevation gradient `getCourtyardGroundY(wx, wz)`
-   * and continuous world-space arched granite sett UVs (Issue #10).
+   * and continuous world-space arched granite sett UVs (Issue #10, #6, #7).
    */
   const createGradedCourtyardGeometry = (
     w: number,
@@ -318,7 +456,8 @@ export function buildCourtyardAndGates(
     offsetZ: number,
     segX: number,
     segZ: number,
-    applyCobbleUVs: boolean
+    applyCobbleUVs: boolean,
+    isRoughCobbleApron: boolean = false
   ): THREE.BufferGeometry => {
     const geo = new THREE.BoxGeometry(w, h, d, segX, 1, segZ);
     const pos = geo.attributes.position;
@@ -358,12 +497,9 @@ export function buildCourtyardAndGates(
             }
           }
         } else if (isSouthEastApronPiece) {
-          const minAllowedTerraceSouthZ =
-            wx <= 4.15
-              ? getEastWingSouthWallZ(wx) + 4.72
-              : wx <= 5.85
-                ? getEastWingSouthWallZ(wx) + 1.16
-                : getEastWingSouthWallZ(wx) + 0.68;
+          // Both the Raised Patio Shrub Bank (wx <= 4.8m) and the enlarged Walled Grape-Vine Pergola
+          // (wx > 4.8m, Issue #2) extend South to z_ew = +7.35m (`getEastWingSouthWallZ(wx) + 4.72`)!
+          const minAllowedTerraceSouthZ = getEastWingSouthWallZ(wx) + 4.72;
           if (wz < minAllowedTerraceSouthZ) {
             wz = minAllowedTerraceSouthZ;
             pos.setZ(i, wz - offsetZ);
@@ -379,15 +515,24 @@ export function buildCourtyardAndGates(
           }
         }
         const groundY = getCourtyardGroundY(wx, wz);
-        pos.setY(i, pos.getY(i) + groundY);
+        const roughMicroRelief =
+          isRoughCobbleApron && pos.getY(i) > 0
+            ? Math.sin(wx * 5.2 + wz * 4.7) * Math.cos(wx * 3.8 - wz * 6.1) * 0.006
+            : 0;
+        pos.setY(i, pos.getY(i) + groundY + roughMicroRelief);
         if (applyCobbleUVs && uv) {
-          // Issue #10: Align world-space UVs with the rotated Kitchen South Cobble Path (band width 1.46m,
-          // 8 arched courses = 1.1500472m from pivotX = 4.72875m) so the arched fan bands align where the paths meet!
-          uv.setXY(
-            i,
-            (4.72875 - wx) / 1.1500472,
-            1 - (wz - (getEastWingSouthWallZ(wx) - 0.41)) / 1.46
-          );
+          if (isRoughCobbleApron) {
+            // Issue #7: Rough irregular cobblestone UVs aligned with the Barn/Alleyway axis
+            uv.setXY(i, wx / 1.35, wz / 1.35);
+          } else {
+            // Issue #10 & #6: Align world-space UVs with the rotated Kitchen South Cobble Path (band width 1.46m,
+            // 8 arched courses = 1.1500472m from pivotX = 4.72875m) so the arched fan bands align across the courtyard & driveway!
+            uv.setXY(
+              i,
+              (4.72875 - wx) / 1.1500472,
+              1 - (wz - (getEastWingSouthWallZ(wx) - 0.41)) / 1.46
+            );
+          }
         }
       }
       pos.needsUpdate = true;
@@ -453,6 +598,7 @@ export function buildCourtyardAndGates(
   gateCourtyardBaySlab.receiveShadow = true;
   scene.add(gateCourtyardBaySlab);
 
+  // Issue #7 ("Along here is a much more rough cobblestone texture" at `[2.062, -0.059, 12.624]`):
   // Lower South-East Courtyard Apron & Cobbled Alleyway between the Raised Limestone Patio / Walled Grape-Vine Pergola
   // and the Barn / 2-Storey Stable North Wall (X = -4.64m..+10.80m, Photo 10)
   const southEastCourtyardApron = new THREE.Mesh(
@@ -462,11 +608,12 @@ export function buildCourtyardAndGates(
       9.4,
       3.08,
       11.35,
-      36,
-      28,
+      42,
+      30,
+      true,
       true
     ),
-    courtyardCobbleMat
+    roughAlleyCobbleMat
   );
   southEastCourtyardApron.name = 'courtyard.southEastCobbleApron';
   southEastCourtyardApron.userData.isArchitecturalShell = true;
@@ -474,17 +621,13 @@ export function buildCourtyardAndGates(
   southEastCourtyardApron.receiveShadow = true;
   scene.add(southEastCourtyardApron);
 
-  // Tarmac / Weathered Asphalt Driveway Apron in front of (West of) the Split Gate
-  // (X = -27.85m..-22.33m, Z = +11.77m..+16.25m)
-  const tarmacDriveMat = new THREE.MeshStandardMaterial({
-    color: 0x6e6a63,
-    roughness: 0.88,
-    metalness: 0.02,
-  });
+  // Issue #6 ("This texture should be used on the driveway too"):
+  // Arched Granite-Sett Driveway Apron in front of (West of) the Split Gate (X = -27.85m..-22.33m, Z = +11.77m..+16.25m)
   const drivewayApron = new THREE.Mesh(
-    createGradedCourtyardGeometry(5.52, 0.095, 4.48, -25.09, 14.01, 12, 12, false),
-    tarmacDriveMat
+    createGradedCourtyardGeometry(5.52, 0.095, 4.48, -25.09, 14.01, 16, 14, true),
+    courtyardCobbleMat
   );
+  drivewayApron.name = 'courtyard.drivewayApron';
   drivewayApron.userData.isArchitecturalShell = true;
   drivewayApron.position.set(-25.09, -0.068, 14.01);
   drivewayApron.receiveShadow = true;
