@@ -1003,12 +1003,199 @@ export function buildNikeGrindDumbbellRack(
 }
 
 /**
- * Issue #5 ("High qulality tool bench here with drawers and power rools" at `[-11.123, 0.378, 20.475]`,
- * `u = 10.92m, v = 5.18m`):
- * Builds a heavy-duty Modular Steel & Butcher-Block Workshop Tool Bench (`outbuildings.garage.toolBench`)
- * against the Garage South Wall (`u = 9.28..11.78m, v = 4.68..5.40m`), complete with 13 ball-bearing tool drawers,
- * perforated steel pegboard backwall, LED task light pelmet, engineer's bench vice, compound mitre saw,
- * twin-wheel bench grinder, cordless 18V drill/impact driver station, and organized hand tools.
+ * Generates a realistic brushed 304 stainless-steel horizontal grain texture (`#dce1e7`)
+ * with fine linear satin abrasion lines and subtle specular sheen variation.
+ */
+function createBrushedStainlessSteelMaterial(): THREE.MeshStandardMaterial {
+  const w = 512;
+  const h = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#d8dde3');
+  grad.addColorStop(0.45, '#eef2f6');
+  grad.addColorStop(0.75, '#cfd5dc');
+  grad.addColorStop(1, '#e3e8ee');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Fine horizontal brushed 304 stainless grain lines
+  for (let y = 0; y < h; y++) {
+    const n = Math.sin(y * 19.73) * 43758.5453;
+    const f = n - Math.floor(n);
+    ctx.fillStyle =
+      f > 0.5
+        ? `rgba(255, 255, 255, ${(f - 0.5) * 0.22})`
+        : `rgba(110, 120, 132, ${(0.5 - f) * 0.22})`;
+    ctx.fillRect(0, y, w, 1);
+  }
+
+  for (let i = 0; i < 650; i++) {
+    const h1 = Math.sin(i * 12.9898) * 43758.5453;
+    const f1 = h1 - Math.floor(h1);
+    const h2 = Math.sin(i * 78.233) * 29183.127;
+    const f2 = h2 - Math.floor(h2);
+    const sx = f1 * w;
+    const sy = f2 * h;
+    const len = 28 + (i % 65);
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(90,98,108,0.12)';
+    ctx.fillRect(sx, sy, len, 1);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+
+  return new THREE.MeshStandardMaterial({
+    map: tex,
+    color: 0xdce1e7,
+    roughness: 0.24,
+    metalness: 0.88,
+  });
+}
+
+/**
+ * Generates a high-resolution multi-stave finger-jointed rock-maple & European-oak
+ * laminated butcher-block worktop texture with realistic stave tone variation,
+ * finger-joint butt seams, medullary ray grain, and satin tung-oil finish.
+ */
+function createButcherBlockTexture(): THREE.CanvasTexture {
+  const w = 1024;
+  const h = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+
+  const staveColors = [
+    '#c89662',
+    '#bc8650',
+    '#d2a16d',
+    '#b37c46',
+    '#c5915b',
+    '#d6a673',
+    '#ba834d',
+    '#cf9d68',
+    '#ad7640',
+    '#c28e58',
+  ] as const;
+
+  const numStaves = 18;
+  const staveH = h / numStaves;
+
+  for (let s = 0; s < numStaves; s++) {
+    const y0 = s * staveH;
+    // 2 or 3 finger-jointed stave segments along the 3.16m length
+    const joint1 = Math.round(w * (0.28 + ((s * 37) % 41) * 0.011));
+    const joint2 = Math.round(w * (0.66 + ((s * 53) % 27) * 0.01));
+    const segBounds = [0, joint1, joint2, w] as const;
+
+    for (let seg = 0; seg < 3; seg++) {
+      const x0 = segBounds[seg]!;
+      const x1 = segBounds[seg + 1]!;
+      const segW = x1 - x0;
+      const baseColor = staveColors[(s * 3 + seg * 5) % staveColors.length]!;
+
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(x0, y0, segW, staveH + 0.5);
+
+      // Subtle longitudinal wood grain fibers within each stave segment
+      for (let g = 0; g < 16; g++) {
+        const gy = y0 + ((g + 0.5) / 16) * staveH;
+        ctx.strokeStyle =
+          g % 2 === 0 ? 'rgba(85, 48, 18, 0.10)' : 'rgba(255, 228, 190, 0.08)';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(x0, gy);
+        for (let gx = x0; gx <= x1; gx += 32) {
+          const wave = Math.sin(gx * 0.025 + s * 1.7 + g * 0.6) * 1.6;
+          ctx.lineTo(gx, gy + wave);
+        }
+        ctx.stroke();
+      }
+
+      // Finger-joint vertical micro-zig-zag seam at segment boundary
+      if (seg > 0) {
+        ctx.strokeStyle = 'rgba(72, 40, 14, 0.42)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        for (let fy = y0; fy <= y0 + staveH; fy += 3.5) {
+          const zig = ((Math.round((fy - y0) / 3.5) % 2) - 0.5) * 3.2;
+          if (fy === y0) ctx.moveTo(x0 + zig, fy);
+          else ctx.lineTo(x0 + zig, fy);
+        }
+        ctx.stroke();
+      }
+    }
+
+    // Crisp horizontal stave glue-line shadow
+    ctx.fillStyle = 'rgba(68, 38, 14, 0.36)';
+    ctx.fillRect(0, y0, w, 1.2);
+  }
+
+  // Subtle warm tung-oil sheen vignette
+  const sheen = ctx.createLinearGradient(0, 0, 0, h);
+  sheen.addColorStop(0, 'rgba(255, 245, 225, 0.06)');
+  sheen.addColorStop(0.5, 'rgba(255, 250, 240, 0.10)');
+  sheen.addColorStop(1, 'rgba(60, 35, 12, 0.08)');
+  ctx.fillStyle = sheen;
+  ctx.fillRect(0, 0, w, h);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+
+/**
+ * Generates a crisp DeWALT black-and-yellow brand badge texture (`#febd17` & `#141619`).
+ */
+function createDeWaltLogoTexture(): THREE.CanvasTexture {
+  const w = 256;
+  const h = 96;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.fillStyle = '#febd17';
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.fillStyle = '#141619';
+  ctx.fillRect(10, 10, w - 20, h - 20);
+
+  ctx.fillStyle = '#febd17';
+  ctx.fillRect(16, 16, w - 32, 5);
+  ctx.fillRect(16, h - 21, w - 32, 5);
+
+  ctx.font = '900 40px Impact, Arial Black, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('DeWALT', w * 0.5, h * 0.5 + 2);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Issue #5 ("High qulality tool bench here with drawers and power rools" at `[-11.123, 0.378, 20.475]`) +
+ * Issue #1 ("stainless steel" at `[-11.567, 0.262, 19.762]`, `outbuildings.garage.toolBench.drawer`) +
+ * Issue #2 ("Better mesh on top, dewal powertools, slightly wider" at `[-12.332, 0.406, 20.235]`,
+ * `outbuildings.garage.toolBench.butcherBlockTop`):
+ * Builds a wider `3.16m` 4-Bay Heavy-Duty Commercial Stainless-Steel & Laminated Butcher-Block Workshop Tool Bench
+ * (`outbuildings.garage.toolBench`) centered at `u = 10.30m, v = 5.04m` (`u = 8.72..11.88m`), featuring:
+ * - Brushed 304 stainless-steel drawer fronts & cabinet doors across 4 bays (16 ball-bearing drawers + double-door bay)
+ * - Multi-stave finger-jointed hardwood butcher-block worktop assembly with bullnose front edge, end-grain side caps,
+ *   30mm brushed stainless rear/side perimeter upstand lip, and inlaid magnetic stainless parts tray
+ * - Full suite of recognizable **DeWALT 18V XR / 54V FLEXVOLT** (`#febd17` yellow & `#181a1d` matte black) power tools:
+ *   DWS780 305mm Compound Mitre Saw, DW752 Twin-Wheel Bench Grinder, DWE4257 Angle Grinder, DCW210 Orbit Sander,
+ *   DCB132 Dual XR Fast Charger, DCD996 Hammer Drill, DCF887 Impact Driver, and DeWALT TSTAK case.
  */
 export function buildGarageWorkshopToolBench(
   groundGroup: THREE.Group,
@@ -1016,54 +1203,81 @@ export function buildGarageWorkshopToolBench(
 ): void {
   const benchGroup = new THREE.Group();
   benchGroup.name = 'outbuildings.garage.toolBench';
-  benchGroup.position.set(10.53, garageFloorTopY, 5.04);
+  benchGroup.position.set(10.3, garageFloorTopY, 5.04);
   groundGroup.add(benchGroup);
 
   const anthraciteSteelMat = new THREE.MeshStandardMaterial({
-    color: 0x24282e,
+    color: 0x22262c,
     roughness: 0.38,
-    metalness: 0.65,
+    metalness: 0.68,
   });
-  const crimsonDrawerMat = new THREE.MeshStandardMaterial({
-    color: 0x9e2424,
-    roughness: 0.32,
-    metalness: 0.48,
-  });
+  const brushedStainlessMat = createBrushedStainlessSteelMaterial();
   const aluminumTrimMat = new THREE.MeshStandardMaterial({
-    color: 0xd4d9df,
-    roughness: 0.25,
-    metalness: 0.88,
+    color: 0xe0e5ec,
+    roughness: 0.2,
+    metalness: 0.92,
   });
   const butcherBlockMat = new THREE.MeshStandardMaterial({
-    color: 0xb88652,
+    map: createButcherBlockTexture(),
+    color: 0xffffff,
+    roughness: 0.36,
+    metalness: 0.04,
+  });
+  const butcherEdgeMat = new THREE.MeshStandardMaterial({
+    color: 0x9e6b3b,
     roughness: 0.42,
-    metalness: 0.03,
+    metalness: 0.04,
   });
   const viceCastIronMat = new THREE.MeshStandardMaterial({
     color: 0x2b3e50,
-    roughness: 0.46,
-    metalness: 0.72,
+    roughness: 0.44,
+    metalness: 0.74,
   });
-  const powerToolTealMat = new THREE.MeshStandardMaterial({
-    color: 0x006d77,
-    roughness: 0.34,
-    metalness: 0.22,
+  // Authentic DeWALT Industrial Yellow (#febd17) & Matte Black (#181a1d)
+  const dewaltYellowMat = new THREE.MeshStandardMaterial({
+    color: 0xfebd17,
+    roughness: 0.3,
+    metalness: 0.16,
   });
-  const powerToolYellowMat = new THREE.MeshStandardMaterial({
-    color: 0xe6a800,
-    roughness: 0.36,
-    metalness: 0.18,
-  });
-  const rubberGripMat = new THREE.MeshStandardMaterial({
+  const dewaltBlackMat = new THREE.MeshStandardMaterial({
     color: 0x181a1d,
-    roughness: 0.82,
+    roughness: 0.74,
+    metalness: 0.12,
+  });
+  const dewaltBadgeMat = new THREE.MeshStandardMaterial({
+    map: createDeWaltLogoTexture(),
+    roughness: 0.28,
+    metalness: 0.15,
+  });
+  const castAluminumMat = new THREE.MeshStandardMaterial({
+    color: 0xc8cfd8,
+    roughness: 0.28,
+    metalness: 0.85,
+  });
+  const rockerSwitchMat = new THREE.MeshStandardMaterial({
+    color: 0xd32f2f,
+    roughness: 0.35,
+    metalness: 0.15,
+  });
+  const greenLedMat = new THREE.MeshStandardMaterial({
+    color: 0x00e676,
+    emissive: new THREE.Color(0x00e676),
+    emissiveIntensity: 1.8,
+    roughness: 0.2,
+  });
+  const clearShieldMat = new THREE.MeshStandardMaterial({
+    color: 0xe8f4f8,
+    roughness: 0.12,
     metalness: 0.05,
+    transparent: true,
+    opacity: 0.48,
   });
 
-  const totalW = 2.48;
-  const benchD = 0.72;
+  // Wider 4-bay commercial workbench (`totalW = 3.16m`, spanning `u = 8.72..11.88m`)
+  const totalW = 3.16;
+  const benchD = 0.74;
   const cabinetH = 0.86;
-  const topT = 0.046;
+  const topT = 0.048;
   const worktopY = cabinetH + topT;
 
   const carcass = new THREE.Mesh(
@@ -1075,78 +1289,129 @@ export function buildGarageWorkshopToolBench(
   carcass.receiveShadow = true;
   benchGroup.add(carcass);
 
-  for (const fx of [-totalW * 0.5 + 0.08, -0.4, 0.4, totalW * 0.5 - 0.08]) {
+  // Vertical stainless-steel Mullion Stile Dividers between the 4 bays
+  const frontZ = -benchD * 0.5 + 0.012;
+  for (const mx of [-1.54, -0.77, 0.0, 0.77, 1.54]) {
+    const stile = new THREE.Mesh(
+      new THREE.BoxGeometry(0.022, cabinetH - 0.05, 0.016),
+      anthraciteSteelMat
+    );
+    stile.position.set(mx, 0.05 + (cabinetH - 0.05) * 0.5, frontZ + 0.004);
+    benchGroup.add(stile);
+  }
+
+  // 5 Pairs of Heavy-Duty Adjustable Stainless Leveling Feet
+  for (const fx of [-totalW * 0.5 + 0.08, -0.77, 0.0, 0.77, totalW * 0.5 - 0.08]) {
     for (const fz of [-benchD * 0.5 + 0.07, benchD * 0.5 - 0.07]) {
-      const foot = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.028, 0.034, 0.05, 12),
+      const footPad = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.036, 0.038, 0.014, 14),
+        dewaltBlackMat
+      );
+      footPad.position.set(fx, 0.007, fz);
+      benchGroup.add(footPad);
+
+      const footLeg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.024, 0.028, 0.042, 12),
         aluminumTrimMat
       );
-      foot.position.set(fx, 0.025, fz);
-      benchGroup.add(foot);
+      footLeg.position.set(fx, 0.031, fz);
+      benchGroup.add(footLeg);
     }
   }
 
+  // Issue #1: Brushed 304 Stainless-Steel Drawers across 4 Bays (3 drawer banks + 1 cupboard bank)
   const bankSpecs = [
     {
-      cx: -0.8,
-      w: 0.76,
-      drawerHeights: [0.08, 0.08, 0.1, 0.12, 0.15, 0.2] as const,
+      cx: -1.155,
+      w: 0.735,
+      drawerHeights: [0.075, 0.075, 0.095, 0.115, 0.155, 0.215] as const,
     },
     {
-      cx: 0.0,
-      w: 0.78,
-      drawerHeights: [0.09, 0.11, 0.14, 0.18, 0.22] as const,
+      cx: -0.385,
+      w: 0.735,
+      drawerHeights: [0.085, 0.105, 0.135, 0.185, 0.22] as const,
     },
     {
-      cx: 0.8,
-      w: 0.76,
-      drawerHeights: [0.1, 0.14] as const,
+      cx: 0.385,
+      w: 0.735,
+      drawerHeights: [0.085, 0.105, 0.135, 0.185, 0.22] as const,
+    },
+    {
+      cx: 1.155,
+      w: 0.735,
+      drawerHeights: [0.095, 0.135] as const,
     },
   ] as const;
 
-  const frontZ = -benchD * 0.5 + 0.012;
   for (const bank of bankSpecs) {
     let cursorY = cabinetH - 0.025;
+
+    // Stainless cylinder key lock at the top-right of each drawer bank
+    const keyLock = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.009, 0.009, 0.026, 12),
+      aluminumTrimMat
+    );
+    keyLock.rotation.x = Math.PI / 2;
+    keyLock.position.set(bank.cx + bank.w * 0.5 - 0.032, cabinetH - 0.048, frontZ - 0.004);
+    benchGroup.add(keyLock);
+
     for (let dIdx = 0; dIdx < bank.drawerHeights.length; dIdx++) {
       const dh = bank.drawerHeights[dIdx]!;
       const dy = cursorY - dh * 0.5;
       const drawerFront = new THREE.Mesh(
-        new THREE.BoxGeometry(bank.w, dh - 0.008, 0.02),
-        crimsonDrawerMat
+        new THREE.BoxGeometry(bank.w, dh - 0.007, 0.02),
+        brushedStainlessMat
       );
       drawerFront.name = 'outbuildings.garage.toolBench.drawer';
       drawerFront.position.set(bank.cx, dy, frontZ);
       drawerFront.castShadow = true;
+      drawerFront.receiveShadow = true;
       benchGroup.add(drawerFront);
 
+      // Full-width extruded anodized-aluminum finger-pull rail
       const pullBar = new THREE.Mesh(
-        new THREE.BoxGeometry(bank.w - 0.04, 0.016, 0.026),
+        new THREE.BoxGeometry(bank.w - 0.024, 0.016, 0.026),
         aluminumTrimMat
       );
-      pullBar.position.set(bank.cx, dy + dh * 0.5 - 0.016, frontZ - 0.012);
+      pullBar.position.set(bank.cx, dy + dh * 0.5 - 0.015, frontZ - 0.012);
       benchGroup.add(pullBar);
+
+      // Recessed dark-grey index label strip on the pull bar
+      const labelStrip = new THREE.Mesh(
+        new THREE.BoxGeometry(bank.w * 0.42, 0.007, 0.004),
+        dewaltBlackMat
+      );
+      labelStrip.position.set(bank.cx, dy + dh * 0.5 - 0.015, frontZ - 0.025);
+      benchGroup.add(labelStrip);
 
       cursorY -= dh;
     }
   }
 
+  // Bay 4 Lower Double-Door Brushed Stainless Cupboard (`cx = +1.155m`)
   for (const sideX of [-1, 1] as const) {
-    const doorW = 0.374;
+    const doorW = 0.362;
     const doorPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(doorW, 0.49, 0.02),
-      crimsonDrawerMat
+      new THREE.BoxGeometry(doorW, 0.495, 0.02),
+      brushedStainlessMat
     );
-    doorPanel.position.set(0.8 + sideX * (doorW * 0.5 + 0.004), 0.325, frontZ);
+    doorPanel.name = 'outbuildings.garage.toolBench.drawer';
+    doorPanel.position.set(1.155 + sideX * (doorW * 0.5 + 0.004), 0.325, frontZ);
+    doorPanel.castShadow = true;
+    doorPanel.receiveShadow = true;
     benchGroup.add(doorPanel);
 
     const vHandle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.014, 0.14, 0.026),
+      new THREE.BoxGeometry(0.014, 0.15, 0.026),
       aluminumTrimMat
     );
-    vHandle.position.set(0.8 + sideX * 0.032, 0.42, frontZ - 0.012);
+    vHandle.position.set(1.155 + sideX * 0.032, 0.42, frontZ - 0.012);
     benchGroup.add(vHandle);
   }
 
+  // ---------------------------------------------------------------------------
+  // Issue #2 ("Better mesh on top"): Multi-Part Laminated Hardwood Butcher-Block Worktop Assembly
+  // ---------------------------------------------------------------------------
   const butcherTop = new THREE.Mesh(
     new THREE.BoxGeometry(totalW, topT, benchD),
     butcherBlockMat
@@ -1157,6 +1422,95 @@ export function buildGarageWorkshopToolBench(
   butcherTop.receiveShadow = true;
   benchGroup.add(butcherTop);
 
+  // Rounded Front Bullnose Hardwood Edge Moulding along `-Z`
+  const bullnoseRadius = topT * 0.5;
+  const frontBullnose = new THREE.Mesh(
+    new THREE.CylinderGeometry(bullnoseRadius, bullnoseRadius, totalW, 16),
+    butcherBlockMat
+  );
+  frontBullnose.name = 'outbuildings.garage.toolBench.butcherBlockTop';
+  frontBullnose.rotation.z = Math.PI / 2;
+  frontBullnose.position.set(0, cabinetH + topT * 0.5, -benchD * 0.5);
+  frontBullnose.castShadow = true;
+  frontBullnose.receiveShadow = true;
+  benchGroup.add(frontBullnose);
+
+  // End-Grain Hardwood Edge Banding Caps + Brushed-Stainless Corner Tie Plates on `-X` and `+X`
+  for (const sideX of [-1, 1] as const) {
+    const endCap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.012, topT + 0.002, benchD + 0.012),
+      butcherEdgeMat
+    );
+    endCap.position.set(sideX * (totalW * 0.5 + 0.004), cabinetH + topT * 0.5, 0);
+    endCap.castShadow = true;
+    benchGroup.add(endCap);
+
+    // Stainless corner reinforcement bracket at the front corners
+    const cornerBracket = new THREE.Mesh(
+      new THREE.BoxGeometry(0.065, topT + 0.004, 0.065),
+      brushedStainlessMat
+    );
+    cornerBracket.position.set(
+      sideX * (totalW * 0.5 - 0.026),
+      cabinetH + topT * 0.5,
+      -benchD * 0.5 + 0.022
+    );
+    benchGroup.add(cornerBracket);
+  }
+
+  // Brushed 304 Stainless-Steel 30mm Rear & Side Perimeter Upstand Splash Lip
+  const upstandH = 0.032;
+  const upstandT = 0.012;
+  const rearUpstand = new THREE.Mesh(
+    new THREE.BoxGeometry(totalW + 0.016, upstandH, upstandT),
+    brushedStainlessMat
+  );
+  rearUpstand.position.set(0, worktopY + upstandH * 0.5, benchD * 0.5 - upstandT * 0.5);
+  benchGroup.add(rearUpstand);
+
+  for (const sideX of [-1, 1] as const) {
+    const sideUpstand = new THREE.Mesh(
+      new THREE.BoxGeometry(upstandT, upstandH, benchD * 0.65),
+      brushedStainlessMat
+    );
+    sideUpstand.position.set(
+      sideX * (totalW * 0.5 + 0.002),
+      worktopY + upstandH * 0.5,
+      benchD * 0.5 - (benchD * 0.65) * 0.5
+    );
+    benchGroup.add(sideUpstand);
+  }
+
+  // Recessed Brushed-Stainless Magnetic Parts & Fastener Tray (`x = -0.96m, z = -0.22m`)
+  const magTrayGroup = new THREE.Group();
+  magTrayGroup.position.set(-0.96, worktopY, -0.22);
+  benchGroup.add(magTrayGroup);
+
+  const trayRim = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.01, 0.18),
+    brushedStainlessMat
+  );
+  trayRim.position.set(0, 0.005, 0);
+  magTrayGroup.add(trayRim);
+
+  const trayWell = new THREE.Mesh(
+    new THREE.BoxGeometry(0.24, 0.006, 0.14),
+    anthraciteSteelMat
+  );
+  trayWell.position.set(0, 0.008, 0);
+  magTrayGroup.add(trayWell);
+
+  // Chrome drive sockets & fasteners inside the magnetic tray
+  for (let s = 0; s < 6; s++) {
+    const socket = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.008 + s * 0.0012, 0.008 + s * 0.0012, 0.028, 12),
+      aluminumTrimMat
+    );
+    socket.position.set(-0.08 + s * 0.032, 0.024, -0.03);
+    magTrayGroup.add(socket);
+  }
+
+  // Full-Width Perforated Steel Pegboard Backwall & Upper Stainless Wall Cabinets (`3.16m` wide)
   const pegboardH = 0.64;
   const pegboard = new THREE.Mesh(
     new THREE.BoxGeometry(totalW - 0.04, pegboardH, 0.024),
@@ -1167,7 +1521,7 @@ export function buildGarageWorkshopToolBench(
   benchGroup.add(pegboard);
 
   const powerStrip = new THREE.Mesh(
-    new THREE.BoxGeometry(0.58, 0.062, 0.036),
+    new THREE.BoxGeometry(0.68, 0.062, 0.036),
     aluminumTrimMat
   );
   powerStrip.name = 'outbuildings.garage.toolBench.powerStrip';
@@ -1175,23 +1529,23 @@ export function buildGarageWorkshopToolBench(
   benchGroup.add(powerStrip);
 
   for (let s = 0; s < 6; s++) {
-    const sx = 0.05 - 0.22 + s * 0.088;
+    const sx = 0.05 - 0.25 + s * 0.1;
     const socketFace = new THREE.Mesh(
       new THREE.BoxGeometry(0.048, 0.044, 0.008),
-      rubberGripMat
+      dewaltBlackMat
     );
     socketFace.position.set(sx, worktopY + 0.11, benchD * 0.5 - 0.065);
     benchGroup.add(socketFace);
 
     const redSwitch = new THREE.Mesh(
       new THREE.BoxGeometry(0.012, 0.018, 0.01),
-      crimsonDrawerMat
+      rockerSwitchMat
     );
     redSwitch.position.set(sx + 0.016, worktopY + 0.12, benchD * 0.5 - 0.068);
     benchGroup.add(redSwitch);
   }
 
-  const upperCabH = 0.33;
+  const upperCabH = 0.34;
   const upperCabD = 0.32;
   const upperCab = new THREE.Mesh(
     new THREE.BoxGeometry(totalW - 0.04, upperCabH, upperCabD),
@@ -1205,17 +1559,30 @@ export function buildGarageWorkshopToolBench(
   upperCab.castShadow = true;
   benchGroup.add(upperCab);
 
-  for (const ux of [-0.8, 0.0, 0.8]) {
+  // 4 Overhead Brushed Stainless-Steel Flip-Up Locker Doors matching the 4 lower bays
+  for (const ux of [-1.155, -0.385, 0.385, 1.155]) {
     const upperDoor = new THREE.Mesh(
-      new THREE.BoxGeometry(0.76, upperCabH - 0.03, 0.018),
-      crimsonDrawerMat
+      new THREE.BoxGeometry(0.735, upperCabH - 0.03, 0.018),
+      brushedStainlessMat
     );
+    upperDoor.name = 'outbuildings.garage.toolBench.drawer';
     upperDoor.position.set(
       ux,
       worktopY + pegboardH + upperCabH * 0.5,
       benchD * 0.5 - upperCabD - 0.008
     );
     benchGroup.add(upperDoor);
+
+    const upperPull = new THREE.Mesh(
+      new THREE.BoxGeometry(0.46, 0.014, 0.022),
+      aluminumTrimMat
+    );
+    upperPull.position.set(
+      ux,
+      worktopY + pegboardH + 0.035,
+      benchD * 0.5 - upperCabD - 0.022
+    );
+    benchGroup.add(upperPull);
   }
 
   const ledStripMat = new THREE.MeshStandardMaterial({
@@ -1231,37 +1598,41 @@ export function buildGarageWorkshopToolBench(
   ledTaskBar.position.set(0, worktopY + pegboardH - 0.007, benchD * 0.5 - upperCabD + 0.05);
   benchGroup.add(ledTaskBar);
 
-  // A. Heavy Cast-Iron Engineer's Bench Vice (`x = -1.02m, z = -0.24m`)
+  // ---------------------------------------------------------------------------
+  // Issue #2 ("dewal powertools"): Authentic DeWALT 18V XR / 54V FLEXVOLT Suite
+  // ---------------------------------------------------------------------------
+
+  // A. Heavy Cast-Iron Engineer's Bench Vice (`x = -1.32m, z = -0.24m`)
   const viceGroup = new THREE.Group();
   viceGroup.name = 'outbuildings.garage.toolBench.vice';
-  viceGroup.position.set(-1.02, worktopY, -0.24);
+  viceGroup.position.set(-1.32, worktopY, -0.24);
   benchGroup.add(viceGroup);
 
   const viceBase = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.085, 0.095, 0.028, 16),
+    new THREE.CylinderGeometry(0.088, 0.098, 0.028, 16),
     viceCastIronMat
   );
   viceBase.position.set(0, 0.014, 0);
   viceGroup.add(viceBase);
 
   const fixedJaw = new THREE.Mesh(
-    new THREE.BoxGeometry(0.13, 0.14, 0.09),
+    new THREE.BoxGeometry(0.135, 0.145, 0.095),
     viceCastIronMat
   );
-  fixedJaw.position.set(0, 0.09, 0.02);
+  fixedJaw.position.set(0, 0.092, 0.02);
   fixedJaw.castShadow = true;
   viceGroup.add(fixedJaw);
 
   const slidingJaw = new THREE.Mesh(
-    new THREE.BoxGeometry(0.13, 0.12, 0.075),
+    new THREE.BoxGeometry(0.135, 0.125, 0.078),
     viceCastIronMat
   );
-  slidingJaw.position.set(0, 0.085, -0.085);
+  slidingJaw.position.set(0, 0.086, -0.088);
   slidingJaw.castShadow = true;
   viceGroup.add(slidingJaw);
 
   const viceSlideBar = new THREE.Mesh(
-    new THREE.BoxGeometry(0.052, 0.048, 0.22),
+    new THREE.BoxGeometry(0.054, 0.048, 0.23),
     aluminumTrimMat
   );
   viceSlideBar.position.set(0, 0.065, -0.02);
@@ -1272,7 +1643,7 @@ export function buildGarageWorkshopToolBench(
     aluminumTrimMat
   );
   leadScrewHub.rotation.x = Math.PI / 2;
-  leadScrewHub.position.set(0, 0.075, -0.145);
+  leadScrewHub.position.set(0, 0.075, -0.148);
   viceGroup.add(leadScrewHub);
 
   const tommyBar = new THREE.Mesh(
@@ -1280,187 +1651,474 @@ export function buildGarageWorkshopToolBench(
     aluminumTrimMat
   );
   tommyBar.rotation.z = 0.45;
-  tommyBar.position.set(0, 0.075, -0.165);
+  tommyBar.position.set(0, 0.075, -0.168);
   viceGroup.add(tommyBar);
 
-  // B. Sliding Compound Mitre Saw / Chop Saw (`x = -0.22m, z = -0.04m`)
+  // B. DeWALT DWS780 305mm Double-Bevel Sliding Compound Mitre Saw (`x = -0.52m, z = -0.02m`)
   const sawGroup = new THREE.Group();
   sawGroup.name = 'outbuildings.garage.toolBench.mitreSaw';
-  sawGroup.position.set(-0.22, worktopY, -0.04);
+  sawGroup.position.set(-0.52, worktopY, -0.02);
   benchGroup.add(sawGroup);
 
+  // Cast-aluminum base & side material extension wings
   const sawBase = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.21, 0.23, 0.045, 20),
-    aluminumTrimMat
+    new THREE.CylinderGeometry(0.22, 0.24, 0.048, 24),
+    castAluminumMat
   );
-  sawBase.position.set(0, 0.0225, 0);
+  sawBase.position.set(0, 0.024, 0);
   sawBase.castShadow = true;
   sawGroup.add(sawBase);
 
-  const fenceBar = new THREE.Mesh(
-    new THREE.BoxGeometry(0.46, 0.065, 0.032),
-    anthraciteSteelMat
+  for (const sideX of [-1, 1] as const) {
+    const extWing = new THREE.Mesh(
+      new THREE.BoxGeometry(0.11, 0.044, 0.16),
+      castAluminumMat
+    );
+    extWing.position.set(sideX * 0.25, 0.022, 0.02);
+    extWing.castShadow = true;
+    sawGroup.add(extWing);
+  }
+
+  // Yellow kerf throat plate & front mitre lock arm with yellow DeWALT twist grip
+  const kerfPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.056, 0.004, 0.34),
+    dewaltYellowMat
   );
-  fenceBar.position.set(0, 0.075, 0.06);
+  kerfPlate.position.set(0, 0.049, -0.02);
+  sawGroup.add(kerfPlate);
+
+  const mitreArm = new THREE.Mesh(
+    new THREE.BoxGeometry(0.068, 0.032, 0.16),
+    castAluminumMat
+  );
+  mitreArm.position.set(0, 0.026, -0.22);
+  sawGroup.add(mitreArm);
+
+  const mitreLockKnob = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.018, 0.055, 12),
+    dewaltYellowMat
+  );
+  mitreLockKnob.rotation.x = Math.PI / 2;
+  mitreLockKnob.position.set(0, 0.032, -0.31);
+  sawGroup.add(mitreLockKnob);
+
+  // Tall machined sliding fence with DeWALT yellow warning accents
+  const fenceBar = new THREE.Mesh(
+    new THREE.BoxGeometry(0.54, 0.078, 0.032),
+    dewaltBlackMat
+  );
+  fenceBar.position.set(0, 0.086, 0.068);
   sawGroup.add(fenceBar);
 
-  for (const rx of [-0.032, 0.032]) {
+  // Twin horizontal chrome slide rails + rear cast-iron bevel trunnion
+  for (const rx of [-0.036, 0.036]) {
     const slideRod = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.012, 0.012, 0.34, 12),
+      new THREE.CylinderGeometry(0.013, 0.013, 0.36, 12),
       aluminumTrimMat
     );
     slideRod.rotation.x = Math.PI / 2;
-    slideRod.position.set(rx, 0.16, 0.05);
+    slideRod.position.set(rx, 0.175, 0.045);
     sawGroup.add(slideRod);
   }
 
+  // 305mm Tungsten-Carbide Circular Saw Blade with DeWALT yellow arbor ring
   const sawBlade = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.125, 0.125, 0.005, 24),
+    new THREE.CylinderGeometry(0.145, 0.145, 0.005, 28),
     aluminumTrimMat
   );
   sawBlade.rotation.z = Math.PI / 2;
-  sawBlade.position.set(0, 0.185, -0.01);
+  sawBlade.position.set(0, 0.2, -0.015);
   sawGroup.add(sawBlade);
 
+  // Sculpted DeWALT Yellow & Matte-Black Upper Blade Guard with DeWALT Logo Badge
   const bladeGuard = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.138, 0.138, 0.038, 20, 1, false, 0, Math.PI * 1.15),
-    powerToolYellowMat
+    new THREE.CylinderGeometry(0.158, 0.158, 0.044, 24, 1, false, 0, Math.PI * 1.22),
+    dewaltYellowMat
   );
   bladeGuard.rotation.z = Math.PI / 2;
-  bladeGuard.position.set(0, 0.195, -0.01);
+  bladeGuard.position.set(0, 0.21, -0.015);
   bladeGuard.castShadow = true;
   sawGroup.add(bladeGuard);
 
+  const sawBadge = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.11, 0.042),
+    dewaltBadgeMat
+  );
+  sawBadge.rotation.y = -Math.PI / 2;
+  sawBadge.position.set(-0.024, 0.24, -0.015);
+  sawGroup.add(sawBadge);
+
+  // DeWALT Yellow & Black Direct-Drive Motor Housing
   const sawMotor = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.058, 0.058, 0.16, 16),
-    powerToolTealMat
+    new THREE.CylinderGeometry(0.062, 0.062, 0.16, 18),
+    dewaltYellowMat
   );
   sawMotor.rotation.z = Math.PI / 2;
-  sawMotor.position.set(0.1, 0.23, -0.01);
+  sawMotor.position.set(0.105, 0.245, -0.015);
   sawMotor.castShadow = true;
   sawGroup.add(sawMotor);
 
-  const sawHandle = new THREE.Mesh(
-    new THREE.BoxGeometry(0.042, 0.035, 0.14),
-    rubberGripMat
+  const sawMotorEndCap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.056, 0.045, 18),
+    dewaltBlackMat
   );
-  sawHandle.position.set(0.02, 0.31, -0.08);
-  sawHandle.rotation.x = 0.35;
+  sawMotorEndCap.rotation.z = Math.PI / 2;
+  sawMotorEndCap.position.set(0.195, 0.245, -0.015);
+  sawGroup.add(sawMotorEndCap);
+
+  // Ergonomic D-Handle with Yellow Trigger & Yellow DeWALT Dust Collection Bag
+  const sawHandle = new THREE.Mesh(
+    new THREE.BoxGeometry(0.048, 0.038, 0.15),
+    dewaltBlackMat
+  );
+  sawHandle.position.set(0.02, 0.33, -0.09);
+  sawHandle.rotation.x = 0.32;
   sawGroup.add(sawHandle);
 
-  // C. Twin-Wheel Heavy-Duty Bench Grinder (`x = +0.46m, z = -0.04m`)
+  const dustBag = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.032, 0.044, 0.16, 12),
+    dewaltYellowMat
+  );
+  dustBag.rotation.x = -Math.PI * 0.38;
+  dustBag.position.set(0, 0.27, 0.16);
+  sawGroup.add(dustBag);
+
+  // C. DeWALT DW752 Heavy-Duty Twin-Wheel Bench Grinder (`x = +0.16m, z = -0.06m`)
   const grinderGroup = new THREE.Group();
   grinderGroup.name = 'outbuildings.garage.toolBench.benchGrinder';
-  grinderGroup.position.set(0.46, worktopY, -0.04);
+  grinderGroup.position.set(0.16, worktopY, -0.06);
   benchGroup.add(grinderGroup);
 
   const grinderPedestal = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16, 0.04, 0.14),
-    viceCastIronMat
+    new THREE.BoxGeometry(0.18, 0.042, 0.15),
+    dewaltBlackMat
   );
-  grinderPedestal.position.set(0, 0.02, 0);
+  grinderPedestal.position.set(0, 0.021, 0);
   grinderGroup.add(grinderPedestal);
 
+  // Yellow/Black front toggle switch plate
+  const switchPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.052, 0.026, 0.012),
+    dewaltYellowMat
+  );
+  switchPlate.position.set(0, 0.022, -0.078);
+  grinderGroup.add(switchPlate);
+
+  // DeWALT Yellow Induction Motor Barrel
   const grinderMotor = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.068, 0.068, 0.18, 16),
-    viceCastIronMat
+    new THREE.CylinderGeometry(0.072, 0.072, 0.17, 18),
+    dewaltYellowMat
   );
   grinderMotor.rotation.z = Math.PI / 2;
-  grinderMotor.position.set(0, 0.115, 0);
+  grinderMotor.position.set(0, 0.12, 0);
   grinderMotor.castShadow = true;
   grinderGroup.add(grinderMotor);
 
+  const grinderBadge = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.088, 0.034),
+    dewaltBadgeMat
+  );
+  grinderBadge.position.set(0, 0.125, -0.073);
+  grinderGroup.add(grinderBadge);
+
   for (const sideX of [-1, 1] as const) {
+    // Matte-black cast wheel guards with yellow outer hub accents
     const wheelGuard = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.095, 0.095, 0.042, 18),
-      crimsonDrawerMat
+      new THREE.CylinderGeometry(0.098, 0.098, 0.044, 20),
+      dewaltBlackMat
     );
     wheelGuard.rotation.z = Math.PI / 2;
-    wheelGuard.position.set(sideX * 0.125, 0.115, 0);
+    wheelGuard.position.set(sideX * 0.13, 0.12, 0);
     wheelGuard.castShadow = true;
     grinderGroup.add(wheelGuard);
 
     const abrasiveWheel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.082, 0.082, 0.026, 18),
+      new THREE.CylinderGeometry(0.085, 0.085, 0.028, 20),
       aluminumTrimMat
     );
     abrasiveWheel.rotation.z = Math.PI / 2;
-    abrasiveWheel.position.set(sideX * 0.125, 0.115, -0.012);
+    abrasiveWheel.position.set(sideX * 0.13, 0.12, -0.014);
     grinderGroup.add(abrasiveWheel);
+
+    // Adjustable steel tool rest & transparent polycarbonate eye shield
+    const toolRest = new THREE.Mesh(
+      new THREE.BoxGeometry(0.038, 0.008, 0.045),
+      aluminumTrimMat
+    );
+    toolRest.position.set(sideX * 0.13, 0.085, -0.095);
+    grinderGroup.add(toolRest);
+
+    const eyeShield = new THREE.Mesh(
+      new THREE.BoxGeometry(0.056, 0.048, 0.006),
+      clearShieldMat
+    );
+    eyeShield.rotation.x = -0.35;
+    eyeShield.position.set(sideX * 0.13, 0.195, -0.085);
+    grinderGroup.add(eyeShield);
   }
 
-  // D. Cordless 18V Brushless Combi Drill, Impact Driver & Dual Li-Ion Charger Station (`x = +0.92m`)
+  // D. DeWALT DWE4257 125mm Angle Grinder & DeWALT DCW210 18V XR Random Orbit Sander (`x = +0.68m, z = -0.10m`)
+  const grinderSanderGroup = new THREE.Group();
+  grinderSanderGroup.name = 'outbuildings.garage.toolBench.angleGrinderAndSander';
+  grinderSanderGroup.position.set(0.68, worktopY, -0.1);
+  benchGroup.add(grinderSanderGroup);
+
+  // 1) DeWALT DWE4257 125mm Angle Grinder
+  const agUnit = new THREE.Group();
+  agUnit.position.set(-0.1, 0, -0.04);
+  agUnit.rotation.y = 0.42;
+  grinderSanderGroup.add(agUnit);
+
+  const agBody = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.028, 0.03, 0.19, 14),
+    dewaltYellowMat
+  );
+  agBody.rotation.z = Math.PI / 2;
+  agBody.position.set(0, 0.046, 0);
+  agBody.castShadow = true;
+  agUnit.add(agBody);
+
+  const agTailGrip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.026, 0.024, 0.08, 14),
+    dewaltBlackMat
+  );
+  agTailGrip.rotation.z = Math.PI / 2;
+  agTailGrip.position.set(0.115, 0.046, 0);
+  agUnit.add(agTailGrip);
+
+  const agGearHead = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.034, 0.036, 0.052, 14),
+    castAluminumMat
+  );
+  agGearHead.position.set(-0.105, 0.046, 0);
+  agUnit.add(agGearHead);
+
+  const agGuard = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.068, 0.068, 0.018, 18, 1, false, 0, Math.PI * 1.1),
+    dewaltBlackMat
+  );
+  agGuard.position.set(-0.105, 0.022, 0);
+  agUnit.add(agGuard);
+
+  const agDisc = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.062, 0.062, 0.004, 20),
+    anthraciteSteelMat
+  );
+  agDisc.position.set(-0.105, 0.018, 0);
+  agUnit.add(agDisc);
+
+  const agSideHandle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.014, 0.011, 0.11, 10),
+    dewaltBlackMat
+  );
+  agSideHandle.rotation.x = Math.PI / 2;
+  agSideHandle.position.set(-0.105, 0.046, -0.072);
+  agUnit.add(agSideHandle);
+
+  // 2) DeWALT DCW210 18V XR Brushless Random Orbit Palm Sander
+  const sanderUnit = new THREE.Group();
+  sanderUnit.position.set(0.13, 0, 0.05);
+  sanderUnit.rotation.y = -0.28;
+  grinderSanderGroup.add(sanderUnit);
+
+  const sandingPad = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.062, 0.062, 0.014, 18),
+    dewaltBlackMat
+  );
+  sandingPad.position.set(0, 0.007, 0);
+  sanderUnit.add(sandingPad);
+
+  const sanderHousing = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.042, 0.052, 0.088, 16),
+    dewaltYellowMat
+  );
+  sanderHousing.position.set(0, 0.058, 0);
+  sanderHousing.castShadow = true;
+  sanderUnit.add(sanderHousing);
+
+  const sanderPalmCap = new THREE.Mesh(
+    new THREE.SphereGeometry(0.043, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
+    dewaltBlackMat
+  );
+  sanderPalmCap.position.set(0, 0.098, 0);
+  sanderUnit.add(sanderPalmCap);
+
+  const sanderBattery = new THREE.Mesh(
+    new THREE.BoxGeometry(0.068, 0.046, 0.085),
+    dewaltYellowMat
+  );
+  sanderBattery.position.set(0, 0.052, 0.062);
+  sanderUnit.add(sanderBattery);
+
+  // E. DeWALT DCB132 Dual-Port 18V XR Charger + DeWALT DCD996 Hammer Drill, DCF887 Impact Driver & TSTAK Case (`x = +1.18m`)
   const drillsGroup = new THREE.Group();
   drillsGroup.name = 'outbuildings.garage.toolBench.cordlessDrills';
-  drillsGroup.position.set(0.92, worktopY, -0.06);
+  drillsGroup.position.set(1.18, worktopY, -0.06);
   benchGroup.add(drillsGroup);
 
-  const chargerDock = new THREE.Mesh(
-    new THREE.BoxGeometry(0.22, 0.055, 0.16),
-    rubberGripMat
+  // DeWALT TSTAK II Heavy-Duty Modular Tool Box Case at rear-right (`x = 0.14m, z = 0.15m`)
+  const tstakCase = new THREE.Mesh(
+    new THREE.BoxGeometry(0.32, 0.135, 0.22),
+    dewaltBlackMat
   );
-  chargerDock.position.set(-0.12, 0.0275, 0.12);
+  tstakCase.position.set(0.12, 0.0675, 0.16);
+  tstakCase.castShadow = true;
+  drillsGroup.add(tstakCase);
+
+  const tstakLidAccent = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.016, 0.18),
+    dewaltYellowMat
+  );
+  tstakLidAccent.position.set(0.12, 0.138, 0.16);
+  drillsGroup.add(tstakLidAccent);
+
+  const tstakBadge = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.14, 0.05),
+    dewaltBadgeMat
+  );
+  tstakBadge.position.set(0.12, 0.072, 0.049);
+  drillsGroup.add(tstakBadge);
+
+  // DeWALT DCB132 Dual-Port XR Li-Ion Fast Charger Station (`x = -0.18m, z = 0.13m`)
+  const chargerDock = new THREE.Mesh(
+    new THREE.BoxGeometry(0.24, 0.058, 0.165),
+    dewaltBlackMat
+  );
+  chargerDock.position.set(-0.18, 0.029, 0.13);
   chargerDock.castShadow = true;
   drillsGroup.add(chargerDock);
 
-  for (const bx of [-0.17, -0.07]) {
-    const batteryPack = new THREE.Mesh(
-      new THREE.BoxGeometry(0.075, 0.052, 0.11),
-      powerToolTealMat
+  const chargerYellowTrim = new THREE.Mesh(
+    new THREE.BoxGeometry(0.242, 0.014, 0.04),
+    dewaltYellowMat
+  );
+  chargerYellowTrim.position.set(-0.18, 0.048, 0.065);
+  drillsGroup.add(chargerYellowTrim);
+
+  for (const bx of [-0.235, -0.125]) {
+    // 18V XR 5.0Ah Li-Ion Battery Pack (Matte Black base + DeWALT Yellow top cap)
+    const batteryBase = new THREE.Mesh(
+      new THREE.BoxGeometry(0.078, 0.038, 0.112),
+      dewaltBlackMat
     );
-    batteryPack.position.set(bx, 0.068, 0.11);
-    drillsGroup.add(batteryPack);
+    batteryBase.position.set(bx, 0.068, 0.125);
+    drillsGroup.add(batteryBase);
+
+    const batteryCap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.076, 0.022, 0.108),
+      dewaltYellowMat
+    );
+    batteryCap.position.set(bx, 0.096, 0.125);
+    drillsGroup.add(batteryCap);
+
+    const chargeLed = new THREE.Mesh(
+      new THREE.BoxGeometry(0.012, 0.006, 0.008),
+      greenLedMat
+    );
+    chargeLed.position.set(bx, 0.059, 0.052);
+    drillsGroup.add(chargeLed);
   }
 
-  for (const [dx, dz, yaw, bodyLen] of [
-    [0.06, -0.04, -0.35, 0.18],
-    [0.21, 0.02, -0.55, 0.14],
+  // Standing DeWALT DCD996 18V XR Brushless Hammer Drill & DCF887 18V XR Impact Driver
+  for (const [dx, dz, yaw, bodyLen, isHammerDrill] of [
+    [-0.08, -0.08, -0.32, 0.185, true],
+    [0.14, -0.06, -0.52, 0.135, false],
   ] as const) {
     const drillUnit = new THREE.Group();
     drillUnit.position.set(dx, 0, dz);
     drillUnit.rotation.y = yaw;
     drillsGroup.add(drillUnit);
 
-    const batt = new THREE.Mesh(
-      new THREE.BoxGeometry(0.076, 0.048, 0.115),
-      rubberGripMat
+    // 18V XR 5.0Ah Slide Battery Base (Black lower shell + DeWALT Yellow upper slide rail)
+    const battBlack = new THREE.Mesh(
+      new THREE.BoxGeometry(0.078, 0.036, 0.118),
+      dewaltBlackMat
     );
-    batt.position.set(0, 0.024, 0);
-    batt.castShadow = true;
-    drillUnit.add(batt);
+    battBlack.position.set(0, 0.018, 0);
+    battBlack.castShadow = true;
+    drillUnit.add(battBlack);
 
+    const battYellow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.076, 0.018, 0.114),
+      dewaltYellowMat
+    );
+    battYellow.position.set(0, 0.045, 0);
+    drillUnit.add(battYellow);
+
+    // Contoured DeWALT Yellow & Black Overmoulded Pistol Grip
     const grip = new THREE.Mesh(
       new THREE.CylinderGeometry(0.019, 0.022, 0.13, 12),
-      rubberGripMat
+      dewaltYellowMat
     );
-    grip.position.set(0, 0.105, 0.01);
-    grip.rotation.x = -0.2;
+    grip.position.set(0, 0.112, 0.01);
+    grip.rotation.x = -0.18;
     grip.castShadow = true;
     drillUnit.add(grip);
 
+    const gripRubber = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02, 0.023, 0.085, 12),
+      dewaltBlackMat
+    );
+    gripRubber.position.set(0, 0.112, 0.014);
+    gripRubber.rotation.x = -0.18;
+    drillUnit.add(gripRubber);
+
+    // DeWALT Yellow Brushless Motor Clamshell Barrel with Black Rear Vent Cap
     const barrel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.032, 0.032, bodyLen, 14),
-      powerToolTealMat
+      new THREE.CylinderGeometry(0.034, 0.034, bodyLen, 16),
+      dewaltYellowMat
     );
     barrel.rotation.x = Math.PI / 2;
-    barrel.position.set(0, 0.185, -0.01);
+    barrel.position.set(0, 0.192, -0.01);
     barrel.castShadow = true;
     drillUnit.add(barrel);
 
+    const rearCap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.032, 0.028, 0.028, 16),
+      dewaltBlackMat
+    );
+    rearCap.rotation.x = Math.PI / 2;
+    rearCap.position.set(0, 0.192, -0.01 + bodyLen * 0.5 + 0.012);
+    drillUnit.add(rearCap);
+
+    // Metal Gearbox Nose & Chuck / Hex Collet
+    const noseCone = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.024, 0.032, 0.032, 14),
+      castAluminumMat
+    );
+    noseCone.rotation.x = Math.PI / 2;
+    noseCone.position.set(0, 0.192, -0.01 - bodyLen * 0.5 - 0.014);
+    drillUnit.add(noseCone);
+
     const chuck = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.016, 0.024, 0.048, 12),
-      aluminumTrimMat
+      new THREE.CylinderGeometry(0.014, 0.022, isHammerDrill ? 0.048 : 0.028, 12),
+      dewaltBlackMat
     );
     chuck.rotation.x = Math.PI / 2;
-    chuck.position.set(0, 0.185, -0.01 - bodyLen * 0.5 - 0.022);
+    chuck.position.set(
+      0,
+      0.192,
+      -0.01 - bodyLen * 0.5 - (isHammerDrill ? 0.048 : 0.036)
+    );
     drillUnit.add(chuck);
+
+    if (isHammerDrill) {
+      // 360-degree side auxiliary handle on the DCD996 Hammer Drill
+      const auxHandle = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.013, 0.011, 0.12, 10),
+        dewaltBlackMat
+      );
+      auxHandle.rotation.z = Math.PI / 2;
+      auxHandle.position.set(-0.075, 0.192, -0.01 - bodyLen * 0.5 - 0.012);
+      drillUnit.add(auxHandle);
+    }
   }
 
-  // E. Hand Tools on Pegboard
+  // F. Organized Hand Tools on Pegboard (with DeWALT Yellow & Black accents)
   const pegZ = benchD * 0.5 - 0.038;
-  for (let wIdx = 0; wIdx < 8; wIdx++) {
-    const wx = -0.95 + wIdx * 0.055;
-    const wLen = 0.13 + wIdx * 0.016;
+  for (let wIdx = 0; wIdx < 10; wIdx++) {
+    const wx = -1.25 + wIdx * 0.056;
+    const wLen = 0.12 + wIdx * 0.015;
     const wrench = new THREE.Mesh(
       new THREE.BoxGeometry(0.016, wLen, 0.006),
       aluminumTrimMat
@@ -1468,27 +2126,27 @@ export function buildGarageWorkshopToolBench(
     wrench.position.set(wx, worktopY + 0.36, pegZ);
     benchGroup.add(wrench);
   }
-  for (let sIdx = 0; sIdx < 6; sIdx++) {
-    const sx = -0.35 + sIdx * 0.052;
+  for (let sIdx = 0; sIdx < 8; sIdx++) {
+    const sx = -0.45 + sIdx * 0.054;
     const handle = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.012, 0.01, 0.085, 10),
-      sIdx % 2 === 0 ? crimsonDrawerMat : powerToolYellowMat
+      new THREE.CylinderGeometry(0.012, 0.01, 0.088, 10),
+      sIdx % 2 === 0 ? dewaltYellowMat : dewaltBlackMat
     );
     handle.position.set(sx, worktopY + 0.42, pegZ);
     benchGroup.add(handle);
 
     const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.003, 0.003, 0.1, 8),
+      new THREE.CylinderGeometry(0.003, 0.003, 0.105, 8),
       aluminumTrimMat
     );
     shaft.position.set(sx, worktopY + 0.33, pegZ);
     benchGroup.add(shaft);
   }
   const spiritLevel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.78, 0.048, 0.022),
-    powerToolYellowMat
+    new THREE.BoxGeometry(0.92, 0.05, 0.022),
+    dewaltYellowMat
   );
-  spiritLevel.position.set(0.62, worktopY + 0.45, pegZ);
+  spiritLevel.position.set(0.74, worktopY + 0.45, pegZ);
   benchGroup.add(spiritLevel);
 }
 
@@ -1584,20 +2242,21 @@ export function buildBarnMezzanineLadder(
 }
 
 /**
- * Issue #9 ("2.8m tall golf simulator here cut into the wall, 4m wide, backs into the store room"
- * at `[-7.044, 1.391, 17.979]`) + User follow-up ("its a trackman io, i want a widescreen one, so make of that what you will"):
+ * Issue #9 ("2.8m tall golf simulator here cut into the wall, 4m wide, backs into the store room") +
+ * Issue #4 ("Cut a little deeper into the store room so there is at least 60cm clearance in front of the ladder"
+ * at `[-7.986, 2.56, 15.704]`) +
+ * Issue #5 ("Trackman looks like its blocking the projector" at `[-5.446, 2.563, 17.371]`):
  * Builds a Widescreen (`4.48m` wide x `2.80m` tall, `16:10` Widescreen aspect ratio) **TrackMan iO**
  * Indoor Golf Simulator Bay (`outbuildings.barn.golfSimulator`) cut into the Store/Barn cross-wall
- * (`u = 14.96..15.20m, v = 0.615..5.095m`) and backing `1.48m` into the Store room (`u = 13.72..14.96m`), complete with:
- * - Outer painted studwork enclosure housing in the Store room (`u = 13.72..14.96m`)
- * - Upholstered matte-black acoustic side & ceiling baffles lining the `1.48m` deep recessed bay
- * - Taut `4.48m x 2.80m` Widescreen HD Golf Impact Projection Screen (`outbuildings.barn.golfSimulator.screen`)
- *   displaying TrackMan Virtual Golf 3 (VG3) with signature TrackMan Orange (`#ff6b00`) telemetry & shot tracer
- * - Ceiling-Mounted **TrackMan iO (Indoor Optimized)** overhead optical/radar/infrared launch monitor pod
- *   (sleek matte-black & TrackMan Orange angled V-wing overhead sensor unit mounted directly above the hitting zone,
- *   leaving the floor 100% clear of any floor launch monitor boxes!)
- * - Ceiling-Mounted 4K Short-Throw Laser Projector behind the TrackMan iO unit
- * - Continuous artificial fairway & putting turf floor + dark-green stance/hitting mat extending into the Barn.
+ * (`u = 14.96..15.20m, v = 0.615..5.095m`) and backing **`2.16m`** into the Store room (`u = 13.04..15.20m`), complete with:
+ * - Outer painted studwork enclosure housing in the Store room (`u = 13.04..14.96m`)
+ * - Upholstered matte-black acoustic side & ceiling baffles lining the `2.16m` deep recessed bay
+ * - Taut `4.48m x 2.80m` Widescreen HD Golf Impact Projection Screen (`outbuildings.barn.golfSimulator.screen`) at `u = 13.18m`
+ * - Continuous artificial fairway & putting turf floor extending only to `x = +1.82m` (`u = 17.02m`), leaving
+ *   **`0.88m` (`88cm`, exceeding the required `60cm`) of unobstructed stone floor clearance in front of the Mezzanine Ladder** (`u = 17.90m`)!
+ * - Ceiling-Mounted 4K Short-Throw Laser Projector at `x = 0.28m, y = 2.74m` (`u = 15.48m`, ahead of the TrackMan iO)
+ * - Ceiling-Mounted **TrackMan iO (Indoor Optimized)** overhead launch monitor at `x = 0.92m, y = 2.98m` (`u = 16.12m`,
+ *   mounted behind and higher than the projector so it never blocks the projector's throw cone!).
  */
 export function buildBarnGolfSimulator(
   groundGroup: THREE.Group,
@@ -1615,7 +2274,7 @@ export function buildBarnGolfSimulator(
 
   const clearW = 4.48; // Widescreen 16:10 width (`4.48m` x `2.80m`)
   const clearH = 2.8; // 2.80m height (`y = -0.34..+2.46m`)
-  const recessDepthU = 1.48; // Backs from `u = 15.20m` to `u = 13.72m` inside the Store room
+  const recessDepthU = 2.16; // Issue #4: Cuts 0.68m deeper into the Store room (`u = 13.04..15.20m`)
   const wallT = uWallMax - uWallMin; // 0.24m
 
   const acousticBaffleMat = new THREE.MeshStandardMaterial({
@@ -1670,8 +2329,8 @@ export function buildBarnGolfSimulator(
     metalness: 0.05,
   });
 
-  // 1. Exterior Painted Studwork Enclosure Box backing into the Store Room (`x = -recessDepthU..-wallT`, i.e. `u = 13.72..14.96m`)
-  const storeBoxDepth = recessDepthU - wallT; // 1.24m
+  // 1. Exterior Painted Studwork Enclosure Box backing deeper into the Store Room (`x = -recessDepthU..-wallT`, i.e. `u = 13.04..14.96m`)
+  const storeBoxDepth = recessDepthU - wallT; // 1.92m
   const storeBackWall = new THREE.Mesh(
     new THREE.BoxGeometry(0.09, clearH + 0.1, clearW + 0.18),
     plasterMat
@@ -1706,8 +2365,8 @@ export function buildBarnGolfSimulator(
   storeRoofLid.position.set(-wallT - (storeBoxDepth + 0.09) * 0.5, clearH + 0.055, 0);
   simGroup.add(storeRoofLid);
 
-  // 2. Interior Padded Acoustic Baffle Walls & Ceiling inside the Recessed Simulator Tunnel (`x = -recessDepthU..0`)
-  const numBaffleCols = 4;
+  // 2. Interior Padded Acoustic Baffle Walls & Ceiling inside the Deeper Recessed Simulator Tunnel (`x = -2.16..0`)
+  const numBaffleCols = 6;
   const baffleColW = recessDepthU / numBaffleCols;
   for (let c = 0; c < numBaffleCols; c++) {
     const bx = -recessDepthU + (c + 0.5) * baffleColW;
@@ -1748,7 +2407,7 @@ export function buildBarnGolfSimulator(
   topTrim.position.set(0.01, clearH + frameTrimW * 0.3, 0);
   simGroup.add(topTrim);
 
-  // 3. `4.48m x 2.80m` Widescreen Taut HD Golf Impact Projection Screen (`outbuildings.barn.golfSimulator.screen`)
+  // 3. `4.48m x 2.80m` Widescreen Taut HD Golf Impact Projection Screen (`outbuildings.barn.golfSimulator.screen`) at `x = -2.02m`
   const screenMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(clearW - 0.1, clearH - 0.08),
     impactScreenMat
@@ -1766,9 +2425,12 @@ export function buildBarnGolfSimulator(
   screenBacking.position.set(-recessDepthU + 0.12, clearH * 0.5, 0);
   simGroup.add(screenBacking);
 
-  // 4. Continuous Artificial Golf Fairway Turf & Hitting Mat (`x = -1.34m..+2.85m`, `4.48m` wide)
-  const totalTurfLenX = recessDepthU - 0.12 + 2.85;
-  const turfCenterX = (-recessDepthU + 0.12 + 2.85) * 0.5;
+  // 4. Issue #4: Continuous Artificial Golf Fairway Turf & Hitting Mat (`x = -2.04m..+1.82m`, `u = 13.16m..17.02m`)
+  //    Leaves `0.88m` (`88cm` > `60cm`) of clear stone floor in front of the Mezzanine Ladder foot (`u = 17.90m`)!
+  const turfStartX = -recessDepthU + 0.12; // -2.04m
+  const turfEndX = 1.82; // u = 15.20 + 1.82 = 17.02m
+  const totalTurfLenX = turfEndX - turfStartX; // 3.86m
+  const turfCenterX = (turfStartX + turfEndX) * 0.5; // -0.11m
 
   const surroundBase = new THREE.Mesh(
     new THREE.BoxGeometry(totalTurfLenX + 0.08, 0.028, clearW),
@@ -1788,8 +2450,8 @@ export function buildBarnGolfSimulator(
   simGroup.add(fairwayTurf);
 
   for (const [cupX, cupZ] of [
-    [0.55, -0.95],
-    [0.55, 0.95],
+    [-0.35, -0.95],
+    [-0.35, 0.95],
   ] as const) {
     const cup = new THREE.Mesh(
       new THREE.CylinderGeometry(0.054, 0.054, 0.036, 16),
@@ -1799,13 +2461,14 @@ export function buildBarnGolfSimulator(
     simGroup.add(cup);
   }
 
-  // Heavy-Pile Hitting Strip (`0.36m x 1.04m`) at `x = +2.05m`
+  // Heavy-Pile Hitting Strip (`0.36m x 1.04m`) at `x = +1.12m` (`3.14m` in front of the `x = -2.02m` screen)
+  const hittingX = 1.12;
   const hittingStrip = new THREE.Mesh(
     new THREE.BoxGeometry(0.36, 0.038, 1.04),
     hittingStripMat
   );
   hittingStrip.name = 'outbuildings.barn.golfSimulator.hittingStrip';
-  hittingStrip.position.set(2.05, 0.02, 0);
+  hittingStrip.position.set(hittingX, 0.02, 0);
   hittingStrip.receiveShadow = true;
   simGroup.add(hittingStrip);
 
@@ -1813,23 +2476,23 @@ export function buildBarnGolfSimulator(
     new THREE.CylinderGeometry(0.008, 0.016, 0.042, 10),
     golfBallMat
   );
-  rubberTee.position.set(2.05, 0.048, 0);
+  rubberTee.position.set(hittingX, 0.048, 0);
   simGroup.add(rubberTee);
 
   const teedBall = new THREE.Mesh(
     new THREE.SphereGeometry(0.0213, 14, 12),
     golfBallMat
   );
-  teedBall.position.set(2.05, 0.088, 0);
+  teedBall.position.set(hittingX, 0.088, 0);
   teedBall.castShadow = true;
   simGroup.add(teedBall);
 
-  // Rubber golf ball tray (`x = 2.05m, z = -0.78m`)
+  // Rubber golf ball tray (`x = +1.12m, z = -0.78m`)
   const ballTray = new THREE.Mesh(
     new THREE.BoxGeometry(0.28, 0.028, 0.42),
     stanceSurroundMat
   );
-  ballTray.position.set(2.05, 0.044, -0.78);
+  ballTray.position.set(hittingX, 0.044, -0.78);
   simGroup.add(ballTray);
 
   for (let b = 0; b < 5; b++) {
@@ -1837,23 +2500,60 @@ export function buildBarnGolfSimulator(
       new THREE.SphereGeometry(0.0213, 12, 10),
       golfBallMat
     );
-    ball.position.set(2.05, 0.068, -0.92 + b * 0.07);
+    ball.position.set(hittingX, 0.068, -0.92 + b * 0.07);
     simGroup.add(ball);
   }
 
-  // 5. Ceiling-Mounted **TrackMan iO (Indoor Optimized)** Overhead Launch Monitor (`outbuildings.barn.golfSimulator.trackmanIO`)
-  //    Mounted directly above & slightly ahead of the hitting zone (`x = 1.68m, y = 2.86m, z = 0.00m`)!
-  const tmGroup = new THREE.Group();
-  tmGroup.name = 'outbuildings.barn.golfSimulator.trackmanIO';
-  tmGroup.position.set(1.68, 2.86, 0);
-  simGroup.add(tmGroup);
+  // 5. Issue #5: Overhead Ceiling-Mounted 4K Widescreen Short-Throw Laser Projector (`x = 0.28m, y = 2.74m, z = 0.00m`)
+  //    Mounted AHEAD of the TrackMan iO unit so its downward projection beam to the `x = -2.02m` screen is 100% unobstructed!
+  const projectorGroup = new THREE.Group();
+  projectorGroup.name = 'outbuildings.barn.golfSimulator.projector';
+  projectorGroup.position.set(0.28, 2.74, 0);
+  simGroup.add(projectorGroup);
 
-  // Ceiling suspension pole to vaulted ridge
-  const tmDropTube = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.02, 0.02, 1.56, 12),
+  const dropPole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.022, 1.68, 12),
     projectorBodyMat
   );
-  tmDropTube.position.set(0, 0.78, 0);
+  dropPole.position.set(0, 0.84, 0);
+  projectorGroup.add(dropPole);
+
+  const projectorChassis = new THREE.Mesh(
+    new THREE.BoxGeometry(0.38, 0.14, 0.44),
+    projectorBodyMat
+  );
+  projectorChassis.rotation.z = 0.18;
+  projectorChassis.castShadow = true;
+  projectorGroup.add(projectorChassis);
+
+  const lensMat = new THREE.MeshStandardMaterial({
+    color: 0xe0f7fa,
+    emissive: new THREE.Color(0x90caf9),
+    emissiveIntensity: 1.8,
+    roughness: 0.12,
+  });
+  const projectorLens = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.044, 0.044, 0.03, 16),
+    lensMat
+  );
+  projectorLens.rotation.z = Math.PI / 2 + 0.18;
+  projectorLens.position.set(-0.195, -0.025, 0);
+  projectorGroup.add(projectorLens);
+
+  // 6. Issue #5: Ceiling-Mounted **TrackMan iO (Indoor Optimized)** Overhead Launch Monitor (`outbuildings.barn.golfSimulator.trackmanIO`)
+  //    Mounted BEHIND the projector and slightly higher (`x = 0.92m, y = 2.98m, z = 0.00m`), directly ahead of the `x = 1.12m` hitting tee,
+  //    so it never blocks the projector's light cone!
+  const tmGroup = new THREE.Group();
+  tmGroup.name = 'outbuildings.barn.golfSimulator.trackmanIO';
+  tmGroup.position.set(0.92, 2.98, 0);
+  simGroup.add(tmGroup);
+
+  // Ceiling suspension pole to vaulted ridge (`1.44m` tall)
+  const tmDropTube = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.02, 0.02, 1.44, 12),
+    projectorBodyMat
+  );
+  tmDropTube.position.set(0, 0.72, 0);
   tmGroup.add(tmDropTube);
 
   // Sleek aerodynamic TrackMan iO V-wing chassis (`0.28m` deep x `0.075m` high x `0.58m` wide)
@@ -1861,7 +2561,7 @@ export function buildBarnGolfSimulator(
     new THREE.BoxGeometry(0.26, 0.072, 0.34),
     projectorBodyMat
   );
-  tmCore.rotation.z = -0.18; // Angled down toward the hitting tee at `x = 2.05m`
+  tmCore.rotation.z = -0.18; // Angled down toward the hitting tee at `x = 1.12m`
   tmCore.castShadow = true;
   tmGroup.add(tmCore);
 
@@ -1894,39 +2594,5 @@ export function buildBarnGolfSimulator(
   tmOrangeAccent.position.set(0, 0.028, 0);
   tmOrangeAccent.rotation.z = -0.18;
   tmGroup.add(tmOrangeAccent);
-
-  // 6. Overhead Ceiling-Mounted 4K Widescreen Short-Throw Laser Projector (`x = 2.38m, y = 2.98m, z = 0.00m`)
-  const projectorGroup = new THREE.Group();
-  projectorGroup.name = 'outbuildings.barn.golfSimulator.projector';
-  projectorGroup.position.set(2.38, 2.98, 0);
-  simGroup.add(projectorGroup);
-
-  const dropPole = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.022, 0.022, 1.48, 12),
-    projectorBodyMat
-  );
-  dropPole.position.set(0, 0.74, 0);
-  projectorGroup.add(dropPole);
-
-  const projectorChassis = new THREE.Mesh(
-    new THREE.BoxGeometry(0.38, 0.14, 0.44),
-    projectorBodyMat
-  );
-  projectorChassis.rotation.z = 0.16;
-  projectorChassis.castShadow = true;
-  projectorGroup.add(projectorChassis);
-
-  const lensMat = new THREE.MeshStandardMaterial({
-    color: 0xe0f7fa,
-    emissive: new THREE.Color(0x90caf9),
-    emissiveIntensity: 1.8,
-    roughness: 0.12,
-  });
-  const projectorLens = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.044, 0.044, 0.03, 16),
-    lensMat
-  );
-  projectorLens.rotation.z = Math.PI / 2 + 0.16;
-  projectorLens.position.set(-0.195, -0.025, 0);
-  projectorGroup.add(projectorLens);
 }
+

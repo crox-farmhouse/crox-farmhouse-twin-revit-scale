@@ -846,8 +846,8 @@ export class WalkthroughController {
       return 2.08;
     }
 
-    // 2b. Outbuilding Barn Mezzanine (`1.54m`), 3 `UP` Steps (`1.54m..2.08m`), Stable Top Floor (`2.08m`),
-    //     and Outbuilding Ground Floor rooms (`GYM`, `Garage`, `Store`, `Barn` with 2-step drop to `-0.70m`, and `Stable` at `-0.44m`)
+    // 2b. Outbuilding Barn Mezzanine (`1.54m`), Climbable Mezzanine Ladder (`-0.34m..1.54m`),
+    //     3 `UP` Steps (`1.54m..2.08m`), Stable Top Floor (`2.08m`), and Outbuilding Ground Floor rooms
     const obRot = Math.atan2(2.49, 28.98);
     const obCos = Math.cos(obRot);
     const obSin = Math.sin(obRot);
@@ -856,12 +856,24 @@ export class WalkthroughController {
     const obU = obDx * obCos - obDz * obSin;
     const obV = obDx * obSin + obDz * obCos;
     if (obV >= 0.25 && obV <= 5.45 && obU >= 0.25 && obU <= 28.8) {
+      // Issue #8 ("Make this ladder climable in first person view" at `[-3.837, 0.688, 19.349]`):
+      // Smooth continuous climb up & down the Barn Mezzanine Ladder (`obU = 17.68..18.76m, obV = 4.22..5.08m`)
+      if (
+        obV >= 4.22 &&
+        obV <= 5.08 &&
+        obU >= 17.65 &&
+        obU <= 18.8 &&
+        refFootY >= -0.45
+      ) {
+        const tLadder = THREE.MathUtils.clamp((obU - 17.68) / (18.74 - 17.68), 0, 1);
+        return THREE.MathUtils.lerp(-0.34, 1.54, tLadder);
+      }
       if (refFootY >= 1.15 && obU >= 18.65) {
         if (obU >= 23.22) {
           return 2.08;
         }
-        if (obU >= 22.45 && obV >= 2.35 && obV <= 3.35) {
-          const tUp = THREE.MathUtils.clamp((obU - 22.5) / (23.22 - 22.5), 0, 1);
+        if (obU >= 22.35 && obV >= 2.35 && obV <= 3.35) {
+          const tUp = THREE.MathUtils.clamp((obU - 22.4) / (23.22 - 22.4), 0, 1);
           return THREE.MathUtils.lerp(1.54, 2.08, tUp);
         }
         return 1.54;
@@ -944,7 +956,10 @@ export class WalkthroughController {
       if (obj.userData?.isAnnotationGroup || obj.userData?.circuitId) return;
       if (
         typeof obj.name === 'string' &&
-        (obj.name.startsWith('hall.stairs') || obj.name.includes('cobblePath'))
+        (obj.name.startsWith('hall.stairs') ||
+          obj.name.startsWith('outbuildings.barn.mezzanineLadder') ||
+          obj.name.startsWith('outbuildings.firstFloor.stableUpStep') ||
+          obj.name.includes('cobblePath'))
       ) {
         return;
       }
@@ -978,6 +993,7 @@ export class WalkthroughController {
           (cur.name.endsWith('.groundCeiling') ||
             cur.name.endsWith('.roof') ||
             cur.name === 'outbuildings.roofTrusses' ||
+            cur.name === 'outbuildings.barn.mezzanineLadder' ||
             cur.name.startsWith('hall.stairs') ||
             cur.name.includes('ufh'))
         ) {
@@ -1236,6 +1252,47 @@ export class WalkthroughController {
         return true; // Lower flight East balustrade
       }
       return false;
+    }
+
+    // 2a-ii. Outbuilding Barn Mezzanine Climbable Ladder (`obU = 17.55..19.05m, obV = 4.22..5.08m`)
+    //        and 3-Step `UP` Stair between Barn Mezzanine and Stable Upper Floor (`obU = 22.15..23.55m, obV = 2.38..3.32m`)
+    const obRot = Math.atan2(2.49, 28.98);
+    const obCos = Math.cos(obRot);
+    const obSin = Math.sin(obRot);
+    const curObU = (fromFoot.x - -22.47) * obCos - (fromFoot.z - 16.0) * obSin;
+    const curObV = (fromFoot.x - -22.47) * obSin + (fromFoot.z - 16.0) * obCos;
+    const nextObU = (nextX - -22.47) * obCos - (nextZ - 16.0) * obSin;
+    const nextObV = (nextX - -22.47) * obSin + (nextZ - 16.0) * obCos;
+
+    if (
+      fromFoot.y >= -0.45 &&
+      curObU >= 17.55 &&
+      curObU <= 19.05 &&
+      curObV >= 4.22 &&
+      curObV <= 5.1
+    ) {
+      if (nextObV > 5.15) return true; // South brick wall clearance
+      if (nextObV < 4.24 && curObU >= 17.85 && curObU <= 18.85) return true; // North side stringer / balustrade post
+      return false; // Smooth, unobstructed climb up & down the mezzanine ladder!
+    }
+    if (
+      fromFoot.y >= 1.25 &&
+      curObU >= 18.68 &&
+      curObU <= 23.02 &&
+      nextObU < 18.88 &&
+      (nextObV < 4.24 || nextObV > 5.06)
+    ) {
+      return true; // Barn Mezzanine West balustrade guardrail (open only at the ladder mouth v = 4.24..5.06m)
+    }
+    if (
+      fromFoot.y >= 1.35 &&
+      curObU >= 22.15 &&
+      curObU <= 23.55 &&
+      curObV >= 2.38 &&
+      curObV <= 3.32
+    ) {
+      if (nextObV < 2.4 || nextObV > 3.3) return true; // Doorway jamb clearance
+      return false; // Smooth, unobstructed walk up & down the 3-step Stable transition stair!
     }
 
     // 2b. Ground-floor West Canted Bay Windows (Living Room at Z = -0.26m, Sitting Room at Z = 5.92m)

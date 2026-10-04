@@ -268,6 +268,18 @@ export const SittingAndCourtyardZoneModule: SceneZoneModule = {
   buildingId: 'mainHouse',
   floorId: 'ground',
   zoneIds: ['sitting', 'courtyard'],
+  interiorBounds: [
+    // Outbuilding Bay 1: GYM (`u = 0.28..5.77m`)
+    { minX: -22.25, maxX: -16.25, minY: -0.65, maxY: 3.4, minZ: 15.65, maxZ: 21.4 },
+    // Outbuilding Bay 2: Garage (`u = 5.97..12.07m`)
+    { minX: -16.55, maxX: -9.95, minY: -0.55, maxY: 3.4, minZ: 15.1, maxZ: 20.9 },
+    // Outbuilding Bay 3: Store (`u = 12.31..14.96m`)
+    { minX: -10.2, maxX: -7.1, minY: -0.45, maxY: 4.5, minZ: 14.85, maxZ: 20.4 },
+    // Outbuilding Bay 4: Barn & Mezzanine (`u = 15.20..23.02m`)
+    { minX: -7.3, maxX: 0.95, minY: -0.75, maxY: 4.5, minZ: 14.15, maxZ: 20.15 },
+    // Outbuilding Bay 5: 2-Storey Stable (`u = 23.22..28.77m`)
+    { minX: 0.65, maxX: 6.7, minY: -0.5, maxY: 4.95, minZ: 13.65, maxZ: 19.45 },
+  ],
   build(ctx: SceneBuilderContext): ZoneIndicatorMaterials {
     const eastWingCtx = createScopedBuilderContext(ctx, {
       name: 'mainEastWing.sittingAndCourtyard',

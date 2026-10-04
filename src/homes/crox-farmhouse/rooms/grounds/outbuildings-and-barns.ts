@@ -1402,7 +1402,7 @@ export function buildOutbuildingsAndBarns(
 
   // Painted interior gable lining inside the GYM West Gable wall (`u = 0.25..0.285m`) up to the vaulted ceiling
   addInteriorPlasterGableWall(
-    groundGroup,
+    roofGroup,
     wallT - 0.03,
     wallT + 0.005,
     wallT,
@@ -1476,7 +1476,7 @@ export function buildOutbuildingsAndBarns(
     warmRoomPlasterMat
   );
   addInteriorPlasterGableWall(
-    groundGroup,
+    roofGroup,
     uGymEnd,
     uGymEnd + partT,
     wallT + 0.002,
@@ -1489,7 +1489,7 @@ export function buildOutbuildingsAndBarns(
 
   // Vaulted eave frieze strips inside GYM (`u = 0.28..5.77m`) and Garage (`u = 5.97..12.07m`)
   addVaultedRoomEaveFriezeStrips(
-    groundGroup,
+    roofGroup,
     wallT,
     uGymEnd,
     wallT,
@@ -1498,7 +1498,7 @@ export function buildOutbuildingsAndBarns(
     westRangeCeilEaveY
   );
   addVaultedRoomEaveFriezeStrips(
-    groundGroup,
+    roofGroup,
     uGymEnd + partT,
     uGarageEnd,
     wallT,
@@ -1609,6 +1609,7 @@ export function buildOutbuildingsAndBarns(
       [uGymEnd + partT, uGarageEnd],
     ],
     [
+      { id: 'gymNorth', uCenter: 1.85, vCenter: 1.08, widthU: 0.84, lengthS: 1.18 },
       { id: 'garageWest', uCenter: 6.661, vCenter: 1.08, widthU: 0.84, lengthS: 1.18 },
       { id: 'garageEast', uCenter: 10.507, vCenter: 1.08, widthU: 0.84, lengthS: 1.18 },
     ]
@@ -1646,8 +1647,6 @@ export function buildOutbuildingsAndBarns(
   const stableRidgeH = 5.14; // Level 3 (2-Storey Stable) ridge height above stableDatumY -> world Y = 4.92m
 
   const baseYBarnStart = getBaseYAtU(uBarnStart); // -0.39m
-  const baseYBarnEnd = getBaseYAtU(uBarnEnd); // -0.26m
-  const baseYBarnMid = (baseYBarnStart + baseYBarnEnd) * 0.5;
 
   const barnDatumY = -0.32;
   const stableDatumY = -0.22;
@@ -1790,7 +1789,7 @@ export function buildOutbuildingsAndBarns(
     warmRoomPlasterMat
   );
   addInteriorPlasterGableWall(
-    groundGroup,
+    roofGroup,
     uStoreStart,
     uStoreStart + 0.24,
     vEastRangeNorth + wallT + 0.002,
@@ -1802,7 +1801,7 @@ export function buildOutbuildingsAndBarns(
   );
   // Store side (`+x` at `u = 12.28..12.315m`) painted plasterboard lining extending up to the Store vaulted ceiling (`barnCeilRidgeY`)
   addInteriorPlasterGableWall(
-    firstFloorGroup,
+    roofGroup,
     uStoreStart + 0.21,
     uStoreStart + 0.245,
     vEastRangeNorth + wallT + 0.002,
@@ -1855,7 +1854,7 @@ export function buildOutbuildingsAndBarns(
     warmRoomPlasterMat
   );
   addInteriorPlasterGableWall(
-    firstFloorGroup,
+    roofGroup,
     uBarnStart,
     uBarnStart + 0.24,
     vEastRangeNorth + wallT + 0.002,
@@ -1936,8 +1935,8 @@ export function buildOutbuildingsAndBarns(
     warmRoomPlasterMat
   );
 
-  // South Garden Wall of Store & Barn (Ground Floor: u = 12.07m..23.22m, extending down to `barnLowerFloorY - 0.14 = -0.84m` for the sunken Barn floor!)
-  addOutbuildingBrickWallWithWindows(
+  // South Garden Wall of Store & Barn (Ground Floor: u = 12.07m..23.22m, solid brick with zero windows — Issue #6!)
+  addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
     uBarnEnd,
@@ -1945,11 +1944,7 @@ export function buildOutbuildingsAndBarns(
     eastRangeGroundTopY,
     vEastRangeSouth - wallT,
     vEastRangeSouth,
-    ['-z'],
-    [
-      { uCenter: 18.05, yCenter: baseYBarnMid + 1.05, width: 0.92, height: 0.88 },
-      { uCenter: 21.05, yCenter: baseYBarnMid + 1.05, width: 0.92, height: 0.88 },
-    ]
+    ['-z']
   );
 
   // South Garden Wall of 2-Storey Stable (Ground Floor: u = 23.22m..28.77m, rising to `stableGroundTopY = 1.96m` — Issue #11!)
@@ -2030,8 +2025,8 @@ export function buildOutbuildingsAndBarns(
     'Barn Courtyard Door'
   );
 
-  // Continuous flush red-brick wall from Barn door (u = 16.85m) to Barn East end (u = 23.22m), extending down to `barnLowerFloorY - 0.14`
-  addOutbuildingBrickWall(
+  // North Courtyard Wall from Barn door (u = 16.85m) to Barn East end (u = 23.22m), with cottage casement window at u = 20.06m (Issue #7!)
+  addOutbuildingBrickWallWithWindows(
     groundGroup,
     16.85,
     uBarnEnd,
@@ -2039,7 +2034,8 @@ export function buildOutbuildingsAndBarns(
     eastRangeGroundTopY,
     vEastRangeNorth,
     vEastRangeNorth + wallT,
-    ['+z']
+    ['+z'],
+    [{ uCenter: 20.06, yCenter: 0.48, width: 0.92, height: 0.88 }]
   );
 
   // North Courtyard Wall of 2-Storey Stable (Ground Floor: u = 23.22m..28.77m, rising to `stableGroundTopY = 1.96m` — Issue #11!)
@@ -2163,15 +2159,15 @@ export function buildOutbuildingsAndBarns(
   );
   groundGroup.add(step2Downpipe);
 
-  // Wall-clinging Climbing Ivy on the North Courtyard Brick Wall of the Store & Barn (u = 14.5m..17.6m)
+  // Wall-clinging Climbing Ivy on the North Courtyard Brick Pier between Store Door (`13.75m`) and Barn Door (`15.85m`) — Issue #10!
   addWallClimbingIvyCluster(
     groundGroup,
-    16.15,
+    14.8,
     baseYBarnStart + 0.35,
     vEastRangeNorth - 0.02,
     'z',
     -1,
-    3.2,
+    1.5,
     barnUpperEaveH - 0.45,
     409
   );
@@ -2199,7 +2195,7 @@ export function buildOutbuildingsAndBarns(
 
   const trussesGroup = new THREE.Group();
   trussesGroup.name = 'outbuildings.roofTrusses';
-  groundGroup.add(trussesGroup);
+  roofGroup.add(trussesGroup);
 
   const pilasterW = 0.3;
   const pilasterD = 0.16;
@@ -2551,27 +2547,33 @@ export function buildOutbuildingsAndBarns(
   // =========================================================================
   // 2C. BARN MEZZANINE LOWERED DECK, UNDER-CEILING SOFFIT & STABLE GROUND-FLOOR CEILING SOFFIT
   // =========================================================================
+  // Issue #9 ("Weird dithering on this end" at `[-3.55, 1.511, 17.993]`, `outbuildings.firstFloor.westRoomSlab`):
+  // Start `mezzanineCeilingSoffit` behind `mezzanineFrontBressummer` (`u = uMezzanineFront + 0.182 .. uBarnEnd - partT - 0.004`,
+  // `y = 1.395..1.428m`) and position `mezzanineFrontBressummer` cleanly underneath `westUpperRoomSlab` (`y = 1.29..1.428m`)
+  // between the North & South Barn pilasters (`widthV = eastRangeInternalV - pilasterD * 2 - 0.008 = 4.822m`) with zero coplanar overlap!
+  const mezzanineSoffitLenU = 4.154;
   const mezzanineCeilingSoffit = new THREE.Mesh(
-    new THREE.BoxGeometry(4.34, 0.035, eastRangeInternalV),
+    new THREE.BoxGeometry(mezzanineSoffitLenU, 0.033, eastRangeInternalV - 0.008),
     warmRoomPlasterMat
   );
   mezzanineCeilingSoffit.name = 'outbuildings.barn.mezzanineCeilingSoffit';
   mezzanineCeilingSoffit.position.set(
-    uMezzanineFront + 4.34 * 0.5,
-    mezzanineUndersideY + 0.018,
+    uMezzanineFront + 0.182 + mezzanineSoffitLenU * 0.5,
+    mezzanineUndersideY + 0.0115,
     vMidCenter()
   );
   mezzanineCeilingSoffit.receiveShadow = true;
   groundGroup.add(mezzanineCeilingSoffit);
 
+  const bressummerSpanV = eastRangeInternalV - pilasterD * 2 - 0.008; // 4.822m between North & South pilasters
   const mezzanineFrontBressummer = new THREE.Mesh(
-    new THREE.BoxGeometry(0.18, 0.18, eastRangeInternalV),
+    new THREE.BoxGeometry(0.18, 0.138, bressummerSpanV),
     trussOakMat
   );
   mezzanineFrontBressummer.name = 'outbuildings.barn.mezzanineFrontBeam';
   mezzanineFrontBressummer.position.set(
     uMezzanineFront + 0.09,
-    mezzanineFloorY - 0.09,
+    1.359,
     vMidCenter()
   );
   mezzanineFrontBressummer.castShadow = true;
@@ -2594,19 +2596,33 @@ export function buildOutbuildingsAndBarns(
   // =========================================================================
   // 3. OUTBUILDING FIRST FLOOR OVER BARN MEZZANINE (`1.54m`) & 2-STOREY STABLE (`2.08m` — Issue #11!)
   // =========================================================================
-  // West First-Floor Room (Barn Mezzanine) Timber Slab (`4.34m x 5.15m`, u = 18.68m..23.02m, at `mezzanineFloorY = 1.54m`)
+  // West First-Floor Room (Barn Mezzanine) Timber Slab (`4.332m x 5.142m`, u = 18.684m..23.016m, y = 1.43m..1.54m — Issue #9!)
   const westUpperRoomSlab = new THREE.Mesh(
-    new THREE.BoxGeometry(4.34, 0.11, eastRangeInternalV),
+    new THREE.BoxGeometry(4.332, 0.11, eastRangeInternalV - 0.008),
     oakFloorMat
   );
   westUpperRoomSlab.name = 'outbuildings.firstFloor.westRoomSlab';
   westUpperRoomSlab.position.set(
-    uMezzanineFront + 4.34 * 0.5,
+    uMezzanineFront + 2.17,
     mezzanineFloorY - 0.055,
     vEastRangeNorth + wallT + eastRangeInternalV * 0.5
   );
   westUpperRoomSlab.receiveShadow = true;
   firstFloorGroup.add(westUpperRoomSlab);
+
+  // Solid oak front fascia trim strip along the Barn Mezzanine leading edge between the pilasters (`u = uMezzanineFront - 0.005`)
+  const mezzanineFrontFascia = new THREE.Mesh(
+    new THREE.BoxGeometry(0.018, 0.11, eastRangeInternalV - 0.328),
+    oakFloorMat
+  );
+  mezzanineFrontFascia.name = 'outbuildings.firstFloor.mezzanineFrontFascia';
+  mezzanineFrontFascia.position.set(
+    uMezzanineFront - 0.005,
+    mezzanineFloorY - 0.055,
+    vMidCenter()
+  );
+  mezzanineFrontFascia.castShadow = true;
+  firstFloorGroup.add(mezzanineFrontFascia);
 
   // Open Mezzanine Timber Guardrail / Balustrade along the front edge of the Barn Mezzanine (`u = 18.74m, v = 0.28..4.26m`, leaving opening at `v = 4.26..5.06m` for the ladder!)
   const handrailLenV = 3.98;
@@ -2684,7 +2700,7 @@ export function buildOutbuildingsAndBarns(
 
   // Vaulted eave frieze strips inside Store (`u = 12.31..14.96m`) and Barn (`u = 15.20..23.02m`)
   addVaultedRoomEaveFriezeStrips(
-    firstFloorGroup,
+    roofGroup,
     uStoreStart + 0.24,
     uBarnStart,
     vInnerNorth,
@@ -2693,7 +2709,7 @@ export function buildOutbuildingsAndBarns(
     barnCeilEaveY
   );
   addVaultedRoomEaveFriezeStrips(
-    firstFloorGroup,
+    roofGroup,
     uBarnStart + 0.24,
     uBarnEnd - partT,
     vInnerNorth,
@@ -2729,7 +2745,7 @@ export function buildOutbuildingsAndBarns(
 
   // Vaulted eave frieze strips inside the 2-Storey Stable Upper Room (`u = 23.22..28.77m`)
   addVaultedRoomEaveFriezeStrips(
-    firstFloorGroup,
+    roofGroup,
     uStableStart,
     uStableEnd - wallT,
     vInnerNorth,
@@ -2750,7 +2766,7 @@ export function buildOutbuildingsAndBarns(
     ['-x']
   );
   addInteriorPlasterGableWall(
-    firstFloorGroup,
+    roofGroup,
     uStableEnd - wallT - 0.005,
     uStableEnd - wallT + 0.03,
     vInnerNorth,
@@ -2786,7 +2802,7 @@ export function buildOutbuildingsAndBarns(
     warmRoomPlasterMat
   );
   addInteriorPlasterGableWall(
-    firstFloorGroup,
+    roofGroup,
     uBarnEnd - partT,
     uBarnEnd,
     vInnerNorth + 0.002,
@@ -2798,7 +2814,7 @@ export function buildOutbuildingsAndBarns(
   );
   // Painted interior gable lining on the Stable side (`+x` at `u = 23.22..23.255m`) up to the Stable vaulted ceiling (`stableCeilRidgeY`)
   addInteriorPlasterGableWall(
-    firstFloorGroup,
+    roofGroup,
     uStableStart + wallT - 0.03,
     uStableStart + wallT + 0.005,
     vInnerNorth + 0.002,
@@ -2833,6 +2849,7 @@ export function buildOutbuildingsAndBarns(
   }
 
   // STEP #1 Roof -> Level 2 Pitched Roof + Insulated Plasterboard Vaulted Ceiling over Store & Barn (`u = 12.07m..23.22m`)
+  // + 3 North-Slope Velux Skylights (`storeNorth`, `barnWestNorth`, `barnEastNorth` — Issue #11!)
   const garageEaveRelToBarnDatum = northWestWallTopY - barnDatumY; // 2.26m
   addPitchedOutbuildingRoofSection(
     uStoreStart,
@@ -2852,10 +2869,16 @@ export function buildOutbuildingsAndBarns(
     [
       [uStoreStart + 0.24, uBarnStart],
       [uBarnStart + 0.24, uBarnEnd - partT],
+    ],
+    [
+      { id: 'storeNorth', uCenter: 13.65, vCenter: 1.12, widthU: 0.84, lengthS: 1.18 },
+      { id: 'barnWestNorth', uCenter: 16.95, vCenter: 1.12, widthU: 0.84, lengthS: 1.18 },
+      { id: 'barnEastNorth', uCenter: 20.85, vCenter: 1.12, widthU: 0.84, lengthS: 1.18 },
     ]
   );
 
   // STEP #2 Roof -> Level 3 Pitched Roof + Insulated Plasterboard Vaulted Ceiling over the 2-Storey Stable (`u = 23.22m..29.05m`)
+  // + 2 North-Slope Velux Skylights (`stableWestNorth`, `stableEastNorth` — Issue #13!)
   const barnEaveRelToStableDatum = barnUpperTopY - stableDatumY; // 3.14m
   addPitchedOutbuildingRoofSection(
     uStableStart,
@@ -2872,7 +2895,11 @@ export function buildOutbuildingsAndBarns(
     stableUpperEaveH,
     0.06,
     0.14,
-    [[uStableStart + wallT, uStableEnd - wallT]]
+    [[uStableStart + wallT, uStableEnd - wallT]],
+    [
+      { id: 'stableWestNorth', uCenter: 24.85, vCenter: 1.12, widthU: 0.84, lengthS: 1.18 },
+      { id: 'stableEastNorth', uCenter: 27.15, vCenter: 1.12, widthU: 0.84, lengthS: 1.18 },
+    ]
   );
 }
 
