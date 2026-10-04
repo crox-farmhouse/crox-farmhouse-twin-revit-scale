@@ -17,7 +17,7 @@ import type { defineTier2Levels } from '../../structure/tier2-levels.ts';
  */
 export function buildStudy(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'antiqueOakSkirtingMat' | 'tagCutawayWall' | 'wallH' | 'warmRoomPlasterMat'> &
+  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'antiqueOakSkirtingMat' | 'exteriorBrickMat' | 'tagCutawayWall' | 'wallH' | 'warmRoomPlasterMat'> &
     Pick<ReturnType<typeof createGroundFloorShellKit>, 'addBrickWallAlongXWithWindow' | 'addBrickWallAlongZWithCourtyardDoor' | 'addExteriorBrickWall' | 'addInteriorWall'> &
     Pick<ReturnType<typeof defineTier2Levels>, 'tier2FloorY' | 'tier2WallH' | 'tier2WallMidY'>
 ): void {
@@ -28,6 +28,7 @@ export function buildStudy(
     addExteriorBrickWall,
     addInteriorWall,
     antiqueOakSkirtingMat,
+    exteriorBrickMat,
     tagCutawayWall,
     tier2FloorY,
     tier2WallH,
@@ -159,17 +160,17 @@ export function buildStudy(
     [1 / 2.2, 1 / 1.2]
   );
 
-  // West Exterior Brick Wall of Study / Office (0.28m thick, X = -22.19m..-22.47m, Z = +8.39m..+11.77m)
-  // Solid red brickwork with climbing ivy (NO window on the outside street facade — media_1790510441132.jpg!)
-  addExteriorBrickWall(-22.47, -22.19, 8.39, 11.77, 0, wallH, 'east', {
+  // West Exterior Brick Wall of Study / Office (0.28m thick, X = -22.19m..-22.47m, Z = +8.39m..+11.49m)
+  // Stops at Z = +11.49m so the South Gable Wall (Z = +11.49m..+11.77m) owns the SW corner with zero coplanar overlap/dithering (Issue #4)!
+  addExteriorBrickWall(-22.47, -22.19, 8.39, 11.49, 0, wallH, 'east', {
     skipSkirting: true,
   });
 
-  // South Exterior Brick Gable Wall of Office & Plant Room (0.28m thick, Z = +11.49m..+11.77m, X = -22.47m..-17.11m)
-  // With small 2-pane cottage window at X = -21.05m — just on your left as you walk East through the courtyard gates!
+  // South Exterior Brick Gable Wall of Office & Plant Room (0.28m thick, Z = +11.49m..+11.77m, X = -22.47m..-17.377m)
+  // Stops at X = -17.377m where the rounded bullnose SE exterior brick corner begins (Issue #5)!
   addBrickWallAlongXWithWindow(
     -22.47,
-    -17.11,
+    -17.377,
     11.49,
     11.77,
     -21.05,
@@ -181,18 +182,79 @@ export function buildStudy(
     { skipSkirting: true }
   );
 
-  // East Courtyard Exterior Brick Wall of Plant Room (0.28m thick, X = -17.11m..-17.39m, Z = +8.15m..+11.77m)
-  // Door moved slightly left (North, -Z when looking East from inside) to Z = +9.22m (Issue #15)
+  // East Courtyard Exterior Brick Wall of Plant Room (0.28m thick, Z = +8.15m..+11.49m)
+  // Stops at Z = +11.49m (`X = -17.377m..-17.097m`) where it joins the rounded bullnose SE exterior brick corner with zero overlap (Issue #5)!
   addBrickWallAlongZWithCourtyardDoor(
     -17.39,
     -17.11,
     8.15,
-    11.77,
+    11.49,
     9.22,
     0.94,
     'west',
     Math.PI * 0.48
   );
+
+  // Issue #5: Rounded Bullnose South-East Exterior Brick Corner (`r = 0.28m`, centered at `X = -17.377m, Z = +11.49m`, `Y = -0.64m..2.06m`)
+  // Joins the South Gable Wall (`Z = 11.49m..11.77m`) and the East Courtyard Wall (`X = -17.377m..-17.097m at Z = 11.49m`) with a smooth curved brick corner!
+  {
+    const cornerPivotX = -17.377;
+    const cornerPivotZ = 11.49;
+    const cornerR = 0.28;
+    const cornerBotY = -0.64;
+    const cornerH = wallH - cornerBotY;
+    const seCornerShape = new THREE.Shape();
+    seCornerShape.moveTo(0, 0);
+    seCornerShape.lineTo(0, -cornerR);
+    seCornerShape.absarc(0, 0, cornerR, -Math.PI / 2, 0, false);
+    seCornerShape.lineTo(0, 0);
+    seCornerShape.closePath();
+
+    const seCornerGeo = new THREE.ExtrudeGeometry(seCornerShape, {
+      depth: cornerH,
+      bevelEnabled: false,
+      curveSegments: 24,
+    });
+    seCornerGeo.rotateX(-Math.PI / 2);
+    seCornerGeo.translate(cornerPivotX, cornerBotY, cornerPivotZ);
+
+    const pos = seCornerGeo.attributes.position;
+    const norm = seCornerGeo.attributes.normal;
+    const uv = seCornerGeo.attributes.uv;
+    if (pos && norm && uv) {
+      for (let i = 0; i < pos.count; i++) {
+        const wx = pos.getX(i);
+        const wy = pos.getY(i);
+        const wz = pos.getZ(i);
+        const ny = Math.abs(norm.getY(i));
+        if (ny > 0.7) {
+          uv.setXY(i, wx / 1.35, wz / 1.2);
+        } else {
+          const theta = Math.atan2(
+            Math.max(0, wx - cornerPivotX),
+            Math.max(0, wz - cornerPivotZ)
+          );
+          uv.setXY(i, (cornerPivotX + theta * cornerR) / 1.35, wy / 1.2);
+        }
+      }
+      uv.needsUpdate = true;
+    }
+
+    const seCornerDesc = {
+      axis: 'z' as const,
+      coord: 11.63,
+      minSpan: -22.47,
+      maxSpan: -17.097,
+      floor: 'ground' as const,
+    };
+    const seCornerMesh = new THREE.Mesh(seCornerGeo, exteriorBrickMat);
+    seCornerMesh.name = 'study.southEastRoundedBrickCorner';
+    seCornerMesh.userData.isArchitecturalShell = true;
+    seCornerMesh.castShadow = true;
+    seCornerMesh.receiveShadow = true;
+    tagCutawayWall(seCornerMesh, seCornerDesc);
+    scene.add(seCornerMesh);
+  }
 
   // Interior Partition Wall between Study (3.20m wide) and Plant Room (1.45m wide)
   // (0.15m thick, X = -18.84m..-18.99m, Z = +8.39m..+11.49m) with Open Cased Doorway at Z = +10.68m (Z = +10.23m..+11.13m)

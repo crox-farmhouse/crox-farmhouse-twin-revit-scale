@@ -3,7 +3,7 @@ import { addCasedArchitravePortal, buildMitredWallSkirtingGeometry } from '../..
 import { buildWindowRomanBlind } from '../../../../objects/decor/roman-blind.ts';
 import { buildFlutedBrassPictureLight } from '../../../../objects/fixtures/fluted-brass-picture-light.ts';
 import { buildBootRoomHeatingManifold } from '../../../../objects/fixtures/hydronic-manifold.ts';
-import { buildDiningRoomWestWallSideboard, buildWalkInCupboardRoadBikes } from '../../../../objects/furniture/dining-sideboard-and-road-bikes.ts';
+import { buildDiningRoomWestWallSideboard } from '../../../../objects/furniture/dining-sideboard-and-road-bikes.ts';
 import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
@@ -3338,9 +3338,6 @@ export function buildDiningRoom(
 
   // Warm accent glow pool for the West wall picture light (`diningPictureLight` circuit; Dining Room already has 2 PointLights)
   ctx.addGlowPool('diningPictureLight', -9.2, lowerFloorY + 0.006, 0.28, 0.95, 0.22);
-
-  // Issue #16: 2 High-End Carbon Road Bikes Hanging Vertically on the East Wall of the Walk-In Cupboard
-  buildWalkInCupboardRoadBikes(scene);
 
   // 45°-mitred ogee/torus Solid Oak Cased Architrave around the Open Walk-Through Opening (Z = +1.35m..+2.25m)
   addCasedArchitravePortal(scene, {

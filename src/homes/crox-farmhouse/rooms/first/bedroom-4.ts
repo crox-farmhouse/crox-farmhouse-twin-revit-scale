@@ -23,7 +23,6 @@ export function buildBedroom4(
     antiqueOakSkirtingMat,
     applyWorldSpaceBrickUVs,
     exteriorBrickMat,
-    floorBaseY,
     floorTopY,
     oakFloorMat,
     tagUpperCutawayWall,
@@ -40,13 +39,13 @@ export function buildBedroom4(
   // =========================================================================
   addFirstFloorSlab(-22.33, -17.15, 8.27, 11.63, oakFloorMat);
 
-  // West Front Exterior Brick Wall of Bedroom 4 (X = -22.47m..-22.19m, Z = +8.39m..+11.77m)
-  // With 3-pane Georgian casement window centered at Z = +9.94m (rightmost upper window on West front facade in Photo 2!)
+  // West Front Exterior Brick Wall of Bedroom 4 (X = -22.47m..-22.19m, Z = +8.39m..+11.49m, Y = 2.06m..4.16m)
+  // Stops at Z = +11.49m so the South Gable Wall (Z = +11.49m..+11.77m) owns the SW corner with zero coplanar overlap/dithering (Issue #4)!
   addUpperBrickWallAlongZWithWindow(
     -22.47,
     -22.19,
     8.39,
-    11.77,
+    11.49,
     9.94,
     1.35,
     2.92,
@@ -56,9 +55,9 @@ export function buildBedroom4(
     { skipSkirting: true }
   );
 
-  // South Exterior Brick Gable Wall of Bedroom 4 (Z = +11.49m..+11.77m, X = -22.47m..-17.11m, Y = 1.88m..4.16m)
-  // `skipCap: true` so the lower brick wall merges seamlessly into `bedroom4.southWallBrickGable` (`Y = 4.16m..5.02m`)!
-  addUpperExteriorBrickWall(-22.47, -17.11, 11.49, 11.77, floorBaseY - 0.12, upperWallTopY, 'north', {
+  // South Exterior Brick Gable Wall of Bedroom 4 (Z = +11.49m..+11.77m, X = -22.47m..-17.377m, Y = 2.06m..4.16m)
+  // Starts at Y = 2.06m (exact top of Ground Floor Study South wall) and stops at X = -17.377m where the rounded bullnose SE corner begins (Issues #4 & #5)!
+  addUpperExteriorBrickWall(-22.47, -17.377, 11.49, 11.77, 2.06, upperWallTopY, 'north', {
     skipSkirting: true,
     skipCap: true,
   });
@@ -72,7 +71,7 @@ export function buildBedroom4(
       axis: 'z' as const,
       coord: 11.63,
       minSpan: -22.47,
-      maxSpan: -17.11,
+      maxSpan: -17.097,
       floor: 'first' as const,
     };
 
@@ -98,12 +97,12 @@ export function buildBedroom4(
     tagUpperCutawayWall(southUpperGable, southGableDescriptor);
     scene.add(southUpperGable);
 
-    // 2. Full-thickness exterior brick gable wall (`Y = 4.16m..5.02m`, `Z = 11.49m..11.77m`)
+    // 2. Full-thickness exterior brick gable wall (`Y = 4.16m..5.02m`, `Z = 11.49m..11.77m`, spanning full width `-22.47m..-17.11m` at eaves)
     const southBrickGableShape = new THREE.Shape();
-    southBrickGableShape.moveTo(-22.19, upperWallTopY);
-    southBrickGableShape.lineTo(-17.22, upperWallTopY);
+    southBrickGableShape.moveTo(-22.47, upperWallTopY);
+    southBrickGableShape.lineTo(-17.11, upperWallTopY);
     southBrickGableShape.lineTo(collarEastX, collarCeilingY);
-    southBrickGableShape.lineTo(-20.85, collarCeilingY);
+    southBrickGableShape.lineTo(-20.99, collarCeilingY);
     southBrickGableShape.closePath();
     const southBrickGableGeo = new THREE.ExtrudeGeometry(southBrickGableShape, {
       depth: 0.28,
@@ -132,10 +131,71 @@ export function buildBedroom4(
     topY: collarCeilingY,
   });
 
-  // East Courtyard Exterior Brick Wall of Bedroom 4 (X = -17.39m..-17.11m, Z = +8.15m..+11.77m, Y = 2.00m..4.16m)
-  addUpperExteriorBrickWall(-17.39, -17.11, 8.15, 11.77, floorBaseY, upperWallTopY, 'west', {
+  // East Courtyard Exterior Brick Wall of Bedroom 4 (X = -17.39m..-17.11m, Z = +8.15m..+11.49m, Y = 2.06m..4.16m)
+  // Stops at Z = +11.49m (`X = -17.377m..-17.097m`) where it joins the rounded bullnose SE exterior brick corner with zero overlap (Issue #5)!
+  addUpperExteriorBrickWall(-17.39, -17.11, 8.15, 11.49, 2.06, upperWallTopY, 'west', {
     skipSkirting: true,
   });
+
+  // Issue #5: Rounded Bullnose South-East Exterior Brick Corner on First Floor (`r = 0.28m`, centered at `X = -17.377m, Z = +11.49m`, `Y = 2.06m..4.16m`)
+  {
+    const cornerPivotX = -17.377;
+    const cornerPivotZ = 11.49;
+    const cornerR = 0.28;
+    const cornerBotY = 2.06;
+    const cornerH = upperWallTopY - cornerBotY;
+    const seCornerShape = new THREE.Shape();
+    seCornerShape.moveTo(0, 0);
+    seCornerShape.lineTo(0, -cornerR);
+    seCornerShape.absarc(0, 0, cornerR, -Math.PI / 2, 0, false);
+    seCornerShape.lineTo(0, 0);
+    seCornerShape.closePath();
+
+    const seCornerGeo = new THREE.ExtrudeGeometry(seCornerShape, {
+      depth: cornerH,
+      bevelEnabled: false,
+      curveSegments: 24,
+    });
+    seCornerGeo.rotateX(-Math.PI / 2);
+    seCornerGeo.translate(cornerPivotX, cornerBotY, cornerPivotZ);
+
+    const pos = seCornerGeo.attributes.position;
+    const norm = seCornerGeo.attributes.normal;
+    const uv = seCornerGeo.attributes.uv;
+    if (pos && norm && uv) {
+      for (let i = 0; i < pos.count; i++) {
+        const wx = pos.getX(i);
+        const wy = pos.getY(i);
+        const wz = pos.getZ(i);
+        const ny = Math.abs(norm.getY(i));
+        if (ny > 0.7) {
+          uv.setXY(i, wx / 1.35, wz / 1.2);
+        } else {
+          const theta = Math.atan2(
+            Math.max(0, wx - cornerPivotX),
+            Math.max(0, wz - cornerPivotZ)
+          );
+          uv.setXY(i, (cornerPivotX + theta * cornerR) / 1.35, wy / 1.2);
+        }
+      }
+      uv.needsUpdate = true;
+    }
+
+    const seCornerDesc = {
+      axis: 'z' as const,
+      coord: 11.63,
+      minSpan: -22.47,
+      maxSpan: -17.097,
+      floor: 'first' as const,
+    };
+    const seCornerMesh = new THREE.Mesh(seCornerGeo, exteriorBrickMat);
+    seCornerMesh.name = 'bedroom4.southEastRoundedBrickCorner';
+    seCornerMesh.userData.isArchitecturalShell = true;
+    seCornerMesh.castShadow = true;
+    seCornerMesh.receiveShadow = true;
+    tagUpperCutawayWall(seCornerMesh, seCornerDesc);
+    scene.add(seCornerMesh);
+  }
 
   // Issue #7 & #8: Full-Height Vaulted 3-Door Shaker Built-In Wardrobe along the South Gable Wall East of the Chimney Breast
   // (`X = -19.25m..-17.34m, Z = +10.85m..+11.476m`), extending all the way into the sheared East Courtyard Wall (`X = -17.348m..-17.376m`) so zero gap exists at the wardrobe edge!

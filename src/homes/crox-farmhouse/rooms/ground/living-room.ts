@@ -148,6 +148,7 @@ export function buildLivingRoom(
       wallMaterial: exteriorBrickMat,
       frontFaceMaterial: farrowAndBallPantalonMat,
       capMaterial: wallCapMat,
+      skipCap: true,
       skirtingMaterial: antiqueOakSkirtingMat,
       addFrontSkirting: true,
     });

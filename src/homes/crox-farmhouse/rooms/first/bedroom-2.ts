@@ -91,10 +91,10 @@ export function buildBedroom2(
     };
 
     const northBrickGableShape = new THREE.Shape();
-    northBrickGableShape.moveTo(0.28, upperWallTopY);
-    northBrickGableShape.lineTo(5.63, upperWallTopY);
-    northBrickGableShape.lineTo(4.35, collarCeilingY);
-    northBrickGableShape.lineTo(1.53, collarCeilingY);
+    northBrickGableShape.moveTo(0, upperWallTopY);
+    northBrickGableShape.lineTo(5.36, upperWallTopY);
+    northBrickGableShape.lineTo(3.91, collarCeilingY);
+    northBrickGableShape.lineTo(1.42, collarCeilingY);
     northBrickGableShape.closePath();
     const northBrickGableGeo = new THREE.ExtrudeGeometry(northBrickGableShape, {
       depth: 0.28,
@@ -106,8 +106,8 @@ export function buildBedroom2(
       for (let i = 0; i < northBrickUv.count; i++) {
         northBrickUv.setXY(
           i,
-          northBrickUv.getX(i) * 0.45,
-          northBrickUv.getY(i) * 0.45
+          northBrickUv.getX(i) / 1.35,
+          northBrickUv.getY(i) / 1.2
         );
       }
       northBrickUv.needsUpdate = true;
@@ -126,7 +126,7 @@ export function buildBedroom2(
     northPlasterShape.moveTo(0.28, floorTopY);
     northPlasterShape.lineTo(5.63, floorTopY);
     northPlasterShape.lineTo(5.63, upperWallTopY);
-    northPlasterShape.lineTo(4.35, collarCeilingY);
+    northPlasterShape.lineTo(3.91, collarCeilingY);
     northPlasterShape.lineTo(1.53, collarCeilingY);
     northPlasterShape.lineTo(0.28, upperWallTopY);
     northPlasterShape.closePath();
@@ -151,7 +151,7 @@ export function buildBedroom2(
   // (`[-16.876, -2.469] -> [-17.930, +2.616]`, depth = 0.56m West `+Z_local` into Bedroom 2)
   // Issues #1, #4, #6 & #7 ("Smaller doors and more of them (6 doors)", "top of the wardrope doors look clipped off by the ceiling"):
   // Because `bedroom2.vaultedCeiling.eastSkeiling` is parallel to the East cross-wall (`Y = 4.16m` at cross-wall pitching up to `Y = 5.02m`),
-  // the ceiling height along the front face (`frontLocalZ = 0.68m`) is a uniform `Y = 4.600m` (`localY = 2.520m`), allowing all 6 Shaker
+  // the ceiling height along the front face (`frontLocalZ = 0.68m`) is a uniform `Y = 4.506m` (`localY = 2.426m`), allowing all 6 Shaker
   // wardrobe doors, vertical dividing stiles, and raked top cornice to meet the vaulted ceiling cleanly without clipping!
   // =========================================================================
   {
@@ -174,7 +174,7 @@ export function buildBedroom2(
     const wardEavesH = upperWallTopY - floorTopY; // 2.08m at cross-wall (localZ = 0.12m)
     const wardDepth = 0.56;
     const frontLocalZ = 0.12 + wardDepth; // 0.68m from cross-wall centreline
-    const wardFrontTopH = 2.518; // Exact height of planar eastSkeiling at frontLocalZ = 0.68m (world Y = 4.598m — Issue #4!)
+    const wardFrontTopH = 2.426; // Exact height of planar eastSkeiling at frontLocalZ = 0.68m (world Y = 4.506m — Issue #1 & #4!)
     const uStart = -0.045; // Meets South interior plaster face of bed2NorthWallFrame with zero gap (Issue #1)
     const uEnd = 3.608;    // Lands at Z = 0.975m North face of cut-out hallway wall
     const baySpan = uEnd - uStart; // 3.653m

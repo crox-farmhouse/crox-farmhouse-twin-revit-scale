@@ -1391,49 +1391,117 @@ export function createImperialBrickTextures(): {
   const bCtx = bumpCanvas.getContext('2d');
 
   if (cCtx && bCtx) {
-    // 1. Warm lime-sand mortar bed in colorMap & recessed dark mortar joints in bumpMap
-    cCtx.fillStyle = '#cfc2aa';
+    // Deterministic hash in [0, 1) for repeatable organic randomness
+    const hash01 = (n: number): number => {
+      const s = Math.sin(n * 127.1 + 311.7) * 43758.5453123;
+      return s - Math.floor(s);
+    };
+
+    // 1. Weathered lime-sand & grit mortar bed in colorMap & recessed uneven mortar joints in bumpMap
+    cCtx.fillStyle = '#cabba0';
     cCtx.fillRect(0, 0, 512, 512);
 
-    bCtx.fillStyle = '#1c1c1c';
+    bCtx.fillStyle = '#181818';
     bCtx.fillRect(0, 0, 512, 512);
 
-    for (let y = 0; y < 512; y += 4) {
-      for (let x = 0; x < 512; x += 4) {
-        const d = ((x * 13 + y * 29) % 12) - 6;
-        cCtx.fillStyle = `rgb(${207 + d}, ${194 + d}, ${170 + d})`;
-        cCtx.fillRect(x, y, 4, 4);
+    for (let y = 0; y < 512; y += 3) {
+      for (let x = 0; x < 512; x += 3) {
+        // Periodic mod-512 coordinates so mortar grain is 100% seamless across tile boundaries
+        const mx = x % 512;
+        const my = y % 512;
+        const h1 = hash01(mx * 17 + my * 31);
+        const h2 = hash01(mx * 43 + my * 13 + 7);
+        const d = Math.round((h1 - 0.5) * 24);
+        const warmShift = Math.round((h2 - 0.5) * 10);
+        cCtx.fillStyle = `rgb(${202 + d + warmShift}, ${188 + d}, ${161 + d - warmShift})`;
+        cCtx.fillRect(x, y, 3, 3);
+
+        // Subtle coarse sand/lime aggregate grit in mortar bump map
+        const mb = Math.round(18 + h1 * 22);
+        bCtx.fillStyle = `rgb(${mb}, ${mb}, ${mb})`;
+        bCtx.fillRect(x, y, 3, 3);
       }
     }
 
-    // Handmade English Imperial Multi-Stock Brick palette (warm Leicestershire red, terracotta, russet, burnt sienna & weathered plum headers)
+    // Handmade English Imperial Multi-Stock Brick palette (~20% more rustic variation:
+    // sun-baked terracotta, weathered russet, smoky kiln-flashed sienna, earthy buff-red, and dark vitrified clinker headers)
     const stretcherPalette: ReadonlyArray<readonly [number, number, number]> = [
       [162, 72, 53],  // Classic warm imperial red
-      [174, 81, 58],  // Terracotta orange-red
-      [148, 63, 46],  // Deep kiln red
-      [182, 90, 63],  // Warm sandy orange-red
-      [154, 69, 50],  // Weathered farmhouse red
+      [176, 82, 57],  // Terracotta orange-red
+      [142, 59, 43],  // Deep kiln red
+      [186, 94, 64],  // Warm sandy orange-red
+      [152, 67, 49],  // Weathered farmhouse red
       [168, 76, 55],  // Rich clay red
-      [138, 58, 44],  // Dark russet red
-      [178, 85, 60],  // Brighter handmade clay
+      [131, 53, 40],  // Dark russet red
+      [181, 87, 60],  // Brighter handmade clay
+      [124, 54, 43],  // Over-fired smoky brown-red
+      [170, 88, 63],  // Weathered earthy ochre-red
+      [146, 68, 52],  // Muted dusty rose-umber
+      [190, 96, 66],  // Sun-bleached salmon-terracotta
     ];
     const headerPalette: ReadonlyArray<readonly [number, number, number]> = [
-      [126, 60, 48],  // Vitrified plum/clinker header
-      [144, 65, 49],  // Deep burnt header
+      [120, 56, 45],  // Vitrified plum/clinker header
+      [142, 63, 47],  // Deep burnt header
       [158, 72, 53],  // Classic red header
-      [118, 56, 46],  // Dark kiln-flashed header
+      [108, 49, 41],  // Dark kiln-flashed charcoal-plum header
+      [134, 64, 50],  // Weathered ash-glazed header
+      [172, 80, 56],  // Warm orange-red header
     ];
 
     // 16 courses across 512px -> each course is 32px tall (representing 83mm Imperial course height: 73mm brick + 10mm lime mortar)
-    // Flemish bond pattern per course: alternating Stretcher (82px) + Header (38px) + mortar (4px) = 128px repeating unit (4 units per 512px!)
+    // Flemish bond pattern per course: alternating Stretcher + Header + mortar = 128px repeating unit (4 units per 512px)
     const numCourses = 16;
     const courseH = 512 / numCourses; // 32px
-    const mortarH = 4.5;
-    const brickH = courseH - mortarH; // 27.5px
-    const unitW = 128; // 1 stretcher + 1 header + 2 vertical mortar perpends = 128px (exact divisor of 512px!)
+    const mortarH = 4.8;
+    const brickH = courseH - mortarH; // 27.2px
+    const unitW = 128;
     const stretcherW = 81;
     const headerW = 38;
     const mortarW = 4.5;
+
+    // Traces an irregular hand-moulded clay brick polygon with subtle wavy top/bottom arris & rounded corners
+    const traceRusticBrickPath = (
+      ctx: CanvasRenderingContext2D,
+      bx: number,
+      by: number,
+      bw: number,
+      bh: number,
+      seed: number,
+      inset = 0
+    ): void => {
+      const xL = bx + inset;
+      const xR = bx + bw - inset;
+      const yT = by + inset;
+      const yB = by + bh - inset;
+      const wSpan = xR - xL;
+      const hSpan = yB - yT;
+      const c = Math.max(1.2, 2.8 - inset * 0.5);
+
+      const tWave1 = (hash01(seed * 11 + 1) - 0.5) * 1.8;
+      const tWave2 = (hash01(seed * 11 + 2) - 0.5) * 1.8;
+      const bWave1 = (hash01(seed * 11 + 3) - 0.5) * 1.8;
+      const bWave2 = (hash01(seed * 11 + 4) - 0.5) * 1.8;
+      const lWave = (hash01(seed * 11 + 5) - 0.5) * 1.4;
+      const rWave = (hash01(seed * 11 + 6) - 0.5) * 1.4;
+
+      ctx.beginPath();
+      ctx.moveTo(xL + c, yT);
+      ctx.lineTo(xL + wSpan * 0.35, yT + tWave1);
+      ctx.lineTo(xL + wSpan * 0.68, yT + tWave2);
+      ctx.lineTo(xR - c, yT);
+      ctx.quadraticCurveTo(xR, yT, xR, yT + c);
+      ctx.lineTo(xR + rWave, yT + hSpan * 0.5);
+      ctx.lineTo(xR, yB - c);
+      ctx.quadraticCurveTo(xR, yB, xR - c, yB);
+      ctx.lineTo(xL + wSpan * 0.65, yB + bWave2);
+      ctx.lineTo(xL + wSpan * 0.32, yB + bWave1);
+      ctx.lineTo(xL + c, yB);
+      ctx.quadraticCurveTo(xL, yB, xL, yB - c);
+      ctx.lineTo(xL + lWave, yT + hSpan * 0.5);
+      ctx.lineTo(xL, yT + c);
+      ctx.quadraticCurveTo(xL, yT, xL + c, yT);
+      ctx.closePath();
+    };
 
     const drawBrick = (
       x0: number,
@@ -1444,75 +1512,126 @@ export function createImperialBrickTextures(): {
       seed: number
     ): void => {
       const [r, g, b] = rgb;
-      const delta = ((seed * 19) % 14) - 7;
-      const br = Math.max(40, Math.min(235, r + delta));
-      const bg = Math.max(30, Math.min(210, g + Math.round(delta * 0.7)));
-      const bb = Math.max(25, Math.min(195, b + Math.round(delta * 0.5)));
+      // Stronger per-brick tonal & saturation jitter (~20% more rustic)
+      const delta = Math.round((hash01(seed * 19 + 3) - 0.5) * 26);
+      const warmTint = Math.round((hash01(seed * 31 + 9) - 0.5) * 12);
+      const br = Math.max(38, Math.min(238, r + delta + warmTint));
+      const bg = Math.max(28, Math.min(212, g + Math.round(delta * 0.68)));
+      const bb = Math.max(22, Math.min(195, b + Math.round(delta * 0.48) - Math.round(warmTint * 0.4)));
+
+      // Subtle handmade dimensional jitter in position & size
+      const jitterX = (hash01(seed * 23 + 5) - 0.5) * 1.8;
+      const jitterY = (hash01(seed * 29 + 7) - 0.5) * 1.6;
+      const jitterW = (hash01(seed * 37 + 11) - 0.5) * 2.2;
+      const jitterH = (hash01(seed * 41 + 13) - 0.5) * 1.8;
+      const effY = y0 + jitterY;
+      const effW = w + jitterW;
+      const effH = h + jitterH;
 
       // Draw wrapped across X = 0..512 so horizontal tiling is 100% seamless
       for (const wrapOffsetX of [-512, 0, 512]) {
-        const bx = x0 + wrapOffsetX;
-        if (bx + w < 0 || bx > 512) continue;
+        const bx = x0 + jitterX + wrapOffsetX;
+        if (bx + effW < -2 || bx > 514) continue;
 
-        // Color Map: Handmade rounded-arris clay brick with subtle kiln flashing & crease marks
+        // 1. Base handmade clay brick body with irregular hand-moulded arris
         cCtx.fillStyle = `rgb(${br}, ${bg}, ${bb})`;
-        cCtx.beginPath();
-        cCtx.roundRect(bx, y0, w, h, 2.2);
+        traceRusticBrickPath(cCtx, bx, effY, effW, effH, seed, 0);
         cCtx.fill();
 
-        // Top edge warm sunlight catch & bottom edge subtle shadow
-        cCtx.fillStyle = 'rgba(255, 235, 210, 0.12)';
-        cCtx.fillRect(bx + 2, y0 + 1, w - 4, 2);
-        cCtx.fillStyle = 'rgba(35, 18, 12, 0.16)';
-        cCtx.fillRect(bx + 2, y0 + h - 2.5, w - 4, 2);
+        // 2. Kiln-flashing / coal-fired scorch patch on ~45% of bricks for authentic period character
+        const flashRoll = hash01(seed * 47 + 17);
+        if (flashRoll < 0.45) {
+          const fx = bx + effW * (0.2 + 0.6 * hash01(seed * 53 + 1));
+          const fy = effY + effH * (0.25 + 0.5 * hash01(seed * 59 + 2));
+          const fr = Math.max(10, effW * (0.28 + 0.25 * hash01(seed * 61 + 3)));
+          const grad = cCtx.createRadialGradient(fx, fy, 1, fx, fy, fr);
+          if (flashRoll < 0.26) {
+            // Dark vitrified kiln-burn / soot kiss mark
+            grad.addColorStop(0, 'rgba(38, 22, 18, 0.34)');
+            grad.addColorStop(1, 'rgba(38, 22, 18, 0)');
+          } else {
+            // Warm oxidized terracotta / sandy clay bloom
+            grad.addColorStop(0, 'rgba(224, 132, 82, 0.28)');
+            grad.addColorStop(1, 'rgba(224, 132, 82, 0)');
+          }
+          cCtx.fillStyle = grad;
+          traceRusticBrickPath(cCtx, bx, effY, effW, effH, seed, 0.5);
+          cCtx.fill();
+        }
 
-        // Natural handmade clay face mottling & sand-creased texture
-        for (let py = 4; py < h - 4; py += 6) {
-          for (let px = 5; px < w - 5; px += 9) {
-            const m = (((px * 23 + py * 41 + seed * 11) % 18) - 9);
-            cCtx.fillStyle = `rgb(${br + m}, ${bg + Math.round(m * 0.7)}, ${bb + Math.round(m * 0.5)})`;
-            cCtx.fillRect(bx + px, y0 + py, 7, 4);
+        // 3. Top edge warm sunlight catch & bottom edge weathered shadow
+        cCtx.fillStyle = 'rgba(255, 235, 210, 0.13)';
+        cCtx.fillRect(bx + 2.5, effY + 1, effW - 5, 2);
+        cCtx.fillStyle = 'rgba(32, 16, 10, 0.20)';
+        cCtx.fillRect(bx + 2.5, effY + effH - 2.6, effW - 5, 2.2);
+
+        // 4. Natural handmade clay face mottling, sand-creased folds & occasional lime mortar smudge
+        for (let py = 3; py < effH - 3; py += 5) {
+          for (let px = 4; px < effW - 4; px += 7) {
+            const cellHash = hash01(px * 23 + py * 41 + seed * 13);
+            const m = Math.round((cellHash - 0.5) * 28);
+            const patchW = 5 + Math.round(hash01(px * 17 + seed) * 4);
+            const patchH = 3 + Math.round(hash01(py * 19 + seed) * 3);
+            cCtx.fillStyle = `rgb(${Math.max(30, Math.min(245, br + m))}, ${Math.max(24, Math.min(220, bg + Math.round(m * 0.72)))}, ${Math.max(20, Math.min(205, bb + Math.round(m * 0.52)))})`;
+            cCtx.fillRect(bx + px, effY + py, patchW, patchH);
           }
         }
 
-        // Bump Map: Beveled brick arris rising from recessed mortar (#1c1c1c) to raised clay face (#dedede..#f2f2f2)
-        const bumpBias = ((seed * 17) % 22) - 11;
-        const edgeLum = Math.max(90, Math.min(180, 135 + bumpBias));
-        const faceLum = Math.max(185, Math.min(250, 224 + bumpBias));
+        // Occasional subtle weathered lime-wash / mortar kiss along the brick edge (~28% of bricks)
+        if (hash01(seed * 67 + 23) < 0.28) {
+          const sx = bx + 3 + hash01(seed * 71) * Math.max(4, effW - 16);
+          const sy = effY + (hash01(seed * 73) < 0.5 ? 1 : effH - 5);
+          cCtx.fillStyle = 'rgba(212, 198, 174, 0.26)';
+          cCtx.fillRect(sx, sy, 6 + hash01(seed * 79) * 8, 3.2);
+        }
+
+        // 5. Bump Map: Stronger per-brick relief variation, rounded arris & sand-creased surface pitting
+        const bumpBias = Math.round((hash01(seed * 17 + 5) - 0.5) * 38);
+        const edgeLum = Math.max(80, Math.min(185, 130 + bumpBias));
+        const faceLum = Math.max(172, Math.min(252, 222 + bumpBias));
 
         bCtx.fillStyle = `rgb(${edgeLum}, ${edgeLum}, ${edgeLum})`;
-        bCtx.beginPath();
-        bCtx.roundRect(bx, y0, w, h, 2.2);
+        traceRusticBrickPath(bCtx, bx, effY, effW, effH, seed, 0);
         bCtx.fill();
 
         bCtx.fillStyle = `rgb(${faceLum}, ${faceLum}, ${faceLum})`;
-        bCtx.beginPath();
-        bCtx.roundRect(bx + 2, y0 + 2, w - 4, h - 4, 1.5);
+        traceRusticBrickPath(bCtx, bx, effY, effW, effH, seed, 2.2);
         bCtx.fill();
 
-        // Subtle handmade clay crease relief in bump map
-        const creaseLum = Math.max(150, faceLum - 22);
+        // Handmade sand-crease & surface pitting in bump map
+        const creaseLum = Math.max(130, faceLum - 32);
+        const creaseY = effY + effH * (0.38 + 0.24 * hash01(seed * 83));
         bCtx.fillStyle = `rgb(${creaseLum}, ${creaseLum}, ${creaseLum})`;
-        bCtx.fillRect(bx + 6, y0 + Math.floor(h * 0.45), w - 12, 2);
+        bCtx.fillRect(bx + 5, creaseY, effW - 10, 2.2);
+
+        for (let p = 0; p < 5; p++) {
+          const pitX = bx + 4 + hash01(seed * 89 + p * 7) * Math.max(4, effW - 12);
+          const pitY = effY + 4 + hash01(seed * 97 + p * 11) * Math.max(4, effH - 10);
+          const pitLum = Math.max(120, faceLum - Math.round(18 + hash01(seed + p) * 26));
+          bCtx.fillStyle = `rgb(${pitLum}, ${pitLum}, ${pitLum})`;
+          bCtx.fillRect(pitX, pitY, 4, 3);
+        }
       }
     };
 
     for (let row = 0; row < numCourses; row++) {
-      const y0 = row * courseH + mortarH * 0.5;
-      // In Flemish bond, odd courses shift by half a stretcher + half a header + mortar = 64px (so headers sit centered over stretchers!)
+      // Slight per-course mortar bed undulation (periodic across 16 courses)
+      const courseWaveY = Math.sin((row / numCourses) * Math.PI * 4) * 0.45;
+      const y0 = row * courseH + mortarH * 0.5 + courseWaveY;
+      // In Flemish bond, odd courses shift by half a repeating unit (64px)
       const rowShift = (row % 2) * (unitW * 0.5);
 
       for (let u = 0; u < 4; u++) {
         const baseX = u * unitW + rowShift;
         const seed1 = row * 37 + u * 13 + 7;
         const stretcherRgb =
-          stretcherPalette[Math.abs(seed1) % stretcherPalette.length] ?? [162, 72, 53];
+          stretcherPalette[Math.abs(seed1 * 7 + row * 3) % stretcherPalette.length] ?? [162, 72, 53];
         drawBrick(baseX, y0, stretcherW, brickH, stretcherRgb, seed1);
 
         const headerX = baseX + stretcherW + mortarW;
         const seed2 = row * 53 + u * 29 + 19;
         const headerRgb =
-          headerPalette[Math.abs(seed2) % headerPalette.length] ?? [136, 62, 48];
+          headerPalette[Math.abs(seed2 * 5 + row * 11) % headerPalette.length] ?? [136, 62, 48];
         drawBrick(headerX, y0, headerW, brickH, headerRgb, seed2);
       }
     }

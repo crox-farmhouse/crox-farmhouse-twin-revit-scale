@@ -407,13 +407,17 @@ export function buildAngledWallSegment(
     }
     for (const [segA, segB] of intervals) {
       const segW = segB - segA;
-      if (segW <= 0.005) continue;
+      if (segW <= 0.015) continue;
       const segMid = (segA + segB) / 2;
       const cap = new THREE.Mesh(
-        new THREE.BoxGeometry(segW + 0.004, 0.025, config.thickness + 0.004),
+        new THREE.BoxGeometry(
+          Math.max(0.01, segW - 0.012),
+          0.016,
+          Math.max(0.01, config.thickness - 0.012)
+        ),
         config.capMaterial
       );
-      cap.position.set(segMid, config.topY + 0.012, 0);
+      cap.position.set(segMid, config.topY - 0.006, 0);
       group.add(cap);
     }
   };

@@ -467,7 +467,7 @@ export function createFirstFloorShellKit(
     const winLeft = winCenterX - winWidth / 2;
     const winRight = winCenterX + winWidth / 2;
 
-    const baseWallY = Math.min(floorBaseY, 2.06);
+    const baseWallY = 2.06;
     if (winLeft > minX + 0.02) {
       addUpperExteriorBrickWall(minX, winLeft, minZ, maxZ, baseWallY, upperWallTopY, interiorSide, { skipSkirting: true });
     }
@@ -623,8 +623,8 @@ export function createFirstFloorShellKit(
       ? getEastCourtyardWallCenterX(winCenterZ)
       : rawCx;
     // Extend West Wing front-room upper walls (Z <= 8.40m, above Living Room, Entrance Hall & Sitting Room whose ground walls stop at Y = 1.625m)
-    // down to Y = 1.625m so there is zero vertical gap between the Ground Floor and First Floor!
-    const baseWallY = maxZ <= 8.4 ? 1.625 : floorBaseY;
+    // down to Y = 1.625m, and start rear walls (Z > 8.40m, above Study whose ground walls reach Y = 2.06m) at Y = 2.06m with zero overlap!
+    const baseWallY = maxZ <= 8.4 ? 1.625 : 2.06;
 
     if (winNorth > minZ + 0.02) {
       addUpperExteriorBrickWall(minX, maxX, minZ, winNorth, baseWallY, upperWallTopY, interiorSide, { skipSkirting: true });

@@ -72,7 +72,10 @@ export function createGroundFloorShellKit(
 
     const topEdgeY = y + h / 2;
     if (Math.abs(topEdgeY - wallH) < 0.05 || Math.abs(topEdgeY - frontWallH) < 0.05) {
-      const cap = new THREE.Mesh(new THREE.BoxGeometry(w + 0.004, 0.016, d + 0.004), wallCapMat);
+      const cap = new THREE.Mesh(
+        new THREE.BoxGeometry(Math.max(0.01, w - 0.012), 0.016, Math.max(0.01, d - 0.012)),
+        wallCapMat
+      );
       cap.userData.isArchitecturalShell = true;
       cap.position.set(x, topEdgeY - 0.006, z);
       scene.add(cap);
@@ -329,7 +332,7 @@ export function createGroundFloorShellKit(
           ? farrowAndBallCordMat
           : warmRoomPlasterMat;
 
-    const hasWestInteriorReturn = interiorSide === 'north' && minX < -16.9;
+    const hasWestInteriorReturn = interiorSide === 'north' && Math.abs(minX - -16.92) < 0.05;
 
     // BoxGeometry face material order: [0: +X (East), 1: -X (West), 2: +Y (Top), 3: -Y (Bottom), 4: +Z (South), 5: -Z (North)]
     const materials: THREE.Material[] = [
@@ -351,12 +354,12 @@ export function createGroundFloorShellKit(
     if (Math.abs(yTop - wallH) < 0.05 || Math.abs(yTop - frontWallH) < 0.05) {
       const cap = new THREE.Mesh(
         shearGeometryAlongZ(
-          new THREE.BoxGeometry(Math.max(0.02, w + 0.004), 0.025, Math.max(0.02, d + 0.004)),
+          new THREE.BoxGeometry(Math.max(0.01, w - 0.012), 0.016, Math.max(0.01, d - 0.012)),
           slopeXPerZ
         ),
         wallCapMat
       );
-      cap.position.set(cx, yTop + 0.012, cz);
+      cap.position.set(cx, yTop - 0.006, cz);
       tagCutawayWall(cap, cutawayWall);
       scene.add(cap);
     }
