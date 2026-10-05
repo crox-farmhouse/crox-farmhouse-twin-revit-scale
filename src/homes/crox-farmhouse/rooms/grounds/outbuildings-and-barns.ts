@@ -10,6 +10,8 @@ import {
   buildBarnSpiralStaircase,
   buildGarageStihlWallRack,
   buildGarageWorkshopToolBench,
+  buildGymMirrorsLightingAndPlants,
+  buildGymNikeSquatRack,
   buildGymOakDoorAndSkirting,
   buildGymTechnogymRunPersonal,
   buildNikeGrindDumbbellRack,
@@ -1810,6 +1812,12 @@ export function buildOutbuildingsAndBarns(
 
   // Technogym Run Personal (Antonio Citterio design) in the GYM (`outbuildings.gym.technogymRunPersonal`)
   buildGymTechnogymRunPersonal(groundGroup, baseY0 + 0.012);
+
+  // Nike Strength Squat Cage, Flat Bench, Crimson Barbell & Solid-Color Nike Pro Bumper Plates (`outbuildings.gym.nikeSquatRack`)
+  buildGymNikeSquatRack(groundGroup, baseY0 + 0.012);
+
+  // Full-Height Backlit Gym Mirrors, Layered Task & Warm Ambient Lighting, and Sculpted Indoor Plants
+  buildGymMirrorsLightingAndPlants(groundGroup, groundCeilingGroup, baseY0 + 0.012);
 
   // Issue #4 & #5 ("Put it against this wall and cut it in to make use of the dead space behind, make it slightly longer"
   // at `[-10.226, -0.27, 17.512]`):

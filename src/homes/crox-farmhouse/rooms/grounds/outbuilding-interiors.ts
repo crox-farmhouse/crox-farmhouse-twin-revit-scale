@@ -5580,7 +5580,7 @@ export function buildGymTechnogymRunPersonal(
   runGroup.userData.zone = 'courtyard';
   // Placed in the GYM (`u = 3.10m, v = 3.55m`) facing East (`+u`, `rotation.y = Math.PI / 2`)
   // toward the panoramic 3.40m Garage viewing window so the runner looks straight through to the Porsche 992.2 Turbo S!
-  runGroup.position.set(3.1, gymFloorY, 3.55);
+  runGroup.position.set(4.15, gymFloorY, 3.55);
   runGroup.rotation.y = Math.PI / 2;
   groundGroup.add(runGroup);
 
@@ -6057,4 +6057,1402 @@ export function buildGymTechnogymRunPersonal(
   screenMesh.rotation.y = Math.PI; // Face `-Z` toward the runner on the belt!
   screenMesh.position.set(0, 0, -consoleD * 0.5 - 0.006);
   consoleGroup.add(screenMesh);
+}
+
+/**
+ * Generates a high-resolution (`512x512`) solid-color **Nike Pro Bumper Plate** face texture
+ * (`450mm` IWF competition/training specification) with solid vibrant urethane color, raised outer
+ * collar ring shading, two opposing Nike Swooshes, bold `NIKE` wordmark, and weight numerals (`LB` / `KG`).
+ */
+function createNikeProBumperPlateTexture(
+  weightLb: number,
+  weightKg: number,
+  baseHex: string,
+  darkRimHex: string,
+  textHex: string
+): THREE.CanvasTexture {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const cx = size * 0.5;
+  const cy = size * 0.5;
+
+  // Solid base fill
+  ctx.fillStyle = baseHex;
+  ctx.fillRect(0, 0, size, size);
+
+  // Subtle recessed inner dish vs raised outer lip ring & center hub boss
+  ctx.strokeStyle = darkRimHex;
+  ctx.lineWidth = 26;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 228, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 206, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Inner moulded ring around steel hub
+  ctx.strokeStyle = darkRimHex;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 88, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Draw Nike Swoosh helper
+  const drawSwoosh = (x: number, y: number, rot: number, scale: number): void => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = textHex;
+    ctx.beginPath();
+    ctx.moveTo(-24, -14);
+    ctx.quadraticCurveTo(-38, 16, -15, 22);
+    ctx.quadraticCurveTo(8, 27, 38, -14);
+    ctx.quadraticCurveTo(-2, 10, -15, 5);
+    ctx.quadraticCurveTo(-26, 0, -24, -14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  };
+
+  // Top & Bottom Nike Swooshes (matching `media_1791212146142_7b2838ce.png`)
+  drawSwoosh(cx, cy - 146, 0, 1.15);
+  drawSwoosh(cx, cy + 146, Math.PI, 1.15);
+
+  // Left & Right bold weight markings (`45 LB` / `20 KG`)
+  ctx.fillStyle = textHex;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Right side (`+x`): weight in LB
+  ctx.save();
+  ctx.translate(cx + 146, cy);
+  ctx.font = '900 44px Impact, Arial Black, sans-serif';
+  ctx.fillText(String(weightLb), 0, -14);
+  ctx.font = '800 22px Arial, sans-serif';
+  ctx.fillText('LB', 0, 20);
+  ctx.restore();
+
+  // Left side (`-x`): weight in KG + NIKE
+  ctx.save();
+  ctx.translate(cx - 146, cy);
+  ctx.font = '900 38px Impact, Arial Black, sans-serif';
+  ctx.fillText(String(weightKg), 0, -14);
+  ctx.font = '800 20px Arial, sans-serif';
+  ctx.fillText('KG', 0, 18);
+  ctx.restore();
+
+  // Stainless steel center hub ring in texture center
+  const hubGrad = ctx.createRadialGradient(cx - 12, cy - 12, 6, cx, cy, 76);
+  hubGrad.addColorStop(0, '#f4f7fb');
+  hubGrad.addColorStop(0.65, '#c8d0da');
+  hubGrad.addColorStop(1, '#8c949e');
+  ctx.fillStyle = hubGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 74, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Dark center 50mm Olympic collar bore
+  ctx.fillStyle = '#181b20';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 38, 0, Math.PI * 2);
+  ctx.fill();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Generates the vertical `NIKE EST. 1972` white stencil decal texture for the front upright
+ * of the Nike Strength Squat Cage (`media_1791212146142_7b2838ce.png`).
+ */
+function createNikeUprightStencilTexture(): THREE.CanvasTexture {
+  const w = 128;
+  const h = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.fillStyle = '#1a1d21';
+  ctx.fillRect(0, 0, w, h);
+
+  // Vertical laser-cut Westside hole dots along the center line
+  ctx.fillStyle = '#0b0d0f';
+  for (let y = 260; y < h - 16; y += 22) {
+    ctx.beginPath();
+    ctx.arc(w * 0.5, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Bold vertical white `NIKE` + `EST. 1972` stencil near the top (`y = 40..230`)
+  ctx.save();
+  ctx.translate(w * 0.5, 135);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#f0f4f8';
+  ctx.font = '900 52px Impact, Arial Black, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('NIKE', 0, -10);
+  ctx.font = '700 15px Arial, sans-serif';
+  ctx.fillText('EST. 1972', 0, 26);
+  ctx.restore();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Builds the **Nike Strength Squat Cage / Power Rack, Nike Flat Workout Bench, Crimson-Red Nike
+ * Olympic Barbell, and Solid-Color Nike Pro Bumper Plates** (`outbuildings.gym.nikeSquatRack`),
+ * matching `media_1791212146142_7b2838ce.png` with solid-color Pro competition bumper plates:
+ * - Red (`55 LB / 25 KG`, `#c62828`)
+ * - Blue (`45 LB / 20 KG`, `#1554ad`)
+ * - Yellow (`35 LB / 15 KG`, `#e6a810`)
+ * - Green (`25 LB / 10 KG`, `#1b7a3e`)
+ * - Black (`10 LB / 5 KG`, `#1e2228`)
+ */
+export function buildGymNikeSquatRack(
+  groundGroup: THREE.Group,
+  gymFloorY: number
+): void {
+  const rackGroup = new THREE.Group();
+  rackGroup.name = 'outbuildings.gym.nikeSquatRack';
+  rackGroup.userData.zone = 'courtyard';
+  // Positioned in the Gym South-West bay (`u = 1.56m, v = 4.45m`) facing North (`-v`, `rotation.y = Math.PI`)
+  rackGroup.position.set(1.52, gymFloorY, 4.38);
+  rackGroup.rotation.y = Math.PI;
+  groundGroup.add(rackGroup);
+
+  const powderBlackSteelMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1d21,
+    roughness: 0.44,
+    metalness: 0.58,
+  });
+  const uhmwPlasticMat = new THREE.MeshStandardMaterial({
+    color: 0x121417,
+    roughness: 0.72,
+    metalness: 0.08,
+  });
+  const zincBoltMat = new THREE.MeshStandardMaterial({
+    color: 0xe2e7ee,
+    roughness: 0.18,
+    metalness: 0.92,
+  });
+  const chromeHubMat = new THREE.MeshStandardMaterial({
+    color: 0xdce2ea,
+    roughness: 0.16,
+    metalness: 0.94,
+  });
+  const blackOxideSleeveMat = new THREE.MeshStandardMaterial({
+    color: 0x22262b,
+    roughness: 0.3,
+    metalness: 0.82,
+  });
+  const crimsonCerakoteShaftMat = new THREE.MeshStandardMaterial({
+    color: 0xd13224,
+    roughness: 0.34,
+    metalness: 0.42,
+  });
+  const whiteDecalMat = new THREE.MeshStandardMaterial({
+    color: 0xf4f7fa,
+    roughness: 0.3,
+    metalness: 0.1,
+  });
+  const benchPadVinylMat = new THREE.MeshStandardMaterial({
+    color: 0x181a1e,
+    roughness: 0.52,
+    metalness: 0.06,
+  });
+  const uprightStencilMat = new THREE.MeshStandardMaterial({
+    map: createNikeUprightStencilTexture(),
+    roughness: 0.44,
+    metalness: 0.55,
+  });
+
+  // Solid-Color Nike Pro Bumper Plate Specs (IWF Competition Color Coding)
+  interface ProPlateSpec {
+    readonly weightLb: number;
+    readonly weightKg: number;
+    readonly radius: number;
+    readonly thickness: number;
+    readonly sideMat: THREE.MeshStandardMaterial;
+    readonly faceMat: THREE.MeshStandardMaterial;
+  }
+
+  const makeProPlateSpec = (
+    weightLb: number,
+    weightKg: number,
+    thickness: number,
+    colorHex: number,
+    baseCss: string,
+    darkRimCss: string,
+    textCss: string
+  ): ProPlateSpec => {
+    const faceTex = createNikeProBumperPlateTexture(
+      weightLb,
+      weightKg,
+      baseCss,
+      darkRimCss,
+      textCss
+    );
+    return {
+      weightLb,
+      weightKg,
+      radius: 0.225, // 450mm IWF standard diameter
+      thickness,
+      sideMat: new THREE.MeshStandardMaterial({
+        color: colorHex,
+        roughness: 0.48,
+        metalness: 0.05,
+      }),
+      faceMat: new THREE.MeshStandardMaterial({
+        map: faceTex,
+        roughness: 0.46,
+        metalness: 0.06,
+      }),
+    };
+  };
+
+  const plate10LbBlack = makeProPlateSpec(10, 5, 0.028, 0x1e2228, '#1e2228', '#101216', '#f2f5f8');
+  const plate25LbGreen = makeProPlateSpec(25, 10, 0.044, 0x1b7a3e, '#1b7a3e', '#115228', '#f4f8f5');
+  const plate35LbYellow = makeProPlateSpec(35, 15, 0.056, 0xe6a810, '#e6a810', '#b07d08', '#15181c');
+  const plate45LbBlue = makeProPlateSpec(45, 20, 0.066, 0x1554ad, '#1554ad', '#0d3875', '#f4f8ff');
+  const plate55LbRed = makeProPlateSpec(55, 25, 0.076, 0xc62828, '#c62828', '#8a1818', '#fff5f5');
+
+  // Helper to spawn a single solid-color Nike Pro Bumper Plate whose axis is along `X`
+  const addProBumperPlateOnAxisX = (
+    parent: THREE.Object3D,
+    spec: ProPlateSpec,
+    xCenter: number,
+    yCenter: number,
+    zCenter: number,
+    name: string
+  ): void => {
+    const pGroup = new THREE.Group();
+    pGroup.name = name;
+    pGroup.position.set(xCenter, yCenter, zCenter);
+    parent.add(pGroup);
+
+    // CylinderGeometry material groups: `[side, top (+Y), bottom (-Y)]`
+    const plateMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(spec.radius, spec.radius, spec.thickness, 32),
+      [spec.sideMat, spec.faceMat, spec.faceMat]
+    );
+    plateMesh.rotation.z = Math.PI / 2;
+    plateMesh.castShadow = true;
+    plateMesh.receiveShadow = true;
+    pGroup.add(plateMesh);
+
+    // Raised Competition Stainless-Steel Center Hub Insert (`r = 0.068m`)
+    const steelHub = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.068, 0.068, spec.thickness + 0.003, 24),
+      chromeHubMat
+    );
+    steelHub.rotation.z = Math.PI / 2;
+    pGroup.add(steelHub);
+  };
+
+  // ---------------------------------------------------------------------------
+  // 1. Base Stabilizer Skids, Rear Crossmember, Gusset Plates & Molded End Boots
+  // ---------------------------------------------------------------------------
+  const uprightSize = 0.075; // 3"x3" (75mm) 11-gauge steel posts
+  const rackHalfW = 0.56; // Center-to-center X span = 1.12m (`1.20m` outer width)
+  const zRearUpright = -0.34;
+  const zFrontUpright = 0.34;
+  const zSkidBack = -0.44;
+  const zSkidFront = 0.82;
+  const skidLen = zSkidFront - zSkidBack; // 1.26m
+  const skidCenterZ = (zSkidBack + zSkidFront) * 0.5; // +0.19m
+  const rackH = 2.24;
+
+  for (const sideX of [-1, 1] as const) {
+    const ux = sideX * rackHalfW;
+
+    // Long bottom floor stabilizer rail (`75mm x 75mm x 1.26m`)
+    const baseSkid = new THREE.Mesh(
+      new THREE.BoxGeometry(uprightSize, uprightSize, skidLen),
+      powderBlackSteelMat
+    );
+    baseSkid.position.set(ux, uprightSize * 0.5, skidCenterZ);
+    baseSkid.castShadow = true;
+    baseSkid.receiveShadow = true;
+    rackGroup.add(baseSkid);
+
+    // Sloped black polymer front end boot (`z = +0.82..+0.91m`) matching reference photo
+    const frontBoot = new THREE.Mesh(
+      new THREE.BoxGeometry(uprightSize + 0.016, uprightSize + 0.006, 0.11),
+      uhmwPlasticMat
+    );
+    frontBoot.position.set(ux, uprightSize * 0.48, zSkidFront + 0.035);
+    frontBoot.rotation.x = 0.18;
+    rackGroup.add(frontBoot);
+
+    // Floor anchor foot flanges under rear and front uprights
+    for (const fz of [zRearUpright, zFrontUpright] as const) {
+      const floorPlate = new THREE.Mesh(
+        new THREE.BoxGeometry(0.145, 0.008, 0.145),
+        powderBlackSteelMat
+      );
+      floorPlate.position.set(ux, 0.004, fz);
+      rackGroup.add(floorPlate);
+    }
+
+    // Rear Upright (`z = -0.34m, y = 0.075..2.20m`)
+    const rearPost = new THREE.Mesh(
+      new THREE.BoxGeometry(uprightSize, rackH - 0.04, uprightSize),
+      powderBlackSteelMat
+    );
+    rearPost.name = 'outbuildings.gym.nikeSquatRack.upright';
+    rearPost.position.set(ux, (rackH - 0.04) * 0.5 + 0.04, zRearUpright);
+    rearPost.castShadow = true;
+    rearPost.receiveShadow = true;
+    rackGroup.add(rearPost);
+
+    // Front Upright (`z = +0.34m, y = 0.075..2.24m`)
+    const frontPost = new THREE.Mesh(
+      new THREE.BoxGeometry(uprightSize, rackH, uprightSize),
+      powderBlackSteelMat
+    );
+    frontPost.name = 'outbuildings.gym.nikeSquatRack.upright';
+    frontPost.position.set(ux, rackH * 0.5 + 0.02, zFrontUpright);
+    frontPost.castShadow = true;
+    frontPost.receiveShadow = true;
+    rackGroup.add(frontPost);
+
+    // Vertical `NIKE EST. 1972` graphic panel near the top of the front-left upright (`sideX = -1`)
+    if (sideX === -1) {
+      const stencilPlaques = new THREE.Mesh(
+        new THREE.PlaneGeometry(uprightSize - 0.004, 0.36),
+        uprightStencilMat
+      );
+      stencilPlaques.position.set(ux, 1.88, zFrontUpright + uprightSize * 0.5 + 0.001);
+      rackGroup.add(stencilPlaques);
+    }
+
+    // Upper Side Crossmember connecting Rear and Front Uprights (`y = 2.13m`)
+    const topSideCross = new THREE.Mesh(
+      new THREE.BoxGeometry(uprightSize, uprightSize, zFrontUpright - zRearUpright - uprightSize),
+      powderBlackSteelMat
+    );
+    topSideCross.position.set(ux, 2.13, 0);
+    topSideCross.castShadow = true;
+    rackGroup.add(topSideCross);
+
+    // Triangular Gusset Plates & Silver Hex Bolts at base & top joints
+    for (const gz of [zRearUpright, zFrontUpright] as const) {
+      const gusset = new THREE.Mesh(
+        new THREE.BoxGeometry(uprightSize + 0.012, 0.16, 0.16),
+        powderBlackSteelMat
+      );
+      gusset.position.set(ux, 0.12, gz + (gz > 0 ? 0.05 : -0.05));
+      gusset.rotation.x = Math.PI / 4;
+      rackGroup.add(gusset);
+
+      for (const by of [0.11, 0.18, 2.09, 2.16] as const) {
+        const bolt = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.007, 0.007, uprightSize + 0.022, 6),
+          zincBoltMat
+        );
+        bolt.rotation.z = Math.PI / 2;
+        bolt.position.set(ux, by, gz);
+        rackGroup.add(bolt);
+      }
+    }
+  }
+
+  // Rear Bottom & Rear Upper Crossmembers (`x = -0.56..+0.56m, z = -0.34m`)
+  for (const cy of [0.06, 2.09] as const) {
+    const rearCross = new THREE.Mesh(
+      new THREE.BoxGeometry(rackHalfW * 2 - uprightSize, uprightSize, uprightSize),
+      powderBlackSteelMat
+    );
+    rearCross.position.set(0, cy, zRearUpright);
+    rearCross.castShadow = true;
+    rackGroup.add(rearCross);
+  }
+
+  // Front Upper Knurled Pull-Up Bar (`32mm` tube at `y = 2.16m, z = +0.34m`)
+  const pullupBar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.016, 0.016, rackHalfW * 2 - uprightSize, 20),
+    powderBlackSteelMat
+  );
+  pullupBar.name = 'outbuildings.gym.nikeSquatRack.pullupBar';
+  pullupBar.rotation.z = Math.PI / 2;
+  pullupBar.position.set(0, 2.16, zFrontUpright);
+  pullupBar.castShadow = true;
+  rackGroup.add(pullupBar);
+
+  // ---------------------------------------------------------------------------
+  // 2. 8 Bolt-On Weight Storage Horns & Solid-Color Nike Pro Bumper Plates
+  // ---------------------------------------------------------------------------
+  const hornTiers = [
+    { y: 1.76, spec: plate10LbBlack, count: 2 },
+    { y: 1.28, spec: plate25LbGreen, count: 2 },
+    { y: 0.78, spec: plate35LbYellow, count: 2 },
+    { y: 0.28, spec: plate55LbRed, count: 1 },
+  ] as const;
+
+  for (const sideX of [-1, 1] as const) {
+    const outerUprightFaceX = sideX * (rackHalfW + uprightSize * 0.5);
+    for (const tier of hornTiers) {
+      // Mounting flange plate on rear upright with 2 silver hex bolts
+      const hornFlange = new THREE.Mesh(
+        new THREE.BoxGeometry(0.012, 0.13, 0.068),
+        powderBlackSteelMat
+      );
+      hornFlange.position.set(outerUprightFaceX + sideX * 0.006, tier.y, zRearUpright);
+      rackGroup.add(hornFlange);
+
+      for (const dy of [-0.042, 0.042] as const) {
+        const hBolt = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.006, 0.006, 0.02, 6),
+          zincBoltMat
+        );
+        hBolt.rotation.z = Math.PI / 2;
+        hBolt.position.set(outerUprightFaceX + sideX * 0.012, tier.y + dy, zRearUpright);
+        rackGroup.add(hBolt);
+      }
+
+      // Rubber donut bumper stop against the flange
+      const rubberStop = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.036, 0.036, 0.018, 16),
+        uhmwPlasticMat
+      );
+      rubberStop.rotation.z = Math.PI / 2;
+      rubberStop.position.set(outerUprightFaceX + sideX * 0.02, tier.y, zRearUpright);
+      rackGroup.add(rubberStop);
+
+      // 49mm black UHMW weight storage pin (`0.26m` long)
+      const hornLen = 0.26;
+      const hornPin = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.024, 0.024, hornLen, 18),
+        uhmwPlasticMat
+      );
+      hornPin.rotation.z = Math.PI / 2;
+      hornPin.position.set(outerUprightFaceX + sideX * (0.02 + hornLen * 0.5), tier.y, zRearUpright);
+      hornPin.castShadow = true;
+      rackGroup.add(hornPin);
+
+      // Stack the Solid-Color Nike Pro Bumper Plates onto the storage horn!
+      let offsetFromStop = 0.032;
+      for (let c = 0; c < tier.count; c++) {
+        const px =
+          outerUprightFaceX +
+          sideX * (offsetFromStop + tier.spec.thickness * 0.5);
+        addProBumperPlateOnAxisX(
+          rackGroup,
+          tier.spec,
+          px,
+          tier.y,
+          zRearUpright,
+          `outbuildings.gym.nikeSquatRack.proBumperPlate.${tier.spec.weightLb}lb`
+        );
+        offsetFromStop += tier.spec.thickness + 0.006;
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. Heavy-Duty J-Cups, Crimson-Red Nike Olympic Barbell & Loaded Pro Plates
+  // ---------------------------------------------------------------------------
+  const barY = 1.29;
+  const barZ = zFrontUpright + uprightSize * 0.5 + 0.048;
+
+  for (const sideX of [-1, 1] as const) {
+    const ux = sideX * rackHalfW;
+    // J-cup vertical backplate + lower hook cradle + front lip
+    const jBack = new THREE.Mesh(
+      new THREE.BoxGeometry(0.082, 0.17, 0.016),
+      uhmwPlasticMat
+    );
+    jBack.position.set(ux, barY + 0.02, zFrontUpright + uprightSize * 0.5 + 0.008);
+    rackGroup.add(jBack);
+
+    const jBottom = new THREE.Mesh(
+      new THREE.BoxGeometry(0.082, 0.018, 0.082),
+      uhmwPlasticMat
+    );
+    jBottom.position.set(ux, barY - 0.028, barZ);
+    rackGroup.add(jBottom);
+
+    const jFrontLip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.082, 0.052, 0.016),
+      uhmwPlasticMat
+    );
+    jFrontLip.position.set(ux, barY - 0.01, barZ + 0.038);
+    rackGroup.add(jFrontLip);
+  }
+
+  // Crimson-Red Cerakote 20kg Nike Olympic Barbell (`2.20m` total length)
+  const barbellGroup = new THREE.Group();
+  barbellGroup.name = 'outbuildings.gym.nikeSquatRack.barbell';
+  barbellGroup.position.set(0, barY, barZ);
+  rackGroup.add(barbellGroup);
+
+  // 28.5mm Crimson-Red Cerakote Shaft (`1.31m` inner shaft length)
+  const barShaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0145, 0.0145, 1.31, 20),
+    crimsonCerakoteShaftMat
+  );
+  barShaft.rotation.z = Math.PI / 2;
+  barShaft.castShadow = true;
+  barbellGroup.add(barShaft);
+
+  // Center white Nike logo band on the crimson barbell shaft
+  const centerLogoBand = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0149, 0.0149, 0.065, 18),
+    whiteDecalMat
+  );
+  centerLogoBand.rotation.z = Math.PI / 2;
+  barbellGroup.add(centerLogoBand);
+
+  // Left & Right 50mm Black-Oxide Loadable Olympic Sleeves + Loaded Solid-Color Pro Plates (45 LB Blue + 25 LB Green per side!)
+  for (const sideX of [-1, 1] as const) {
+    // Sleeve collar shoulder (`x = ±0.668m`)
+    const collarFlange = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.036, 0.036, 0.028, 20),
+      blackOxideSleeveMat
+    );
+    collarFlange.rotation.z = Math.PI / 2;
+    collarFlange.position.set(sideX * 0.668, 0, 0);
+    barbellGroup.add(collarFlange);
+
+    // 50mm rotating sleeve (`0.415m` long)
+    const sleeveLen = 0.415;
+    const sleeve = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0248, 0.0248, sleeveLen, 20),
+      blackOxideSleeveMat
+    );
+    sleeve.rotation.z = Math.PI / 2;
+    sleeve.position.set(sideX * (0.682 + sleeveLen * 0.5), 0, 0);
+    sleeve.castShadow = true;
+    barbellGroup.add(sleeve);
+
+    // Crimson red end-cap on sleeve tip
+    const endCap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.023, 0.023, 0.008, 16),
+      crimsonCerakoteShaftMat
+    );
+    endCap.rotation.z = Math.PI / 2;
+    endCap.position.set(sideX * (0.682 + sleeveLen + 0.002), 0, 0);
+    barbellGroup.add(endCap);
+
+    // Load 1x Solid Blue 45 LB (20 KG) Pro Plate + 1x Solid Green 25 LB (10 KG) Pro Plate onto each sleeve!
+    const blueX = sideX * (0.684 + plate45LbBlue.thickness * 0.5);
+    addProBumperPlateOnAxisX(
+      barbellGroup,
+      plate45LbBlue,
+      blueX,
+      0,
+      0,
+      'outbuildings.gym.nikeSquatRack.proBumperPlate.45lb'
+    );
+
+    const greenX =
+      sideX *
+      (0.684 + plate45LbBlue.thickness + 0.004 + plate25LbGreen.thickness * 0.5);
+    addProBumperPlateOnAxisX(
+      barbellGroup,
+      plate25LbGreen,
+      greenX,
+      0,
+      0,
+      'outbuildings.gym.nikeSquatRack.proBumperPlate.25lb'
+    );
+
+    // Olympic Lock-Jaw Barbell Collar outside the green plate
+    const lockCollar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.042, 0.042, 0.038, 18),
+      uhmwPlasticMat
+    );
+    lockCollar.rotation.z = Math.PI / 2;
+    lockCollar.position.set(
+      sideX *
+        (0.684 +
+          plate45LbBlue.thickness +
+          plate25LbGreen.thickness +
+          0.028),
+      0,
+      0
+    );
+    barbellGroup.add(lockCollar);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4. Nike Strength Flat Competition Workout Bench (`outbuildings.gym.nikeSquatRack.bench`)
+  //    (Positioned in front of the rack, angled slightly matching `media_1791212146142_7b2838ce.png`)
+  // ---------------------------------------------------------------------------
+  const benchGroup = new THREE.Group();
+  benchGroup.name = 'outbuildings.gym.nikeSquatRack.bench';
+  benchGroup.position.set(0.18, 0, 0.86);
+  benchGroup.rotation.y = 0.06;
+  rackGroup.add(benchGroup);
+
+  const padL = 1.22;
+  const padW = 0.305;
+  const padT = 0.068;
+  const benchH = 0.44;
+
+  // Cushioned matte-black competition bench pad (`y = 0.406..0.474m`)
+  const benchPad = new THREE.Mesh(
+    new THREE.BoxGeometry(padW, padT, padL),
+    benchPadVinylMat
+  );
+  benchPad.name = 'outbuildings.gym.nikeSquatRack.bench.pad';
+  benchPad.position.set(0, benchH - padT * 0.5, 0);
+  benchPad.castShadow = true;
+  benchPad.receiveShadow = true;
+  benchGroup.add(benchPad);
+
+  // Horizontal steel spine under the pad (`75mm x 50mm`)
+  const benchSpine = new THREE.Mesh(
+    new THREE.BoxGeometry(0.068, 0.052, padL - 0.14),
+    powderBlackSteelMat
+  );
+  benchSpine.position.set(0, benchH - padT - 0.026, 0);
+  benchSpine.castShadow = true;
+  benchGroup.add(benchSpine);
+
+  // Rear vertical support post (`z = -0.38m`) + wide rear stabilizer T-foot (`0.48m` wide) with transport wheels
+  const rearBenchPost = new THREE.Mesh(
+    new THREE.BoxGeometry(0.075, benchH - padT - 0.06, 0.075),
+    powderBlackSteelMat
+  );
+  rearBenchPost.position.set(0, (benchH - padT) * 0.5, -0.38);
+  rearBenchPost.castShadow = true;
+  benchGroup.add(rearBenchPost);
+
+  const rearBenchFoot = new THREE.Mesh(
+    new THREE.BoxGeometry(0.46, 0.062, 0.095),
+    powderBlackSteelMat
+  );
+  rearBenchFoot.position.set(0, 0.031, -0.38);
+  rearBenchFoot.castShadow = true;
+  benchGroup.add(rearBenchFoot);
+
+  for (const sideX of [-1, 1] as const) {
+    const bootCap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.065, 0.072, 0.11),
+      uhmwPlasticMat
+    );
+    bootCap.position.set(sideX * 0.21, 0.036, -0.38);
+    benchGroup.add(bootCap);
+
+    const rearWheel = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.032, 0.032, 0.024, 16),
+      uhmwPlasticMat
+    );
+    rearWheel.rotation.z = Math.PI / 2;
+    rearWheel.position.set(sideX * 0.14, 0.032, -0.45);
+    benchGroup.add(rearWheel);
+  }
+
+  // Raked front tripod post (`z = +0.44m`) with rubber foot pad and vertical knurled transport handle
+  const frontBenchPost = new THREE.Mesh(
+    new THREE.BoxGeometry(0.075, benchH - padT - 0.02, 0.075),
+    powderBlackSteelMat
+  );
+  frontBenchPost.position.set(0, (benchH - padT) * 0.5, 0.44);
+  frontBenchPost.rotation.x = -0.14;
+  frontBenchPost.castShadow = true;
+  benchGroup.add(frontBenchPost);
+
+  const frontFootPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.18, 0.022, 0.16),
+    uhmwPlasticMat
+  );
+  frontFootPlate.position.set(0, 0.011, 0.465);
+  benchGroup.add(frontFootPlate);
+
+  // Knurled stainless front transport handle projecting from the front leg (`media_1791212146142_7b2838ce.png`)
+  const frontHandleGrip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.013, 0.013, 0.18, 16),
+    chromeHubMat
+  );
+  frontHandleGrip.position.set(0, 0.16, 0.525);
+  frontHandleGrip.rotation.x = -0.14;
+  benchGroup.add(frontHandleGrip);
+
+  for (const hy of [0.085, 0.235] as const) {
+    const handleBracket = new THREE.Mesh(
+      new THREE.BoxGeometry(0.028, 0.012, 0.055),
+      powderBlackSteelMat
+    );
+    handleBracket.position.set(0, hy, 0.495);
+    benchGroup.add(handleBracket);
+  }
+}
+
+/**
+ * Generates a realistic silvered architectural mirror glass texture (`512x1024`)
+ * with subtle diagonal specular reflection gradients and bevelled perimeter edge highlights.
+ */
+function createGymMirrorGlassTexture(): THREE.CanvasTexture {
+  const w = 512;
+  const h = 1024;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#cfdbe6');
+  grad.addColorStop(0.28, '#e8f0f7');
+  grad.addColorStop(0.48, '#f7fbff');
+  grad.addColorStop(0.55, '#d5e1ec');
+  grad.addColorStop(0.82, '#e4edf5');
+  grad.addColorStop(1, '#c4d2df');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Subtle diagonal architectural reflection bands
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+  ctx.beginPath();
+  ctx.moveTo(0, h * 0.18);
+  ctx.lineTo(w, h * 0.04);
+  ctx.lineTo(w, h * 0.22);
+  ctx.lineTo(0, h * 0.36);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+  ctx.beginPath();
+  ctx.moveTo(0, h * 0.62);
+  ctx.lineTo(w, h * 0.48);
+  ctx.lineTo(w, h * 0.56);
+  ctx.lineTo(0, h * 0.70);
+  ctx.closePath();
+  ctx.fill();
+
+  // Crisp 12px bevelled glass border highlight
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(10, 10, w - 20, h - 20);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Creates a sculpted botanical leaf blade `THREE.BufferGeometry` with a central midrib fold,
+ * parabolic longitudinal arch, and organic elliptic leaf silhouette (never a squashed sphere!).
+ */
+function createSculptedBotanicalLeafGeometry(
+  length: number,
+  maxWidth: number,
+  archDrop: number,
+  cupDepth: number
+): THREE.BufferGeometry {
+  const segU = 8;
+  const segV = 14;
+  const geo = new THREE.PlaneGeometry(maxWidth, length, segU, segV);
+  geo.translate(0, length * 0.5, 0);
+
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const t = Math.max(0, Math.min(1, y / length)); // 0 at stem base, 1 at leaf tip
+    const s = x / (maxWidth * 0.5 || 1); // -1..+1 across width
+
+    // Natural elliptic/lanceolate leaf width envelope (narrow petiole base, broad belly, pointed tip)
+    const widthProfile = Math.sin(Math.pow(t, 0.75) * Math.PI) * (1 - 0.12 * t);
+    const nx = x * widthProfile;
+
+    // Parabolic forward arch (`+z`) as `t` approaches the tip, plus V-cupping across `s`
+    const archZ = Math.pow(t, 1.65) * archDrop - Math.abs(s) * cupDepth * widthProfile;
+    const ny = y - Math.pow(t, 2.1) * archDrop * 0.32;
+
+    pos.setXYZ(i, nx, ny, archZ);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Builds the Gym's architectural **Full-Height Backlit Mirrors, Layered Task & Warm Ambient Lighting,
+ * Conditioning/Hydration Zone, and Lush Indoor Botanical Planters**:
+ * - `outbuildings.gym.wallMirrors`:
+ *   - 3-Bay Full-Height Backlit Mirror Wall on the South-East Wall (`u = 3.22..5.50m, v = 5.40m`)
+ *   - Full-Height Backlit Form Mirror behind the Nike Squat Cage on the South-West Wall (`u = 0.62..2.42m, v = 5.40m`)
+ *   - Full-Height Free-Weight Mirror on the West Wall (`u = 0.305m, v = 2.48..3.88m`)
+ * - `outbuildings.gym.lighting`:
+ *   - Task Lighting (`4000K` neutral-white): 4 suspended linear ceiling task luminaires (`groundCeilingGroup`) +
+ *     7 directional cylindrical wall/mirror task spotlights + 2 crisp `THREE.PointLight`s
+ *   - Ambient Lighting (`2700K–3000K` warm golden glow): Perimeter eave grazing LED cove strips along North & South walls,
+ *     recessed warm LED halo backlighting behind all 3 mirror walls, 2 brass & alabaster pilaster sconces (`u = 2.86m`),
+ *     and 2 warm ambient `THREE.PointLight`s
+ * - `outbuildings.gym.plants`:
+ *   - SW Corner (`u = 0.56m, v = 5.05m`): Tall sculpted *Strelitzia nicolai* (Bird of Paradise Palm) in ribbed charcoal planter
+ *   - SE Corner (`u = 5.42m, v = 5.05m`): Sculpted *Sansevieria* (Architectural Snake Plant) in fluted limestone planter
+ *   - NW Corner (`u = 0.56m, v = 0.62m`): Lush *Monstera deliciosa* in turned oak-legged ceramic planter
+ * - `outbuildings.gym.hydrationBench`:
+ *   - Slatted European Oak & Matte-Black Steel Towel/Hydration Bench (`u = 5.38m, v = 0.72m`) + Stretching Mat & Kettlebells.
+ */
+export function buildGymMirrorsLightingAndPlants(
+  groundGroup: THREE.Group,
+  groundCeilingGroup: THREE.Group,
+  gymFloorY: number
+): void {
+  const mirrorGroup = new THREE.Group();
+  mirrorGroup.name = 'outbuildings.gym.wallMirrors';
+  mirrorGroup.userData.zone = 'courtyard';
+  groundGroup.add(mirrorGroup);
+
+  const mirrorGlassMat = new THREE.MeshStandardMaterial({
+    map: createGymMirrorGlassTexture(),
+    color: 0xeaf2fa,
+    roughness: 0.03,
+    metalness: 0.94,
+  });
+  const blackAnodizedFrameMat = new THREE.MeshStandardMaterial({
+    color: 0x181b20,
+    roughness: 0.34,
+    metalness: 0.72,
+  });
+  const warmHaloLedMat = new THREE.MeshStandardMaterial({
+    color: 0xfff0d6,
+    emissive: new THREE.Color(0xffb866),
+    emissiveIntensity: 2.5,
+    roughness: 0.18,
+  });
+  const taskWhiteLedMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: new THREE.Color(0xfff4e0),
+    emissiveIntensity: 3.2,
+    roughness: 0.14,
+  });
+  const brushedBrassMat = new THREE.MeshStandardMaterial({
+    color: 0xc8a464,
+    roughness: 0.28,
+    metalness: 0.84,
+  });
+
+  // Helper to build a framed, backlit multi-bay wall mirror assembly
+  const addBacklitWallMirror = (
+    name: string,
+    cx: number,
+    cy: number,
+    cz: number,
+    rotY: number,
+    totalW: number,
+    totalH: number,
+    numBays: number
+  ): void => {
+    const mAssy = new THREE.Group();
+    mAssy.name = name;
+    mAssy.position.set(cx, cy, cz);
+    mAssy.rotation.y = rotY;
+    mirrorGroup.add(mAssy);
+
+    const frameT = 0.022;
+    const frameD = 0.028;
+
+    // Warm 2800K recessed LED backlight halo strips around the back perimeter (`z = -0.01m`)
+    const topHalo = new THREE.Mesh(
+      new THREE.BoxGeometry(totalW - 0.04, 0.014, 0.012),
+      warmHaloLedMat
+    );
+    topHalo.position.set(0, totalH * 0.5 + 0.004, -0.008);
+    mAssy.add(topHalo);
+
+    const botHalo = new THREE.Mesh(
+      new THREE.BoxGeometry(totalW - 0.04, 0.014, 0.012),
+      warmHaloLedMat
+    );
+    botHalo.position.set(0, -totalH * 0.5 - 0.004, -0.008);
+    mAssy.add(botHalo);
+
+    for (const sideX of [-1, 1] as const) {
+      const sideHalo = new THREE.Mesh(
+        new THREE.BoxGeometry(0.014, totalH - 0.04, 0.012),
+        warmHaloLedMat
+      );
+      sideHalo.position.set(sideX * (totalW * 0.5 + 0.004), 0, -0.008);
+      mAssy.add(sideHalo);
+    }
+
+    // Outer satin-black anodized aluminium perimeter frame rails
+    for (const sideY of [-1, 1] as const) {
+      const hRail = new THREE.Mesh(
+        new THREE.BoxGeometry(totalW, frameT, frameD),
+        blackAnodizedFrameMat
+      );
+      hRail.position.set(0, sideY * (totalH * 0.5 - frameT * 0.5), 0);
+      mAssy.add(hRail);
+    }
+    for (const sideX of [-1, 1] as const) {
+      const vRail = new THREE.Mesh(
+        new THREE.BoxGeometry(frameT, totalH - frameT * 2, frameD),
+        blackAnodizedFrameMat
+      );
+      vRail.position.set(sideX * (totalW * 0.5 - frameT * 0.5), 0, 0);
+      mAssy.add(vRail);
+    }
+
+    // Individual mirror glass bays + slim vertical mullion dividers
+    const innerW = totalW - frameT * 2;
+    const innerH = totalH - frameT * 2;
+    const bayW = innerW / numBays;
+
+    for (let b = 0; b < numBays; b++) {
+      const bx = -innerW * 0.5 + (b + 0.5) * bayW;
+      const glassPane = new THREE.Mesh(
+        new THREE.BoxGeometry(bayW - 0.008, innerH, 0.01),
+        mirrorGlassMat
+      );
+      glassPane.name = `${name}.glass.${b + 1}`;
+      glassPane.position.set(bx, 0, 0.004);
+      mAssy.add(glassPane);
+
+      if (b > 0) {
+        const mullion = new THREE.Mesh(
+          new THREE.BoxGeometry(0.014, innerH, frameD - 0.004),
+          blackAnodizedFrameMat
+        );
+        mullion.position.set(-innerW * 0.5 + b * bayW, 0, 0.002);
+        mAssy.add(mullion);
+      }
+    }
+
+    // Overhead Linear Task Light Bar mounted directly above the mirror (`y = totalH * 0.5 + 0.065m`)
+    const taskArmW = Math.min(totalW * 0.78, 1.65);
+    const taskBarHousing = new THREE.Mesh(
+      new THREE.BoxGeometry(taskArmW, 0.026, 0.048),
+      blackAnodizedFrameMat
+    );
+    taskBarHousing.position.set(0, totalH * 0.5 + 0.055, 0.045);
+    mAssy.add(taskBarHousing);
+
+    const taskBarDiffuser = new THREE.Mesh(
+      new THREE.BoxGeometry(taskArmW - 0.02, 0.008, 0.032),
+      taskWhiteLedMat
+    );
+    taskBarDiffuser.position.set(0, totalH * 0.5 + 0.041, 0.045);
+    mAssy.add(taskBarDiffuser);
+  };
+
+  const mirrorCenterY = gymFloorY + 1.06; // Spans `y = gymFloorY + 0.18 .. gymFloorY + 1.94m` (`1.76m` tall)
+  const mirrorH = 1.76;
+
+  // 1A. 3-Bay Full-Height Mirror Wall on the South-East Wall (`u = 3.22..5.30m, v = 5.405m`, facing North `-v`)
+  addBacklitWallMirror(
+    'outbuildings.gym.wallMirrors.southEast',
+    4.26,
+    mirrorCenterY,
+    5.405,
+    Math.PI,
+    2.08,
+    mirrorH,
+    3
+  );
+
+  // 1B. 2-Bay Full-Height Squat Rack Mirror on the South-West Wall (`u = 0.72..2.32m, v = 5.405m`, facing North `-v`)
+  addBacklitWallMirror(
+    'outbuildings.gym.wallMirrors.southWest',
+    1.52,
+    mirrorCenterY,
+    5.405,
+    Math.PI,
+    1.6,
+    mirrorH,
+    2
+  );
+
+  // 1C. 2-Bay Full-Height Free-Weight Mirror on the West Wall (`u = 0.305m, v = 2.48..3.88m`, facing East `+u`)
+  addBacklitWallMirror(
+    'outbuildings.gym.wallMirrors.westWall',
+    0.305,
+    mirrorCenterY,
+    3.18,
+    Math.PI / 2,
+    1.4,
+    mirrorH,
+    2
+  );
+
+  // ---------------------------------------------------------------------------
+  // 2. Layered Task Lighting & Warm Ambient Lighting (`outbuildings.gym.lighting`)
+  // ---------------------------------------------------------------------------
+  const lightingGroup = new THREE.Group();
+  lightingGroup.name = 'outbuildings.gym.lighting';
+  lightingGroup.userData.zone = 'courtyard';
+  groundGroup.add(lightingGroup);
+
+  // 2A. Warm 2700K Perimeter Eave Grazing LED Cove Strips along the North (`v = 0.305m`) & South (`v = 5.405m`) walls
+  for (const [u0, u1, vPos] of [
+    [0.36, 2.66, 0.302],
+    [0.36, 2.66, 5.408],
+    [3.06, 5.68, 5.408],
+  ] as const) {
+    const coveLen = u1 - u0;
+    const coveMidU = (u0 + u1) * 0.5;
+    const coveChannel = new THREE.Mesh(
+      new THREE.BoxGeometry(coveLen, 0.022, 0.028),
+      blackAnodizedFrameMat
+    );
+    coveChannel.position.set(coveMidU, 1.88, vPos);
+    lightingGroup.add(coveChannel);
+
+    const coveStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(coveLen - 0.02, 0.012, 0.018),
+      warmHaloLedMat
+    );
+    coveStrip.name = 'outbuildings.gym.lighting.ambientEaveCove';
+    coveStrip.position.set(coveMidU, 1.894, vPos);
+    lightingGroup.add(coveStrip);
+  }
+
+  // 2B. 2 Designer Brushed-Brass & Alabaster Up/Down Wall Sconces on the North (`v = 0.45m`) & South (`v = 5.26m`) Brick Pilasters (`u = 2.86m`)
+  for (const [sv, rotY] of [
+    [0.452, 0],
+    [5.258, Math.PI],
+  ] as const) {
+    const sconceGroup = new THREE.Group();
+    sconceGroup.name = 'outbuildings.gym.lighting.wallSconce';
+    sconceGroup.position.set(2.86, gymFloorY + 1.52, sv);
+    sconceGroup.rotation.y = rotY;
+    lightingGroup.add(sconceGroup);
+
+    const backplate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.085, 0.22, 0.016),
+      brushedBrassMat
+    );
+    backplate.position.set(0, 0, 0.008);
+    sconceGroup.add(backplate);
+
+    const alabasterTube = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.032, 0.032, 0.28, 16),
+      warmHaloLedMat
+    );
+    alabasterTube.position.set(0, 0, 0.048);
+    sconceGroup.add(alabasterTube);
+
+    for (const ringY of [-0.08, 0.08] as const) {
+      const brassRing = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.036, 0.036, 0.018, 16),
+        brushedBrassMat
+      );
+      brassRing.position.set(0, ringY, 0.048);
+      sconceGroup.add(brassRing);
+    }
+  }
+
+  // 2C. 4 Overhead Suspended Linear Task Luminaires in `groundCeilingGroup` (`y = 2.02m`)
+  const ceilingTaskGroup = new THREE.Group();
+  ceilingTaskGroup.name = 'outbuildings.gym.lighting.ceilingTaskBattens';
+  groundCeilingGroup.add(ceilingTaskGroup);
+
+  for (const cu of [1.52, 4.18] as const) {
+    for (const cv of [1.75, 3.85] as const) {
+      const battenHousing = new THREE.Mesh(
+        new THREE.BoxGeometry(1.68, 0.036, 0.058),
+        blackAnodizedFrameMat
+      );
+      battenHousing.position.set(cu, 2.02, cv);
+      ceilingTaskGroup.add(battenHousing);
+
+      const battenDiffuser = new THREE.Mesh(
+        new THREE.BoxGeometry(1.64, 0.014, 0.044),
+        taskWhiteLedMat
+      );
+      battenDiffuser.position.set(cu, 2.0, cv);
+      ceilingTaskGroup.add(battenDiffuser);
+
+      // Twin suspension rods rising to the vaulted ceiling slope
+      for (const du of [-0.68, 0.68] as const) {
+        const suspRod = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.004, 0.004, 0.42, 8),
+          blackAnodizedFrameMat
+        );
+        suspRod.position.set(cu + du, 2.24, cv);
+        ceilingTaskGroup.add(suspRod);
+      }
+    }
+  }
+
+  // 2D. Task & Warm Ambient PointLights inside the Gym
+  const westTaskLight = new THREE.PointLight(0xfff4e2, 2.6, 8.5, 1.4);
+  westTaskLight.position.set(1.52, 1.75, 2.65);
+  lightingGroup.add(westTaskLight);
+
+  const eastTaskLight = new THREE.PointLight(0xfff4e2, 2.6, 8.5, 1.4);
+  eastTaskLight.position.set(4.15, 1.75, 3.15);
+  lightingGroup.add(eastTaskLight);
+
+  const warmAmbientLight = new THREE.PointLight(0xffc680, 1.5, 6.5, 1.5);
+  warmAmbientLight.position.set(2.86, 1.25, 4.65);
+  lightingGroup.add(warmAmbientLight);
+
+  // ---------------------------------------------------------------------------
+  // 3. Lush Sculpted Botanical Indoor Gym Plants (`outbuildings.gym.plants`)
+  // ---------------------------------------------------------------------------
+  const plantsGroup = new THREE.Group();
+  plantsGroup.name = 'outbuildings.gym.plants';
+  plantsGroup.userData.zone = 'courtyard';
+  groundGroup.add(plantsGroup);
+
+  const charcoalPlanterMat = new THREE.MeshStandardMaterial({
+    color: 0x282c32,
+    roughness: 0.68,
+    metalness: 0.08,
+  });
+  const limestonePlanterMat = new THREE.MeshStandardMaterial({
+    color: 0xd8d0c2,
+    roughness: 0.74,
+    metalness: 0.04,
+  });
+  const pottingSoilMat = new THREE.MeshStandardMaterial({
+    color: 0x261d16,
+    roughness: 0.92,
+  });
+  const pebbleMat = new THREE.MeshStandardMaterial({
+    color: 0x8a847c,
+    roughness: 0.65,
+  });
+  const deepEmeraldLeafMat = new THREE.MeshStandardMaterial({
+    color: 0x1e4d28,
+    roughness: 0.42,
+    metalness: 0.04,
+    side: THREE.DoubleSide,
+  });
+  const midBotanicalLeafMat = new THREE.MeshStandardMaterial({
+    color: 0x2d6a38,
+    roughness: 0.38,
+    metalness: 0.04,
+    side: THREE.DoubleSide,
+  });
+  const freshYoungLeafMat = new THREE.MeshStandardMaterial({
+    color: 0x438246,
+    roughness: 0.36,
+    metalness: 0.04,
+    side: THREE.DoubleSide,
+  });
+  const woodyStemMat = new THREE.MeshStandardMaterial({
+    color: 0x3b4d28,
+    roughness: 0.64,
+  });
+
+  // Helper to build a lush multi-stem architectural indoor plant in a stoneware floor planter
+  const addSculptedGymPlanter = (
+    name: string,
+    uPos: number,
+    vPos: number,
+    potMat: THREE.Material,
+    potRTop: number,
+    potRBot: number,
+    potH: number,
+    leafCount: number,
+    leafLen: number,
+    leafW: number,
+    archDrop: number
+  ): void => {
+    const pGroup = new THREE.Group();
+    pGroup.name = name;
+    pGroup.position.set(uPos, gymFloorY, vPos);
+    plantsGroup.add(pGroup);
+
+    // Stoneware planter pot body + rolled rim collar + soil disc + river pebbles
+    const potBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(potRTop, potRBot, potH, 24),
+      potMat
+    );
+    potBody.position.set(0, potH * 0.5, 0);
+    potBody.castShadow = true;
+    potBody.receiveShadow = true;
+    pGroup.add(potBody);
+
+    const potRim = new THREE.Mesh(
+      new THREE.TorusGeometry(potRTop - 0.008, 0.014, 12, 24),
+      potMat
+    );
+    potRim.rotation.x = Math.PI / 2;
+    potRim.position.set(0, potH - 0.006, 0);
+    pGroup.add(potRim);
+
+    const soilDisc = new THREE.Mesh(
+      new THREE.CylinderGeometry(potRTop - 0.018, potRTop - 0.018, 0.02, 20),
+      pottingSoilMat
+    );
+    soilDisc.position.set(0, potH - 0.025, 0);
+    pGroup.add(soilDisc);
+
+    for (let p = 0; p < 7; p++) {
+      const ang = (p / 7) * Math.PI * 2;
+      const rad = potRTop * 0.48;
+      const pebble = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.018, 1),
+        pebbleMat
+      );
+      pebble.scale.set(1.2, 0.55, 0.95);
+      pebble.position.set(Math.cos(ang) * rad, potH - 0.012, Math.sin(ang) * rad);
+      pGroup.add(pebble);
+    }
+
+    // Sculpted botanical leaf blades radiating from multi-tiered petioles
+    const leafGeo = createSculptedBotanicalLeafGeometry(leafLen, leafW, archDrop, 0.022);
+    const leafMats = [deepEmeraldLeafMat, midBotanicalLeafMat, freshYoungLeafMat] as const;
+
+    for (let i = 0; i < leafCount; i++) {
+      const tier = i / leafCount; // 0 = outer lower leaves, 1 = inner tall crown leaves
+      const azimuth = i * 2.39996 + uPos * 1.3; // Golden angle spiral distribution
+      const stemH = 0.16 + tier * 0.38;
+      const tiltOut = 0.22 + (1 - tier) * 0.48;
+      const scale = 0.78 + tier * 0.34;
+
+      const stemHolder = new THREE.Group();
+      stemHolder.position.set(
+        Math.cos(azimuth) * (potRTop * 0.24 * (1 - tier * 0.5)),
+        potH - 0.02,
+        Math.sin(azimuth) * (potRTop * 0.24 * (1 - tier * 0.5))
+      );
+      stemHolder.rotation.y = azimuth;
+      pGroup.add(stemHolder);
+
+      // Petiole stem rising and arching outward
+      const petiole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.006, 0.01, stemH, 8),
+        woodyStemMat
+      );
+      petiole.position.set(0, stemH * 0.5 * Math.cos(tiltOut * 0.5), stemH * 0.5 * Math.sin(tiltOut * 0.5));
+      petiole.rotation.x = tiltOut * 0.5;
+      petiole.castShadow = true;
+      stemHolder.add(petiole);
+
+      // Sculpted leaf blade attached at top of petiole
+      const leafMesh = new THREE.Mesh(leafGeo, leafMats[i % leafMats.length]!);
+      leafMesh.position.set(0, stemH * Math.cos(tiltOut * 0.5), stemH * Math.sin(tiltOut * 0.5));
+      leafMesh.rotation.x = tiltOut;
+      leafMesh.scale.setScalar(scale);
+      leafMesh.castShadow = true;
+      leafMesh.receiveShadow = true;
+      stemHolder.add(leafMesh);
+    }
+  };
+
+  // 3A. SW Corner (`u = 0.58m, v = 4.98m`, flanking the West side of the Squat Rack): Tall Strelitzia nicolai (Bird of Paradise)
+  addSculptedGymPlanter(
+    'outbuildings.gym.plants.swBirdOfParadise',
+    0.58,
+    4.98,
+    charcoalPlanterMat,
+    0.21,
+    0.16,
+    0.42,
+    14,
+    0.68,
+    0.22,
+    0.24
+  );
+
+  // 3B. SE Corner (`u = 5.45m, v = 5.02m`, between the SE Mirror Wall & Garage Viewing Window): Architectural Snake Plant / Dracaena
+  addSculptedGymPlanter(
+    'outbuildings.gym.plants.seSnakePlant',
+    5.45,
+    5.02,
+    limestonePlanterMat,
+    0.19,
+    0.15,
+    0.38,
+    16,
+    0.56,
+    0.11,
+    0.06
+  );
+
+  // 3C. NW Corner (`u = 0.56m, v = 0.62m`, beside the Nike Grind Dumbbell Rack under the windows): Lush Monstera deliciosa
+  addSculptedGymPlanter(
+    'outbuildings.gym.plants.nwMonstera',
+    0.56,
+    0.62,
+    limestonePlanterMat,
+    0.19,
+    0.14,
+    0.36,
+    13,
+    0.48,
+    0.24,
+    0.22
+  );
+
+  // 3D. Slatted European Oak & Matte-Black Steel Towel / Hydration Console Bench in NE Corner (`u = 5.44m, v = 0.72m`)
+  const benchConsole = new THREE.Group();
+  benchConsole.name = 'outbuildings.gym.hydrationBench';
+  benchConsole.position.set(5.44, gymFloorY, 0.72);
+  plantsGroup.add(benchConsole);
+
+  const oakSlatMat = new THREE.MeshStandardMaterial({
+    color: 0xb88c5a,
+    roughness: 0.42,
+    metalness: 0.04,
+  });
+  const whiteTowelMat = new THREE.MeshStandardMaterial({
+    color: 0xf4f2ed,
+    roughness: 0.85,
+  });
+
+  const consoleTop = new THREE.Mesh(
+    new THREE.BoxGeometry(0.38, 0.032, 0.72),
+    oakSlatMat
+  );
+  consoleTop.position.set(0, 0.46, 0);
+  consoleTop.castShadow = true;
+  consoleTop.receiveShadow = true;
+  benchConsole.add(consoleTop);
+
+  for (const sz of [-0.31, 0.31] as const) {
+    const legFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(0.34, 0.44, 0.032),
+      blackAnodizedFrameMat
+    );
+    legFrame.position.set(0, 0.22, sz);
+    legFrame.castShadow = true;
+    benchConsole.add(legFrame);
+  }
+
+  // 3 Rolled white cotton gym towels on top of the bench
+  for (const [ty, tz] of [
+    [0.515, -0.18],
+    [0.515, -0.06],
+    [0.59, -0.12],
+  ] as const) {
+    const towelRoll = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.042, 0.042, 0.24, 16),
+      whiteTowelMat
+    );
+    towelRoll.rotation.z = Math.PI / 2;
+    towelRoll.position.set(0, ty, tz);
+    towelRoll.castShadow = true;
+    benchConsole.add(towelRoll);
+  }
+
+  // Tabletop ceramic succulent/fern pot on the North end of the hydration bench (`z = +0.16m`)
+  addSculptedGymPlanter(
+    'outbuildings.gym.plants.neBenchPlant',
+    5.44,
+    0.88,
+    charcoalPlanterMat,
+    0.09,
+    0.07,
+    0.16,
+    9,
+    0.22,
+    0.08,
+    0.09
+  );
+  const nePlant = plantsGroup.getObjectByName('outbuildings.gym.plants.neBenchPlant');
+  if (nePlant) {
+    nePlant.position.y = gymFloorY + 0.476;
+  }
 }
