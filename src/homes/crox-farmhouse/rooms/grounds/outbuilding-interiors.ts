@@ -3113,6 +3113,26 @@ export function buildBarnSpiralStaircase(
     }
   }
 
+  // Issue #2 ("LED light strips underneath each tread" at `[0.439, 0.429, 18.46]`, `outbuildings.barn.spiralStaircase.tread`):
+  // Recessed warm 2700K linear LED light strip + anodized aluminium diffuser channel routed into the underside of every tread!
+  const treadLedMat = new THREE.MeshStandardMaterial({
+    color: 0xfff5e0,
+    emissive: new THREE.Color(0xffc668),
+    emissiveIntensity: 2.35,
+    roughness: 0.18,
+    metalness: 0.04,
+  });
+  const ledChannelMat = new THREE.MeshStandardMaterial({
+    color: 0x26292e,
+    roughness: 0.38,
+    metalness: 0.72,
+  });
+  const ledStripLen = outerRadius - columnRadius - 0.11; // ~0.685m radial strip length
+  const ledRadialCenter = columnRadius + 0.055 + ledStripLen * 0.5;
+  const ledLeadingAngle = -halfSweep * 0.62; // Positioned near the leading underside nosing of each fan tread
+  const ledChannelGeo = new THREE.BoxGeometry(ledStripLen, 0.008, 0.022);
+  const ledDiffuserGeo = new THREE.BoxGeometry(ledStripLen - 0.012, 0.005, 0.014);
+
   for (let i = 0; i < numSteps; i++) {
     const frac = i / (numSteps - 1);
     const theta = thetaStart + frac * (thetaEnd - thetaStart);
@@ -3141,6 +3161,31 @@ export function buildBarnSpiralStaircase(
     );
     spineBracket.castShadow = true;
     stepContainer.add(spineBracket);
+
+    // Recessed under-tread LED channel & warm glowing LED strip along the leading edge of the tread underside
+    const ledHolder = new THREE.Group();
+    ledHolder.rotation.y = -ledLeadingAngle;
+    stepContainer.add(ledHolder);
+
+    const ledChannel = new THREE.Mesh(ledChannelGeo, ledChannelMat);
+    ledChannel.position.set(ledRadialCenter, -0.003, 0);
+    ledHolder.add(ledChannel);
+
+    const ledStrip = new THREE.Mesh(ledDiffuserGeo, treadLedMat);
+    ledStrip.name = 'outbuildings.barn.spiralStaircase.treadLedStrip';
+    ledStrip.position.set(ledRadialCenter, -0.006, 0);
+    ledHolder.add(ledStrip);
+  }
+
+  // Warm vertical illumination PointLights along the spiral staircase column for under-tread LED wash
+  for (const [lIdx, ly] of [
+    [1, totalRise * 0.35],
+    [2, totalRise * 0.78],
+  ] as const) {
+    const stairGlowLight = new THREE.PointLight(0xffc668, 1.15, 3.2, 1.6);
+    stairGlowLight.name = `outbuildings.barn.spiralStaircase.treadLedLight.${lIdx}`;
+    stairGlowLight.position.set(0, ly, 0);
+    stairGroup.add(stairGlowLight);
   }
 
   // ---------------------------------------------------------------------------

@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import {
-  createCourtyardStoneTexture,
   createWelshSlateRoofTexture,
   createWovenWoolCarpetTextures,
 } from '../../../../engine/textures/procedural-textures.ts';
@@ -457,24 +456,183 @@ export function buildOutbuildingsAndBarns(
     side: THREE.DoubleSide,
   });
 
-  const coursedStoneTex = createCourtyardStoneTexture();
+  // Issue #3 ("Larger limestone tiles here with a bit more texture" at `[-4.737, -0.34, 18.005]`, `outbuildings.barn.westFloor`):
+  // Dedicated high-resolution (1024x1024) Large-Format Tumbled Cotswold / Bourgogne Limestone Flagstone Texture & Relief Bump Map
+  const createLargeLimestoneFlagstoneTextures = (): {
+    colorMap: THREE.CanvasTexture;
+    bumpMap: THREE.CanvasTexture;
+  } => {
+    const size = 1024;
+    const colorCanvas = document.createElement('canvas');
+    colorCanvas.width = size;
+    colorCanvas.height = size;
+    const cCtx = colorCanvas.getContext('2d');
 
-  const barnFloorMat = new THREE.MeshStandardMaterial({
-    map: coursedStoneTex,
-    color: 0x9e988e,
-    roughness: 0.84,
-    metalness: 0.03,
-  });
+    const bumpCanvas = document.createElement('canvas');
+    bumpCanvas.width = size;
+    bumpCanvas.height = size;
+    const bCtx = bumpCanvas.getContext('2d');
 
-  // Issue #7 ("Limestone floor" at `[-4.501, -0.34, 17.435]`, `outbuildings.barn.westFloor`):
-  // Warm Honed Cotswold / Travertine Limestone Flagstone Material
+    let seed = 80421;
+    const rand = (): number => {
+      seed = (seed * 16807) % 2147483647;
+      return (seed - 1) / 2147483646;
+    };
+
+    if (cCtx && bCtx) {
+      // Recessed lime-mortar joint bed base
+      cCtx.fillStyle = '#b9afa0';
+      cCtx.fillRect(0, 0, size, size);
+      bCtx.fillStyle = '#262626';
+      bCtx.fillRect(0, 0, size, size);
+
+      // 3 coursed horizontal flagstone rows x 2 large ashlar slabs per repeat
+      // With uvScale = 0.34 (1 repeat = 2.94m), each flagstone is ~0.98m x 1.47m!
+      const rowHeights = [342, 338, 344];
+      const stonePalette = [
+        [238, 229, 212],
+        [232, 221, 202],
+        [242, 234, 219],
+        [226, 215, 195],
+        [235, 225, 207],
+        [229, 218, 198],
+      ] as const;
+
+      let yCursor = 0;
+      const jointW = 10;
+
+      for (let r = 0; r < rowHeights.length; r++) {
+        const rH = rowHeights[r];
+        // Staggered vertical running-bond joints across the 2 large flagstones per course
+        const colWidths = r % 2 === 0 ? [532, 492] : [476, 548];
+        const staggerOffset = r === 1 ? 210 : r === 2 ? -140 : 0;
+        let xCursor = staggerOffset;
+
+        for (let c = 0; c < 3; c++) {
+          const cW = colWidths[c % colWidths.length];
+          const sx = xCursor + jointW * 0.5;
+          const sy = yCursor + jointW * 0.5;
+          const sw = cW - jointW;
+          const sh = rH - jointW;
+
+          const baseRGB = stonePalette[(r * 3 + c) % stonePalette.length];
+          const shadeDelta = Math.round((rand() - 0.5) * 10);
+          const sr = Math.min(250, Math.max(195, baseRGB[0] + shadeDelta));
+          const sg = Math.min(242, Math.max(185, baseRGB[1] + shadeDelta));
+          const sb = Math.min(228, Math.max(168, baseRGB[2] + shadeDelta));
+
+          // Helper to draw wrapped tile across X boundaries
+          for (const wrapX of [-size, 0, size] as const) {
+            const tx = sx + wrapX;
+            if (tx + sw < 0 || tx > size) continue;
+
+            // 1. Base limestone slab body with subtle warm travertine gradient
+            const grad = cCtx.createLinearGradient(tx, sy, tx + sw, sy + sh);
+            grad.addColorStop(0, `rgb(${sr + 4}, ${sg + 4}, ${sb + 3})`);
+            grad.addColorStop(0.5, `rgb(${sr}, ${sg}, ${sb})`);
+            grad.addColorStop(1, `rgb(${sr - 6}, ${sg - 6}, ${sb - 5})`);
+            cCtx.fillStyle = grad;
+            cCtx.fillRect(tx, sy, sw, sh);
+
+            // Pillowed / tumbled high-relief bump cushion at slab edges
+            bCtx.fillStyle = '#9a9a9a';
+            bCtx.fillRect(tx, sy, sw, sh);
+            bCtx.fillStyle = '#c8c8c8';
+            bCtx.fillRect(tx + 8, sy + 8, Math.max(1, sw - 16), Math.max(1, sh - 16));
+            bCtx.fillStyle = '#dcdcdc';
+            bCtx.fillRect(tx + 18, sy + 18, Math.max(1, sw - 36), Math.max(1, sh - 36));
+
+            // 2. Natural sedimentary bedding clouds & mottled mineral patches
+            for (let p = 0; p < 28; p++) {
+              const px = tx + 16 + rand() * Math.max(8, sw - 32);
+              const py = sy + 16 + rand() * Math.max(8, sh - 32);
+              const rx = 18 + rand() * 54;
+              const ry = 10 + rand() * 30;
+              const isWarm = rand() > 0.45;
+              cCtx.fillStyle = isWarm
+                ? `rgba(${sr - 14}, ${sg - 15}, ${sb - 18}, 0.14)`
+                : `rgba(${Math.min(255, sr + 12)}, ${Math.min(255, sg + 11)}, ${Math.min(255, sb + 9)}, 0.15)`;
+              cCtx.beginPath();
+              cCtx.ellipse(px, py, rx, ry, rand() * Math.PI, 0, Math.PI * 2);
+              cCtx.fill();
+
+              bCtx.fillStyle = isWarm ? 'rgba(60,60,60,0.18)' : 'rgba(245,245,245,0.16)';
+              bCtx.beginPath();
+              bCtx.ellipse(px, py, rx * 0.85, ry * 0.85, 0, 0, Math.PI * 2);
+              bCtx.fill();
+            }
+
+            // 3. Travertine / Cotswold limestone mineral calcite veins & fossil shell arcs
+            for (let v = 0; v < 5; v++) {
+              let vx = tx + 20 + rand() * Math.max(10, sw - 40);
+              let vy = sy + 20 + rand() * Math.max(10, sh - 40);
+              cCtx.strokeStyle =
+                v % 2 === 0
+                  ? `rgba(${Math.min(255, sr + 18)}, ${Math.min(255, sg + 16)}, ${Math.min(255, sb + 12)}, 0.34)`
+                  : `rgba(${sr - 22}, ${sg - 24}, ${sb - 26}, 0.24)`;
+              cCtx.lineWidth = 1.2 + rand() * 1.8;
+              cCtx.beginPath();
+              cCtx.moveTo(vx, vy);
+              for (let seg = 0; seg < 6; seg++) {
+                vx += (rand() - 0.35) * 42;
+                vy += (rand() - 0.5) * 24;
+                cCtx.lineTo(vx, vy);
+              }
+              cCtx.stroke();
+
+              bCtx.strokeStyle = 'rgba(90, 90, 90, 0.32)';
+              bCtx.lineWidth = 1.6;
+              bCtx.stroke();
+            }
+
+            // 4. Natural travertine pores & micro-pitted tumbled stone texture
+            for (let d = 0; d < 95; d++) {
+              const dx = tx + 10 + rand() * Math.max(6, sw - 20);
+              const dy = sy + 10 + rand() * Math.max(6, sh - 20);
+              const dr = 1.0 + rand() * 2.8;
+              cCtx.fillStyle = `rgba(${sr - 28}, ${sg - 28}, ${sb - 26}, 0.25)`;
+              cCtx.beginPath();
+              cCtx.arc(dx, dy, dr, 0, Math.PI * 2);
+              cCtx.fill();
+
+              bCtx.fillStyle = 'rgba(45, 45, 45, 0.38)';
+              bCtx.beginPath();
+              bCtx.arc(dx, dy, dr * 1.15, 0, Math.PI * 2);
+              bCtx.fill();
+            }
+
+            // 5. Hand-dressed chiseled chamfer highlight around slab perimeter
+            cCtx.strokeStyle = `rgba(${sr - 18}, ${sg - 18}, ${sb - 18}, 0.42)`;
+            cCtx.lineWidth = 3;
+            cCtx.strokeRect(tx + 1.5, sy + 1.5, sw - 3, sh - 3);
+          }
+
+          xCursor += cW;
+        }
+        yCursor += rH;
+      }
+    }
+
+    const colorMap = new THREE.CanvasTexture(colorCanvas);
+    colorMap.wrapS = THREE.RepeatWrapping;
+    colorMap.wrapT = THREE.RepeatWrapping;
+    colorMap.colorSpace = THREE.SRGBColorSpace;
+
+    const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+    bumpMap.wrapS = THREE.RepeatWrapping;
+    bumpMap.wrapT = THREE.RepeatWrapping;
+
+    return { colorMap, bumpMap };
+  };
+
+  const limestoneFloorTextures = createLargeLimestoneFlagstoneTextures();
   const barnLimestoneFloorMat = new THREE.MeshStandardMaterial({
     name: 'outbuildingBarnLimestoneFloor',
-    map: coursedStoneTex,
-    bumpMap: coursedStoneTex,
-    bumpScale: 0.008,
-    color: 0xf2ece0,
-    roughness: 0.58,
+    map: limestoneFloorTextures.colorMap,
+    bumpMap: limestoneFloorTextures.bumpMap,
+    bumpScale: 0.024,
+    color: 0xf7f2e7,
+    roughness: 0.62,
     metalness: 0.03,
   });
 
@@ -2011,7 +2169,13 @@ export function buildOutbuildingsAndBarns(
   const uMezzanineFront = 18.68; // Front edge of the 4.34m Barn Mezzanine (`u = 18.68..23.02m`)
   const uBarnEnd = 23.22; // 14.96m + 0.24m wall + 8.02m Barn (Step #2!)
   const uStableStart = uBarnEnd; // 23.22m
-  const uStableEnd = 29.05; // 23.22m + 5.55m Stable + 0.28m East Gable wall
+  const uStableEnd = 29.05; // 23.22m + 5.55m Stable + 0.28m Upper East Gable wall
+  // Issue #6 ("Extend the building out here, upper floor is a balcony with a door and railings and exterior staircase."
+  // at `[6.33, 1.04, 15.116]` -> `u = 28.77m, y = 1.04m, v = 1.585m`):
+  // Extend the Stable Ground Floor Eastward by `2.80m` from `u = 29.05m` to `uStableExtEnd = 31.85m`, creating a
+  // `2.80m x 5.71m` walk-out 1st-floor balcony (`y = stableUpperFloorY = 2.08m`) above the extended ground-floor room!
+  const uStableBalconySpanU = 2.8;
+  const uStableExtEnd = uStableEnd + uStableBalconySpanU; // 31.85m
   const vEastRangeNorth = 0.0;
   const vEastRangeSouth = 5.71;
   const eastRangeInternalV = vEastRangeSouth - vEastRangeNorth - wallT * 2; // 5.15m
@@ -2082,7 +2246,7 @@ export function buildOutbuildingsAndBarns(
   const storeFloorSpanV = 0.893; // v = 0.285m..1.178m
   const storeFloorCenterV = 0.285 + storeFloorSpanV * 0.5; // 0.7315m
   const corridorFloorGeo = new THREE.BoxGeometry(storeFloorSpanU, 0.38, storeFloorSpanV);
-  applyOutbuildingFloorUVs(corridorFloorGeo, storeFloorCenterU, barnWestFloorY - 0.19, storeFloorCenterV, 0.45);
+  applyOutbuildingFloorUVs(corridorFloorGeo, storeFloorCenterU, barnWestFloorY - 0.19, storeFloorCenterV, 0.34);
   const storeFloor = new THREE.Mesh(
     corridorFloorGeo,
     barnLimestoneFloorMat
@@ -2106,7 +2270,7 @@ export function buildOutbuildingsAndBarns(
   const barnWestFloorCenterU = uBarnStart + 0.24 + barnWestFloorSpanU * 0.5;
   const barnFloorCenterV = vEastRangeNorth + wallT + eastRangeInternalV * 0.5;
   const barnWestFloorGeo = new THREE.BoxGeometry(barnWestFloorSpanU, 0.38, eastRangeInternalV);
-  applyOutbuildingFloorUVs(barnWestFloorGeo, barnWestFloorCenterU, barnWestFloorY - 0.19, barnFloorCenterV, 0.45);
+  applyOutbuildingFloorUVs(barnWestFloorGeo, barnWestFloorCenterU, barnWestFloorY - 0.19, barnFloorCenterV, 0.34);
   const barnWestFloor = new THREE.Mesh(
     barnWestFloorGeo,
     barnLimestoneFloorMat
@@ -2264,16 +2428,23 @@ export function buildOutbuildingsAndBarns(
   barBayLowerFloor.receiveShadow = true;
   groundGroup.add(barBayLowerFloor);
 
-  // Stable Ground Floor Slab (`u = 23.22..28.77m`, top at `stableGroundFloorY = -0.44m`)
+  // Issue #5 ("Wooden floor in here" at `[2.827, -0.44, 16.311]`, `outbuildings.stable.floor`) &
+  // Issue #6 ("Extend the building out here, upper floor is a balcony with a door and railings and exterior staircase."):
+  // Extended Stable Ground-Floor Wide-Plank European Oak Wooden Floor (`u = 23.22m..31.57m`, span `8.35m`, top at `stableGroundFloorY = -0.44m`)
+  const stableGroundSpanU = uStableExtEnd - wallT - uStableStart; // 8.35m (23.22m..31.57m)
+  const stableFloorCenterU = uStableStart + stableGroundSpanU * 0.5; // 27.395m
+  const stableFloorCenterV = vEastRangeNorth + wallT + eastRangeInternalV * 0.5; // 2.855m
+  const stableFloorGeo = new THREE.BoxGeometry(stableGroundSpanU, 0.12, eastRangeInternalV);
+  applyOutbuildingFloorUVs(stableFloorGeo, stableFloorCenterU, stableGroundFloorY - 0.06, stableFloorCenterV, 0.5);
   const stableFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(5.55, 0.12, eastRangeInternalV),
-    barnFloorMat
+    stableFloorGeo,
+    lightJoineryOakMat
   );
   stableFloor.name = 'outbuildings.stable.floor';
   stableFloor.position.set(
-    uStableStart + 5.55 * 0.5,
+    stableFloorCenterU,
     stableGroundFloorY - 0.06,
-    vEastRangeNorth + wallT + eastRangeInternalV * 0.5
+    stableFloorCenterV
   );
   stableFloor.receiveShadow = true;
   groundGroup.add(stableFloor);
@@ -2865,7 +3036,7 @@ export function buildOutbuildingsAndBarns(
   // Haldane UK Bespoke Freestanding Solid American White Oak Spiral Staircase (`outbuildings.barn.spiralStaircase`) in the SE corner of the Barn,
   // with `topLanding` attached to `firstFloorGroup` so it hides in Ground-Floor Cutaway mode!
   buildBarnSpiralStaircase(groundGroup, barnCarpetTopY, mezzanineFloorY, lightJoineryOakMat, firstFloorGroup);
-  buildBarnGroundWallArtworks(groundGroup);
+  buildBarnGroundWallArtworks(groundGroup, groundCeilingGroup);
 
   // Issue #10 ("Bar in this corner with beer on tap, mini fridge like in the master bedroom" at `[0.516, -0.316, 14.617]`),
   // Issue #8 ("Make the lower section a little larger, move the steps forward slightly (maybe 50cm). On this side have a bar with some stools so people can watch the golf and wait their turn" at `[-3.975, -0.34, 18.437]`),
@@ -3137,12 +3308,12 @@ export function buildOutbuildingsAndBarns(
     ['-z']
   );
 
-  // Issue #10 ("Remove this window" at `[4.25, 1.175, 19.329]`):
-  // South Garden Wall of 2-Storey Stable (Ground Floor: u = 23.22m..28.77m, solid brick with zero windows!)
+  // Issue #10 ("Remove this window" at `[4.25, 1.175, 19.329]`) & Issue #6 (Extended Stable Ground Floor `u = 23.22..31.57m`):
+  // South Garden Wall of Extended Stable Ground Floor (`u = 23.22m..31.57m`, solid brick with zero windows!)
   addOutbuildingBrickWall(
     groundGroup,
     uStableStart,
-    uStableEnd - wallT,
+    uStableExtEnd - wallT,
     stableGroundFloorY - 0.14,
     stableGroundTopY,
     vEastRangeSouth - wallT,
@@ -3265,25 +3436,59 @@ export function buildOutbuildingsAndBarns(
     'Stable Courtyard Door'
   );
 
-  // East portion of Stable North wall (u = 24.70m..28.77m) with the single Stable Ground-Floor Casement Window at u = 26.55m
+  // East portion of Stable North wall (extended to `uStableExtEnd - wallT = 31.57m` per Issue #6)
+  // with casement windows at `u = 26.55m` and `u = 29.95m`
   addOutbuildingBrickWallWithWindows(
     groundGroup,
     24.7,
-    uStableEnd - wallT,
+    uStableExtEnd - wallT,
     stableGroundFloorY - 0.14,
     stableGroundTopY,
     vEastRangeNorth,
     vEastRangeNorth + wallT,
     ['+z'],
-    [{ uCenter: 26.55, yCenter: 1.18, width: 0.92, height: 0.92 }]
+    [
+      { uCenter: 26.55, yCenter: 1.18, width: 0.92, height: 0.92 },
+      { uCenter: 29.95, yCenter: 1.18, width: 0.92, height: 0.92 },
+    ]
   );
 
-  // East Gable End of 2-Storey Stable (Ground Floor: u = 28.77m..29.05m, v = 0.00m..5.71m, rising to `stableGroundTopY = 1.96m`) with Large Gable Window
+  // Structural Wing Piers & Exposed Oak Portal Beam at `u = 28.77m..29.05m` supporting the Upper-Floor East Gable Wall above
+  for (const [vP0, vP1] of [
+    [vEastRangeNorth + wallT + 0.002, 0.86],
+    [vEastRangeSouth - wallT - 0.58, vEastRangeSouth - wallT - 0.002],
+  ] as const) {
+    addOutbuildingBrickWall(
+      groundGroup,
+      uStableEnd - wallT,
+      uStableEnd,
+      stableGroundFloorY,
+      stableGroundTopY,
+      vP0,
+      vP1,
+      ['+x', '-x', '+z', '-z'],
+      warmRoomPlasterMat
+    );
+  }
+  const stableExtPortalBeam = new THREE.Mesh(
+    new THREE.BoxGeometry(wallT - 0.02, 0.16, (vEastRangeSouth - wallT - 0.58) - 0.86),
+    lightJoineryOakMat
+  );
+  stableExtPortalBeam.name = 'outbuildings.stable.extensionPortalBeam';
+  stableExtPortalBeam.position.set(
+    uStableEnd - wallT * 0.5,
+    stableGroundTopY - 0.08,
+    (0.86 + (vEastRangeSouth - wallT - 0.58)) * 0.5
+  );
+  stableExtPortalBeam.castShadow = true;
+  groundCeilingGroup.add(stableExtPortalBeam);
+
+  // Extended Ground-Floor East End Wall of Stable (`u = 31.57m..31.85m, v = 0.00m..5.71m, rising to stableGroundTopY = 1.96m`) with Large Window
   const vEastRangeMid = (vEastRangeNorth + vEastRangeSouth) * 0.5;
   addOutbuildingBrickWall(
     groundGroup,
-    uStableEnd - wallT,
-    uStableEnd,
+    uStableExtEnd - wallT,
+    uStableExtEnd,
     stableGroundFloorY - 0.14,
     stableGroundTopY,
     vEastRangeNorth,
@@ -3292,8 +3497,8 @@ export function buildOutbuildingsAndBarns(
   );
   addOutbuildingBrickWall(
     groundGroup,
-    uStableEnd - wallT,
-    uStableEnd,
+    uStableExtEnd - wallT,
+    uStableExtEnd,
     stableGroundFloorY - 0.14,
     0.72,
     vEastRangeMid - 0.62,
@@ -3302,8 +3507,8 @@ export function buildOutbuildingsAndBarns(
   );
   addOutbuildingBrickWall(
     groundGroup,
-    uStableEnd - wallT,
-    uStableEnd,
+    uStableExtEnd - wallT,
+    uStableExtEnd,
     1.64,
     stableGroundTopY,
     vEastRangeMid - 0.62,
@@ -3312,8 +3517,8 @@ export function buildOutbuildingsAndBarns(
   );
   addOutbuildingBrickWall(
     groundGroup,
-    uStableEnd - wallT,
-    uStableEnd,
+    uStableExtEnd - wallT,
+    uStableExtEnd,
     stableGroundFloorY - 0.14,
     stableGroundTopY,
     vEastRangeMid + 0.62,
@@ -3322,7 +3527,7 @@ export function buildOutbuildingsAndBarns(
   );
   addOutbuildingWindow(
     groundGroup,
-    uStableEnd - wallT * 0.5,
+    uStableExtEnd - wallT * 0.5,
     1.18,
     vEastRangeMid,
     1.24,
@@ -3785,14 +3990,14 @@ export function buildOutbuildingsAndBarns(
   mezzanineFrontBressummer.castShadow = true;
   groundCeilingGroup.add(mezzanineFrontBressummer);
 
-  // Plastered ground-floor ceiling soffit in the 2-Storey Stable (`y = 1.96m`, `2.40m` headroom above `-0.44m` Stable floor)
+  // Plastered ground-floor ceiling soffit in the Extended 2-Storey Stable (`u = 23.22..31.57m, y = 1.96m`, `2.40m` headroom above `-0.44m` wooden floor)
   const stableGroundCeilingSoffit = new THREE.Mesh(
-    new THREE.BoxGeometry(5.55, 0.035, eastRangeInternalV),
+    new THREE.BoxGeometry(stableGroundSpanU, 0.035, eastRangeInternalV),
     warmRoomPlasterMat
   );
   stableGroundCeilingSoffit.name = 'outbuildings.stable.groundCeilingSoffit';
   stableGroundCeilingSoffit.position.set(
-    uStableStart + 5.55 * 0.5,
+    uStableStart + stableGroundSpanU * 0.5,
     stableGroundTopY + 0.018,
     vMidCenter()
   );
@@ -4215,7 +4420,32 @@ export function buildOutbuildingsAndBarns(
     stableCeilEaveY
   );
 
-  // East Upper Gable Wall of the 2-Storey Stable at u = 28.77m..29.05m (with painted interior gable lining up to the Stable vaulted ceiling!)
+  // Issue #6 ("Extend the building out here, upper floor is a balcony with a door and railings and exterior staircase."
+  // at `[6.33, 1.04, 15.116]`):
+  // 1. East Upper Gable Wall of the 2-Storey Stable (`u = 28.77m..29.05m`) with:
+  //    - North Casement Window (`v = 1.00m..1.76m, y = 2.38m..3.14m`) overlooking the balcony
+  //    - Central Full-Height Glazed Walk-Out Balcony Door (`v = 2.40m..3.30m, y = stableUpperFloorY (2.08m) .. 4.04m`)
+  const balDoorV0 = 2.4;
+  const balDoorV1 = 3.3;
+  const balDoorBotY = stableUpperFloorY; // 2.08m
+  const balDoorTopY = stableUpperFloorY + 1.96; // 4.04m
+  const balWinV0 = 1.0;
+  const balWinV1 = 1.76;
+  const balWinBotY = 2.38;
+  const balWinTopY = 3.14;
+
+  // Lower sill wall across balcony doorway (`y = stableGroundTopY (1.96m) .. stableUpperFloorY (2.08m)`)
+  addOutbuildingBrickWall(
+    firstFloorGroup,
+    uStableEnd - wallT,
+    uStableEnd,
+    stableGroundTopY,
+    balDoorBotY,
+    balDoorV0,
+    balDoorV1,
+    ['-x']
+  );
+  // North pier (`v = 0.28m .. 1.00m`)
   addOutbuildingBrickWall(
     firstFloorGroup,
     uStableEnd - wallT,
@@ -4223,20 +4453,614 @@ export function buildOutbuildingsAndBarns(
     stableGroundTopY,
     stableUpperTopY,
     vEastRangeNorth + wallT,
+    balWinV0,
+    ['-x']
+  );
+  // Window sill & lintel (`v = 1.00m .. 1.76m`)
+  addOutbuildingBrickWall(
+    firstFloorGroup,
+    uStableEnd - wallT,
+    uStableEnd,
+    stableGroundTopY,
+    balWinBotY,
+    balWinV0,
+    balWinV1,
+    ['-x']
+  );
+  addOutbuildingBrickWall(
+    firstFloorGroup,
+    uStableEnd - wallT,
+    uStableEnd,
+    balWinTopY,
+    stableUpperTopY,
+    balWinV0,
+    balWinV1,
+    ['-x']
+  );
+  addOutbuildingWindow(
+    firstFloorGroup,
+    uStableEnd - wallT * 0.5,
+    (balWinBotY + balWinTopY) * 0.5,
+    (balWinV0 + balWinV1) * 0.5,
+    balWinV1 - balWinV0,
+    balWinTopY - balWinBotY,
+    true
+  );
+  // Pier between window (`v = 1.76m`) and balcony door (`v = 2.40m`)
+  addOutbuildingBrickWall(
+    firstFloorGroup,
+    uStableEnd - wallT,
+    uStableEnd,
+    stableGroundTopY,
+    stableUpperTopY,
+    balWinV1,
+    balDoorV0,
+    ['-x']
+  );
+  // South pier (`v = 3.30m .. 5.43m`)
+  addOutbuildingBrickWall(
+    firstFloorGroup,
+    uStableEnd - wallT,
+    uStableEnd,
+    stableGroundTopY,
+    stableUpperTopY,
+    balDoorV1,
     vEastRangeSouth - wallT,
     ['-x']
   );
-  addInteriorPlasterGableWall(
-    roofGroup,
-    uStableEnd - wallT - 0.005,
-    uStableEnd - wallT + 0.03,
-    vInnerNorth,
-    vInnerSouth,
-    stableUpperTopY,
-    stableCeilEaveY,
-    stableCeilRidgeY,
-    'outbuildings.stable.eastGableInteriorPlaster'
-  );
+
+  // Exterior & Interior East Gable Triangles above `stableUpperTopY = 3.32m` with matching portal cutout (`v = 2.40..3.30m, y = 3.32..4.04m`)
+  {
+    const vMinG = vInnerNorth;
+    const vMaxG = vInnerSouth;
+    const vMidG = (vMinG + vMaxG) * 0.5; // 2.855m
+    const halfSpanG = (vMaxG - vMinG) * 0.5;
+    const dV0 = balDoorV0 - vMidG;
+    const dV1 = balDoorV1 - vMidG;
+
+    // 1. Interior painted plaster gable (`outbuildings.stable.eastGableInteriorPlaster`)
+    const intGableGeo = createExtrudedVYPolygon(
+      [
+        [-halfSpanG, stableUpperTopY],
+        [dV0, stableUpperTopY],
+        [dV0, balDoorTopY],
+        [dV1, balDoorTopY],
+        [dV1, stableUpperTopY],
+        [halfSpanG, stableUpperTopY],
+        [halfSpanG, stableCeilEaveY],
+        [0, stableCeilRidgeY],
+        [-halfSpanG, stableCeilEaveY],
+      ],
+      0.035
+    );
+    const intGableMesh = new THREE.Mesh(intGableGeo, warmRoomPlasterMat);
+    intGableMesh.name = 'outbuildings.stable.eastGableInteriorPlaster';
+    intGableMesh.userData.isArchitecturalShell = true;
+    intGableMesh.position.set(uStableEnd - wallT - 0.005, 0, vMidG);
+    intGableMesh.castShadow = true;
+    intGableMesh.receiveShadow = true;
+    roofGroup.add(intGableMesh);
+
+    // 2. Exterior red-brick East Gable triangle (`outbuildings.stable.eastGableExteriorBrick`)
+    const halfOuterV = (vEastRangeSouth - vEastRangeNorth) * 0.5 - 0.01;
+    const peakWorldY = stableDatumY + stableRidgeH - 0.02;
+    const extGableGeo = createExtrudedVYPolygon(
+      [
+        [-halfOuterV, stableUpperTopY],
+        [dV0, stableUpperTopY],
+        [dV0, balDoorTopY],
+        [dV1, balDoorTopY],
+        [dV1, stableUpperTopY],
+        [halfOuterV, stableUpperTopY],
+        [0, peakWorldY],
+      ],
+      wallT - 0.03
+    );
+    applyWorldSpaceBrickUVs(
+      extGableGeo,
+      OUTBUILDING_ORIGIN_X + (uStableEnd - wallT + 0.03),
+      0,
+      OUTBUILDING_ORIGIN_Z + vMidG
+    );
+    const extGableMesh = new THREE.Mesh(extGableGeo, exteriorBrickMat);
+    extGableMesh.name = 'outbuildings.stable.eastGableExteriorBrick';
+    extGableMesh.position.set(uStableEnd - wallT + 0.03, 0, vMidG);
+    extGableMesh.castShadow = true;
+    extGableMesh.receiveShadow = true;
+    roofGroup.add(extGableMesh);
+  }
+
+  // 2. Interactive Hinged Full-Height Glazed Balcony Door (`outbuildings.firstFloor.stableBalconyDoor`)
+  {
+    const balDoorGroup = new THREE.Group();
+    balDoorGroup.name = 'outbuildings.firstFloor.stableBalconyDoor';
+    balDoorGroup.userData.zone = 'courtyard';
+    const bDoorMidU = uStableEnd - wallT * 0.5; // 28.91m
+    const bDoorMidV = (balDoorV0 + balDoorV1) * 0.5; // 2.85m
+    const bDoorW = balDoorV1 - balDoorV0; // 0.90m
+    const bDoorH = balDoorTopY - balDoorBotY; // 1.96m
+    balDoorGroup.position.set(bDoorMidU, balDoorBotY, bDoorMidV);
+    firstFloorGroup.add(balDoorGroup);
+
+    const jambT = 0.032;
+    // Weathered stone/oak threshold sill
+    const sillMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(wallT + 0.06, 0.028, bDoorW + 0.04),
+      stoneSillMat
+    );
+    sillMesh.position.set(0.01, 0.014, 0);
+    sillMesh.receiveShadow = true;
+    balDoorGroup.add(sillMesh);
+
+    const headFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(wallT + 0.02, jambT, bDoorW),
+      windowFrameMat
+    );
+    headFrame.position.set(0, bDoorH - jambT * 0.5, 0);
+    balDoorGroup.add(headFrame);
+
+    const extLintel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.075, bDoorW + 0.12),
+      stoneSillMat
+    );
+    extLintel.position.set(wallT * 0.5 + 0.01, bDoorH + 0.035, 0);
+    balDoorGroup.add(extLintel);
+
+    for (const sideV of [-1, 1] as const) {
+      const jamb = new THREE.Mesh(
+        new THREE.BoxGeometry(wallT + 0.02, bDoorH - jambT, jambT),
+        windowFrameMat
+      );
+      jamb.position.set(0, (bDoorH - jambT) * 0.5, sideV * (bDoorW * 0.5 - jambT * 0.5));
+      balDoorGroup.add(jamb);
+    }
+
+    // Hinged Glazed Door Leaf (`outbuildings.firstFloor.stableBalconyDoor.leafPivot`)
+    const clearW = bDoorW - jambT * 2 - 0.008; // 0.828m
+    const clearH = bDoorH - jambT - 0.032; // 1.896m
+    const stileW = 0.065;
+    const botRailH = 0.22;
+    const topRailH = 0.075;
+    const leafPivot = new THREE.Group();
+    leafPivot.name = 'outbuildings.firstFloor.stableBalconyDoor.leafPivot';
+    leafPivot.position.set(0.02, 0.028, -clearW * 0.5);
+    balDoorGroup.add(leafPivot);
+
+    for (const sSide of [0, 1] as const) {
+      const vz = sSide === 0 ? stileW * 0.5 : clearW - stileW * 0.5;
+      const stile = new THREE.Mesh(
+        new THREE.BoxGeometry(0.048, clearH, stileW),
+        windowFrameMat
+      );
+      stile.position.set(0, clearH * 0.5, vz);
+      stile.castShadow = true;
+      leafPivot.add(stile);
+    }
+    const botRail = new THREE.Mesh(
+      new THREE.BoxGeometry(0.048, botRailH, clearW - stileW * 2),
+      windowFrameMat
+    );
+    botRail.position.set(0, botRailH * 0.5, clearW * 0.5);
+    botRail.castShadow = true;
+    leafPivot.add(botRail);
+
+    const topRail = new THREE.Mesh(
+      new THREE.BoxGeometry(0.048, topRailH, clearW - stileW * 2),
+      windowFrameMat
+    );
+    topRail.position.set(0, clearH - topRailH * 0.5, clearW * 0.5);
+    topRail.castShadow = true;
+    leafPivot.add(topRail);
+
+    const paneW = clearW - stileW * 2 + 0.01;
+    const paneH = clearH - botRailH - topRailH + 0.01;
+    const paneCenterY = botRailH + paneH * 0.5;
+    const glassPane = new THREE.Mesh(
+      new THREE.BoxGeometry(0.018, paneH, paneW),
+      windowGlassMat
+    );
+    glassPane.name = 'outbuildings.firstFloor.stableBalconyDoor.glass';
+    glassPane.position.set(0, paneCenterY, clearW * 0.5);
+    leafPivot.add(glassPane);
+
+    // Traditional cottage glazing bars (horizontal transoms + vertical muntin)
+    for (const gy of [botRailH + paneH * 0.34, botRailH + paneH * 0.67] as const) {
+      const hBar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.032, 0.022, paneW),
+        windowFrameMat
+      );
+      hBar.position.set(0, gy, clearW * 0.5);
+      leafPivot.add(hBar);
+    }
+    const vBar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.032, paneH, 0.022),
+      windowFrameMat
+    );
+    vBar.position.set(0, paneCenterY, clearW * 0.5);
+    leafPivot.add(vBar);
+
+    // Brass lever handles on both inside (`-x`) and balcony (`+x`) faces
+    for (const hx of [-0.038, 0.038] as const) {
+      const handle = new THREE.Mesh(
+        new THREE.BoxGeometry(0.026, 0.02, 0.12),
+        spotlightBrassTrimMat
+      );
+      handle.position.set(hx, 0.98, clearW - stileW * 0.5 - 0.03);
+      leafPivot.add(handle);
+    }
+
+    ctx.interactions.registerHingedDoor(
+      balDoorGroup,
+      leafPivot,
+      new THREE.Vector3(0, 0, 0),
+      'y',
+      Math.PI * 0.48
+    );
+  }
+
+  // 3. Upper-Floor Walk-Out Balcony Deck & Perimeter Railings (`outbuildings.firstFloor.stableEastBalcony`)
+  //    Spanning `u = 29.05m..31.85m` (`2.80m` deep) x `v = 0.00m..5.71m` (`5.71m` wide) at `y = stableUpperFloorY = 2.08m`
+  {
+    const balconyGroup = new THREE.Group();
+    balconyGroup.name = 'outbuildings.firstFloor.stableEastBalcony';
+    balconyGroup.userData.zone = 'courtyard';
+    firstFloorGroup.add(balconyGroup);
+
+    const balStartU = uStableEnd; // 29.05m
+    const balEndU = uStableExtEnd; // 31.85m
+    const balSpanU = balEndU - balStartU; // 2.80m
+    const balMidU = (balStartU + balEndU) * 0.5; // 30.45m
+    const balSpanV = vEastRangeSouth - vEastRangeNorth; // 5.71m
+    const balMidV = (vEastRangeNorth + vEastRangeSouth) * 0.5; // 2.855m
+
+    // Perimeter stone fascia coping cornice (`y = stableGroundTopY (1.96m) .. stableUpperFloorY - 0.03m (2.05m)`)
+    const fasciaSlab = new THREE.Mesh(
+      new THREE.BoxGeometry(balSpanU + 0.06, 0.09, balSpanV + 0.08),
+      stoneSillMat
+    );
+    fasciaSlab.name = 'outbuildings.firstFloor.stableEastBalcony.copingFascia';
+    fasciaSlab.position.set(balMidU + 0.02, stableGroundTopY + 0.045, balMidV);
+    fasciaSlab.castShadow = true;
+    fasciaSlab.receiveShadow = true;
+    balconyGroup.add(fasciaSlab);
+
+    // Grooved Solid European Oak Timber Balcony Decking (`y = 2.05m..2.08m`, top flush with `stableUpperFloorY = 2.08m`)
+    const deckW = balSpanU - 0.04; // 2.76m
+    const deckL = balSpanV - 0.08; // 5.63m
+    const deckGeo = new THREE.BoxGeometry(deckW, 0.034, deckL);
+    applyOutbuildingFloorUVs(deckGeo, balMidU - 0.01, stableUpperFloorY - 0.017, balMidV, 0.5);
+    const balconyDeck = new THREE.Mesh(deckGeo, lightJoineryOakMat);
+    balconyDeck.name = 'outbuildings.firstFloor.stableEastBalcony.deck';
+    balconyDeck.position.set(balMidU - 0.01, stableUpperFloorY - 0.017, balMidV);
+    balconyDeck.castShadow = true;
+    balconyDeck.receiveShadow = true;
+    balconyGroup.add(balconyDeck);
+
+    // Subtle dark timber drainage grooves running North-South (`v`) across the balcony deck planks
+    const deckGrooveMat = new THREE.MeshStandardMaterial({
+      color: 0x3b2c1e,
+      roughness: 0.9,
+      metalness: 0.02,
+    });
+    const numDeckPlanks = 19;
+    for (let p = 1; p < numDeckPlanks; p++) {
+      const pu = balStartU + (p / numDeckPlanks) * deckW;
+      const groove = new THREE.Mesh(
+        new THREE.BoxGeometry(0.006, 0.004, deckL - 0.04),
+        deckGrooveMat
+      );
+      groove.position.set(pu, stableUpperFloorY + 0.001, balMidV);
+      balconyGroup.add(groove);
+    }
+
+    // Architectural Wrought-Iron & Solid-Oak Balcony Railings (`outbuildings.firstFloor.stableEastBalcony.railings`)
+    const railingsGroup = new THREE.Group();
+    railingsGroup.name = 'outbuildings.firstFloor.stableEastBalcony.railings';
+    balconyGroup.add(railingsGroup);
+
+    const railH = 0.96; // 960mm balcony guardrail height above 2.08m deck
+    const rNorthV = vEastRangeNorth + 0.08; // 0.08m
+    const rSouthV = vEastRangeSouth - 0.08; // 5.63m
+    const rEastU = balEndU - 0.08; // 31.77m
+    const stairGateV1 = 1.16;
+
+    const addBalconyRailingRun = (
+      u0: number,
+      v0: number,
+      u1: number,
+      v1: number,
+      runId: string
+    ): void => {
+      const len = Math.hypot(u1 - u0, v1 - v0);
+      const midU = (u0 + u1) * 0.5;
+      const midV = (v0 + v1) * 0.5;
+      const alongV = Math.abs(v1 - v0) > Math.abs(u1 - u0);
+
+      // Top rounded solid-oak handrail (`r = 0.028m` at `y = stableUpperFloorY + railH`)
+      const topRail = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.028, 0.028, len, 18),
+        lightJoineryOakMat
+      );
+      topRail.name = `outbuildings.firstFloor.stableEastBalcony.handrail.${runId}`;
+      if (alongV) {
+        topRail.rotation.x = Math.PI / 2;
+      } else {
+        topRail.rotation.z = Math.PI / 2;
+      }
+      topRail.position.set(midU, stableUpperFloorY + railH, midV);
+      topRail.castShadow = true;
+      railingsGroup.add(topRail);
+
+      // Upper & lower wrought-iron flat bar rails (`y = +0.10m` and `y = +0.89m`)
+      for (const barYOff of [0.09, railH - 0.05] as const) {
+        const flatBar = new THREE.Mesh(
+          new THREE.BoxGeometry(alongV ? 0.032 : len, 0.018, alongV ? len : 0.032),
+          castIronMat
+        );
+        flatBar.position.set(midU, stableUpperFloorY + barYOff, midV);
+        flatBar.castShadow = true;
+        railingsGroup.add(flatBar);
+      }
+
+      // Vertical wrought-iron square/round baluster spindles spaced every ~12.5cm + decorative collar rings
+      const numSpindles = Math.max(2, Math.floor(len / 0.125));
+      const spindleH = railH - 0.14;
+      for (let i = 1; i < numSpindles; i++) {
+        const t = i / numSpindles;
+        const su = u0 + (u1 - u0) * t;
+        const sv = v0 + (v1 - v0) * t;
+        const spindle = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.008, 0.008, spindleH, 10),
+          castIronMat
+        );
+        spindle.name = 'outbuildings.firstFloor.stableEastBalcony.spindle';
+        spindle.position.set(su, stableUpperFloorY + 0.09 + spindleH * 0.5, sv);
+        spindle.castShadow = true;
+        railingsGroup.add(spindle);
+
+        if (i % 2 === 0) {
+          const collar = new THREE.Mesh(
+            new THREE.SphereGeometry(0.015, 10, 8),
+            castIronMat
+          );
+          collar.position.set(su, stableUpperFloorY + railH * 0.52, sv);
+          railingsGroup.add(collar);
+        }
+      }
+    };
+
+    // North Railing (`u = 29.05..31.77m, v = 0.08m`)
+    addBalconyRailingRun(balStartU, rNorthV, rEastU, rNorthV, 'north');
+    // South Railing (`u = 29.05..31.77m, v = 5.63m`)
+    addBalconyRailingRun(balStartU, rSouthV, rEastU, rSouthV, 'south');
+    // East Railing South of the Exterior Staircase Landing (`u = 31.77m, v = 1.16m..5.63m`)
+    addBalconyRailingRun(rEastU, stairGateV1, rEastU, rSouthV, 'east');
+
+    // Turned Wrought-Iron & Solid-Oak Newel Posts around the Balcony Perimeter
+    for (const [pu, pv] of [
+      [balStartU + 0.04, rNorthV],
+      [rEastU, rNorthV],
+      [rEastU, stairGateV1],
+      [rEastU, (stairGateV1 + rSouthV) * 0.5],
+      [rEastU, rSouthV],
+      [balStartU + 0.04, rSouthV],
+    ] as const) {
+      const post = new THREE.Mesh(
+        new THREE.BoxGeometry(0.062, railH + 0.04, 0.062),
+        castIronMat
+      );
+      post.name = 'outbuildings.firstFloor.stableEastBalcony.newelPost';
+      post.position.set(pu, stableUpperFloorY + (railH + 0.04) * 0.5, pv);
+      post.castShadow = true;
+      railingsGroup.add(post);
+
+      const finial = new THREE.Mesh(
+        new THREE.SphereGeometry(0.042, 14, 12),
+        lightJoineryOakMat
+      );
+      finial.position.set(pu, stableUpperFloorY + railH + 0.065, pv);
+      railingsGroup.add(finial);
+    }
+  }
+
+  // 4. Exterior Staircase (`outbuildings.stable.exteriorBalconyStaircase`) descending from the NE Balcony Landing
+  //    (`u = 31.85..32.85m, v = 0.08..1.16m, y = 2.08m`) Southward (`+v`) along the East Gable Facade down to the ground (`y = -0.44m`)
+  {
+    const extStairGroup = new THREE.Group();
+    extStairGroup.name = 'outbuildings.stable.exteriorBalconyStaircase';
+    extStairGroup.userData.zone = 'courtyard';
+    groundGroup.add(extStairGroup);
+
+    const sInnerU = uStableExtEnd + 0.02; // 31.87m (just outside the East wall at u = 31.85m)
+    const sOuterU = uStableExtEnd + 0.98; // 32.83m (0.96m stair width)
+    const sMidU = (sInnerU + sOuterU) * 0.5; // 32.35m
+    const sWidthU = sOuterU - sInnerU; // 0.96m
+    const landingV0 = 0.08;
+    const landingV1 = 1.16;
+    const landingMidV = (landingV0 + landingV1) * 0.5; // 0.62m
+    const landingSpanV = landingV1 - landingV0; // 1.08m
+
+    // A. Top Quarter-Turn Landing Platform (`u = 31.85..32.85m, v = 0.08..1.16m, y = 2.08m`) & Steel Support Columns
+    const topLandingFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(sWidthU + 0.06, 0.08, landingSpanV + 0.04),
+      castIronMat
+    );
+    topLandingFrame.name = 'outbuildings.stable.exteriorBalconyStaircase.topLandingFrame';
+    topLandingFrame.position.set(sMidU, stableUpperFloorY - 0.06, landingMidV);
+    topLandingFrame.castShadow = true;
+    extStairGroup.add(topLandingFrame);
+
+    const topLandingDeckGeo = new THREE.BoxGeometry(sWidthU, 0.036, landingSpanV);
+    applyOutbuildingFloorUVs(topLandingDeckGeo, sMidU, stableUpperFloorY - 0.018, landingMidV, 0.5);
+    const topLandingDeck = new THREE.Mesh(topLandingDeckGeo, lightJoineryOakMat);
+    topLandingDeck.name = 'outbuildings.stable.exteriorBalconyStaircase.topLanding';
+    topLandingDeck.position.set(sMidU, stableUpperFloorY - 0.018, landingMidV);
+    topLandingDeck.castShadow = true;
+    topLandingDeck.receiveShadow = true;
+    extStairGroup.add(topLandingDeck);
+
+    // 2 Steel Support Posts under the outer edge (`u = 32.81m`) of the Top Landing down to the ground (`y = -0.44m..2.04m`)
+    const colH = stableUpperFloorY - 0.04 - stableGroundFloorY; // 2.48m
+    for (const cv of [landingV0 + 0.04, landingV1 - 0.04] as const) {
+      const supportCol = new THREE.Mesh(
+        new THREE.BoxGeometry(0.075, colH, 0.075),
+        castIronMat
+      );
+      supportCol.name = 'outbuildings.stable.exteriorBalconyStaircase.supportColumn';
+      supportCol.position.set(sOuterU - 0.02, stableGroundFloorY + colH * 0.5, cv);
+      supportCol.castShadow = true;
+      extStairGroup.add(supportCol);
+    }
+
+    // Guardrail around the North (`v = 0.08m`) and East (`u = 32.81m`) edges of the Top Landing
+    const lRailH = 0.96;
+    const northLandRail = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.026, 0.026, sWidthU + 0.04, 16),
+      lightJoineryOakMat
+    );
+    northLandRail.rotation.z = Math.PI / 2;
+    northLandRail.position.set(sMidU, stableUpperFloorY + lRailH, landingV0);
+    extStairGroup.add(northLandRail);
+
+    const eastLandRail = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.026, 0.026, landingSpanV, 16),
+      lightJoineryOakMat
+    );
+    eastLandRail.rotation.x = Math.PI / 2;
+    eastLandRail.position.set(sOuterU, stableUpperFloorY + lRailH, landingMidV);
+    extStairGroup.add(eastLandRail);
+
+    for (let i = 1; i <= 7; i++) {
+      const su = sInnerU + (i / 8) * sWidthU;
+      const sp = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.008, 0.008, lRailH - 0.06, 10),
+        castIronMat
+      );
+      sp.position.set(su, stableUpperFloorY + (lRailH - 0.06) * 0.5, landingV0);
+      extStairGroup.add(sp);
+    }
+    for (let i = 1; i <= 8; i++) {
+      const sv = landingV0 + (i / 9) * landingSpanV;
+      const sp = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.008, 0.008, lRailH - 0.06, 10),
+        castIronMat
+      );
+      sp.position.set(sOuterU, stableUpperFloorY + (lRailH - 0.06) * 0.5, sv);
+      extStairGroup.add(sp);
+    }
+
+    // B. 14 Open-Riser Solid-Oak & Wrought-Iron Treads descending Southward (`v = 1.16m..4.80m`) from `y = 2.08m` to `y = -0.44m`
+    const numExtSteps = 14;
+    const totalExtRise = stableUpperFloorY - stableGroundFloorY; // 2.52m
+    const extRiserH = totalExtRise / numExtSteps; // 0.18m per step
+    const extGoingV = 0.26; // 260mm going per step
+    const flightRunV = numExtSteps * extGoingV; // 3.64m (v = 1.16m..4.80m)
+    const flightEndV = landingV1 + flightRunV; // 4.80m
+    const flightDiagLen = Math.hypot(flightRunV, totalExtRise);
+    const flightPitchAngle = Math.atan2(totalExtRise, flightRunV); // ~34.7°
+
+    for (let s = 0; s < numExtSteps; s++) {
+      const treadTopY = stableUpperFloorY - (s + 1) * extRiserH;
+      const treadCenterV = landingV1 + (s + 0.5) * extGoingV;
+      const treadGeo = new THREE.BoxGeometry(sWidthU - 0.06, 0.038, extGoingV + 0.024);
+      applyOutbuildingFloorUVs(treadGeo, sMidU, treadTopY - 0.019, treadCenterV, 0.5);
+      const treadMesh = new THREE.Mesh(treadGeo, lightJoineryOakMat);
+      treadMesh.name = `outbuildings.stable.exteriorBalconyStaircase.tread.${s + 1}`;
+      treadMesh.position.set(sMidU, treadTopY - 0.019, treadCenterV);
+      treadMesh.castShadow = true;
+      treadMesh.receiveShadow = true;
+      extStairGroup.add(treadMesh);
+
+      // Steel support cleats under each tread
+      const cleat = new THREE.Mesh(
+        new THREE.BoxGeometry(sWidthU - 0.04, 0.018, 0.18),
+        castIronMat
+      );
+      cleat.position.set(sMidU, treadTopY - 0.046, treadCenterV);
+      extStairGroup.add(cleat);
+    }
+
+    // Dressed Yorkstone Bottom Landing Plinth at `v = 4.72m..5.66m, y = -0.44m`
+    const botPlinth = new THREE.Mesh(
+      new THREE.BoxGeometry(sWidthU + 0.16, 0.12, 0.94),
+      stoneSillMat
+    );
+    botPlinth.name = 'outbuildings.stable.exteriorBalconyStaircase.bottomLanding';
+    botPlinth.position.set(sMidU, stableGroundFloorY - 0.04, flightEndV + 0.38);
+    botPlinth.receiveShadow = true;
+    extStairGroup.add(botPlinth);
+
+    // C. Twin Raked Steel Stringer Channels, Raked Oak Handrails & Vertical Wrought-Iron Spindles (`u = sInnerU` & `u = sOuterU`)
+    for (const [sideIdx, su] of [
+      [1, sInnerU],
+      [2, sOuterU],
+    ] as const) {
+      const stringer = new THREE.Mesh(
+        new THREE.BoxGeometry(0.036, 0.21, flightDiagLen + 0.12),
+        castIronMat
+      );
+      stringer.name = `outbuildings.stable.exteriorBalconyStaircase.stringer.${sideIdx}`;
+      stringer.position.set(
+        su,
+        (stableUpperFloorY + stableGroundFloorY) * 0.5 - 0.06,
+        landingV1 + flightRunV * 0.5
+      );
+      stringer.rotation.x = flightPitchAngle;
+      stringer.castShadow = true;
+      extStairGroup.add(stringer);
+
+      // Top & bottom newel posts for the stair flight
+      for (const [nv, ny] of [
+        [landingV1, stableUpperFloorY],
+        [flightEndV, stableGroundFloorY],
+      ] as const) {
+        const post = new THREE.Mesh(
+          new THREE.BoxGeometry(0.056, lRailH + 0.06, 0.056),
+          castIronMat
+        );
+        post.position.set(su, ny + (lRailH + 0.06) * 0.5, nv);
+        post.castShadow = true;
+        extStairGroup.add(post);
+
+        const cap = new THREE.Mesh(
+          new THREE.SphereGeometry(0.038, 12, 10),
+          lightJoineryOakMat
+        );
+        cap.position.set(su, ny + lRailH + 0.08, nv);
+        extStairGroup.add(cap);
+      }
+
+      // Raked solid-oak cylindrical handrail (`r = 0.026m`) along the stair flight
+      const rakedHandrail = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.026, 0.026, flightDiagLen + 0.06, 16),
+        lightJoineryOakMat
+      );
+      rakedHandrail.name = `outbuildings.stable.exteriorBalconyStaircase.handrail.${sideIdx}`;
+      rakedHandrail.position.set(
+        su,
+        (stableUpperFloorY + stableGroundFloorY) * 0.5 + lRailH,
+        landingV1 + flightRunV * 0.5
+      );
+      rakedHandrail.rotation.x = flightPitchAngle + Math.PI / 2;
+      rakedHandrail.castShadow = true;
+      extStairGroup.add(rakedHandrail);
+
+      // Vertical wrought-iron baluster spindles (2 per tread) rising from the stringer to the raked handrail
+      for (let s = 0; s < numExtSteps * 2; s++) {
+        const frac = (s + 0.5) / (numExtSteps * 2);
+        const sv = landingV1 + frac * flightRunV;
+        const baseY = stableUpperFloorY - frac * totalExtRise - 0.02;
+        const spH = lRailH + 0.02;
+        const spindle = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.0075, 0.0075, spH, 8),
+          castIronMat
+        );
+        spindle.position.set(su, baseY + spH * 0.5, sv);
+        spindle.castShadow = true;
+        extStairGroup.add(spindle);
+      }
+    }
+  }
 
   // Issue #1 ("on cutout mode this wall should come higher up" at `[0.522, 2.491, 14.685]`):
   // Internal 1st-Floor Partition between the Barn Mezzanine (`mezzanineFloorY = 1.54m`) and the Stable Upper Room (`stableUpperFloorY = 2.08m`)
@@ -4731,7 +5555,7 @@ export function buildOutbuildingsAndBarns(
     stableRidgeH,
     welshSlateMat,
     true,
-    true,
+    false,
     barnEaveRelToStableDatum,
     stableUpperEaveH,
     0.06,

@@ -3226,7 +3226,159 @@ function createHorseShowCertificatesTexture(): THREE.CanvasTexture {
  * Mounts the right-sized (`0.76m x 0.52m`) Framed Old Course at St Andrews Picture on the Barn North Wall and
  * the organic, lived-in Horse Show Certificates & 9 scattered 3D Silk Rosettes Display Case on the Barn South Wall.
  */
-export function buildBarnGroundWallArtworks(groundGroup: THREE.Group): void {
+/**
+ * Issue #1 ("Samsung frame 55 inch on this wall, more task and ambient lighting in here"
+ * at `[-1.221, 0.434, 19.624]` -> Outbuilding `(u = 20.861m, y = 0.434m, v = 5.43m)`):
+ * Generates a high-resolution (`1024x576`, 16:9) Matte Anti-Glare Art-Mode / Championship Golf
+ * display canvas for the 55-inch Samsung "The Frame" QLED TV on the Barn South Wall, with a
+ * warm cream conservation passepartout mat border and an atmospheric golden-hour links golf /
+ * Highlands landscape artwork.
+ */
+function createSamsungFrame55ScreenTexture(): THREE.CanvasTexture {
+  const w = 1024;
+  const h = 576;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    // 1. Samsung "The Frame" warm museum passepartout mat board (`52px` border with bevel shadow)
+    ctx.fillStyle = '#f3eee3';
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle inner bevel shadow around the mat opening (`52..w-52, 48..h-48`)
+    ctx.strokeStyle = '#c8bfa8';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(50, 46, w - 100, h - 92);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(53, 49, w - 106, h - 98);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(52, 48, w - 104, h - 96);
+    ctx.clip();
+
+    // 2. Golden-hour Championship Links & Coastal Duneland Panorama (Augusta / Turnberry sunset glow)
+    const skyGrad = ctx.createLinearGradient(0, 48, 0, 310);
+    skyGrad.addColorStop(0, '#2c4c70');
+    skyGrad.addColorStop(0.42, '#5c7c99');
+    skyGrad.addColorStop(0.76, '#d99e6a');
+    skyGrad.addColorStop(1, '#f5cf8e');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(52, 48, w - 104, 265);
+
+    // Warm glowing setting sun & golden clouds
+    const sunGrad = ctx.createRadialGradient(690, 245, 8, 690, 245, 115);
+    sunGrad.addColorStop(0, 'rgba(255, 246, 205, 0.95)');
+    sunGrad.addColorStop(0.45, 'rgba(255, 204, 122, 0.48)');
+    sunGrad.addColorStop(1, 'rgba(255, 180, 95, 0)');
+    ctx.fillStyle = sunGrad;
+    ctx.fillRect(52, 48, w - 104, 265);
+
+    // Distant coastal headland & sea loch shimmer
+    ctx.fillStyle = '#3b4d63';
+    ctx.beginPath();
+    ctx.moveTo(52, 292);
+    ctx.lineTo(185, 246);
+    ctx.lineTo(355, 262);
+    ctx.lineTo(540, 238);
+    ctx.lineTo(745, 268);
+    ctx.lineTo(972, 242);
+    ctx.lineTo(972, 310);
+    ctx.lineTo(52, 310);
+    ctx.closePath();
+    ctx.fill();
+
+    // Sunlit coastal water inlet (`y = 292..328`)
+    const waterGrad = ctx.createLinearGradient(0, 292, 0, 330);
+    waterGrad.addColorStop(0, '#5a7894');
+    waterGrad.addColorStop(0.5, '#d9a56c');
+    waterGrad.addColorStop(1, '#3b5973');
+    ctx.fillStyle = waterGrad;
+    ctx.fillRect(52, 292, w - 104, 38);
+
+    // 3. Sculpted emerald links fairway, golden marram dunes & sand bunkers (`y = 318..528`)
+    const turfGrad = ctx.createLinearGradient(0, 318, 0, 528);
+    turfGrad.addColorStop(0, '#4f7d3e');
+    turfGrad.addColorStop(0.5, '#3b662d');
+    turfGrad.addColorStop(1, '#22421a');
+    ctx.fillStyle = turfGrad;
+    ctx.beginPath();
+    ctx.moveTo(52, 332);
+    ctx.quadraticCurveTo(320, 304, 595, 326);
+    ctx.quadraticCurveTo(790, 340, 972, 314);
+    ctx.lineTo(972, 528);
+    ctx.lineTo(52, 528);
+    ctx.closePath();
+    ctx.fill();
+
+    // Sunlit putting green & two sculpted pot bunkers
+    ctx.fillStyle = '#629c49';
+    ctx.beginPath();
+    ctx.ellipse(545, 412, 235, 42, -0.05, 0, Math.PI * 2);
+    ctx.fill();
+
+    for (const [bx, by, rx, ry] of [
+      [345, 418, 48, 16],
+      [715, 404, 56, 18],
+    ] as const) {
+      ctx.fillStyle = '#e5cf9e';
+      ctx.beginPath();
+      ctx.ellipse(bx, by, rx, ry, 0.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#6b532c';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(bx, by, rx, Math.PI * 1.05, Math.PI * 1.95);
+      ctx.stroke();
+    }
+
+    // Pin flag on the 18th green (`x = 585, y = 342..408`)
+    ctx.strokeStyle = '#f5f2e8';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(585, 408);
+    ctx.lineTo(585, 342);
+    ctx.stroke();
+    ctx.fillStyle = '#d42c2c';
+    ctx.beginPath();
+    ctx.moveTo(585, 342);
+    ctx.lineTo(614, 351);
+    ctx.lineTo(585, 360);
+    ctx.closePath();
+    ctx.fill();
+
+    // Scots pine silhouettes on the left ridge
+    ctx.fillStyle = '#1b2e1b';
+    for (const [tx, ty, th] of [
+      [142, 355, 86],
+      [188, 348, 96],
+      [226, 360, 74],
+    ] as const) {
+      ctx.fillRect(tx - 3, ty - th * 0.45, 6, th * 0.45);
+      ctx.beginPath();
+      ctx.ellipse(tx, ty - th * 0.52, 28, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    // Subtle Samsung Art Mode museum plaque signature in bottom-right of mat
+    ctx.fillStyle = '#7a7264';
+    ctx.font = 'italic 12px Georgia, serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('Turnberry & Ayrshire Links · Sunset Study', w - 62, h - 20);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+export function buildBarnGroundWallArtworks(
+  groundGroup: THREE.Group,
+  groundCeilingGroup?: THREE.Group
+): void {
   const walnutFrameMat = new THREE.MeshStandardMaterial({
     color: 0x3b2618,
     roughness: 0.36,
@@ -3389,6 +3541,438 @@ export function buildBarnGroundWallArtworks(groundGroup: THREE.Group): void {
       rItem.add(tailRibbon);
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // 3. Issue #1 ("Samsung frame 55 inch on this wall, more task and ambient lighting in here"
+  //    at `[-1.221, 0.434, 19.624]` -> Outbuilding `(u = 20.861m, y = 0.434m, v = 5.43m)`):
+  //    55-Inch Samsung "The Frame" QLED 4K Art-Mode Smart TV (`outbuildings.barn.samsungFrame55`)
+  //    flush-mounted on the Barn South Wall (`u = 20.28m, y = 0.46m, v = 5.416m`, facing North `-v`)!
+  // ---------------------------------------------------------------------------
+  const frameTvGroup = new THREE.Group();
+  frameTvGroup.name = 'outbuildings.barn.samsungFrame55';
+  frameTvGroup.userData.zone = 'courtyard';
+  // 55" 16:9 outer dimensions: 1.238m W x 0.708m H x 0.025m D; spans u = 19.66..20.90m (covering u = 20.861m
+  // while staying clear of the spiral staircase at u = 21.14m and the viewing bar stools at u = 18.88m!)
+  frameTvGroup.position.set(20.28, 0.46, 5.416);
+  frameTvGroup.rotation.y = Math.PI;
+  groundGroup.add(frameTvGroup);
+
+  const tvW = 1.238; // 55-inch Samsung The Frame exact width (48.7")
+  const tvH = 0.708; // 55-inch Samsung The Frame exact height (27.9")
+  const tvD = 0.025; // 24.9mm ultra-thin Slim-Fit depth
+  const bezelW = 0.022;
+
+  const samsungOakBezelMat = new THREE.MeshStandardMaterial({
+    map: createTeakWoodTexture(),
+    color: 0xd8b588,
+    roughness: 0.38,
+    metalness: 0.04,
+  });
+  const chassisAnthraciteMat = new THREE.MeshStandardMaterial({
+    color: 0x181a1e,
+    roughness: 0.42,
+    metalness: 0.65,
+  });
+  const cableSilverMat = new THREE.MeshStandardMaterial({
+    color: 0xd8d5cc,
+    roughness: 0.35,
+    metalness: 0.25,
+    transparent: true,
+    opacity: 0.65,
+  });
+
+  // Slim-Fit zero-gap rear chassis backing plate
+  const tvChassis = new THREE.Mesh(
+    new THREE.BoxGeometry(tvW - 0.008, tvH - 0.008, tvD - 0.004),
+    chassisAnthraciteMat
+  );
+  tvChassis.name = 'outbuildings.barn.samsungFrame55.chassis';
+  tvChassis.position.set(0, 0, tvD * 0.5 - 0.002);
+  tvChassis.castShadow = true;
+  frameTvGroup.add(tvChassis);
+
+  // Magnetic Customizable Warm-Oak Picture Frame Bezel (Top, Bottom, Left, Right mitered rails)
+  for (const sideY of [-1, 1] as const) {
+    const hBezel = new THREE.Mesh(
+      new THREE.BoxGeometry(tvW, bezelW, tvD),
+      samsungOakBezelMat
+    );
+    hBezel.name = 'outbuildings.barn.samsungFrame55.bezel';
+    hBezel.position.set(0, sideY * (tvH * 0.5 - bezelW * 0.5), tvD * 0.5);
+    hBezel.castShadow = true;
+    frameTvGroup.add(hBezel);
+  }
+  for (const sideX of [-1, 1] as const) {
+    const vBezel = new THREE.Mesh(
+      new THREE.BoxGeometry(bezelW, tvH - bezelW * 2, tvD),
+      samsungOakBezelMat
+    );
+    vBezel.name = 'outbuildings.barn.samsungFrame55.bezel';
+    vBezel.position.set(sideX * (tvW * 0.5 - bezelW * 0.5), 0, tvD * 0.5);
+    vBezel.castShadow = true;
+    frameTvGroup.add(vBezel);
+  }
+
+  // Dark inner shadow sight-edge lip inside the oak bezel
+  const innerLip = new THREE.Mesh(
+    new THREE.BoxGeometry(tvW - bezelW * 2 + 0.004, tvH - bezelW * 2 + 0.004, tvD - 0.002),
+    chassisAnthraciteMat
+  );
+  innerLip.position.set(0, 0, tvD * 0.5 - 0.001);
+  frameTvGroup.add(innerLip);
+
+  // Matte Anti-Glare Art Mode / Golf Broadcast QLED Screen (`outbuildings.barn.samsungFrame55.screen`)
+  const frameScreenTex = createSamsungFrame55ScreenTexture();
+  const frameScreenMat = new THREE.MeshStandardMaterial({
+    map: frameScreenTex,
+    emissiveMap: frameScreenTex,
+    emissive: new THREE.Color(0xfff6e5),
+    emissiveIntensity: 0.52,
+    roughness: 0.62, // Signature Samsung Matte Display anti-reflection finish
+    metalness: 0.02,
+  });
+  const screenPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(tvW - bezelW * 2, tvH - bezelW * 2),
+    frameScreenMat
+  );
+  screenPlane.name = 'outbuildings.barn.samsungFrame55.screen';
+  screenPlane.position.set(0, 0, tvD + 0.001);
+  frameTvGroup.add(screenPlane);
+
+  // Signature Samsung bottom-right ambient brightness & motion sensor module under the bottom bezel
+  const sensorPod = new THREE.Mesh(
+    new THREE.BoxGeometry(0.056, 0.009, 0.018),
+    chassisAnthraciteMat
+  );
+  sensorPod.position.set(tvW * 0.34, -tvH * 0.5 - 0.0045, tvD * 0.5);
+  frameTvGroup.add(sensorPod);
+
+  // Translucent "One Invisible Connection" fiber-optic cable descending cleanly into a low wall grommet
+  const oneConnectCable = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0022, 0.0022, 0.62, 8),
+    cableSilverMat
+  );
+  oneConnectCable.position.set(0, -tvH * 0.5 - 0.31, 0.004);
+  frameTvGroup.add(oneConnectCable);
+
+  // Soft warm-white QLED screen glow PointLight illuminating the area in front of the Samsung Frame TV
+  const frameTvGlowLight = new THREE.PointLight(0xffeed2, 1.35, 4.2, 1.6);
+  frameTvGlowLight.name = 'outbuildings.barn.samsungFrame55.glowLight';
+  frameTvGlowLight.position.set(0, 0, 0.32);
+  frameTvGroup.add(frameTvGlowLight);
+
+  // ---------------------------------------------------------------------------
+  // 4. Issue #1 ("...more task and ambient lighting in here"):
+  //    Comprehensive Barn Ground-Floor Task & Ambient Lighting System (`outbuildings.barn.groundLighting`):
+  //    - 3-Shade Brushed-Brass & Hunter-Green Billiard Table Task Chandelier (`outbuildings.barn.poolTableLight`)
+  //    - 6 Recessed Warm-White Mezzanine Soffit Downlights (`outbuildings.barn.mezzanineDownlights`)
+  //    - Warm 2700K Architectural LED Cove Grazing Strips (`outbuildings.barn.ambientCoveLed`) along the
+  //      South wall cornice (washing the Samsung Frame TV wall!), North wall cornice, and Mezzanine front beam
+  //    - 5 Brushed-Brass & Alabaster Up/Down Wall Sconces (`outbuildings.barn.wallSconce.1..5`) flanking the
+  //      Samsung Frame TV, along the North wall, and beside the Stable glass door
+  //    - 2 Brushed-Brass Gallery Picture Task Lights (`outbuildings.barn.pictureLight.1..2`) over the St Andrews
+  //      and Horse Show Certificates artworks
+  //    - 2 Warm-Brass & Ribbed-Glass Spectator Bar Pendant Task Lights (`outbuildings.barn.golfViewingBarPendants`)
+  // ---------------------------------------------------------------------------
+  const barnLightingGroup = new THREE.Group();
+  barnLightingGroup.name = 'outbuildings.barn.groundLighting';
+  barnLightingGroup.userData.zone = 'courtyard';
+  groundGroup.add(barnLightingGroup);
+
+  const ceilingFixtureParent = groundCeilingGroup ?? barnLightingGroup;
+  const barnCeilingLightingGroup = new THREE.Group();
+  barnCeilingLightingGroup.name = 'outbuildings.barn.groundCeilingLighting';
+  barnCeilingLightingGroup.userData.zone = 'courtyard';
+  ceilingFixtureParent.add(barnCeilingLightingGroup);
+
+  const brushedBrassMat = new THREE.MeshStandardMaterial({
+    color: 0xd4af37,
+    roughness: 0.24,
+    metalness: 0.86,
+  });
+  const hunterGreenShadeMat = new THREE.MeshStandardMaterial({
+    color: 0x164a2c,
+    roughness: 0.32,
+    metalness: 0.24,
+    side: THREE.DoubleSide,
+  });
+  const warmAlabasterMat = new THREE.MeshStandardMaterial({
+    color: 0xfff5e0,
+    emissive: new THREE.Color(0xffc46b),
+    emissiveIntensity: 1.95,
+    roughness: 0.22,
+    metalness: 0.04,
+  });
+  const taskLedMat = new THREE.MeshStandardMaterial({
+    color: 0xfffaf0,
+    emissive: new THREE.Color(0xffe6b8),
+    emissiveIntensity: 2.3,
+    roughness: 0.16,
+  });
+  const darkBronzeChannelMat = new THREE.MeshStandardMaterial({
+    color: 0x22252a,
+    roughness: 0.38,
+    metalness: 0.72,
+  });
+
+  // 4A. 3-Shade Brushed-Brass & Hunter-Green Billiard Table Task Chandelier (`u = 20.38m, v = 2.08m`)
+  const billiardLightGroup = new THREE.Group();
+  billiardLightGroup.name = 'outbuildings.barn.poolTableLight';
+  billiardLightGroup.position.set(20.38, 1.395, 2.08);
+  barnCeilingLightingGroup.add(billiardLightGroup);
+
+  // Ceiling canopy plate + twin vertical drop rods (`y = 0..-0.42m`, putting shades at `y = 0.90m` world = `1.575m` above carpet!)
+  const canopyPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.92, 0.022, 0.11),
+    brushedBrassMat
+  );
+  canopyPlate.position.set(0, -0.011, 0);
+  billiardLightGroup.add(canopyPlate);
+
+  for (const rx of [-0.36, 0.36] as const) {
+    const dropRod = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.008, 0.008, 0.38, 12),
+      brushedBrassMat
+    );
+    dropRod.position.set(rx, -0.20, 0);
+    billiardLightGroup.add(dropRod);
+  }
+
+  const billiardCrossBar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.013, 0.013, 1.24, 16),
+    brushedBrassMat
+  );
+  billiardCrossBar.rotation.z = Math.PI / 2;
+  billiardCrossBar.position.set(0, -0.39, 0);
+  billiardLightGroup.add(billiardCrossBar);
+
+  for (const sx of [-0.52, 0, 0.52] as const) {
+    const shadeCollar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.024, 0.032, 0.045, 16),
+      brushedBrassMat
+    );
+    shadeCollar.position.set(sx, -0.42, 0);
+    billiardLightGroup.add(shadeCollar);
+
+    const billiardShade = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.048, 0.165, 0.14, 24, 1, true),
+      hunterGreenShadeMat
+    );
+    billiardShade.name = 'outbuildings.barn.poolTableLight.shade';
+    billiardShade.position.set(sx, -0.50, 0);
+    billiardShade.castShadow = true;
+    billiardLightGroup.add(billiardShade);
+
+    const brassRim = new THREE.Mesh(
+      new THREE.TorusGeometry(0.165, 0.006, 10, 24),
+      brushedBrassMat
+    );
+    brassRim.rotation.x = Math.PI / 2;
+    brassRim.position.set(sx, -0.57, 0);
+    billiardLightGroup.add(brassRim);
+
+    const shadeBulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.034, 14, 12),
+      taskLedMat
+    );
+    shadeBulb.position.set(sx, -0.52, 0);
+    billiardLightGroup.add(shadeBulb);
+  }
+
+  // Dedicated Pool Table Task PointLight in `barnLightingGroup` (stays active in cutaway mode!)
+  const poolTableTaskLight = new THREE.PointLight(0xfff0d4, 2.45, 6.2, 1.45);
+  poolTableTaskLight.name = 'outbuildings.barn.poolTableLight.pointLight';
+  poolTableTaskLight.position.set(20.38, 0.82, 2.08);
+  barnLightingGroup.add(poolTableTaskLight);
+
+  // 4B. 2 Warm-Brass & Ribbed-Alabaster Pendant Task Lights over the Golf Viewing Bar (`u = 18.42m, v = 4.02m & 5.02m`)
+  for (const [pIdx, pv] of [
+    [1, 4.04],
+    [2, 5.00],
+  ] as const) {
+    const barPendant = new THREE.Group();
+    barPendant.name = `outbuildings.barn.golfViewingBarPendant.${pIdx}`;
+    barPendant.position.set(18.42, 1.395, pv);
+    barnCeilingLightingGroup.add(barPendant);
+
+    const cord = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.005, 0.005, 0.34, 10),
+      brushedBrassMat
+    );
+    cord.position.set(0, -0.17, 0);
+    barPendant.add(cord);
+
+    const brassCap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.036, 0.042, 0.04, 16),
+      brushedBrassMat
+    );
+    brassCap.position.set(0, -0.35, 0);
+    barPendant.add(brassCap);
+
+    const glassCylinder = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.052, 0.052, 0.15, 20),
+      warmAlabasterMat
+    );
+    glassCylinder.position.set(0, -0.43, 0);
+    barPendant.add(glassCylinder);
+  }
+
+  const golfBarTaskLight = new THREE.PointLight(0xffdfa8, 1.85, 4.8, 1.5);
+  golfBarTaskLight.name = 'outbuildings.barn.golfViewingBar.taskLight';
+  golfBarTaskLight.position.set(18.42, 0.85, 4.52);
+  barnLightingGroup.add(golfBarTaskLight);
+
+  // 4C. 6 Recessed Brushed-Brass Mezzanine Downlights (`y = 1.392m`) across the Lower Barn Ceiling
+  const downlightCoords: ReadonlyArray<readonly [number, number]> = [
+    [19.25, 1.05],
+    [19.25, 2.85],
+    [21.65, 1.05],
+    [21.65, 2.85],
+    [20.28, 3.85],
+    [20.28, 4.95],
+  ];
+  for (let d = 0; d < downlightCoords.length; d++) {
+    const [du, dv] = downlightCoords[d]!;
+    const bezelRing = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.048, 0.048, 0.008, 18),
+      brushedBrassMat
+    );
+    bezelRing.name = `outbuildings.barn.mezzanineDownlight.${d + 1}`;
+    bezelRing.position.set(du, 1.392, dv);
+    barnCeilingLightingGroup.add(bezelRing);
+
+    const lensDisc = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.036, 0.036, 0.01, 16),
+      taskLedMat
+    );
+    lensDisc.position.set(du, 1.391, dv);
+    barnCeilingLightingGroup.add(lensDisc);
+  }
+
+  // 4D. Warm 2700K Architectural LED Cove Grazing Strips (`outbuildings.barn.ambientCoveLed`)
+  //     - South wall cornice cove (`u = 18.48..21.10m, y = 1.36m, v = 5.412m`) washing the Samsung Frame TV wall!
+  //     - North wall cornice cove (`u = 18.48..22.90m, y = 1.36m, v = 0.298m`)
+  //     - Mezzanine front bressummer beam cove (`u = 18.85m, y = 1.36m, v = 0.36..5.34m`)
+  for (const [cName, cu, cy, cv, cw, cd] of [
+    ['southWallCove', (18.48 + 21.10) * 0.5, 1.36, 5.412, 21.10 - 18.48, 0.022],
+    ['northWallCove', (18.48 + 22.90) * 0.5, 1.36, 0.298, 22.90 - 18.48, 0.022],
+    ['bressummerCove', 18.85, 1.36, 2.85, 0.022, 4.98],
+  ] as const) {
+    const channel = new THREE.Mesh(
+      new THREE.BoxGeometry(cw, 0.018, cd),
+      darkBronzeChannelMat
+    );
+    channel.position.set(cu, cy + 0.006, cv);
+    barnLightingGroup.add(channel);
+
+    const ledStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(Math.max(0.014, cw - 0.01), 0.01, Math.max(0.014, cd - 0.01)),
+      warmAlabasterMat
+    );
+    ledStrip.name = `outbuildings.barn.ambientCoveLed.${cName}`;
+    ledStrip.position.set(cu, cy, cv);
+    barnLightingGroup.add(ledStrip);
+  }
+
+  // 4E. 5 Designer Brushed-Brass & Fluted-Alabaster Up/Down Wall Sconces (`outbuildings.barn.wallSconce.1..5`)
+  //     - Sconces 1 & 2 flank the 55" Samsung Frame TV on the South Wall (`u = 19.44m` & `u = 21.08m, y = 0.50m, v = 5.418m`)
+  //     - Sconce 3 on the North Wall (`u = 19.05m, y = 0.56m, v = 0.292m`)
+  //     - Sconce 4 on the East Partition Wall beside the Stable Glass Door (`u = 23.005m, y = 0.52m, v = 1.56m`)
+  //     - Sconce 5 on the West Limestone Bay North Wall (`u = 16.92m, y = 0.92m, v = 0.292m`)
+  const wallSconceSpecs: ReadonlyArray<readonly [number, number, number, number, number]> = [
+    [1, 19.44, 0.50, 5.418, Math.PI],
+    [2, 21.08, 0.50, 5.418, Math.PI],
+    [3, 19.05, 0.56, 0.292, 0],
+    [4, 23.005, 0.52, 1.56, -Math.PI / 2],
+    [5, 16.92, 0.92, 0.292, 0],
+  ];
+  for (const [sIdx, su, sy, sv, sRotY] of wallSconceSpecs) {
+    const sconce = new THREE.Group();
+    sconce.name = `outbuildings.barn.wallSconce.${sIdx}`;
+    sconce.position.set(su, sy, sv);
+    sconce.rotation.y = sRotY;
+    barnLightingGroup.add(sconce);
+
+    const wallPlate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.082, 0.22, 0.014),
+      brushedBrassMat
+    );
+    wallPlate.position.set(0, 0, 0.007);
+    sconce.add(wallPlate);
+
+    const alabasterCyl = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.032, 0.032, 0.28, 16),
+      warmAlabasterMat
+    );
+    alabasterCyl.name = `outbuildings.barn.wallSconce.${sIdx}.diffuser`;
+    alabasterCyl.position.set(0, 0, 0.046);
+    sconce.add(alabasterCyl);
+
+    for (const bandY of [-0.085, 0, 0.085] as const) {
+      const brassBand = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.036, 0.036, 0.016, 16),
+        brushedBrassMat
+      );
+      brassBand.position.set(0, bandY, 0.046);
+      sconce.add(brassBand);
+    }
+  }
+
+  // 4F. 2 Brushed-Brass Gallery Picture Task Lights (`outbuildings.barn.pictureLight.1..2`)
+  //     over the St Andrews Picture (`u = 17.64m, y = 1.45m, v = 0.295m`) & Horse Show Certificates (`u = 17.15m, y = 1.65m, v = 5.412m`)
+  for (const [pIdx, pu, py, pv, pRotY, barW] of [
+    [1, 17.64, 1.46, 0.295, 0, 0.44],
+    [2, 17.15, 1.66, 5.412, Math.PI, 0.78],
+  ] as const) {
+    const picLight = new THREE.Group();
+    picLight.name = `outbuildings.barn.pictureLight.${pIdx}`;
+    picLight.position.set(pu, py, pv);
+    picLight.rotation.y = pRotY;
+    barnLightingGroup.add(picLight);
+
+    const picBackplate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.042, 0.014),
+      brushedBrassMat
+    );
+    picBackplate.position.set(0, 0, 0.007);
+    picLight.add(picBackplate);
+
+    for (const ax of [-barW * 0.28, barW * 0.28] as const) {
+      const arm = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.006, 0.006, 0.14, 10),
+        brushedBrassMat
+      );
+      arm.rotation.x = Math.PI / 2;
+      arm.position.set(ax, 0.01, 0.07);
+      picLight.add(arm);
+    }
+
+    const hood = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.018, 0.018, barW, 14, 1, false, 0, Math.PI),
+      brushedBrassMat
+    );
+    hood.rotation.z = Math.PI / 2;
+    hood.position.set(0, 0.01, 0.14);
+    picLight.add(hood);
+
+    const diffuser = new THREE.Mesh(
+      new THREE.BoxGeometry(barW - 0.02, 0.008, 0.022),
+      taskLedMat
+    );
+    diffuser.position.set(0, 0.002, 0.14);
+    picLight.add(diffuser);
+  }
+
+  // Ambient & Task Fill PointLights in the West Limestone Lounge Bay (`u = 16.85m, v = 2.85m`) and South TV / Bar Zone (`u = 20.28m, v = 4.55m`)
+  const westBayTaskLight = new THREE.PointLight(0xfff1d6, 2.1, 6.5, 1.45);
+  westBayTaskLight.name = 'outbuildings.barn.westBayTaskLight';
+  westBayTaskLight.position.set(16.85, 1.85, 2.85);
+  barnLightingGroup.add(westBayTaskLight);
+
+  const southWallAmbientLight = new THREE.PointLight(0xffcb80, 1.75, 5.5, 1.5);
+  southWallAmbientLight.name = 'outbuildings.barn.southWallAmbientLight';
+  southWallAmbientLight.position.set(20.28, 0.95, 4.65);
+  barnLightingGroup.add(southWallAmbientLight);
 }
 
 // ============================================================================
