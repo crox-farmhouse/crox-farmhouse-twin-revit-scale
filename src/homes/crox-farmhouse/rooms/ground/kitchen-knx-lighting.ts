@@ -19,22 +19,34 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     color: 0xc99e5a,
     roughness: 0.26,
     metalness: 0.86,
+    transparent: true,
+    opacity: 0.35,
+    depthWrite: false,
   });
   const darkBronzeMat = new THREE.MeshStandardMaterial({
     color: 0x26292e,
     roughness: 0.4,
     metalness: 0.75,
+    transparent: true,
+    opacity: 0.35,
+    depthWrite: false,
   });
   const matteBlackMat = new THREE.MeshStandardMaterial({
     color: 0x15171a,
     roughness: 0.42,
     metalness: 0.35,
+    transparent: true,
+    opacity: 0.35,
+    depthWrite: false,
   });
   const braidedCableTex = createBraidedCableTexture();
   const braidedCableMat = new THREE.MeshStandardMaterial({
     map: braidedCableTex,
     roughness: 0.78,
     metalness: 0.04,
+    transparent: true,
+    opacity: 0.35,
+    depthWrite: false,
   });
 
   // =========================================================================
@@ -47,6 +59,9 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     emissive: new THREE.Color(0xffaa44),
     emissiveIntensity: 2.5,
     roughness: 0.15,
+    transparent: true,
+    opacity: 0.4,
+    depthWrite: false,
   });
   const cementShadeTex = createCementTexture();
   const concreteShadeMat = new THREE.MeshStandardMaterial({
@@ -57,6 +72,9 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     roughness: 0.88,
     metalness: 0.03,
     side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.36,
+    depthWrite: false,
   });
   const concreteInnerGlowMat = new THREE.MeshStandardMaterial({
     color: 0xf5ebd6,
@@ -64,6 +82,9 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     emissiveIntensity: 1.2,
     roughness: 0.65,
     side: THREE.BackSide,
+    transparent: true,
+    opacity: 0.36,
+    depthWrite: false,
   });
   lightGroups.islandPendants.emissives.push(islandBulbMat, concreteInnerGlowMat);
 
@@ -1418,16 +1439,25 @@ const sharedRoomBrassMat = new THREE.MeshStandardMaterial({
   color: 0xc59b58,
   roughness: 0.25,
   metalness: 0.88,
+  transparent: true,
+  opacity: 0.35,
+  depthWrite: false,
 });
 const sharedRoomCollarMat = new THREE.MeshStandardMaterial({
   color: 0x3a3228,
   roughness: 0.35,
   metalness: 0.78,
+  transparent: true,
+  opacity: 0.35,
+  depthWrite: false,
 });
 const sharedBraidedCordMat = new THREE.MeshStandardMaterial({
   color: 0x26231f,
   roughness: 0.72,
   metalness: 0.12,
+  transparent: true,
+  opacity: 0.35,
+  depthWrite: false,
 });
 
 const clearLanternGlassMat = new THREE.MeshStandardMaterial({
@@ -1442,6 +1472,9 @@ const clearLanternGlassMat = new THREE.MeshStandardMaterial({
 const lanternCandleSleeveMat = new THREE.MeshStandardMaterial({
   color: 0xf3eee2,
   roughness: 0.55,
+  transparent: true,
+  opacity: 0.36,
+  depthWrite: false,
 });
 
 /**
@@ -1538,6 +1571,9 @@ export function buildRoomCeilingPendant(
     emissive: new THREE.Color(0xffad42),
     emissiveIntensity: 2.8,
     roughness: 0.14,
+    transparent: true,
+    opacity: 0.4,
+    depthWrite: false,
   });
   const shadeEmissiveMat = new THREE.MeshStandardMaterial({
     color: style === 'flutedGlass' || style === 'brassLantern' ? 0xfff7e8 : 0xf4ece0,
@@ -1545,8 +1581,9 @@ export function buildRoomCeilingPendant(
     emissiveIntensity: style === 'flutedGlass' || style === 'brassLantern' ? 1.1 : 1.45,
     roughness: style === 'flutedGlass' || style === 'brassLantern' ? 0.12 : 0.68,
     metalness: style === 'flutedGlass' || style === 'brassLantern' ? 0.12 : 0.02,
-    transparent: style === 'flutedGlass' || style === 'brassLantern',
-    opacity: style === 'flutedGlass' || style === 'brassLantern' ? 0.46 : 1.0,
+    transparent: true,
+    opacity: 0.36,
+    depthWrite: false,
     side: THREE.DoubleSide,
   });
   ctx.lightGroups[circuitId].emissives.push(bulbEmissiveMat, shadeEmissiveMat);

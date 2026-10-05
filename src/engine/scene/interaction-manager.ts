@@ -23,6 +23,8 @@ interface HingedDoorState {
   isOpen: boolean;
   progress: number;
   speed: number;
+  overheadTrackZ?: number;
+  closedPosZ?: number;
   bargeSwingSign?: -1 | 1;
   fromAngle?: number;
   closedGeometry?: ClosedDoorwayGeometry;
@@ -221,6 +223,46 @@ export class SceneInteractionManager {
       isOpen: false,
       progress: 0,
       speed: 2.6,
+    });
+
+    return pivot;
+  }
+
+  /**
+   * Registers a single-piece retractable up-and-over overhead garage door (`axis = 'x'`).
+   * As the panel tilts upward (`rotation.x` from `0` to `+openAngle`), the top roller pivot
+   * glides rearward (`+z`) along the horizontal overhead ceiling tracks by `overheadTrackZ * sin(rx)`,
+   * so the bottom edge rises straight up the doorway jambs without ever swinging inward into a parked car.
+   */
+  public registerOverheadGarageDoor(
+    parent: THREE.Object3D,
+    doorObj: THREE.Object3D,
+    hingeOffsetInParent: THREE.Vector3,
+    overheadTrackZ: number,
+    openAngle = Math.PI * 0.495
+  ): THREE.Group {
+    const id = this.allocateId('door');
+    const pivot = new THREE.Group();
+    pivot.position.copy(doorObj.position).add(hingeOffsetInParent);
+
+    parent.remove(doorObj);
+    doorObj.position.copy(hingeOffsetInParent).negate();
+    pivot.add(doorObj);
+
+    parent.add(pivot);
+    this.registerClickableObject(pivot, { interactableId: id });
+
+    this.hingedDoors.set(id, {
+      id,
+      pivot,
+      axis: 'x',
+      closedAngle: 0,
+      openAngle,
+      isOpen: false,
+      progress: 0,
+      speed: 1.65,
+      overheadTrackZ,
+      closedPosZ: pivot.position.z,
     });
 
     return pivot;
@@ -459,7 +501,7 @@ export class SceneInteractionManager {
     if (door) {
       door.fromAngle = undefined;
       door.isOpen = !door.isOpen;
-      door.speed = 2.8;
+      door.speed = door.overheadTrackZ !== undefined ? 1.65 : 2.8;
       if (door.isOpen) {
         this.closeConflictingDoors(interactableId);
       } else {
@@ -822,6 +864,10 @@ export class SceneInteractionManager {
     if (door.id === 'door-56') return 1.25;
     if (door.id === 'door-57') return 1.15;
 
+    if (door.overheadTrackZ !== undefined) {
+      return door.openAngle;
+    }
+
     const rawDelta = door.openAngle - door.closedAngle;
     if (Math.abs(rawDelta) < 0.05) {
       const swingSign = door.pivot.position.z > 1.5 ? 1 : -1;
@@ -872,6 +918,9 @@ export class SceneInteractionManager {
           chainNames.includes('warming')
         ) {
           return `${verb} AGA Oven Door`;
+        }
+        if (door.overheadTrackZ !== undefined) {
+          return `${verb} Garage Door`;
         }
         if (
           door.axis !== 'y' ||
@@ -1033,11 +1082,18 @@ export class SceneInteractionManager {
         door.closedAngle = newPivot.rotation[door.axis];
         door.openAngle = door.closedAngle + angleDelta;
         door.closedGeometry = undefined;
+        if (door.overheadTrackZ !== undefined && door.closedPosZ === undefined) {
+          door.closedPosZ = newPivot.position.z;
+        }
         const effectiveOpen = this.getEffectiveDoorOpenAngle(door);
         const startAngle = door.fromAngle ?? door.closedAngle;
         const smooth = easeInOutCubic(door.progress);
-        door.pivot.rotation[door.axis] =
-          startAngle + (effectiveOpen - startAngle) * smooth;
+        const currentAngle = startAngle + (effectiveOpen - startAngle) * smooth;
+        door.pivot.rotation[door.axis] = currentAngle;
+        if (door.overheadTrackZ !== undefined && door.closedPosZ !== undefined) {
+          door.pivot.position.z =
+            door.closedPosZ + door.overheadTrackZ * Math.sin(Math.abs(currentAngle));
+        }
         door.pivot.updateMatrixWorld(true);
       }
     }
@@ -1162,8 +1218,12 @@ export class SceneInteractionManager {
         const smooth = easeInOutCubic(door.progress);
         const effectiveOpen = this.getEffectiveDoorOpenAngle(door);
         const startAngle = door.fromAngle ?? door.closedAngle;
-        door.pivot.rotation[door.axis] =
-          startAngle + (effectiveOpen - startAngle) * smooth;
+        const currentAngle = startAngle + (effectiveOpen - startAngle) * smooth;
+        door.pivot.rotation[door.axis] = currentAngle;
+        if (door.overheadTrackZ !== undefined && door.closedPosZ !== undefined) {
+          door.pivot.position.z =
+            door.closedPosZ + door.overheadTrackZ * Math.sin(Math.abs(currentAngle));
+        }
         if (door.progress === 0) {
           door.bargeSwingSign = undefined;
           door.fromAngle = undefined;

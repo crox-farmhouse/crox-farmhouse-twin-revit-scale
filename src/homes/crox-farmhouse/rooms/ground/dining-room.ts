@@ -1852,11 +1852,23 @@ export function buildDiningRoom(
   }
 
   // 6 KNX Recessed Ceiling Downlights between the Joists (circuitId: 'familyRoomSpots', Ch 10)
+  // Issue #4: Overhead lights stay visible in cutaway mode at low opacity (`0.32..0.42`)
+  const famSpotBezelMat = new THREE.MeshStandardMaterial({
+    color: 0xf7f5f0,
+    roughness: 0.55,
+    metalness: 0.05,
+    transparent: true,
+    opacity: 0.32,
+    depthWrite: false,
+  });
   const famSpotEmissiveMat = new THREE.MeshStandardMaterial({
     color: 0xfff4dc,
     emissive: new THREE.Color(0xffaa44),
     emissiveIntensity: 2.8,
     roughness: 0.15,
+    transparent: true,
+    opacity: 0.42,
+    depthWrite: false,
   });
   lightGroups.familyRoomSpots.emissives.push(famSpotEmissiveMat);
 
@@ -1874,7 +1886,7 @@ export function buildDiningRoom(
 
     const bezel = new THREE.Mesh(
       new THREE.CylinderGeometry(0.052, 0.052, 0.012, 16),
-      whiteJoistMat
+      famSpotBezelMat
     );
     spotGroup.add(bezel);
 
@@ -1886,7 +1898,7 @@ export function buildDiningRoom(
     spotGroup.add(lens);
 
     interactions.registerLightFixture(spotGroup, 'familyRoomSpots');
-    groundFloorCeilingGroup.add(spotGroup);
+    scene.add(spotGroup);
     ctx.addGlowPool('familyRoomSpots', sx, 0.012, sz, 1.15, 0.26);
   }
 

@@ -684,15 +684,23 @@ export function buildGroundFloorPendantsAndSwitches(
   //    - Plant Room LED Light Bar (`plantRoom.ledLightBar`) at X = -18.08m, Z = 9.94m (North–South orientation)
   //    - Study LED Light Bar (`study.ledLightBar`) at X = -20.62m, Z = 9.94m (East–West orientation)
   {
+    // Issue #4: Overhead LED light bars stay visible in cutaway mode at low opacity (`0.34..0.38`)
+    void groundFloorCeilingGroup;
     const ledHousingMat = new THREE.MeshStandardMaterial({
       color: 0xe8eaed, // Powder-coated white/silver extruded aluminum batten housing
       roughness: 0.32,
       metalness: 0.45,
+      transparent: true,
+      opacity: 0.34,
+      depthWrite: false,
     });
     const ledEndCapMat = new THREE.MeshStandardMaterial({
       color: 0x3a3f47, // Dark anthracite polycarbonate end caps
       roughness: 0.42,
       metalness: 0.28,
+      transparent: true,
+      opacity: 0.34,
+      depthWrite: false,
     });
     const ledDiffuserMat = new THREE.MeshStandardMaterial({
       color: 0xfcfaf2,
@@ -700,6 +708,9 @@ export function buildGroundFloorPendantsAndSwitches(
       emissiveIntensity: 2.35,
       roughness: 0.22,
       metalness: 0.02,
+      transparent: true,
+      opacity: 0.38,
+      depthWrite: false,
     });
     lightGroups.studyPendant.emissives.push(ledDiffuserMat);
 
@@ -723,7 +734,7 @@ export function buildGroundFloorPendantsAndSwitches(
       );
       housingChannel.name = `${barName}.housing`;
       housingChannel.position.set(0, -0.011, 0);
-      housingChannel.castShadow = true;
+      housingChannel.castShadow = false;
       barGroup.add(housingChannel);
 
       // End caps at both ends of the 1.22m LED batten
@@ -755,7 +766,7 @@ export function buildGroundFloorPendantsAndSwitches(
         lightGroups.studyPendant.lights.push(ledPointLight);
       }
 
-      groundFloorCeilingGroup.add(barGroup);
+      scene.add(barGroup);
       interactions.registerLightFixture(barGroup, 'studyPendant');
       ctx.addGlowPool('studyPendant', bx, tier2FloorY + 0.006, bz, 2.25, 0.24);
     }

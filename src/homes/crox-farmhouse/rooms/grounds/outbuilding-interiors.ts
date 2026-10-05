@@ -764,21 +764,24 @@ export function buildGymOakDoorAndSkirting(
     doorGlass.position.set(0, 0.004, leafCenterRelZ);
     leafPivot.add(doorGlass);
 
-    // Long vertical architectural brushed-stainless pull handles on both the GYM (`-x`) and Garage (`+x`) faces
+    // Issue #4 ("black handles" at `[-16.448, 0.523, 17.616]`, `outbuildings.gymGarageGlassDoor.glass`):
+    // Long vertical architectural matte-black anodized pull handles on both the GYM (`-x`) and Garage (`+x`) faces
     const handleRelZ = -sideZ * (leafW - stileW - 0.028);
     for (const faceX of [-1, 1] as const) {
       const pullBar = new THREE.Mesh(
         new THREE.CylinderGeometry(0.011, 0.011, 0.52, 14),
-        brushedSteelHardwareMat
+        satinBlackMullionMat
       );
+      pullBar.name = 'outbuildings.gymGarageGlassDoor.handle';
       pullBar.position.set(faceX * (leafT * 0.5 + 0.026), -0.06, handleRelZ);
       leafPivot.add(pullBar);
 
       for (const standY of [-0.22, 0.1] as const) {
         const standoff = new THREE.Mesh(
           new THREE.CylinderGeometry(0.008, 0.008, 0.028, 10),
-          brushedSteelHardwareMat
+          satinBlackMullionMat
         );
+        standoff.name = 'outbuildings.gymGarageGlassDoor.handleStandoff';
         standoff.rotation.z = Math.PI / 2;
         standoff.position.set(faceX * (leafT * 0.5 + 0.013), standY, handleRelZ);
         leafPivot.add(standoff);
@@ -4520,10 +4523,10 @@ export function buildBarnGolfSimulator(
     simGroup.add(sideTrim);
   }
   const topTrim = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, frameTrimW, clearW + frameTrimW * 1.6),
+    new THREE.BoxGeometry(0.08, frameTrimW, clearW),
     velvetFrameMat
   );
-  topTrim.position.set(0.01, clearH + frameTrimW * 0.3, 0);
+  topTrim.position.set(-0.04, clearH - frameTrimW * 0.5, 0);
   simCeilingGroup.add(topTrim);
 
   const screenMesh = new THREE.Mesh(
@@ -7773,6 +7776,7 @@ export function buildGymMirrorsLightingAndPlants(
   groundCeilingGroup: THREE.Group,
   gymFloorY: number
 ): void {
+  void groundCeilingGroup;
   const mirrorGroup = new THREE.Group();
   mirrorGroup.name = 'outbuildings.gym.wallMirrors';
   mirrorGroup.userData.zone = 'courtyard';
@@ -7941,47 +7945,48 @@ export function buildGymMirrorsLightingAndPlants(
     }
   };
 
-  // Raised slightly so the bottom of each arched mirror (`gymFloorY + 0.34m`) sits ~20cm clear above the 0.142m skirting board!
-  const mirrorCenterY = gymFloorY + 1.15; // Spans `y = gymFloorY + 0.34 .. gymFloorY + 1.96m` (`1.62m` tall)
-  const mirrorH = 1.62;
+  // Issue #1 ("make each mirror bigger so there are less of them overall" at `[-17.086, 0.791, 20.943]`, `outbuildings.gym.wallMirrors.southEast.glass.1`):
+  // Each arched mirror is significantly wider (`0.92m..1.08m` vs `0.56m`) and taller (`1.76m` vs `1.62m`), reducing the total count from 7 small mirrors to 4 grand architectural statement mirrors!
+  const mirrorCenterY = gymFloorY + 1.18; // Spans `y = gymFloorY + 0.30 .. gymFloorY + 2.06m` (`1.76m` tall)
+  const mirrorH = 1.76;
 
-  // 1A. 3 Separated Backlit Arched Mirrors on the South-East Exposed Brick Wall (`u = 3.32..5.20m, v = 5.405m`, facing North `-v`)
+  // 1A. 2 Large Separated Backlit Arched Mirrors on the South-East Exposed Brick Wall (`u = 3.22..5.30m, v = 5.405m`, facing North `-v`)
   addBacklitArchedMirrorSet(
     'outbuildings.gym.wallMirrors.southEast',
     4.26,
     mirrorCenterY,
     5.405,
     Math.PI,
-    0.58,
+    0.92,
     mirrorH,
-    0.2,
-    3
+    0.22,
+    2
   );
 
-  // 1B. 2 Separated Backlit Arched Mirrors on the South-West Exposed Brick Wall (`u = 0.84..2.20m, v = 5.405m`, facing North `-v`)
+  // 1B. 1 Grand Wide Backlit Arched Mirror on the South-West Exposed Brick Wall behind the Squat Cage (`u = 0.98..2.06m, v = 5.405m`, facing North `-v`)
   addBacklitArchedMirrorSet(
     'outbuildings.gym.wallMirrors.southWest',
     1.52,
     mirrorCenterY,
     5.405,
     Math.PI,
-    0.58,
+    1.08,
     mirrorH,
-    0.22,
-    2
+    0,
+    1
   );
 
-  // 1C. 2 Separated Backlit Arched Mirrors on the West Wall (`u = 0.305m, centerV = 1.76m`, swapped with the West Gable Window at `v = 3.30m` — Issue #2!)
+  // 1C. 1 Grand Wide Backlit Arched Mirror on the West Wall Free-Weight Zone (`u = 0.305m, centerV = 1.76m`, facing East `+u`)
   addBacklitArchedMirrorSet(
     'outbuildings.gym.wallMirrors.westWall',
     0.305,
     mirrorCenterY,
     1.76,
     Math.PI / 2,
-    0.56,
+    1.04,
     mirrorH,
-    0.2,
-    2
+    0,
+    1
   );
 
   // ---------------------------------------------------------------------------
@@ -8051,23 +8056,43 @@ export function buildGymMirrorsLightingAndPlants(
     }
   }
 
-  // 2C. 4 Overhead Suspended Linear Task Luminaires in `groundCeilingGroup` (`y = 2.02m`)
+  // 2C. 4 Overhead Suspended Linear Task Luminaires (`y = 2.02m`)
+  // Issue #4: Overhead lights stay visible in cutaway mode at low opacity (`0.34..0.38`)
   const ceilingTaskGroup = new THREE.Group();
   ceilingTaskGroup.name = 'outbuildings.gym.lighting.ceilingTaskBattens';
-  groundCeilingGroup.add(ceilingTaskGroup);
+  lightingGroup.add(ceilingTaskGroup);
+
+  const battenCutawayFrameMat = new THREE.MeshStandardMaterial({
+    color: 0x1e2228,
+    roughness: 0.34,
+    metalness: 0.78,
+    transparent: true,
+    opacity: 0.34,
+    depthWrite: false,
+  });
+  const battenCutawayDiffuserMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0xfff5e4,
+    emissiveIntensity: 1.95,
+    roughness: 0.16,
+    metalness: 0.02,
+    transparent: true,
+    opacity: 0.38,
+    depthWrite: false,
+  });
 
   for (const cu of [1.52, 4.18] as const) {
     for (const cv of [1.75, 3.85] as const) {
       const battenHousing = new THREE.Mesh(
         new THREE.BoxGeometry(1.68, 0.036, 0.058),
-        blackAnodizedFrameMat
+        battenCutawayFrameMat
       );
       battenHousing.position.set(cu, 2.02, cv);
       ceilingTaskGroup.add(battenHousing);
 
       const battenDiffuser = new THREE.Mesh(
         new THREE.BoxGeometry(1.64, 0.014, 0.044),
-        taskWhiteLedMat
+        battenCutawayDiffuserMat
       );
       battenDiffuser.position.set(cu, 2.0, cv);
       ceilingTaskGroup.add(battenDiffuser);
@@ -8076,7 +8101,7 @@ export function buildGymMirrorsLightingAndPlants(
       for (const du of [-0.68, 0.68] as const) {
         const suspRod = new THREE.Mesh(
           new THREE.CylinderGeometry(0.004, 0.004, 0.42, 8),
-          blackAnodizedFrameMat
+          battenCutawayFrameMat
         );
         suspRod.position.set(cu + du, 2.24, cv);
         ceilingTaskGroup.add(suspRod);
@@ -9535,20 +9560,38 @@ export function buildGarageShowerRoom(
   );
   ceilingGroup.add(ceilingLid);
 
+  const showerDownlightBezelMat = new THREE.MeshStandardMaterial({
+    color: 0xc29858,
+    roughness: 0.28,
+    metalness: 0.84,
+    transparent: true,
+    opacity: 0.34,
+    depthWrite: false,
+  });
+  const showerDownlightLensMat = new THREE.MeshStandardMaterial({
+    color: 0xfff8eb,
+    emissive: 0xffe4b8,
+    emissiveIntensity: 1.9,
+    roughness: 0.16,
+    metalness: 0.02,
+    transparent: true,
+    opacity: 0.38,
+    depthWrite: false,
+  });
   for (const du of [6.65, 8.15] as const) {
     const downlightBezel = new THREE.Mesh(
       new THREE.CylinderGeometry(0.048, 0.048, 0.012, 18),
-      brushedBrassMat
+      showerDownlightBezelMat
     );
     downlightBezel.position.set(du, eaveTopY - 0.062, 4.7);
-    ceilingGroup.add(downlightBezel);
+    roomGroup.add(downlightBezel);
 
     const downlightLens = new THREE.Mesh(
       new THREE.CylinderGeometry(0.038, 0.038, 0.014, 18),
-      warmDownlightLedMat
+      showerDownlightLensMat
     );
     downlightLens.position.set(du, eaveTopY - 0.063, 4.7);
-    ceilingGroup.add(downlightLens);
+    roomGroup.add(downlightLens);
   }
 
   // Warm 3000K PointLight inside the Shower Room

@@ -3987,10 +3987,12 @@ export function buildBarnGroundWallArtworks(
   //    Clean, architectural, museum-curated Equestrian Championship Frame on a Crisp Conservation White Mountboard Passepartout
   //    mounted directly above the Barn North Courtyard Door (`u = 16.35m, y = 2.24m, v = 0.295m`, `rotY = 0` facing South `+z`)!
   // ---------------------------------------------------------------------------
+  // Issue #7 ("Center this on the wall horizontalls" at `[-5.905, 2.222, 14.895]`, `outbuildings.barn.horseShowCertificates.canvas`):
+  // Centered horizontally across the West Barn North Wall (`u = 15.20..18.56m` -> midpoint `u = 16.88m`)
   const certGroup = new THREE.Group();
   certGroup.name = 'outbuildings.barn.horseShowCertificates';
   certGroup.userData.zone = 'courtyard';
-  certGroup.position.set(16.35, 2.24, 0.295);
+  certGroup.position.set(16.88, 2.24, 0.295);
   certGroup.rotation.y = 0;
   groundGroup.add(certGroup);
 
@@ -4243,22 +4245,36 @@ export function buildBarnGroundWallArtworks(
   barnLightingGroup.userData.zone = 'courtyard';
   groundGroup.add(barnLightingGroup);
 
-  const ceilingFixtureParent = groundCeilingGroup ?? barnLightingGroup;
+  // Issue #4 ("Overhead lights should be visible but low opacity (same everywhere)"):
+  // Keep `barnCeilingLightingGroup` attached to `barnLightingGroup` (`groundGroup`) so overhead lights remain visible
+  // in cutaway mode, and use low-opacity (`0.34..0.38`) materials on the overhead ceiling fixtures.
+  void groundCeilingGroup;
   const barnCeilingLightingGroup = new THREE.Group();
   barnCeilingLightingGroup.name = 'outbuildings.barn.groundCeilingLighting';
   barnCeilingLightingGroup.userData.zone = 'courtyard';
-  ceilingFixtureParent.add(barnCeilingLightingGroup);
+  barnLightingGroup.add(barnCeilingLightingGroup);
 
   const brushedBrassMat = new THREE.MeshStandardMaterial({
     color: 0xd4af37,
     roughness: 0.24,
     metalness: 0.86,
   });
+  const overheadBrassLowOpacityMat = new THREE.MeshStandardMaterial({
+    color: 0xd4af37,
+    roughness: 0.24,
+    metalness: 0.86,
+    transparent: true,
+    opacity: 0.35,
+    depthWrite: false,
+  });
   const hunterGreenShadeMat = new THREE.MeshStandardMaterial({
     color: 0x164a2c,
     roughness: 0.32,
     metalness: 0.24,
     side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.36,
+    depthWrite: false,
   });
   const warmAlabasterMat = new THREE.MeshStandardMaterial({
     color: 0xfff5e0,
@@ -4267,16 +4283,37 @@ export function buildBarnGroundWallArtworks(
     roughness: 0.22,
     metalness: 0.04,
   });
+  const overheadAlabasterLowOpacityMat = new THREE.MeshStandardMaterial({
+    color: 0xfff5e0,
+    emissive: new THREE.Color(0xffc46b),
+    emissiveIntensity: 1.95,
+    roughness: 0.22,
+    metalness: 0.04,
+    transparent: true,
+    opacity: 0.38,
+    depthWrite: false,
+  });
   const taskLedMat = new THREE.MeshStandardMaterial({
     color: 0xfffaf0,
     emissive: new THREE.Color(0xffe6b8),
     emissiveIntensity: 2.3,
     roughness: 0.16,
+    transparent: true,
+    opacity: 0.38,
+    depthWrite: false,
   });
   const darkBronzeChannelMat = new THREE.MeshStandardMaterial({
     color: 0x22252a,
     roughness: 0.38,
     metalness: 0.72,
+  });
+  const overheadBronzeLowOpacityMat = new THREE.MeshStandardMaterial({
+    color: 0x22252a,
+    roughness: 0.38,
+    metalness: 0.72,
+    transparent: true,
+    opacity: 0.34,
+    depthWrite: false,
   });
 
   // 4A. 3-Shade Brushed-Brass & Hunter-Green Billiard Table Task Chandelier (`u = 20.38m, v = 2.08m`)
@@ -4288,7 +4325,7 @@ export function buildBarnGroundWallArtworks(
   // Ceiling canopy plate + twin vertical drop rods (`y = 0..-0.42m`, putting shades at `y = 0.90m` world = `1.575m` above carpet!)
   const canopyPlate = new THREE.Mesh(
     new THREE.BoxGeometry(0.92, 0.022, 0.11),
-    brushedBrassMat
+    overheadBrassLowOpacityMat
   );
   canopyPlate.position.set(0, -0.011, 0);
   billiardLightGroup.add(canopyPlate);
@@ -4296,7 +4333,7 @@ export function buildBarnGroundWallArtworks(
   for (const rx of [-0.36, 0.36] as const) {
     const dropRod = new THREE.Mesh(
       new THREE.CylinderGeometry(0.008, 0.008, 0.38, 12),
-      brushedBrassMat
+      overheadBrassLowOpacityMat
     );
     dropRod.position.set(rx, -0.20, 0);
     billiardLightGroup.add(dropRod);
@@ -4304,7 +4341,7 @@ export function buildBarnGroundWallArtworks(
 
   const billiardCrossBar = new THREE.Mesh(
     new THREE.CylinderGeometry(0.013, 0.013, 1.24, 16),
-    brushedBrassMat
+    overheadBrassLowOpacityMat
   );
   billiardCrossBar.rotation.z = Math.PI / 2;
   billiardCrossBar.position.set(0, -0.39, 0);
@@ -4313,7 +4350,7 @@ export function buildBarnGroundWallArtworks(
   for (const sx of [-0.52, 0, 0.52] as const) {
     const shadeCollar = new THREE.Mesh(
       new THREE.CylinderGeometry(0.024, 0.032, 0.045, 16),
-      brushedBrassMat
+      overheadBrassLowOpacityMat
     );
     shadeCollar.position.set(sx, -0.42, 0);
     billiardLightGroup.add(shadeCollar);
@@ -4324,12 +4361,12 @@ export function buildBarnGroundWallArtworks(
     );
     billiardShade.name = 'outbuildings.barn.poolTableLight.shade';
     billiardShade.position.set(sx, -0.50, 0);
-    billiardShade.castShadow = true;
+    billiardShade.castShadow = false;
     billiardLightGroup.add(billiardShade);
 
     const brassRim = new THREE.Mesh(
       new THREE.TorusGeometry(0.165, 0.006, 10, 24),
-      brushedBrassMat
+      overheadBrassLowOpacityMat
     );
     brassRim.rotation.x = Math.PI / 2;
     brassRim.position.set(sx, -0.57, 0);
@@ -4454,21 +4491,21 @@ export function buildBarnGroundWallArtworks(
 
     const cord = new THREE.Mesh(
       new THREE.CylinderGeometry(0.005, 0.005, 0.34, 10),
-      brushedBrassMat
+      overheadBrassLowOpacityMat
     );
     cord.position.set(0, -0.175, 0);
     barPendant.add(cord);
 
     const brassCap = new THREE.Mesh(
       new THREE.CylinderGeometry(0.036, 0.042, 0.04, 16),
-      brushedBrassMat
+      overheadBrassLowOpacityMat
     );
     brassCap.position.set(0, -0.35, 0);
     barPendant.add(brassCap);
 
     const glassCylinder = new THREE.Mesh(
       new THREE.CylinderGeometry(0.052, 0.052, 0.15, 20),
-      warmAlabasterMat
+      overheadAlabasterLowOpacityMat
     );
     glassCylinder.position.set(0, -0.43, 0);
     barPendant.add(glassCylinder);
@@ -4492,7 +4529,7 @@ export function buildBarnGroundWallArtworks(
     const [du, dv] = downlightCoords[d]!;
     const bezelRing = new THREE.Mesh(
       new THREE.CylinderGeometry(0.048, 0.048, 0.008, 18),
-      brushedBrassMat
+      overheadBrassLowOpacityMat
     );
     bezelRing.name = `outbuildings.barn.mezzanineDownlight.${d + 1}`;
     bezelRing.position.set(du, 1.392, dv);
@@ -4517,7 +4554,7 @@ export function buildBarnGroundWallArtworks(
   ] as const) {
     const channel = new THREE.Mesh(
       new THREE.BoxGeometry(cw, 0.018, cd),
-      darkBronzeChannelMat
+      overheadBronzeLowOpacityMat
     );
     channel.name = `outbuildings.barn.ambientCoveLed.${cName}.channel`;
     channel.position.set(cu, cy + 0.006, cv);
@@ -4525,7 +4562,7 @@ export function buildBarnGroundWallArtworks(
 
     const ledStrip = new THREE.Mesh(
       new THREE.BoxGeometry(Math.max(0.014, cw - 0.01), 0.01, Math.max(0.014, cd - 0.01)),
-      warmAlabasterMat
+      overheadAlabasterLowOpacityMat
     );
     ledStrip.name = `outbuildings.barn.ambientCoveLed.${cName}`;
     ledStrip.position.set(cu, cy, cv);
@@ -4580,7 +4617,7 @@ export function buildBarnGroundWallArtworks(
   //     over the St Andrews Picture (`u = 17.75m, y = 1.46m, v = 0.295m`) & Horse Show Certificates above the North Door (`u = 16.35m, y = 2.69m, v = 0.295m`)
   for (const [pIdx, pu, py, pv, pRotY, barW] of [
     [1, 17.75, 1.46, 0.295, 0, 0.44],
-    [2, 16.35, 2.69, 0.295, 0, 0.68],
+    [2, 16.88, 2.69, 0.295, 0, 0.68],
   ] as const) {
     const picLight = new THREE.Group();
     picLight.name = `outbuildings.barn.pictureLight.${pIdx}`;
@@ -6149,13 +6186,59 @@ export function buildStableUpperEnsuite(
   baseboardsGroup.name = 'outbuildings.firstFloor.stableBedroom.baseboards';
   bedroomGroup.add(baseboardsGroup);
 
+  type BaseboardCornerMiter = 'butt' | 'internal' | 'external';
+
+  const createMiteredBaseboardGeo = (
+    alongU: boolean,
+    len: number,
+    height: number,
+    thickness: number,
+    normalSignX: number,
+    normalSignZ: number,
+    startMiter: BaseboardCornerMiter,
+    endMiter: BaseboardCornerMiter
+  ): THREE.BufferGeometry => {
+    const geo = new THREE.BoxGeometry(alongU ? len : thickness, height, alongU ? thickness : len);
+    const pos = geo.attributes.position;
+    if (pos) {
+      const startFrontShift =
+        startMiter === 'external' ? -thickness : startMiter === 'internal' ? thickness : 0;
+      const endFrontShift =
+        endMiter === 'external' ? thickness : endMiter === 'internal' ? -thickness : 0;
+      for (let i = 0; i < pos.count; i++) {
+        if (alongU) {
+          const x = pos.getX(i);
+          const z = pos.getZ(i);
+          const isFront = Math.sign(z) === Math.sign(normalSignZ);
+          if (isFront) {
+            if (x < 0) pos.setX(i, x + startFrontShift);
+            else pos.setX(i, x + endFrontShift);
+          }
+        } else {
+          const x = pos.getX(i);
+          const z = pos.getZ(i);
+          const isFront = Math.sign(x) === Math.sign(normalSignX);
+          if (isFront) {
+            if (z < 0) pos.setZ(i, z + startFrontShift);
+            else pos.setZ(i, z + endFrontShift);
+          }
+        }
+      }
+      pos.needsUpdate = true;
+      geo.computeVertexNormals();
+    }
+    return geo;
+  };
+
   const addColorDrenchedBaseboardRun = (
     u0: number,
     v0: number,
     u1: number,
     v1: number,
     normalSignX: number,
-    normalSignZ: number
+    normalSignZ: number,
+    startMiter: BaseboardCornerMiter = 'butt',
+    endMiter: BaseboardCornerMiter = 'butt'
   ): void => {
     const alongU = Math.abs(u1 - u0) >= Math.abs(v1 - v0);
     const len = Math.abs(alongU ? u1 - u0 : v1 - v0);
@@ -6168,7 +6251,16 @@ export function buildStableUpperEnsuite(
     const capT = 0.015;
 
     const skirtMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(alongU ? len : skirtT, baseH, alongU ? skirtT : len),
+      createMiteredBaseboardGeo(
+        alongU,
+        len,
+        baseH,
+        skirtT,
+        normalSignX,
+        normalSignZ,
+        startMiter,
+        endMiter
+      ),
       warmRoomPlasterMat
     );
     skirtMesh.userData.isArchitecturalShell = true;
@@ -6182,7 +6274,16 @@ export function buildStableUpperEnsuite(
     baseboardsGroup.add(skirtMesh);
 
     const capMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(alongU ? len : capT, capH, alongU ? capT : len),
+      createMiteredBaseboardGeo(
+        alongU,
+        len,
+        capH,
+        capT,
+        normalSignX,
+        normalSignZ,
+        startMiter,
+        endMiter
+      ),
       warmRoomPlasterMat
     );
     capMesh.userData.isArchitecturalShell = true;
@@ -6194,18 +6295,18 @@ export function buildStableUpperEnsuite(
     baseboardsGroup.add(capMesh);
   };
 
-  // 1. North Bedroom Wall (`v = 0.28m`, from East side of Shaker wardrobes `u = 23.81m` to East wall `u = 28.77m` — right through hit point `[2.01, 2.244, 14.178]`!)
-  addColorDrenchedBaseboardRun(23.81, 0.28, uRoomEast, 0.28, 0, 1);
+  // 1. North Bedroom Wall (`v = 0.28m`, from East side of Shaker wardrobes `u = 23.81m` to East wall `u = 28.77m` internal corner)
+  addColorDrenchedBaseboardRun(23.81, 0.28, uRoomEast, 0.28, 0, 1, 'butt', 'internal');
   // 2. East Bedroom Wall North & South corner piers (`u = 28.77m`, `v = 0.28..0.68m` and `v = 5.03..5.43m`)
-  addColorDrenchedBaseboardRun(uRoomEast, 0.28, uRoomEast, 0.68, -1, 0);
-  addColorDrenchedBaseboardRun(uRoomEast, 5.03, uRoomEast, 5.43, -1, 0);
+  addColorDrenchedBaseboardRun(uRoomEast, 0.28, uRoomEast, 0.68, -1, 0, 'internal', 'butt');
+  addColorDrenchedBaseboardRun(uRoomEast, 5.03, uRoomEast, 5.43, -1, 0, 'butt', 'internal');
   // 3. South Bedroom Wall East of Ensuite (`v = 5.43m`, `u = 26.09..28.77m`)
-  addColorDrenchedBaseboardRun(uEnsuiteEastFace, 5.43, uRoomEast, 5.43, 0, -1);
-  // 4. Ensuite East Wall Bedroom Face (`u = 26.09m`, `v = 3.62..5.43m`)
-  addColorDrenchedBaseboardRun(uEnsuiteEastFace, vNorthFace, uEnsuiteEastFace, 5.43, 1, 0);
-  // 5. Ensuite North Wall Bedroom Face West & East of Ensuite Doorway (`v = 3.62m`, `u = 23.22..24.59m` and `u = 25.41..26.09m`)
-  addColorDrenchedBaseboardRun(uWest, vNorthFace, doorU0 - 0.03, vNorthFace, 0, -1);
-  addColorDrenchedBaseboardRun(doorU1 + 0.03, vNorthFace, uEnsuiteEastFace, vNorthFace, 0, -1);
+  addColorDrenchedBaseboardRun(uEnsuiteEastFace, 5.43, uRoomEast, 5.43, 0, -1, 'internal', 'internal');
+  // 4. Ensuite East Wall Bedroom Face (`u = 26.09m`, `v = 3.62..5.43m` — Issue #1: true 45-degree external miter at `v = 3.62m` `[3.857, 2.135, 17.405]` and internal miter at `v = 5.43m`!)
+  addColorDrenchedBaseboardRun(uEnsuiteEastFace, vNorthFace, uEnsuiteEastFace, 5.43, 1, 0, 'external', 'internal');
+  // 5. Ensuite North Wall Bedroom Face West & East of Ensuite Doorway (`v = 3.62m`, `u = 23.22..24.59m` and `u = 25.41..26.09m` with matching 45-degree external miter at `u = 26.09m`!)
+  addColorDrenchedBaseboardRun(uWest, vNorthFace, doorU0 - 0.03, vNorthFace, 0, -1, 'butt', 'butt');
+  addColorDrenchedBaseboardRun(doorU1 + 0.03, vNorthFace, uEnsuiteEastFace, vNorthFace, 0, -1, 'butt', 'external');
 }
 
 // ============================================================================
