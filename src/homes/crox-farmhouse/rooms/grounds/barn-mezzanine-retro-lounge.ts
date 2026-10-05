@@ -3517,13 +3517,15 @@ export function buildBarnCornerBar(
   const barGroup = new THREE.Group();
   barGroup.name = 'outbuildings.barn.cornerBar';
   barGroup.userData.zone = 'courtyard';
-  barGroup.position.set(22.42, barnCarpetTopY, 0.86);
+  // Flat against the East Barn/Stable partition wall (`u = 23.01m`) in the NE corner (`v = 0.30..1.44m`,
+  // projecting only `0.55m` West to `u = 22.46m` as a space-saving self-serve bar counter; no walk-behind gap or stools).
+  barGroup.position.set(22.73, barnCarpetTopY, 0.87);
   groundGroup.add(barGroup);
 
   const heritageGreenMat = new THREE.MeshStandardMaterial({
-    color: 0x1b3028,
-    roughness: 0.44,
-    metalness: 0.06,
+    color: 0x1d3828,
+    roughness: 0.42,
+    metalness: 0.04,
   });
   const darkAnthraciteMat = new THREE.MeshStandardMaterial({
     color: 0x1e2022,
@@ -3556,104 +3558,82 @@ export function buildBarnCornerBar(
     emissiveIntensity: 1.45,
     roughness: 0.2,
   });
-  const tanLeatherMat = new THREE.MeshStandardMaterial({
-    color: 0x8c4f2b,
-    roughness: 0.52,
-    metalness: 0.04,
-  });
 
-  // In barGroup local coords (`center at u = 22.42m, v = 0.86m`):
-  // - East Barn/Stable partition wall is at `x = +0.59m` (`u = 23.01m`)
-  // - North Barn wall is at `z = -0.57m` (`v = 0.29m`)
-  // - Front serving bar peninsula runs along `x = -0.52m..+0.02m, z = -0.55m..+0.55m` (`1.10m` long)
-  // - Back-bar credenza runs along `x = +0.02m..+0.58m, z = -0.55m..+0.55m`
+  const barH = 0.94;
+  const barDepthX = 0.54;
+  const barLenZ = 1.14;
 
-  const barH = 1.02;
-  const barLenZ = 1.10;
-
-  // 1. Front Serving Bar Peninsula (`x = -0.26m, z = 0`) with fluted heritage-green front panelling & solid light-oak bullnose counter
-  const frontCarcass = new THREE.Mesh(
-    new THREE.BoxGeometry(0.46, barH - 0.04, barLenZ),
+  // 1. Self-Serve Counter Base Carcass (flat against the East wall):
+  //    - North Keg Cabinet Bay (`z = -0.57..-0.19m`, width `0.38m`) with fluted hunter-green front door
+  //    - South Mini-Fridge Housing Bay (`z = -0.19..+0.57m`, width `0.76m`)
+  const kegBayW = 0.38;
+  const kegCarcass = new THREE.Mesh(
+    new THREE.BoxGeometry(barDepthX - 0.02, barH - 0.04, kegBayW),
     heritageGreenMat
   );
-  frontCarcass.name = 'outbuildings.barn.cornerBar.counterCarcass';
-  frontCarcass.position.set(-0.26, (barH - 0.04) * 0.5, 0);
-  frontCarcass.castShadow = true;
-  frontCarcass.receiveShadow = true;
-  barGroup.add(frontCarcass);
+  kegCarcass.name = 'outbuildings.barn.cornerBar.counterCarcass';
+  kegCarcass.position.set(0.01, (barH - 0.04) * 0.5, -barLenZ * 0.5 + kegBayW * 0.5);
+  kegCarcass.castShadow = true;
+  kegCarcass.receiveShadow = true;
+  barGroup.add(kegCarcass);
 
-  // Vertical fluted timber ribs along the West (`-x`) and South (`+z`) exterior faces of the bar
-  for (let r = 0; r < 14; r++) {
-    const rz = -barLenZ * 0.5 + 0.04 + r * 0.078;
+  // Vertical fluted timber ribs on the West (`-x`) face of the North keg bay
+  for (let r = 0; r < 5; r++) {
+    const rz = -barLenZ * 0.5 + 0.045 + r * 0.072;
     const flute = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.012, 0.012, barH - 0.14, 10),
+      new THREE.CylinderGeometry(0.011, 0.011, barH - 0.14, 10),
       heritageGreenMat
     );
-    flute.position.set(-0.492, barH * 0.5 - 0.01, rz);
+    flute.position.set(-barDepthX * 0.5 + 0.015, barH * 0.5 - 0.02, rz);
     barGroup.add(flute);
   }
 
-  // Overhanging solid light-oak L-shaped bar counter top (`y = barH - 0.02m`)
-  const frontOakTop = new THREE.Mesh(
-    new THREE.BoxGeometry(0.56, 0.042, barLenZ + 0.06),
-    lightJoineryOakMat
-  );
-  frontOakTop.name = 'outbuildings.barn.cornerBar.oakCountertop';
-  frontOakTop.position.set(-0.27, barH, 0.01);
-  frontOakTop.castShadow = true;
-  frontOakTop.receiveShadow = true;
-  barGroup.add(frontOakTop);
-
-  // North return oak counter top (`z = -0.32m, x = -0.02..+0.58m`)
-  const northReturnTop = new THREE.Mesh(
-    new THREE.BoxGeometry(0.60, 0.042, 0.52),
-    lightJoineryOakMat
-  );
-  northReturnTop.position.set(0.28, barH, -0.31);
-  northReturnTop.castShadow = true;
-  barGroup.add(northReturnTop);
-
-  // Brushed-brass wrap-around tubular footrail (`x = -0.58m` and `z = +0.62m`, `y = 0.15m`)
-  const footRailWest = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.016, 0.016, barLenZ + 0.08, 14),
+  // Brushed-brass handle on the keg cupboard door
+  const kegDoorHandle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.007, 0.007, 0.16, 10),
     brushedBrassMat
   );
-  footRailWest.rotation.x = Math.PI / 2;
-  footRailWest.position.set(-0.56, 0.15, 0.02);
-  barGroup.add(footRailWest);
+  kegDoorHandle.position.set(-barDepthX * 0.5 - 0.008, barH * 0.5 + 0.12, -0.24);
+  barGroup.add(kegDoorHandle);
 
-  for (const bz of [-0.46, 0.0, 0.48] as const) {
-    const bracket = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.008, 0.008, 0.09, 10),
-      brushedBrassMat
-    );
-    bracket.rotation.z = Math.PI / 2;
-    bracket.position.set(-0.52, 0.15, bz);
-    barGroup.add(bracket);
-  }
+  // South end panel (`z = +0.555m`) framing the mini-fridge cleanly next to the Stable glass door
+  const southEndPanel = new THREE.Mesh(
+    new THREE.BoxGeometry(barDepthX - 0.02, barH - 0.04, 0.03),
+    heritageGreenMat
+  );
+  southEndPanel.position.set(0.01, (barH - 0.04) * 0.5, barLenZ * 0.5 - 0.015);
+  southEndPanel.castShadow = true;
+  barGroup.add(southEndPanel);
+
+  // Continuous Solid Light-Oak Bullnose Self-Serve Countertop (`y = barH - 0.02m`) + Rear Oak Upstand
+  const oakCountertop = new THREE.Mesh(
+    new THREE.BoxGeometry(barDepthX + 0.03, 0.042, barLenZ + 0.02),
+    lightJoineryOakMat
+  );
+  oakCountertop.name = 'outbuildings.barn.cornerBar.oakCountertop';
+  oakCountertop.position.set(-0.005, barH - 0.02, 0);
+  oakCountertop.castShadow = true;
+  oakCountertop.receiveShadow = true;
+  barGroup.add(oakCountertop);
+
+  const rearOakUpstand = new THREE.Mesh(
+    new THREE.BoxGeometry(0.022, 0.065, barLenZ + 0.02),
+    lightJoineryOakMat
+  );
+  rearOakUpstand.position.set(barDepthX * 0.5 - 0.002, barH + 0.032, 0);
+  barGroup.add(rearOakUpstand);
 
   // 2. Under-Counter Glazed Wine & Beverage Mini-Fridge (`outbuildings.barn.cornerBar.miniFridge`)
-  //    Modeled directly after `familyBathroom.drinksCabinet.wineCooler` outside the Master Bedroom!
-  //    Mounted against the East back-bar wall (`x = +0.30m, z = +0.16m`, facing West `-x` so its glowing glazed door
-  //    and stocked bottles are clearly visible from the Barn & Pool Table!)
+  //    Built flush into the front (`-x`) of the self-serve wall counter (`z = +0.18m`, facing West `-x` into the Barn!)
   const coolerGroup = new THREE.Group();
   coolerGroup.name = 'outbuildings.barn.cornerBar.miniFridge';
-  coolerGroup.position.set(0.30, 0.04, 0.14);
+  coolerGroup.position.set(0.0, 0.02, 0.18);
   coolerGroup.rotation.y = -Math.PI / 2; // Local `+z` front of cooler faces `-x` (West into the Barn!)
   barGroup.add(coolerGroup);
 
-  const coolerW = 0.72;
-  const coolerH = 0.82;
+  const coolerW = 0.70;
+  const coolerH = 0.86;
   const coolerD = 0.50;
-
-  // Back-bar oak & dark-anthracite cabinet housing around the mini-fridge (`y = 0..barH`)
-  const fridgeTopOak = new THREE.Mesh(
-    new THREE.BoxGeometry(coolerW + 0.08, 0.042, coolerD + 0.06),
-    lightJoineryOakMat
-  );
-  fridgeTopOak.position.set(0, barH - 0.04, 0);
-   fridgeTopOak.castShadow = true;
-  coolerGroup.add(fridgeTopOak);
 
   const coolerShellBack = new THREE.Mesh(
     new THREE.BoxGeometry(coolerW, coolerH, 0.03),
@@ -3691,7 +3671,7 @@ export function buildBarnCornerBar(
   coolerGroup.add(coolerLed);
 
   // 3 Beechwood pull-out shelves inside the mini-fridge
-  for (const sy of [0.06, 0.30, 0.55] as const) {
+  for (const sy of [0.06, 0.31, 0.57] as const) {
     const bShelf = new THREE.Mesh(
       new THREE.BoxGeometry(coolerW - 0.08, 0.016, coolerD - 0.08),
       beechShelfMat
@@ -3738,14 +3718,14 @@ export function buildBarnCornerBar(
       new THREE.CylinderGeometry(0.030, 0.032, 0.17, 12),
       sanPellegrinoGlassMat
     );
-    sp.position.set(-0.22 + i * 0.09, 0.395, 0.06);
+    sp.position.set(-0.22 + i * 0.09, 0.405, 0.06);
     coolerGroup.add(sp);
 
     const fiji = new THREE.Mesh(
       new THREE.BoxGeometry(0.058, 0.165, 0.058),
       fijiBottleMat
     );
-    fiji.position.set(0.06 + i * 0.09, 0.395, 0.06);
+    fiji.position.set(0.06 + i * 0.09, 0.405, 0.06);
     coolerGroup.add(fiji);
   }
 
@@ -3753,67 +3733,59 @@ export function buildBarnCornerBar(
   for (let c = 0; c < 6; c++) {
     const can = new THREE.Mesh(
       new THREE.CylinderGeometry(0.028, 0.028, 0.112, 12),
-      new THREE.MeshStandardMaterial({
-        color: canPalette[c % canPalette.length],
-        roughness: 0.26,
-        metalness: 0.48,
-      })
+      new THREE.MeshStandardMaterial({ color: canPalette[c % canPalette.length], roughness: 0.24, metalness: 0.45 })
     );
-    can.position.set(-0.225 + c * 0.09, 0.615, 0.06);
+    can.position.set(-0.225 + c * 0.09, 0.64, 0.06);
     coolerGroup.add(can);
   }
 
-  // Brushed-Chrome Glazed Mini-Fridge Door Frame, Low-Iron Glass Pane & Vertical Brass Handle
-  const doorZ = coolerD * 0.5 + 0.008;
-  for (const [ry, rh] of [
-    [coolerH - 0.02, 0.034],
-    [0.022, 0.038],
+  // Glazed Mini-Fridge Front Door Frame, Double-Glazed Tinted Glass & Vertical Brushed-Chrome Handle
+  const doorZ = coolerD * 0.5 - 0.008;
+  for (const [dy, dh] of [
+    [coolerH - 0.022, 0.044],
+    [0.022, 0.044],
   ] as const) {
-    const dRail = new THREE.Mesh(
-      new THREE.BoxGeometry(coolerW - 0.02, rh, 0.022),
-      brushedChromeMat
-    );
-    dRail.position.set(0, ry, doorZ);
-    coolerGroup.add(dRail);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(coolerW - 0.01, dh, 0.022), darkAnthraciteMat);
+    rail.position.set(0, dy, doorZ);
+    coolerGroup.add(rail);
   }
   for (const sSide of [-1, 1] as const) {
-    const dStile = new THREE.Mesh(
-      new THREE.BoxGeometry(0.034, coolerH - 0.04, 0.022),
-      brushedChromeMat
-    );
-    dStile.position.set(sSide * (coolerW * 0.5 - 0.027), coolerH * 0.5, doorZ);
-    coolerGroup.add(dStile);
+    const stile = new THREE.Mesh(new THREE.BoxGeometry(0.044, coolerH - 0.088, 0.022), darkAnthraciteMat);
+    stile.position.set(sSide * (coolerW * 0.5 - 0.027), coolerH * 0.5, doorZ);
+    coolerGroup.add(stile);
   }
-  const fridgeGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(coolerW - 0.08, coolerH - 0.07, 0.008),
+
+  const coolerGlass = new THREE.Mesh(
+    new THREE.BoxGeometry(coolerW - 0.096, coolerH - 0.088, 0.008),
     windowGlassMat
   );
-  fridgeGlass.name = 'outbuildings.barn.cornerBar.miniFridge.glass';
-  fridgeGlass.position.set(0, coolerH * 0.5, doorZ);
-  coolerGroup.add(fridgeGlass);
+  coolerGlass.name = 'outbuildings.barn.cornerBar.miniFridge.glassDoor';
+  coolerGlass.position.set(0, coolerH * 0.5, doorZ);
+  coolerGroup.add(coolerGlass);
 
   const fridgeHandle = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.007, 0.007, 0.42, 10),
-    brushedBrassMat
-  );
-  fridgeHandle.position.set(-coolerW * 0.5 + 0.03, coolerH * 0.5 + 0.04, doorZ + 0.024);
-  coolerGroup.add(fridgeHandle);
-
-  // 3. Twin-Tap Draught Beer Font Tower (`outbuildings.barn.cornerBar.beerTap`) on the Front Oak Bar Counter
-  const tapGroup = new THREE.Group();
-  tapGroup.name = 'outbuildings.barn.cornerBar.beerTap';
-  tapGroup.position.set(-0.26, barH + 0.021, 0.06);
-  barGroup.add(tapGroup);
-
-  // Perforated stainless-steel drip tray recessed on the bar counter under the spouts
-  const dripTray = new THREE.Mesh(
-    new THREE.BoxGeometry(0.22, 0.014, 0.34),
+    new THREE.CylinderGeometry(0.008, 0.008, 0.42, 12),
     brushedChromeMat
   );
-  dripTray.position.set(-0.08, 0.007, 0);
+  fridgeHandle.position.set(-coolerW * 0.5 + 0.032, coolerH * 0.5 + 0.04, doorZ + 0.026);
+  coolerGroup.add(fridgeHandle);
+
+  // 3. Twin-Tap Brushed-Brass & Chrome Draught Beer Font Tower (`outbuildings.barn.cornerBar.beerTap`)
+  //    Mounted directly on the self-serve oak counter above the North keg bay (`z = -0.34m`)
+  const tapGroup = new THREE.Group();
+  tapGroup.name = 'outbuildings.barn.cornerBar.beerTap';
+  tapGroup.position.set(0.02, barH + 0.001, -0.34);
+  barGroup.add(tapGroup);
+
+  // Perforated stainless-steel drip tray recessed on the front of the counter under the spouts
+  const dripTray = new THREE.Mesh(
+    new THREE.BoxGeometry(0.20, 0.014, 0.32),
+    brushedChromeMat
+  );
+  dripTray.position.set(-0.10, 0.007, 0);
   tapGroup.add(dripTray);
 
-  // Brass & chrome T-bar draught font column (`height = 0.34m`) + horizontal cross-arm (`0.26m` wide)
+  // Brass & chrome T-bar draught font column (`height = 0.32m`) + horizontal cross-arm (`0.24m` wide)
   const fontBaseFlange = new THREE.Mesh(
     new THREE.CylinderGeometry(0.052, 0.062, 0.022, 20),
     brushedBrassMat
@@ -3837,7 +3809,7 @@ export function buildBarnCornerBar(
   fontCrossBar.position.set(0.02, 0.31, 0);
   tapGroup.add(fontCrossBar);
 
-  // 2 Draught Beer Spouts, Traditional Tall Ceramic/Oak Pump Handles & Brewery Badges (IPA & Pilsner)
+  // 2 Draught Beer Spouts, Traditional Tall Ceramic Pump Handles & Brewery Badges (IPA & Pilsner)
   for (const [tapZ, badgeCol] of [
     [-0.085, 0xb82424], // Crox Gold IPA
     [0.085, 0x1e4d8c],  // Chiltern Pilsner
@@ -3850,7 +3822,6 @@ export function buildBarnCornerBar(
     spout.position.set(-0.035, 0.285, tapZ);
     tapGroup.add(spout);
 
-    // Tall angled traditional pub beer tap pull handle
     const handleGrip = new THREE.Mesh(
       new THREE.CylinderGeometry(0.013, 0.009, 0.16, 14),
       ceramicWhiteMat
@@ -3869,7 +3840,7 @@ export function buildBarnCornerBar(
     tapGroup.add(pumpBadge);
   }
 
-  // 2 Freshly Poured Pint Glasses of Golden Draught Beer with Creamy Foam Heads on the Bar Counter
+  // 2 Freshly Poured Pint Glasses of Golden Draught Beer with Creamy Foam Heads on the Self-Serve Counter
   const beerLiquidMat = new THREE.MeshStandardMaterial({
     color: 0xd98a1e,
     roughness: 0.12,
@@ -3878,8 +3849,8 @@ export function buildBarnCornerBar(
     opacity: 0.88,
   });
   for (const [px, pz] of [
-    [-0.10, -0.26],
-    [-0.06, 0.26],
+    [-0.08, 0.36],
+    [-0.04, 0.54],
   ] as const) {
     const pintLiquid = new THREE.Mesh(
       new THREE.CylinderGeometry(0.036, 0.029, 0.115, 16),
@@ -3896,80 +3867,38 @@ export function buildBarnCornerBar(
     tapGroup.add(foamHead);
   }
 
-  // 4. Illuminated Back-Bar Oak Spirit Shelves (`x = +0.44m, y = 1.38m & 1.68m`) & Warm Bar PointLight
-  for (const [sIdx, shelfY] of [1.36, 1.66].entries()) {
+  // 4. Illuminated Wall-Mounted Oak Spirit & Glassware Shelves (`x = +0.16m, y = 1.42m & 1.72m`) & Warm Bar PointLight
+  for (const [sIdx, shelfY] of [1.42, 1.72].entries()) {
     const backShelf = new THREE.Mesh(
-      new THREE.BoxGeometry(0.24, 0.026, 0.96),
+      new THREE.BoxGeometry(0.22, 0.026, 0.72),
       lightJoineryOakMat
     );
-    backShelf.position.set(0.45, shelfY, 0);
+    backShelf.position.set(0.16, shelfY, 0.14);
     backShelf.castShadow = true;
     barGroup.add(backShelf);
 
     const shelfLed = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, 0.008, 0.88),
+      new THREE.BoxGeometry(0.016, 0.008, 0.66),
       warmLedMat
     );
-    shelfLed.position.set(0.36, shelfY - 0.015, 0);
+    shelfLed.position.set(0.08, shelfY - 0.015, 0.14);
     barGroup.add(shelfLed);
 
-    for (let b = 0; b < 5; b++) {
-      const bz = -0.36 + b * 0.18;
+    for (let b = 0; b < 4; b++) {
+      const bz = -0.10 + b * 0.16;
       const spiritBottle = new THREE.Mesh(
         new THREE.CylinderGeometry(0.032, 0.034, 0.19 - (b % 2) * 0.02, 12),
         b % 2 === 0 ? sanPellegrinoGlassMat : champagneGlassMat
       );
-      spiritBottle.position.set(0.45, shelfY + 0.10 + (sIdx * 0.002), bz);
+      spiritBottle.position.set(0.16, shelfY + 0.10 + (sIdx * 0.002), bz);
       barGroup.add(spiritBottle);
     }
   }
 
   const barLight = new THREE.PointLight(0xffc978, 1.75, 4.2, 1.55);
   barLight.name = 'outbuildings.barn.cornerBar.light';
-  barLight.position.set(-0.10, 1.58, 0);
+  barLight.position.set(-0.15, 1.58, 0);
   barGroup.add(barLight);
-
-  // 5. Two Tan-Leather & Brushed-Brass Bar Stools (`outbuildings.barn.cornerBar.stool.1` & `.2`) in front of the bar
-  for (const [sIdx, sz] of [
-    [1, -0.26],
-    [2, 0.28],
-  ] as const) {
-    const stoolGroup = new THREE.Group();
-    stoolGroup.name = `outbuildings.barn.cornerBar.stool.${sIdx}`;
-    stoolGroup.position.set(-0.82, 0, sz);
-    barGroup.add(stoolGroup);
-
-    const seat = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.175, 0.165, 0.075, 22),
-      tanLeatherMat
-    );
-    seat.position.set(0, 0.70, 0);
-    seat.castShadow = true;
-    stoolGroup.add(seat);
-
-    const footrestRing = new THREE.Mesh(
-      new THREE.TorusGeometry(0.145, 0.009, 10, 22),
-      brushedBrassMat
-    );
-    footrestRing.rotation.x = Math.PI / 2;
-    footrestRing.position.set(0, 0.26, 0);
-    stoolGroup.add(footrestRing);
-
-    for (const [lx, lz] of [
-      [-0.11, -0.11],
-      [0.11, -0.11],
-      [-0.11, 0.11],
-      [0.11, 0.11],
-    ] as const) {
-      const leg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.012, 0.009, 0.68, 10),
-        brushedBrassMat
-      );
-      leg.position.set(lx, 0.34, lz);
-      leg.castShadow = true;
-      stoolGroup.add(leg);
-    }
-  }
 }
 
 // ============================================================================
@@ -4038,15 +3967,18 @@ export function buildBarnPoolTable(
   const poolGroup = new THREE.Group();
   poolGroup.name = 'outbuildings.barn.poolTable';
   poolGroup.userData.zone = 'courtyard';
-  poolGroup.position.set(20.48, barnCarpetTopY, 2.22);
+  // Rotated 90 degrees so the full-size 9ft table's 2.79m length runs North-South along v (`v = 1.455..4.245m`)
+  // and its 1.52m width spans `u = 19.38..20.90m`, clear of the NE corner bar and SE spiral staircase.
+  poolGroup.position.set(20.28, barnCarpetTopY, 2.78);
+  poolGroup.rotation.y = Math.PI / 2;
   groundGroup.add(poolGroup);
 
-  const tableL = 2.04; // 7ft tournament pool table outer length along u
-  const tableW = 1.14; // outer width along v
-  const tableH = 0.80; // playing height
-  const railW = 0.105;
-  const playL = tableL - railW * 2; // 1.83m
-  const playW = tableW - railW * 2; // 0.93m
+  const tableL = 2.79; // Full-size 9ft tournament pool table outer length (9ft 2in)
+  const tableW = 1.52; // Full-size 9ft tournament pool table outer width (5ft)
+  const tableH = 0.80; // Regulation playing height
+  const railW = 0.125; // 5-inch solid oak cushion rails
+  const playL = tableL - railW * 2; // 2.54m (100-inch regulation 9ft playing length)
+  const playW = tableW - railW * 2; // 1.27m (50-inch regulation 9ft playing width)
   const bedY = tableH - 0.036; // 0.764m slate bed level
 
   const baizeMat = new THREE.MeshStandardMaterial({
@@ -4074,12 +4006,12 @@ export function buildBarnPoolTable(
     roughness: 0.92,
   });
 
-  // 1. 4 Turned Solid Light-Oak Legs with Brushed-Brass Levelling Feet
-  const legOffsetX = tableL * 0.5 - 0.16;
+  // 1. 6 Turned Solid Light-Oak Legs (full-size 9ft 3-piece slate support: 3 per long side) with Brushed-Brass Levelling Feet
+  const legOffsetX = tableL * 0.5 - 0.18;
   const legOffsetZ = tableW * 0.5 - 0.16;
   const legH = tableH - 0.22; // 0.58m up to cabinet apron
 
-  for (const lx of [-legOffsetX, legOffsetX] as const) {
+  for (const lx of [-legOffsetX, 0, legOffsetX] as const) {
     for (const lz of [-legOffsetZ, legOffsetZ] as const) {
       const brassToe = new THREE.Mesh(
         new THREE.CylinderGeometry(0.052, 0.058, 0.048, 18),
@@ -4208,15 +4140,15 @@ export function buildBarnPoolTable(
   const blackBallMat = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.10, metalness: 0.12 });
   const cueBallMat = new THREE.MeshStandardMaterial({ color: 0xfaf8f2, roughness: 0.10, metalness: 0.08 });
 
-  // White Cue Ball in the D-zone (`x = -0.52m, z = +0.06m`)
+  // White Cue Ball on the head string / D-zone (`x = -0.635m, z = +0.08m`)
   const cueBall = new THREE.Mesh(new THREE.SphereGeometry(ballR, 16, 14), cueBallMat);
   cueBall.name = 'outbuildings.barn.poolTable.cueBall';
-  cueBall.position.set(-0.52, ballY, 0.06);
+  cueBall.position.set(-0.635, ballY, 0.08);
   cueBall.castShadow = true;
   poolGroup.add(cueBall);
 
-  // 5-row triangle of 15 object balls starting at the foot spot (`x = +0.38m`)
-  const apexX = 0.38;
+  // 5-row triangle of 15 object balls starting at the regulation foot spot (`x = +0.635m`)
+  const apexX = 0.635;
   const rowStepX = ballR * 1.74;
   let ballCounter = 0;
   for (let row = 0; row < 5; row++) {
