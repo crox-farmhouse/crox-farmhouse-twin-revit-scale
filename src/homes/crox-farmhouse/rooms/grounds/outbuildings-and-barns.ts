@@ -2850,28 +2850,30 @@ export function buildOutbuildingsAndBarns(
     warmRoomPlasterMat
   );
 
-  // Issue #1 ("There is a gap here" at `[-9.565, -0.69, 16.38]`) & Issue #3:
-  // - Continuous South Hallway Wall (`u = 12.31m..14.96m, v = 1.18m..1.34m, y = -0.50m..1.94m`) forming a 100% flush,
-  //   airtight corridor wall from the Garage pass-through door all the way to the Barn portal with zero gaps or exposed voids!
+  // Issue #1 ("There is a gap here" at `[-9.565, -0.69, 16.38]`), Issue #3,
+  // Issue #4 ("Flatten the floor in this loft space and level the floor where its not level" at `[-8.51, 2.61, 17.685]`), &
+  // Issue #5 ("Put a ladder here to access the loft space above" at `[-8.212, 1.186, 15.959]`):
+  // - Extend the South Hallway Wall (`u = 12.31m..14.96m, v = 1.18m..1.34m`) and the Store-side enclosure walls
+  //   (`u = 12.31m..13.04m` and `v = 5.12m..5.428m`) continuously up to `storeLoftSlabBotY = 2.52m` so the entire
+  //   Store Loft space (`u = 12.31m..14.96m, v = 1.18m..5.428m`) supports a single flat, 100% level oak floor at `y = 2.61m`!
+  const storeLoftSlabBotY = 2.52;
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart + 0.24,
     uBarnStart,
     garageFloorTopY,
-    eastRangeGroundTopY,
+    storeLoftSlabBotY,
     garagePassDoorVMax,
     benchAlcoveVMin,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // - Solid infill wall & top caps covering the void between the back of the recessed Garage cupboard/workbench (`u = 12.78m`)
-  //   and the back of the Golf Simulator (`u = 13.04m`) across `v = 1.34m..5.428m`, plus the South pocket (`v = 5.12m..5.428m, u = 13.04..14.96m`)!
   addOutbuildingBrickWall(
     groundGroup,
     12.78,
     13.04,
     garageFloorTopY,
-    eastRangeGroundTopY,
+    storeLoftSlabBotY,
     benchAlcoveVMin,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
@@ -2882,7 +2884,7 @@ export function buildOutbuildingsAndBarns(
     13.04,
     uBarnStart,
     garageFloorTopY,
-    eastRangeGroundTopY,
+    storeLoftSlabBotY,
     5.12,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
@@ -2893,7 +2895,7 @@ export function buildOutbuildingsAndBarns(
     uStoreStart + 0.24,
     13.04,
     1.66,
-    1.94,
+    storeLoftSlabBotY,
     garagePassDoorVMax,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
@@ -3144,13 +3146,28 @@ export function buildOutbuildingsAndBarns(
     ['-x'],
     exteriorBrickMat
   );
-  // Heavy Structural Seasoned European Oak Bressummer Lintel (`outbuildings.barn.golfSimulator.oakLintel`)
+  // Issue #2 ("No baseboards up here. Just put some clear storage boxes full of stuff" at `[-7.363, 2.72, 17.168]`,
+  // Surface Normal `[-0.996, 0, 0.086]` on `outbuildings.barn.golfSimulator.oakLintel.beam`):
+  // Keep the Oak Bressummer Lintel (`outbuildings.barn.golfSimulator.oakLintel`) on the Barn (`+x`) half of the wall
+  // (`u = 15.06m .. 15.208m`) while the Store Loft (`-x`) half (`u = 14.96m .. 15.06m`) is flush plastered wall (`warmRoomPlasterMat`),
+  // so the oak lintel never protrudes through the West (`-x`) Store Loft wall face like a baseboard at `y = 2.61..2.74m`!
+  addOutbuildingBrickWall(
+    groundGroup,
+    uBarnStart,
+    uBarnStart + 0.10,
+    simCutoutTopY,
+    simOakLintelTopY,
+    simOakLintelVMin,
+    simOakLintelVMax,
+    ['-x'],
+    exteriorBrickMat
+  );
   {
     const lintelLenV = simOakLintelVMax - simOakLintelVMin; // 4.10m
     const lintelMidV = (simOakLintelVMin + simOakLintelVMax) * 0.5; // 3.23m
     const lintelMidY = simCutoutTopY + simOakLintelH * 0.5; // 2.625m
-    const lintelMidU = uBarnStart + 0.12; // 15.08m
-    const lintelDepthU = 0.256; // Projects 8mm proud of the 0.24m brick wall on both faces
+    const lintelDepthU = 0.148; // Spans u = 15.06m .. 15.208m (projects 8mm proud on the Barn +x face only!)
+    const lintelMidU = uBarnStart + 0.24 + 0.008 - lintelDepthU * 0.5; // 15.134m
 
     const oakLintelGroup = new THREE.Group();
     oakLintelGroup.name = 'outbuildings.barn.golfSimulator.oakLintel';
@@ -3174,26 +3191,24 @@ export function buildOutbuildingsAndBarns(
     lintelBeam.receiveShadow = true;
     oakLintelGroup.add(lintelBeam);
 
-    // Traditional chamfered lower arris shadow molding and square oak treenail pegs at both bearing ends
-    for (const faceX of [-1, 1] as const) {
-      const lowerChamfer = new THREE.Mesh(
-        new THREE.BoxGeometry(0.012, 0.018, lintelLenV + 0.008),
-        lightJoineryOakMat
-      );
-      lowerChamfer.position.set(faceX * (lintelDepthU * 0.5 + 0.003), -simOakLintelH * 0.5 + 0.012, 0);
-      oakLintelGroup.add(lowerChamfer);
+    // Traditional chamfered lower arris shadow molding and square oak treenail pegs on the Barn (+x) face
+    const lowerChamfer = new THREE.Mesh(
+      new THREE.BoxGeometry(0.012, 0.018, lintelLenV + 0.008),
+      lightJoineryOakMat
+    );
+    lowerChamfer.position.set(lintelDepthU * 0.5 + 0.003, -simOakLintelH * 0.5 + 0.012, 0);
+    oakLintelGroup.add(lowerChamfer);
 
-      for (const endZ of [-lintelLenV * 0.5 + 0.07, -lintelLenV * 0.5 + 0.12, lintelLenV * 0.5 - 0.12, lintelLenV * 0.5 - 0.07] as const) {
-        for (const pegY of [-0.045, 0.045] as const) {
-          const oakPeg = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.011, 0.011, 0.014, 8),
-            lightJoineryOakMat
-          );
-          oakPeg.name = 'outbuildings.barn.golfSimulator.oakLintel.peg';
-          oakPeg.rotation.z = Math.PI / 2;
-          oakPeg.position.set(faceX * (lintelDepthU * 0.5 + 0.004), pegY, endZ);
-          oakLintelGroup.add(oakPeg);
-        }
+    for (const endZ of [-lintelLenV * 0.5 + 0.07, -lintelLenV * 0.5 + 0.12, lintelLenV * 0.5 - 0.12, lintelLenV * 0.5 - 0.07] as const) {
+      for (const pegY of [-0.045, 0.045] as const) {
+        const oakPeg = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.011, 0.011, 0.014, 8),
+          lightJoineryOakMat
+        );
+        oakPeg.name = 'outbuildings.barn.golfSimulator.oakLintel.peg';
+        oakPeg.rotation.z = Math.PI / 2;
+        oakPeg.position.set(lintelDepthU * 0.5 + 0.004, pegY, endZ);
+        oakLintelGroup.add(oakPeg);
       }
     }
   }
@@ -3238,7 +3253,8 @@ export function buildOutbuildingsAndBarns(
     groundGroup,
     barnLowerFloorY,
     eastRangeInternalV,
-    groundCeilingGroup
+    groundCeilingGroup,
+    ctx.interactions
   );
 
   // Issue #2 ("Remove the ladder" at `[-3.328, 1.428, 18.92]`),

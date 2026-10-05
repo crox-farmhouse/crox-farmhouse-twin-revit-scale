@@ -4345,12 +4345,297 @@ function createGolfAstroturfTextures(): {
  * - High-resolution procedural Synthetic Golf Astroturf & Putting Green textures (`createGolfAstroturfTextures()`) with
  *   fiber-pile bump mapping (`bumpScale: 0.018`) on `outbuildings.barn.golfSimulator.turfMat` and `outbuildings.barn.golfSimulator.hittingStrip`.
  */
+/**
+ * Generates a high-resolution (`1024x1024`) Wide-Plank Seasoned European Oak Wooden Floor texture
+ * and plank-joint bump map for the **back side** of the hinged folding Golf Simulator mat
+ * (`outbuildings.barn.golfSimulator.turfMat.woodenBackSide`), so when the hinged mat folds over
+ * `180°` onto the simulator bay, its upturned back side presents a seamless wide-plank wooden floor.
+ */
+function createFoldingMatOakFloorTextures(): {
+  readonly oakMap: THREE.CanvasTexture;
+  readonly oakBumpMap: THREE.CanvasTexture;
+} {
+  const size = 1024;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = size;
+  bumpCanvas.height = size;
+  const bCtx = bumpCanvas.getContext('2d')!;
+
+  ctx.fillStyle = '#b78a58';
+  ctx.fillRect(0, 0, size, size);
+  bCtx.fillStyle = '#888888';
+  bCtx.fillRect(0, 0, size, size);
+
+  const numPlanks = 8;
+  const plankH = size / numPlanks;
+  const plankTones = [
+    '#bc8f5c',
+    '#ae8150',
+    '#c49764',
+    '#b58856',
+    '#a97c4c',
+    '#bf9260',
+    '#b28553',
+    '#c19462',
+  ] as const;
+
+  for (let p = 0; p < numPlanks; p++) {
+    const y0 = p * plankH;
+    ctx.fillStyle = plankTones[p % plankTones.length]!;
+    ctx.fillRect(0, y0, size, plankH);
+
+    // Fine longitudinal oak wood-grain fibers & medullary rays
+    for (let g = 0; g < 44; g++) {
+      const gy = y0 + ((g + 0.5) / 44) * plankH;
+      const wave = Math.sin(g * 1.7 + p * 2.3) * 3.5;
+      ctx.strokeStyle = g % 3 === 0 ? 'rgba(92, 60, 30, 0.16)' : 'rgba(218, 178, 130, 0.12)';
+      ctx.lineWidth = 1.2 + (g % 3) * 0.6;
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.bezierCurveTo(size * 0.33, gy + wave, size * 0.66, gy - wave, size, gy);
+      ctx.stroke();
+    }
+
+    // Subtle oak cathedral heartwood rings
+    const knotX = ((p * 293 + 140) % (size - 240)) + 120;
+    const knotY = y0 + plankH * (0.38 + (p % 3) * 0.12);
+    for (let r = 1; r <= 5; r++) {
+      ctx.strokeStyle = 'rgba(86, 54, 26, 0.13)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.ellipse(knotX, knotY, r * 26, r * 6.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Staggered butt-joint header seam per plank
+    const jointX = ((p * 379 + 210) % (size - 180)) + 90;
+    ctx.strokeStyle = '#5a3b1e';
+    ctx.lineWidth = 3.0;
+    ctx.beginPath();
+    ctx.moveTo(jointX, y0 + 1);
+    ctx.lineTo(jointX, y0 + plankH - 1);
+    ctx.stroke();
+
+    bCtx.strokeStyle = '#222222';
+    bCtx.lineWidth = 4.0;
+    bCtx.beginPath();
+    bCtx.moveTo(jointX, y0 + 1);
+    bCtx.lineTo(jointX, y0 + plankH - 1);
+    bCtx.stroke();
+
+    // Longitudinal V-groove shadow seam between planks
+    ctx.fillStyle = '#53361b';
+    ctx.fillRect(0, y0, size, 3);
+    ctx.fillStyle = 'rgba(235, 198, 152, 0.28)';
+    ctx.fillRect(0, y0 + 3, size, 2);
+
+    bCtx.fillStyle = '#181818';
+    bCtx.fillRect(0, y0, size, 4);
+  }
+
+  const oakMap = new THREE.CanvasTexture(canvas);
+  oakMap.colorSpace = THREE.SRGBColorSpace;
+  oakMap.wrapS = THREE.RepeatWrapping;
+  oakMap.wrapT = THREE.RepeatWrapping;
+  oakMap.repeat.set(2, 3);
+
+  const oakBumpMap = new THREE.CanvasTexture(bumpCanvas);
+  oakBumpMap.wrapS = THREE.RepeatWrapping;
+  oakBumpMap.wrapT = THREE.RepeatWrapping;
+  oakBumpMap.repeat.set(2, 3);
+
+  return { oakMap, oakBumpMap };
+}
+
+/**
+ * Generates a high-resolution (`1024x720`) Widescreen Gallery Fine-Art Landscape Canvas texture
+ * displayed on the Golf Simulator screen (`outbuildings.barn.golfSimulator.screen`) when the
+ * hinged floor mat is folded closed ("when hinge is closed, screen changes to artwork").
+ */
+function createGolfSimArtworkTexture(): THREE.CanvasTexture {
+  const w = 1024;
+  const h = 720;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+
+  // 1. Outer gallery linen passepartout mat & warm antique-brass sight-edge fillet
+  ctx.fillStyle = '#dfd8ca';
+  ctx.fillRect(0, 0, w, h);
+
+  const pad = 42;
+  ctx.strokeStyle = '#9a7844';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(pad - 4, pad - 4, w - (pad - 4) * 2, h - (pad - 4) * 2);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(pad, pad, w - pad * 2, h - pad * 2);
+  ctx.clip();
+
+  // 2. Golden-hour atmospheric Highland & Chilterns pastoral sky gradient
+  const skyGrad = ctx.createLinearGradient(0, pad, 0, h * 0.62);
+  skyGrad.addColorStop(0.0, '#1f3147');
+  skyGrad.addColorStop(0.28, '#3d556e');
+  skyGrad.addColorStop(0.58, '#8c6d58');
+  skyGrad.addColorStop(0.82, '#d89a5b');
+  skyGrad.addColorStop(1.0, '#f3c77e');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(pad, pad, w - pad * 2, h * 0.62);
+
+  // Warm setting sun glow
+  const sunX = w * 0.64;
+  const sunY = h * 0.44;
+  const sunGlow = ctx.createRadialGradient(sunX, sunY, 12, sunX, sunY, 260);
+  sunGlow.addColorStop(0.0, 'rgba(255, 244, 206, 0.92)');
+  sunGlow.addColorStop(0.35, 'rgba(246, 188, 108, 0.48)');
+  sunGlow.addColorStop(1.0, 'rgba(246, 188, 108, 0.0)');
+  ctx.fillStyle = sunGlow;
+  ctx.fillRect(pad, pad, w - pad * 2, h - pad * 2);
+
+  // Painterly sunlit cumulus & stratus cloud layers
+  for (let c = 0; c < 18; c++) {
+    const cx = pad + ((c * 173 + 90) % (w - pad * 2));
+    const cy = pad + 55 + (c % 5) * 44;
+    const rw = 90 + (c % 4) * 45;
+    const rh = 18 + (c % 3) * 9;
+    const cGrad = ctx.createLinearGradient(cx, cy - rh, cx, cy + rh);
+    cGrad.addColorStop(0, 'rgba(252, 224, 178, 0.42)');
+    cGrad.addColorStop(1, 'rgba(92, 74, 82, 0.24)');
+    ctx.fillStyle = cGrad;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 3. Layered distant mist-shrouded mountain & hill ridges
+  const ridgeLayers: ReadonlyArray<{
+    readonly baseY: number;
+    readonly amp: number;
+    readonly freq: number;
+    readonly phase: number;
+    readonly colorTop: string;
+    readonly colorBot: string;
+  }> = [
+    { baseY: h * 0.50, amp: 58, freq: 0.0055, phase: 0.4, colorTop: '#4e5869', colorBot: '#394252' },
+    { baseY: h * 0.57, amp: 46, freq: 0.0072, phase: 1.9, colorTop: '#3e4a44', colorBot: '#29332e' },
+    { baseY: h * 0.64, amp: 34, freq: 0.0095, phase: 3.4, colorTop: '#36442f', colorBot: '#222d1e' },
+  ];
+
+  for (const r of ridgeLayers) {
+    const rGrad = ctx.createLinearGradient(0, r.baseY - r.amp, 0, h - pad);
+    rGrad.addColorStop(0, r.colorTop);
+    rGrad.addColorStop(1, r.colorBot);
+    ctx.fillStyle = rGrad;
+    ctx.beginPath();
+    ctx.moveTo(pad, h - pad);
+    for (let x = pad; x <= w - pad; x += 8) {
+      const y =
+        r.baseY -
+        Math.sin(x * r.freq + r.phase) * r.amp -
+        Math.cos(x * r.freq * 2.1 - r.phase) * (r.amp * 0.36);
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(w - pad, h - pad);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // 4. Tranquil reflective Highland loch / river bend across mid-ground (`y = 0.66h .. 0.80h`)
+  const waterTopY = h * 0.66;
+  const waterBotY = h * 0.81;
+  const waterGrad = ctx.createLinearGradient(0, waterTopY, 0, waterBotY);
+  waterGrad.addColorStop(0.0, '#d89b5e');
+  waterGrad.addColorStop(0.45, '#7c6a58');
+  waterGrad.addColorStop(1.0, '#2a393d');
+  ctx.fillStyle = waterGrad;
+  ctx.fillRect(pad, waterTopY, w - pad * 2, waterBotY - waterTopY);
+
+  // Shimmering golden water reflections
+  for (let i = 0; i < 42; i++) {
+    const ry = waterTopY + 6 + (i / 42) * (waterBotY - waterTopY - 12);
+    const rx = sunX - 140 + Math.sin(i * 3.7) * 85;
+    const rw = 45 + (i % 5) * 28;
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(255, 232, 175, 0.38)' : 'rgba(42, 58, 64, 0.32)';
+    ctx.fillRect(rx, ry, rw, 2.2);
+  }
+
+  // 5. Foreground heather & golden meadow banks + ancient Scots pine / oak silhouettes
+  ctx.fillStyle = '#242f1d';
+  ctx.beginPath();
+  ctx.moveTo(pad, h - pad);
+  ctx.lineTo(pad, h * 0.72);
+  ctx.quadraticCurveTo(w * 0.28, h * 0.75, w * 0.46, h * 0.82);
+  ctx.quadraticCurveTo(w * 0.72, h * 0.76, w - pad, h * 0.70);
+  ctx.lineTo(w - pad, h - pad);
+  ctx.closePath();
+  ctx.fill();
+
+  // Warm golden-ochre meadow highlights
+  for (let m = 0; m < 160; m++) {
+    const mx = pad + ((m * 97) % (w - pad * 2));
+    const my = h * 0.76 + ((m * 53) % Math.round(h * 0.18));
+    ctx.fillStyle = m % 3 === 0 ? 'rgba(186, 134, 62, 0.28)' : 'rgba(64, 82, 44, 0.34)';
+    ctx.fillRect(mx, my, 18 + (m % 4) * 7, 3.5);
+  }
+
+  // Sculpted tree silhouettes on left and right banks
+  const treeClusters: ReadonlyArray<readonly [number, number, number]> = [
+    [pad + 115, h * 0.74, 1.15],
+    [pad + 195, h * 0.76, 0.88],
+    [w - pad - 145, h * 0.73, 1.05],
+    [w - pad - 85, h * 0.75, 0.78],
+  ];
+  for (const [tx, ty, scale] of treeClusters) {
+    ctx.strokeStyle = '#181f14';
+    ctx.lineWidth = 7 * scale;
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.quadraticCurveTo(tx - 6 * scale, ty - 65 * scale, tx + 4 * scale, ty - 135 * scale);
+    ctx.stroke();
+
+    for (const [ox, oy, rx, ry] of [
+      [0, -145, 58, 34],
+      [-34, -122, 42, 26],
+      [36, -118, 44, 28],
+      [-12, -168, 46, 26],
+    ] as const) {
+      ctx.fillStyle = '#1a2416';
+      ctx.beginPath();
+      ctx.ellipse(tx + ox * scale, ty + oy * scale, rx * scale, ry * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Subtle woven oil-canvas texture overlay
+  ctx.strokeStyle = 'rgba(255, 248, 232, 0.035)';
+  ctx.lineWidth = 1;
+  for (let y = pad; y < h - pad; y += 6) {
+    ctx.beginPath();
+    ctx.moveTo(pad, y);
+    ctx.lineTo(w - pad, y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 export function buildBarnGolfSimulator(
   groundGroup: THREE.Group,
   arg2: number,
   arg3: number,
   arg4?: number | THREE.Group,
-  arg5?: THREE.Material | THREE.Group,
+  arg5?: THREE.Material | THREE.Group | SceneBuilderContext['interactions'],
   arg6?: THREE.Group
 ): void {
   const isFiveArgCall = typeof arg4 === 'number';
@@ -4369,6 +4654,10 @@ export function buildBarnGolfSimulator(
     arg6 ??
     (arg4 instanceof THREE.Group ? arg4 : undefined) ??
     (arg5 instanceof THREE.Group ? arg5 : undefined);
+  const interactions: SceneBuilderContext['interactions'] | undefined =
+    arg5 && !(arg5 instanceof THREE.Material) && !(arg5 instanceof THREE.Group)
+      ? arg5
+      : undefined;
 
   // Issue #4 ("Maybe we move this foam wall left slightly so the golf sim is enclosed and you can walk freely in and out"
   // at `[-7.953, 0.342, 15.426]`):
@@ -4426,6 +4715,7 @@ export function buildBarnGolfSimulator(
     metalness: 0.04,
   });
   const screenTex = createTrackManWidescreenTexture();
+  const artworkTex = createGolfSimArtworkTexture();
   const impactScreenMat = new THREE.MeshStandardMaterial({
     map: screenTex,
     emissiveMap: screenTex,
@@ -4434,6 +4724,7 @@ export function buildBarnGolfSimulator(
     roughness: 0.65,
     metalness: 0.02,
   });
+  impactScreenMat.userData = { isDynamicGolfScreen: true };
   const projectorBodyMat = new THREE.MeshStandardMaterial({
     color: 0x212429,
     roughness: 0.34,
@@ -4453,25 +4744,26 @@ export function buildBarnGolfSimulator(
   });
 
   const storeBoxDepth = recessDepthU - wallT;
+  const wallBoxH = clearH + 0.01; // 2.86m (`y = -0.34m .. 2.52m`, terminating flush against the underside of the `2.52..2.61m` loft floor slab!)
   const storeBackWall = new THREE.Mesh(
-    new THREE.BoxGeometry(0.09, clearH + 0.1, clearW + 0.18),
+    new THREE.BoxGeometry(0.09, wallBoxH, clearW + 0.18),
     plasterMat
   );
   storeBackWall.userData.isArchitecturalShell = true;
-  storeBackWall.position.set(-recessDepthU - 0.045, (clearH + 0.1) * 0.5, 0);
+  storeBackWall.position.set(-recessDepthU - 0.045, wallBoxH * 0.5, 0);
   storeBackWall.castShadow = true;
   storeBackWall.receiveShadow = true;
   simGroup.add(storeBackWall);
 
   for (const sideZ of [-1, 1] as const) {
     const storeSideWall = new THREE.Mesh(
-      new THREE.BoxGeometry(storeBoxDepth, clearH + 0.1, 0.09),
+      new THREE.BoxGeometry(storeBoxDepth, wallBoxH, 0.09),
       plasterMat
     );
     storeSideWall.userData.isArchitecturalShell = true;
     storeSideWall.position.set(
       -wallT - storeBoxDepth * 0.5,
-      (clearH + 0.1) * 0.5,
+      wallBoxH * 0.5,
       sideZ * (clearW * 0.5 + 0.045)
     );
     storeSideWall.castShadow = true;
@@ -4479,14 +4771,512 @@ export function buildBarnGolfSimulator(
     simGroup.add(storeSideWall);
   }
 
+  // Issue #4 ("Flatten the floor in this loft space and level the floor where its not level" at `[-8.51, 2.61, 17.685]`,
+  // `outbuildings.barn.golfSimulator.roofLid` -> `(u = 13.765m, y = 2.610m, v = 2.874m)`):
+  // Span `storeRoofLid` and its top Wide-Plank European Oak Loft Floor Deck (`outbuildings.store.loftFloor`) continuously
+  // across the ENTIRE Store Loft (`u = 12.31m .. 14.96m`, `loftLenU = 2.65m`, `localLoftX = -1.565m`;
+  // `v = 1.18m .. 5.428m`, `loftSpanV = 4.248m`, `localLoftZ = +0.084m`) at a single uniform, 100% level elevation (`y = 2.52m .. 2.61m`)!
+  const loftLenU = 2.65; // u = 12.31m .. 14.96m
+  const loftSpanV = 4.248; // v = 1.18m .. 5.428m
+  const localLoftX = 13.635 - uWallMax; // -1.565m
+  const localLoftZ = 3.304 - simCenterV; // +0.084m
+  const loftSubfloorH = 0.072; // y = 2.52m .. 2.592m
+  const loftOakDeckH = 0.018; // y = 2.592m .. 2.610m (exact top surface y = 2.61m!)
+
   const storeRoofLid = new THREE.Mesh(
-    new THREE.BoxGeometry(storeBoxDepth + 0.09, 0.09, clearW + 0.18),
+    new THREE.BoxGeometry(loftLenU, loftSubfloorH, loftSpanV),
     plasterMat
   );
   storeRoofLid.name = 'outbuildings.barn.golfSimulator.roofLid';
   storeRoofLid.userData.isArchitecturalShell = true;
-  storeRoofLid.position.set(-wallT - (storeBoxDepth + 0.09) * 0.5, clearH + 0.055, 0);
+  storeRoofLid.position.set(localLoftX, wallBoxH + loftSubfloorH * 0.5, localLoftZ);
+  storeRoofLid.castShadow = true;
+  storeRoofLid.receiveShadow = true;
   simCeilingGroup.add(storeRoofLid);
+
+  // Issue #1 ("FLoorboards like in plant room" at `[-8.251, 2.61, 18.443]`, `outbuildings.store.loftFloor`):
+  // Plain unvarnished pale Scots pine floorboards (`plainUnvarnishedPineFloorMat`) matching the Study & Plant Room floorboards!
+  const plainUnvarnishedPineFloorMat = (() => {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 512;
+    const ctx2d = c.getContext('2d');
+    const b = document.createElement('canvas');
+    b.width = 512;
+    b.height = 512;
+    const bCtx = b.getContext('2d');
+
+    if (ctx2d && bCtx) {
+      ctx2d.fillStyle = '#decba8';
+      ctx2d.fillRect(0, 0, 512, 512);
+      bCtx.fillStyle = '#808080';
+      bCtx.fillRect(0, 0, 512, 512);
+
+      const numBoards = 6;
+      const boardH = 512 / numBoards;
+      const boardPalette = ['#e4d3b3', '#dac6a2', '#e0cead', '#d6c19b', '#e6d6b8', '#dcc8a5'];
+
+      for (let row = 0; row < numBoards; row++) {
+        const y0 = row * boardH;
+        ctx2d.fillStyle = boardPalette[row % boardPalette.length]!;
+        ctx2d.fillRect(0, y0, 512, boardH);
+
+        for (let s = 0; s < 42; s++) {
+          const gy = y0 + ((s + 0.5) / 42) * boardH;
+          const wave = Math.sin(s * 1.7 + row * 2.3) * 0.5 + 0.5;
+          ctx2d.strokeStyle =
+            wave > 0.5
+              ? 'rgba(196, 170, 128, 0.28)'
+              : 'rgba(245, 234, 212, 0.24)';
+          ctx2d.lineWidth = 1.2;
+          ctx2d.beginPath();
+          ctx2d.moveTo(0, gy);
+          ctx2d.bezierCurveTo(
+            170,
+            gy + Math.sin(row + s) * 1.6,
+            340,
+            gy - Math.cos(row + s) * 1.6,
+            512,
+            gy
+          );
+          ctx2d.stroke();
+        }
+
+        for (let k = 0; k < 2; k++) {
+          const kx = ((row * 137 + k * 241 + 65) % 450) + 30;
+          const ky = y0 + boardH * (0.28 + ((row + k) % 2) * 0.42);
+          const krx = 7 + ((row + k) % 3) * 2.5;
+          const kry = 3.5 + ((row * k) % 2) * 1.5;
+
+          ctx2d.strokeStyle = 'rgba(182, 152, 110, 0.45)';
+          ctx2d.lineWidth = 1.4;
+          ctx2d.beginPath();
+          ctx2d.ellipse(kx, ky, krx * 1.6, kry * 1.45, 0, 0, Math.PI * 2);
+          ctx2d.stroke();
+
+          ctx2d.fillStyle = 'rgba(148, 114, 74, 0.62)';
+          ctx2d.beginPath();
+          ctx2d.ellipse(kx, ky, krx, kry, 0, 0, Math.PI * 2);
+          ctx2d.fill();
+        }
+
+        ctx2d.fillStyle = '#9a8466';
+        ctx2d.fillRect(0, y0, 512, 2.2);
+        bCtx.fillStyle = '#2e2e2e';
+        bCtx.fillRect(0, y0, 512, 2.5);
+
+        const buttX = ((row * 193 + 85) % 420) + 45;
+        ctx2d.fillStyle = '#a38d6e';
+        ctx2d.fillRect(buttX, y0, 1.8, boardH);
+        bCtx.fillStyle = '#404040';
+        bCtx.fillRect(buttX, y0, 2.0, boardH);
+      }
+    }
+
+    const colorTex = new THREE.CanvasTexture(c);
+    colorTex.colorSpace = THREE.SRGBColorSpace;
+    colorTex.wrapS = THREE.RepeatWrapping;
+    colorTex.wrapT = THREE.RepeatWrapping;
+    colorTex.repeat.set(loftLenU / 2.2, loftSpanV / 1.2);
+
+    const bumpTex = new THREE.CanvasTexture(b);
+    bumpTex.wrapS = THREE.RepeatWrapping;
+    bumpTex.wrapT = THREE.RepeatWrapping;
+    bumpTex.repeat.set(loftLenU / 2.2, loftSpanV / 1.2);
+
+    return new THREE.MeshStandardMaterial({
+      color: 0xf5efe2,
+      map: colorTex,
+      bumpMap: bumpTex,
+      bumpScale: 0.0035,
+      roughness: 0.84,
+      metalness: 0.0,
+    });
+  })();
+
+  const loftOakTrimMat = new THREE.MeshStandardMaterial({
+    color: 0xd6c19b,
+    roughness: 0.78,
+    metalness: 0.0,
+  });
+  const loftSteelMat = new THREE.MeshStandardMaterial({
+    color: 0x1e2228,
+    roughness: 0.34,
+    metalness: 0.72,
+  });
+
+  const loftOakFloorDeck = new THREE.Mesh(
+    new THREE.BoxGeometry(loftLenU, loftOakDeckH, loftSpanV),
+    plainUnvarnishedPineFloorMat
+  );
+  loftOakFloorDeck.name = 'outbuildings.store.loftFloor';
+  loftOakFloorDeck.userData.isArchitecturalShell = true;
+  loftOakFloorDeck.position.set(
+    localLoftX,
+    wallBoxH + loftSubfloorH + loftOakDeckH * 0.5,
+    localLoftZ
+  );
+  loftOakFloorDeck.castShadow = true;
+  loftOakFloorDeck.receiveShadow = true;
+  simCeilingGroup.add(loftOakFloorDeck);
+
+  // Protective Loft Balustrade Railing (`outbuildings.store.loftGuardrail`) along the North edge (`v = 1.215m`) overlooking the North Hallway,
+  // with a clean `0.58m` ladder entry opening at `u = 13.92m .. 14.50m` (`localX = -1.28m .. -0.70m`) centered on the Loft Ladder (`u = 14.21m`)!
+  const northLoftEdgeZ = 1.18 - simCenterV; // -2.04m
+  const loftNorthFascia = new THREE.Mesh(
+    new THREE.BoxGeometry(loftLenU, loftSubfloorH + loftOakDeckH, 0.02),
+    loftOakTrimMat
+  );
+  loftNorthFascia.name = 'outbuildings.store.loftFloor.nosing';
+  loftNorthFascia.position.set(
+    localLoftX,
+    wallBoxH + (loftSubfloorH + loftOakDeckH) * 0.5,
+    northLoftEdgeZ + 0.008
+  );
+  loftNorthFascia.castShadow = true;
+  simCeilingGroup.add(loftNorthFascia);
+
+  const loftTopLocalY = wallBoxH + loftSubfloorH + loftOakDeckH; // 2.95m (world y = 2.61m)
+  const guardRailH = 0.84;
+  const guardZ = northLoftEdgeZ + 0.035; // v = 1.215m
+  for (const [segName, xMin, xMax] of [
+    ['west', 12.34 - uWallMax, 13.92 - uWallMax],
+    ['east', 14.50 - uWallMax, 14.94 - uWallMax],
+  ] as const) {
+    const segLen = xMax - xMin;
+    const segMidX = (xMin + xMax) * 0.5;
+    const topRail = new THREE.Mesh(
+      new THREE.BoxGeometry(segLen + 0.03, 0.038, 0.048),
+      loftOakTrimMat
+    );
+    topRail.name = `outbuildings.store.loftGuardrail.${segName}`;
+    topRail.position.set(segMidX, loftTopLocalY + guardRailH, guardZ);
+    topRail.castShadow = true;
+    simCeilingGroup.add(topRail);
+
+    const midKneeRail = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.01, 0.01, segLen, 10),
+      loftSteelMat
+    );
+    midKneeRail.rotation.z = Math.PI / 2;
+    midKneeRail.position.set(segMidX, loftTopLocalY + guardRailH * 0.52, guardZ);
+    simCeilingGroup.add(midKneeRail);
+
+    const postXList =
+      segName === 'west'
+        ? [xMin + 0.02, (xMin + xMax) * 0.5, xMax - 0.02]
+        : [xMin + 0.02, xMax - 0.02];
+    for (const px of postXList) {
+      const post = new THREE.Mesh(
+        new THREE.BoxGeometry(0.034, guardRailH, 0.034),
+        loftSteelMat
+      );
+      post.position.set(px, loftTopLocalY + guardRailH * 0.5, guardZ);
+      post.castShadow = true;
+      simCeilingGroup.add(post);
+    }
+  }
+
+  // Issue #2 ("No baseboards up here. Just put some clear storage boxes full of stuff" at `[-7.363, 2.72, 17.168]`):
+  // Populate the pine loft floor (`y = 2.61m`) with 9 Clear Polypropylene Latching Storage Tote Boxes Full of Stuff (`outbuildings.store.loftStorageBoxes`)!
+  const loftStorageGroup = new THREE.Group();
+  loftStorageGroup.name = 'outbuildings.store.loftStorageBoxes';
+  loftStorageGroup.position.set(0, loftTopLocalY, 0);
+  simCeilingGroup.add(loftStorageGroup);
+
+  const clearToteTubMat = new THREE.MeshStandardMaterial({
+    color: 0xeaf2f8,
+    roughness: 0.14,
+    metalness: 0.04,
+    transparent: true,
+    opacity: 0.34,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const frostedLidMat = new THREE.MeshStandardMaterial({
+    color: 0xf0f4f8,
+    roughness: 0.28,
+    metalness: 0.04,
+    transparent: true,
+    opacity: 0.72,
+  });
+  const blueLatchMat = new THREE.MeshStandardMaterial({
+    color: 0x1e4d7b,
+    roughness: 0.36,
+    metalness: 0.12,
+  });
+  const slateLatchMat = new THREE.MeshStandardMaterial({
+    color: 0x2c343f,
+    roughness: 0.38,
+    metalness: 0.15,
+  });
+  const labelWhiteMat = new THREE.MeshStandardMaterial({
+    color: 0xfaf8f2,
+    roughness: 0.65,
+    metalness: 0.0,
+  });
+
+  // Materials for items packed visibly inside the clear storage boxes
+  const itemCrimsonMat = new THREE.MeshStandardMaterial({ color: 0xc92a2a, roughness: 0.35, metalness: 0.25 });
+  const itemGoldMat = new THREE.MeshStandardMaterial({ color: 0xe6b422, roughness: 0.28, metalness: 0.65 });
+  const itemEmeraldMat = new THREE.MeshStandardMaterial({ color: 0x2b6e3f, roughness: 0.55, metalness: 0.1 });
+  const itemNavyFabricMat = new THREE.MeshStandardMaterial({ color: 0x1d3557, roughness: 0.85, metalness: 0.02 });
+  const itemCreamKnitMat = new THREE.MeshStandardMaterial({ color: 0xe9e2d0, roughness: 0.88, metalness: 0.0 });
+  const itemOchreMat = new THREE.MeshStandardMaterial({ color: 0xd97724, roughness: 0.62, metalness: 0.05 });
+  const itemTealMat = new THREE.MeshStandardMaterial({ color: 0x2a9d8f, roughness: 0.58, metalness: 0.06 });
+  const itemCardboardMat = new THREE.MeshStandardMaterial({ color: 0xb88b58, roughness: 0.78, metalness: 0.02 });
+  const itemCharcoalCableMat = new THREE.MeshStandardMaterial({ color: 0x22262b, roughness: 0.48, metalness: 0.2 });
+
+  const addClearStorageBox = (
+    boxId: number,
+    lx: number,
+    ly: number,
+    lz: number,
+    rotY: number,
+    w: number,
+    h: number,
+    d: number,
+    contentKind: 'xmas' | 'linens' | 'books' | 'camping' | 'cables' | 'sports',
+    useBlueLatches = true
+  ): void => {
+    const boxGrp = new THREE.Group();
+    boxGrp.name = `outbuildings.store.loftStorageBox.${boxId}`;
+    boxGrp.position.set(lx, ly, lz);
+    boxGrp.rotation.y = rotY;
+    loftStorageGroup.add(boxGrp);
+
+    const wallThick = 0.008;
+    const lidH = 0.024;
+    const tubH = h - lidH;
+
+    // 1. Packed Interior Contents (built first so they sit cleanly inside the clear polypropylene tub!)
+    const contentsGrp = new THREE.Group();
+    contentsGrp.name = `outbuildings.store.loftStorageBox.${boxId}.contents`;
+    contentsGrp.position.set(0, wallThick, 0);
+    boxGrp.add(contentsGrp);
+
+    const inW = w - 0.05;
+    const inD = d - 0.05;
+    const inH = tubH - 0.025;
+
+    if (contentKind === 'xmas') {
+      // Folded red/green felt base + festive evergreen wreath + red/gold/emerald baubles & coiled lights
+      const feltBase = new THREE.Mesh(
+        new THREE.BoxGeometry(inW * 0.92, inH * 0.34, inD * 0.9),
+        itemEmeraldMat
+      );
+      feltBase.position.set(0, inH * 0.17, 0);
+      contentsGrp.add(feltBase);
+
+      const wreath = new THREE.Mesh(
+        new THREE.TorusGeometry(Math.min(inW, inD) * 0.28, 0.036, 10, 18),
+        itemEmeraldMat
+      );
+      wreath.rotation.x = Math.PI / 2 - 0.18;
+      wreath.position.set(-inW * 0.14, inH * 0.52, 0.01);
+      contentsGrp.add(wreath);
+
+      const baubleCoords: ReadonlyArray<readonly [number, number, number, THREE.Material]> = [
+        [0.12, 0.48, -0.08, itemCrimsonMat],
+        [0.18, 0.54, 0.04, itemGoldMat],
+        [0.08, 0.58, 0.09, itemCrimsonMat],
+        [-0.08, 0.62, -0.09, itemGoldMat],
+        [-0.18, 0.50, 0.09, itemCrimsonMat],
+        [0.02, 0.66, -0.02, itemGoldMat],
+      ];
+      for (const [bx, byFrac, bz, bMat] of baubleCoords) {
+        const bauble = new THREE.Mesh(
+          new THREE.SphereGeometry(0.034, 12, 10),
+          bMat
+        );
+        bauble.position.set(bx, inH * byFrac, bz);
+        contentsGrp.add(bauble);
+      }
+    } else if (contentKind === 'linens') {
+      // Layered folded jumpers, wool blankets & spare duvets visible through the clear sides
+      const layerMats = [itemNavyFabricMat, itemCreamKnitMat, itemCrimsonMat, itemTealMat] as const;
+      for (let l = 0; l < 4; l++) {
+        const lh = (inH * 0.84) / 4;
+        const leftStack = new THREE.Mesh(
+          new THREE.BoxGeometry(inW * 0.46, lh - 0.006, inD * 0.86),
+          layerMats[l % layerMats.length]!
+        );
+        leftStack.position.set(-inW * 0.23, (l + 0.5) * lh, 0);
+        contentsGrp.add(leftStack);
+
+        const rightStack = new THREE.Mesh(
+          new THREE.BoxGeometry(inW * 0.46, lh - 0.006, inD * 0.86),
+          layerMats[(l + 1) % layerMats.length]!
+        );
+        rightStack.position.set(inW * 0.23, (l + 0.5) * lh, 0);
+        contentsGrp.add(rightStack);
+      }
+    } else if (contentKind === 'books') {
+      // Vertical row of hardback books & ring binders + horizontal stack of archive boxes/albums
+      const bookMats = [itemNavyFabricMat, itemCrimsonMat, itemCardboardMat, itemEmeraldMat, itemOchreMat, itemCreamKnitMat] as const;
+      for (let b = 0; b < 7; b++) {
+        const bw = (inW * 0.52) / 7;
+        const bh = inH * (0.68 + (b % 3) * 0.08);
+        const book = new THREE.Mesh(
+          new THREE.BoxGeometry(bw - 0.005, bh, inD * 0.78),
+          bookMats[b % bookMats.length]!
+        );
+        book.position.set(-inW * 0.44 + (b + 0.5) * bw, bh * 0.5, 0);
+        contentsGrp.add(book);
+      }
+      for (let s = 0; s < 3; s++) {
+        const album = new THREE.Mesh(
+          new THREE.BoxGeometry(inW * 0.38, inH * 0.22, inD * 0.82),
+          bookMats[(s + 2) % bookMats.length]!
+        );
+        album.position.set(inW * 0.24, (s + 0.5) * (inH * 0.24), 0);
+        contentsGrp.add(album);
+      }
+    } else if (contentKind === 'camping') {
+      // Rolled sleeping bag cylinder, folded groundsheet tarp & orange gear pouch
+      const sleepingBag = new THREE.Mesh(
+        new THREE.CylinderGeometry(inD * 0.28, inD * 0.28, inW * 0.56, 16),
+        itemTealMat
+      );
+      sleepingBag.rotation.z = Math.PI / 2;
+      sleepingBag.position.set(-inW * 0.16, inD * 0.28, -inD * 0.14);
+      contentsGrp.add(sleepingBag);
+
+      const gearPouch = new THREE.Mesh(
+        new THREE.BoxGeometry(inW * 0.36, inH * 0.58, inD * 0.48),
+        itemOchreMat
+      );
+      gearPouch.position.set(inW * 0.24, inH * 0.29, 0.03);
+      contentsGrp.add(gearPouch);
+
+      const ropeCoil = new THREE.Mesh(
+        new THREE.TorusGeometry(0.068, 0.022, 10, 16),
+        itemCreamKnitMat
+      );
+      ropeCoil.rotation.x = Math.PI / 2;
+      ropeCoil.position.set(-inW * 0.12, inH * 0.66, inD * 0.18);
+      contentsGrp.add(ropeCoil);
+    } else if (contentKind === 'cables') {
+      // Coiled power/network cables, spare hardware box & white adapter cartons
+      const subBox = new THREE.Mesh(
+        new THREE.BoxGeometry(inW * 0.44, inH * 0.52, inD * 0.78),
+        itemCardboardMat
+      );
+      subBox.position.set(-inW * 0.22, inH * 0.26, 0);
+      contentsGrp.add(subBox);
+
+      const whiteCarton = new THREE.Mesh(
+        new THREE.BoxGeometry(inW * 0.38, inH * 0.44, inD * 0.52),
+        itemCreamKnitMat
+      );
+      whiteCarton.position.set(inW * 0.22, inH * 0.22, -inD * 0.12);
+      contentsGrp.add(whiteCarton);
+
+      for (const [cx, cy, cz, cMat] of [
+        [inW * 0.18, inH * 0.58, 0.04, itemCharcoalCableMat],
+        [-inW * 0.16, inH * 0.64, -0.03, itemCharcoalCableMat],
+        [0.02, inH * 0.72, 0.06, blueLatchMat],
+      ] as const) {
+        const coil = new THREE.Mesh(
+          new THREE.TorusGeometry(0.065, 0.018, 10, 16),
+          cMat
+        );
+        coil.rotation.x = Math.PI / 2 + 0.15;
+        coil.position.set(cx, cy, cz);
+        contentsGrp.add(coil);
+      }
+    } else {
+      // Sports & leisure kit: duffle pouch, orange cones & yellow balls
+      const duffle = new THREE.Mesh(
+        new THREE.BoxGeometry(inW * 0.54, inH * 0.52, inD * 0.76),
+        itemNavyFabricMat
+      );
+      duffle.position.set(-inW * 0.16, inH * 0.26, 0);
+      contentsGrp.add(duffle);
+
+      const orangeKit = new THREE.Mesh(
+        new THREE.BoxGeometry(inW * 0.32, inH * 0.48, inD * 0.64),
+        itemOchreMat
+      );
+      orangeKit.position.set(inW * 0.26, inH * 0.24, 0);
+      contentsGrp.add(orangeKit);
+
+      for (const [bx, bz] of [
+        [-0.08, -0.05],
+        [0.02, 0.06],
+        [0.12, -0.02],
+      ] as const) {
+        const ball = new THREE.Mesh(
+          new THREE.SphereGeometry(0.032, 12, 10),
+          itemGoldMat
+        );
+        ball.position.set(bx, inH * 0.62, bz);
+        contentsGrp.add(ball);
+      }
+    }
+
+    // 2. Clear Polypropylene Tote Tub Body (`outbuildings.store.loftStorageBox.tub`)
+    const tubMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(w, tubH, d),
+      clearToteTubMat
+    );
+    tubMesh.name = 'outbuildings.store.loftStorageBox.tub';
+    tubMesh.position.set(0, tubH * 0.5, 0);
+    tubMesh.castShadow = true;
+    tubMesh.receiveShadow = true;
+    boxGrp.add(tubMesh);
+
+    // 3. Snap-On Frosted Polypropylene Lid & Twin Side Clip Latches
+    const lidMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(w + 0.014, lidH, d + 0.014),
+      frostedLidMat
+    );
+    lidMesh.name = 'outbuildings.store.loftStorageBox.lid';
+    lidMesh.position.set(0, tubH + lidH * 0.5, 0);
+    lidMesh.castShadow = true;
+    lidMesh.receiveShadow = true;
+    boxGrp.add(lidMesh);
+
+    const latchMat = useBlueLatches ? blueLatchMat : slateLatchMat;
+    for (const sideX of [-1, 1] as const) {
+      const clipLatch = new THREE.Mesh(
+        new THREE.BoxGeometry(0.016, 0.044, d * 0.36),
+        latchMat
+      );
+      clipLatch.name = 'outbuildings.store.loftStorageBox.latch';
+      clipLatch.position.set(sideX * (w * 0.5 + 0.008), tubH, 0);
+      boxGrp.add(clipLatch);
+    }
+
+    // Front adhesive white content label sticker
+    const labelSticker = new THREE.Mesh(
+      new THREE.BoxGeometry(w * 0.34, 0.056, 0.003),
+      labelWhiteMat
+    );
+    labelSticker.position.set(0, tubH * 0.58, -d * 0.5 - 0.002);
+    boxGrp.add(labelSticker);
+  };
+
+  // Arrange 9 Clear Storage Boxes Full of Stuff around the Store Loft floor (`y = 2.61m`),
+  // including right along the East wall (`localX ≈ -0.58m`, `u ≈ 14.62m`) where the user pinned Issue #2 (`[-7.363, 2.72, 17.168]`)!
+  // 1) East Wall Stack A (`u = 14.62m, v = 2.15m` -> `localX = -0.58m, localZ = -1.07m`): 2 stacked clear boxes (Xmas & Linens)
+  addClearStorageBox(1, -0.58, 0.0, -1.07, -Math.PI / 2 + 0.04, 0.58, 0.34, 0.40, 'xmas', true);
+  addClearStorageBox(2, -0.58, 0.34, -1.07, -Math.PI / 2 - 0.03, 0.54, 0.30, 0.38, 'linens', true);
+
+  // 2) East Wall Stack B (`u = 14.60m, v = 2.85m` -> `localX = -0.60m, localZ = -0.37m`): 2 stacked clear boxes (Books & Cables)
+  addClearStorageBox(3, -0.60, 0.0, -0.37, -Math.PI / 2 - 0.02, 0.58, 0.34, 0.40, 'books', false);
+  addClearStorageBox(4, -0.60, 0.34, -0.37, -Math.PI / 2 + 0.05, 0.52, 0.28, 0.36, 'cables', false);
+
+  // 3) East Wall Single Box C (`u = 14.62m, v = 3.55m` -> `localX = -0.58m, localZ = +0.33m`): Large clear box (Camping gear)
+  addClearStorageBox(5, -0.58, 0.0, 0.33, -Math.PI / 2 + 0.03, 0.62, 0.36, 0.42, 'camping', true);
+
+  // 4) South-East Corner Stack D (`u = 14.48m, v = 4.65m` -> `localX = -0.72m, localZ = +1.43m`): 2 stacked clear boxes (Linens & Sports)
+  addClearStorageBox(6, -0.72, 0.0, 1.43, Math.PI - 0.06, 0.60, 0.34, 0.40, 'linens', true);
+  addClearStorageBox(7, -0.72, 0.34, 1.43, Math.PI + 0.04, 0.54, 0.30, 0.38, 'sports', true);
+
+  // 5) South-West Wall Stack E (`u = 13.15m, v = 4.82m` -> `localX = -2.05m, localZ = +1.60m`): 2 clear boxes side-by-side (Cables & Books)
+  addClearStorageBox(8, -1.78, 0.0, 1.68, Math.PI + 0.03, 0.58, 0.34, 0.40, 'cables', false);
+  addClearStorageBox(9, -2.42, 0.0, 1.66, Math.PI - 0.04, 0.58, 0.34, 0.40, 'books', true);
 
   const numBaffleCols = 6;
   const baffleColW = recessDepthU / numBaffleCols;
@@ -4513,13 +5303,16 @@ export function buildBarnGolfSimulator(
     simCeilingGroup.add(ceilBaffle);
   }
 
+  // Issue #6 ("golf sim " at `[-7.208, 2.64, 15.973]` on `outbuildings.barn.golfSimulator.oakLintel.beam`):
+  // Cap `sideTrim` at `clearH` (`2.85m`, `top Y = 2.51m`) and recess it within the portal (`x = -0.04m`, `z = ±(clearW * 0.5 - frameTrimW * 0.5)`)
+  // so it butts cleanly underneath the `y = 2.51m..2.74m` Oak Bressummer Lintel without poking into `oakLintel.beam`!
   const frameTrimW = 0.095;
   for (const sideZ of [-1, 1] as const) {
     const sideTrim = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, clearH + frameTrimW, frameTrimW),
+      new THREE.BoxGeometry(0.08, clearH, frameTrimW),
       velvetFrameMat
     );
-    sideTrim.position.set(0.01, (clearH + frameTrimW) * 0.5, sideZ * (clearW * 0.5 + frameTrimW * 0.3));
+    sideTrim.position.set(-0.04, clearH * 0.5, sideZ * (clearW * 0.5 - frameTrimW * 0.5));
     simGroup.add(sideTrim);
   }
   const topTrim = new THREE.Mesh(
@@ -4546,27 +5339,37 @@ export function buildBarnGolfSimulator(
   screenBacking.position.set(-recessDepthU + 0.12, clearH * 0.5, 0);
   simGroup.add(screenBacking);
 
-  const turfStartX = -recessDepthU + 0.12;
-  const turfEndX = 1.82;
-  const totalTurfLenX = turfEndX - turfStartX;
-  const turfCenterX = (turfStartX + turfEndX) * 0.5;
+  // Issue #4 ("Have a hinge on the floor mat when you click it it folds over (and golf bag moves out of the way)"
+  // at `[-6.969, -0.306, 17.755]`, `outbuildings.barn.golfSimulator.turfMat`):
+  // Split the turf mat along the simulator threshold line (`x = 0.00m`, `u = 15.20m`) into:
+  // 1. Fixed Rear Putting Turf (`x = -2.04m .. -0.006m`) inside the recessed simulator bay,
+  // 2. Full-Width Heavy-Duty Piano Hinge (`outbuildings.barn.golfSimulator.turfMat.hinge`) at `(x = 0.00m, y = 0.034m)`,
+  // 3. Hinged Folding Front Stance & Hitting Mat (`outbuildings.barn.golfSimulator.turfMat.foldingLeaf`, `x = +0.006m .. +1.82m`)
+  //    that folds ~177 degrees over the piano hinge into the simulator bay when clicked while the Callaway Tour Golf Bag slides out of the way!
+  const turfStartX = -recessDepthU + 0.12; // -2.04m
+  const rearLenX = -0.006 - turfStartX; // 2.034m
+  const rearCenterX = (turfStartX + -0.006) * 0.5; // -1.023m
+  const frontLenX = rearLenX; // 2.034m symmetrical leaf so when folded 180° its wooden floor back side covers 100% of the bay!
+  const turfEndX = 0.006 + frontLenX; // 2.04m
+  const frontCenterX = (0.006 + turfEndX) * 0.5; // 1.023m
 
-  const surroundBase = new THREE.Mesh(
-    new THREE.BoxGeometry(totalTurfLenX + 0.08, 0.028, clearW),
+  // 1. Fixed Rear Putting Turf Inside Simulator Bay
+  const rearSurroundBase = new THREE.Mesh(
+    new THREE.BoxGeometry(rearLenX + 0.04, 0.028, clearW),
     stanceSurroundMat
   );
-  surroundBase.position.set(turfCenterX, 0.014, 0);
-  surroundBase.receiveShadow = true;
-  simGroup.add(surroundBase);
+  rearSurroundBase.position.set(rearCenterX - 0.02, 0.014, 0);
+  rearSurroundBase.receiveShadow = true;
+  simGroup.add(rearSurroundBase);
 
-  const fairwayTurf = new THREE.Mesh(
-    new THREE.BoxGeometry(totalTurfLenX, 0.034, clearW - 0.08),
+  const rearFairwayTurf = new THREE.Mesh(
+    new THREE.BoxGeometry(rearLenX, 0.034, clearW - 0.08),
     fairwayTurfMat
   );
-  fairwayTurf.name = 'outbuildings.barn.golfSimulator.turfMat';
-  fairwayTurf.position.set(turfCenterX, 0.017, 0);
-  fairwayTurf.receiveShadow = true;
-  simGroup.add(fairwayTurf);
+  rearFairwayTurf.name = 'outbuildings.barn.golfSimulator.turfMat.rearFixed';
+  rearFairwayTurf.position.set(rearCenterX, 0.017, 0);
+  rearFairwayTurf.receiveShadow = true;
+  simGroup.add(rearFairwayTurf);
 
   for (const [cupX, cupZ] of [
     [-0.35, -0.95],
@@ -4580,45 +5383,166 @@ export function buildBarnGolfSimulator(
     simGroup.add(cup);
   }
 
+  // 2. Full-Width Heavy-Duty Threshold Piano Hinge (`x = 0.00m, y = 0.036m`)
+  const hingeSteelMat = new THREE.MeshStandardMaterial({
+    color: 0x343a42,
+    roughness: 0.28,
+    metalness: 0.82,
+  });
+  const hingeBrassPinMat = new THREE.MeshStandardMaterial({
+    color: 0xc59b58,
+    roughness: 0.24,
+    metalness: 0.88,
+  });
+  const hingeAssy = new THREE.Group();
+  hingeAssy.name = 'outbuildings.barn.golfSimulator.turfMat.hinge';
+  hingeAssy.position.set(0, 0.036, 0);
+  simGroup.add(hingeAssy);
+
+  const hingePinBar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.006, 0.006, clearW - 0.08, 12),
+    hingeBrassPinMat
+  );
+  hingePinBar.rotation.x = Math.PI / 2;
+  hingeAssy.add(hingePinBar);
+
+  for (const plateSignX of [-1, 1] as const) {
+    const leafPlate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.026, 0.004, clearW - 0.10),
+      hingeSteelMat
+    );
+    leafPlate.position.set(plateSignX * 0.015, -0.001, 0);
+    hingeAssy.add(leafPlate);
+  }
+
+  for (let k = 0; k < 12; k++) {
+    const kz = -1.65 + k * 0.30;
+    const knuckle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0095, 0.0095, 0.09, 12),
+      k % 2 === 0 ? hingeSteelMat : hingeBrassPinMat
+    );
+    knuckle.rotation.x = Math.PI / 2;
+    knuckle.position.set(0, 0.001, kz);
+    hingeAssy.add(knuckle);
+  }
+
+  // 3. Hinged Folding Front Stance & Hitting Mat (`outbuildings.barn.golfSimulator.turfMat.foldingLeaf`)
+  //    - Top side (`+y` when unfolded): Synthetic Golf Astroturf + Hitting Strip
+  //    - Back side (`-y` when unfolded, `+y` top floor surface when folded 180° over!):
+  //      Wide-Plank Seasoned European Oak Wooden Floor (`outbuildings.barn.golfSimulator.turfMat.woodenBackSide`)!
+  const { oakMap: foldingOakMap, oakBumpMap: foldingOakBumpMap } = createFoldingMatOakFloorTextures();
+  const foldingOakFloorMat = new THREE.MeshStandardMaterial({
+    map: foldingOakMap,
+    bumpMap: foldingOakBumpMap,
+    bumpScale: 0.012,
+    color: 0xffffff,
+    roughness: 0.44,
+    metalness: 0.04,
+  });
+  const foldingOakEdgeMat = new THREE.MeshStandardMaterial({
+    color: 0xa6794a,
+    roughness: 0.42,
+    metalness: 0.04,
+  });
+
+  const foldingMatGroup = new THREE.Group();
+  foldingMatGroup.name = 'outbuildings.barn.golfSimulator.turfMat.foldingLeaf';
+  foldingMatGroup.position.set(frontCenterX, 0.017, 0);
+  simGroup.add(foldingMatGroup);
+
+  // Solid European Oak perimeter frame & underside wooden floor deck (`outbuildings.barn.golfSimulator.turfMat.woodenBackSide`)
+  // When `foldingMatGroup` folds 180° (`Math.PI`) around the hinge at `y = 0.036m`, `y = -0.013m` in `foldingMatGroup`
+  // flips to the top (`simGroup.y = +0.068m`) with its normal facing `+Y`, presenting a solid oak wooden floor!
+  const woodenBackDeck = new THREE.Mesh(
+    new THREE.BoxGeometry(frontLenX + 0.036, 0.014, clearW - 0.01),
+    foldingOakFloorMat
+  );
+  woodenBackDeck.name = 'outbuildings.barn.golfSimulator.turfMat.woodenBackSide';
+  woodenBackDeck.position.set(0.012, -0.012, 0);
+  woodenBackDeck.castShadow = true;
+  woodenBackDeck.receiveShadow = true;
+  foldingMatGroup.add(woodenBackDeck);
+
+  // Mitred solid-oak edge border trim around the folding deck perimeter
+  for (const sideZ of [-1, 1] as const) {
+    const sideOakRail = new THREE.Mesh(
+      new THREE.BoxGeometry(frontLenX + 0.04, 0.034, 0.042),
+      foldingOakEdgeMat
+    );
+    sideOakRail.name = 'outbuildings.barn.golfSimulator.turfMat.oakBorder';
+    sideOakRail.position.set(0.012, 0, sideZ * (clearW * 0.5 - 0.021));
+    sideOakRail.receiveShadow = true;
+    foldingMatGroup.add(sideOakRail);
+  }
+  const frontOakNosings = new THREE.Mesh(
+    new THREE.BoxGeometry(0.042, 0.034, clearW),
+    foldingOakEdgeMat
+  );
+  frontOakNosings.name = 'outbuildings.barn.golfSimulator.turfMat.oakBorder';
+  frontOakNosings.position.set(frontLenX * 0.5 + 0.012, 0, 0);
+  frontOakNosings.receiveShadow = true;
+  foldingMatGroup.add(frontOakNosings);
+
+  // Flush-inset brushed-brass marine deck lifting rings on the wooden floor back side
+  for (const pullZ of [-0.92, 0.92] as const) {
+    const escutcheonPlate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.068, 0.004, 0.054),
+      hingeBrassPinMat
+    );
+    escutcheonPlate.name = 'outbuildings.barn.golfSimulator.turfMat.pullRing';
+    escutcheonPlate.position.set(frontLenX * 0.5 - 0.12, -0.018, pullZ);
+    foldingMatGroup.add(escutcheonPlate);
+  }
+
+  const fairwayTurf = new THREE.Mesh(
+    new THREE.BoxGeometry(frontLenX - 0.01, 0.022, clearW - 0.084),
+    fairwayTurfMat
+  );
+  fairwayTurf.name = 'outbuildings.barn.golfSimulator.turfMat';
+  fairwayTurf.position.set(0, 0.006, 0);
+  fairwayTurf.receiveShadow = true;
+  foldingMatGroup.add(fairwayTurf);
+
   const hittingX = 1.12;
+  const hittingRelX = hittingX - frontCenterX;
   const hittingStrip = new THREE.Mesh(
-    new THREE.BoxGeometry(0.36, 0.038, 1.04),
+    new THREE.BoxGeometry(0.36, 0.024, 1.04),
     hittingStripMat
   );
   hittingStrip.name = 'outbuildings.barn.golfSimulator.hittingStrip';
-  hittingStrip.position.set(hittingX, 0.02, 0);
+  hittingStrip.position.set(hittingRelX, 0.007, 0);
   hittingStrip.receiveShadow = true;
-  simGroup.add(hittingStrip);
+  foldingMatGroup.add(hittingStrip);
 
   const rubberTee = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.008, 0.016, 0.042, 10),
+    new THREE.CylinderGeometry(0.007, 0.014, 0.016, 10),
     golfBallMat
   );
-  rubberTee.position.set(hittingX, 0.048, 0);
-  simGroup.add(rubberTee);
+  rubberTee.position.set(hittingRelX, 0.024, 0);
+  foldingMatGroup.add(rubberTee);
 
   const teedBall = new THREE.Mesh(
-    new THREE.SphereGeometry(0.0213, 14, 12),
+    new THREE.SphereGeometry(0.016, 14, 12),
     golfBallMat
   );
-  teedBall.position.set(hittingX, 0.088, 0);
+  teedBall.position.set(hittingRelX, 0.036, 0);
   teedBall.castShadow = true;
-  simGroup.add(teedBall);
+  foldingMatGroup.add(teedBall);
 
   const ballTray = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, 0.028, 0.42),
+    new THREE.BoxGeometry(0.28, 0.016, 0.42),
     stanceSurroundMat
   );
-  ballTray.position.set(hittingX, 0.044, -0.78);
-  simGroup.add(ballTray);
+  ballTray.position.set(hittingRelX, 0.021, -0.78);
+  foldingMatGroup.add(ballTray);
 
   for (let b = 0; b < 5; b++) {
     const ball = new THREE.Mesh(
-      new THREE.SphereGeometry(0.0213, 12, 10),
+      new THREE.SphereGeometry(0.016, 12, 10),
       golfBallMat
     );
-    ball.position.set(hittingX, 0.068, -0.92 + b * 0.07);
-    simGroup.add(ball);
+    ball.position.set(hittingRelX, 0.033, -0.92 + b * 0.07);
+    foldingMatGroup.add(ball);
   }
 
   // Issue #3 ("Trackman and projector seem to be inside the wall" at `[-6.981, 2.651, 17.826]`, `outbuildings.barn.golfSimulator.trackmanIO`):
@@ -5024,6 +5948,246 @@ export function buildBarnGolfSimulator(
   putterHeadcover.position.set(-0.105, 1.005, 0.012);
   putterHeadcover.castShadow = true;
   bagTiltGroup.add(putterHeadcover);
+
+  // Register the interactive hinged folding front mat + linked Callaway Tour Golf Bag slide-away motion
+  // + automatic Widescreen Gallery Artwork switch when the hinged mat is folded closed!
+  // - Issue #1 ("golf bag moves to here" at `[-4.325, -0.34, 19.641]` -> `simGroup` `(2.378, 0.0, 1.92)`):
+  //   `bagStowedDelta = new THREE.Vector3(1.478, -0.034, 0.44)` moves `bagGroup` from `(0.90, 0.034, 1.48)` to `(2.378, 0.0, 1.92)`.
+  // - "when you click the hinged mat it should fold over, it should have wooden floor on the back side":
+  //   Folds `foldingMatGroup` 180° (`Math.PI * 0.996`) around the threshold piano hinge `(0, 0.036, 0)`, turning `woodenBackDeck` face-up.
+  // - "when hinge is closed, screen changes to artwork":
+  //   `onStateChange` switches `impactScreenMat` between `screenTex` (TrackMan iO golf course) and `artworkTex` (Gallery Landscape Painting).
+  // ---------------------------------------------------------------------------
+  // Issue #5 ("Put a ladder here to access the loft space above" at `[-8.212, 1.186, 15.959]`,
+  // Surface Normal `[-0.086, 0, -0.996]` -> Outbuilding `(u = 14.209m, y = 1.186m, v = 1.180m)`):
+  // Wall-Mounted Bespoke Matte-Anthracite Steel & Solid European Oak Loft Access Ladder (`outbuildings.store.loftLadder`)
+  // mounted on the North face (`v = 1.18m`, facing `-v` into the North Pass-Through Hallway `v = 0.28..1.18m`)
+  // centered at `u = 14.21m`, rising from the hallway limestone floor (`y = -0.34m`) up to the flat Store Loft floor (`y = 2.61m`)!
+  // ---------------------------------------------------------------------------
+  const ladderGroup = new THREE.Group();
+  ladderGroup.name = 'outbuildings.store.loftLadder';
+  ladderGroup.userData.zone = 'courtyard';
+  ladderGroup.position.set(14.21, barnWestFloorY, 1.18);
+  groundGroup.add(ladderGroup);
+
+  const ladderClimbH = 2.95; // From hallway floor y = -0.34m to flat loft floor y = +2.61m
+  const ladderSpanU = 0.44;  // Stile center-to-center width (`u = 13.99m .. 14.43m`)
+  const ladderStileZ = -0.095; // Stands 9.5cm proud into the hallway (`v = 1.085m`)
+
+  for (const sideX of [-1, 1] as const) {
+    const sx = sideX * (ladderSpanU * 0.5);
+
+    // Vertical rectangular-section powder-coated steel stringer stile (`0.026m x 2.95m x 0.054m`)
+    const stileMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.026, ladderClimbH, 0.054),
+      loftSteelMat
+    );
+    stileMesh.name = 'outbuildings.store.loftLadder.stile';
+    stileMesh.position.set(sx, ladderClimbH * 0.5, ladderStileZ);
+    stileMesh.castShadow = true;
+    stileMesh.receiveShadow = true;
+    ladderGroup.add(stileMesh);
+
+    // Non-slip rubber floor foot pad resting on the hallway limestone floor (`y = 0`)
+    const footPad = new THREE.Mesh(
+      new THREE.BoxGeometry(0.044, 0.016, 0.072),
+      velvetFrameMat
+    );
+    footPad.position.set(sx, 0.008, ladderStileZ);
+    ladderGroup.add(footPad);
+
+    // 3 Heavy-duty bolted wall stand-off brackets anchoring the stile to the `v = 1.18m` South Hallway Wall
+    for (const bracketY of [0.22, 1.52, 2.72] as const) {
+      const standOffArm = new THREE.Mesh(
+        new THREE.BoxGeometry(0.024, 0.036, Math.abs(ladderStileZ)),
+        loftSteelMat
+      );
+      standOffArm.position.set(sx, bracketY, ladderStileZ * 0.5);
+      ladderGroup.add(standOffArm);
+
+      const wallFlange = new THREE.Mesh(
+        new THREE.BoxGeometry(0.064, 0.076, 0.008),
+        loftSteelMat
+      );
+      wallFlange.position.set(sx, bracketY, -0.004);
+      ladderGroup.add(wallFlange);
+    }
+
+    // Ergonomic curved top safety grab-rail hoop (`y = 2.95m .. 3.60m`, curving South `+z` onto the `y = 2.61m` loft landing!)
+    const hoopPts = [
+      new THREE.Vector3(sx, ladderClimbH, ladderStileZ),
+      new THREE.Vector3(sx, ladderClimbH + 0.44, ladderStileZ),
+      new THREE.Vector3(sx, ladderClimbH + 0.62, ladderStileZ + 0.06),
+      new THREE.Vector3(sx, ladderClimbH + 0.62, 0.11),
+      new THREE.Vector3(sx, ladderClimbH + 0.44, 0.16),
+      new THREE.Vector3(sx, ladderClimbH, 0.16),
+    ];
+    const hoopCurve = new THREE.CatmullRomCurve3(hoopPts);
+    const hoopMesh = new THREE.Mesh(
+      new THREE.TubeGeometry(hoopCurve, 28, 0.015, 12, false),
+      loftSteelMat
+    );
+    hoopMesh.name = 'outbuildings.store.loftLadder.grabRail';
+    hoopMesh.castShadow = true;
+    ladderGroup.add(hoopMesh);
+
+    const loftDeckFlange = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.032, 0.032, 0.01, 14),
+      loftSteelMat
+    );
+    loftDeckFlange.position.set(sx, ladderClimbH + 0.005, 0.16);
+    ladderGroup.add(loftDeckFlange);
+  }
+
+  // 10 Solid European Oak Cylindrical Non-Slip Rungs (`y = 0.27m .. 2.70m`, placing Rung #5 right at hit point `y = 1.186m` world!)
+  const numLadderRungs = 10;
+  for (let r = 1; r <= numLadderRungs; r++) {
+    const rungLocalY = r * 0.272; // Rung 5 is at -0.34 + 1.36 = +1.02m, Rung 6 at +1.29m (bracketing y = 1.186m!)
+    const rungMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.018, 0.018, ladderSpanU - 0.016, 16),
+      loftOakTrimMat
+    );
+    rungMesh.name = 'outbuildings.store.loftLadder.rung';
+    rungMesh.rotation.z = Math.PI / 2;
+    rungMesh.position.set(0, rungLocalY, ladderStileZ);
+    rungMesh.castShadow = true;
+    rungMesh.receiveShadow = true;
+    ladderGroup.add(rungMesh);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Issue #6 ("golf sim " at `[-7.208, 2.64, 15.973]`, Surface Normal `[0.996, 0, -0.086]` ->
+  // Outbuilding `(u = 15.208m, y = 2.640m, v = 1.280m)` on `outbuildings.barn.golfSimulator.oakLintel.beam`)
+  // & Issue #3 ("Have a red light above which goes red if someone is playing golf" above the Garage pass-through door):
+  // Bespoke Illuminated "GOLF SIM" Status Sign & Red Indicator Lights synced with Golf Mode vs Artwork Mode!
+  // ---------------------------------------------------------------------------
+  const signCanvas = document.createElement('canvas');
+  signCanvas.width = 256;
+  signCanvas.height = 96;
+  const sCtx = signCanvas.getContext('2d');
+  if (sCtx) {
+    sCtx.fillStyle = '#181a1f';
+    sCtx.fillRect(0, 0, 256, 96);
+    sCtx.strokeStyle = '#c59b58';
+    sCtx.lineWidth = 5;
+    sCtx.strokeRect(4, 4, 248, 88);
+    sCtx.fillStyle = '#ff3b30';
+    sCtx.font = 'bold 30px sans-serif';
+    sCtx.textAlign = 'center';
+    sCtx.textBaseline = 'middle';
+    sCtx.fillText('GOLF SIM', 128, 36);
+    sCtx.fillStyle = '#f4f6f9';
+    sCtx.font = 'bold 18px sans-serif';
+    sCtx.fillText('IN PLAY', 128, 68);
+  }
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  signTex.colorSpace = THREE.SRGBColorSpace;
+
+  const statusSignFaceMat = new THREE.MeshStandardMaterial({
+    map: signTex,
+    emissiveMap: signTex,
+    emissive: new THREE.Color(0xff2a20),
+    emissiveIntensity: 1.35,
+    roughness: 0.25,
+    metalness: 0.1,
+  });
+  statusSignFaceMat.userData = { isDynamicGolfStatusLight: true };
+
+  const statusBeaconRedMat = new THREE.MeshStandardMaterial({
+    color: 0xff2418,
+    emissive: new THREE.Color(0xff1810),
+    emissiveIntensity: 2.2,
+    roughness: 0.18,
+    metalness: 0.08,
+  });
+  statusBeaconRedMat.userData = { isDynamicGolfStatusLight: true };
+
+  // 1) Barn-side "GOLF SIM" status plaque on the North end of the Oak Bressummer Lintel (`u = 15.21m, y = 2.64m, v = 1.28m`)
+  const lintelStatusGroup = new THREE.Group();
+  lintelStatusGroup.name = 'outbuildings.barn.golfSimulator.statusSign';
+  lintelStatusGroup.position.set(0.012, 2.64 - barnWestFloorY, 1.28 - simCenterV);
+  simGroup.add(lintelStatusGroup);
+
+  const statusHousing = new THREE.Mesh(
+    new THREE.BoxGeometry(0.022, 0.11, 0.26),
+    projectorBodyMat
+  );
+  statusHousing.name = 'outbuildings.barn.golfSimulator.statusSign';
+  lintelStatusGroup.add(statusHousing);
+
+  const statusFace = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.24, 0.09),
+    statusSignFaceMat
+  );
+  statusFace.name = 'outbuildings.barn.golfSimulator.statusSign.face';
+  statusFace.rotation.y = Math.PI / 2;
+  statusFace.position.set(0.012, 0, 0);
+  lintelStatusGroup.add(statusFace);
+
+  const statusDome = new THREE.Mesh(
+    new THREE.SphereGeometry(0.018, 14, 12),
+    statusBeaconRedMat
+  );
+  statusDome.name = 'outbuildings.barn.golfSimulator.statusSign.beacon';
+  statusDome.position.set(0.012, 0.068, 0);
+  lintelStatusGroup.add(statusDome);
+
+  // 2) Garage-side over-door red warning light above the Garage-to-Hallway walkthrough archway (`u = 12.06m, y = 1.80m, v = 0.78m`)
+  const garageHallBeaconGroup = new THREE.Group();
+  garageHallBeaconGroup.name = 'outbuildings.garage.golfStatusLight';
+  garageHallBeaconGroup.position.set(12.06 - uWallMax, 1.80 - barnWestFloorY, 0.78 - simCenterV);
+  simGroup.add(garageHallBeaconGroup);
+
+  const garageBeaconBezel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.024, 0.085, 0.22),
+    projectorBodyMat
+  );
+  garageHallBeaconGroup.add(garageBeaconBezel);
+
+  const garageBeaconFace = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.20, 0.068),
+    statusSignFaceMat
+  );
+  garageBeaconFace.rotation.y = -Math.PI / 2;
+  garageBeaconFace.position.set(-0.013, 0, 0);
+  garageHallBeaconGroup.add(garageBeaconFace);
+
+  const garageBeaconLens = new THREE.Mesh(
+    new THREE.SphereGeometry(0.018, 14, 12),
+    statusBeaconRedMat
+  );
+  garageBeaconLens.position.set(-0.014, 0.052, 0);
+  garageHallBeaconGroup.add(garageBeaconLens);
+
+  if (interactions) {
+    const { matDoorId } = interactions.registerFoldingGolfMat(
+      simGroup,
+      foldingMatGroup,
+      new THREE.Vector3(-frontLenX * 0.5 - 0.006, 0.019, 0),
+      bagGroup,
+      new THREE.Vector3(0, 0, 0),
+      Math.PI * 0.996,
+      (isFolded) => {
+        const nextTex = isFolded ? artworkTex : screenTex;
+        impactScreenMat.map = nextTex;
+        impactScreenMat.emissiveMap = nextTex;
+        impactScreenMat.emissiveIntensity = isFolded ? 0.26 : 0.44;
+        impactScreenMat.needsUpdate = true;
+
+        // Dim the "GOLF SIM / IN PLAY" red indicator lights when folded into non-golf artwork mode
+        statusSignFaceMat.emissiveIntensity = isFolded ? 0.08 : 1.35;
+        statusSignFaceMat.needsUpdate = true;
+        statusBeaconRedMat.emissiveIntensity = isFolded ? 0.05 : 2.2;
+        statusBeaconRedMat.color.setHex(isFolded ? 0x4a1c1a : 0xff2418);
+        statusBeaconRedMat.needsUpdate = true;
+      }
+    );
+    interactions.registerClickableObject(rearFairwayTurf, { interactableId: matDoorId });
+    interactions.registerClickableObject(screenMesh, { interactableId: matDoorId });
+    for (const child of hingeAssy.children) {
+      interactions.registerClickableObject(child, { interactableId: matDoorId });
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Issue #7 ("computer monitor for golf sim here" at `[-5.071, 0.365, 19.955]`,

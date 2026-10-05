@@ -246,6 +246,22 @@ export function serializeAnnotationsToUsdaOverrideLayer(
   records: readonly SceneAnnotationRecord[]
 ): string {
   const zoneChildren = new Map<string, UsdPrim[]>();
+  const usedNamesByZone = new Map<string, Set<string>>();
+
+  const allocateUniquePrimName = (zoneId: string, baseName: string, id: number): string => {
+    let used = usedNamesByZone.get(zoneId);
+    if (!used) {
+      used = new Set<string>();
+      usedNamesByZone.set(zoneId, used);
+    }
+    if (!used.has(baseName)) {
+      used.add(baseName);
+      return baseName;
+    }
+    const suffixed = `${baseName}_${id}`;
+    used.add(suffixed);
+    return suffixed;
+  };
 
   for (const r of records) {
     const zoneId = sanitizeUsdIdent(r.roomZoneId || 'exterior', 'exterior');
@@ -261,7 +277,7 @@ export function serializeAnnotationsToUsdaOverrideLayer(
       const stripped = tf.targetName.startsWith(dotPrefix)
         ? tf.targetName.slice(dotPrefix.length)
         : tf.targetName;
-      const primName = sanitizeUsdIdent(stripped, `MoveTarget_${r.id}`);
+      const primName = allocateUniquePrimName(zoneId, sanitizeUsdIdent(stripped, `MoveTarget_${r.id}`), r.id);
 
       list.push({
         specifier: 'over',
@@ -309,7 +325,7 @@ export function serializeAnnotationsToUsdaOverrideLayer(
       const stripped = rawMesh.startsWith(dotPrefix)
         ? rawMesh.slice(dotPrefix.length)
         : rawMesh;
-      const primName = sanitizeUsdIdent(stripped, `Pin_${r.id}`);
+      const primName = allocateUniquePrimName(zoneId, sanitizeUsdIdent(stripped, `Pin_${r.id}`), r.id);
       list.push({
         specifier: 'over',
         typeName: '',

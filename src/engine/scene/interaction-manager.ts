@@ -25,6 +25,9 @@ interface HingedDoorState {
   speed: number;
   overheadTrackZ?: number;
   closedPosZ?: number;
+  isFoldingFloorMat?: boolean;
+  linkedDrawerId?: string;
+  onStateChange?: (isOpen: boolean) => void;
   bargeSwingSign?: -1 | 1;
   fromAngle?: number;
   closedGeometry?: ClosedDoorwayGeometry;
@@ -52,6 +55,62 @@ interface SlidingDrawerState {
   isOpen: boolean;
   progress: number;
   readonly speed: number;
+  linkedDoorId?: string;
+  fadeOutWhenOpen?: boolean;
+  fadeMaterials?: THREE.Material[];
+}
+
+function prepareFadeMaterialsForGroup(root: THREE.Object3D): THREE.Material[] {
+  const clonedBySource = new Map<THREE.Material, THREE.Material>();
+  const result: THREE.Material[] = [];
+  root.traverse((obj) => {
+    if (!(obj instanceof THREE.Mesh)) return;
+    if (Array.isArray(obj.material)) {
+      obj.material = obj.material.map((m: THREE.Material) => {
+        let cloned = clonedBySource.get(m);
+        if (!cloned) {
+          cloned = m.clone();
+          cloned.userData = { ...cloned.userData, isDynamicGolfBagMaterial: true };
+          clonedBySource.set(m, cloned);
+          result.push(cloned);
+        }
+        return cloned;
+      });
+    } else if (obj.material) {
+      const m = obj.material as THREE.Material;
+      let cloned = clonedBySource.get(m);
+      if (!cloned) {
+        cloned = m.clone();
+        cloned.userData = { ...cloned.userData, isDynamicGolfBagMaterial: true };
+        clonedBySource.set(m, cloned);
+        result.push(cloned);
+      }
+      obj.material = cloned;
+    }
+  });
+  return result;
+}
+
+function applyGroupFadeAlpha(
+  group: THREE.Object3D,
+  materials: readonly THREE.Material[] | undefined,
+  alpha: number
+): void {
+  const clamped = Math.max(0, Math.min(1, alpha));
+  group.visible = clamped > 0.005;
+  if (materials) {
+    for (const mat of materials) {
+      mat.transparent = clamped < 0.999;
+      mat.opacity = clamped;
+      mat.depthWrite = clamped > 0.25;
+      mat.needsUpdate = true;
+    }
+  }
+  group.traverse((obj) => {
+    if (obj instanceof THREE.Mesh) {
+      obj.castShadow = clamped > 0.35;
+    }
+  });
 }
 
 interface PulleyMaidState {
@@ -213,6 +272,7 @@ export class SceneInteractionManager {
 
     parent.add(pivot);
     this.registerClickableObject(pivot, { interactableId: id });
+    pivot.userData = { ...pivot.userData, doorRole: 'pivot' };
 
     this.hingedDoors.set(id, {
       id,
@@ -251,6 +311,7 @@ export class SceneInteractionManager {
 
     parent.add(pivot);
     this.registerClickableObject(pivot, { interactableId: id });
+    pivot.userData = { ...pivot.userData, doorRole: 'pivot' };
 
     this.hingedDoors.set(id, {
       id,
@@ -266,6 +327,71 @@ export class SceneInteractionManager {
     });
 
     return pivot;
+  }
+
+  /**
+   * Registers the hinged folding Golf Simulator front stance mat (`axis = 'z'`) and links it
+   * with the Callaway Tour Golf Bag (`bagGroup`) so clicking either folds/unfolds the front mat
+   * ~177 degrees over its threshold piano hinge while sliding the golf bag out of the way.
+   */
+  public registerFoldingGolfMat(
+    parent: THREE.Object3D,
+    foldingMatObj: THREE.Object3D,
+    hingeOffsetInParent: THREE.Vector3,
+    bagGroup: THREE.Group,
+    bagStowedDelta: THREE.Vector3,
+    openAngle = Math.PI * 0.994,
+    onStateChange?: (isFolded: boolean) => void
+  ): { readonly matPivot: THREE.Group; readonly matDoorId: string; readonly bagDrawerId: string } {
+    const matDoorId = this.allocateId('door');
+    const bagDrawerId = this.allocateId('drawer');
+
+    const matPivot = new THREE.Group();
+    matPivot.name = 'outbuildings.barn.golfSimulator.turfMat.foldingPivot';
+    matPivot.position.copy(foldingMatObj.position).add(hingeOffsetInParent);
+
+    parent.remove(foldingMatObj);
+    foldingMatObj.position.copy(hingeOffsetInParent).negate();
+    matPivot.add(foldingMatObj);
+    parent.add(matPivot);
+
+    this.registerClickableObject(matPivot, { interactableId: matDoorId });
+    matPivot.userData = { ...matPivot.userData, doorRole: 'pivot' };
+    this.registerClickableObject(bagGroup, { interactableId: bagDrawerId });
+    bagGroup.userData = { ...bagGroup.userData, drawerRole: 'group' };
+
+    this.hingedDoors.set(matDoorId, {
+      id: matDoorId,
+      pivot: matPivot,
+      axis: 'z',
+      closedAngle: 0,
+      openAngle,
+      isOpen: false,
+      progress: 0,
+      speed: 1.55,
+      isFoldingFloorMat: true,
+      linkedDrawerId: bagDrawerId,
+      onStateChange,
+    });
+
+    const closedPos = bagGroup.position.clone();
+    const openPos = closedPos.clone();
+    void bagStowedDelta;
+    const fadeMaterials = prepareFadeMaterialsForGroup(bagGroup);
+    this.slidingDrawers.set(bagDrawerId, {
+      id: bagDrawerId,
+      group: bagGroup,
+      closedPos,
+      openPos,
+      isOpen: false,
+      progress: 0,
+      speed: 2.4,
+      linkedDoorId: matDoorId,
+      fadeOutWhenOpen: true,
+      fadeMaterials,
+    });
+
+    return { matPivot, matDoorId, bagDrawerId };
   }
 
   /**
@@ -326,6 +452,7 @@ export class SceneInteractionManager {
     const openPos = closedPos.clone().add(slideDelta);
 
     this.registerClickableObject(drawerGroup, { interactableId: id });
+    drawerGroup.userData = { ...drawerGroup.userData, drawerRole: 'group' };
 
     this.slidingDrawers.set(id, {
       id,
@@ -501,7 +628,15 @@ export class SceneInteractionManager {
     if (door) {
       door.fromAngle = undefined;
       door.isOpen = !door.isOpen;
-      door.speed = door.overheadTrackZ !== undefined ? 1.65 : 2.8;
+      door.speed =
+        door.overheadTrackZ !== undefined || door.isFoldingFloorMat ? 1.55 : 2.8;
+      if (door.linkedDrawerId) {
+        const linkedDrawer = this.slidingDrawers.get(door.linkedDrawerId);
+        if (linkedDrawer) {
+          linkedDrawer.isOpen = door.isOpen;
+        }
+      }
+      door.onStateChange?.(door.isOpen);
       if (door.isOpen) {
         this.closeConflictingDoors(interactableId);
       } else {
@@ -522,6 +657,15 @@ export class SceneInteractionManager {
     const drawer = this.slidingDrawers.get(interactableId);
     if (drawer) {
       drawer.isOpen = !drawer.isOpen;
+      if (drawer.linkedDoorId) {
+        const linkedDoor = this.hingedDoors.get(drawer.linkedDoorId);
+        if (linkedDoor) {
+          linkedDoor.fromAngle = undefined;
+          linkedDoor.isOpen = drawer.isOpen;
+          linkedDoor.speed = 1.55;
+          linkedDoor.onStateChange?.(linkedDoor.isOpen);
+        }
+      }
       return true;
     }
 
@@ -539,6 +683,7 @@ export class SceneInteractionManager {
     door.fromAngle = undefined;
     door.isOpen = isOpen;
     door.speed = 2.8;
+    door.onStateChange?.(door.isOpen);
     if (isOpen) {
       this.closeConflictingDoors(interactableId);
     } else {
@@ -864,7 +1009,7 @@ export class SceneInteractionManager {
     if (door.id === 'door-56') return 1.25;
     if (door.id === 'door-57') return 1.15;
 
-    if (door.overheadTrackZ !== undefined) {
+    if (door.overheadTrackZ !== undefined || door.isFoldingFloorMat) {
       return door.openAngle;
     }
 
@@ -919,6 +1064,9 @@ export class SceneInteractionManager {
         ) {
           return `${verb} AGA Oven Door`;
         }
+        if (door.isFoldingFloorMat || chainNames.includes('turfmat')) {
+          return `${door.isOpen ? 'Unfold' : 'Fold'} Golf Simulator Mat`;
+        }
         if (door.overheadTrackZ !== undefined) {
           return `${verb} Garage Door`;
         }
@@ -943,6 +1091,9 @@ export class SceneInteractionManager {
       }
       const drawer = this.slidingDrawers.get(id);
       if (drawer) {
+        if (drawer.linkedDoorId) {
+          return `${drawer.isOpen ? 'Unfold' : 'Fold'} Golf Simulator Mat`;
+        }
         return `${drawer.isOpen ? 'Close' : 'Open'} Drawer`;
       }
       if (this.pulleyMaid && this.pulleyMaid.id === id) {
@@ -1017,10 +1168,16 @@ export class SceneInteractionManager {
         if (obj instanceof THREE.Group) {
           const id = typeof u.interactableId === 'string' ? u.interactableId : undefined;
           if (id) {
-            if (id.startsWith('door-') && !doorCandidates.has(id)) {
-              doorCandidates.set(id, obj);
-            } else if (id.startsWith('drawer-') && !drawerCandidates.has(id)) {
-              drawerCandidates.set(id, obj);
+            if (id.startsWith('door-')) {
+              const existing = doorCandidates.get(id);
+              if (!existing || (u.doorRole === 'pivot' && existing.userData?.doorRole !== 'pivot')) {
+                doorCandidates.set(id, obj);
+              }
+            } else if (id.startsWith('drawer-')) {
+              const existing = drawerCandidates.get(id);
+              if (!existing || (u.drawerRole === 'group' && existing.userData?.drawerRole !== 'group')) {
+                drawerCandidates.set(id, obj);
+              }
             } else if (id.startsWith('bifold-cupboard-')) {
               if (u.bifoldRole === 'outerPivot' && !bifoldOuterCandidates.has(id)) {
                 bifoldOuterCandidates.set(id, obj);
@@ -1110,7 +1267,12 @@ export class SceneInteractionManager {
         dr.openPos.copy(newGroup.position).add(slideDelta);
         dr.group = newGroup;
         const smooth = easeInOutCubic(dr.progress);
-        dr.group.position.lerpVectors(dr.closedPos, dr.openPos, smooth);
+        if (dr.fadeOutWhenOpen) {
+          dr.fadeMaterials = prepareFadeMaterialsForGroup(newGroup);
+          applyGroupFadeAlpha(dr.group, dr.fadeMaterials, 1 - smooth);
+        } else {
+          dr.group.position.lerpVectors(dr.closedPos, dr.openPos, smooth);
+        }
         dr.group.updateMatrixWorld(true);
       }
     }
@@ -1273,7 +1435,11 @@ export class SceneInteractionManager {
             ? Math.min(1, dr.progress + step)
             : Math.max(0, dr.progress - step);
         const smooth = easeInOutCubic(dr.progress);
-        dr.group.position.lerpVectors(dr.closedPos, dr.openPos, smooth);
+        if (dr.fadeOutWhenOpen) {
+          applyGroupFadeAlpha(dr.group, dr.fadeMaterials, 1 - smooth);
+        } else {
+          dr.group.position.lerpVectors(dr.closedPos, dr.openPos, smooth);
+        }
         dr.group.updateMatrixWorld(true);
         anyChanged = true;
       }

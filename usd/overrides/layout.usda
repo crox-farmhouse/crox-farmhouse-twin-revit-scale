@@ -10,54 +10,24 @@ over "CroxFarmhouse"
 {
     over "Zones"
     {
-        over "study"
-        {
-            over "outbuildings_gym_wallMirrors_southEast_glass_1" (
-                doc = "make each mirror bigger so there are less of them overall"
-            )
-            {
-                custom int twin:annotationId = 1
-                custom double3 twin:hitWorldPoint = (-17.086, 0.791, 20.943)
-                custom string twin:note = "make each mirror bigger so there are less of them overall"
-            }
-
-            over "outbuildings_gymGarageGlassDoor_glass" (
-                doc = "black handles"
-            )
-            {
-                custom int twin:annotationId = 4
-                custom double3 twin:hitWorldPoint = (-16.448, 0.523, 17.616)
-                custom string twin:note = "black handles"
-            }
-        }
-
         over "courtyard"
         {
-            over "unnamed_mesh" (
-                doc = "fix this miter"
+            over "outbuildings_store_loftFloor" (
+                doc = "FLoorboards like in plant room"
             )
             {
                 custom int twin:annotationId = 1
-                custom double3 twin:hitWorldPoint = (3.857, 2.135, 17.405)
-                custom string twin:note = "fix this miter"
+                custom double3 twin:hitWorldPoint = (-8.251, 2.61, 18.443)
+                custom string twin:note = "FLoorboards like in plant room"
             }
 
-            over "outbuildings_barn_eastLowerFloor" (
-                doc = "Putt he limestone down here too and on the step no carpet"
+            over "outbuildings_barn_golfSimulator_oakLintel_beam" (
+                doc = "No baseboards up here. Just put some clear storage boxes full of stuff"
             )
             {
                 custom int twin:annotationId = 2
-                custom double3 twin:hitWorldPoint = (-3.488, -0.675, 16.902)
-                custom string twin:note = "Putt he limestone down here too and on the step no carpet"
-            }
-
-            over "unnamed_mesh_6" (
-                doc = "there will be an oak lintel here probably"
-            )
-            {
-                custom int twin:annotationId = 6
-                custom double3 twin:hitWorldPoint = (-7.069, 2.646, 17.691)
-                custom string twin:note = "there will be an oak lintel here probably"
+                custom double3 twin:hitWorldPoint = (-7.363, 2.72, 17.168)
+                custom string twin:note = "No baseboards up here. Just put some clear storage boxes full of stuff"
             }
         }
     }

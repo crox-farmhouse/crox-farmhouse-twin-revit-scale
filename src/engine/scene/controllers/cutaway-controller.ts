@@ -33,11 +33,16 @@ export class CutawayController {
     readonly offsetZ: number;
     readonly rotationY: number;
   }> = [];
+  private readonly overheadLightMaterials: Array<{
+    readonly mat: THREE.MeshStandardMaterial;
+    readonly cutawayOpacity: number;
+  }> = [];
 
   private floorViewMode: FloorViewMode = 'ground';
   private ceilingCutaway = true;
   private wasWalkthrough = false;
   private allDynamicWallsShown = false;
+  private overheadLightsLowOpacity = true;
   private readonly lastWalkthroughLodPos = new THREE.Vector3(
     Number.POSITIVE_INFINITY,
     Number.POSITIVE_INFINITY,
@@ -81,8 +86,29 @@ export class CutawayController {
   /** Indexes every object tagged with `userData.cutawayWall` under the scene, recording any parent wing/room container transform. */
   public collectDynamicCutawayWalls(): void {
     this.dynamicCutawayWallItems.length = 0;
+    this.overheadLightMaterials.length = 0;
     this.allDynamicWallsShown = false;
+    const seenLightMats = new Set<THREE.MeshStandardMaterial>();
+
     this.layers.scene.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        for (const m of mats) {
+          if (m instanceof THREE.MeshStandardMaterial && !seenLightMats.has(m)) {
+            const savedCutawayOpacity = m.userData?.cutawayLightOpacity as number | undefined;
+            if (
+              typeof savedCutawayOpacity === 'number' ||
+              (m.transparent && m.opacity >= 0.30 && m.opacity <= 0.44 && m.depthWrite === false)
+            ) {
+              const cutawayOpacity = savedCutawayOpacity ?? m.opacity;
+              m.userData = { ...m.userData, cutawayLightOpacity: cutawayOpacity };
+              seenLightMats.add(m);
+              this.overheadLightMaterials.push({ mat: m, cutawayOpacity });
+            }
+          }
+        }
+      }
+
       const rawDescriptor = obj.userData?.cutawayWall as CutawayWallDescriptor | undefined;
       if (!rawDescriptor) return;
 
@@ -197,6 +223,21 @@ export class CutawayController {
           target.y,
           target.z
         ));
+
+    // Issue #3 ("in 1pv lights should not be see through" at `[-2.579, 0.933, 16.359]`, `outbuildings.barn.poolTableLight.shade`):
+    // Overhead light fixtures use low opacity (`0.32..0.42`) when viewing from outside in cutaway mode,
+    // and become 100% opaque (`opacity = 1.0`, not see-through) in 1PV / interior view or when cutaway is off!
+    const wantLowOpacityLights = this.ceilingCutaway && !cameraInsideHouse;
+    if (wantLowOpacityLights !== this.overheadLightsLowOpacity) {
+      this.overheadLightsLowOpacity = wantLowOpacityLights;
+      for (const { mat, cutawayOpacity } of this.overheadLightMaterials) {
+        mat.transparent = wantLowOpacityLights;
+        mat.opacity = wantLowOpacityLights ? cutawayOpacity : 1.0;
+        mat.depthWrite = !wantLowOpacityLights;
+        mat.needsUpdate = true;
+      }
+      needsRender = true;
+    }
 
     // Determine desired visibility for First Floor rooms, Ground Floor ceilings/joists, and Pitched Roofs
     let desiredFirstFloorVis = true;
