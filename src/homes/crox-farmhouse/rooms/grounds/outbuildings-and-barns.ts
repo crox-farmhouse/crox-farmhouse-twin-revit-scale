@@ -17,6 +17,7 @@ import {
 import { buildPorsche992TurboS } from './porsche-992-turbo-s.ts';
 import {
   buildBarnCornerBar,
+  buildBarnGolfViewingBar,
   buildBarnGroundWallArtworks,
   buildBarnMezzanineRetroLounge,
   buildBarnPoolTable,
@@ -2046,26 +2047,37 @@ export function buildOutbuildingsAndBarns(
   groundGroup.add(benchAlcoveFloor);
 
   // Continuous Honed Limestone Floor (`barnLimestoneFloorMat` at `barnWestFloorY = -0.34m`) running seamlessly through
-  // the North Pass-Through Hallway (`u = 12.07..15.22m, v = 0.28..1.34m`) from the Garage pass-through door into the Barn!
+  // the North Pass-Through Hallway (`u = 12.31..15.20m, v = 0.285..1.178m`) from the Garage pass-through door into the Barn!
+  // Issue #6 ("Some strange dithering here" at `[-10.082, -0.34, 15.906]`):
+  // Span `storeFloor` strictly from `u = 12.31m` (East face of the oak door threshold step) to `u = 15.20m` (West edge of `barnWestFloor`)
+  // and `v = 0.285m..1.178m` so there is zero coplanar overlap with `thresholdStep` (`u = 12.07..12.31m`) or `barnWestFloor`!
   const storeFloorTopY = -0.34;
-  const corridorFloorGeo = new THREE.BoxGeometry(3.15, 0.38, 1.06);
-  applyOutbuildingFloorUVs(corridorFloorGeo, 12.07 + 3.15 * 0.5, barnWestFloorY - 0.19, 0.28 + 0.53, 0.45);
+  const storeFloorSpanU = (uBarnStart + 0.24) - (uStoreStart + 0.24); // 2.89m (12.31m..15.20m)
+  const storeFloorCenterU = uStoreStart + 0.24 + storeFloorSpanU * 0.5; // 13.755m
+  const storeFloorSpanV = 0.893; // v = 0.285m..1.178m
+  const storeFloorCenterV = 0.285 + storeFloorSpanV * 0.5; // 0.7315m
+  const corridorFloorGeo = new THREE.BoxGeometry(storeFloorSpanU, 0.38, storeFloorSpanV);
+  applyOutbuildingFloorUVs(corridorFloorGeo, storeFloorCenterU, barnWestFloorY - 0.19, storeFloorCenterV, 0.45);
   const storeFloor = new THREE.Mesh(
     corridorFloorGeo,
     barnLimestoneFloorMat
   );
   storeFloor.name = 'outbuildings.store.floor';
   storeFloor.position.set(
-    12.07 + 3.15 * 0.5,
+    storeFloorCenterU,
     barnWestFloorY - 0.19,
-    0.28 + 0.53
+    storeFloorCenterV
   );
   storeFloor.receiveShadow = true;
   groundGroup.add(storeFloor);
 
-  // Issue #7 ("Limestone floor" at `[-4.501, -0.34, 17.435]`, `outbuildings.barn.westFloor`):
-  // Barn West Honed Limestone Floor (`u = 15.20..18.68m`, width `3.48m`, top at `barnWestFloorY = -0.34m`)
-  const barnWestFloorSpanU = uMezzanineFront - (uBarnStart + 0.24); // 3.48m
+  // Issue #8 ("Make the lower section a little larger, move the steps forward slightly (maybe 50cm).
+  // On this side have a bar with some stools so people can watch the golf and wait their turn" at `[-3.975, -0.34, 18.437]`):
+  // Move the 2-step floor drop `50cm` forward (West) from `uMezzanineFront = 18.68m` to `uBarnStepDropStart = 18.18m`,
+  // so `barnWestFloor` spans `u = 15.20..18.18m` (`2.98m` wide), the 2 bullnose oak steps span `u = 18.18..18.46m`,
+  // and the carpeted lower lounge/pool/bar floor (`barnEastLowerFloor`) spans `u = 18.46..23.02m` (`4.56m` wide — 50cm larger!).
+  const uBarnStepDropStart = uMezzanineFront - 0.50; // 18.18m
+  const barnWestFloorSpanU = uBarnStepDropStart - (uBarnStart + 0.24); // 2.98m
   const barnWestFloorCenterU = uBarnStart + 0.24 + barnWestFloorSpanU * 0.5;
   const barnFloorCenterV = vEastRangeNorth + wallT + eastRangeInternalV * 0.5;
   const barnWestFloorGeo = new THREE.BoxGeometry(barnWestFloorSpanU, 0.38, eastRangeInternalV);
@@ -2083,112 +2095,113 @@ export function buildOutbuildingsAndBarns(
   barnWestFloor.receiveShadow = true;
   groundGroup.add(barnWestFloor);
 
-  // Issue #8 ("Wooden steps with bullnosing like in the main house" at `[-3.402, -0.52, 17.796]`):
-  // 2 Full-Width Bullnose Light-Oak Steps Down at `u = 18.68m..18.96m` dropping from `barnWestFloorY = -0.34m`
-  // down to the carpeted lower floor (`-0.675m`), complete with `32mm` thick solid light-oak treads,
-  // half-round cylindrical bullnose leading edges (`r = 16mm`), scotia cove mouldings, and solid light-oak risers!
+  // 2 Bullnose Light-Oak Steps Down at `u = 18.18m..18.46m` dropping from `barnWestFloorY = -0.34m`
+  // down to the carpeted lower floor (`-0.675m`), spanning `v = 0.28m..3.62m` (`stepSpanV = 3.34m`) so the South end
+  // of the steps butts cleanly against the North edge (`v = 3.62m`) of the shifted Golf Viewing Bar (`u = 18.18..18.58m, v = 3.62..5.42m`)!
   const stepDownDepthU = 0.28;
   const stepTreadT = 0.032;
   const stepBullnoseR = stepTreadT * 0.5; // 16mm half-round bullnose radius
   const stepOverhangU = 0.022;
   const barnCarpetTopY = -0.675; // 1.5cm above the -0.69m terrain slab so terrain never bleeds through!
   const step1TopY = (barnWestFloorY + barnCarpetTopY) * 0.5; // -0.5075m
+  const vGolfBarNorthEdge = 3.62;
+  const stepSpanV = vGolfBarNorthEdge - (vEastRangeNorth + wallT); // 3.34m (0.28m..3.62m)
+  const stepCenterV = vEastRangeNorth + wallT + stepSpanV * 0.5;   // 1.95m
 
-  // Sub-carcass & solid light-oak risers for the 2-step drop (`u = 18.68..18.96m`)
+  // Sub-carcass & solid light-oak risers for the 2-step drop (`u = 18.18..18.46m, v = 0.28..3.62m`)
   const step1CarcassH = (step1TopY - stepTreadT) - (barnLowerFloorY - 0.12);
-  const step1CarcassGeo = new THREE.BoxGeometry(stepDownDepthU, step1CarcassH, eastRangeInternalV);
+  const step1CarcassGeo = new THREE.BoxGeometry(stepDownDepthU, step1CarcassH, stepSpanV);
   applyOutbuildingFloorUVs(
     step1CarcassGeo,
-    uMezzanineFront + stepDownDepthU * 0.5,
+    uBarnStepDropStart + stepDownDepthU * 0.5,
     (step1TopY - stepTreadT + (barnLowerFloorY - 0.12)) * 0.5,
-    barnFloorCenterV,
+    stepCenterV,
     0.5
   );
   const barnDropStepCarcass = new THREE.Mesh(step1CarcassGeo, lightJoineryOakMat);
   barnDropStepCarcass.name = 'outbuildings.barn.floorDropStep.riserCarcass';
   barnDropStepCarcass.position.set(
-    uMezzanineFront + stepDownDepthU * 0.5,
+    uBarnStepDropStart + stepDownDepthU * 0.5,
     (step1TopY - stepTreadT + (barnLowerFloorY - 0.12)) * 0.5,
-    barnFloorCenterV
+    stepCenterV
   );
   barnDropStepCarcass.castShadow = true;
   barnDropStepCarcass.receiveShadow = true;
   groundGroup.add(barnDropStepCarcass);
 
-  // Upper riser face at `u = 18.68m` (`y = step1TopY .. barnWestFloorY - stepTreadT`)
+  // Upper riser face at `u = 18.18m` (`y = step1TopY .. barnWestFloorY - stepTreadT`, `v = 0.28..3.62m`)
   const upperRiserH = (barnWestFloorY - stepTreadT) - step1TopY + 0.004;
-  const upperRiserGeo = new THREE.BoxGeometry(0.018, upperRiserH, eastRangeInternalV);
-  applyOutbuildingFloorUVs(upperRiserGeo, uMezzanineFront + 0.009, step1TopY + upperRiserH * 0.5, barnFloorCenterV, 0.5);
+  const upperRiserGeo = new THREE.BoxGeometry(0.018, upperRiserH, stepSpanV);
+  applyOutbuildingFloorUVs(upperRiserGeo, uBarnStepDropStart + 0.009, step1TopY + upperRiserH * 0.5, stepCenterV, 0.5);
   const upperRiserMesh = new THREE.Mesh(upperRiserGeo, lightJoineryOakMat);
   upperRiserMesh.name = 'outbuildings.barn.floorDropStep.riser.1';
-  upperRiserMesh.position.set(uMezzanineFront + 0.009, step1TopY + upperRiserH * 0.5, barnFloorCenterV);
+  upperRiserMesh.position.set(uBarnStepDropStart + 0.009, step1TopY + upperRiserH * 0.5, stepCenterV);
   groundGroup.add(upperRiserMesh);
 
-  // Solid light-oak tread board on Step 1 (`u = 18.68..18.96m + overhang`, `y = step1TopY`)
+  // Solid light-oak tread board on Step 1 (`u = 18.18..18.46m + overhang`, `y = step1TopY`, `v = 0.28..3.62m`)
   const step1FlatSpanU = stepDownDepthU + stepOverhangU - stepBullnoseR;
-  const step1FlatCenterU = uMezzanineFront + step1FlatSpanU * 0.5;
-  const step1TreadGeo = new THREE.BoxGeometry(step1FlatSpanU, stepTreadT, eastRangeInternalV);
-  applyOutbuildingFloorUVs(step1TreadGeo, step1FlatCenterU, step1TopY - stepTreadT * 0.5, barnFloorCenterV, 0.5);
+  const step1FlatCenterU = uBarnStepDropStart + step1FlatSpanU * 0.5;
+  const step1TreadGeo = new THREE.BoxGeometry(step1FlatSpanU, stepTreadT, stepSpanV);
+  applyOutbuildingFloorUVs(step1TreadGeo, step1FlatCenterU, step1TopY - stepTreadT * 0.5, stepCenterV, 0.5);
   const barnDropStep1 = new THREE.Mesh(step1TreadGeo, lightJoineryOakMat);
   barnDropStep1.name = 'outbuildings.barn.floorDropStep.1';
   barnDropStep1.position.set(
     step1FlatCenterU,
     step1TopY - stepTreadT * 0.5,
-    barnFloorCenterV
+    stepCenterV
   );
   barnDropStep1.castShadow = true;
   barnDropStep1.receiveShadow = true;
   groundGroup.add(barnDropStep1);
 
-  // Upper threshold solid light-oak nosing board at `u = 18.68m, y = barnWestFloorY = -0.34m`
+  // Upper threshold solid light-oak nosing board at `u = 18.18m, y = barnWestFloorY = -0.34m, v = 0.28..3.62m`
   const upperNosingFlatU = 0.065;
-  const upperNosingCenterU = uMezzanineFront - 0.04 + upperNosingFlatU * 0.5;
-  const upperNosingGeo = new THREE.BoxGeometry(upperNosingFlatU, stepTreadT, eastRangeInternalV);
-  applyOutbuildingFloorUVs(upperNosingGeo, upperNosingCenterU, barnWestFloorY - stepTreadT * 0.5 + 0.001, barnFloorCenterV, 0.5);
+  const upperNosingCenterU = uBarnStepDropStart - 0.04 + upperNosingFlatU * 0.5;
+  const upperNosingGeo = new THREE.BoxGeometry(upperNosingFlatU, stepTreadT, stepSpanV);
+  applyOutbuildingFloorUVs(upperNosingGeo, upperNosingCenterU, barnWestFloorY - stepTreadT * 0.5 + 0.001, stepCenterV, 0.5);
   const upperNosingBoard = new THREE.Mesh(upperNosingGeo, lightJoineryOakMat);
   upperNosingBoard.name = 'outbuildings.barn.floorDropStepNosing.1';
   upperNosingBoard.position.set(
     upperNosingCenterU,
     barnWestFloorY - stepTreadT * 0.5 + 0.001,
-    barnFloorCenterV
+    stepCenterV
   );
   upperNosingBoard.castShadow = true;
   upperNosingBoard.receiveShadow = true;
   groundGroup.add(upperNosingBoard);
 
-  // Half-round cylindrical bullnose leading edges (`CylinderGeometry`) & underneath scotia coves along both step edges (`u = 18.68m` & `u = 18.96m`)
+  // Half-round cylindrical bullnose leading edges (`CylinderGeometry`) & underneath scotia coves along both step edges (`u = 18.18m` & `u = 18.46m`, `v = 0.28..3.62m`)
   for (const [sIdx, riserU, treadTopY] of [
-    [1, uMezzanineFront, barnWestFloorY + 0.001],
-    [2, uMezzanineFront + stepDownDepthU, step1TopY],
+    [1, uBarnStepDropStart, barnWestFloorY + 0.001],
+    [2, uBarnStepDropStart + stepDownDepthU, step1TopY],
   ] as const) {
     const bullnoseU = riserU + stepOverhangU - stepBullnoseR;
     const bullnoseY = treadTopY - stepBullnoseR;
     const bullnoseCyl = new THREE.Mesh(
-      new THREE.CylinderGeometry(stepBullnoseR, stepBullnoseR, eastRangeInternalV, 18),
+      new THREE.CylinderGeometry(stepBullnoseR, stepBullnoseR, stepSpanV, 18),
       lightJoineryOakMat
     );
     bullnoseCyl.name = `outbuildings.barn.floorDropStepNosing.${sIdx}`;
     bullnoseCyl.rotation.x = Math.PI / 2;
-    bullnoseCyl.position.set(bullnoseU, bullnoseY, barnFloorCenterV);
+    bullnoseCyl.position.set(bullnoseU, bullnoseY, stepCenterV);
     bullnoseCyl.castShadow = true;
     bullnoseCyl.receiveShadow = true;
     groundGroup.add(bullnoseCyl);
 
     const scotiaCove = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.008, 0.008, eastRangeInternalV, 12),
+      new THREE.CylinderGeometry(0.008, 0.008, stepSpanV, 12),
       lightJoineryOakMat
     );
     scotiaCove.rotation.x = Math.PI / 2;
-    scotiaCove.position.set(riserU + 0.01, treadTopY - stepTreadT - 0.006, barnFloorCenterV);
+    scotiaCove.position.set(riserU + 0.01, treadTopY - stepTreadT - 0.006, stepCenterV);
     groundGroup.add(scotiaCove);
   }
 
-  // Issue #9 ("Carpet down here like upstairs" at `[-2.381, -0.69, 16.754]`):
-  // Barn East Sunken Floor under the Mezzanine (`u = 18.96..23.02m`, width `4.06m`, top at `barnCarpetTopY = -0.675m`,
+  // Barn East Sunken Floor (`u = 18.46..23.02m`, width `4.56m` — 50cm larger per Issue #8, top at `barnCarpetTopY = -0.675m`,
   // raised `1.5cm` above the `-0.69m` exterior terrain ground slab so the terrain never bleeds through!)
   // Carpeted in `stableUpperCarpetMat` (`upstairsWovenWoolCarpet`) with world-space `uvScale = 0.5` matching upstairs!
-  const barnLowerFloorStartU = uMezzanineFront + stepDownDepthU; // 18.96m
-  const barnLowerFloorSpanU = uBarnEnd - partT - barnLowerFloorStartU; // 4.06m
+  const barnLowerFloorStartU = uBarnStepDropStart + stepDownDepthU; // 18.46m
+  const barnLowerFloorSpanU = uBarnEnd - partT - barnLowerFloorStartU; // 4.56m
   const barnEastFloorCenterU = barnLowerFloorStartU + barnLowerFloorSpanU * 0.5;
   const barnEastLowerFloorGeo = new THREE.BoxGeometry(barnLowerFloorSpanU, 0.145, eastRangeInternalV);
   applyOutbuildingFloorUVs(barnEastLowerFloorGeo, barnEastFloorCenterU, barnCarpetTopY - 0.0725, barnFloorCenterV, 0.5);
@@ -2205,6 +2218,27 @@ export function buildOutbuildingsAndBarns(
   barnEastLowerFloor.receiveShadow = true;
   groundGroup.add(barnEastLowerFloor);
 
+  // South Bar Bay Lower Carpet Floor Extension (`u = 18.18m..18.46m, v = 3.62m..5.43m`) directly beneath the shifted Golf Viewing Bar!
+  const barBayFloorSpanV = (vEastRangeSouth - wallT) - vGolfBarNorthEdge; // 1.81m (3.62m..5.43m)
+  const barBayFloorCenterV = vGolfBarNorthEdge + barBayFloorSpanV * 0.5;   // 4.525m
+  const barBayFloorGeo = new THREE.BoxGeometry(stepDownDepthU, 0.145, barBayFloorSpanV);
+  applyOutbuildingFloorUVs(
+    barBayFloorGeo,
+    uBarnStepDropStart + stepDownDepthU * 0.5,
+    barnCarpetTopY - 0.0725,
+    barBayFloorCenterV,
+    0.5
+  );
+  const barBayLowerFloor = new THREE.Mesh(barBayFloorGeo, stableUpperCarpetMat);
+  barBayLowerFloor.name = 'outbuildings.barn.eastLowerFloor.barBay';
+  barBayLowerFloor.position.set(
+    uBarnStepDropStart + stepDownDepthU * 0.5,
+    barnCarpetTopY - 0.0725,
+    barBayFloorCenterV
+  );
+  barBayLowerFloor.receiveShadow = true;
+  groundGroup.add(barBayLowerFloor);
+
   // Stable Ground Floor Slab (`u = 23.22..28.77m`, top at `stableGroundFloorY = -0.44m`)
   const stableFloor = new THREE.Mesh(
     new THREE.BoxGeometry(5.55, 0.12, eastRangeInternalV),
@@ -2219,17 +2253,14 @@ export function buildOutbuildingsAndBarns(
   stableFloor.receiveShadow = true;
   groundGroup.add(stableFloor);
 
-  // Issue #2 ("Have this unit wrap around the corner" at `[-10.064, 0.482, 19.713]`) &
-  // Issue #3 ("shortern the unit slightly and have a door here which goes through to the bar, it will open up behind the back of the golf simulator. Have a red light above which goes red if someone is playing golf" at `[-10.37, 0.713, 15.833]`):
-  // - Shortened the recessed workbench alcove on the North end to `v = 1.63m` and extended it South to `v = 5.428m` so the L-shaped workbench wraps around the SE corner (`v = 5.428m`).
-  // - Cut a full-height doorway (`v = 0.50m..1.36m, y = garageFloorTopY (-0.50m) .. 1.50m`) in the North bay of the Garage East wall (`u = 12.07..12.31m`),
-  //   fitted with an interactive Hinged Solid Oak Pass-Through Door (`outbuildings.garage.golfPassThroughDoor`) opening behind the back of the Golf Simulator,
-  //   and crowned with an illuminated Red Golf Warning Indicator Light (`outbuildings.garage.golfWarningLight`) above the door!
+  // Issue #2 ("Have this unit wrap around the corner" at `[-10.064, 0.482, 19.713]`),
+  // Issue #3 ("shortern the unit slightly and have a door here which goes through to the bar, it will open up behind the back of the golf simulator. Have a red light above which goes red if someone is playing golf" at `[-10.37, 0.713, 15.833]`),
+  // Issue #4 ("Height of this section should match the cupboards" at `[-9.737, 1.207, 18.647]`), &
+  // Issue #7 ("Make this a more standard oak door" at `[-10.25, 0.533, 15.572]`):
   const garagePassDoorVMin = 0.38;
   const garagePassDoorVMax = 1.18;
-  const garagePassDoorTopY = 1.50;
+  const garagePassDoorTopY = 1.66; // Standard 2.00m door height above the -0.34m threshold step (`2.16m` above `-0.50m` garage floor, flush with `1.66m` cupboard top!)
   const benchAlcoveVMin = 1.34;
-  const tallCupboardVMax = 2.86; // North Double Stainless-Steel Full-Height Cupboard (`v = 1.34..2.86m`, height `2.16m` -> world Y `1.66m`)
   const benchAlcoveVMax = vEastRangeSouth - wallT - 0.002; // 5.428m
 
   // 1. Lower sill / step wall (`y = barnLowerFloorY (-0.70m) .. garageFloorTopY (-0.50m)`): full span `vInnerNorth .. vInnerSouth`
@@ -2256,7 +2287,7 @@ export function buildOutbuildingsAndBarns(
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2b. Over-door lintel (`v = 0.38m .. 1.18m`): `y = 1.50m .. eastRangeGroundTopY (1.94m)`
+  // 2b. Over-door lintel (`v = 0.38m .. 1.18m`): `y = 1.66m .. eastRangeGroundTopY (1.94m)`
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -2280,7 +2311,7 @@ export function buildOutbuildingsAndBarns(
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 3a. Upper lintel header above the Double Stainless-Steel Full-Height Cupboard (`v = 1.34m .. 2.86m, y = 1.66m .. 1.94m`)
+  // 3. Unified upper lintel header above both the Tall Stainless Cupboard and the Recessed Workbench (`v = 1.34m .. 5.428m, y = 1.66m .. 1.94m` — Issue #4!)
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -2288,18 +2319,6 @@ export function buildOutbuildingsAndBarns(
     1.66,
     eastRangeGroundTopY,
     benchAlcoveVMin,
-    tallCupboardVMax,
-    ['+x', '-x', '+z', '-z'],
-    warmRoomPlasterMat
-  );
-  // 3b. Upper lintel header above the recessed workbench (`v = 2.86m .. 5.428m, y = 1.42m .. eastRangeGroundTopY (1.94m)`)
-  addOutbuildingBrickWall(
-    groundGroup,
-    uStoreStart,
-    uStoreStart + 0.24,
-    1.42,
-    eastRangeGroundTopY,
-    tallCupboardVMax,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
@@ -2350,27 +2369,16 @@ export function buildOutbuildingsAndBarns(
     1.66,
     1.94,
     garagePassDoorVMax,
-    tallCupboardVMax,
-    ['+x', '-x', '+z', '-z'],
-    warmRoomPlasterMat
-  );
-  addOutbuildingBrickWall(
-    groundGroup,
-    uStoreStart + 0.24,
-    13.04,
-    1.42,
-    1.94,
-    tallCupboardVMax,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
 
-  // Interactive Hinged Solid Oak Pass-Through Door (`outbuildings.garage.golfPassThroughDoor`) & Threshold Step
+  // Interactive Hinged 4-Panel Solid European Oak Pass-Through Door (`outbuildings.garage.golfPassThroughDoor`) & Threshold Step
   {
-    const passDoorW = garagePassDoorVMax - garagePassDoorVMin; // 0.86m
-    const passDoorH = garagePassDoorTopY - garageFloorTopY;     // 2.00m
-    const passDoorCenterV = (garagePassDoorVMin + garagePassDoorVMax) * 0.5; // 0.93m
+    const passDoorW = garagePassDoorVMax - garagePassDoorVMin; // 0.80m
+    const passDoorH = garagePassDoorTopY - garageFloorTopY;     // 2.16m (2.00m above the 0.16m threshold step!)
+    const passDoorCenterV = (garagePassDoorVMin + garagePassDoorVMax) * 0.5; // 0.78m
     const passDoorCenterU = uStoreStart + 0.12; // 12.19m
 
     const passDoorGroup = new THREE.Group();
@@ -2379,26 +2387,33 @@ export function buildOutbuildingsAndBarns(
     passDoorGroup.position.set(passDoorCenterU, garageFloorTopY, passDoorCenterV);
     groundGroup.add(passDoorGroup);
 
-    // Solid light-oak threshold step inside the doorway (`y = 0..0.16m`, bridging `garageFloorTopY = -0.50m` to `barnWestFloorY = -0.34m`)
+    // Solid light-oak threshold step inside the doorway (`u = 12.07..12.31m`, `y = 0..0.16m`, bridging `garageFloorTopY = -0.50m` to `barnWestFloorY = -0.34m` with zero overlap onto `storeFloor`!)
     const thresholdStep = new THREE.Mesh(
-      new THREE.BoxGeometry(0.28, 0.16, passDoorW + 0.04),
+      new THREE.BoxGeometry(0.24, 0.16, passDoorW),
       lightJoineryOakMat
     );
     thresholdStep.name = 'outbuildings.garage.golfPassThroughDoor.step';
-    thresholdStep.position.set(0.02, 0.08, 0);
+    thresholdStep.position.set(0, 0.08, 0);
     thresholdStep.receiveShadow = true;
     passDoorGroup.add(thresholdStep);
 
-    // Solid Light-Oak Door Frame Jambs, Head Lining & Dual-Face Architraves
+    // Solid Light-Oak Door Frame Jambs, Door Stop Rebates, Head Lining & Dual-Face Chamfered Architraves
     const jambT = 0.032;
-    const jambD = 0.252;
+    const jambD = 0.244;
     for (const sideZ of [-1, 1] as const) {
       const jamb = new THREE.Mesh(
-        new THREE.BoxGeometry(jambD, passDoorH, jambT),
+        new THREE.BoxGeometry(jambD, passDoorH - 0.16, jambT),
         lightJoineryOakMat
       );
-      jamb.position.set(0, passDoorH * 0.5, sideZ * (passDoorW * 0.5 - jambT * 0.5));
+      jamb.position.set(0, 0.16 + (passDoorH - 0.16) * 0.5, sideZ * (passDoorW * 0.5 - jambT * 0.5));
       passDoorGroup.add(jamb);
+
+      const doorStop = new THREE.Mesh(
+        new THREE.BoxGeometry(0.014, passDoorH - 0.16 - jambT, 0.012),
+        lightJoineryOakMat
+      );
+      doorStop.position.set(0.028, 0.16 + (passDoorH - 0.16 - jambT) * 0.5, sideZ * (passDoorW * 0.5 - jambT - 0.005));
+      passDoorGroup.add(doorStop);
     }
     const headJamb = new THREE.Mesh(
       new THREE.BoxGeometry(jambD, jambT, passDoorW),
@@ -2407,26 +2422,29 @@ export function buildOutbuildingsAndBarns(
     headJamb.position.set(0, passDoorH - jambT * 0.5, 0);
     passDoorGroup.add(headJamb);
 
-    for (const faceX of [-0.126, 0.126] as const) {
+    for (const faceX of [-0.125, 0.125] as const) {
       for (const sideZ of [-1, 1] as const) {
         const legArch = new THREE.Mesh(
-          new THREE.BoxGeometry(0.016, passDoorH + 0.06, 0.058),
+          new THREE.BoxGeometry(0.018, passDoorH + 0.065, 0.068),
           lightJoineryOakMat
         );
-        legArch.position.set(faceX, (passDoorH + 0.06) * 0.5, sideZ * (passDoorW * 0.5 + 0.012));
+        legArch.position.set(faceX, (passDoorH + 0.065) * 0.5, sideZ * (passDoorW * 0.5 + 0.018));
         passDoorGroup.add(legArch);
       }
       const headArch = new THREE.Mesh(
-        new THREE.BoxGeometry(0.016, 0.058, passDoorW + 0.14),
+        new THREE.BoxGeometry(0.018, 0.068, passDoorW + 0.172),
         lightJoineryOakMat
       );
-      headArch.position.set(faceX, passDoorH + 0.03, 0);
+      headArch.position.set(faceX, passDoorH + 0.032, 0);
       passDoorGroup.add(headArch);
     }
 
-    // Hinged 4-Panel Solid Light-Oak Door Leaf (`outbuildings.garage.golfPassThroughDoor.leafPivot`)
-    const leafW = passDoorW - jambT * 2 - 0.008; // 0.788m
-    const leafH = passDoorH - jambT - 0.165;     // 1.803m (clears the 0.16m threshold step)
+    // Issue #7 ("Make this a more standard oak door" at `[-10.25, 0.533, 15.572]`, `outbuildings.garage.golfPassThroughDoor.slab`):
+    // Classic 4-Panel Solid European Oak Internal Door (`leafW = 0.728m × leafH = 1.963m × leafT = 0.044m`)
+    // with traditional stiles, top/frieze/lock/bottom rails, 4 raised-and-fielded bevelled oak panels with
+    // bolection mouldings on both faces, 3 stainless butt hinges, and brushed-brass lever handles & keyhole escutcheons!
+    const leafW = passDoorW - jambT * 2 - 0.008; // 0.728m
+    const leafH = passDoorH - jambT - 0.165;     // 1.963m (standard 6'6" door leaf above the 0.16m threshold step!)
     const leafT = 0.044;
 
     const leafPivot = new THREE.Group();
@@ -2444,14 +2462,102 @@ export function buildOutbuildingsAndBarns(
     doorSlab.receiveShadow = true;
     leafPivot.add(doorSlab);
 
-    // Brushed-Brass Lever Handles on both Garage (`-x`) and Simulator/Barn (`+x`) faces
+    const oakPanelRecessMat = new THREE.MeshStandardMaterial({
+      color: 0xb68d60,
+      roughness: 0.46,
+      metalness: 0.02,
+    });
+    const oakMouldingMat = new THREE.MeshStandardMaterial({
+      color: 0xcaa070,
+      roughness: 0.36,
+      metalness: 0.03,
+    });
+    const hingeSteelMat = new THREE.MeshStandardMaterial({
+      color: 0xc8cdd4,
+      roughness: 0.26,
+      metalness: 0.85,
+    });
+
+    // 4-Panel layout (2 columns × 2 rows: tall upper panels above lock rail, lower panels below lock rail)
+    const panelColsZ = [leafW * 0.285, leafW * 0.715] as const;
+    const panelColW = leafW * 0.28; // ~0.204m each
+    const panelRows = [
+      { centerY: 0.46, heightY: 0.58 }, // Lower panels (between 0.17m bottom rail and 0.75m lock rail)
+      { centerY: 1.38, heightY: 0.88 }, // Upper panels (between 0.94m lock rail and 1.82m top rail)
+    ] as const;
+
+    for (const sideX of [-1, 1] as const) {
+      const faceX = sideX * (leafT * 0.5);
+      for (const pz of panelColsZ) {
+        for (const prow of panelRows) {
+          // Recessed shadow field around panel
+          const recessField = new THREE.Mesh(
+            new THREE.BoxGeometry(0.004, prow.heightY, panelColW),
+            oakPanelRecessMat
+          );
+          recessField.name = 'outbuildings.garage.golfPassThroughDoor.slab';
+          recessField.position.set(faceX + sideX * 0.001, prow.centerY, pz);
+          leafPivot.add(recessField);
+
+          // Raised-and-fielded center oak panel table
+          const raisedField = new THREE.Mesh(
+            new THREE.BoxGeometry(0.007, prow.heightY - 0.044, panelColW - 0.044),
+            lightJoineryOakMat
+          );
+          raisedField.name = 'outbuildings.garage.golfPassThroughDoor.slab';
+          raisedField.position.set(faceX + sideX * 0.0035, prow.centerY, pz);
+          raisedField.castShadow = true;
+          leafPivot.add(raisedField);
+
+          // Perimeter ovolo/bolection panel moulding rails (top, bottom, left, right)
+          for (const mSignY of [-1, 1] as const) {
+            const hMould = new THREE.Mesh(
+              new THREE.BoxGeometry(0.008, 0.014, panelColW + 0.012),
+              oakMouldingMat
+            );
+            hMould.name = 'outbuildings.garage.golfPassThroughDoor.slab';
+            hMould.position.set(
+              faceX + sideX * 0.004,
+              prow.centerY + mSignY * (prow.heightY * 0.5),
+              pz
+            );
+            leafPivot.add(hMould);
+          }
+          for (const mSignZ of [-1, 1] as const) {
+            const vMould = new THREE.Mesh(
+              new THREE.BoxGeometry(0.008, prow.heightY + 0.012, 0.014),
+              oakMouldingMat
+            );
+            vMould.name = 'outbuildings.garage.golfPassThroughDoor.slab';
+            vMould.position.set(
+              faceX + sideX * 0.004,
+              prow.centerY,
+              pz + mSignZ * (panelColW * 0.5)
+            );
+            leafPivot.add(vMould);
+          }
+        }
+      }
+    }
+
+    // 3 Brushed Stainless Butt Hinges along the North hinge stile (`z = 0.004m`)
+    for (const hingeY of [0.28, 0.98, 1.68] as const) {
+      const hingeKnuckle = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.006, 0.006, 0.10, 10),
+        hingeSteelMat
+      );
+      hingeKnuckle.position.set(-leafT * 0.5 - 0.004, hingeY, 0.002);
+      leafPivot.add(hingeKnuckle);
+    }
+
+    // Brushed-Brass Lever Handles on Roses & Keyhole Escutcheons on both Garage (`-x`) and Simulator/Barn (`+x`) faces
     const doorBrassMat = new THREE.MeshStandardMaterial({
       color: 0xd4af37,
       roughness: 0.24,
       metalness: 0.86,
     });
-    const handleZ = leafW - 0.065;
-    const handleY = 0.94;
+    const handleZ = leafW - 0.058;
+    const handleY = 0.98;
     for (const sideX of [-1, 1] as const) {
       const rose = new THREE.Mesh(
         new THREE.CylinderGeometry(0.026, 0.026, 0.01, 16),
@@ -2461,13 +2567,30 @@ export function buildOutbuildingsAndBarns(
       rose.position.set(sideX * (leafT * 0.5 + 0.005), handleY, handleZ);
       leafPivot.add(rose);
 
+      const spindleNeck = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.008, 0.009, 0.038, 12),
+        doorBrassMat
+      );
+      spindleNeck.rotation.z = Math.PI / 2;
+      spindleNeck.position.set(sideX * (leafT * 0.5 + 0.024), handleY, handleZ);
+      leafPivot.add(spindleNeck);
+
       const lever = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.009, 0.008, 0.115, 12),
+        new THREE.CylinderGeometry(0.009, 0.0075, 0.118, 12),
         doorBrassMat
       );
       lever.rotation.x = Math.PI / 2;
-      lever.position.set(sideX * (leafT * 0.5 + 0.042), handleY, handleZ - 0.045);
+      lever.position.set(sideX * (leafT * 0.5 + 0.042), handleY, handleZ - 0.048);
       leafPivot.add(lever);
+
+      // Matching circular brass keyhole escutcheon below the lever rose
+      const escutcheon = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.016, 0.016, 0.006, 14),
+        doorBrassMat
+      );
+      escutcheon.rotation.z = Math.PI / 2;
+      escutcheon.position.set(sideX * (leafT * 0.5 + 0.003), handleY - 0.085, handleZ);
+      leafPivot.add(escutcheon);
     }
 
     ctx.interactions.registerHingedDoor(
@@ -2479,7 +2602,7 @@ export function buildOutbuildingsAndBarns(
     );
 
     // Illuminated Red "GOLF IN PLAY" Warning Indicator Light Box (`outbuildings.garage.golfWarningLight`)
-    // Mounted directly above the door architrave (`y = passDoorH + 0.15m = 2.15m` above `garageFloorTopY`, i.e. `y = 1.65m` world)
+    // Mounted directly above the door architrave (`y = passDoorH + 0.14m = 2.30m` above `garageFloorTopY`, i.e. `y = 1.80m` world)
     const warnCanvas = document.createElement('canvas');
     warnCanvas.width = 512;
     warnCanvas.height = 192;
@@ -2534,7 +2657,7 @@ export function buildOutbuildingsAndBarns(
     const warnLightGroup = new THREE.Group();
     warnLightGroup.name = 'outbuildings.garage.golfWarningLight';
     warnLightGroup.userData.golfInPlay = true;
-    warnLightGroup.position.set(0, passDoorH + 0.15, 0);
+    warnLightGroup.position.set(0, passDoorH + 0.14, 0);
     passDoorGroup.add(warnLightGroup);
 
     // Mount warning light box on both the Garage face (`-x = -0.15m`) and the Simulator/Store face (`+x = +0.15m`)
@@ -2717,9 +2840,11 @@ export function buildOutbuildingsAndBarns(
   buildBarnSpiralStaircase(groundGroup, barnCarpetTopY, mezzanineFloorY, lightJoineryOakMat);
   buildBarnGroundWallArtworks(groundGroup);
 
-  // Issue #10 ("Bar in this corner with beer on tap, mini fridge like in the master bedroom" at `[0.516, -0.316, 14.617]`)
+  // Issue #10 ("Bar in this corner with beer on tap, mini fridge like in the master bedroom" at `[0.516, -0.316, 14.617]`),
+  // Issue #8 ("Make the lower section a little larger, move the steps forward slightly (maybe 50cm). On this side have a bar with some stools so people can watch the golf and wait their turn" at `[-3.975, -0.34, 18.437]`),
   // & Issue #12 ("Pool table" at `[-1.537, -0.675, 16.19]`):
   buildBarnCornerBar(groundGroup, barnCarpetTopY, lightJoineryOakMat, windowGlassMat);
+  buildBarnGolfViewingBar(groundGroup, barnCarpetTopY, lightJoineryOakMat);
   buildBarnPoolTable(groundGroup, barnCarpetTopY, lightJoineryOakMat);
 
   // Internal Cross-Wall at u = 23.02m..23.22m (Barn/Stable Step #2):

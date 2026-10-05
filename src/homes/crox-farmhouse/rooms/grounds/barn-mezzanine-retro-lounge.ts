@@ -326,33 +326,43 @@ function createGeometricColourBlockRugTexture(): THREE.CanvasTexture {
   canvas.height = 512;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    // Crisp late-1990s / Y2K Ice-Silver & Cool Off-White center field (replacing 1970s brown/terracotta)
-    ctx.fillStyle = '#e8eef5';
+    // Issue #1 ("This has gone way too childish, look at the original concept art. It needs to be cosy and warm just not 1970s.
+    // Traditional style rug. Still wooden book case. Not bright purples and blacks like a CBBC studio."):
+    // Matches the foreground rug in `media_1791202879638_22365d89.jpg`: a large warm natural oatmeal/cream woven wool center field
+    // framed by understated, cosy geometric border blocks in deep heritage navy, muted terracotta-rust, warm taupe, and slate-denim.
+    ctx.fillStyle = '#d8cebc';
     ctx.fillRect(0, 0, 512, 512);
 
-    // Bold 1990s / Y2K graphic colour-block perimeter (Electric Cobalt, Bondi Cyan, Cyber Violet, Hot Magenta, Deep Indigo)
+    // Subtle woven oatmeal center field border frame
+    ctx.fillStyle = '#cfc3ae';
+    ctx.fillRect(78, 78, 356, 356);
+    ctx.fillStyle = '#ddd3c2';
+    ctx.fillRect(92, 92, 328, 328);
+
     const blocks: ReadonlyArray< readonly [number, number, number, number, string] > = [
-      [0, 0, 140, 180, '#172554'],      // Deep Y2K Indigo-Navy corner
-      [140, 0, 180, 95, '#2563eb'],     // Electric Cobalt Blue
-      [320, 0, 192, 110, '#00b4d8'],    // Bondi Cyan / Aqua
-      [0, 180, 95, 190, '#7c3aed'],     // Cyber Purple-Violet border
-      [0, 370, 130, 142, '#ec4899'],    // Y2K Hot Pink / Magenta
-      [130, 410, 210, 102, '#1e1b4b'],  // Deep Midnight Violet-Navy
-      [340, 395, 172, 117, '#2563eb'],  // Electric Cobalt Blue
-      [410, 110, 102, 165, '#84cc16'],  // 90s Acid Lime / Nickelodeon Green pop accent
-      [410, 275, 102, 120, '#6d28d9'],  // Vivid Violet
-      [95, 95, 70, 70, '#06b6d4'],      // Bright Cyan square
-      [340, 110, 70, 75, '#f8fafc'],    // Crisp Ice-White block
+      [0, 0, 148, 92, '#233042'],      // Deep heritage navy corner block
+      [148, 0, 196, 78, '#8c4532'],    // Muted warm terracotta-rust border block
+      [344, 0, 168, 92, '#465a70'],    // Muted slate-denim block
+      [0, 92, 78, 210, '#5c4332'],     // Warm walnut-taupe side block
+      [0, 302, 86, 118, '#b6956e'],    // Warm camel-sand block
+      [0, 420, 164, 92, '#233042'],    // Deep heritage navy corner
+      [164, 434, 188, 78, '#6e3b2c'],  // Warm russet-umber block
+      [352, 420, 160, 92, '#2c3d52'],  // Deep indigo-slate corner
+      [434, 92, 78, 176, '#8c4532'],   // Muted terracotta side block
+      [434, 268, 78, 152, '#5c4332'],  // Warm walnut-taupe side block
+      [78, 78, 48, 48, '#465a70'],     // Subtle inner corner accent
+      [386, 386, 48, 48, '#b6956e'],   // Subtle inner camel accent
     ];
     for (const [x, y, w, h, col] of blocks) {
       ctx.fillStyle = col;
       ctx.fillRect(x, y, w, h);
     }
 
-    for (let i = 0; i < 6000; i++) {
+    // Cosy hand-tufted wool pile micro-texture
+    for (let i = 0; i < 6500; i++) {
       const rx = (i * 73) % 512;
       const ry = (i * 137) % 512;
-      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.045)' : 'rgba(15,23,42,0.045)';
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,248,235,0.055)' : 'rgba(42,32,22,0.05)';
       ctx.fillRect(rx, ry, 3, 2);
     }
   }
@@ -367,15 +377,18 @@ function createPersianMedallionRugTexture(): THREE.CanvasTexture {
   canvas.height = 512;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    // Late-1990s / Y2K IKEA PS 1999 & Designers Republic Graphic Pop-Wave Tufted Rug
-    ctx.fillStyle = '#1e293b';
+    // Issue #1: Traditional warm crimson-red (`#7d211d`), deep midnight navy (`#1b2638`), warm antique-cream (`#e8dcc4`),
+    // and muted ochre-gold (`#bfa168`) Persian Heriz / Tabriz medallion rug matching `media_1791202879638_22365d89.jpg`.
+    ctx.fillStyle = '#7d211d';
     ctx.fillRect(0, 0, 512, 512);
 
+    // Traditional multi-guard border bands
     const borders: ReadonlyArray< readonly [number, string, number] > = [
-      [14, '#38bdf8', 10],
-      [30, '#3b82f6', 18],
-      [52, '#f1f5f9', 6],
-      [66, '#6366f1', 12],
+      [14, '#e8dcc4', 8],
+      [28, '#1b2638', 22],
+      [48, '#bfa168', 6],
+      [60, '#8f2c26', 10],
+      [72, '#e8dcc4', 5],
     ];
     for (const [inset, col, lw] of borders) {
       ctx.strokeStyle = col;
@@ -383,33 +396,102 @@ function createPersianMedallionRugTexture(): THREE.CanvasTexture {
       ctx.strokeRect(inset, inset, 512 - inset * 2, 512 - inset * 2);
     }
 
-    for (const [cx, cy, rOuter, colOuter, colInner] of [
-      [256, 256, 148, '#2563eb', '#ec4899'],
-      [148, 152, 54, '#06b6d4', '#f8fafc'],
-      [364, 152, 54, '#8b5cf6', '#38bdf8'],
-      [148, 360, 54, '#8b5cf6', '#38bdf8'],
-      [364, 360, 54, '#06b6d4', '#f8fafc'],
+    // Floral rosette motifs along the main navy border (`inset = 28`)
+    for (let i = 36; i <= 476; i += 28) {
+      for (const [bx, by] of [
+        [i, 28],
+        [i, 484],
+        [28, i],
+        [484, i],
+      ] as const) {
+        ctx.fillStyle = i % 56 === 8 ? '#c84b38' : '#e8dcc4';
+        ctx.beginPath();
+        ctx.arc(bx, by, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Stepped antique-cream & navy corner spandrels inside the field (`76..436`)
+    for (const [sx, sy, dx, dy] of [
+      [76, 76, 1, 1],
+      [436, 76, -1, 1],
+      [76, 436, 1, -1],
+      [436, 436, -1, -1],
     ] as const) {
-      ctx.fillStyle = colOuter;
+      ctx.fillStyle = '#1b2638';
       ctx.beginPath();
-      ctx.arc(cx, cy, rOuter, 0, Math.PI * 2);
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + dx * 96, sy);
+      ctx.lineTo(sx, sy + dy * 96);
+      ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = colInner;
+      ctx.fillStyle = '#e8dcc4';
       ctx.beginPath();
-      ctx.arc(cx, cy, rOuter * 0.56, 0, Math.PI * 2);
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + dx * 62, sy);
+      ctx.lineTo(sx, sy + dy * 62);
+      ctx.closePath();
       ctx.fill();
     }
 
-    ctx.fillStyle = '#f8fafc';
-    ctx.beginPath();
-    ctx.arc(256, 256, 42, 0, Math.PI * 2);
-    ctx.fill();
+    // Central stepped Persian diamond & octagram medallion (`cx = 256, cy = 256`)
+    const drawSteppedDiamond = (rx: number, ry: number, fillCol: string, strokeCol: string): void => {
+      ctx.fillStyle = fillCol;
+      ctx.strokeStyle = strokeCol;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(256, 256 - ry);
+      ctx.lineTo(256 + rx * 0.65, 256 - ry * 0.35);
+      ctx.lineTo(256 + rx, 256);
+      ctx.lineTo(256 + rx * 0.65, 256 + ry * 0.35);
+      ctx.lineTo(256, 256 + ry);
+      ctx.lineTo(256 - rx * 0.65, 256 + ry * 0.35);
+      ctx.lineTo(256 - rx, 256);
+      ctx.lineTo(256 - rx * 0.65, 256 - ry * 0.35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    };
 
-    for (let i = 0; i < 5000; i++) {
+    drawSteppedDiamond(118, 146, '#1b2638', '#e8dcc4');
+    drawSteppedDiamond(82, 102, '#9e2b25', '#bfa168');
+    drawSteppedDiamond(46, 58, '#e8dcc4', '#1b2638');
+    drawSteppedDiamond(20, 26, '#1b2638', '#bfa168');
+
+    // Subtle botanical vine & palmette motifs across the crimson field
+    ctx.fillStyle = '#bfa168';
+    for (const [fx, fy] of [
+      [172, 185], [340, 185], [172, 327], [340, 327],
+      [256, 96], [256, 416], [124, 256], [388, 256],
+    ] as const) {
+      ctx.beginPath();
+      ctx.arc(fx, fy, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1b2638';
+      ctx.beginPath();
+      ctx.arc(fx, fy, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#bfa168';
+    }
+
+    // Antique cream warp fringes at both ends (`y = 0..8` and `y = 504..512`)
+    ctx.strokeStyle = '#e5d9c0';
+    ctx.lineWidth = 2;
+    for (let x = 8; x < 504; x += 5) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 9);
+      ctx.moveTo(x, 503);
+      ctx.lineTo(x, 512);
+      ctx.stroke();
+    }
+
+    // Subtle aged wool weave & patina grain
+    for (let i = 0; i < 5500; i++) {
       const rx = (i * 79) % 512;
       const ry = (i * 131) % 512;
-      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,244,224,0.045)' : 'rgba(20,12,8,0.05)';
       ctx.fillRect(rx, ry, 3, 2);
     }
   }
@@ -906,9 +988,11 @@ function createTapestryBeanbagTexture(): THREE.CanvasTexture {
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.fillStyle = '#c8ab8e';
+    // Issue #1: Warm woven chenille & kilim tapestry in oatmeal cream (`#ded3be`), heritage navy (`#243347`),
+    // muted terracotta-rust (`#8c4532`), warm sage-olive (`#5a6b54`), and warm sand (`#b89870`), matching `media_1791202879638_22365d89.jpg`.
+    ctx.fillStyle = '#ded3be';
     ctx.fillRect(0, 0, 256, 256);
-    const colors = ['#2563eb', '#06b6d4', '#ec4899', '#7c3aed', '#e2e8f0'];
+    const colors = ['#243347', '#8c4532', '#5a6b54', '#b89870', '#dfd4c0'];
     for (let row = 0; row < 8; row++) {
       ctx.fillStyle = colors[row % colors.length];
       ctx.fillRect(0, row * 32, 256, 18);
@@ -923,11 +1007,95 @@ function createTapestryBeanbagTexture(): THREE.CanvasTexture {
         ctx.fill();
       }
     }
+    for (let y = 0; y < 256; y += 3) {
+      ctx.fillStyle = y % 6 === 0 ? 'rgba(255,248,236,0.08)' : 'rgba(38,26,16,0.07)';
+      ctx.fillRect(0, y, 256, 1);
+    }
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(3, 3);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function createKnittedPouffeTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#9e4f36';
+    ctx.fillRect(0, 0, 256, 256);
+    const bandColors = ['#dfd3be', '#2b394d', '#8c432e', '#b89468', '#4a372a'];
+    for (let row = 0; row < 16; row++) {
+      ctx.fillStyle = bandColors[row % bandColors.length];
+      ctx.fillRect(0, row * 16, 256, 10);
+      for (let x = 0; x < 256; x += 12) {
+        ctx.fillStyle = 'rgba(255,246,232,0.16)';
+        ctx.beginPath();
+        ctx.arc(x + (row % 2) * 6, row * 16 + 5, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 2);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+type PlayStationButtonSymbol = 'triangle' | 'circle' | 'cross' | 'square';
+
+function createPlayStationButtonCapTexture(symbol: PlayStationButtonSymbol): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    // Dark charcoal Sony DualShock glossy button cap (`#23272e`) with subtle outer bevel ring
+    ctx.fillStyle = '#23272e';
+    ctx.fillRect(0, 0, 128, 128);
+
+    ctx.strokeStyle = '#383e48';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(64, 64, 56, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.lineWidth = 9;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (symbol === 'triangle') {
+      ctx.strokeStyle = '#2ecc71';
+      ctx.beginPath();
+      ctx.moveTo(64, 30);
+      ctx.lineTo(96, 88);
+      ctx.lineTo(32, 88);
+      ctx.closePath();
+      ctx.stroke();
+    } else if (symbol === 'circle') {
+      ctx.strokeStyle = '#e84133';
+      ctx.beginPath();
+      ctx.arc(64, 64, 31, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (symbol === 'cross') {
+      ctx.strokeStyle = '#5b9bd5';
+      ctx.beginPath();
+      ctx.moveTo(37, 37);
+      ctx.lineTo(91, 91);
+      ctx.moveTo(91, 37);
+      ctx.lineTo(37, 91);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = '#e066a6';
+      ctx.strokeRect(36, 36, 56, 56);
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
@@ -1485,20 +1653,57 @@ export function buildBarnMezzanineRetroLounge(
   memoryCard.position.set(0.10, 0.040, 0.055);
   ps1Group.add(memoryCard);
 
-  // Issue #2 ("These controller look more like n64 than dualshock, fix it" at `[-2.43, 1.575, 16.433]`, `outbuildings.mezzanine.playstation1.controller.1`):
-  // Authentic Sony PlayStation 1 DualShock Controller (`SCPH-1200`) with twin Analog Thumbsticks, unified center body,
-  // L1/L2/R1/R2 shoulder triggers, flared DualShock grips, segmented 4-way D-pad, and red Analog Mode LED!
+  // Issue #2 ("These dualshock controllers still look terrible." at `[-2.458, 1.574, 17.054]`, `outbuildings.mezzanine.playstation1.controller.2`):
+  // High-LOD Sony PlayStation 1 DualShock Controller (`SCPH-1200`) with:
+  // - Slim recessed central bridge (`0.032m x 0.017m x 0.056m`) so the two circular face pods (`r = 0.028m` at `z = ±0.044m`)
+  //   and the two lower circular Analog Stick turrets (`r = 0.018m` at `x = +0.018m, z = ±0.022m`) form the unmistakable DualShock figure-8 waist silhouette
+  // - Smooth 3D curved ergonomic DualShock hand-grips (`CatmullRomCurve3` + `TubeGeometry` with tapered palm tips)
+  // - Dark charcoal action buttons (`#23272e`) with printed PlayStation symbol caps (`△` green, `○` red, `✕` blue, `□` pink)
+  // - Concave/domed dark rubber analog thumbsticks inside recessed turret wells, segmented 4-way D-pad wedges,
+  //   `SELECT` / `START` / `ANALOG` center buttons, glowing red Analog mode LED, and stacked L1/L2 & R1/R2 shoulder triggers!
   const dualShockStickMat = new THREE.MeshStandardMaterial({
-    color: 0x2c3036,
-    roughness: 0.78,
-    metalness: 0.05,
+    color: 0x2a2e35,
+    roughness: 0.76,
+    metalness: 0.06,
+  });
+  const dualShockWellMat = new THREE.MeshStandardMaterial({
+    color: 0x5c6068,
+    roughness: 0.58,
+    metalness: 0.08,
+  });
+  const dualShockBtnBodyMat = new THREE.MeshStandardMaterial({
+    color: 0x23272e,
+    roughness: 0.32,
+    metalness: 0.12,
   });
   const analogLedMat = new THREE.MeshStandardMaterial({
     color: 0xff2211,
     emissive: new THREE.Color(0xff1808),
-    emissiveIntensity: 1.6,
-    roughness: 0.25,
+    emissiveIntensity: 1.8,
+    roughness: 0.22,
   });
+  const psBtnCapMaterials: Record<PlayStationButtonSymbol, THREE.MeshStandardMaterial> = {
+    triangle: new THREE.MeshStandardMaterial({
+      map: createPlayStationButtonCapTexture('triangle'),
+      roughness: 0.26,
+      metalness: 0.08,
+    }),
+    circle: new THREE.MeshStandardMaterial({
+      map: createPlayStationButtonCapTexture('circle'),
+      roughness: 0.26,
+      metalness: 0.08,
+    }),
+    cross: new THREE.MeshStandardMaterial({
+      map: createPlayStationButtonCapTexture('cross'),
+      roughness: 0.26,
+      metalness: 0.08,
+    }),
+    square: new THREE.MeshStandardMaterial({
+      map: createPlayStationButtonCapTexture('square'),
+      roughness: 0.26,
+      metalness: 0.08,
+    }),
+  };
 
   const addPs1Controller = (
     cx: number,
@@ -1512,152 +1717,253 @@ export function buildBarnMezzanineRetroLounge(
     ctrlGroup.rotation.y = rotY;
     loungeGroup.add(ctrlGroup);
 
+    // 1. Slim recessed central bridge (`0.032m` deep along X x `0.017m` high x `0.056m` wide along Z)
+    //    Keeps the front and rear waist indented so the 2 main circular pods and 2 analog turrets stand out clearly!
     const mainBridge = new THREE.Mesh(
-      new THREE.BoxGeometry(0.058, 0.020, 0.094),
+      new THREE.BoxGeometry(0.032, 0.017, 0.056),
       ps1GreyMat
     );
-    mainBridge.position.set(-0.002, 0.012, 0);
+    mainBridge.position.set(-0.004, 0.0105, 0);
     mainBridge.castShadow = true;
+    mainBridge.receiveShadow = true;
     ctrlGroup.add(mainBridge);
 
-    const frontBevelLip = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.010, 0.010, 0.092, 14),
-      ps1GreyMat
+    // Front cord strain-relief boot on the leading edge of the bridge (`x = -0.023m, z = 0`)
+    const cordRelief = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0038, 0.0052, 0.012, 10),
+      cordBlackMat
     );
-    frontBevelLip.rotation.x = Math.PI / 2;
-    frontBevelLip.position.set(-0.031, 0.012, 0);
-    ctrlGroup.add(frontBevelLip);
+    cordRelief.rotation.z = Math.PI / 2;
+    cordRelief.position.set(-0.024, 0.010, 0);
+    ctrlGroup.add(cordRelief);
 
+    // 2. Left D-Pad Pod (`sideZ = +1`) & Right Action-Button Pod (`sideZ = -1`), Analog Turrets, Shoulder Triggers & Curved Hand-Grips
     for (const sideZ of [-1, 1] as const) {
+      // Main circular face pod (`rTop = 0.0265m, rBot = 0.0285m, h = 0.021m`)
       const pod = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.032, 0.034, 0.021, 24),
+        new THREE.CylinderGeometry(0.0265, 0.0285, 0.021, 28),
         ps1GreyMat
       );
-      pod.position.set(-0.004, 0.0125, sideZ * 0.046);
+      pod.position.set(-0.005, 0.0115, sideZ * 0.044);
       pod.castShadow = true;
+      pod.receiveShadow = true;
       ctrlGroup.add(pod);
 
-      const shoulderBoss = new THREE.Mesh(
-        new THREE.BoxGeometry(0.018, 0.018, 0.028),
+      // Subtle bevelled top rim on each circular pod
+      const podTopBevel = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0245, 0.0265, 0.0025, 28),
         ps1GreyMat
       );
-      shoulderBoss.position.set(-0.032, 0.011, sideZ * 0.045);
+      podTopBevel.position.set(-0.005, 0.0228, sideZ * 0.044);
+      ctrlGroup.add(podTopBevel);
+
+      // Sculpted L1/L2 & R1/R2 front shoulder cowl & stacked dark-charcoal triggers
+      const shoulderBoss = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.012, 0.014, 0.018, 16),
+        ps1GreyMat
+      );
+      shoulderBoss.scale.set(1.0, 1.0, 1.35);
+      shoulderBoss.position.set(-0.027, 0.011, sideZ * 0.044);
       ctrlGroup.add(shoulderBoss);
 
-      const triggerBtn = new THREE.Mesh(
-        new THREE.BoxGeometry(0.008, 0.012, 0.022),
-        trinitronDarkGrilleMat
-      );
-      triggerBtn.position.set(-0.040, 0.012, sideZ * 0.045);
-      ctrlGroup.add(triggerBtn);
+      // Top L1/R1 trigger + lower L2/R2 trigger
+      for (const [ty, tx, th] of [
+        [0.0145, -0.036, 0.0055],
+        [0.0075, -0.037, 0.0065],
+      ] as const) {
+        const triggerBtn = new THREE.Mesh(
+          new THREE.BoxGeometry(0.007, th, 0.021),
+          dualShockBtnBodyMat
+        );
+        triggerBtn.position.set(tx, ty, sideZ * 0.044);
+        ctrlGroup.add(triggerBtn);
+      }
 
+      // Lower Circular Analog Stick Turret Pod (`x = +0.018m, z = sideZ * 0.022m`)
       const stickTurret = new THREE.Mesh(
-        new THREE.SphereGeometry(0.016, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
+        new THREE.CylinderGeometry(0.0165, 0.0185, 0.019, 24),
         ps1GreyMat
       );
-      stickTurret.position.set(0.020, 0.014, sideZ * 0.023);
+      stickTurret.position.set(0.018, 0.0105, sideZ * 0.022);
       stickTurret.castShadow = true;
+      stickTurret.receiveShadow = true;
       ctrlGroup.add(stickTurret);
 
-      const stickShaft = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.004, 0.004, 0.010, 10),
+      // Recessed dark circular socket well on top of the analog turret
+      const stickWell = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0125, 0.0115, 0.0025, 20),
+        dualShockWellMat
+      );
+      stickWell.position.set(0.018, 0.0202, sideZ * 0.022);
+      ctrlGroup.add(stickWell);
+
+      // Pivoting inner ball-dome base + slender thumbstick shaft + domed rubber mushroom cap
+      const stickPivotDome = new THREE.Mesh(
+        new THREE.SphereGeometry(0.0085, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
         dualShockStickMat
       );
-      stickShaft.position.set(0.020, 0.028, sideZ * 0.023);
+      stickPivotDome.position.set(0.018, 0.019, sideZ * 0.022);
+      ctrlGroup.add(stickPivotDome);
+
+      const stickShaft = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0032, 0.0036, 0.0085, 12),
+        dualShockStickMat
+      );
+      stickShaft.position.set(0.018, 0.0255, sideZ * 0.022);
       ctrlGroup.add(stickShaft);
 
-      const stickCap = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.0115, 0.009, 0.005, 18),
+      const stickCapSkirt = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0108, 0.0082, 0.0038, 22),
         dualShockStickMat
       );
-      stickCap.position.set(0.020, 0.034, sideZ * 0.023);
-      stickCap.castShadow = true;
-      ctrlGroup.add(stickCap);
+      stickCapSkirt.position.set(0.018, 0.0305, sideZ * 0.022);
+      stickCapSkirt.castShadow = true;
+      ctrlGroup.add(stickCapSkirt);
 
       const stickDome = new THREE.Mesh(
-        new THREE.SphereGeometry(0.011, 14, 10),
+        new THREE.SphereGeometry(0.0106, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.52),
         dualShockStickMat
       );
-      stickDome.scale.set(1, 0.28, 1);
-      stickDome.position.set(0.020, 0.0365, sideZ * 0.023);
+      stickDome.scale.set(1, 0.36, 1);
+      stickDome.position.set(0.018, 0.0318, sideZ * 0.022);
       ctrlGroup.add(stickDome);
 
-      const grip = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.0165, 0.0195, 0.058, 16),
-        ps1GreyMat
-      );
-      grip.rotation.z = Math.PI / 2 - 0.08;
-      grip.rotation.y = sideZ * 0.22;
-      grip.position.set(0.028, 0.011, sideZ * 0.055);
-      grip.castShadow = true;
-      ctrlGroup.add(grip);
+      // Sculpted Curved Ergonomic DualShock Hand-Grip Horn (`CatmullRomCurve3` + `TubeGeometry` + rounded palm dome)
+      const gripCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-0.002, 0.011, sideZ * 0.045),
+        new THREE.Vector3(0.018, 0.0105, sideZ * 0.055),
+        new THREE.Vector3(0.038, 0.0095, sideZ * 0.062),
+        new THREE.Vector3(0.056, 0.0085, sideZ * 0.064),
+      ]);
+      const gripTubeGeo = new THREE.TubeGeometry(gripCurve, 18, 0.0155, 16, false);
+      // Taper the grip slightly from the pod shoulder down to the rounded palm tip
+      const gPos = gripTubeGeo.attributes.position;
+      for (let vi = 0; vi < gPos.count; vi++) {
+        const vx = gPos.getX(vi);
+        const vy = gPos.getY(vi);
+        // Flatten vertical profile slightly for authentic oval DualShock grip cross-section
+        const cy = 0.0098;
+        gPos.setY(vi, cy + (vy - cy) * 0.72);
+        if (vx > 0.035) {
+          const taper = 1 - ((vx - 0.035) / 0.025) * 0.14;
+          gPos.setZ(vi, sideZ * 0.063 + (gPos.getZ(vi) - sideZ * 0.063) * taper);
+        }
+      }
+      gripTubeGeo.computeVertexNormals();
+
+      const gripHorn = new THREE.Mesh(gripTubeGeo, ps1GreyMat);
+      gripHorn.castShadow = true;
+      gripHorn.receiveShadow = true;
+      ctrlGroup.add(gripHorn);
 
       const gripTip = new THREE.Mesh(
-        new THREE.SphereGeometry(0.0165, 14, 12),
+        new THREE.SphereGeometry(0.0138, 16, 12),
         ps1GreyMat
       );
-      gripTip.position.set(0.055, 0.009, sideZ * 0.061);
+      gripTip.scale.set(1.12, 0.72, 0.96);
+      gripTip.position.set(0.056, 0.0085, sideZ * 0.064);
       gripTip.castShadow = true;
       ctrlGroup.add(gripTip);
     }
 
-    for (const [dx, dz] of [
-      [-0.011, 0],
-      [0.011, 0],
-      [0, -0.011],
-      [0, 0.011],
-    ] as const) {
-      const dSeg = new THREE.Mesh(
-        new THREE.BoxGeometry(dx !== 0 ? 0.009 : 0.007, 0.004, dz !== 0 ? 0.009 : 0.007),
-        trinitronDarkGrilleMat
-      );
-      dSeg.position.set(-0.004 + dx, 0.024, 0.046 + dz);
-      ctrlGroup.add(dSeg);
-    }
-
-    const btnSpecs: ReadonlyArray< readonly [number, number, number] > = [
-      [-0.016, -0.046, 0x2ecc71],
-      [0.008, -0.046, 0x3498db],
-      [-0.004, -0.034, 0xe84393],
-      [-0.004, -0.058, 0xe74c3c],
-    ];
-    for (const [bx, bz, bCol] of btnSpecs) {
-      const abtn = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.0048, 0.0048, 0.0045, 12),
-        new THREE.MeshStandardMaterial({ color: bCol, roughness: 0.3 })
-      );
-      abtn.position.set(bx, 0.024, bz);
-      ctrlGroup.add(abtn);
-    }
-
-    const selectBtn = new THREE.Mesh(
-      new THREE.BoxGeometry(0.005, 0.003, 0.009),
-      trinitronDarkGrilleMat
+    // 3. Left Pod (`z = +0.044m`): Recessed Cross Cavity & 4-Way Segmented Sony D-Pad Wedges
+    const dpadRecess = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0155, 0.0155, 0.0012, 24),
+      ps1DarkGreyMat
     );
-    selectBtn.position.set(-0.004, 0.023, 0.011);
+    dpadRecess.position.set(-0.005, 0.0238, 0.044);
+    ctrlGroup.add(dpadRecess);
+
+    for (const [dx, dz, rotAngle] of [
+      [-0.0095, 0, 0],           // Up
+      [0.0095, 0, Math.PI],      // Down
+      [0, 0.0095, -Math.PI / 2], // Left
+      [0, -0.0095, Math.PI / 2], // Right
+    ] as const) {
+      const dKeyGroup = new THREE.Group();
+      dKeyGroup.position.set(-0.005 + dx, 0.0252, 0.044 + dz);
+      dKeyGroup.rotation.y = rotAngle;
+      ctrlGroup.add(dKeyGroup);
+
+      const dOuter = new THREE.Mesh(
+        new THREE.BoxGeometry(0.0078, 0.0032, 0.0068),
+        dualShockBtnBodyMat
+      );
+      dKeyGroup.add(dOuter);
+
+      const dInnerTip = new THREE.Mesh(
+        new THREE.ConeGeometry(0.0046, 0.0045, 4),
+        dualShockBtnBodyMat
+      );
+      dInnerTip.rotation.z = -Math.PI / 2;
+      dInnerTip.rotation.x = Math.PI / 4;
+      dInnerTip.position.set(0.0048, 0, 0);
+      dKeyGroup.add(dInnerTip);
+    }
+
+    // 4. Right Pod (`z = -0.044m`): 4 Dark-Charcoal Action Buttons with Printed `△ ○ ✕ □` Caps
+    const actionBtnSpecs: ReadonlyArray< readonly [number, number, PlayStationButtonSymbol] > = [
+      [-0.0175, -0.044, 'triangle'], // Top: Green Triangle
+      [-0.005, -0.0565, 'circle'],   // Right: Red Circle
+      [0.0075, -0.044, 'cross'],     // Bottom: Blue Cross
+      [-0.005, -0.0315, 'square'],   // Left: Pink Square
+    ];
+    for (const [bx, bz, sym] of actionBtnSpecs) {
+      const btnBase = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0048, 0.0050, 0.0036, 18),
+        dualShockBtnBodyMat
+      );
+      btnBase.position.set(bx, 0.025, bz);
+      ctrlGroup.add(btnBase);
+
+      const btnCap = new THREE.Mesh(
+        new THREE.CircleGeometry(0.0046, 18),
+        psBtnCapMaterials[sym]
+      );
+      btnCap.rotation.x = -Math.PI / 2;
+      // Rotate texture so symbol faces upright toward the player (`+x`)
+      btnCap.rotation.z = -Math.PI / 2;
+      btnCap.position.set(bx, 0.0269, bz);
+      ctrlGroup.add(btnCap);
+    }
+
+    // 5. Center Bridge Buttons (`SELECT`, `START`, `ANALOG`) & Glowing Red Analog Mode Indicator LED
+    const selectBtn = new THREE.Mesh(
+      new THREE.BoxGeometry(0.0045, 0.0026, 0.0085),
+      dualShockBtnBodyMat
+    );
+    selectBtn.position.set(-0.005, 0.0198, 0.011);
     ctrlGroup.add(selectBtn);
 
     const startBtn = new THREE.Mesh(
-      new THREE.ConeGeometry(0.0045, 0.009, 3),
-      trinitronDarkGrilleMat
+      new THREE.ConeGeometry(0.0042, 0.0088, 3),
+      dualShockBtnBodyMat
     );
-    startBtn.rotation.z = Math.PI / 2;
-    startBtn.position.set(-0.004, 0.023, -0.011);
+    startBtn.rotation.x = -Math.PI / 2;
+    startBtn.position.set(-0.005, 0.0198, -0.011);
     ctrlGroup.add(startBtn);
 
     const analogBtn = new THREE.Mesh(
-      new THREE.BoxGeometry(0.005, 0.003, 0.008),
-      trinitronDarkGrilleMat
+      new THREE.BoxGeometry(0.0042, 0.0022, 0.0072),
+      dualShockBtnBodyMat
     );
-    analogBtn.position.set(0.010, 0.023, 0);
+    analogBtn.position.set(0.0045, 0.0195, 0);
     ctrlGroup.add(analogBtn);
 
     const analogLed = new THREE.Mesh(
-      new THREE.BoxGeometry(0.0035, 0.0025, 0.005),
+      new THREE.BoxGeometry(0.0028, 0.0020, 0.0048),
       analogLedMat
     );
-    analogLed.position.set(0.019, 0.023, 0);
+    analogLed.position.set(0.0105, 0.0195, 0);
     ctrlGroup.add(analogLed);
+
+    // Subtle SONY & PlayStation logo recess bar at top of center bridge
+    const sonyLogoStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.004, 0.0008, 0.018),
+      ps1DarkGreyMat
+    );
+    sonyLogoStrip.position.set(-0.014, 0.0192, 0);
+    ctrlGroup.add(sonyLogoStrip);
   };
 
   addPs1Controller(19.95, 2.12, -0.52, 1);
@@ -1731,15 +2037,15 @@ export function buildBarnMezzanineRetroLounge(
   // Issue #4 ("Some dithering on this book" at `[-2.831, 1.574, 17.094]` -> `(u = 19.48m, v = 2.78m)`):
   // Stacked `[19.48, 2.78]` and `[19.50, 2.80]` at distinct Y heights (`+0.024m` and `+0.047m`) so their faces never coplanar z-fight!
   const floorCases: ReadonlyArray< readonly [number, number, number, number, number] > = [
-    [19.48, 0.024, 2.78, 0.32, 0x2563eb],
-    [19.50, 0.047, 2.80, 0.18, 0xec4899],
-    [19.96, 0.024, 1.88, -0.25, 0x06b6d4],
-    [20.14, 0.024, 2.68, 0.55, 0x7c3aed],
+    [19.48, 0.024, 2.78, 0.32, 0x24344d],
+    [19.50, 0.047, 2.80, 0.18, 0x8c2d24],
+    [19.96, 0.024, 1.88, -0.25, 0x2e543c],
+    [20.14, 0.024, 2.68, 0.55, 0xd8cfc0],
   ];
   for (const [fx, fyOff, fz, frot, fcol] of floorCases) {
     const gameBox = new THREE.Mesh(
       new THREE.BoxGeometry(0.14, 0.022, 0.19),
-      new THREE.MeshStandardMaterial({ color: fcol, roughness: 0.34 })
+      new THREE.MeshStandardMaterial({ color: fcol, roughness: 0.38 })
     );
     gameBox.position.set(fx, mezzanineFloorY + fyOff, fz);
     gameBox.rotation.y = frot;
@@ -1749,41 +2055,46 @@ export function buildBarnMezzanineRetroLounge(
 
   // =========================================================================
   // 6. SCULPTED 1990s CORDUROY BEANBAG CHAIRS, TAPESTRY BEANBAG, KILIM POUFFE
-  //    & LOW COFFEE TABLE WITH OPEN MONOPOLY BOARD GAME, SODA CANS & SNACKS
+  //    & LOW WOODEN COFFEE TABLE WITH OPEN MONOPOLY BOARD GAME, SODA CANS & SNACKS
   // =========================================================================
   const loungeSeatingGroup = new THREE.Group();
   loungeSeatingGroup.name = 'outbuildings.mezzanine.beanbagLounge';
   loungeGroup.add(loungeSeatingGroup);
 
-  // Late-1990s / Y2K Beanbag Lounge Palette ("right now the vibe upstairs feels a bit too 1970s, i like the tv unit and tv,
-  // but the colors etc need to be more y2k / 1990s"):
-  // Replaced 1970s terracotta & mustard-ochre with vibrant 1990s/Y2K Electric Cobalt Blue (`#2563eb`),
-  // Cyber Violet-Purple (`#7c3aed`), and Y2K Pop Cyan/Magenta/Cobalt geometric fabric!
-  const y2kCobaltCorduroyMat = new THREE.MeshStandardMaterial({
+  // Issue #1 ("This has gone way too childish, look at the original concept art. It needs to be cosy and warm just not 1970s.
+  // Traditional style rug. Still wooden book case. Not bright purples and blacks like a CBBC studio."):
+  // Matches `media_1791202879638_22365d89.jpg` with warm, cosy heritage navy corduroy, woven oatmeal/terracotta/navy tapestry,
+  // deep slate-indigo corduroy in the back corner, and a round woven terracotta/cream pouffe!
+  const heritageNavyCorduroyMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    map: createCorduroyFabricTexture('#2563eb', '#1d4ed8'),
-    roughness: 0.82,
-    metalness: 0.04,
+    map: createCorduroyFabricTexture('#233146', '#192434'),
+    roughness: 0.86,
+    metalness: 0.02,
   });
-  const y2kVioletCorduroyMat = new THREE.MeshStandardMaterial({
+  const slateIndigoCorduroyMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    map: createCorduroyFabricTexture('#7c3aed', '#5b21b6'),
-    roughness: 0.82,
-    metalness: 0.04,
+    map: createCorduroyFabricTexture('#2c3c52', '#202d3f'),
+    roughness: 0.86,
+    metalness: 0.02,
   });
   const tapestryBeanbagMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: createTapestryBeanbagTexture(),
-    roughness: 0.82,
-    metalness: 0.04,
+    roughness: 0.86,
+    metalness: 0.02,
+  });
+  const knittedPouffeMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    map: createKnittedPouffeTexture(),
+    roughness: 0.88,
+    metalness: 0.02,
   });
 
   const beanbagGeoLarge = createSculptedBeanbagGeometry(0.54, 0.68, 0.58);
   const beanbagGeoMed = createSculptedBeanbagGeometry(0.48, 0.62, 0.52);
 
-  // Issue #4 ("Move this beanbag its clipping the ercol tv unit" at `[-2.631, 2.162, 17.369]`, `outbuildings.mezzanine.beanbag.navyFront`):
-  // Relocated to `(u = 19.72m, v = 3.96m)` in the South-West lounge area with generous clearance from the Ercol TV unit!
-  const navyBeanbagFront = new THREE.Mesh(beanbagGeoLarge, y2kCobaltCorduroyMat);
+  // 1. Foreground South-West Heritage Navy Jumbo Corduroy Beanbag Chair (`u = 19.72m, v = 3.96m`)
+  const navyBeanbagFront = new THREE.Mesh(beanbagGeoLarge, heritageNavyCorduroyMat);
   navyBeanbagFront.name = 'outbuildings.mezzanine.beanbag.navyFront';
   navyBeanbagFront.position.set(19.72, mezzanineFloorY, 3.96);
   navyBeanbagFront.rotation.y = -2.28;
@@ -1791,7 +2102,7 @@ export function buildBarnMezzanineRetroLounge(
   navyBeanbagFront.receiveShadow = true;
   loungeSeatingGroup.add(navyBeanbagFront);
 
-  // 2. East Lounge Y2K Pop Geometric Beanbag Chair (`u = 22.42m, v = 1.42m`, facing the coffee table & TV)
+  // 2. East Lounge Woven Tapestry Beanbag Chair (`u = 22.42m, v = 1.42m`, facing the coffee table & TV)
   const tapestryBeanbag = new THREE.Mesh(beanbagGeoMed, tapestryBeanbagMat);
   tapestryBeanbag.name = 'outbuildings.mezzanine.beanbag.tapestry';
   tapestryBeanbag.position.set(22.42, mezzanineFloorY, 1.42);
@@ -1800,8 +2111,8 @@ export function buildBarnMezzanineRetroLounge(
   tapestryBeanbag.receiveShadow = true;
   loungeSeatingGroup.add(tapestryBeanbag);
 
-  // 3. North-West Lounge Y2K Cyber-Violet Corduroy Beanbag Chair (`u = 20.52m, v = 1.08m`, facing the coffee table & TV)
-  const navyBeanbagBack = new THREE.Mesh(beanbagGeoMed, y2kVioletCorduroyMat);
+  // 3. North-West Lounge Deep Slate-Indigo Corduroy Beanbag Chair (`u = 20.52m, v = 1.08m`, facing the coffee table & TV)
+  const navyBeanbagBack = new THREE.Mesh(beanbagGeoMed, slateIndigoCorduroyMat);
   navyBeanbagBack.name = 'outbuildings.mezzanine.beanbag.navyBack';
   navyBeanbagBack.position.set(20.52, mezzanineFloorY, 1.08);
   navyBeanbagBack.rotation.y = 0.52;
@@ -1809,18 +2120,17 @@ export function buildBarnMezzanineRetroLounge(
   navyBeanbagBack.receiveShadow = true;
   loungeSeatingGroup.add(navyBeanbagBack);
 
-  // 4. Late-1990s / Y2K Frosted Ice-Blue & Brushed Chrome Tubular Lounge Coffee Table (`u = 21.55m, v = 1.62m`)
-  const y2kChromeMat = new THREE.MeshStandardMaterial({
-    color: 0xe2e8f0,
-    roughness: 0.18,
-    metalness: 0.88,
-  });
-  const y2kIceBlueTopMat = new THREE.MeshStandardMaterial({
-    color: 0xdbeafe,
-    roughness: 0.22,
-    metalness: 0.12,
-  });
+  // 4. Round Woven Terracotta & Cream Pouffe Cushion (`outbuildings.mezzanine.pouffe` at `u = 20.68m, v = 2.24m`, matching `media_1791202879638_22365d89.jpg`)
+  const pouffeGeo = new THREE.SphereGeometry(0.30, 28, 20);
+  pouffeGeo.scale(1.0, 0.56, 1.0);
+  const pouffeMesh = new THREE.Mesh(pouffeGeo, knittedPouffeMat);
+  pouffeMesh.name = 'outbuildings.mezzanine.pouffe';
+  pouffeMesh.position.set(20.68, mezzanineFloorY + 0.16, 2.24);
+  pouffeMesh.castShadow = true;
+  pouffeMesh.receiveShadow = true;
+  loungeSeatingGroup.add(pouffeMesh);
 
+  // 5. Low Warm-Timber Lounge Coffee Table (`u = 21.55m, v = 1.62m`, matching `media_1791202879638_22365d89.jpg`)
   const coffeeTableGroup = new THREE.Group();
   coffeeTableGroup.name = 'outbuildings.mezzanine.coffeeTable';
   coffeeTableGroup.position.set(21.55, mezzanineFloorY, 1.62);
@@ -1832,7 +2142,7 @@ export function buildBarnMezzanineRetroLounge(
   const ctH = 0.38;
   const ctTop = new THREE.Mesh(
     new THREE.BoxGeometry(ctW, 0.028, ctL),
-    y2kIceBlueTopMat
+    teakMat
   );
   ctTop.position.set(0, ctH - 0.014, 0);
   ctTop.castShadow = true;
@@ -1842,8 +2152,8 @@ export function buildBarnMezzanineRetroLounge(
   for (const lx of [-0.24, 0.24] as const) {
     for (const lz of [-0.40, 0.40] as const) {
       const ctLeg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.018, 0.014, ctH - 0.02, 16),
-        y2kChromeMat
+        new THREE.CylinderGeometry(0.018, 0.013, ctH - 0.02, 16),
+        darkTeakMat
       );
       ctLeg.position.set(lx, (ctH - 0.02) * 0.5, lz);
       ctLeg.castShadow = true;
@@ -2045,11 +2355,10 @@ export function buildBarnMezzanineRetroLounge(
   addFramedPoster(20.76, mezzanineFloorY + 0.38, 0.295, 0.42, 0.54, 0, 'trainspotting');
 
   // =========================================================================
-  // 9. 5-SHELF OAK RETRO BOOKCASE, BOARD GAMES, VHS/CD COLLECTION, LAVA LAMPS
-  //    & WARM TABLE LAMP (`outbuildings.mezzanine.bookcaseAndLamps`)
-  //    - Issue #6 ("Put the bookbase on this wall instead" at `[-0.089, 2.433, 14.358]` -> North wall `v = 0.28m`):
-  //      Mounted against the North Mezzanine Wall (`u = 21.88m, v = 0.435m`, `rotation.y = Math.PI / 2` so its
-  //      back sits flush against `v = 0.285m` and its open shelves face South `+v` into the Mezzanine)!
+  // 9. 5-SHELF WOODEN RETRO BOOKCASE, BOARD GAMES, VHS/CD COLLECTION, LAVA LAMP
+  //    & WARM TABLE LAMP (`outbuildings.mezzanine.bookcase`)
+  //    - Issue #1 ("Still wooden book case. Not bright purples and blacks like a CBBC studio."):
+  //      Restored the warm natural timber bookcase (`teakMat` / `darkTeakMat`) with warm golden 2700K under-shelf task lighting!
   // =========================================================================
   const bookcaseGroup = new THREE.Group();
   bookcaseGroup.name = 'outbuildings.mezzanine.bookcase';
@@ -2062,31 +2371,20 @@ export function buildBarnMezzanineRetroLounge(
   const bcHeightY = 1.30;
   const shelfT = 0.024;
 
-  // Late-1990s / Y2K Matte Cobalt-Slate & Ice-Silver Bookcase finish (replacing 1970s orange-brown teak)
-  const y2kBookcaseFrameMat = new THREE.MeshStandardMaterial({
-    color: 0x1e293b,
-    roughness: 0.36,
-    metalness: 0.18,
-  });
-  const y2kBookcaseShelfMat = new THREE.MeshStandardMaterial({
-    color: 0xe2e8f0,
-    roughness: 0.32,
-    metalness: 0.14,
-  });
-
-  // Bookcase side uprights & back panel
+  // Bookcase wooden side uprights & back panel
   for (const sideZ of [-1, 1] as const) {
     const upright = new THREE.Mesh(
       new THREE.BoxGeometry(bcDepthU, bcHeightY, shelfT),
-      y2kBookcaseFrameMat
+      teakMat
     );
     upright.position.set(0, bcHeightY * 0.5, sideZ * (bcWidthV * 0.5 - shelfT * 0.5));
     upright.castShadow = true;
+    upright.receiveShadow = true;
     bookcaseGroup.add(upright);
   }
   const bcBack = new THREE.Mesh(
     new THREE.BoxGeometry(0.014, bcHeightY, bcWidthV),
-    new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.52 })
+    darkTeakMat
   );
   bcBack.position.set(bcDepthU * 0.5 - 0.007, bcHeightY * 0.5, 0);
   bookcaseGroup.add(bcBack);
@@ -2095,7 +2393,7 @@ export function buildBarnMezzanineRetroLounge(
   for (const sy of shelfHeights) {
     const shelf = new THREE.Mesh(
       new THREE.BoxGeometry(bcDepthU, shelfT, bcWidthV - shelfT * 2),
-      y2kBookcaseShelfMat
+      teakMat
     );
     shelf.position.set(0, sy, 0);
     shelf.castShadow = true;
@@ -2103,12 +2401,12 @@ export function buildBarnMezzanineRetroLounge(
     bookcaseGroup.add(shelf);
   }
 
-  // Cool Ice-Blue / White under-shelf LED accent strips
+  // Warm 2700K golden under-shelf task lighting strips
   const underShelfLedMat = new THREE.MeshStandardMaterial({
-    color: 0xe0f2fe,
-    emissive: 0x38bdf8,
-    emissiveIntensity: 1.55,
-    roughness: 0.22,
+    color: 0xfff3dc,
+    emissive: 0xffc870,
+    emissiveIntensity: 1.35,
+    roughness: 0.24,
   });
   for (const ledShelfY of [0.54, 0.85, 1.08, 1.29] as const) {
     const ledStrip = new THREE.Mesh(
@@ -2120,8 +2418,8 @@ export function buildBarnMezzanineRetroLounge(
     bookcaseGroup.add(ledStrip);
   }
 
-  // Stock shelves with 1990s / Y2K pop-colored game boxes, VHS/CD spines, and metallic Y2K boombox!
-  const itemColors = [0x2563eb, 0x06b6d4, 0xec4899, 0x7c3aed, 0x3b82f6, 0x84cc16, 0xe2e8f0];
+  // Stock shelves with classic 1990s board games, books, VHS/CD spines, and stereo boombox
+  const itemColors = [0x8c2d24, 0x233852, 0x2e543c, 0xc9963e, 0xdcd2c0, 0x5c3c28, 0x3a4e63];
   // Bottom shelf (`y = 0.072m`): stacks of 90s board games
   for (let stack = 0; stack < 3; stack++) {
     const sz = -0.32 + stack * 0.32;
@@ -2130,7 +2428,7 @@ export function buildBarnMezzanineRetroLounge(
         new THREE.BoxGeometry(0.22, 0.044, 0.27),
         new THREE.MeshStandardMaterial({
           color: itemColors[(stack * 3 + layer) % itemColors.length],
-          roughness: 0.45,
+          roughness: 0.48,
         })
       );
       gameBox.position.set(-0.02, 0.095 + layer * 0.046, sz);
@@ -2139,7 +2437,6 @@ export function buildBarnMezzanineRetroLounge(
   }
 
   // Second & third shelves (`y = 0.322m` & `0.552m`): vertical rows of VHS tapes, books & CDs
-  // Leave a clean bay (`iz = +0.18..+0.42`) on shelf 3 (`0.552m`) around the bookcase Lava Lamp (`u = 22.18m` -> `iz = +0.30m`)!
   for (const [shelfBaseY, itemH, count, isLavaShelf] of [
     [0.322, 0.19, 18, false],
     [0.552, 0.14, 14, true],
@@ -2151,7 +2448,7 @@ export function buildBarnMezzanineRetroLounge(
         new THREE.BoxGeometry(0.16, itemH - (i % 3) * 0.012, 0.028),
         new THREE.MeshStandardMaterial({
           color: itemColors[(i * 5) % itemColors.length],
-          roughness: 0.48,
+          roughness: 0.52,
         })
       );
       spine.position.set(-0.02, shelfBaseY + itemH * 0.5, iz);
@@ -2191,7 +2488,7 @@ export function buildBarnMezzanineRetroLounge(
     const lavaGlowMat = new THREE.MeshStandardMaterial({
       color: waxColorHex,
       emissive: waxColorHex,
-      emissiveIntensity: 1.55,
+      emissiveIntensity: 1.45,
       roughness: 0.18,
       transparent: true,
       opacity: 0.88,
@@ -2222,36 +2519,31 @@ export function buildBarnMezzanineRetroLounge(
     lampGroup.add(topCap);
   };
 
-  // Issue #4: Lava Lamp #1 inside the North-wall bookcase (`u = 22.18m, y = mezzanineFloorY + 0.552m, v = 0.45m, scale = 0.72` -> `0.212m` tall,
-  // sitting cleanly on shelf 3 with `7.4cm` clearance below shelf 4 at `mezzanineFloorY + 0.838m`!)
+  // Warm crimson-amber Mathmos Astro Lava Lamp inside the North-wall wooden bookcase (`u = 22.18m, y = mezzanineFloorY + 0.552m, v = 0.45m, scale = 0.72`)
   addRetroLavaLamp(
     22.18,
     mezzanineFloorY + 0.552,
     0.45,
-    0xff38b8,
+    0xe04828,
     0xd8dde4,
     'outbuildings.mezzanine.lavaLamp.bookcase',
     0.72
   );
 
-  // Issue #5 ("Remove from windowsill" at `[-2.662, 2.152, 14.591]`, `outbuildings.mezzanine.lavaLamp.windowsill`):
-  // Removed the windowsill Lava Lamp so the North hayloft window reveal is completely clear.
-
-  // Issue #3 ("Get rid of radiator" at `[-2.542, 1.806, 14.642]`, `outbuildings.mezzanine.radiator`): removed radiator.
-
-  // Late-1990s / Y2K Matte Cobalt & Brushed Silver Side Cabinet + Glowing Ice-Cyan Table Lamp in NE corner (`u = 22.64m, v = 0.46m`)
+  // Warm Wooden Side Cabinet + Warm Cream Fabric Table Lamp in NE corner (`u = 22.64m, v = 0.46m`, matching `media_1791202879638_22365d89.jpg`)
   const sideCabinet = new THREE.Mesh(
     new THREE.BoxGeometry(0.36, 0.54, 0.32),
-    y2kBookcaseFrameMat
+    teakMat
   );
   sideCabinet.name = 'outbuildings.mezzanine.sideCabinet';
   sideCabinet.position.set(22.64, mezzanineFloorY + 0.27, 0.46);
   sideCabinet.castShadow = true;
+  sideCabinet.receiveShadow = true;
   loungeGroup.add(sideCabinet);
 
   const lampStem = new THREE.Mesh(
     new THREE.CylinderGeometry(0.016, 0.045, 0.22, 16),
-    silverBadgeMat
+    darkTeakMat
   );
   lampStem.position.set(22.64, mezzanineFloorY + 0.65, 0.46);
   loungeGroup.add(lampStem);
@@ -2259,10 +2551,10 @@ export function buildBarnMezzanineRetroLounge(
   const lampShade = new THREE.Mesh(
     new THREE.CylinderGeometry(0.095, 0.135, 0.18, 22),
     new THREE.MeshStandardMaterial({
-      color: 0xe0f2fe,
-      emissive: 0x38bdf8,
+      color: 0xf5ebd6,
+      emissive: 0xffbe66,
       emissiveIntensity: 1.35,
-      roughness: 0.38,
+      roughness: 0.46,
     })
   );
   lampShade.name = 'outbuildings.mezzanine.tableLamp.shade';
@@ -4068,9 +4360,9 @@ export function buildBarnPoolTable(
   const poolGroup = new THREE.Group();
   poolGroup.name = 'outbuildings.barn.poolTable';
   poolGroup.userData.zone = 'courtyard';
-  // Rotated 90 degrees so the full-size 9ft table's 2.79m length runs North-South along v (`v = 1.455..4.245m`)
-  // and its 1.52m width spans `u = 19.38..20.90m`, clear of the NE corner bar and SE spiral staircase.
-  poolGroup.position.set(20.28, barnCarpetTopY, 2.78);
+  // Rotated 90 degrees so the full-size 9ft table's 2.79m length runs North-South along v (`v = 0.925..3.715m`)
+  // and its 1.52m width spans `u = 19.92..21.44m`, clear of the West golf-viewing bar & stools, NE corner bar, and SE spiral staircase.
+  poolGroup.position.set(20.68, barnCarpetTopY, 2.32);
   poolGroup.rotation.y = Math.PI / 2;
   groundGroup.add(poolGroup);
 
@@ -4299,3 +4591,298 @@ export function buildBarnPoolTable(
     poolGroup.add(chalk);
   }
 }
+
+// ============================================================================
+// ISSUE #8: GOLF-VIEWING SPECTATOR BAR COUNTER & 3 LEATHER BAR STOOLS
+// ("Make the lower section a little larger, move the steps forward slightly (maybe 50cm).
+//  On this side have a bar with some stools so people can watch the golf and wait their turn"
+//  at `[-3.975, -0.34, 18.437]` -> Outbuilding `(u = 18.218m, y = -0.34m, v = 4.011m)`)
+// ============================================================================
+export function buildBarnGolfViewingBar(
+  groundGroup: THREE.Group,
+  barnCarpetTopY: number,
+  lightJoineryOakMat: THREE.Material
+): void {
+  const viewingBarGroup = new THREE.Group();
+  viewingBarGroup.name = 'outbuildings.barn.golfViewingBar';
+  viewingBarGroup.userData.zone = 'courtyard';
+  // Issue #1 ("shift this section fotward, there is no point having steps in front of it the steps can but up against the edge of the bar"
+  // at `[-3.664, -0.403, 18.162]`):
+  // Shifted forward (West) so the West front face (`localX = -0.24m`) sits right at `u = 18.18m` (flush with the drop-off edge
+  // of `outbuildings.barn.westFloor`), centered at `(u = 18.42m, y = barnCarpetTopY = -0.675m, v = 4.52m)` and spanning
+  // `v = 3.62m..5.42m` (`1.80m` long up to the South Barn wall), with the 2 bullnose oak steps (`v = 0.28m..3.62m`)
+  // butting directly up against the North end of the bar (`v = 3.62m`)!
+  viewingBarGroup.position.set(18.42, barnCarpetTopY, 4.52);
+  groundGroup.add(viewingBarGroup);
+
+  const barLenZ = 1.80;
+  const barCarcassD = 0.40;
+  const barTopD = 0.54;
+  const barH = 1.06;
+  const plinthH = 0.06;
+  const topT = 0.040;
+  const bodyH = barH - plinthH - topT; // 0.96m
+  const westFloorStepRiseH = (-0.34) - barnCarpetTopY; // 0.335m rise from -0.675m lower carpet to -0.34m upper limestone floor
+
+  const darkAnthraciteMat = new THREE.MeshStandardMaterial({
+    color: 0x1e2126,
+    roughness: 0.42,
+    metalness: 0.58,
+  });
+  const brushedBrassMat = new THREE.MeshStandardMaterial({
+    color: 0xd4af37,
+    roughness: 0.24,
+    metalness: 0.86,
+  });
+  const saddleLeatherMat = new THREE.MeshStandardMaterial({
+    color: 0x7c4728,
+    roughness: 0.48,
+    metalness: 0.04,
+  });
+  const darkLeatherPipingMat = new THREE.MeshStandardMaterial({
+    color: 0x4a2814,
+    roughness: 0.52,
+    metalness: 0.05,
+  });
+  const warmLedMat = new THREE.MeshStandardMaterial({
+    color: 0xfff4dc,
+    emissive: 0xffc870,
+    emissiveIntensity: 1.8,
+    roughness: 0.2,
+  });
+
+  // 1. Recessed Dark-Anthracite Plinth & Fluted Solid Light-Oak Spectator Bar Carcass
+  const plinth = new THREE.Mesh(
+    new THREE.BoxGeometry(barCarcassD - 0.04, plinthH, barLenZ - 0.04),
+    darkAnthraciteMat
+  );
+  plinth.position.set(-0.04, plinthH * 0.5, 0);
+  viewingBarGroup.add(plinth);
+
+  const carcass = new THREE.Mesh(
+    new THREE.BoxGeometry(barCarcassD, bodyH, barLenZ),
+    lightJoineryOakMat
+  );
+  carcass.name = 'outbuildings.barn.golfViewingBar.counter';
+  carcass.position.set(-0.04, plinthH + bodyH * 0.5, 0);
+  carcass.castShadow = true;
+  carcass.receiveShadow = true;
+  viewingBarGroup.add(carcass);
+
+  // Solid light-oak West plinth moulding at `y = westFloorStepRiseH` (`-0.34m` upper limestone floor level)
+  const westFloorSkirt = new THREE.Mesh(
+    new THREE.BoxGeometry(0.024, 0.036, barLenZ),
+    lightJoineryOakMat
+  );
+  westFloorSkirt.position.set(-0.04 - barCarcassD * 0.5 - 0.008, westFloorStepRiseH + 0.018, 0);
+  westFloorSkirt.castShadow = true;
+  viewingBarGroup.add(westFloorSkirt);
+
+  // Vertical half-round fluted light-oak tambour slats along the West (`-x`, facing the Golf Simulator) face above `-0.34m`
+  const slatBottomY = westFloorStepRiseH + 0.036;
+  const slatTopY = barH - topT;
+  const slatH = slatTopY - slatBottomY;
+  const numSlats = 28;
+  for (let i = 0; i < numSlats; i++) {
+    const sz = -barLenZ * 0.5 + 0.04 + (i / (numSlats - 1)) * (barLenZ - 0.08);
+    const slat = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, slatH, 10),
+      lightJoineryOakMat
+    );
+    slat.position.set(-0.04 - barCarcassD * 0.5 - 0.004, slatBottomY + slatH * 0.5, sz);
+    slat.castShadow = true;
+    viewingBarGroup.add(slat);
+  }
+
+  // Overhanging Bullnose Solid Light-Oak Bar Top (`0.54m` deep x `0.040m` thick x `1.82m` long, overhanging `+x` toward the bar stools!)
+  const counterTop = new THREE.Mesh(
+    new THREE.BoxGeometry(barTopD, topT, barLenZ + 0.02),
+    lightJoineryOakMat
+  );
+  counterTop.name = 'outbuildings.barn.golfViewingBar.top';
+  counterTop.position.set(0.03, barH - topT * 0.5, -0.01);
+  counterTop.castShadow = true;
+  counterTop.receiveShadow = true;
+  viewingBarGroup.add(counterTop);
+
+  // Half-round bullnose nosing along both West (`-x`) and East (`+x`) edges of the bar top
+  for (const edgeX of [0.03 - barTopD * 0.5, 0.03 + barTopD * 0.5] as const) {
+    const noseCyl = new THREE.Mesh(
+      new THREE.CylinderGeometry(topT * 0.5, topT * 0.5, barLenZ + 0.02, 14),
+      lightJoineryOakMat
+    );
+    noseCyl.rotation.x = Math.PI / 2;
+    noseCyl.position.set(edgeX, barH - topT * 0.5, -0.01);
+    viewingBarGroup.add(noseCyl);
+  }
+
+  // Warm under-counter LED strip illuminating the stool overhang (`x = +0.20m`)
+  const underBarLed = new THREE.Mesh(
+    new THREE.BoxGeometry(0.014, 0.008, barLenZ - 0.08),
+    warmLedMat
+  );
+  underBarLed.position.set(0.20, barH - topT - 0.004, 0);
+  viewingBarGroup.add(underBarLed);
+
+  // Full-length Brushed-Brass Footrail (`x = +0.24m, y = 0.22m`) + 3 Brass Brackets on the East (`+x`) Stool Side
+  const footRail = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, barLenZ - 0.08, 16),
+    brushedBrassMat
+  );
+  footRail.name = 'outbuildings.barn.golfViewingBar.footRail';
+  footRail.rotation.x = Math.PI / 2;
+  footRail.position.set(0.24, 0.22, 0);
+  footRail.castShadow = true;
+  viewingBarGroup.add(footRail);
+
+  for (const bz of [-0.72, 0, 0.72] as const) {
+    const bracket = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 0.09, 12),
+      brushedBrassMat
+    );
+    bracket.rotation.z = Math.PI / 2;
+    bracket.position.set(0.195, 0.22, bz);
+    viewingBarGroup.add(bracket);
+  }
+
+  // Drinks, Coasters, Bar Snack Bowl & Golf Scorecard Holder on top of the Spectator Bar (`y = barH`)
+  const beerGlassMat = new THREE.MeshStandardMaterial({
+    color: 0xd98a1e,
+    roughness: 0.12,
+    metalness: 0.08,
+    transparent: true,
+    opacity: 0.88,
+  });
+  const foamMat = new THREE.MeshStandardMaterial({ color: 0xf7f4eb, roughness: 0.45 });
+  for (const [gx, gz] of [
+    [0.05, -0.56],
+    [0.02, 0.04],
+    [0.06, 0.54],
+  ] as const) {
+    const coaster = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.048, 0.048, 0.005, 18),
+      brushedBrassMat
+    );
+    coaster.position.set(gx, barH + 0.0025, gz);
+    viewingBarGroup.add(coaster);
+
+    const pint = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.035, 0.028, 0.115, 16),
+      beerGlassMat
+    );
+    pint.position.set(gx, barH + 0.062, gz);
+    pint.castShadow = true;
+    viewingBarGroup.add(pint);
+
+    const foam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.036, 0.035, 0.024, 16),
+      foamMat
+    );
+    foam.position.set(gx, barH + 0.131, gz);
+    viewingBarGroup.add(foam);
+  }
+
+  const snackBowl = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.072, 0.046, 0.048, 20),
+    foamMat
+  );
+  snackBowl.position.set(-0.04, barH + 0.024, -0.26);
+  snackBowl.castShadow = true;
+  viewingBarGroup.add(snackBowl);
+
+  // 2. 3 Bespoke Swivel Tan-Saddle-Leather & Brushed-Brass Spectator Bar Stools (`outbuildings.barn.golfViewingBar.stool.1..3`)
+  //    Placed along the East (`+x`) side of the counter (`x = +0.46m`, i.e., `u = 19.26m`), facing West (`-u`) toward the Golf Simulator!
+  for (const [sIdx, sz, rotOffset] of [
+    [1, -0.58, 0.08],
+    [2, 0.0, -0.05],
+    [3, 0.58, 0.12],
+  ] as const) {
+    const stoolGroup = new THREE.Group();
+    stoolGroup.name = `outbuildings.barn.golfViewingBar.stool.${sIdx}`;
+    stoolGroup.position.set(0.46, 0, sz);
+    // Face West (`-x`) toward the bar counter and Golf Simulator screen
+    stoolGroup.rotation.y = Math.PI + rotOffset;
+    viewingBarGroup.add(stoolGroup);
+
+    // 4 Splayed Solid Light-Oak Legs with Brushed-Brass Foot Caps & Circular Brass Footrest Ring
+    const legH = 0.70;
+    for (const [lx, lz] of [
+      [-0.14, -0.14],
+      [0.14, -0.14],
+      [-0.14, 0.14],
+      [0.14, 0.14],
+    ] as const) {
+      const leg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.018, 0.013, legH, 12),
+        lightJoineryOakMat
+      );
+      leg.position.set(lx * 0.82, legH * 0.5, lz * 0.82);
+      leg.rotation.z = lx > 0 ? 0.09 : -0.09;
+      leg.rotation.x = lz > 0 ? -0.09 : 0.09;
+      leg.castShadow = true;
+      stoolGroup.add(leg);
+
+      const brassSabot = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.014, 0.013, 0.065, 12),
+        brushedBrassMat
+      );
+      brassSabot.position.set(lx * 0.96, 0.0325, lz * 0.96);
+      stoolGroup.add(brassSabot);
+    }
+
+    const footrestRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.165, 0.009, 10, 24),
+      brushedBrassMat
+    );
+    footrestRing.rotation.x = Math.PI / 2;
+    footrestRing.position.set(0, 0.26, 0);
+    stoolGroup.add(footrestRing);
+
+    // Upholstered Tan-Saddle-Leather Swivel Seat Cushion (`y = 0.70..0.77m`) with Welted Piping
+    const seatCushion = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.19, 0.185, 0.068, 24),
+      saddleLeatherMat
+    );
+    seatCushion.name = `outbuildings.barn.golfViewingBar.stool.${sIdx}.seat`;
+    seatCushion.position.set(0, 0.734, 0);
+    seatCushion.castShadow = true;
+    seatCushion.receiveShadow = true;
+    stoolGroup.add(seatCushion);
+
+    const seatWelt = new THREE.Mesh(
+      new THREE.TorusGeometry(0.188, 0.006, 10, 24),
+      darkLeatherPipingMat
+    );
+    seatWelt.rotation.x = Math.PI / 2;
+    seatWelt.position.set(0, 0.765, 0);
+    stoolGroup.add(seatWelt);
+
+    // Twin Brushed-Brass Backrest Uprights & Curved Low-Profile Saddle-Leather Backrest (`y = 0.84..0.98m`)
+    for (const sideZ of [-0.09, 0.09] as const) {
+      const upright = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.009, 0.009, 0.21, 10),
+        brushedBrassMat
+      );
+      upright.position.set(-0.175, 0.83, sideZ);
+      upright.rotation.z = 0.14;
+      stoolGroup.add(upright);
+    }
+
+    const backrest = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.195, 0.195, 0.13, 20, 1, true, Math.PI * 0.65, Math.PI * 0.70),
+      saddleLeatherMat
+    );
+    backrest.position.set(0, 0.91, 0);
+    backrest.castShadow = true;
+    stoolGroup.add(backrest);
+
+    const backrestInner = new THREE.Mesh(
+      new THREE.BoxGeometry(0.038, 0.125, 0.30),
+      saddleLeatherMat
+    );
+    backrestInner.position.set(-0.175, 0.91, 0);
+    backrestInner.castShadow = true;
+    stoolGroup.add(backrestInner);
+  }
+}
+

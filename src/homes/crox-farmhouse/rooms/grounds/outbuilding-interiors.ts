@@ -1374,20 +1374,23 @@ export function buildGarageToolBench(
   alcoveGroup.add(northJambLining);
 
   const southJambLining = new THREE.Mesh(
-    new THREE.BoxGeometry(0.024, 1.92, 0.73),
+    new THREE.BoxGeometry(0.024, tallCupboardH, 0.73),
     alcovePlasterMat
   );
   southJambLining.userData.isArchitecturalShell = true;
-  southJambLining.position.set(-totalW * 0.5 - 0.008, 1.92 * 0.5, 0.025);
+  southJambLining.position.set(-totalW * 0.5 - 0.008, tallCupboardH * 0.5, 0.025);
   southJambLining.castShadow = true;
   southJambLining.receiveShadow = true;
   alcoveGroup.add(southJambLining);
 
   // ---------------------------------------------------------------------------
-  // 2. Issue #2: Double Stainless-Steel Full-Height Utility & Workshop Storage Cupboard
+  // 2. Issue #2 & Issue #3: Double Stainless-Steel Full-Height Utility & Workshop Storage Cupboard
   //    (`outbuildings.garage.toolBench.tallCupboard`, `localX = +0.515m..+2.035m`, `v = 1.34m..2.86m`, `h = 2.16m`)
   //    - Left/South Bay (`localX = +0.535m..+1.265m`): 5-Tier Heavy-Duty Shelving for Paint Tins, Rollers, Aerosols & Bins
   //    - Right/North Bay (`localX = +1.285m..+2.015m`): Full-Height Storage for Step Ladder, Extension Ladder, Spirit Level & Broom
+  //    - Issue #3 ("These shuld open outwards and match the same style as the drawers"):
+  //      Dark-anthracite steel outer carcass & 22mm vertical frame stiles with flush Brushed 304 Stainless-Steel
+  //      doors, anodized-aluminum pull bars with black grip/label inlays, cylinder key locks, and outward (-Z) hinge swing!
   // ---------------------------------------------------------------------------
   const tallCupboardGroup = new THREE.Group();
   tallCupboardGroup.name = 'outbuildings.garage.toolBench.tallCupboard';
@@ -1395,21 +1398,22 @@ export function buildGarageToolBench(
   benchGroup.add(tallCupboardGroup);
 
   const tcWallT = 0.022;
-  const tcPlinthH = 0.06;
-  const tcTopCapH = 0.04;
-  const tcInnerH = tallCupboardH - tcPlinthH - tcTopCapH; // 2.06m clear interior height
+  const tcPlinthH = 0.05;
+  const tcTopCapH = 0.032;
+  const tcInnerH = tallCupboardH - tcPlinthH - tcTopCapH;
   const tcInnerBaseY = tcPlinthH;
   const tcInnerTopY = tallCupboardH - tcTopCapH;
 
-  // Recessed dark-anthracite plinth & leveling feet
+  // Recessed dark-anthracite plinth matching the workbench plinth (`h = 0.05m`)
   const tcPlinth = new THREE.Mesh(
-    new THREE.BoxGeometry(tallCupboardW - 0.02, tcPlinthH, benchD - 0.06),
+    new THREE.BoxGeometry(tallCupboardW - 0.02, tcPlinthH, benchD - 0.08),
     dewaltBlackMat
   );
-  tcPlinth.position.set(0, tcPlinthH * 0.5, 0.015);
+  tcPlinth.position.set(0, tcPlinthH * 0.5, 0.02);
   tallCupboardGroup.add(tcPlinth);
 
-  // Outer stainless-clad & anthracite-lined cabinet box (back wall, top cap, bottom deck, left/right outer walls, central divider)
+  // Dark-anthracite steel cabinet carcass (back wall, top cap, bottom deck, left/right outer walls, central divider)
+  // matching the lower drawer bank carcass (`anthraciteSteelMat`)
   const tcBackWall = new THREE.Mesh(
     new THREE.BoxGeometry(tallCupboardW, tallCupboardH - tcPlinthH, tcWallT),
     anthraciteSteelMat
@@ -1428,29 +1432,29 @@ export function buildGarageToolBench(
   tallCupboardGroup.add(tcBottomDeck);
 
   const tcTopCap = new THREE.Mesh(
-    new THREE.BoxGeometry(tallCupboardW, tcTopCapH, benchD),
-    brushedStainlessMat
+    new THREE.BoxGeometry(tallCupboardW, tcTopCapH, benchD - 0.02),
+    anthraciteSteelMat
   );
-  tcTopCap.position.set(0, tallCupboardH - tcTopCapH * 0.5, 0);
+  tcTopCap.position.set(0, tallCupboardH - tcTopCapH * 0.5, 0.01);
   tcTopCap.castShadow = true;
   tallCupboardGroup.add(tcTopCap);
 
-  // Left (`-0.749m`), Center Divider (`0.0m`), and Right (`+0.749m`) vertical walls + brushed stainless front stiles
+  // Left (`-0.749m`), Center Divider (`0.0m`), and Right (`+0.749m`) vertical carcass walls + 22mm dark-anthracite front stiles
   for (const wallX of [-tallCupboardW * 0.5 + tcWallT * 0.5, 0, tallCupboardW * 0.5 - tcWallT * 0.5] as const) {
     const vWall = new THREE.Mesh(
-      new THREE.BoxGeometry(tcWallT, tcInnerH, benchD - 0.03),
-      wallX === 0 ? anthraciteSteelMat : brushedStainlessMat
+      new THREE.BoxGeometry(tcWallT, tcInnerH, benchD - 0.04),
+      anthraciteSteelMat
     );
-    vWall.position.set(wallX, tcInnerBaseY + tcInnerH * 0.5, 0.005);
+    vWall.position.set(wallX, tcInnerBaseY + tcInnerH * 0.5, 0.01);
     vWall.castShadow = true;
     vWall.receiveShadow = true;
     tallCupboardGroup.add(vWall);
 
     const frontStile = new THREE.Mesh(
-      new THREE.BoxGeometry(0.026, tallCupboardH - tcPlinthH, 0.018),
-      brushedStainlessMat
+      new THREE.BoxGeometry(0.022, tallCupboardH - tcPlinthH, 0.016),
+      anthraciteSteelMat
     );
-    frontStile.position.set(wallX, tcPlinthH + (tallCupboardH - tcPlinthH) * 0.5, frontZ + 0.01);
+    frontStile.position.set(wallX, tcPlinthH + (tallCupboardH - tcPlinthH) * 0.5, frontZ + 0.004);
     tallCupboardGroup.add(frontStile);
   }
 
@@ -1744,17 +1748,20 @@ export function buildGarageToolBench(
 
   // ---------------------------------------------------------------------------
   // 2C. Two Interactive Full-Height Brushed 304 Stainless-Steel Doors (`doorLeft` & `doorRight`)
+  //     - Issue #3 ("These shuld open outwards and match the same style as the drawers"):
+  //       Flush Brushed 304 Stainless-Steel slabs (`brushedStainlessMat`) with anodized-aluminum pull bars,
+  //       dark-anthracite grip/label inlay strips, cylinder key locks, and outward (`-Z`) hinge swing!
   // ---------------------------------------------------------------------------
-  const tcDoorW = tallCupboardW * 0.5 - 0.022; // 0.738m each
-  const tcDoorH = tallCupboardH - tcPlinthH - 0.024; // 2.076m tall
-  const tcDoorCenterY = tcPlinthH + tcDoorH * 0.5;
-  const tcDoorT = 0.022;
+  const tcDoorW = tallCupboardW * 0.5 - 0.024; // 0.736m each
+  const tcDoorH = tallCupboardH - tcPlinthH - tcTopCapH - 0.008; // 2.070m tall
+  const tcDoorCenterY = tcPlinthH + tcDoorH * 0.5 + 0.004;
+  const tcDoorT = 0.02;
 
   for (const [sideSign, doorName] of [
     [-1, 'outbuildings.garage.toolBench.tallCupboard.doorLeft'],
     [1, 'outbuildings.garage.toolBench.tallCupboard.doorRight'],
   ] as const) {
-    const doorCX = sideSign * (tcDoorW * 0.5 + 0.004);
+    const doorCX = sideSign * (tcDoorW * 0.5 + 0.006);
     const doorGroup = new THREE.Group();
     doorGroup.name = doorName;
     doorGroup.position.set(doorCX, tcDoorCenterY, frontZ);
@@ -1769,41 +1776,40 @@ export function buildGarageToolBench(
     doorSlab.receiveShadow = true;
     doorGroup.add(doorSlab);
 
-    // Subtle recessed vertical stainless shadow-reveal border on door face
-    const doorTrim = new THREE.Mesh(
-      new THREE.BoxGeometry(tcDoorW - 0.08, tcDoorH - 0.12, 0.004),
-      aluminumTrimMat
-    );
-    doorTrim.position.set(0, 0, -tcDoorT * 0.5 - 0.001);
-    doorGroup.add(doorTrim);
-
-    // Long vertical anodized-aluminum bar handle near the center meeting stile
-    const handleOffsetX = -sideSign * (tcDoorW * 0.5 - 0.048);
+    // Matching anodized-aluminum pull bar with black grip/label inlay strip near the center meeting stile
+    const handleOffsetX = -sideSign * (tcDoorW * 0.5 - 0.042);
     const tallHandle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, 0.38, 0.032),
+      new THREE.BoxGeometry(0.018, 0.36, 0.026),
       aluminumTrimMat
     );
-    tallHandle.position.set(handleOffsetX, -0.12, -tcDoorT * 0.5 - 0.014);
+    tallHandle.position.set(handleOffsetX, -0.10, -0.012);
     doorGroup.add(tallHandle);
 
-    // Cylinder key lock above handle
+    const handleLabelStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.007, 0.16, 0.004),
+      dewaltBlackMat
+    );
+    handleLabelStrip.position.set(handleOffsetX, -0.10, -0.025);
+    doorGroup.add(handleLabelStrip);
+
+    // Cylinder key lock above handle matching the drawer stacks
     const doorLock = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.01, 0.01, 0.026, 12),
+      new THREE.CylinderGeometry(0.009, 0.009, 0.026, 12),
       aluminumTrimMat
     );
     doorLock.rotation.x = Math.PI / 2;
-    doorLock.position.set(handleOffsetX, 0.14, -tcDoorT * 0.5 - 0.004);
+    doorLock.position.set(handleOffsetX, 0.14, -0.004);
     doorGroup.add(doorLock);
 
-    // Register interactive hinged door so clicking swings it wide open into the Garage (`-Z` in `benchGroup`)
+    // Register interactive hinged door so clicking swings it OUTWARDS (`-Z` in `benchGroup`) into the Garage!
     if (ctx) {
-      const hingeOffsetX = sideSign * (tcDoorW * 0.5 - 0.014);
+      const hingeOffsetX = sideSign * (tcDoorW * 0.5 - 0.012);
       ctx.interactions.registerHingedDoor(
         tallCupboardGroup,
         doorGroup,
         new THREE.Vector3(hingeOffsetX, 0, -0.008),
         'y',
-        sideSign * Math.PI * 0.62
+        -sideSign * Math.PI * 0.62
       );
     }
   }
@@ -1909,6 +1915,8 @@ export function buildGarageToolBench(
 
   // ---------------------------------------------------------------------------
   // 4. Laminated Hardwood Butcher-Block Worktop, Pegboard & Upper Cabinets (`benchSpanW = 2.55m`)
+  //    - Issue #4 ("Height of this section should match the cupboards" at `[-9.737, 1.207, 18.647]`):
+  //      `worktopY (0.912m) + pegboardH (0.76m) + upperCabH (0.488m) = 2.160m === tallCupboardH`!
   // ---------------------------------------------------------------------------
   const topD = 0.78;
   const butcherTop = new THREE.Mesh(
@@ -1977,7 +1985,7 @@ export function buildGarageToolBench(
     magTrayGroup.add(socket);
   }
 
-  const pegboardH = 0.64;
+  const pegboardH = 0.76;
   const pegboard = new THREE.Mesh(
     new THREE.BoxGeometry(benchSpanW - 0.02, pegboardH, 0.024),
     anthraciteSteelMat
@@ -2011,8 +2019,8 @@ export function buildGarageToolBench(
     benchGroup.add(redSwitch);
   }
 
-  const upperCabH = 0.34;
-  const upperCabD = 0.32;
+  const upperCabH = tallCupboardH - (worktopY + pegboardH); // 0.488m (total height = 2.160m === tallCupboardH)
+  const upperCabD = 0.34;
   const upperCab = new THREE.Mesh(
     new THREE.BoxGeometry(benchSpanW - 0.02, upperCabH, upperCabD),
     anthraciteSteelMat
@@ -2028,7 +2036,7 @@ export function buildGarageToolBench(
   const upperDoorW = 0.81;
   for (const ux of [-1.59, -0.76, 0.07] as const) {
     const upperDoor = new THREE.Mesh(
-      new THREE.BoxGeometry(upperDoorW, upperCabH - 0.03, 0.018),
+      new THREE.BoxGeometry(upperDoorW, upperCabH - 0.03, 0.02),
       brushedStainlessMat
     );
     upperDoor.name = 'outbuildings.garage.toolBench.drawer';
@@ -2037,18 +2045,31 @@ export function buildGarageToolBench(
       worktopY + pegboardH + upperCabH * 0.5,
       benchD * 0.5 - upperCabD - 0.008
     );
+    upperDoor.castShadow = true;
+    upperDoor.receiveShadow = true;
     benchGroup.add(upperDoor);
 
     const upperPull = new THREE.Mesh(
-      new THREE.BoxGeometry(0.46, 0.014, 0.022),
+      new THREE.BoxGeometry(upperDoorW - 0.04, 0.016, 0.026),
       aluminumTrimMat
     );
     upperPull.position.set(
       ux,
-      worktopY + pegboardH + 0.035,
+      worktopY + pegboardH + 0.034,
       benchD * 0.5 - upperCabD - 0.022
     );
     benchGroup.add(upperPull);
+
+    const upperLabelStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(upperDoorW * 0.42, 0.007, 0.004),
+      dewaltBlackMat
+    );
+    upperLabelStrip.position.set(
+      ux,
+      worktopY + pegboardH + 0.034,
+      benchD * 0.5 - upperCabD - 0.035
+    );
+    benchGroup.add(upperLabelStrip);
   }
 
   const ledTaskBar = new THREE.Mesh(
