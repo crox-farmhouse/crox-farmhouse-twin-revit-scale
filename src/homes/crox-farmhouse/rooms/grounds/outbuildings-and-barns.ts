@@ -15,6 +15,7 @@ import {
   createPouredResinFloorMaterial,
 } from './outbuilding-interiors.ts';
 import { buildPorsche992TurboS } from './porsche-992-turbo-s.ts';
+import { buildBarnMezzanineRetroLounge } from './barn-mezzanine-retro-lounge.ts';
 
 export interface OutbuildingsBuilderKit {
   readonly exteriorBrickMat: THREE.Material;
@@ -3252,6 +3253,9 @@ export function buildOutbuildingsAndBarns(
     swPost.castShadow = true;
     stairwellGuardrailGroup.add(swPost);
   }
+
+  // 1990s Retro Gaming & Lounge Zone on top of the Barn Mezzanine (`outbuildings.mezzanine.retroLounge`)
+  buildBarnMezzanineRetroLounge(firstFloorGroup, mezzanineFloorY);
 
   // Issue #4 ("Carpet in here like the upstairs bedrooms, fix the scale" at `[5.5, 2.08, 15.313]`):
   // East First-Floor Room Woven Wool Carpet Slab (`5.55m x 5.15m`, u = 23.22m..28.77m, `stableUpperFloorY = 2.08m`)
