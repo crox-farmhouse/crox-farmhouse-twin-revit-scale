@@ -229,9 +229,10 @@ function evalSpline(x: number, knots: readonly (readonly [number, number])[]): n
  */
 function getPlanWrapShiftX(x: number, z: number): number {
   const noseWrap = smoothstep(-1.82, -2.24, x);
-  const tailWrap = smoothstep(1.92, 2.24, x);
+  const tailWrap = smoothstep(1.78, 2.24, x);
   const zNorm = Math.min(1.15, Math.abs(z) / 0.92);
-  return noseWrap * zNorm * zNorm * 0.14 - tailWrap * zNorm * zNorm * 0.10;
+  // Generous 18cm plan-view wrap at the rear corners so the 911 tail rounds smoothly into the widebody rear haunches!
+  return noseWrap * zNorm * zNorm * 0.14 - tailWrap * zNorm * zNorm * 0.18;
 }
 
 // ============================================================================
@@ -242,17 +243,20 @@ function getPlanWrapShiftX(x: number, z: number): number {
 
 /**
  * 1. Centerline profile `yCenter(x)`:
- *    - Distinct upright front bumper fascia (`x = -2.24..-2.12m`, rising from `0.15m` chin to `0.50m` nose crown)
- *    - Long, low, gently-sloped sunken Porsche 911 frunk hood (`x = -2.12..-0.92m`, `y = 0.50m -> 0.82m`)
- *    - Sleek, raked windshield (`x = -0.92..-0.28m`, `y = 0.82m -> 1.245m`)
- *    - Low, elongated, flat-arched **911 Coupé Flyline Roof Crown** (`x = -0.28..+0.34m`, peaking at `1.272m` — NO pointy cone!)
- *    - Continuous, taut fastback rear glass & slatted engine decklid (`x = +0.34..+1.95m`, `y = 1.245m -> 0.885m`)
- *    - Integrated rear ducktail spoiler lip (`x = +2.08m, y = 0.895m`) & vertical rear bumper tail (`x = +2.24m`).
+ *    - Upright front bumper fascia (`x = -2.24..-2.12m`, rising from `0.15m` chin to `0.50m` nose crown)
+ *    - Gently-sloped sunken Porsche 911 frunk hood (`x = -2.12..-0.92m`, `y = 0.50m -> 0.82m`)
+ *    - Sleek raked windshield (`x = -0.92..-0.28m`, `y = 0.82m -> 1.242m`)
+ *    - Low, elongated **911 Coupé Flyline Roof Crown** (`x = -0.28..+0.32m`, peaking at `1.268m`)
+ *    - Continuous, taut **911 Fastback Rear Window & Slatted Engine Decklid** (`x = +0.32..+2.06m`, sloping
+ *      smoothly all the way down to `0.802m` at the trailing ducktail edge!)
+ *    - Recessed full-width LED taillight visor step (`x = 2.13m, y = 0.725m`)
+ *    - Swelling muscular 992.2 lower rear bumper (`x = 2.23m, y = 0.56m` -> `x = 2.24m, y = 0.36m`)
+ *      tucking cleanly under to the rear valance (`x = 2.20m, y = 0.18m`).
  */
 const CENTERLINE_Y_KNOTS: readonly (readonly [number, number])[] = [
   [-2.24, 0.21],
   [-2.21, 0.36],
-  [-2.14, 0.495], // Top of front bumper nose cone / leading edge of frunk hood
+  [-2.14, 0.495],
   [-1.95, 0.575],
   [-1.65, 0.675],
   [-1.30, 0.762],
@@ -260,45 +264,51 @@ const CENTERLINE_Y_KNOTS: readonly (readonly [number, number])[] = [
   [-0.75, 0.945],
   [-0.50, 1.125],
   [-0.28, 1.242], // Top of windshield header
-  [-0.04, 1.272], // Smooth, low 911 roof crown
-  [0.24, 1.254],
-  [0.55, 1.198], // Start of rear fastback glass
-  [0.92, 1.102],
-  [1.30, 0.992],
-  [1.56, 0.922], // Base of rear window / start of slatted engine decklid
-  [1.86, 0.885],
-  [2.08, 0.896], // Integrated ducktail lip
-  [2.19, 0.805], // Full-width taillight bar recess
-  [2.24, 0.480], // Rear bumper face
+  [-0.04, 1.268], // Smooth, low 911 roof crown
+  [0.24, 1.248],
+  [0.55, 1.182], // Start of rear fastback glass
+  [0.92, 1.075],
+  [1.28, 0.962],
+  [1.54, 0.888], // Base of rear window / start of slatted engine decklid
+  [1.84, 0.828], // Rear of decklid grille / base of active spoiler
+  [2.06, 0.802], // Integrated ducktail trailing lip above taillight visor
+  [2.14, 0.722], // Recessed full-width taillight bar visor slot
+  [2.22, 0.565], // Upper crown of lower rear bumper below taillight bar
+  [2.24, 0.355], // Lower rear bumper face
 ];
 
 /**
  * 2. Fender / Door Beltline / Rear Haunch Shoulder Height `yShoulder(x)`:
- *    - Iconic raised round 911 front fender pontoons (`x = -2.08..-1.00m`, rising `4.5cm` higher than the sunken central hood!)
- *    - High, muscular, horizontal door beltline (`y = 0.855m..0.868m` across `x = -0.90..+0.42m`) so the side greenhouse is low and sleek!
- *    - Muscular 992.2 Turbo S rear quarter haunch kick-up (`y = 0.912m` over the 21" rear wheels at `x = +0.75..+1.55m`).
+ *    - Raised round 911 front fender pontoons (`x = -2.08..-1.00m`)
+ *    - Horizontal door beltline (`y = 0.855m..0.865m` across `x = -0.90..+0.42m`)
+ *    - Muscular 992.2 Turbo S rear quarter haunch cresting over the rear wheel (`y = 0.888m` at `x = 1.15m`)
+ *      and then **sloping smoothly and organically downward** along the rear overhang (`0.835m` at `x = 1.56m` ->
+ *      `0.762m` at `x = 1.95m` -> `0.712m` at the wrap-around taillight visor `x = 2.14m`), eliminating the boxy trunk look!
  */
 const SHOULDER_Y_KNOTS: readonly (readonly [number, number])[] = [
   [-2.24, 0.21],
   [-2.20, 0.37],
   [-2.10, 0.535],
-  [-1.92, 0.665], // Center of oval 911 headlamp pontoon slope (~25° rake)
+  [-1.92, 0.665],
   [-1.65, 0.778],
   [-1.25, 0.848], // Crest of front fender pontoon over front wheel
-  [-0.90, 0.852], // Base of A-pillar / front of door
+  [-0.90, 0.852],
   [-0.40, 0.858], // Taut horizontal door beltline
   [0.10, 0.865],
-  [0.48, 0.882],
-  [0.85, 0.912], // Muscular Turbo S rear haunch shoulder
-  [1.25, 0.915], // Crest over rear wheel
-  [1.68, 0.898],
-  [2.02, 0.875],
-  [2.19, 0.790],
-  [2.24, 0.470],
+  [0.48, 0.878],
+  [0.85, 0.892], // Muscular Turbo S rear haunch shoulder
+  [1.18, 0.888], // Crest over rear wheel
+  [1.56, 0.835], // Smooth downward teardrop taper behind rear wheel!
+  [1.92, 0.768],
+  [2.08, 0.738],
+  [2.14, 0.708], // Wrap-around taillight visor channel
+  [2.22, 0.545], // Swelling lower rear bumper shoulder
+  [2.24, 0.345],
 ];
 
 /**
  * 3. Plan-View Outer Body Half-Width `zBodyMax(x)`:
+ *    - Widebody rear haunches (`z = 0.958m` at `x = 1.20m`) tapering gracefully into the rounded 911 tail (`z = 0.76m` at `x = 2.24m`).
  */
 const BODY_WIDTH_Z_KNOTS: readonly (readonly [number, number])[] = [
   [-2.24, 0.62],
@@ -313,10 +323,10 @@ const BODY_WIDTH_Z_KNOTS: readonly (readonly [number, number])[] = [
   [0.35, 0.885],
   [0.75, 0.946], // Widebody rear haunch flare
   [1.20, 0.958], // Rear wheel arch crown (`1.916m` widebody width!)
-  [1.62, 0.940],
-  [1.98, 0.885],
-  [2.16, 0.825],
-  [2.24, 0.720],
+  [1.58, 0.932],
+  [1.90, 0.875],
+  [2.12, 0.815],
+  [2.24, 0.755],
 ];
 
 /**
@@ -327,15 +337,15 @@ const CROWN_WIDTH_Z_KNOTS: readonly (readonly [number, number])[] = [
   [-2.08, 0.44],
   [-1.75, 0.49],
   [-1.25, 0.54],
-  [-0.92, 0.645], // Base of A-pillar
+  [-0.92, 0.645],
   [-0.55, 0.605],
-  [-0.25, 0.568], // Top of windshield
-  [0.10, 0.558], // Roof crown width
-  [0.50, 0.530],
-  [0.96, 0.485], // Rear spear window tip
-  [1.45, 0.445], // Rear glass base
-  [1.88, 0.430], // Engine decklid grille width
-  [2.12, 0.485],
+  [-0.25, 0.568],
+  [0.10, 0.558],
+  [0.50, 0.525],
+  [0.96, 0.475],
+  [1.45, 0.425], // Narrow teardrop rear glass base creating broad 911 rear haunch shelves!
+  [1.85, 0.405],
+  [2.08, 0.440],
   [2.24, 0.420],
 ];
 
@@ -372,12 +382,12 @@ function sampleMonocoqueHalfProfile(x: number, nv: number): [number, number][] {
   const zCrown = Math.min(zMax * 0.82, evalSpline(x, CROWN_WIDTH_Z_KNOTS));
 
   const frontApproach = smoothstep(-1.62, -2.24, x);
-  const rearDeparture = smoothstep(1.58, 2.24, x);
-  const yBaseSill = 0.13 + frontApproach * 0.035 + rearDeparture * 0.065;
+  const rearDeparture = smoothstep(1.56, 2.24, x);
+  const yBaseSill = 0.13 + frontApproach * 0.035 + rearDeparture * 0.055;
   const yArchCut = sampleWheelArchCutoutY(x, yBaseSill);
 
   const hoodWeight = 1 - smoothstep(-0.98, -0.78, x);
-  const cabinWeight = smoothstep(-0.92, -0.62, x) * (1 - smoothstep(1.38, 1.72, x));
+  const cabinWeight = smoothstep(-0.92, -0.62, x) * (1 - smoothstep(1.42, 1.85, x));
 
   // Side intercooler intake recess on the Turbo S rear fender leading flank (`x = 0.56..0.90m`)
   const intakeLongitudinal =
@@ -390,16 +400,12 @@ function sampleMonocoqueHalfProfile(x: number, nv: number): [number, number][] {
     let z = 0;
 
     if (v <= 0.32) {
-      // Zone 1 (`v = 0 .. 0.32`): Centerline (`z = 0`) to Roof Rail / Sunken Frunk Hood Crease (`z = zCrown`)
       const u = v / 0.32;
       z = u * zCrown;
       const camber =
         cabinWeight * 0.018 * (1 - u * u) - hoodWeight * 0.012 * Math.sin(u * Math.PI);
       y = yCenter + camber;
     } else if (v <= 0.58) {
-      // Zone 2 (`v = 0.32 .. 0.58`):
-      // - Ahead of windshield: rises into the rounded 911 front fender pontoon (`yShoulder > yCenter`)
-      // - Along cabin: slopes down the side glass onto the broad 911 shoulder shelf (`yShoulder < yCenter`)
       const u = (v - 0.32) / 0.26;
       const shelfBlend = smoothstep(0.0, 1.0, u);
       const glassSlopeU = Math.min(1, u * 1.38);
@@ -415,7 +421,6 @@ function sampleMonocoqueHalfProfile(x: number, nv: number): [number, number][] {
         pontoonArch;
       z = lerp(zCrown, zMax * 0.94, Math.pow(u, 0.85));
     } else if (v <= 0.90) {
-      // Zone 3 (`v = 0.58 .. 0.90`): Upper & Lower Body Side Flank (`yShoulder` down to `yArchCut`)
       const u = (v - 0.58) / 0.32;
       const yFlankNominal = lerp(yShoulder, yBaseSill + 0.035, u);
       const yClampedMin = yArchCut + 0.022 + (1 - u) * 0.04;
@@ -429,7 +434,6 @@ function sampleMonocoqueHalfProfile(x: number, nv: number): [number, number][] {
         z -= intakeLongitudinal * intakeV * 0.048;
       }
     } else {
-      // Zone 4 (`v = 0.90 .. 1.00`): Wheel-Arch Lip / Rocker Sill Tuck-Under
       const u = (v - 0.90) / 0.10;
       const yTop = Math.max(lerp(yShoulder, yBaseSill + 0.035, 1.0), yArchCut + 0.022);
       y = lerp(yTop, yArchCut, u);
@@ -444,11 +448,6 @@ function sampleMonocoqueHalfProfile(x: number, nv: number): [number, number][] {
   return pts;
 }
 
-/**
- * Given longitudinal station `x` and target height `y` on the cabin tumblehome (`yShoulder <= y <= yCenter`),
- * interpolates the exact lateral body surface coordinate `z(x, y)` so side windows (`DLO`) can be defined
- * directly by their authentic 2D side-view `(x, y)` silhouette curves!
- */
 function sampleLateralSurfaceZAtXY(x: number, yTarget: number): number {
   const halfPts = sampleMonocoqueHalfProfile(x, 64);
   let bestZ = halfPts[20]![1];
@@ -591,7 +590,29 @@ function createUnifiedPorsche992BodyGeometry(): THREE.BufferGeometry {
     }
   }
 
-  for (let i = 0; i < nx; i++) {
+  // Add 2 extra water-tight rear-bumper lower wrap stations (`i = nx + 1` vertical lower bumper face at `y = 0.24m`,
+  // and `i = nx + 2` tucked-under rear valance sill at `x = 2.16m, y = 0.185m`) so the rear of the car is 100% closed!
+  const lastHalfPts = sampleMonocoqueHalfProfile(xMax, nv);
+  for (const [extraX, targetCenterY, tuckScaleZ] of [
+    [2.235, 0.235, 0.97],
+    [2.165, 0.185, 0.91],
+  ] as const) {
+    for (let k = -nv; k <= nv; k++) {
+      const j = Math.abs(k);
+      const signZ = k < 0 ? -1 : k > 0 ? 1 : 0;
+      const vFrac = j / nv;
+      const [, pzOrig] = lastHalfPts[j]!;
+      const pz = signZ * pzOrig * tuckScaleZ;
+      const py = lerp(targetCenterY, 0.185, Math.pow(vFrac, 0.75));
+      const vx = extraX + getPlanWrapShiftX(extraX, pz);
+
+      positions.push(vx, py, pz);
+      uvs.push(1.0, (pz + 0.96) / 1.92);
+    }
+  }
+
+  const totalStations = nx + 2;
+  for (let i = 0; i < totalStations; i++) {
     const r0 = i * rowStride;
     const r1 = (i + 1) * rowStride;
     for (let c = 0; c < rowStride - 1; c++) {
@@ -611,10 +632,6 @@ function createUnifiedPorsche992BodyGeometry(): THREE.BufferGeometry {
   return geo;
 }
 
-/**
- * Builds a flush-fitting compound-curved surface patch offset by `outwardOffset` from the monocoque body shell
- * over `[xStart..xEnd]` and cross-section parameter `[vStart..vEnd]`.
- */
 function createConformalBodyPatchGeometry(
   xStart: number,
   xEnd: number,
@@ -1525,168 +1542,288 @@ export function buildPorsche992TurboS(
   }
 
   // ---------------------------------------------------------------------------
-  // 6. 992.2 Rear Engine Decklid Grille, Low-Profile Sculpted Active Turbo S Rear Wing,
-  //    Full-Width Recessed Crimson LED Taillight Bar & Plan-Curved Rear Diffuser + Exhaust
+  // 6. Conformal 992.2 Rear Engine Decklid Grille, Sculpted Active Turbo S Rear Wing
+  //    with Side Winglets, Wrap-Around Recessed Taillight Visor & Conformal Rear Diffuser
   // ---------------------------------------------------------------------------
-  // Slatted Rear Engine Decklid Grille (`outbuildings.garage.porsche992TurboS.rearDecklidGrille`, `x = 1.56..1.90m`)
+  // A. Conformal Slatted Rear Engine Decklid Grille (`outbuildings.garage.porsche992TurboS.rearDecklidGrille`, `x = 1.54..1.86m`)
   const decklidGrilleGroup = new THREE.Group();
   decklidGrilleGroup.name = 'outbuildings.garage.porsche992TurboS.rearDecklidGrille';
-  decklidGrilleGroup.position.set(1.73, 0.902, 0);
-  decklidGrilleGroup.rotation.z = -0.10;
   carGroup.add(decklidGrilleGroup);
 
-  const grilleBase = new THREE.Mesh(
-    new THREE.BoxGeometry(0.32, 0.016, 0.80),
-    glossBlackTrimMat
+  const decklidBaseGeo = createConformalBodyPatchGeometry(
+    1.54,
+    1.86,
+    () => 0.0,
+    () => 0.255,
+    12,
+    18,
+    0.0028,
+    false
   );
-  grilleBase.name = 'outbuildings.garage.porsche992TurboS.rearDecklidGrille';
-  decklidGrilleGroup.add(grilleBase);
+  const decklidBaseMesh = new THREE.Mesh(decklidBaseGeo, glossBlackTrimMat);
+  decklidBaseMesh.name = 'outbuildings.garage.porsche992TurboS.rearDecklidGrille';
+  decklidGrilleGroup.add(decklidBaseMesh);
 
-  for (let s = -6; s <= 6; s++) {
+  // 9 longitudinal vertical intake slats + twin subtle central third-brake-light strips conformal to the decklid slope
+  for (let s = -5; s <= 5; s++) {
     if (s === 0) continue;
+    const isBrakeStrip = Math.abs(s) === 1;
+    const zPos = isBrakeStrip ? s * 0.022 : s * 0.068;
+    const yStart = evalSpline(1.56, CENTERLINE_Y_KNOTS) + 0.008;
+    const yEnd = evalSpline(1.84, CENTERLINE_Y_KNOTS) + 0.008;
+    const slatLen = Math.hypot(1.84 - 1.56, yEnd - yStart);
+    const slatPitch = Math.atan2(yEnd - yStart, 1.84 - 1.56);
     const slat = new THREE.Mesh(
-      new THREE.BoxGeometry(0.30, 0.022, 0.008),
-      Math.abs(s) === 1 ? crimsonTaillightMat : turboniteMat
+      new THREE.BoxGeometry(slatLen, isBrakeStrip ? 0.012 : 0.01, isBrakeStrip ? 0.008 : 0.006),
+      isBrakeStrip ? crimsonTaillightMat : turboniteMat
     );
-    slat.position.set(0, 0.006, s * 0.056);
+    slat.position.set(1.70, (yStart + yEnd) * 0.5, zPos);
+    slat.rotation.z = slatPitch;
     decklidGrilleGroup.add(slat);
   }
 
-  // Sculpted Low-Profile 992.2 Turbo S Active Rear Spoiler (`outbuildings.garage.porsche992TurboS.rearWing`)
+  // B. Authentic 992.2 Turbo S Active Rear Spoiler with Upturned Side Winglets (`outbuildings.garage.porsche992TurboS.rearWing`)
+  //    Built as a custom 3D swept aerofoil BufferGeometry that conforms to the plan-view curve and transverse camber of the 911 tail!
   const rearWingGroup = new THREE.Group();
   rearWingGroup.name = 'outbuildings.garage.porsche992TurboS.rearWing';
   carGroup.add(rearWingGroup);
 
-  const wingCurvePts: THREE.Vector3[] = [];
-  for (let i = 0; i <= 24; i++) {
-    const u = (i / 24) * 2 - 1;
-    const z = u * 0.70;
-    const x = 2.04 - u * u * 0.085;
-    const y = 0.942 + Math.abs(u) * 0.01;
-    wingCurvePts.push(new THREE.Vector3(x, y, z));
-  }
-  const wingCurve = new THREE.CatmullRomCurve3(wingCurvePts);
-  const wingBladeMesh = new THREE.Mesh(
-    new THREE.TubeGeometry(wingCurve, 32, 0.044, 14, false),
-    oceanBlueBodyMat
-  );
-  wingBladeMesh.scale.set(2.1, 0.24, 1.0);
-  wingBladeMesh.position.set(-2.04 * 1.1, 0.942 * 0.76, 0);
-  wingBladeMesh.name = 'outbuildings.garage.porsche992TurboS.rearWing';
-  wingBladeMesh.castShadow = true;
-  wingBladeMesh.receiveShadow = true;
-  rearWingGroup.add(wingBladeMesh);
+  {
+    const spanSegs = 36;
+    const chordSegs = 12;
+    const halfSpanZ = 0.66;
+    const wingPositions: number[] = [];
+    const wingIndices: number[] = [];
 
-  for (const sideZ of [-1, 1] as const) {
-    const ram = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.016, 0.02, 0.05, 12),
-      satinBlackAeroMat
-    );
-    ram.position.set(2.01, 0.912, sideZ * 0.36);
-    rearWingGroup.add(ram);
+    // Airfoil cross-section `(uChord = 0..1` around upper and lower surfaces)
+    for (let iz = 0; iz <= spanSegs; iz++) {
+      const tz = (iz / spanSegs) * 2 - 1; // -1 .. +1 across width
+      const z = tz * halfSpanZ;
+      const absTz = Math.abs(tz);
+
+      // Plan-view sweep & chord taper
+      const chord = lerp(0.22, 0.165, absTz * absTz);
+      const xLead = 1.86 + getPlanWrapShiftX(2.02, z) + absTz * absTz * 0.04;
+      // Height follows the rear decklid camber (`0.848m` center, curving down at outer tips and kicking up at the outer 8% winglets!)
+      const wingletKick = smoothstep(0.86, 1.0, absTz) * 0.026;
+      const yBase = 0.848 - absTz * absTz * 0.028 + wingletKick;
+
+      for (let ic = 0; ic <= chordSegs; ic++) {
+        const theta = (ic / chordSegs) * Math.PI * 2;
+        const cFrac = 0.5 - 0.5 * Math.cos(theta); // 0 at leading edge, 1 at trailing edge
+        const isUpper = theta <= Math.PI;
+        const thickness = 0.022 * Math.sin(Math.pow(cFrac, 0.65) * Math.PI);
+        const camberPitch = -cFrac * 0.012 + Math.sin(cFrac * Math.PI) * 0.008;
+
+        const px = xLead + cFrac * chord;
+        const py = yBase + camberPitch + (isUpper ? thickness * 0.65 : -thickness * 0.35);
+        wingPositions.push(px, py, z);
+      }
+    }
+
+    const cStride = chordSegs + 1;
+    for (let iz = 0; iz < spanSegs; iz++) {
+      for (let ic = 0; ic < chordSegs; ic++) {
+        const a = iz * cStride + ic;
+        const b = (iz + 1) * cStride + ic;
+        const c = (iz + 1) * cStride + ic + 1;
+        const d = iz * cStride + ic + 1;
+        wingIndices.push(a, c, b, a, d, c);
+      }
+    }
+
+    const wingGeo = new THREE.BufferGeometry();
+    wingGeo.setAttribute('position', new THREE.Float32BufferAttribute(wingPositions, 3));
+    wingGeo.setIndex(wingIndices);
+    wingGeo.computeVertexNormals();
+
+    const wingBladeMesh = new THREE.Mesh(wingGeo, oceanBlueBodyMat);
+    wingBladeMesh.name = 'outbuildings.garage.porsche992TurboS.rearWing';
+    wingBladeMesh.castShadow = true;
+    wingBladeMesh.receiveShadow = true;
+    rearWingGroup.add(wingBladeMesh);
+
+    // Short twin inboard hydraulic rams (`z = ±0.34m`) connecting the active wing to the decklid
+    for (const sideZ of [-1, 1] as const) {
+      const ram = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.015, 0.018, 0.048, 12),
+        satinBlackAeroMat
+      );
+      ram.position.set(1.95, 0.818, sideZ * 0.34);
+      rearWingGroup.add(ram);
+    }
   }
 
-  // Full-Width Recessed Crimson LED Taillight Bar (`outbuildings.garage.porsche992TurboS.taillightBar`, `x = 2.19m, y = 0.79m`)
+  // C. Full-Width Wrap-Around Recessed 992.2 LED Taillight Visor & Lightbar (`outbuildings.garage.porsche992TurboS.taillightBar`)
+  //    Wraps around the rear quarter panels (`z = ±0.79m, x = 1.98m`) to the center tail (`x = 2.155m, y = 0.722m`)!
   const taillightGroup = new THREE.Group();
   taillightGroup.name = 'outbuildings.garage.porsche992TurboS.taillightBar';
   carGroup.add(taillightGroup);
 
   const tailCurvePts: THREE.Vector3[] = [];
-  for (let i = 0; i <= 28; i++) {
-    const u = (i / 28) * 2 - 1;
-    const z = u * 0.78;
-    const x = 2.205 + getPlanWrapShiftX(2.21, z);
-    tailCurvePts.push(new THREE.Vector3(x, 0.792, z));
+  for (let i = 0; i <= 32; i++) {
+    const u = (i / 32) * 2 - 1;
+    const z = u * 0.79;
+    const x = 2.155 + getPlanWrapShiftX(2.15, z) - Math.pow(Math.abs(u), 2.2) * 0.045;
+    const y = 0.722 - u * u * 0.012;
+    tailCurvePts.push(new THREE.Vector3(x, y, z));
   }
   const tailCurve = new THREE.CatmullRomCurve3(tailCurvePts);
 
-  const tailHousing = new THREE.Mesh(
-    new THREE.TubeGeometry(tailCurve, 32, 0.026, 12, false),
+  // Dark recessed visor channel surround
+  const tailVisorSlot = new THREE.Mesh(
+    new THREE.TubeGeometry(tailCurve, 36, 0.028, 12, false),
     glossBlackTrimMat
   );
-  tailHousing.scale.set(1.0, 0.85, 1.0);
-  taillightGroup.add(tailHousing);
+  tailVisorSlot.scale.set(1.0, 0.78, 1.0);
+  taillightGroup.add(tailVisorSlot);
 
+  // Continuous glowing crimson-red 3D LED light strip
   const tailLedBlade = new THREE.Mesh(
-    new THREE.TubeGeometry(tailCurve, 36, 0.011, 10, false),
+    new THREE.TubeGeometry(tailCurve, 40, 0.0095, 10, false),
     crimsonTaillightMat
   );
   tailLedBlade.name = 'outbuildings.garage.porsche992TurboS.taillightBar';
-  tailLedBlade.position.set(0.012, 0, 0);
+  tailLedBlade.position.set(0.016, 0.004, 0);
   taillightGroup.add(tailLedBlade);
 
+  // Signature 992.2 outer 4-point LED rear brake light segments at left and right corners (`z = ±0.62..0.75m`)
+  for (const sideZ of [-1, 1] as const) {
+    for (const zOff of [0.63, 0.71] as const) {
+      const bz = sideZ * zOff;
+      const uNorm = bz / 0.79;
+      const bx = 2.155 + getPlanWrapShiftX(2.15, bz) - Math.pow(Math.abs(uNorm), 2.2) * 0.045 + 0.018;
+      const by = 0.722 - uNorm * uNorm * 0.012 - 0.012;
+      const brakeSeg = new THREE.Mesh(
+        new THREE.BoxGeometry(0.018, 0.008, 0.048),
+        crimsonTaillightMat
+      );
+      brakeSeg.position.set(bx, by, bz);
+      brakeSeg.rotation.y = sideZ * 0.34;
+      taillightGroup.add(brakeSeg);
+    }
+  }
+
   const tailSmokedLens = new THREE.Mesh(
-    new THREE.TubeGeometry(tailCurve, 32, 0.02, 12, false),
+    new THREE.TubeGeometry(tailCurve, 36, 0.021, 12, false),
     smokedRedLensMat
   );
-  tailSmokedLens.position.set(0.008, 0, 0);
+  tailSmokedLens.scale.set(1.0, 0.75, 1.0);
+  tailSmokedLens.position.set(0.01, 0, 0);
   taillightGroup.add(tailSmokedLens);
 
-  // Rear UK Number Plate (`992 TBS` on yellow acrylic plate at `x = 2.242m, y = 0.44m`)
+  // D. 992.2 Turbo S Outer Rear Bumper Intercooler Air-Outlet Vents (`z = ±0.71m, y = 0.42m`)
+  for (const sideZ of [-1, 1] as const) {
+    const vz = sideZ * 0.705;
+    const vx = 2.215 + getPlanWrapShiftX(2.22, vz);
+    const outletGroup = new THREE.Group();
+    outletGroup.position.set(vx, 0.43, vz);
+    outletGroup.rotation.y = sideZ * 0.42;
+    carGroup.add(outletGroup);
+
+    const outletRecess = new THREE.Mesh(
+      new THREE.BoxGeometry(0.032, 0.135, 0.095),
+      glossBlackTrimMat
+    );
+    outletGroup.add(outletRecess);
+
+    for (const vaneY of [-0.035, 0.0, 0.035] as const) {
+      const vane = new THREE.Mesh(
+        new THREE.BoxGeometry(0.038, 0.008, 0.088),
+        satinBlackAeroMat
+      );
+      vane.position.set(0.003, vaneY, 0);
+      outletGroup.add(vane);
+    }
+  }
+
+  // E. Conformal Lower Rear Valance / Venturi Diffuser, Recessed UK Number Plate & Quad/Oval Titanium Exhaust (`outbuildings.garage.porsche992TurboS.exhaust`)
+  const exhaustGroup = new THREE.Group();
+  exhaustGroup.name = 'outbuildings.garage.porsche992TurboS.exhaust';
+  carGroup.add(exhaustGroup);
+
+  // Build the satin-black lower rear bumper diffuser insert as a conformal curved surface sheet (`y = 0.195..0.415m, z = -0.64..+0.64m`)
+  {
+    const dCols = 28;
+    const dRows = 8;
+    const dPos: number[] = [];
+    const dIdx: number[] = [];
+    for (let r = 0; r <= dRows; r++) {
+      const ty = r / dRows; // 0 at bottom (0.195m), 1 at top (0.415m)
+      const py = lerp(0.195, 0.415, ty);
+      const baseX = lerp(2.195, 2.242, Math.sin(ty * Math.PI * 0.65));
+      // Taper width slightly toward top of valance trapezoid
+      const halfW = lerp(0.65, 0.58, ty);
+      for (let c = 0; c <= dCols; c++) {
+        const tz = (c / dCols) * 2 - 1;
+        const pz = tz * halfW;
+        const px = baseX + getPlanWrapShiftX(2.22, pz) + 0.004;
+        dPos.push(px, py, pz);
+      }
+    }
+    const dStride = dCols + 1;
+    for (let r = 0; r < dRows; r++) {
+      for (let c = 0; c < dCols; c++) {
+        const a = r * dStride + c;
+        const b = (r + 1) * dStride + c;
+        const d = (r + 1) * dStride + c + 1;
+        const e = r * dStride + c + 1;
+        dIdx.push(a, d, b, a, e, d);
+      }
+    }
+    const valanceGeo = new THREE.BufferGeometry();
+    valanceGeo.setAttribute('position', new THREE.Float32BufferAttribute(dPos, 3));
+    valanceGeo.setIndex(dIdx);
+    valanceGeo.computeVertexNormals();
+    const valanceMesh = new THREE.Mesh(valanceGeo, satinBlackAeroMat);
+    exhaustGroup.add(valanceMesh);
+  }
+
+  // Rear UK Number Plate (`992 TBS` on yellow acrylic plate set cleanly into the central rear bumper recess at `y = 0.35m`)
   const rearPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.012, 0.09, 0.40),
+    new THREE.BoxGeometry(0.012, 0.086, 0.39),
     new THREE.MeshStandardMaterial({
       map: createUkNumberPlateTexture(true),
       roughness: 0.24,
     })
   );
-  rearPlate.position.set(2.242, 0.44, 0);
+  rearPlate.position.set(2.246, 0.35, 0);
   carGroup.add(rearPlate);
 
-  // Plan-Curved Rear Venturi Diffuser & 992.2 Turbo S Oval Titanium Sport Exhaust (`outbuildings.garage.porsche992TurboS.exhaust`)
-  // Curved along `getPlanWrapShiftX(2.20, z)` so NO rectangular corners ever protrude past the rear fenders!
-  const exhaustGroup = new THREE.Group();
-  exhaustGroup.name = 'outbuildings.garage.porsche992TurboS.exhaust';
-  carGroup.add(exhaustGroup);
-
-  const diffuserCurvePts: THREE.Vector3[] = [];
-  for (let i = 0; i <= 24; i++) {
-    const u = (i / 24) * 2 - 1;
-    const z = u * 0.68;
-    const x = 2.185 + getPlanWrapShiftX(2.20, z);
-    diffuserCurvePts.push(new THREE.Vector3(x, 0.245, z));
-  }
-  const diffuserCurve = new THREE.CatmullRomCurve3(diffuserCurvePts);
-  const rearDiffuserValance = new THREE.Mesh(
-    new THREE.TubeGeometry(diffuserCurve, 28, 0.068, 10, false),
-    satinBlackAeroMat
-  );
-  rearDiffuserValance.scale.set(0.65, 1.15, 1.0);
-  rearDiffuserValance.position.set(2.185 * 0.35, -0.245 * 0.15, 0);
-  exhaustGroup.add(rearDiffuserValance);
-
-  // 4 Vertical aerodynamic diffuser strakes tucked cleanly under the center of the rear bumper
-  for (const sz of [-0.28, -0.095, 0.095, 0.28] as const) {
-    const sx = 2.19 + getPlanWrapShiftX(2.20, sz);
+  // 4 Vertical aerodynamic diffuser strakes tucked cleanly under the center of the rear valance
+  for (const sz of [-0.26, -0.09, 0.09, 0.26] as const) {
+    const sx = 2.205 + getPlanWrapShiftX(2.22, sz);
     const strake = new THREE.Mesh(
-      new THREE.BoxGeometry(0.11, 0.11, 0.012),
+      new THREE.BoxGeometry(0.085, 0.095, 0.012),
       satinBlackAeroMat
     );
-    strake.position.set(sx, 0.215, sz);
+    strake.position.set(sx, 0.225, sz);
     exhaustGroup.add(strake);
   }
 
-  // Twin Large Oval Porsche Turbo S Titanium Sport Exhaust Tailpipes (`z = ±0.50m`)
+  // Twin Large Oval Porsche Turbo S Titanium Sport Exhaust Tailpipes (`z = ±0.48m, y = 0.255m`)
   for (const sideZ of [-1, 1] as const) {
-    const ez = sideZ * 0.50;
-    const ex = 2.195 + getPlanWrapShiftX(2.20, ez);
+    const ez = sideZ * 0.48;
+    const ex = 2.212 + getPlanWrapShiftX(2.22, ez);
     const tailpipeOuter = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.054, 0.056, 0.095, 24, 1, true),
+      new THREE.CylinderGeometry(0.052, 0.054, 0.09, 24, 1, true),
       titaniumExhaustMat
     );
     tailpipeOuter.name = 'outbuildings.garage.porsche992TurboS.exhaust';
     tailpipeOuter.rotation.z = Math.PI / 2;
-    tailpipeOuter.scale.set(0.76, 1.0, 1.38);
-    tailpipeOuter.position.set(ex, 0.245, ez);
+    tailpipeOuter.rotation.y = sideZ * 0.18;
+    tailpipeOuter.scale.set(0.74, 1.0, 1.38);
+    tailpipeOuter.position.set(ex, 0.255, ez);
     exhaustGroup.add(tailpipeOuter);
 
     const tailpipeCore = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.048, 0.048, 0.08, 20),
+      new THREE.CylinderGeometry(0.046, 0.046, 0.075, 20),
       glossBlackTrimMat
     );
     tailpipeCore.rotation.z = Math.PI / 2;
-    tailpipeCore.scale.set(0.74, 1.0, 1.34);
-    tailpipeCore.position.set(ex - 0.008, 0.245, ez);
+    tailpipeCore.rotation.y = sideZ * 0.18;
+    tailpipeCore.scale.set(0.72, 1.0, 1.34);
+    tailpipeCore.position.set(ex - 0.006, 0.255, ez);
     exhaustGroup.add(tailpipeCore);
   }
 

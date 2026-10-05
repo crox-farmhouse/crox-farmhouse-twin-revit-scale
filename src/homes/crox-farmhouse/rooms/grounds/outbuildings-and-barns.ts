@@ -1825,56 +1825,9 @@ export function buildOutbuildingsAndBarns(
       metalness: 0.05,
     });
 
-    // 4 Horizontal Upper Wall Cornice Linear LED Battens (`y = 1.62m`, visible in cutaway & interior views)
-    for (const [bIdx, bu] of [
-      [1, 7.35],
-      [2, 10.4],
-    ] as const) {
-      for (const [sIdx, bv, inwardSignV] of [
-        [1, wallT + 0.024, 1],
-        [2, vWestRangeSouth - wallT - 0.024, -1],
-      ] as const) {
-        const battenLen = 1.84;
-        const housing = new THREE.Mesh(
-          new THREE.BoxGeometry(battenLen, 0.042, 0.036),
-          ledHousingMat
-        );
-        housing.name = `outbuildings.garage.ledLighting.wallBatten.${bIdx}.${sIdx}`;
-        housing.position.set(bu, 1.62, bv);
-        garageLedGroup.add(housing);
-
-        const diffuser = new THREE.Mesh(
-          new THREE.BoxGeometry(battenLen - 0.04, 0.028, 0.022),
-          coolWhiteLedTubeMat
-        );
-        diffuser.name = `outbuildings.garage.ledLighting.diffuser.${bIdx}.${sIdx}`;
-        diffuser.position.set(bu, 1.615, bv + inwardSignV * 0.012);
-        garageLedGroup.add(diffuser);
-      }
-    }
-
-    // 2 Vertical Cool-White Detailing Bay LED Wall Bars on the South Wall (`u = 7.02m` at exact hit point `[-15.005, 0.851, 20.809]` & `u = 8.82m`)
-    for (const [vIdx, vu] of [
-      [1, 7.02],
-      [2, 8.82],
-    ] as const) {
-      const vBarH = 1.28;
-      const vHousing = new THREE.Mesh(
-        new THREE.BoxGeometry(0.044, vBarH, 0.032),
-        ledHousingMat
-      );
-      vHousing.name = `outbuildings.garage.ledLighting.southVerticalBar.${vIdx}`;
-      vHousing.position.set(vu, 0.85, vWestRangeSouth - wallT - 0.018);
-      garageLedGroup.add(vHousing);
-
-      const vDiffuser = new THREE.Mesh(
-        new THREE.BoxGeometry(0.028, vBarH - 0.04, 0.02),
-        coolWhiteLedTubeMat
-      );
-      vDiffuser.name = `outbuildings.garage.ledLighting.southVerticalDiffuser.${vIdx}`;
-      vDiffuser.position.set(vu, 0.85, vWestRangeSouth - wallT - 0.03);
-      garageLedGroup.add(vDiffuser);
-    }
+    // Issue #2 ("Remove this off the back wall" at `[-15.014, 0.677, 20.769]`, `outbuildings.garage.ledLighting.southVerticalDiffuser.1`):
+    // Removed the vertical & horizontal LED bars from the Garage South (back) wall; kept only the 2 North over-door
+    // cornice LED battens (`v = wallT + 0.024`) plus the 4 overhead ceiling LED battens and cool-white PointLights.
 
     // 4 Overhead High-Bay Linear Cool-White LED Strips attached to `groundCeilingGroup` (`y = 2.02m`)
     const ceilingLedGroup = new THREE.Group();
@@ -3450,29 +3403,64 @@ export function buildOutbuildingsAndBarns(
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  addInteriorPlasterGableWall(
-    roofGroup,
-    uBarnEnd - partT,
-    uBarnEnd,
-    vInnerNorth + 0.002,
-    vInnerSouth - 0.002,
-    barnUpperTopY,
-    barnCeilEaveY,
-    barnCeilRidgeY,
-    'outbuildings.barnStablePartitionGable'
-  );
-  // Painted interior gable lining on the Stable side (`+x` at `u = 23.22..23.255m`) up to the Stable vaulted ceiling (`stableCeilRidgeY`)
-  addInteriorPlasterGableWall(
-    roofGroup,
-    uStableStart + wallT - 0.03,
-    uStableStart + wallT + 0.005,
-    vInnerNorth + 0.002,
-    vInnerSouth - 0.002,
-    barnUpperTopY,
-    stableCeilEaveY,
-    stableCeilRidgeY,
-    'outbuildings.stable.westGableInteriorPlaster'
-  );
+  // Issue #1 ("Make this a full height entrance" at `[0.883, 2.92, 16.92]`, `outbuildings.firstFloor.stableUpStairs`):
+  // Because `stableUpperFloorY = 2.08m` and `barnUpperTopY = 2.92m` (`0.84m` above the Stable floor), a full-height
+  // doorway entrance (`portalTopY = stableUpperFloorY + 2.00 = 4.08m`) extends up into the gable zone (`y = 2.92..4.08m`)
+  // across `v = 2.40..3.30m`. Build the gable walls around the `v = 2.40..3.30m, y = 2.92..4.08m` full-height entrance cutout!
+  const stableEntrancePortalTopY = stableUpperFloorY + 2.0; // 4.08m (2.00m full-height doorway above 2.08m floor)
+  {
+    const addGableWithPortalCutout = (
+      uMinG: number,
+      uMaxG: number,
+      ceilEaveY: number,
+      ceilRidgeY: number,
+      meshName: string
+    ): void => {
+      const vMinG = vInnerNorth + 0.002;
+      const vMaxG = vInnerSouth - 0.002;
+      const vMidG = (vMinG + vMaxG) * 0.5; // 2.855m
+      const halfSpanG = (vMaxG - vMinG) * 0.5; // 2.573m
+      const doorV0 = 2.4 - vMidG; // -0.455m
+      const doorV1 = 3.3 - vMidG; // +0.445m
+      // Polygon in `(v - vMidG, y)` coordinates with the central doorway cutout (`doorV0..doorV1, y = barnUpperTopY..stableEntrancePortalTopY`)
+      const geo = createExtrudedVYPolygon(
+        [
+          [-halfSpanG, barnUpperTopY],
+          [doorV0, barnUpperTopY],
+          [doorV0, stableEntrancePortalTopY],
+          [doorV1, stableEntrancePortalTopY],
+          [doorV1, barnUpperTopY],
+          [halfSpanG, barnUpperTopY],
+          [halfSpanG, ceilEaveY],
+          [0, ceilRidgeY],
+          [-halfSpanG, ceilEaveY],
+        ],
+        uMaxG - uMinG
+      );
+      const mesh = new THREE.Mesh(geo, warmRoomPlasterMat);
+      mesh.name = meshName;
+      mesh.userData.isArchitecturalShell = true;
+      mesh.position.set(uMinG, 0, vMidG);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      roofGroup.add(mesh);
+    };
+
+    addGableWithPortalCutout(
+      uBarnEnd - partT,
+      uBarnEnd,
+      barnCeilEaveY,
+      barnCeilRidgeY,
+      'outbuildings.barnStablePartitionGable'
+    );
+    addGableWithPortalCutout(
+      uBarnEnd - 0.025,
+      uBarnEnd + 0.005,
+      stableCeilEaveY,
+      stableCeilRidgeY,
+      'outbuildings.stable.westGableInteriorPlaster'
+    );
+  }
 
   // Issue #3 ("Bullnose these stairs correctly and improve the general carpentry" at `[0.471, 1.9, 16.881]`, `outbuildings.firstFloor.stableUpStep.2`):
   // Bespoke 3-Step Bullnose Light-Oak Staircase & Doorway Joinery Assembly (`outbuildings.firstFloor.stableUpStairs`)
@@ -3711,56 +3699,77 @@ export function buildOutbuildingsAndBarns(
       upStairsGroup.add(bottomBlock);
     }
 
-    // 8. Moulded Light-Oak Doorway Jamb Linings & Chamfered Architraves around the `u = 23.02..23.22m, v = 2.40..3.30m` Portal
-    const portalH = barnUpperTopY - stableUpperFloorY; // 2.92 - 2.08 = 0.84m up to eave, or full doorway portal
+    // 8. Issue #1 ("Make this a full height entrance" at `[0.883, 2.92, 16.92]`):
+    //    Full-Height (`2.00m` clear height above `stableUpperFloorY = 2.08m`, reaching `stableEntrancePortalTopY = 4.08m`)
+    //    Light-Oak Doorway Jamb Linings & Chamfered Architraves around the `u = 23.02..23.22m, v = 2.40..3.30m` Portal:
+    //    - Lower jambs & side architrave legs (`y <= barnUpperTopY = 2.92m`) live in `upStairsGroup` (`firstFloorGroup`)
+    //      with NO low header bar at `y = 2.92m`, so in 1st-floor cutaway mode the entrance is completely open at the top!
+    //    - Upper jambs, `portalHead` (`y = 4.08m`), and top `archHeader` (`y = 4.08m`) live in `roofGroup` framing the
+    //      full-height doorway cutout in `outbuildings.barnStablePartitionGable`!
+    const lowerJambH = barnUpperTopY - stableUpperFloorY; // 0.84m (up to cutaway eave line)
+    const upperJambH = stableEntrancePortalTopY - barnUpperTopY; // 1.16m (from eave line up to 4.08m full-height lintel)
     const jambT = 0.026;
     const archW = 0.058;
     const archT = 0.016;
     const doorUMid = uBarnEnd - partT * 0.5; // 23.12m
 
+    const upperPortalGroup = new THREE.Group();
+    upperPortalGroup.name = 'outbuildings.roof.stableEntranceUpperPortal';
+    roofGroup.add(upperPortalGroup);
+
     for (const sideV of [-1, 1] as const) {
-      const jamb = new THREE.Mesh(
-        new THREE.BoxGeometry(partT + 0.008, portalH, jambT),
+      const vz = stairCenterV + sideV * (stairOpeningW * 0.5 - jambT * 0.5);
+      const lowerJamb = new THREE.Mesh(
+        new THREE.BoxGeometry(partT + 0.008, lowerJambH, jambT),
         lightJoineryOakMat
       );
-      jamb.position.set(
-        doorUMid,
-        stableUpperFloorY + portalH * 0.5,
-        stairCenterV + sideV * (stairOpeningW * 0.5 - jambT * 0.5)
+      lowerJamb.position.set(doorUMid, stableUpperFloorY + lowerJambH * 0.5, vz);
+      lowerJamb.castShadow = true;
+      upStairsGroup.add(lowerJamb);
+
+      const upperJamb = new THREE.Mesh(
+        new THREE.BoxGeometry(partT + 0.008, upperJambH, jambT),
+        lightJoineryOakMat
       );
-      jamb.castShadow = true;
-      upStairsGroup.add(jamb);
+      upperJamb.position.set(doorUMid, barnUpperTopY + upperJambH * 0.5, vz);
+      upperJamb.castShadow = true;
+      upperPortalGroup.add(upperJamb);
     }
 
     const portalHead = new THREE.Mesh(
       new THREE.BoxGeometry(partT + 0.008, jambT, stairOpeningW),
       lightJoineryOakMat
     );
-    portalHead.position.set(doorUMid, barnUpperTopY - jambT * 0.5, stairCenterV);
-    upStairsGroup.add(portalHead);
+    portalHead.position.set(doorUMid, stableEntrancePortalTopY - jambT * 0.5, stairCenterV);
+    upperPortalGroup.add(portalHead);
 
     for (const sideU of [-1, 1] as const) {
       const uFace = doorUMid + sideU * (partT * 0.5 + archT * 0.5);
       const legBottomY = sideU < 0 ? mezzanineFloorY + 0.14 : stableUpperFloorY;
-      const legH = barnUpperTopY - legBottomY + archW;
+      const lowerLegH = barnUpperTopY - legBottomY;
+      const upperLegH = stableEntrancePortalTopY - barnUpperTopY + archW;
       for (const sideV of [-1, 1] as const) {
-        const archLeg = new THREE.Mesh(
-          new THREE.BoxGeometry(archT, legH, archW),
+        const vz = stairCenterV + sideV * (stairOpeningW * 0.5 + archW * 0.5 - 0.01);
+        const lowerArchLeg = new THREE.Mesh(
+          new THREE.BoxGeometry(archT, lowerLegH, archW),
           lightJoineryOakPostMat
         );
-        archLeg.position.set(
-          uFace,
-          legBottomY + legH * 0.5,
-          stairCenterV + sideV * (stairOpeningW * 0.5 + archW * 0.5 - 0.01)
+        lowerArchLeg.position.set(uFace, legBottomY + lowerLegH * 0.5, vz);
+        upStairsGroup.add(lowerArchLeg);
+
+        const upperArchLeg = new THREE.Mesh(
+          new THREE.BoxGeometry(archT, upperLegH, archW),
+          lightJoineryOakPostMat
         );
-        upStairsGroup.add(archLeg);
+        upperArchLeg.position.set(uFace, barnUpperTopY + upperLegH * 0.5, vz);
+        upperPortalGroup.add(upperArchLeg);
       }
       const archHeader = new THREE.Mesh(
         new THREE.BoxGeometry(archT, archW, stairOpeningW + archW * 2 - 0.02),
         lightJoineryOakPostMat
       );
-      archHeader.position.set(uFace, barnUpperTopY + archW * 0.5 - 0.008, stairCenterV);
-      upStairsGroup.add(archHeader);
+      archHeader.position.set(uFace, stableEntrancePortalTopY + archW * 0.5 - 0.008, stairCenterV);
+      upperPortalGroup.add(archHeader);
     }
   }
 
