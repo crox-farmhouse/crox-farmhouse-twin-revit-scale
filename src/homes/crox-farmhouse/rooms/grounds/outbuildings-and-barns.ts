@@ -2029,21 +2029,21 @@ export function buildOutbuildingsAndBarns(
   const stableCeilEaveY =
     stableCeilRidgeY - 2.575 * ((stableRidgeH - stableUpperEaveH) / 3.055); // 3.507m vaulted ceiling eave in Stable
 
-  // Issue #4 & #5: Seamless Garage Resin Floor extension into the recessed East Wall Workbench Alcove (`u = 12.07..12.82m, v = 1.20..5.12m`)
+  // Issue #2 & #3: Seamless Garage Resin Floor extension into the shortened/shifted East Wall Workbench Alcove (`u = 12.07..12.82m, v = 1.63..5.428m`)
   const benchAlcoveFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.75, garageFloorThickness, 3.92),
+    new THREE.BoxGeometry(0.75, garageFloorThickness, 3.798),
     garageResinFloorMat
   );
   benchAlcoveFloor.name = 'outbuildings.garage.resinFloor.alcove';
   benchAlcoveFloor.position.set(
     uStoreStart + 0.375,
     garageFloorTopY - garageFloorThickness * 0.5,
-    (1.2 + 5.12) * 0.5
+    (1.63 + 5.428) * 0.5
   );
   benchAlcoveFloor.receiveShadow = true;
   groundGroup.add(benchAlcoveFloor);
 
-  // Store Ground Floor Slab (`u = 12.82..14.96m` main floor + `u = 12.31..12.82m, v = 0.28..1.20m` North entry strip)
+  // Store Ground Floor Slab (`u = 12.82..14.96m` main floor + `u = 12.31..12.82m, v = 0.28..1.63m` North pass-through corridor behind the Golf Simulator)
   const storeFloorTopY = -0.4;
   const storeFloor = new THREE.Mesh(
     new THREE.BoxGeometry(2.14, 0.12, eastRangeInternalV),
@@ -2059,11 +2059,11 @@ export function buildOutbuildingsAndBarns(
   groundGroup.add(storeFloor);
 
   const storeNorthEntryFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.51, 0.12, 0.92),
+    new THREE.BoxGeometry(0.51, 0.12, 1.35),
     barnFloorMat
   );
   storeNorthEntryFloor.name = 'outbuildings.store.floor.northEntry';
-  storeNorthEntryFloor.position.set(12.31 + 0.51 * 0.5, storeFloorTopY - 0.06, 0.28 + 0.92 * 0.5);
+  storeNorthEntryFloor.position.set(12.31 + 0.51 * 0.5, storeFloorTopY - 0.06, 0.28 + 1.35 * 0.5);
   storeNorthEntryFloor.receiveShadow = true;
   groundGroup.add(storeNorthEntryFloor);
 
@@ -2223,11 +2223,18 @@ export function buildOutbuildingsAndBarns(
   stableFloor.receiveShadow = true;
   groundGroup.add(stableFloor);
 
-  // Issue #4 & Issue #5 ("Put it against this wall and cut it in to make use of the dead space behind, make it slightly longer"
-  // at `[-10.226, -0.27, 17.512]`, `u = 12.07m..12.31m` Garage-to-Store partition wall):
-  // Cut a recessed workbench alcove opening across `v = 1.20m..5.12m, y = garageFloorTopY (-0.50m) .. 1.42m`
-  // using 4 non-overlapping wall segments so the `3.88m` long (`v = 1.22..5.10m`) tool bench recesses cleanly
-  // through `u = 12.07..12.31m` into the Store room dead space (`u = 12.31..12.82m`):
+  // Issue #2 ("Have this unit wrap around the corner" at `[-10.064, 0.482, 19.713]`) &
+  // Issue #3 ("shortern the unit slightly and have a door here which goes through to the bar, it will open up behind the back of the golf simulator. Have a red light above which goes red if someone is playing golf" at `[-10.37, 0.713, 15.833]`):
+  // - Shortened the recessed workbench alcove on the North end to `v = 1.63m` and extended it South to `v = 5.428m` so the L-shaped workbench wraps around the SE corner (`v = 5.428m`).
+  // - Cut a full-height doorway (`v = 0.50m..1.36m, y = garageFloorTopY (-0.50m) .. 1.50m`) in the North bay of the Garage East wall (`u = 12.07..12.31m`),
+  //   fitted with an interactive Hinged Solid Oak Pass-Through Door (`outbuildings.garage.golfPassThroughDoor`) opening behind the back of the Golf Simulator,
+  //   and crowned with an illuminated Red Golf Warning Indicator Light (`outbuildings.garage.golfWarningLight`) above the door!
+  const garagePassDoorVMin = 0.50;
+  const garagePassDoorVMax = 1.36;
+  const garagePassDoorTopY = 1.50;
+  const benchAlcoveVMin = 1.63;
+  const benchAlcoveVMax = vEastRangeSouth - wallT - 0.002; // 5.428m
+
   // 1. Lower sill / step wall (`y = barnLowerFloorY (-0.70m) .. garageFloorTopY (-0.50m)`): full span `vInnerNorth .. vInnerSouth`
   addOutbuildingBrickWall(
     groundGroup,
@@ -2236,11 +2243,11 @@ export function buildOutbuildingsAndBarns(
     barnLowerFloorY,
     garageFloorTopY,
     vEastRangeNorth + wallT + 0.002,
-    vEastRangeSouth - wallT - 0.002,
+    benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2. North pier (`v = 0.282m .. 1.20m`): `y = garageFloorTopY (-0.50m) .. eastRangeGroundTopY (1.94m)`
+  // 2a. North-most corner jamb pier (`v = 0.282m .. 0.50m`): `y = garageFloorTopY (-0.50m) .. eastRangeGroundTopY (1.94m)`
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -2248,44 +2255,55 @@ export function buildOutbuildingsAndBarns(
     garageFloorTopY,
     eastRangeGroundTopY,
     vEastRangeNorth + wallT + 0.002,
-    1.2,
+    garagePassDoorVMin,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 3. South pier (`v = 5.12m .. 5.428m`): `y = garageFloorTopY (-0.50m) .. eastRangeGroundTopY (1.94m)`
+  // 2b. Over-door lintel (`v = 0.50m .. 1.36m`): `y = 1.50m .. eastRangeGroundTopY (1.94m)`
+  addOutbuildingBrickWall(
+    groundGroup,
+    uStoreStart,
+    uStoreStart + 0.24,
+    garagePassDoorTopY,
+    eastRangeGroundTopY,
+    garagePassDoorVMin,
+    garagePassDoorVMax,
+    ['+x', '-x', '+z', '-z'],
+    warmRoomPlasterMat
+  );
+  // 2c. Center pier between the Pass-Through Door and the Recessed Workbench Alcove (`v = 1.36m .. 1.63m`)
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
     uStoreStart + 0.24,
     garageFloorTopY,
     eastRangeGroundTopY,
-    5.12,
-    vEastRangeSouth - wallT - 0.002,
+    garagePassDoorVMax,
+    benchAlcoveVMin,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 4. Upper lintel header above the recessed workbench (`v = 1.20m .. 5.12m, y = 1.42m .. eastRangeGroundTopY (1.94m)`)
-  // Attached to `groundCeilingGroup` so top-down cutaway mode hides the lintel above the recessed workbench!
+  // 3. Upper lintel header above the recessed workbench (`v = 1.63m .. 5.428m, y = 1.42m .. eastRangeGroundTopY (1.94m)`)
   addOutbuildingBrickWall(
     groundCeilingGroup,
     uStoreStart,
     uStoreStart + 0.24,
     1.42,
     eastRangeGroundTopY,
-    1.2,
-    5.12,
+    benchAlcoveVMin,
+    benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // Painted plasterboard studwork alcove enclosure inside the Store dead space (`u = 12.31..12.84m, v = 1.16..5.16m`)
+  // Painted plasterboard studwork alcove enclosure inside the Store dead space (`u = 12.31..12.85m, v = 1.59..5.428m`)
   addOutbuildingBrickWall(
     groundGroup,
     12.8,
     12.85,
     garageFloorTopY,
     1.42,
-    1.16,
-    5.16,
+    benchAlcoveVMin - 0.04,
+    benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
@@ -2295,19 +2313,8 @@ export function buildOutbuildingsAndBarns(
     12.8,
     garageFloorTopY,
     1.42,
-    1.16,
-    1.2,
-    ['+x', '-x', '+z', '-z'],
-    warmRoomPlasterMat
-  );
-  addOutbuildingBrickWall(
-    groundGroup,
-    uStoreStart + 0.24,
-    12.8,
-    garageFloorTopY,
-    1.42,
-    5.12,
-    5.16,
+    benchAlcoveVMin - 0.04,
+    benchAlcoveVMin,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
@@ -2317,11 +2324,228 @@ export function buildOutbuildingsAndBarns(
     12.85,
     1.42,
     1.47,
-    1.16,
-    5.16,
+    benchAlcoveVMin - 0.04,
+    benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
+
+  // Interactive Hinged Solid Oak Pass-Through Door (`outbuildings.garage.golfPassThroughDoor`) & Threshold Step
+  {
+    const passDoorW = garagePassDoorVMax - garagePassDoorVMin; // 0.86m
+    const passDoorH = garagePassDoorTopY - garageFloorTopY;     // 2.00m
+    const passDoorCenterV = (garagePassDoorVMin + garagePassDoorVMax) * 0.5; // 0.93m
+    const passDoorCenterU = uStoreStart + 0.12; // 12.19m
+
+    const passDoorGroup = new THREE.Group();
+    passDoorGroup.name = 'outbuildings.garage.golfPassThroughDoor';
+    passDoorGroup.userData.zone = 'courtyard';
+    passDoorGroup.position.set(passDoorCenterU, garageFloorTopY, passDoorCenterV);
+    groundGroup.add(passDoorGroup);
+
+    // Solid light-oak threshold step inside the doorway (`y = 0..0.10m`, bridging `garageFloorTopY = -0.50m` to `storeFloorTopY = -0.40m`)
+    const thresholdStep = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, 0.10, passDoorW + 0.04),
+      lightJoineryOakMat
+    );
+    thresholdStep.name = 'outbuildings.garage.golfPassThroughDoor.step';
+    thresholdStep.position.set(0.02, 0.05, 0);
+    thresholdStep.receiveShadow = true;
+    passDoorGroup.add(thresholdStep);
+
+    // Solid Light-Oak Door Frame Jambs, Head Lining & Dual-Face Architraves
+    const jambT = 0.032;
+    const jambD = 0.252;
+    for (const sideZ of [-1, 1] as const) {
+      const jamb = new THREE.Mesh(
+        new THREE.BoxGeometry(jambD, passDoorH, jambT),
+        lightJoineryOakMat
+      );
+      jamb.position.set(0, passDoorH * 0.5, sideZ * (passDoorW * 0.5 - jambT * 0.5));
+      passDoorGroup.add(jamb);
+    }
+    const headJamb = new THREE.Mesh(
+      new THREE.BoxGeometry(jambD, jambT, passDoorW),
+      lightJoineryOakMat
+    );
+    headJamb.position.set(0, passDoorH - jambT * 0.5, 0);
+    passDoorGroup.add(headJamb);
+
+    for (const faceX of [-0.126, 0.126] as const) {
+      for (const sideZ of [-1, 1] as const) {
+        const legArch = new THREE.Mesh(
+          new THREE.BoxGeometry(0.016, passDoorH + 0.06, 0.058),
+          lightJoineryOakMat
+        );
+        legArch.position.set(faceX, (passDoorH + 0.06) * 0.5, sideZ * (passDoorW * 0.5 + 0.012));
+        passDoorGroup.add(legArch);
+      }
+      const headArch = new THREE.Mesh(
+        new THREE.BoxGeometry(0.016, 0.058, passDoorW + 0.14),
+        lightJoineryOakMat
+      );
+      headArch.position.set(faceX, passDoorH + 0.03, 0);
+      passDoorGroup.add(headArch);
+    }
+
+    // Hinged 4-Panel Solid Light-Oak Door Leaf (`outbuildings.garage.golfPassThroughDoor.leafPivot`)
+    const leafW = passDoorW - jambT * 2 - 0.008; // 0.788m
+    const leafH = passDoorH - jambT - 0.105;     // 1.863m (clears the 0.10m threshold step)
+    const leafT = 0.044;
+
+    const leafPivot = new THREE.Group();
+    leafPivot.name = 'outbuildings.garage.golfPassThroughDoor.leafPivot';
+    leafPivot.position.set(0, 0.102, -leafW * 0.5);
+    passDoorGroup.add(leafPivot);
+
+    const doorSlab = new THREE.Mesh(
+      new THREE.BoxGeometry(leafT, leafH, leafW),
+      lightJoineryOakMat
+    );
+    doorSlab.name = 'outbuildings.garage.golfPassThroughDoor.slab';
+    doorSlab.position.set(0, leafH * 0.5, leafW * 0.5);
+    doorSlab.castShadow = true;
+    doorSlab.receiveShadow = true;
+    leafPivot.add(doorSlab);
+
+    // Brushed-Brass Lever Handles on both Garage (`-x`) and Simulator/Barn (`+x`) faces
+    const doorBrassMat = new THREE.MeshStandardMaterial({
+      color: 0xd4af37,
+      roughness: 0.24,
+      metalness: 0.86,
+    });
+    const handleZ = leafW - 0.065;
+    const handleY = 0.94;
+    for (const sideX of [-1, 1] as const) {
+      const rose = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.026, 0.026, 0.01, 16),
+        doorBrassMat
+      );
+      rose.rotation.z = Math.PI / 2;
+      rose.position.set(sideX * (leafT * 0.5 + 0.005), handleY, handleZ);
+      leafPivot.add(rose);
+
+      const lever = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.009, 0.008, 0.115, 12),
+        doorBrassMat
+      );
+      lever.rotation.x = Math.PI / 2;
+      lever.position.set(sideX * (leafT * 0.5 + 0.042), handleY, handleZ - 0.045);
+      leafPivot.add(lever);
+    }
+
+    ctx.interactions.registerHingedDoor(
+      passDoorGroup,
+      leafPivot,
+      new THREE.Vector3(0, 0, 0),
+      'y',
+      -Math.PI * 0.45
+    );
+
+    // Illuminated Red "GOLF IN PLAY" Warning Indicator Light Box (`outbuildings.garage.golfWarningLight`)
+    // Mounted directly above the door architrave (`y = passDoorH + 0.15m = 2.15m` above `garageFloorTopY`, i.e. `y = 1.65m` world)
+    const warnCanvas = document.createElement('canvas');
+    warnCanvas.width = 512;
+    warnCanvas.height = 192;
+    const wCtx = warnCanvas.getContext('2d');
+    if (wCtx) {
+      const bgGrad = wCtx.createLinearGradient(0, 0, 0, 192);
+      bgGrad.addColorStop(0, '#c40e0e');
+      bgGrad.addColorStop(0.5, '#ff1e1e');
+      bgGrad.addColorStop(1, '#9e0808');
+      wCtx.fillStyle = bgGrad;
+      wCtx.fillRect(0, 0, 512, 192);
+
+      wCtx.strokeStyle = '#ffaaaa';
+      wCtx.lineWidth = 6;
+      wCtx.strokeRect(10, 10, 492, 172);
+
+      wCtx.fillStyle = '#ffffff';
+      wCtx.font = 'bold 46px sans-serif';
+      wCtx.textAlign = 'center';
+      wCtx.textBaseline = 'middle';
+      wCtx.fillText('GOLF IN PLAY', 256, 76);
+
+      wCtx.fillStyle = '#ffe0e0';
+      wCtx.font = 'bold 26px sans-serif';
+      wCtx.fillText('CAUTION — SIMULATOR ACTIVE', 256, 134);
+    }
+    const warnTex = new THREE.CanvasTexture(warnCanvas);
+    warnTex.colorSpace = THREE.SRGBColorSpace;
+
+    const redLensMat = new THREE.MeshStandardMaterial({
+      map: warnTex,
+      emissiveMap: warnTex,
+      color: 0xff2222,
+      emissive: new THREE.Color(0xff1414),
+      emissiveIntensity: 2.1,
+      roughness: 0.18,
+      metalness: 0.05,
+    });
+    const rubyBeaconMat = new THREE.MeshStandardMaterial({
+      color: 0xff1111,
+      emissive: new THREE.Color(0xff0808),
+      emissiveIntensity: 2.4,
+      roughness: 0.14,
+      metalness: 0.1,
+    });
+    const housingDarkMat = new THREE.MeshStandardMaterial({
+      color: 0x1c1f24,
+      roughness: 0.36,
+      metalness: 0.72,
+    });
+
+    const warnLightGroup = new THREE.Group();
+    warnLightGroup.name = 'outbuildings.garage.golfWarningLight';
+    warnLightGroup.userData.golfInPlay = true;
+    warnLightGroup.position.set(0, passDoorH + 0.15, 0);
+    passDoorGroup.add(warnLightGroup);
+
+    // Mount warning light box on both the Garage face (`-x = -0.15m`) and the Simulator/Store face (`+x = +0.15m`)
+    for (const [fIdx, sideX, rotY] of [
+      [1, -0.152, -Math.PI / 2],
+      [2, 0.152, Math.PI / 2],
+    ] as const) {
+      const boxHousing = new THREE.Mesh(
+        new THREE.BoxGeometry(0.058, 0.135, 0.38),
+        housingDarkMat
+      );
+      boxHousing.name = `outbuildings.garage.golfWarningLight.housing.${fIdx}`;
+      boxHousing.position.set(sideX, 0, 0);
+      boxHousing.castShadow = true;
+      warnLightGroup.add(boxHousing);
+
+      const brassBezel = new THREE.Mesh(
+        new THREE.BoxGeometry(0.012, 0.145, 0.39),
+        doorBrassMat
+      );
+      brassBezel.position.set(sideX + (sideX < 0 ? -0.026 : 0.026), 0, 0);
+      warnLightGroup.add(brassBezel);
+
+      const lensPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.356, 0.114),
+        redLensMat
+      );
+      lensPlane.name = `outbuildings.garage.golfWarningLight.lens.${fIdx}`;
+      lensPlane.rotation.y = rotY;
+      lensPlane.position.set(sideX + (sideX < 0 ? -0.033 : 0.033), 0, 0);
+      warnLightGroup.add(lensPlane);
+
+      // Ruby-red cylindrical warning beacon dome on top of the housing
+      const beaconDome = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.026, 0.030, 0.044, 16),
+        rubyBeaconMat
+      );
+      beaconDome.name = `outbuildings.garage.golfWarningLight.beacon.${fIdx}`;
+      beaconDome.position.set(sideX, 0.088, 0);
+      warnLightGroup.add(beaconDome);
+    }
+
+    const redWarnPointLight = new THREE.PointLight(0xff1818, 1.45, 2.8, 1.6);
+    redWarnPointLight.name = 'outbuildings.garage.golfWarningLight.pointLight';
+    redWarnPointLight.position.set(-0.24, 0.02, 0);
+    warnLightGroup.add(redWarnPointLight);
+  }
   addInteriorPlasterGableWall(
     roofGroup,
     uStoreStart,
