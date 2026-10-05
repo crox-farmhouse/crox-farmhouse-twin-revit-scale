@@ -1688,10 +1688,13 @@ export function buildBarnMezzanineRetroLounge(
   // Issue #3 ("In the same [way] of the stairs" at `[-1.83, 2.193, 18.809]`, `outbuildings.mezzanine.beanbag.navyFront`):
   // Moved the front beanbag out of the spiral staircase landing zone (`u = 20.22m, v = 4.22m`) to `(u = 19.62m, v = 3.24m)`
   // on the South edge of the PS1 gaming rug so the spiral staircase landing (`u = 20.15..22.24m, v = 3.56..5.35m`) is 100% clear!
+  // Issue #4 ("Move this beanbag its clipping the ercol tv unit" at `[-2.631, 2.162, 17.369]`, `outbuildings.mezzanine.beanbag.navyFront`):
+  // Relocated to `(u = 19.72m, v = 3.96m)` in the South-West lounge area with `+0.36m` radial clearance from the Ercol TV unit
+  // (`u = 18.82..19.26m, v = 1.60..3.16m`) and `+0.85m` clearance from the spiral staircase landing (`u = 21.12m, v = 3.54..4.85m`)!
   const navyBeanbagFront = new THREE.Mesh(beanbagGeoLarge, terracottaCorduroyMat);
   navyBeanbagFront.name = 'outbuildings.mezzanine.beanbag.navyFront';
-  navyBeanbagFront.position.set(19.62, mezzanineFloorY, 3.24);
-  navyBeanbagFront.rotation.y = -2.18;
+  navyBeanbagFront.position.set(19.72, mezzanineFloorY, 3.96);
+  navyBeanbagFront.rotation.y = -2.28;
   navyBeanbagFront.castShadow = true;
   navyBeanbagFront.receiveShadow = true;
   loungeSeatingGroup.add(navyBeanbagFront);

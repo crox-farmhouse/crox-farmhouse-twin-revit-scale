@@ -3698,29 +3698,40 @@ export function buildOutbuildingsAndBarns(
   mezzanineFrontFascia.castShadow = true;
   firstFloorGroup.add(mezzanineFrontFascia);
 
-  // Issue #5 ("Make this oak lighter" at `[-3.484, 2.492, 17.577]`):
-  // Full-width Front Mezzanine Light-Oak & Toughened Glass Balustrade (`v = 0.34..5.37m`, `handrailLenV = 5.03m`)
-  const handrailLenV = eastRangeInternalV - 0.12; // 5.03m
+  // Issue #2 ("This should match the bannisters too soft. tounded top" at `[-3.441, 2.492, 18.633]`, `outbuildings.firstFloor.mezzanineHandrail`) &
+  // Issue #3 ("So should this" at `[-0.924, 2.462, 17.676]`, `outbuildings.barn.mezzanineStairwellGuardrail`):
+  // Unified both the Front Mezzanine Balustrade (`u = 18.76m, v = 0.36..5.35m`) and the Stairwell Guardrails
+  // (`v = 3.54m, u = 21.12..22.24m` and `u = 21.12m, v = 4.85..5.37m`) to match `outbuildings.firstFloor.stableUpStairs`
+  // and `outbuildings.barn.spiralStaircase`:
+  // - Rounded cylindrical solid-oak top handrails (`CylinderGeometry(0.026, 0.026, len, 20)`) at `y = mezzanineFloorY + 0.86m`
+  // - Turned cylindrical solid-oak newel posts (`CylinderGeometry(0.034, 0.038, 0.92, 20)`) with spherical finial caps (`SphereGeometry(0.042, 16, 12)`)
+  // - Toughened glass banister panels with brushed stainless-steel cylindrical stand-off clamps (`CylinderGeometry(0.016, 0.016, 0.036, 14)`)
+  //   and rounded-top solid-oak bottom shoe rails!
+  const balustradeClampMat = new THREE.MeshStandardMaterial({
+    color: 0xd8dde4,
+    roughness: 0.2,
+    metalness: 0.9,
+  });
+
+  const handrailLenV = 5.35 - 0.36; // 4.99m between outer turned newel posts
   const handrailCenterV = vMidCenter(); // 2.855m
-  const mezzanineTopRailGeo = new THREE.BoxGeometry(0.08, 0.065, handrailLenV);
-  applyOutbuildingFloorUVs(mezzanineTopRailGeo, uMezzanineFront + 0.08, mezzanineFloorY + 0.92, handrailCenterV, 0.5);
   const mezzanineTopRail = new THREE.Mesh(
-    mezzanineTopRailGeo,
+    new THREE.CylinderGeometry(0.026, 0.026, handrailLenV, 20),
     lightJoineryOakMat
   );
   mezzanineTopRail.name = 'outbuildings.firstFloor.mezzanineHandrail';
-  mezzanineTopRail.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.92, handrailCenterV);
+  mezzanineTopRail.rotation.x = Math.PI / 2;
+  mezzanineTopRail.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.86, handrailCenterV);
   mezzanineTopRail.castShadow = true;
   firstFloorGroup.add(mezzanineTopRail);
 
-  const mezzanineBottomRailGeo = new THREE.BoxGeometry(0.07, 0.05, handrailLenV);
-  applyOutbuildingFloorUVs(mezzanineBottomRailGeo, uMezzanineFront + 0.08, mezzanineFloorY + 0.08, handrailCenterV, 0.5);
   const mezzanineBottomRail = new THREE.Mesh(
-    mezzanineBottomRailGeo,
+    new THREE.CylinderGeometry(0.022, 0.022, handrailLenV, 18),
     lightJoineryOakMat
   );
   mezzanineBottomRail.name = 'outbuildings.firstFloor.mezzanineBottomRail';
-  mezzanineBottomRail.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.08, handrailCenterV);
+  mezzanineBottomRail.rotation.x = Math.PI / 2;
+  mezzanineBottomRail.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.07, handrailCenterV);
   firstFloorGroup.add(mezzanineBottomRail);
 
   for (const [pIdx, pv] of [
@@ -3728,16 +3739,22 @@ export function buildOutbuildingsAndBarns(
     [2, 2.855],
     [3, 5.35],
   ] as const) {
-    const newelPostGeo = new THREE.BoxGeometry(0.085, 0.98, 0.085);
-    applyOutbuildingFloorUVs(newelPostGeo, uMezzanineFront + 0.08, mezzanineFloorY + 0.49, pv, 0.5);
     const newelPost = new THREE.Mesh(
-      newelPostGeo,
+      new THREE.CylinderGeometry(0.034, 0.038, 0.92, 20),
       lightJoineryOakPostMat
     );
     newelPost.name = `outbuildings.firstFloor.mezzaninePost.${pIdx}`;
-    newelPost.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.49, pv);
+    newelPost.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.46, pv);
     newelPost.castShadow = true;
     firstFloorGroup.add(newelPost);
+
+    const newelCap = new THREE.Mesh(
+      new THREE.SphereGeometry(0.042, 16, 12),
+      lightJoineryOakMat
+    );
+    newelCap.name = `outbuildings.firstFloor.mezzaninePost.${pIdx}`;
+    newelCap.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.934, pv);
+    firstFloorGroup.add(newelCap);
   }
 
   for (const [gIdx, gv] of [
@@ -3745,94 +3762,131 @@ export function buildOutbuildingsAndBarns(
     [2, 4.1025],
   ] as const) {
     const glassPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, 0.78, 2.38),
+      new THREE.BoxGeometry(0.014, 0.72, 2.38),
       windowGlassMat
     );
     glassPanel.name = `outbuildings.firstFloor.mezzanineGlassPanel.${gIdx}`;
-    glassPanel.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.5, gv);
+    glassPanel.position.set(uMezzanineFront + 0.08, mezzanineFloorY + 0.465, gv);
     firstFloorGroup.add(glassPanel);
+
+    for (const cvOff of [-0.92, 0.92] as const) {
+      for (const cyOff of [0.12, 0.8] as const) {
+        const clamp = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.016, 0.016, 0.036, 14),
+          balustradeClampMat
+        );
+        clamp.rotation.z = Math.PI / 2;
+        clamp.position.set(uMezzanineFront + 0.08, mezzanineFloorY + cyOff, gv + cvOff);
+        firstFloorGroup.add(clamp);
+      }
+    }
   }
 
-  // Issue #4 ("Could the bannisters here not be merged somehow? Rather than this akward gap between the 2" at `[-0.064, 2.444, 17.367]`):
-  // Merged the Stairwell North Guardrail (`v = 3.54m`) directly into the South Banister of `stableUpStairs` (`v = 3.54m`)!
-  // The horizontal stairwell guardrail runs along `v = 3.54m` from the West stairwell corner post (`u = 21.12m, v = 3.54m`)
-  // to the shared junction newel post of `stableUpStairs` (`u = 22.24m, v = 3.54m`), where it transitions seamlessly into
-  // the raked South stair handrail & glass banister (`u = 22.24m..22.98m, v = 3.54m`) with zero gap!
+  // Issue #1, #3 & #4: Stairwell Guardrail (`outbuildings.barn.mezzanineStairwellGuardrail`) with rounded cylindrical
+  // top handrails (`r = 0.026m` at `y = mezzanineFloorY + 0.86m`) and turned cylindrical newel posts with spherical caps:
+  // - North segment (`v = 3.54m, u = 21.12..22.24m`) joins seamlessly into the shared bottom newel post of `stableUpStairs` (`u = 22.24m, v = 3.54m`)
+  // - West segment (`u = 21.12m, v = 4.85..5.37m`) joins seamlessly into the shared top landing newel post of `spiralStaircase` (`u = 21.12m, v = 4.85m`)!
   const stairwellGuardrailGroup = new THREE.Group();
   stairwellGuardrailGroup.name = 'outbuildings.barn.mezzanineStairwellGuardrail';
   firstFloorGroup.add(stairwellGuardrailGroup);
 
   const swNorthLenU = 22.24 - 21.12; // 1.12m (from u = 21.12m corner post to u = 22.24m shared stair newel post)
   const swNorthMidU = (21.12 + 22.24) * 0.5; // 21.68m
-  const swNorthTopRailGeo = new THREE.BoxGeometry(swNorthLenU, 0.065, 0.08);
-  applyOutbuildingFloorUVs(swNorthTopRailGeo, swNorthMidU, mezzanineFloorY + 0.89, 3.54, 0.5);
   const swNorthTopRail = new THREE.Mesh(
-    swNorthTopRailGeo,
+    new THREE.CylinderGeometry(0.026, 0.026, swNorthLenU, 20),
     lightJoineryOakMat
   );
-  swNorthTopRail.position.set(swNorthMidU, mezzanineFloorY + 0.89, 3.54);
+  swNorthTopRail.name = 'outbuildings.barn.mezzanineStairwellGuardrail';
+  swNorthTopRail.rotation.z = Math.PI / 2;
+  swNorthTopRail.position.set(swNorthMidU, mezzanineFloorY + 0.86, 3.54);
   swNorthTopRail.castShadow = true;
   stairwellGuardrailGroup.add(swNorthTopRail);
 
-  const swNorthBotRailGeo = new THREE.BoxGeometry(swNorthLenU, 0.05, 0.07);
-  applyOutbuildingFloorUVs(swNorthBotRailGeo, swNorthMidU, mezzanineFloorY + 0.08, 3.54, 0.5);
   const swNorthBotRail = new THREE.Mesh(
-    swNorthBotRailGeo,
+    new THREE.CylinderGeometry(0.022, 0.022, swNorthLenU, 18),
     lightJoineryOakMat
   );
-  swNorthBotRail.position.set(swNorthMidU, mezzanineFloorY + 0.08, 3.54);
+  swNorthBotRail.rotation.z = Math.PI / 2;
+  swNorthBotRail.position.set(swNorthMidU, mezzanineFloorY + 0.07, 3.54);
   stairwellGuardrailGroup.add(swNorthBotRail);
 
   const swNorthGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(swNorthLenU - 0.12, 0.75, 0.016),
+    new THREE.BoxGeometry(swNorthLenU - 0.1, 0.72, 0.014),
     windowGlassMat
   );
-  swNorthGlass.position.set(swNorthMidU, mezzanineFloorY + 0.485, 3.54);
+  swNorthGlass.position.set(swNorthMidU, mezzanineFloorY + 0.465, 3.54);
   stairwellGuardrailGroup.add(swNorthGlass);
 
-  // South segment of West stairwell edge (`u = 21.12m, v = 4.95..5.37m`, leaving `v = 3.56..4.95m` open for spiral stair top landing!)
-  const swWestLenV = 0.42;
-  const swWestMidV = (4.95 + 5.37) * 0.5;
-  const swWestTopRailGeo = new THREE.BoxGeometry(0.08, 0.065, swWestLenV);
-  applyOutbuildingFloorUVs(swWestTopRailGeo, 21.12, mezzanineFloorY + 0.89, swWestMidV, 0.5);
+  for (const cuOff of [-0.36, 0.36] as const) {
+    for (const cyOff of [0.12, 0.8] as const) {
+      const clamp = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.016, 0.016, 0.036, 14),
+        balustradeClampMat
+      );
+      clamp.rotation.x = Math.PI / 2;
+      clamp.position.set(swNorthMidU + cuOff, mezzanineFloorY + cyOff, 3.54);
+      stairwellGuardrailGroup.add(clamp);
+    }
+  }
+
+  // South segment of West stairwell edge (`u = 21.12m, v = 4.85..5.37m`, meeting the shared spiral-staircase top newel post at `v = 4.85m`!)
+  const swWestLenV = 5.37 - 4.85; // 0.52m
+  const swWestMidV = (4.85 + 5.37) * 0.5; // 5.11m
   const swWestTopRail = new THREE.Mesh(
-    swWestTopRailGeo,
+    new THREE.CylinderGeometry(0.026, 0.026, swWestLenV, 20),
     lightJoineryOakMat
   );
-  swWestTopRail.position.set(21.12, mezzanineFloorY + 0.89, swWestMidV);
+  swWestTopRail.name = 'outbuildings.barn.mezzanineStairwellGuardrail';
+  swWestTopRail.rotation.x = Math.PI / 2;
+  swWestTopRail.position.set(21.12, mezzanineFloorY + 0.86, swWestMidV);
   swWestTopRail.castShadow = true;
   stairwellGuardrailGroup.add(swWestTopRail);
 
-  const swWestBotRailGeo = new THREE.BoxGeometry(0.07, 0.05, swWestLenV);
-  applyOutbuildingFloorUVs(swWestBotRailGeo, 21.12, mezzanineFloorY + 0.08, swWestMidV, 0.5);
   const swWestBotRail = new THREE.Mesh(
-    swWestBotRailGeo,
+    new THREE.CylinderGeometry(0.022, 0.022, swWestLenV, 18),
     lightJoineryOakMat
   );
-  swWestBotRail.position.set(21.12, mezzanineFloorY + 0.08, swWestMidV);
+  swWestBotRail.rotation.x = Math.PI / 2;
+  swWestBotRail.position.set(21.12, mezzanineFloorY + 0.07, swWestMidV);
   stairwellGuardrailGroup.add(swWestBotRail);
 
   const swWestGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(0.016, 0.75, swWestLenV - 0.12),
+    new THREE.BoxGeometry(0.014, 0.72, swWestLenV - 0.08),
     windowGlassMat
   );
-  swWestGlass.position.set(21.12, mezzanineFloorY + 0.485, swWestMidV);
+  swWestGlass.position.set(21.12, mezzanineFloorY + 0.465, swWestMidV);
   stairwellGuardrailGroup.add(swWestGlass);
+
+  for (const cvOff of [-0.14, 0.14] as const) {
+    for (const cyOff of [0.12, 0.8] as const) {
+      const clamp = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.016, 0.016, 0.036, 14),
+        balustradeClampMat
+      );
+      clamp.rotation.z = Math.PI / 2;
+      clamp.position.set(21.12, mezzanineFloorY + cyOff, swWestMidV + cvOff);
+      stairwellGuardrailGroup.add(clamp);
+    }
+  }
 
   for (const [pu, pv] of [
     [21.12, 3.54],
-    [21.12, 4.95],
     [21.12, 5.37],
   ] as const) {
-    const swPostGeo = new THREE.BoxGeometry(0.082, 0.98, 0.082);
-    applyOutbuildingFloorUVs(swPostGeo, pu, mezzanineFloorY + 0.49, pv, 0.5);
     const swPost = new THREE.Mesh(
-      swPostGeo,
+      new THREE.CylinderGeometry(0.034, 0.038, 0.92, 20),
       lightJoineryOakPostMat
     );
-    swPost.position.set(pu, mezzanineFloorY + 0.49, pv);
+    swPost.position.set(pu, mezzanineFloorY + 0.46, pv);
     swPost.castShadow = true;
     stairwellGuardrailGroup.add(swPost);
+
+    const swPostCap = new THREE.Mesh(
+      new THREE.SphereGeometry(0.042, 16, 12),
+      lightJoineryOakMat
+    );
+    swPostCap.position.set(pu, mezzanineFloorY + 0.934, pv);
+    stairwellGuardrailGroup.add(swPostCap);
   }
 
   // 1990s Retro Gaming & Lounge Zone on top of the Barn Mezzanine (`outbuildings.mezzanine.retroLounge`)

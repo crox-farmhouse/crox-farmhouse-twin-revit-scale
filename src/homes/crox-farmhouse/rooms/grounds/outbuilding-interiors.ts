@@ -2628,8 +2628,12 @@ export function buildBarnSpiralStaircase(
   // ---------------------------------------------------------------------------
   // 2. 12 Bespoke Fan-Shaped Solid American White Oak Treads (`outbuildings.barn.spiralStaircase.tread`)
   // ---------------------------------------------------------------------------
+  // Issue #1 ("Bannisters a bit messed up here" at `[-0.935, 2.521, 18.902]` -> `(u = 21.208m, y = 2.521m, v = 4.735m)`):
+  // Set `thetaEnd = Math.PI * 0.82` (`147.6°`, `z = +0.447m, v = 4.947m`) so the 12 helical treads, outer stringer,
+  // glass banister panels, and handrail climb monotonically around the South-West curve directly into the shared
+  // top landing newel post at `(u = 21.12m, v = 4.85m)` (`x = -0.96m, z = +0.35m`) with zero backward S-kink!
   const thetaStart = -Math.PI * 0.65;
-  const thetaEnd = Math.PI * 0.96;
+  const thetaEnd = Math.PI * 0.82;
   const treadSweep = 0.42;
   const treadThickness = 0.036;
 
@@ -2702,9 +2706,9 @@ export function buildBarnSpiralStaircase(
   // 3. Custom Solid Oak Quadrant Top Landing Platform (`outbuildings.barn.spiralStaircase.topLanding`)
   // ---------------------------------------------------------------------------
   const landingShape = new THREE.Shape();
-  landingShape.moveTo(-columnRadius, -0.06);
-  landingShape.lineTo(-outerRadius, -0.45);
-  landingShape.lineTo(-0.94, -0.45);
+  landingShape.moveTo(-columnRadius, -0.04);
+  landingShape.lineTo(-0.71, -0.44);
+  landingShape.lineTo(-0.94, -0.35);
   landingShape.lineTo(-0.94, 0.94);
   landingShape.lineTo(-0.08, 0.94);
   landingShape.lineTo(-columnRadius * 0.7, columnRadius * 0.7);
@@ -2880,7 +2884,7 @@ export function buildBarnSpiralStaircase(
   });
 
   const handrailRadius = 0.835;
-  const handrailHeightAboveTread = 0.94;
+  const handrailHeightAboveTread = 0.86;
   const handrailCurvePoints: THREE.Vector3[] = [];
 
   const voluteCenterTheta = thetaStart - 0.11;
@@ -2916,13 +2920,15 @@ export function buildBarnSpiralStaircase(
     );
   }
 
+  // Smooth tangent transition from `thetaEnd = 147.6°` (`x = -0.705, z = +0.447`) directly into the shared
+  // top landing newel post at `(x = -0.96, z = +0.35)` (`u = 21.12m, v = 4.85m, y = mezzanineFloorY + 0.86m`)
   handrailCurvePoints.push(
-    new THREE.Vector3(-0.88, totalRise + 0.96, 0.34),
-    new THREE.Vector3(-0.92, totalRise + 0.96, 0.44)
+    new THREE.Vector3(-0.83, totalRise + handrailHeightAboveTread, 0.39),
+    new THREE.Vector3(-0.96, totalRise + handrailHeightAboveTread, 0.35)
   );
 
   const handrailCurve = new THREE.CatmullRomCurve3(handrailCurvePoints);
-  const handrailTubeGeo = new THREE.TubeGeometry(handrailCurve, 120, 0.028, 16, false);
+  const handrailTubeGeo = new THREE.TubeGeometry(handrailCurve, 120, 0.026, 16, false);
   const handrailMesh = new THREE.Mesh(handrailTubeGeo, oakHandrailMat);
   handrailMesh.name = 'outbuildings.barn.spiralStaircase.handrail';
   handrailMesh.castShadow = true;
@@ -2953,21 +2959,22 @@ export function buildBarnSpiralStaircase(
   bottomNewel.castShadow = true;
   stairGroup.add(bottomNewel);
 
-  const topNewelH = 1.02;
+  // Shared top landing turned cylindrical newel post at `(-0.96, z = 0.35)` -> `(u = 21.12m, v = 4.85m)`
+  const topNewelH = 0.92;
   const topNewel = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.04, 0.044, topNewelH, 20),
+    new THREE.CylinderGeometry(0.034, 0.038, topNewelH, 20),
     oakHandrailMat
   );
   topNewel.name = 'outbuildings.barn.spiralStaircase.newelPost';
-  topNewel.position.set(-0.92, totalRise + topNewelH * 0.5 - 0.02, 0.44);
+  topNewel.position.set(-0.96, totalRise + topNewelH * 0.5, 0.35);
   topNewel.castShadow = true;
   stairGroup.add(topNewel);
 
   const topNewelCap = new THREE.Mesh(
-    new THREE.SphereGeometry(0.048, 18, 14),
+    new THREE.SphereGeometry(0.042, 16, 12),
     oakHandrailMat
   );
-  topNewelCap.position.set(-0.92, totalRise + topNewelH + 0.015, 0.44);
+  topNewelCap.position.set(-0.96, totalRise + topNewelH + 0.014, 0.35);
   stairGroup.add(topNewelCap);
 
   // Issue #3 ("Glass banniesters (see the link I sent)" at `[0.916, 0.734, 19.272]`):
@@ -3108,14 +3115,14 @@ export function buildBarnSpiralStaircase(
     }
   }
 
-  // Top landing return glass banister panel bridging from the spiral curve end to the top landing newel post (`z = 0.06..0.42m`)
+  // Top landing return glass banister panel bridging along the tangent from `(-0.705, 0.447)` to the shared newel post `(-0.96, 0.35)`
   const topReturnGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(glassThickR, 0.84, 0.36),
+    new THREE.BoxGeometry(0.23, 0.74, glassThickR),
     glassBanisterMat
   );
   topReturnGlass.name = 'outbuildings.barn.spiralStaircase.glassBanister';
-  topReturnGlass.position.set(-0.88, totalRise + 0.48, 0.24);
-  topReturnGlass.rotation.y = -0.14;
+  topReturnGlass.position.set(-0.832, totalRise + 0.45, 0.398);
+  topReturnGlass.rotation.y = -0.363;
   stairGroup.add(topReturnGlass);
 }
 
@@ -3749,7 +3756,8 @@ export function buildGarageStihlWallRack(
   // Issue #2 ("Make this cetnered on this wall and a bit smaller and higher up" at `[-15.09, 0.857, 20.785]`):
   // Centered on the open Garage South wall (`u = 5.97m..10.12m` -> center `u = 8.05m`), raised `+0.42m` higher up,
   // and scaled to `0.76` so it sits compactly and cleanly on the wall.
-  rackGroup.position.set(8.05, garageFloorTopY + 0.42, 5.415);
+  // Issue #5 ([OBJECT MOVE / ROTATE]: Move outbuildings.garage.stihlWallRack to [-14.733, 1.016, 20.632] -> local `[7.362, 0.206, 5.415]`):
+  rackGroup.position.set(7.362, garageFloorTopY + 0.706, 5.415);
   rackGroup.rotation.y = Math.PI;
   rackGroup.scale.set(0.76, 0.76, 0.76);
   groundGroup.add(rackGroup);
