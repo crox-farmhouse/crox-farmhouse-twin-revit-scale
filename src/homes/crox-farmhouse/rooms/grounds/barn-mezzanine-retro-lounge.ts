@@ -1121,11 +1121,11 @@ export function buildBarnMezzanineRetroLounge(
     metalness: 0.02,
   });
   const persianRug = new THREE.Mesh(
-    new THREE.BoxGeometry(1.68, 0.01, 2.18),
+    new THREE.BoxGeometry(1.62, 0.01, 1.96),
     persianRugMat
   );
   persianRug.name = 'outbuildings.mezzanine.persianRug';
-  persianRug.position.set(21.34, mezzanineFloorY + 0.005, 1.48);
+  persianRug.position.set(21.62, mezzanineFloorY + 0.005, 1.62);
   persianRug.receiveShadow = true;
   loungeGroup.add(persianRug);
 
@@ -1676,55 +1676,44 @@ export function buildBarnMezzanineRetroLounge(
   const beanbagGeoLarge = createSculptedBeanbagGeometry(0.54, 0.68, 0.58);
   const beanbagGeoMed = createSculptedBeanbagGeometry(0.48, 0.62, 0.52);
 
-  // 1. Foreground Navy Corduroy Beanbag Chair (`u = 20.18m, v = 1.02m`, facing the TV & coffee table)
+  // Issue #9 ("Get rid ot hise" at `[-1.21, 1.82, 16.365]`, `outbuildings.mezzanine.pouffe`):
+  // Removed the pouffe completely and spread out the beanbags and Monopoly coffee table (Issue #10)
+  // across the Mezzanine so the lounge feels open and uncrowded!
+
+  // 1. South-West Gamer Navy Corduroy Beanbag Chair (`u = 20.22m, v = 4.22m`, angled toward the Sony Trinitron TV)
   const navyBeanbagFront = new THREE.Mesh(beanbagGeoLarge, navyCorduroyMat);
   navyBeanbagFront.name = 'outbuildings.mezzanine.beanbag.navyFront';
-  navyBeanbagFront.position.set(20.18, mezzanineFloorY, 1.02);
-  navyBeanbagFront.rotation.y = -0.58;
+  navyBeanbagFront.position.set(20.22, mezzanineFloorY, 4.22);
+  navyBeanbagFront.rotation.y = -2.35;
   navyBeanbagFront.castShadow = true;
   navyBeanbagFront.receiveShadow = true;
   loungeSeatingGroup.add(navyBeanbagFront);
 
-  // 2. Patterned Geometric Tapestry Beanbag Chair (`u = 21.16m, v = 0.94m`)
+  // 2. East Lounge Patterned Geometric Tapestry Beanbag Chair (`u = 22.42m, v = 1.42m`, facing the coffee table & TV)
   const tapestryBeanbag = new THREE.Mesh(beanbagGeoMed, tapestryBeanbagMat);
   tapestryBeanbag.name = 'outbuildings.mezzanine.beanbag.tapestry';
-  tapestryBeanbag.position.set(21.16, mezzanineFloorY, 0.94);
-  tapestryBeanbag.rotation.y = -0.35;
+  tapestryBeanbag.position.set(22.42, mezzanineFloorY, 1.42);
+  tapestryBeanbag.rotation.y = -1.35;
   tapestryBeanbag.castShadow = true;
   tapestryBeanbag.receiveShadow = true;
   loungeSeatingGroup.add(tapestryBeanbag);
 
-  // 3. Back Navy Corduroy Beanbag Chair (`u = 21.86m, v = 0.92m`)
+  // 3. North-West Lounge Navy Corduroy Beanbag Chair (`u = 20.52m, v = 1.08m`, facing the coffee table & TV)
   const navyBeanbagBack = new THREE.Mesh(beanbagGeoMed, navyCorduroyMat);
   navyBeanbagBack.name = 'outbuildings.mezzanine.beanbag.navyBack';
-  navyBeanbagBack.position.set(21.86, mezzanineFloorY, 0.92);
-  navyBeanbagBack.rotation.y = -0.78;
+  navyBeanbagBack.position.set(20.52, mezzanineFloorY, 1.08);
+  navyBeanbagBack.rotation.y = 0.52;
   navyBeanbagBack.castShadow = true;
   navyBeanbagBack.receiveShadow = true;
   loungeSeatingGroup.add(navyBeanbagBack);
 
-  // 4. Round Patterned Kilim Pouffe Ottoman (`u = 21.26m, v = 1.98m`)
-  const pouffeGeo = new THREE.CylinderGeometry(0.32, 0.34, 0.28, 28, 8);
-  const pPos = pouffeGeo.attributes.position;
-  for (let i = 0; i < pPos.count; i++) {
-    const py = pPos.getY(i);
-    const bulge = 1 + 0.14 * Math.cos((py / 0.14) * Math.PI * 0.5);
-    pPos.setX(i, pPos.getX(i) * bulge);
-    pPos.setZ(i, pPos.getZ(i) * bulge);
-  }
-  pouffeGeo.computeVertexNormals();
-  const pouffe = new THREE.Mesh(pouffeGeo, tapestryBeanbagMat);
-  pouffe.name = 'outbuildings.mezzanine.pouffe';
-  pouffe.position.set(21.26, mezzanineFloorY + 0.14, 1.98);
-  pouffe.castShadow = true;
-  pouffe.receiveShadow = true;
-  loungeSeatingGroup.add(pouffe);
-
-  // 5. Low Mid-Century Wooden Coffee Table with Open Monopoly Board Game (`u = 20.52m, v = 1.66m`)
+  // 4. Issue #10 ("Move this table, its all a bit packed" at `[-2.044, 1.92, 16.285]`):
+  //    Relocated Low Mid-Century Wooden Coffee Table with Open Monopoly Board Game to `(u = 21.55m, v = 1.62m)`
+  //    centered on the Persian rug with generous clearance around the PS1 rug, bookcase, and beanbags!
   const coffeeTableGroup = new THREE.Group();
   coffeeTableGroup.name = 'outbuildings.mezzanine.coffeeTable';
-  coffeeTableGroup.position.set(20.52, mezzanineFloorY, 1.66);
-  coffeeTableGroup.rotation.y = 0.08;
+  coffeeTableGroup.position.set(21.55, mezzanineFloorY, 1.62);
+  coffeeTableGroup.rotation.y = 0.06;
   loungeSeatingGroup.add(coffeeTableGroup);
 
   const ctW = 0.62;
@@ -1929,28 +1918,34 @@ export function buildBarnMezzanineRetroLounge(
     pGroup.add(posterPlane);
   };
 
-  // East wall (`u = 23.005m`, facing West `-x` into the Mezzanine, right beside the bookcase!)
-  addFramedPoster(23.005, mezzanineFloorY + 0.84, 2.04, 0.44, 0.58, -Math.PI / 2, 'blur');
+  // Issue #7 ("CEnter the blur picture here" at `[0.596, 3.116, 15.55]` -> `u = 23.005m, v = 1.46m`):
+  // Centered the framed orange `blur` poster on the North pier of the East Barn/Stable partition wall (`v = 0.28..2.40m`)!
+  addFramedPoster(23.005, mezzanineFloorY + 1.02, 1.46, 0.54, 0.70, -Math.PI / 2, 'blur');
 
-  // South wall (`v = 5.412m`, facing North `-z` into the Mezzanine, east of the 4 skateboards!)
-  addFramedPoster(20.34, mezzanineFloorY + 0.84, 5.412, 0.38, 0.50, Math.PI, 'jurassicPark');
-  addFramedPoster(20.82, mezzanineFloorY + 0.84, 5.412, 0.38, 0.50, Math.PI, 'bigLebowski');
+  // Issue #4 & Issue #5 ("Put one of hte pictures over here" at `[0.831, 2.585, 18.287]` -> `u = 23.005m, v = 4.28m`):
+  // Moved `bigLebowski` off the South wall and centered it on the South pier of the East Barn/Stable partition wall (`v = 3.30..5.43m`),
+  // leaving `jurassicPark` centered cleanly on the South wall (`u = 20.48m, v = 5.412m`) beside the 4 skateboards!
+  addFramedPoster(20.48, mezzanineFloorY + 0.84, 5.412, 0.40, 0.52, Math.PI, 'jurassicPark');
+  addFramedPoster(23.005, mezzanineFloorY + 0.96, 4.28, 0.44, 0.58, -Math.PI / 2, 'bigLebowski');
 
-  // North wall (`v = 0.295m`, facing South `+z` into the Mezzanine, east of the hayloft window!)
-  addFramedPoster(20.62, mezzanineFloorY + 0.74, 0.295, 0.36, 0.52, 0, 'bigLebowski');
-  addFramedPoster(21.18, mezzanineFloorY + 0.98, 0.295, 0.42, 0.54, 0, 'oasis');
-  addFramedPoster(21.18, mezzanineFloorY + 0.38, 0.295, 0.42, 0.54, 0, 'pulpFiction');
-  addFramedPoster(21.76, mezzanineFloorY + 0.98, 0.295, 0.44, 0.56, 0, 'spiceGirls');
-  addFramedPoster(21.76, mezzanineFloorY + 0.38, 0.295, 0.44, 0.56, 0, 'trainspotting');
+  // North wall (`v = 0.295m`, facing South `+z` into the Mezzanine, flanking the hayloft window `u = 19.46..20.24m`
+  // and clear of the North-wall bookcase at `u = 21.36..22.40m`!):
+  addFramedPoster(19.08, mezzanineFloorY + 0.98, 0.295, 0.40, 0.52, 0, 'oasis');
+  addFramedPoster(19.08, mezzanineFloorY + 0.38, 0.295, 0.40, 0.52, 0, 'pulpFiction');
+  addFramedPoster(20.76, mezzanineFloorY + 0.98, 0.295, 0.42, 0.54, 0, 'spiceGirls');
+  addFramedPoster(20.76, mezzanineFloorY + 0.38, 0.295, 0.42, 0.54, 0, 'trainspotting');
 
   // =========================================================================
   // 9. 5-SHELF OAK RETRO BOOKCASE, BOARD GAMES, VHS/CD COLLECTION, LAVA LAMPS
   //    & WARM TABLE LAMP (`outbuildings.mezzanine.bookcaseAndLamps`)
+  //    - Issue #6 ("Put the bookbase on this wall instead" at `[-0.089, 2.433, 14.358]` -> North wall `v = 0.28m`):
+  //      Mounted against the North Mezzanine Wall (`u = 21.88m, v = 0.435m`, `rotation.y = Math.PI / 2` so its
+  //      back sits flush against `v = 0.285m` and its open shelves face South `+v` into the Mezzanine)!
   // =========================================================================
   const bookcaseGroup = new THREE.Group();
   bookcaseGroup.name = 'outbuildings.mezzanine.bookcase';
-  // Against the East wall (`u = 22.84m`, north of the Stable stairs doorway `v = 2.40..3.30m`)
-  bookcaseGroup.position.set(22.85, mezzanineFloorY, 1.24);
+  bookcaseGroup.position.set(21.88, mezzanineFloorY, 0.435);
+  bookcaseGroup.rotation.y = Math.PI / 2;
   loungeGroup.add(bookcaseGroup);
 
   const bcDepthU = 0.30;
@@ -2087,11 +2082,11 @@ export function buildBarnMezzanineRetroLounge(
     lampGroup.add(topCap);
   };
 
-  // Lava Lamp #1 inside the bookcase (`u = 22.82m, y = mezzanineFloorY + 0.572m, v = 1.54m`)
+  // Lava Lamp #1 inside the North-wall bookcase (`u = 22.18m, y = mezzanineFloorY + 0.572m, v = 0.45m`)
   addRetroLavaLamp(
-    22.82,
+    22.18,
     mezzanineFloorY + 0.572,
-    1.54,
+    0.45,
     0xff38b8,
     0xd8dde4,
     'outbuildings.mezzanine.lavaLamp.bookcase'
@@ -2117,13 +2112,13 @@ export function buildBarnMezzanineRetroLounge(
   radiator.castShadow = true;
   loungeGroup.add(radiator);
 
-  // Small vintage speaker/side cabinet + warm glowing cream Table Lamp in NE corner (`u = 22.82m, v = 0.50m`)
+  // Small vintage speaker/side cabinet + warm glowing cream Table Lamp in NE corner next to the bookcase (`u = 22.64m, v = 0.46m`)
   const sideCabinet = new THREE.Mesh(
-    new THREE.BoxGeometry(0.32, 0.54, 0.36),
+    new THREE.BoxGeometry(0.36, 0.54, 0.32),
     teakMat
   );
   sideCabinet.name = 'outbuildings.mezzanine.sideCabinet';
-  sideCabinet.position.set(22.82, mezzanineFloorY + 0.27, 0.50);
+  sideCabinet.position.set(22.64, mezzanineFloorY + 0.27, 0.46);
   sideCabinet.castShadow = true;
   loungeGroup.add(sideCabinet);
 
@@ -2131,7 +2126,7 @@ export function buildBarnMezzanineRetroLounge(
     new THREE.CylinderGeometry(0.016, 0.045, 0.22, 16),
     silverBadgeMat
   );
-  lampStem.position.set(22.82, mezzanineFloorY + 0.65, 0.50);
+  lampStem.position.set(22.64, mezzanineFloorY + 0.65, 0.46);
   loungeGroup.add(lampStem);
 
   const lampShade = new THREE.Mesh(
@@ -2144,6 +2139,6 @@ export function buildBarnMezzanineRetroLounge(
     })
   );
   lampShade.name = 'outbuildings.mezzanine.tableLamp.shade';
-  lampShade.position.set(22.82, mezzanineFloorY + 0.78, 0.50);
+  lampShade.position.set(22.64, mezzanineFloorY + 0.78, 0.46);
   loungeGroup.add(lampShade);
 }

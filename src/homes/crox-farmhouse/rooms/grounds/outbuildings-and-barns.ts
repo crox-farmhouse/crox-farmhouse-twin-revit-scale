@@ -3480,64 +3480,78 @@ export function buildOutbuildingsAndBarns(
     upStairsGroup.name = 'outbuildings.firstFloor.stableUpStairs';
     firstFloorGroup.add(upStairsGroup);
 
+    // Issue #8 ("Make these stairs more coherant witht he spiral" at `[0.213, 1.739, 16.929]`):
+    // Upgraded `outbuildings.firstFloor.stableUpStairs` to an Open-Riser Solid American White Oak,
+    // Toughened Glass & Brushed Stainless-Clamp 3-Step Feature Flight matching the Haldane UK Spiral Staircase:
+    // - Open risers (no solid plaster carcass block or white painted risers) with `36mm` thick solid oak bullnose treads
+    // - Turned cylindrical solid-oak central support pedestals & raked central oak spine beam underneath the treads
+    // - Laminated solid-oak raked side stringers (`lightJoineryOakPostMat`) with rounded top & bottom edge beads
+    // - Turned cylindrical solid-oak newel posts (`r = 0.036m`) with spherical oak finial caps (`r = 0.044m`)
+    // - Raked cylindrical solid-oak handrails (`r = 0.026m`) and raked toughened glass banister panels with
+    //   brushed stainless-steel stand-off spigot clamps!
     const numUpSteps = 3;
     const upRiseTotal = stableUpperFloorY - mezzanineFloorY; // 0.54m
     const stepRiserH = upRiseTotal / numUpSteps; // 0.18m per step
     const stepGoingU = 0.25; // 250mm going per tread
-    const treadT = 0.03; // 30mm thick solid oak tread
-    const bullnoseR = treadT * 0.5; // 15mm half-round bullnose radius
-    const nosingOverhangU = 0.022; // 22mm overhanging bullnose nosing
-    const stringerT = 0.028; // 28mm thick closed side stringer boards
+    const treadT = 0.036; // 36mm thick solid American white oak tread matching spiral staircase
+    const bullnoseR = treadT * 0.5; // 18mm half-round bullnose radius
+    const nosingOverhangU = 0.026; // 26mm overhanging bullnose nosing
+    const stringerT = 0.028; // 28mm thick laminated solid-oak side stringer ribbons
     const stairOpeningW = 0.9; // v = 2.40m..3.30m
     const stairCenterV = 2.85;
-    const treadClearW = stairOpeningW - stringerT * 2; // 0.844m clear tread width between closed stringers
+    const treadClearW = stairOpeningW - stringerT * 2; // 0.844m clear tread width between oak side stringers
     const upFlightEndU = uBarnEnd - partT; // 23.02m (West face of Barn/Stable partition wall)
     const upStartU = upFlightEndU - numUpSteps * stepGoingU; // 22.27m
 
+    const stainlessClampMat = new THREE.MeshStandardMaterial({
+      color: 0xd8dde4,
+      roughness: 0.2,
+      metalness: 0.9,
+    });
+
+    // Central raked solid-oak spine stringer beam + turned oak support drums under each open-riser tread
+    const stringerPitchAngle = Math.atan2(upRiseTotal, numUpSteps * stepGoingU); // ~35.75°
+    const stringerDiagLen = Math.hypot(numUpSteps * stepGoingU, upRiseTotal) + 0.06;
+
+    const centerSpineBeam = new THREE.Mesh(
+      new THREE.BoxGeometry(stringerDiagLen, 0.095, 0.085),
+      lightJoineryOakPostMat
+    );
+    centerSpineBeam.name = 'outbuildings.firstFloor.stableUpStairs.centerSpine';
+    centerSpineBeam.position.set(
+      upStartU + (numUpSteps * stepGoingU) * 0.5 + 0.02,
+      mezzanineFloorY + upRiseTotal * 0.5 - 0.06,
+      stairCenterV
+    );
+    centerSpineBeam.rotation.z = stringerPitchAngle;
+    centerSpineBeam.castShadow = true;
+    upStairsGroup.add(centerSpineBeam);
+
     for (let s = 0; s < numUpSteps; s++) {
       const stepTopY = mezzanineFloorY + (s + 1) * stepRiserH;
-      const stepBaseY = mezzanineFloorY + s * stepRiserH;
       const riserFrontU = upStartU + s * stepGoingU;
       const stepBackU = riserFrontU + stepGoingU;
-      const carcassH = stepTopY - treadT - mezzanineFloorY;
 
-      // 1. Solid under-stair carcass block supporting the step (`outbuildings.firstFloor.stableUpStep.carcass`)
-      if (carcassH > 0.01) {
-        const carcassBlock = new THREE.Mesh(
-          new THREE.BoxGeometry(stepGoingU, carcassH, treadClearW),
-          warmRoomPlasterMat
-        );
-        carcassBlock.position.set(
-          riserFrontU + stepGoingU * 0.5,
-          mezzanineFloorY + carcassH * 0.5,
-          stairCenterV
-        );
-        carcassBlock.castShadow = true;
-        carcassBlock.receiveShadow = true;
-        upStairsGroup.add(carcassBlock);
-      }
-
-      // 2. Crisp recessed vertical riser board (`18mm` thick painted/oak riser face from `stepBaseY` to `stepTopY - treadT`)
-      const riserBoardH = stepRiserH - treadT;
-      const riserBoard = new THREE.Mesh(
-        new THREE.BoxGeometry(0.018, riserBoardH, treadClearW),
-        windowFrameMat
+      // 1. Turned Solid-Oak Cylindrical Support Pedestal Drum under center of each open-riser tread (matching spiral center column!)
+      const drumH = stepRiserH - treadT + 0.04;
+      const supportDrum = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.056, 0.056, drumH, 20),
+        lightJoineryOakPostMat
       );
-      riserBoard.name = `outbuildings.firstFloor.stableUpStep.riser.${s + 1}`;
-      riserBoard.position.set(
-        riserFrontU + 0.009,
-        stepBaseY + riserBoardH * 0.5,
+      supportDrum.name = `outbuildings.firstFloor.stableUpStep.supportDrum.${s + 1}`;
+      supportDrum.position.set(
+        riserFrontU + stepGoingU * 0.48,
+        stepTopY - treadT - drumH * 0.5 + 0.01,
         stairCenterV
       );
-      riserBoard.castShadow = true;
-      riserBoard.receiveShadow = true;
-      upStairsGroup.add(riserBoard);
+      supportDrum.castShadow = true;
+      upStairsGroup.add(supportDrum);
 
-      // 3. Overhanging Solid Light-Oak Tread Board (`outbuildings.firstFloor.stableUpStep.1..3`) with world-space oak UVs
+      // 2. Overhanging Solid American White Oak Tread Board (`outbuildings.firstFloor.stableUpStep.1..3`) with world-space oak UVs
       const treadFlatDepthU = stepGoingU + nosingOverhangU - bullnoseR;
       const treadFlatCenterU = stepBackU - treadFlatDepthU * 0.5;
       const treadCenterY = stepTopY - treadT * 0.5;
-      const treadWidthV = s === 0 ? stairOpeningW + 0.024 : treadClearW; // Bottom step features a classic return-nosing overhang!
+      const treadWidthV = treadClearW;
 
       const treadGeo = new THREE.BoxGeometry(treadFlatDepthU, treadT, treadWidthV);
       applyOutbuildingFloorUVs(treadGeo, treadFlatCenterU, treadCenterY, stairCenterV, 0.5);
@@ -3548,7 +3562,7 @@ export function buildOutbuildingsAndBarns(
       treadMesh.receiveShadow = true;
       firstFloorGroup.add(treadMesh);
 
-      // 4. Rounded Half-Round Cylindrical Bullnose Leading Edge (`CylinderGeometry` along `Z` at `-u` leading edge)
+      // 3. Rounded Half-Round Cylindrical Bullnose Leading Edge (`CylinderGeometry` along `Z` at `-u` leading edge)
       const bullnoseCenterU = riserFrontU - nosingOverhangU + bullnoseR;
       const bullnoseCyl = new THREE.Mesh(
         new THREE.CylinderGeometry(bullnoseR, bullnoseR, treadWidthV, 18),
@@ -3561,50 +3575,32 @@ export function buildOutbuildingsAndBarns(
       bullnoseCyl.receiveShadow = true;
       upStairsGroup.add(bullnoseCyl);
 
-      // Return bullnose end mouldings & spherical mitred corners on the bottom step (`s === 0`)
-      if (s === 0) {
-        for (const sideV of [-1, 1] as const) {
-          const endV = stairCenterV + sideV * (treadWidthV * 0.5);
-          const cornerSphere = new THREE.Mesh(
-            new THREE.SphereGeometry(bullnoseR, 14, 12),
-            lightJoineryOakMat
-          );
-          cornerSphere.position.set(bullnoseCenterU, treadCenterY, endV);
-          upStairsGroup.add(cornerSphere);
-
-          const returnCyl = new THREE.Mesh(
-            new THREE.CylinderGeometry(bullnoseR, bullnoseR, treadFlatDepthU, 14),
-            lightJoineryOakMat
-          );
-          returnCyl.rotation.z = Math.PI / 2;
-          returnCyl.position.set(treadFlatCenterU, treadCenterY, endV);
-          upStairsGroup.add(returnCyl);
-        }
-      }
-
-      // 5. Underneath Scotia Cove Moulding tucked under each bullnose overhang (`u = riserFrontU - 0.004`)
-      const scotiaCove = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.009, 0.009, treadClearW, 12),
+      // 4. Tapered solid-oak under-tread rib bracket (`0.18m x 0.028m x 0.68m`) matching `spiralStaircase.tread` spine ribs!
+      const underRib = new THREE.Mesh(
+        new THREE.BoxGeometry(stepGoingU * 0.72, 0.026, treadWidthV - 0.06),
         lightJoineryOakPostMat
       );
-      scotiaCove.rotation.x = Math.PI / 2;
-      scotiaCove.position.set(riserFrontU - 0.003, stepTopY - treadT - 0.006, stairCenterV);
-      upStairsGroup.add(scotiaCove);
+      underRib.position.set(
+        treadFlatCenterU,
+        stepTopY - treadT - 0.013,
+        stairCenterV
+      );
+      upStairsGroup.add(underRib);
     }
 
-    // 6. Top Landing Riser & 4th Bullnose Light-Oak Threshold Nosing at `u = 23.02m, y = stableUpperFloorY = 2.08m`
-    //    bridging cleanly into the Stable Upper Room carpet!
-    const topRiserH = stepRiserH - treadT;
-    const topRiser = new THREE.Mesh(
-      new THREE.BoxGeometry(0.018, topRiserH, treadClearW),
-      windowFrameMat
-    );
-    topRiser.position.set(
-      upFlightEndU - 0.005,
-      stableUpperFloorY - treadT - topRiserH * 0.5,
+    // 5. Top Threshold Solid-Oak Fascia & 4th Bullnose Light-Oak Threshold Nosing at `u = 23.02m, y = stableUpperFloorY = 2.08m`
+    const topFasciaH = stableUpperFloorY - mezzanineFloorY - treadT;
+    const topFasciaGeo = new THREE.BoxGeometry(0.022, topFasciaH, stairOpeningW);
+    applyOutbuildingFloorUVs(topFasciaGeo, upFlightEndU - 0.05, mezzanineFloorY + topFasciaH * 0.5, stairCenterV, 0.5);
+    const topOakFascia = new THREE.Mesh(topFasciaGeo, lightJoineryOakMat);
+    topOakFascia.name = 'outbuildings.firstFloor.stableUpStep.topFascia';
+    topOakFascia.position.set(
+      upFlightEndU - 0.05,
+      mezzanineFloorY + topFasciaH * 0.5,
       stairCenterV
     );
-    upStairsGroup.add(topRiser);
+    topOakFascia.castShadow = true;
+    upStairsGroup.add(topOakFascia);
 
     const topNosingDepthU = partT + 0.036;
     const topNosingGeo = new THREE.BoxGeometry(topNosingDepthU, treadT, treadClearW);
@@ -3640,34 +3636,28 @@ export function buildOutbuildingsAndBarns(
     topBullnoseCyl.castShadow = true;
     upStairsGroup.add(topBullnoseCyl);
 
-    const topScotia = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.009, 0.009, treadClearW, 12),
-      lightJoineryOakPostMat
-    );
-    topScotia.rotation.x = Math.PI / 2;
-    topScotia.position.set(
-      upFlightEndU - 0.008,
-      stableUpperFloorY - treadT - 0.005,
-      stairCenterV
-    );
-    upStairsGroup.add(topScotia);
-
-    // 7. Closed Side Stringer Boards (`v = 2.414m` & `v = 3.286m`) with Raked Light-Oak Capping Mouldings & Bottom Stop Blocks
-    const stringerPitchAngle = Math.atan2(upRiseTotal, numUpSteps * stepGoingU); // ~35.75°
-    const stringerDiagLen = Math.hypot(numUpSteps * stepGoingU, upRiseTotal) + 0.06;
-
+    // 6. Laminated Solid-Oak Side Stringer Ribbons (`v = 2.414m` & `v = 3.286m`), Turned Cylindrical Oak Newel Posts,
+    //    Raked Cylindrical Oak Handrails & Toughened Glass Banister Panels with Stainless-Steel Clamps!
     for (const sideV of [-1, 1] as const) {
       const sv = stairCenterV + sideV * (stairOpeningW * 0.5 - stringerT * 0.5);
 
-      // Raked closed stringer board
+      // Raked laminated solid-oak outer stringer ribbon (matching `spiralStaircase.outerStringer`)
+      const rakedStringerGeo = new THREE.BoxGeometry(stringerDiagLen, 0.19, stringerT);
+      applyOutbuildingFloorUVs(
+        rakedStringerGeo,
+        upStartU + (numUpSteps * stepGoingU) * 0.5 - 0.01,
+        mezzanineFloorY + upRiseTotal * 0.5 + 0.01,
+        sv,
+        0.5
+      );
       const rakedStringer = new THREE.Mesh(
-        new THREE.BoxGeometry(stringerDiagLen, 0.22, stringerT),
-        windowFrameMat
+        rakedStringerGeo,
+        lightJoineryOakPostMat
       );
       rakedStringer.name = 'outbuildings.firstFloor.stableUpStairs.stringer';
       rakedStringer.position.set(
         upStartU + (numUpSteps * stepGoingU) * 0.5 - 0.01,
-        mezzanineFloorY + upRiseTotal * 0.5 + 0.02,
+        mezzanineFloorY + upRiseTotal * 0.5 + 0.01,
         sv
       );
       rakedStringer.rotation.z = stringerPitchAngle;
@@ -3675,32 +3665,95 @@ export function buildOutbuildingsAndBarns(
       rakedStringer.receiveShadow = true;
       upStairsGroup.add(rakedStringer);
 
-      // Moulded light-oak top capping rail along the raked stringer
-      const stringerCap = new THREE.Mesh(
-        new THREE.BoxGeometry(stringerDiagLen + 0.02, 0.024, stringerT + 0.012),
-        lightJoineryOakPostMat
-      );
-      stringerCap.position.set(
-        upStartU + (numUpSteps * stepGoingU) * 0.5 - 0.02,
-        mezzanineFloorY + upRiseTotal * 0.5 + 0.125,
-        sv
-      );
-      stringerCap.rotation.z = stringerPitchAngle;
-      stringerCap.castShadow = true;
-      upStairsGroup.add(stringerCap);
+      // Rounded top & bottom edge beads along the solid-oak stringer ribbon
+      for (const beadOffsetY of [-0.095, 0.095] as const) {
+        const edgeBead = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.011, 0.011, stringerDiagLen + 0.02, 12),
+          lightJoineryOakMat
+        );
+        edgeBead.position.set(
+          upStartU + (numUpSteps * stepGoingU) * 0.5 - 0.01,
+          mezzanineFloorY + upRiseTotal * 0.5 + 0.01 + beadOffsetY,
+          sv
+        );
+        edgeBead.rotation.z = stringerPitchAngle - Math.PI / 2;
+        upStairsGroup.add(edgeBead);
+      }
 
-      // Chamfered light-oak bottom stringer plinth block at `u = upStartU - 0.02m`
-      const bottomBlock = new THREE.Mesh(
-        new THREE.BoxGeometry(0.068, stepRiserH + 0.055, stringerT + 0.014),
-        lightJoineryOakPostMat
+      // Turned cylindrical solid-oak bottom & top newel posts with spherical finial caps (matching `spiralStaircase.newelPost`)
+      const botNewelU = upStartU - 0.03;
+      const topNewelU = upFlightEndU - 0.04;
+      const botNewelH = 0.92;
+      const topNewelH = 0.92;
+
+      for (const [nu, nBaseY, nH] of [
+        [botNewelU, mezzanineFloorY, botNewelH],
+        [topNewelU, stableUpperFloorY - 0.06, topNewelH],
+      ] as const) {
+        const newelCyl = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.034, 0.038, nH, 20),
+          lightJoineryOakPostMat
+        );
+        newelCyl.name = 'outbuildings.firstFloor.stableUpStairs.newelPost';
+        newelCyl.position.set(nu, nBaseY + nH * 0.5, sv);
+        newelCyl.castShadow = true;
+        upStairsGroup.add(newelCyl);
+
+        const newelCap = new THREE.Mesh(
+          new THREE.SphereGeometry(0.042, 16, 12),
+          lightJoineryOakMat
+        );
+        newelCap.position.set(nu, nBaseY + nH + 0.014, sv);
+        upStairsGroup.add(newelCap);
+      }
+
+      // Raked cylindrical solid-oak handrail (`r = 0.026m`) bridging between the bottom and top newel posts
+      const railSpanU = topNewelU - botNewelU;
+      const railRiseY = stableUpperFloorY - 0.06 - mezzanineFloorY;
+      const railLen = Math.hypot(railSpanU, railRiseY);
+      const railAngle = Math.atan2(railRiseY, railSpanU);
+
+      const handrailCyl = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.026, 0.026, railLen, 16),
+        lightJoineryOakMat
       );
-      bottomBlock.position.set(
-        upStartU - 0.01,
-        mezzanineFloorY + (stepRiserH + 0.055) * 0.5,
+      handrailCyl.name = 'outbuildings.firstFloor.stableUpStairs.handrail';
+      handrailCyl.position.set(
+        (botNewelU + topNewelU) * 0.5,
+        mezzanineFloorY + railRiseY * 0.5 + 0.86,
         sv
       );
-      bottomBlock.castShadow = true;
-      upStairsGroup.add(bottomBlock);
+      handrailCyl.rotation.z = railAngle - Math.PI / 2;
+      handrailCyl.castShadow = true;
+      upStairsGroup.add(handrailCyl);
+
+      // Raked Toughened Glass Banister Panel & Brushed Stainless-Steel Cylindrical Stand-Off Clamps
+      const glassPanel = new THREE.Mesh(
+        new THREE.BoxGeometry(railLen - 0.09, 0.64, 0.014),
+        windowGlassMat
+      );
+      glassPanel.name = 'outbuildings.firstFloor.stableUpStairs.glassBanister';
+      glassPanel.position.set(
+        (botNewelU + topNewelU) * 0.5,
+        mezzanineFloorY + railRiseY * 0.5 + 0.48,
+        sv
+      );
+      glassPanel.rotation.z = railAngle;
+      upStairsGroup.add(glassPanel);
+
+      for (const clampFrac of [0.22, 0.78] as const) {
+        const cu = botNewelU + clampFrac * railSpanU;
+        const cyBase = mezzanineFloorY + clampFrac * railRiseY;
+        for (const cyOff of [0.16, 0.76] as const) {
+          const clamp = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.014, 0.014, 0.032, 12),
+            stainlessClampMat
+          );
+          clamp.rotation.x = Math.PI / 2;
+          clamp.position.set(cu, cyBase + cyOff, sv);
+          upStairsGroup.add(clamp);
+        }
+      }
     }
 
     // 8. Issue #1 ("Make this a full height entrance" at `[0.883, 2.92, 16.92]`):
