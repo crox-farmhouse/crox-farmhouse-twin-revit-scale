@@ -1365,25 +1365,29 @@ export function buildGarageToolBench(
   // ---------------------------------------------------------------------------
   // 5-Bay Cabinet Carcass, Plinth & Brushed 304 Stainless-Steel Drawers (`totalW = 3.88m`)
   // ---------------------------------------------------------------------------
+  // Keep the South corner bay (`localX = -1.88..-1.11m`, `v = 4.64..5.41m`) open underneath so it flows seamlessly
+  // into the open-bottom South-wall return workstation (`Issue #1`), while housing 4 brushed-stainless drawer/cabinet bays
+  // across `localX = -1.11..+1.86m` (`v = 1.67..4.64m`)!
+  const eastCabSpanW = 2.97;
+  const eastCabCenterX = 0.375;
   const carcass = new THREE.Mesh(
-    new THREE.BoxGeometry(totalW - 0.04, cabinetH - 0.05, benchD - 0.04),
+    new THREE.BoxGeometry(eastCabSpanW, cabinetH - 0.05, benchD - 0.04),
     anthraciteSteelMat
   );
-  carcass.position.set(0, 0.05 + (cabinetH - 0.05) * 0.5, 0.01);
+  carcass.position.set(eastCabCenterX, 0.05 + (cabinetH - 0.05) * 0.5, 0.01);
   carcass.castShadow = true;
   carcass.receiveShadow = true;
   benchGroup.add(carcass);
 
   const plinth = new THREE.Mesh(
-    new THREE.BoxGeometry(totalW - 0.08, 0.05, benchD - 0.08),
+    new THREE.BoxGeometry(eastCabSpanW - 0.04, 0.05, benchD - 0.08),
     dewaltBlackMat
   );
-  plinth.position.set(0, 0.025, 0.02);
+  plinth.position.set(eastCabCenterX, 0.025, 0.02);
   benchGroup.add(plinth);
 
   const frontZ = -benchD * 0.5 + 0.012;
   const postPositionsX = [
-    -totalW * 0.5 + 0.025,
     -1.11,
     -0.37,
     0.37,
@@ -1420,11 +1424,6 @@ export function buildGarageToolBench(
   const drawerW = 0.715;
   const bayCenters = [-1.47, -0.735, 0.0, 0.735, 1.47] as const;
   const bankSpecs = [
-    {
-      cx: bayCenters[0],
-      w: drawerW,
-      drawerHeights: [0.085, 0.105, 0.135, 0.185, 0.22] as const,
-    },
     {
       cx: bayCenters[1],
       w: drawerW,
@@ -1696,73 +1695,70 @@ export function buildGarageToolBench(
   // ---------------------------------------------------------------------------
 
   // ---------------------------------------------------------------------------
-  // Issue #2 ("Have this unit wrap around the corner" at `[-10.064, 0.482, 19.713]`):
-  // South-Wall L-Shaped Wrap-Around Return Wing (`outbuildings.garage.toolBench.southWing`)
-  // In `benchGroup` local coords (`u = 12.41 + localZ`, `v = 3.53 - localX`, `rotation.y = +Math.PI / 2`):
-  // - Garage South wall (`v = 5.41m`) is at `localX = -totalW * 0.5 = -1.88m`
-  // - Front of the East-wall bench (`u = 12.04m`) is at `localZ = -benchD * 0.5 = -0.37m`
-  // - By placing `southWingGroup` at `(localX = -totalW * 0.5 + benchD * 0.5 = -1.51m, y = 0, localZ = -0.37 - southReturnL * 0.5)`
-  //   with `southWingGroup.rotation.y = Math.PI / 2`, its local `+Z` sits against the Garage South wall (`v = 5.41m`),
-  //   its local `-Z` faces North (`-v` into the Garage at `v = 4.67m`), and its local `X` runs from `u = 9.88m` to `u = 12.04m`,
-  //   forming a 100% flush 90-degree L-corner with the East-wall workbench!
+  // Issue #1 ("Tidy this up, make this open bottom and have a computer screen wall mounted at the back"
+  // at `[-11.473, 0.816, 19.75]`, `outbuildings.garage.toolBench.southWing.pegboard`):
+  // Open-Bottom South-Wall Wrap-Around Workstation Wing (`outbuildings.garage.toolBench.southWing`)
+  // In `benchGroup` (`position = (12.41, y, 3.53)`, `rotation.y = +Math.PI / 2`):
+  // Setting `southWingGroup.rotation.y = -Math.PI / 2` gives a net world/outbuilding rotation of `0`:
+  // - `+sx` points East (`+u`), meeting the front of the East-wall bench at `u = 12.04m`
+  // - `-sx` points West (`-u`), extending to `u = 10.12m` along the Garage South wall
+  // - `+sz` points South (`+v`), sitting flush against the Garage South wall (`v = 5.41m`)
+  // - `-sz` points North (`-v`), facing into the Garage (`v = 4.67m`)!
   // ---------------------------------------------------------------------------
-  const southReturnL = 2.16; // Spans `u = 9.88m..12.04m` along the Garage South wall (`v = 4.67m..5.41m`)
+  const southReturnL = 1.92; // Spans `u = 10.12m..12.04m` along the Garage South wall (`v = 4.67m..5.41m`)
   const southWingGroup = new THREE.Group();
   southWingGroup.name = 'outbuildings.garage.toolBench.southWing';
   southWingGroup.position.set(
-    -totalW * 0.5 + benchD * 0.5,
+    -totalW * 0.5 + benchD * 0.5, // localX = -1.51m -> v = 5.04m (`v = 4.67..5.41m`)
     0,
-    -benchD * 0.5 - southReturnL * 0.5
+    -benchD * 0.5 - southReturnL * 0.5 // localZ = -1.33m -> u = 11.08m (`u = 10.12..12.04m`)
   );
-  southWingGroup.rotation.y = Math.PI / 2;
+  southWingGroup.rotation.y = -Math.PI / 2;
   benchGroup.add(southWingGroup);
 
-  const southCarcass = new THREE.Mesh(
-    new THREE.BoxGeometry(southReturnL - 0.02, cabinetH - 0.05, benchD - 0.04),
-    anthraciteSteelMat
-  );
-  southCarcass.position.set(0.01, 0.05 + (cabinetH - 0.05) * 0.5, 0.01);
-  southCarcass.castShadow = true;
-  southCarcass.receiveShadow = true;
-  southWingGroup.add(southCarcass);
-
-  const southPlinth = new THREE.Mesh(
-    new THREE.BoxGeometry(southReturnL - 0.04, 0.05, benchD - 0.08),
-    dewaltBlackMat
-  );
-  southPlinth.position.set(0.01, 0.025, 0.02);
-  southWingGroup.add(southPlinth);
-
-  // 3 Brushed 304 Stainless-Steel Drawer Stacks along the South Return Wing (`bayW = 0.69m`)
-  const southBayW = 0.69;
-  const southBayCenters = [-0.71, 0.0, 0.71] as const;
-  const southDrawerHeights = [0.085, 0.105, 0.135, 0.185, 0.22] as const;
-  for (const sbx of southBayCenters) {
-    let scY = cabinetH - 0.025;
-    for (const sdh of southDrawerHeights) {
-      const sdy = scY - sdh * 0.5;
-      const sDrawer = new THREE.Mesh(
-        new THREE.BoxGeometry(southBayW, sdh - 0.007, 0.02),
-        brushedStainlessMat
+  // Open-Bottom Heavy-Duty Square Tubular Steel Support Legs (`y = 0..0.86m`) & Brushed-Stainless Footrest Bar
+  const legTubeW = 0.048;
+  for (const lx of [-southReturnL * 0.5 + 0.04, southReturnL * 0.5 - 0.04] as const) {
+    for (const lz of [-benchD * 0.5 + 0.05, benchD * 0.5 - 0.05] as const) {
+      const legPost = new THREE.Mesh(
+        new THREE.BoxGeometry(legTubeW, cabinetH, legTubeW),
+        anthraciteSteelMat
       );
-      sDrawer.name = 'outbuildings.garage.toolBench.southWing.drawer';
-      sDrawer.position.set(sbx, sdy, frontZ);
-      sDrawer.castShadow = true;
-      sDrawer.receiveShadow = true;
-      southWingGroup.add(sDrawer);
-
-      const sPull = new THREE.Mesh(
-        new THREE.BoxGeometry(southBayW - 0.024, 0.016, 0.026),
-        aluminumTrimMat
+      legPost.position.set(lx, cabinetH * 0.5, lz);
+      legPost.castShadow = true;
+      southWingGroup.add(legPost);
+    }
+    // Side H-frame lower & upper tie rails
+    for (const railY of [0.18, cabinetH - 0.04] as const) {
+      const sideRail = new THREE.Mesh(
+        new THREE.BoxGeometry(legTubeW, 0.038, benchD - 0.10),
+        anthraciteSteelMat
       );
-      sPull.position.set(sbx, sdy + sdh * 0.5 - 0.015, frontZ - 0.012);
-      southWingGroup.add(sPull);
-
-      scY -= sdh;
+      sideRail.position.set(lx, railY, 0);
+      southWingGroup.add(sideRail);
     }
   }
 
-  // Continuous 52mm End-Grain Hardwood Butcher-Block Return Worktop (`2.18m x 0.052m x 0.78m`)
+  // Under-worktop front & rear steel apron rails (`y = cabinetH - 0.035m`) leaving the entire bottom open for legroom
+  for (const lz of [-benchD * 0.5 + 0.05, benchD * 0.5 - 0.05] as const) {
+    const apronBeam = new THREE.Mesh(
+      new THREE.BoxGeometry(southReturnL - 0.04, 0.045, 0.038),
+      anthraciteSteelMat
+    );
+    apronBeam.position.set(0, cabinetH - 0.025, lz);
+    southWingGroup.add(apronBeam);
+  }
+
+  // Brushed 304 Stainless-Steel Tubular Footrest Stretcher Bar (`y = 0.18m`) across the open bottom
+  const footrestStretch = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, southReturnL - 0.08, 16),
+    brushedStainlessMat
+  );
+  footrestStretch.rotation.z = Math.PI / 2;
+  footrestStretch.position.set(0, 0.18, 0.08);
+  southWingGroup.add(footrestStretch);
+
+  // Continuous 52mm End-Grain Hardwood Butcher-Block Return Worktop (`1.94m x 0.052m x 0.78m`)
   const southButcherTop = new THREE.Mesh(
     new THREE.BoxGeometry(southReturnL + 0.02, topT, topD),
     butcherBlockMat
@@ -1789,62 +1785,141 @@ export function buildGarageToolBench(
   southRearUpstand.position.set(0.01, worktopY + upstandH * 0.5, benchD * 0.5 - upstandT * 0.5);
   southWingGroup.add(southRearUpstand);
 
-  // South-Wall Perforated Pegboard, Upper Stainless Cabinets & Under-Cabinet LED Task Bar wrapping around the corner
+  // Tidy Dark-Anthracite Back Wall Panel (`outbuildings.garage.toolBench.southWing.pegboard`) flush against the Garage South wall (`+sz`)
   const southPegboard = new THREE.Mesh(
-    new THREE.BoxGeometry(southReturnL + 0.34, pegboardH, 0.024),
+    new THREE.BoxGeometry(southReturnL, pegboardH, 0.022),
     anthraciteSteelMat
   );
   southPegboard.name = 'outbuildings.garage.toolBench.southWing.pegboard';
-  southPegboard.position.set(0.18, worktopY + pegboardH * 0.5, benchD * 0.5 - 0.02);
+  southPegboard.position.set(0, worktopY + pegboardH * 0.5, benchD * 0.5 - 0.015);
   southWingGroup.add(southPegboard);
 
-  const southUpperCab = new THREE.Mesh(
-    new THREE.BoxGeometry(southReturnL + 0.34, upperCabH, upperCabD),
+  // Wall-Mounted 34-Inch Ultrawide Computer Monitor (`outbuildings.garage.toolBench.southWing.monitor`)
+  // Mounted at the back on the South wall (`+sz`) facing North (`-sz`) over the open-bottom desk
+  const monCanvas = document.createElement('canvas');
+  monCanvas.width = 512;
+  monCanvas.height = 256;
+  const mCtx = monCanvas.getContext('2d');
+  if (mCtx) {
+    const bg = mCtx.createLinearGradient(0, 0, 512, 256);
+    bg.addColorStop(0, '#0d1520');
+    bg.addColorStop(1, '#162436');
+    mCtx.fillStyle = bg;
+    mCtx.fillRect(0, 0, 512, 256);
+
+    // Top telemetry status header
+    mCtx.fillStyle = '#1e324a';
+    mCtx.fillRect(0, 0, 512, 34);
+    mCtx.fillStyle = '#4fc3f7';
+    mCtx.font = 'bold 16px sans-serif';
+    mCtx.fillText('PORSCHE 992.2 TURBO S // PIWIS IV DIAGNOSTICS & CAD', 16, 22);
+
+    // Left panel: Dyno / Boost & Tire pressure cards
+    mCtx.strokeStyle = '#2b4c6f';
+    mCtx.lineWidth = 2;
+    mCtx.strokeRect(16, 48, 228, 190);
+    mCtx.fillStyle = '#8ab4f8';
+    mCtx.font = 'bold 14px sans-serif';
+    mCtx.fillText('TWIN-TURBO FLAT-6 TELEMETRY', 28, 72);
+
+    mCtx.strokeStyle = '#00e676';
+    mCtx.lineWidth = 3;
+    mCtx.beginPath();
+    mCtx.moveTo(28, 195);
+    mCtx.bezierCurveTo(80, 190, 120, 105, 175, 96);
+    mCtx.lineTo(230, 92);
+    mCtx.stroke();
+
+    // Right panel: 3D wireframe / system gauges
+    mCtx.strokeStyle = '#2b4c6f';
+    mCtx.lineWidth = 2;
+    mCtx.strokeRect(260, 48, 236, 190);
+    for (let g = 0; g < 3; g++) {
+      const gx = 306 + g * 72;
+      mCtx.strokeStyle = g === 1 ? '#ffb300' : '#29b6f6';
+      mCtx.lineWidth = 4;
+      mCtx.beginPath();
+      mCtx.arc(gx, 118, 24, Math.PI * 0.75, Math.PI * 2.25);
+      mCtx.stroke();
+    }
+    mCtx.fillStyle = '#b0bec5';
+    mCtx.font = '13px monospace';
+    mCtx.fillText('BATTERY: 14.2V  |  OIL: 90C', 276, 186);
+    mCtx.fillText('PCCB TORQUE SPEC: 600 Nm', 276, 212);
+  }
+  const monTex = new THREE.CanvasTexture(monCanvas);
+  monTex.colorSpace = THREE.SRGBColorSpace;
+
+  const monitorGroup = new THREE.Group();
+  monitorGroup.name = 'outbuildings.garage.toolBench.southWing.monitor';
+  monitorGroup.position.set(0.04, worktopY + 0.36, benchD * 0.5 - 0.09);
+  southWingGroup.add(monitorGroup);
+
+  // Articulated VESA wall-mount bracket attached to the back panel
+  const vesaWallPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.14, 0.12, 0.018),
+    dewaltBlackMat
+  );
+  vesaWallPlate.position.set(0, 0, 0.065);
+  monitorGroup.add(vesaWallPlate);
+
+  const vesaArm = new THREE.Mesh(
+    new THREE.BoxGeometry(0.045, 0.045, 0.075),
     anthraciteSteelMat
   );
-  southUpperCab.position.set(
-    0.18,
-    worktopY + pegboardH + upperCabH * 0.5,
-    benchD * 0.5 - upperCabD * 0.5
+  vesaArm.position.set(0, 0, 0.032);
+  monitorGroup.add(vesaArm);
+
+  // 34-inch Ultrawide Bezel Chassis (`0.82m wide x 0.37m high x 0.024m deep`)
+  const monitorChassis = new THREE.Mesh(
+    new THREE.BoxGeometry(0.82, 0.37, 0.024),
+    dewaltBlackMat
   );
-  southUpperCab.castShadow = true;
-  southWingGroup.add(southUpperCab);
+  monitorChassis.castShadow = true;
+  monitorGroup.add(monitorChassis);
 
-  for (const sbx of [-0.68, 0.08, 0.84] as const) {
-    const sUpperDoor = new THREE.Mesh(
-      new THREE.BoxGeometry(0.73, upperCabH - 0.03, 0.018),
-      brushedStainlessMat
-    );
-    sUpperDoor.position.set(
-      sbx,
-      worktopY + pegboardH + upperCabH * 0.5,
-      benchD * 0.5 - upperCabD - 0.008
-    );
-    southWingGroup.add(sUpperDoor);
-
-    const sUpperPull = new THREE.Mesh(
-      new THREE.BoxGeometry(0.44, 0.014, 0.022),
-      aluminumTrimMat
-    );
-    sUpperPull.position.set(
-      sbx,
-      worktopY + pegboardH + 0.035,
-      benchD * 0.5 - upperCabD - 0.022
-    );
-    southWingGroup.add(sUpperPull);
-  }
-
-  const southLedTaskBar = new THREE.Mesh(
-    new THREE.BoxGeometry(southReturnL + 0.16, 0.014, 0.038),
-    ledStripMat
+  const monitorScreen = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.79, 0.34),
+    new THREE.MeshStandardMaterial({
+      map: monTex,
+      emissiveMap: monTex,
+      emissive: new THREE.Color(0xffffff),
+      emissiveIntensity: 0.65,
+      roughness: 0.18,
+      metalness: 0.05,
+    })
   );
-  southLedTaskBar.position.set(0.10, worktopY + pegboardH - 0.007, benchD * 0.5 - upperCabD + 0.05);
-  southWingGroup.add(southLedTaskBar);
+  monitorScreen.name = 'outbuildings.garage.toolBench.southWing.monitor.screen';
+  monitorScreen.rotation.y = Math.PI; // Faces `-sz` (North into the Garage!)
+  monitorScreen.position.set(0, 0, -0.013);
+  monitorGroup.add(monitorScreen);
 
-  // A. Heavy Cast-Iron Engineer's Bench Vice mounted on the North-facing front edge of the wrap-around South Return Wing
+  // Desk Mat, Wireless Mechanical Keyboard & Mouse on the Butcher-Block Desk under the Wall-Mounted Monitor
+  const deskMat = new THREE.Mesh(
+    new THREE.BoxGeometry(0.68, 0.004, 0.32),
+    dewaltBlackMat
+  );
+  deskMat.position.set(0.04, worktopY + 0.002, -0.06);
+  southWingGroup.add(deskMat);
+
+  const keyboardBody = new THREE.Mesh(
+    new THREE.BoxGeometry(0.36, 0.014, 0.125),
+    aluminumTrimMat
+  );
+  keyboardBody.position.set(-0.02, worktopY + 0.011, -0.05);
+  southWingGroup.add(keyboardBody);
+
+  const mouseBody = new THREE.Mesh(
+    new THREE.BoxGeometry(0.062, 0.024, 0.105),
+    dewaltBlackMat
+  );
+  mouseBody.position.set(0.24, worktopY + 0.015, -0.05);
+  southWingGroup.add(mouseBody);
+
+  // A. Heavy Cast-Iron Engineer's Bench Vice mounted cleanly at the West front corner of the South Return Wing
   const viceGroup = new THREE.Group();
   viceGroup.name = 'outbuildings.garage.toolBench.vice';
-  viceGroup.position.set(0.42, worktopY, -0.24);
+  viceGroup.position.set(-0.68, worktopY, -0.24);
   southWingGroup.add(viceGroup);
 
   const viceBase = new THREE.Mesh(
@@ -3229,18 +3304,25 @@ export function buildBarnGolfSimulator(
     (arg4 instanceof THREE.Group ? arg4 : undefined) ??
     (arg5 instanceof THREE.Group ? arg5 : undefined);
 
+  // Issue #4 ("Maybe we move this foam wall left slightly so the golf sim is enclosed and you can walk freely in and out"
+  // at `[-7.953, 0.342, 15.426]`):
+  // Shifted the North side wall of the Golf Simulator South ("left" when looking at the simulator from the Barn)
+  // from `v = 0.615m` to `v = 1.52m` (`v = 1.52m..5.095m`, `clearW = 3.575m`, centered at `v = 3.3075m`) so the Golf Simulator
+  // is 100% enclosed on all 3 sides while leaving a dedicated, unobstructed `1.10m`-wide hallway (`v = 0.282m..1.38m`)
+  // on the North side to walk freely between the Garage and the Barn!
+  const simCenterV = 3.22;
   const simGroup = new THREE.Group();
   simGroup.name = 'outbuildings.barn.golfSimulator';
-  simGroup.position.set(uWallMax, barnWestFloorY, 2.855);
+  simGroup.position.set(uWallMax, barnWestFloorY, simCenterV);
   groundGroup.add(simGroup);
 
   const simCeilingGroup = new THREE.Group();
   simCeilingGroup.name = 'outbuildings.barn.golfSimulator.ceiling';
-  simCeilingGroup.position.set(uWallMax, barnWestFloorY, 2.855);
+  simCeilingGroup.position.set(uWallMax, barnWestFloorY, simCenterV);
   (groundCeilingGroup ?? groundGroup).add(simCeilingGroup);
 
-  const clearW = 4.48;
-  const clearH = 2.8;
+  const clearW = 3.80; // 12'6" TrackMan Widescreen enclosure width (v = 1.32m..5.12m)
+  const clearH = 2.85; // 9'4" (2.85m) official TrackMan iO minimum enclosure ceiling height
   const recessDepthU = 2.16;
   const wallT = uWallMax - uWallMin;
 
@@ -3305,41 +3387,15 @@ export function buildBarnGolfSimulator(
   });
 
   const storeBoxDepth = recessDepthU - wallT;
-  // Issue #3 ("have a door here which goes through to the bar, it will open up behind the back of the golf simulator"):
-  // Leave a `0.90m`-wide full-height pass-through doorway (`z = -2.24m..-1.34m`, corresponding to `v = 0.615m..1.515m`,
-  // directly aligned with the Garage pass-through door at `v = 0.52..1.38m`) on the North end of `storeBackWall`
-  // so the Garage door opens into the corridor behind the back of the Golf Simulator and passes through into the Barn!
-  const passThroughZMin = -clearW * 0.5; // -2.24m (v = 0.615m)
-  const passThroughZMax = -1.34;         // -1.34m (v = 1.515m)
-  const mainBackWallZMin = passThroughZMax;
-  const mainBackWallZMax = clearW * 0.5 + 0.09; // +2.33m
-  const mainBackWallW = mainBackWallZMax - mainBackWallZMin;
   const storeBackWall = new THREE.Mesh(
-    new THREE.BoxGeometry(0.09, clearH + 0.1, mainBackWallW),
+    new THREE.BoxGeometry(0.09, clearH + 0.1, clearW + 0.18),
     plasterMat
   );
   storeBackWall.userData.isArchitecturalShell = true;
-  storeBackWall.position.set(
-    -recessDepthU - 0.045,
-    (clearH + 0.1) * 0.5,
-    (mainBackWallZMin + mainBackWallZMax) * 0.5
-  );
+  storeBackWall.position.set(-recessDepthU - 0.045, (clearH + 0.1) * 0.5, 0);
   storeBackWall.castShadow = true;
   storeBackWall.receiveShadow = true;
   simGroup.add(storeBackWall);
-
-  // Upper lintel above the North back-of-simulator pass-through opening (`y = 2.08..2.90m, z = -2.33..-1.34m`)
-  const storeBackWallLintel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.09, (clearH + 0.1) - 2.08, passThroughZMax - (passThroughZMin - 0.09)),
-    plasterMat
-  );
-  storeBackWallLintel.userData.isArchitecturalShell = true;
-  storeBackWallLintel.position.set(
-    -recessDepthU - 0.045,
-    2.08 + ((clearH + 0.1) - 2.08) * 0.5,
-    (passThroughZMin - 0.09 + passThroughZMax) * 0.5
-  );
-  simGroup.add(storeBackWallLintel);
 
   for (const sideZ of [-1, 1] as const) {
     const storeSideWall = new THREE.Mesh(
@@ -3407,45 +3463,22 @@ export function buildBarnGolfSimulator(
   topTrim.position.set(0.01, clearH + frameTrimW * 0.3, 0);
   simCeilingGroup.add(topTrim);
 
-  // Position the impact screen at `x = -recessDepthU + 0.52 = -1.64m` (`u = 13.56m`) so there is a dedicated walk-behind
-  // passage (`u = 12.31..13.54m`) directly behind the back of the Golf Simulator impact screen, and leave a drawn-back
-  // acoustic velvet pass-through curtain opening (`z = -2.20..-1.46m`) on the North edge so you can walk straight through to the Barn!
-  const screenSpanW = clearW - 0.84; // 3.64m widescreen impact canvas (`z = -1.40..+2.24m`)
-  const screenCenterZ = 0.38;
-  const screenX = -recessDepthU + 0.52;
   const screenMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(screenSpanW, clearH - 0.08),
+    new THREE.PlaneGeometry(clearW - 0.1, clearH - 0.08),
     impactScreenMat
   );
   screenMesh.name = 'outbuildings.barn.golfSimulator.screen';
   screenMesh.rotation.y = Math.PI / 2;
-  screenMesh.position.set(screenX, clearH * 0.5, screenCenterZ);
+  screenMesh.position.set(-recessDepthU + 0.14, clearH * 0.5, 0);
   simGroup.add(screenMesh);
 
   const screenBacking = new THREE.Mesh(
-    new THREE.PlaneGeometry(screenSpanW + 0.04, clearH - 0.04),
+    new THREE.PlaneGeometry(clearW - 0.06, clearH - 0.04),
     velvetFrameMat
   );
   screenBacking.rotation.y = -Math.PI / 2;
-  screenBacking.position.set(screenX - 0.02, clearH * 0.5, screenCenterZ);
+  screenBacking.position.set(-recessDepthU + 0.12, clearH * 0.5, 0);
   simGroup.add(screenBacking);
-
-  // Drawn-back Heavy Black Acoustic Velvet Theatre Curtain (`outbuildings.barn.golfSimulator.passThroughCurtain`)
-  // framing the North walk-through passage (`z = -2.20..-1.42m`) from behind the simulator screen into the Barn
-  const curtainHeader = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, 0.72, 0.78),
-    velvetFrameMat
-  );
-  curtainHeader.name = 'outbuildings.barn.golfSimulator.passThroughCurtain';
-  curtainHeader.position.set(screenX - 0.01, clearH - 0.38, -1.81);
-  simGroup.add(curtainHeader);
-
-  const gatheredCurtain = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.065, 0.085, clearH - 0.06, 14),
-    velvetFrameMat
-  );
-  gatheredCurtain.position.set(screenX - 0.01, (clearH - 0.06) * 0.5, -1.43);
-  simGroup.add(gatheredCurtain);
 
   const turfStartX = -recessDepthU + 0.12;
   const turfEndX = 1.82;
@@ -3524,7 +3557,8 @@ export function buildBarnGolfSimulator(
 
   const projectorGroup = new THREE.Group();
   projectorGroup.name = 'outbuildings.barn.golfSimulator.projector';
-  projectorGroup.position.set(0.28, 2.74, 0);
+  // Short-throw 4K laser projector mounted at `x = -0.32m` (`1.70m` from screen), well forward of the TrackMan iO optical/radar cone
+  projectorGroup.position.set(-0.32, 2.74, 0);
   simCeilingGroup.add(projectorGroup);
 
   const dropPole = new THREE.Mesh(
@@ -3556,9 +3590,12 @@ export function buildBarnGolfSimulator(
   projectorLens.position.set(-0.195, -0.025, 0);
   projectorGroup.add(projectorLens);
 
+  // Official TrackMan iO Ceiling Mount Specification:
+  // - Mounted `1.02m` (`3'4"`) in front of the tee (`hittingX = 1.12m` -> `x = +0.10m`)
+  // - Mounted `2.95m` (`9'8"`) above the hitting surface
   const tmGroup = new THREE.Group();
   tmGroup.name = 'outbuildings.barn.golfSimulator.trackmanIO';
-  tmGroup.position.set(0.92, 2.98, 0);
+  tmGroup.position.set(hittingX - 1.02, 2.95, 0);
   simCeilingGroup.add(tmGroup);
 
   const tmDropTube = new THREE.Mesh(
@@ -3709,8 +3746,12 @@ export function buildGarageStihlWallRack(
   rackGroup.name = 'outbuildings.garage.stihlWallRack';
   // Mounted on the North face (`-v`) of the Garage South Wall (`v = 5.428m`), centered at `u = 10.25m`.
   // With `rotation.y = Math.PI`, local `+Z` protrudes North (`-v`) into the Garage and local `+X` runs West (`-u`).
-  rackGroup.position.set(8.15, garageFloorTopY, 5.415);
+  // Issue #2 ("Make this cetnered on this wall and a bit smaller and higher up" at `[-15.09, 0.857, 20.785]`):
+  // Centered on the open Garage South wall (`u = 5.97m..10.12m` -> center `u = 8.05m`), raised `+0.42m` higher up,
+  // and scaled to `0.76` so it sits compactly and cleanly on the wall.
+  rackGroup.position.set(8.05, garageFloorTopY + 0.42, 5.415);
   rackGroup.rotation.y = Math.PI;
+  rackGroup.scale.set(0.76, 0.76, 0.76);
   groundGroup.add(rackGroup);
 
   const stihlOrangeMat = new THREE.MeshStandardMaterial({

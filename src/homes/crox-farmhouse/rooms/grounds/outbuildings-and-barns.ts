@@ -2029,43 +2029,38 @@ export function buildOutbuildingsAndBarns(
   const stableCeilEaveY =
     stableCeilRidgeY - 2.575 * ((stableRidgeH - stableUpperEaveH) / 3.055); // 3.507m vaulted ceiling eave in Stable
 
-  // Issue #2 & #3: Seamless Garage Resin Floor extension into the shortened/shifted East Wall Workbench Alcove (`u = 12.07..12.82m, v = 1.63..5.428m`)
+  // Issue #2 & #3: Seamless Garage Resin Floor extension into the East Wall Workbench Alcove (`u = 12.07..12.82m, v = 1.52..5.428m`)
   const benchAlcoveFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.75, garageFloorThickness, 3.798),
+    new THREE.BoxGeometry(0.75, garageFloorThickness, 3.908),
     garageResinFloorMat
   );
   benchAlcoveFloor.name = 'outbuildings.garage.resinFloor.alcove';
   benchAlcoveFloor.position.set(
     uStoreStart + 0.375,
     garageFloorTopY - garageFloorThickness * 0.5,
-    (1.63 + 5.428) * 0.5
+    (1.52 + 5.428) * 0.5
   );
   benchAlcoveFloor.receiveShadow = true;
   groundGroup.add(benchAlcoveFloor);
 
-  // Store Ground Floor Slab (`u = 12.82..14.96m` main floor + `u = 12.31..12.82m, v = 0.28..1.63m` North pass-through corridor behind the Golf Simulator)
-  const storeFloorTopY = -0.4;
+  // Issue #3 ("Tidy up the toplogy in here so these voids are covered up etc." at `[-9.534, -0.4, 15.585]`):
+  // Continuous Honed Limestone Floor (`barnLimestoneFloorMat` at `barnWestFloorY = -0.34m`) running seamlessly through
+  // the North Pass-Through Hallway (`u = 12.31..15.20m, v = 0.28..1.48m`) from the Garage pass-through door into the Barn!
+  const storeFloorTopY = -0.34;
+  const corridorFloorGeo = new THREE.BoxGeometry(2.89, 0.38, 1.20);
+  applyOutbuildingFloorUVs(corridorFloorGeo, 12.31 + 2.89 * 0.5, barnWestFloorY - 0.19, 0.28 + 0.60, 0.45);
   const storeFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(2.14, 0.12, eastRangeInternalV),
-    barnFloorMat
+    corridorFloorGeo,
+    barnLimestoneFloorMat
   );
   storeFloor.name = 'outbuildings.store.floor';
   storeFloor.position.set(
-    12.82 + 2.14 * 0.5,
-    storeFloorTopY - 0.06,
-    vEastRangeNorth + wallT + eastRangeInternalV * 0.5
+    12.31 + 2.89 * 0.5,
+    barnWestFloorY - 0.19,
+    0.28 + 0.60
   );
   storeFloor.receiveShadow = true;
   groundGroup.add(storeFloor);
-
-  const storeNorthEntryFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.51, 0.12, 1.35),
-    barnFloorMat
-  );
-  storeNorthEntryFloor.name = 'outbuildings.store.floor.northEntry';
-  storeNorthEntryFloor.position.set(12.31 + 0.51 * 0.5, storeFloorTopY - 0.06, 0.28 + 1.35 * 0.5);
-  storeNorthEntryFloor.receiveShadow = true;
-  groundGroup.add(storeNorthEntryFloor);
 
   // Issue #7 ("Limestone floor" at `[-4.501, -0.34, 17.435]`, `outbuildings.barn.westFloor`):
   // Barn West Honed Limestone Floor (`u = 15.20..18.68m`, width `3.48m`, top at `barnWestFloorY = -0.34m`)
@@ -2229,10 +2224,10 @@ export function buildOutbuildingsAndBarns(
   // - Cut a full-height doorway (`v = 0.50m..1.36m, y = garageFloorTopY (-0.50m) .. 1.50m`) in the North bay of the Garage East wall (`u = 12.07..12.31m`),
   //   fitted with an interactive Hinged Solid Oak Pass-Through Door (`outbuildings.garage.golfPassThroughDoor`) opening behind the back of the Golf Simulator,
   //   and crowned with an illuminated Red Golf Warning Indicator Light (`outbuildings.garage.golfWarningLight`) above the door!
-  const garagePassDoorVMin = 0.50;
-  const garagePassDoorVMax = 1.36;
+  const garagePassDoorVMin = 0.38;
+  const garagePassDoorVMax = 1.18;
   const garagePassDoorTopY = 1.50;
-  const benchAlcoveVMin = 1.63;
+  const benchAlcoveVMin = 1.32;
   const benchAlcoveVMax = vEastRangeSouth - wallT - 0.002; // 5.428m
 
   // 1. Lower sill / step wall (`y = barnLowerFloorY (-0.70m) .. garageFloorTopY (-0.50m)`): full span `vInnerNorth .. vInnerSouth`
@@ -2247,7 +2242,7 @@ export function buildOutbuildingsAndBarns(
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2a. North-most corner jamb pier (`v = 0.282m .. 0.50m`): `y = garageFloorTopY (-0.50m) .. eastRangeGroundTopY (1.94m)`
+  // 2a. North-most corner jamb pier (`v = 0.282m .. 0.48m`): `y = garageFloorTopY (-0.50m) .. eastRangeGroundTopY (1.94m)`
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -2259,7 +2254,7 @@ export function buildOutbuildingsAndBarns(
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2b. Over-door lintel (`v = 0.50m .. 1.36m`): `y = 1.50m .. eastRangeGroundTopY (1.94m)`
+  // 2b. Over-door lintel (`v = 0.48m .. 1.34m`): `y = 1.50m .. eastRangeGroundTopY (1.94m)`
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -2271,7 +2266,7 @@ export function buildOutbuildingsAndBarns(
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2c. Center pier between the Pass-Through Door and the Recessed Workbench Alcove (`v = 1.36m .. 1.63m`)
+  // 2c. Center pier between the Pass-Through Door and the Recessed Workbench Alcove (`v = 1.34m .. 1.52m`)
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -2283,9 +2278,9 @@ export function buildOutbuildingsAndBarns(
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 3. Upper lintel header above the recessed workbench (`v = 1.63m .. 5.428m, y = 1.42m .. eastRangeGroundTopY (1.94m)`)
+  // 3. Upper lintel header above the recessed workbench (`v = 1.52m .. 5.428m, y = 1.42m .. eastRangeGroundTopY (1.94m)`)
   addOutbuildingBrickWall(
-    groundCeilingGroup,
+    groundGroup,
     uStoreStart,
     uStoreStart + 0.24,
     1.42,
@@ -2295,14 +2290,41 @@ export function buildOutbuildingsAndBarns(
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // Painted plasterboard studwork alcove enclosure inside the Store dead space (`u = 12.31..12.85m, v = 1.59..5.428m`)
+
+  // Issue #3 ("Tidy up the toplogy in here so these voids are covered up etc." at `[-9.534, -0.4, 15.585]`):
+  // - Continuous South Hallway Wall (`u = 12.31m..14.96m, v = 1.20m..1.32m, y = -0.50m..1.94m`) forming a clean, straight
+  //   corridor wall from the Garage pass-through door all the way to the Barn portal with zero gaps or exposed voids!
   addOutbuildingBrickWall(
     groundGroup,
-    12.8,
-    12.85,
+    uStoreStart + 0.24,
+    uBarnStart,
     garageFloorTopY,
-    1.42,
-    benchAlcoveVMin - 0.04,
+    eastRangeGroundTopY,
+    1.20,
+    benchAlcoveVMin,
+    ['+x', '-x', '+z', '-z'],
+    warmRoomPlasterMat
+  );
+  // - Solid infill wall & top cap covering the void between the back of the recessed Garage workbench (`u = 12.78m`)
+  //   and the back of the Golf Simulator (`u = 13.04m`) across `v = 1.52m..5.428m`, plus the South pocket (`v = 5.095m..5.428m, u = 12.78..14.96m`)!
+  addOutbuildingBrickWall(
+    groundGroup,
+    12.78,
+    13.04,
+    garageFloorTopY,
+    eastRangeGroundTopY,
+    benchAlcoveVMin,
+    benchAlcoveVMax,
+    ['+x', '-x', '+z', '-z'],
+    warmRoomPlasterMat
+  );
+  addOutbuildingBrickWall(
+    groundGroup,
+    13.04,
+    uBarnStart,
+    garageFloorTopY,
+    eastRangeGroundTopY,
+    5.12,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
@@ -2310,21 +2332,10 @@ export function buildOutbuildingsAndBarns(
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart + 0.24,
-    12.8,
-    garageFloorTopY,
+    13.04,
     1.42,
-    benchAlcoveVMin - 0.04,
-    benchAlcoveVMin,
-    ['+x', '-x', '+z', '-z'],
-    warmRoomPlasterMat
-  );
-  addOutbuildingBrickWall(
-    groundCeilingGroup,
-    uStoreStart + 0.24,
-    12.85,
-    1.42,
-    1.47,
-    benchAlcoveVMin - 0.04,
+    1.94,
+    1.20,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
@@ -2343,13 +2354,13 @@ export function buildOutbuildingsAndBarns(
     passDoorGroup.position.set(passDoorCenterU, garageFloorTopY, passDoorCenterV);
     groundGroup.add(passDoorGroup);
 
-    // Solid light-oak threshold step inside the doorway (`y = 0..0.10m`, bridging `garageFloorTopY = -0.50m` to `storeFloorTopY = -0.40m`)
+    // Solid light-oak threshold step inside the doorway (`y = 0..0.16m`, bridging `garageFloorTopY = -0.50m` to `barnWestFloorY = -0.34m`)
     const thresholdStep = new THREE.Mesh(
-      new THREE.BoxGeometry(0.28, 0.10, passDoorW + 0.04),
+      new THREE.BoxGeometry(0.28, 0.16, passDoorW + 0.04),
       lightJoineryOakMat
     );
     thresholdStep.name = 'outbuildings.garage.golfPassThroughDoor.step';
-    thresholdStep.position.set(0.02, 0.05, 0);
+    thresholdStep.position.set(0.02, 0.08, 0);
     thresholdStep.receiveShadow = true;
     passDoorGroup.add(thresholdStep);
 
@@ -2390,12 +2401,12 @@ export function buildOutbuildingsAndBarns(
 
     // Hinged 4-Panel Solid Light-Oak Door Leaf (`outbuildings.garage.golfPassThroughDoor.leafPivot`)
     const leafW = passDoorW - jambT * 2 - 0.008; // 0.788m
-    const leafH = passDoorH - jambT - 0.105;     // 1.863m (clears the 0.10m threshold step)
+    const leafH = passDoorH - jambT - 0.165;     // 1.803m (clears the 0.16m threshold step)
     const leafT = 0.044;
 
     const leafPivot = new THREE.Group();
     leafPivot.name = 'outbuildings.garage.golfPassThroughDoor.leafPivot';
-    leafPivot.position.set(0, 0.102, -leafW * 0.5);
+    leafPivot.position.set(0, 0.162, -leafW * 0.5);
     passDoorGroup.add(leafPivot);
 
     const doorSlab = new THREE.Mesh(
@@ -2579,9 +2590,13 @@ export function buildOutbuildingsAndBarns(
   // The Store/Barn cross-wall (`u = 14.96..15.20m`) framing the Golf Simulator (North pier, South pier, upper lintel,
   // and Barn-side upper gable `outbuildings.storeBarnPartitionGable`) uses exposed red/multi-stock brickwork (`exteriorBrickMat`)
   // on the Barn face (`+x`) and portal reveals (`+z`, `-z`), keeping only the Store back face (`-x`) plastered!
-  const simCutoutVMin = 0.615;
-  const simCutoutVMax = 5.095;
-  const simCutoutTopY = barnWestFloorY + 2.8; // 2.46m
+  const simCutoutVMin = 1.32;
+  const simCutoutVMax = 5.12;
+  const simCutoutTopY = barnWestFloorY + 2.85; // 2.51m (9'4" TrackMan iO minimum height)
+  const barnHallPortalVMin = 0.38;
+  const barnHallPortalVMax = 1.18;
+  const barnHallPortalTopY = 1.78;
+  // North corner brick pier (`v = 0.282m .. 0.44m`)
   addOutbuildingBrickWall(
     groundGroup,
     uBarnStart,
@@ -2589,6 +2604,30 @@ export function buildOutbuildingsAndBarns(
     storeFloorTopY - 0.12,
     barnUpperTopY,
     vEastRangeNorth + wallT + 0.002,
+    barnHallPortalVMin,
+    ['-x'],
+    exteriorBrickMat
+  );
+  // Over-portal brick lintel above the North Hallway walk-through opening (`v = 0.44m .. 1.34m, y = 1.78m .. 2.92m`)
+  addOutbuildingBrickWall(
+    groundGroup,
+    uBarnStart,
+    uBarnStart + 0.24,
+    barnHallPortalTopY,
+    barnUpperTopY,
+    barnHallPortalVMin,
+    barnHallPortalVMax,
+    ['-x'],
+    exteriorBrickMat
+  );
+  // Dividing brick pier between the North Hallway Portal (`v = 0.44..1.34m`) and the Enclosed Golf Simulator (`v = 1.52..5.095m`)
+  addOutbuildingBrickWall(
+    groundGroup,
+    uBarnStart,
+    uBarnStart + 0.24,
+    storeFloorTopY - 0.12,
+    barnUpperTopY,
+    barnHallPortalVMax,
     simCutoutVMin,
     ['-x'],
     exteriorBrickMat
