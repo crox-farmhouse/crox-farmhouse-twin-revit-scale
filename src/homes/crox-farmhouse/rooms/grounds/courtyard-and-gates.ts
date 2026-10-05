@@ -7,6 +7,7 @@ import {
   type createGroundFloorMaterials,
 } from '../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
+import { buildLandRoverDefender } from './land-rover-defender.ts';
 import {
   buildOutbuildingsAndBarns,
   getOutbuildingNorthWallWorldZ,
@@ -1335,6 +1336,11 @@ export function buildCourtyardAndGates(
     -Math.PI * 0.46,
     10.0
   );
+
+  // -------------------------------------------------------------------------
+  // 8b. SANTORINI BLACK LAND ROVER DEFENDER 110 (L663 V8 CARPATHIAN EDITION) IN COURTYARD
+  // -------------------------------------------------------------------------
+  buildLandRoverDefender(scene, getCourtyardGroundY);
 
   // -------------------------------------------------------------------------
   // 9. SOUTHERN 5-BAY OUTBUILDING / BARN RANGE (GYM, GARAGE, STORE, BARN + FIRST FLOOR, STABLE)

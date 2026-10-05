@@ -1016,9 +1016,9 @@ function buildPorscheTurboSWheelCorner(
 
 /**
  * Builds an authentic, showroom-grade 3D model of a **Porsche 911 (992.2) Turbo S Coupé in Ocean Blue Metallic**
- * (`outbuildings.garage.porsche992TurboS`, `userData.zone = 'study'`) parked **100% straight** in the West Garage bay
- * (`u = 7.40m, y = garageFloorTopY, v = 2.86m, rotation.y = -Math.PI / 2`), facing straight North (`-v`) toward the
- * West Garage Double Coach Doors (`u = 6.08..8.72m`).
+ * (`outbuildings.garage.porsche992TurboS`, `userData.zone = 'study'`) parked **100% straight** in the East Garage bay
+ * (`u = 10.44m, y = garageFloorTopY, v = 2.86m, rotation.y = -Math.PI / 2`), facing straight North (`-v`) toward the
+ * East Garage Double Coach Doors (`u = 9.12..11.76m`) per Issue #2 ("Move the car to this side" at `[-11.137, -0.5, 18.79]`).
  */
 export function buildPorsche992TurboS(
   groundGroup: THREE.Group,
@@ -1027,7 +1027,7 @@ export function buildPorsche992TurboS(
   const carGroup = new THREE.Group();
   carGroup.name = 'outbuildings.garage.porsche992TurboS';
   carGroup.userData.zone = 'study';
-  carGroup.position.set(7.4, garageFloorTopY, 2.86);
+  carGroup.position.set(10.44, garageFloorTopY, 2.86);
   carGroup.rotation.y = -Math.PI / 2;
   groundGroup.add(carGroup);
 

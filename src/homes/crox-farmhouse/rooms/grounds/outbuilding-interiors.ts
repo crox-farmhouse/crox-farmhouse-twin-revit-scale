@@ -527,15 +527,18 @@ function createTrackManWidescreenTexture(): THREE.CanvasTexture {
 }
 
 /**
- * Issue #2 ("Change this for an oak door. Add skirting board in this room" at `[-16.62, 0.075, 16.684]`):
- * 1. Builds a high-LOD Solid European Oak 4-Panel Internal Door (`outbuildings.doorPivot.GymGarageInternal`)
- *    with a full-depth moulded oak door frame & architraves at `u = 5.77..5.97m, v = 1.25..2.15m`.
- * 2. Adds continuous profiled skirting boards (`outbuildings.gym.skirting`) around the interior perimeter
- *    of the GYM (`u = 0.28..5.77m, v = 0.28..5.43m, y = -0.60m`), wrapping cleanly around the brick pilasters
- *    and stopping neatly at the North glazed screen and East oak door architrave.
+ * Issue #4 ("Remove this glas window and replace with a double height glass door"
+ * at `[-16.431, 0.87, 17.617]`, `outbuildings.gymGarageViewingWindow.glass`):
+ * 1. Replaces the half-height viewing window with a **Full-Height ("Double Height") Architectural Glazed Double Door
+ *    & Sidelight Screen (`outbuildings.gymGarageGlassDoor`)** extending from the Gym floor (`y = baseY0 = -0.60m`)
+ *    all the way up to `y = 1.78m` (`2.38m` full-height span) across `v = 0.88m..3.52m` (`2.64m` wide, centered at
+ *    `v = 2.20m` right at the annotated hit point `v = 2.139m`), with two interactive hinged full-height glass doors
+ *    (`ctx.interactions.registerHingedDoor`) and flanked by full-height glazed sidelights.
+ * 2. Adds profiled skirting boards (`outbuildings.gym.skirting`) around the interior perimeter of the GYM, stopping
+ *    cleanly at the full-height glass double door (`v = 0.88..3.52m`) and the Gym-to-Shower-Room door (`v = 4.18..4.94m`).
  */
 export function buildGymOakDoorAndSkirting(
-  _ctx: SceneBuilderContext,
+  ctx: SceneBuilderContext,
   groundGroup: THREE.Group,
   baseY0: number,
   wallT: number,
@@ -544,168 +547,253 @@ export function buildGymOakDoorAndSkirting(
   vWestRangeSouth: number,
   skirtingMat: THREE.Material
 ): void {
-  // Issue #9 ("Remove the door here and replace with large wide glass window so you can see into the garage"
-  // at `[-16.479, 0.414, 18.327]`):
-  // Replaces the hinged internal door with a panoramic `3.40m x 1.40m` Architectural Glazed Viewing Window
-  // (`outbuildings.gymGarageViewingWindow`) spanning `v = 1.15m..4.55m, y = baseY0 + 0.72m .. baseY0 + 2.12m`
-  // in the GYM-to-Garage partition wall (`u = 5.77..5.97m`) so you have a clear view from the GYM straight into the Garage!
   const lightOakFrameMat = new THREE.MeshStandardMaterial({
-    color: 0xc2986b, // Warm light European oak joinery
+    color: 0xc2986b, // Warm light European oak joinery & threshold step
     roughness: 0.42,
     metalness: 0.04,
   });
   const lightOakTrimMat = new THREE.MeshStandardMaterial({
-    color: 0xb28759, // Chamfered light oak sill & architrave moulding
+    color: 0xb28759, // Chamfered light oak architrave moulding
     roughness: 0.46,
     metalness: 0.04,
   });
   const satinBlackMullionMat = new THREE.MeshStandardMaterial({
-    color: 0x1e2228, // Slim architectural satin-anthracite steel glazing mullions & gasket beads
+    color: 0x1e2228, // Slim architectural satin-anthracite steel glazing mullions, stiles & rails
     roughness: 0.34,
     metalness: 0.68,
   });
+  const brushedSteelHardwareMat = new THREE.MeshStandardMaterial({
+    color: 0xd8dfe6, // Brushed stainless pull handles, hinges & threshold plate
+    roughness: 0.22,
+    metalness: 0.88,
+  });
   const viewingGlassMat = new THREE.MeshStandardMaterial({
-    color: 0xdcf0f7, // Crystal-clear low-iron toughened acoustic viewing glass
+    color: 0xdcf0f7, // Crystal-clear low-iron toughened acoustic safety glass
     roughness: 0.06,
     metalness: 0.14,
     transparent: true,
-    opacity: 0.2,
+    opacity: 0.22,
   });
 
   // ---------------------------------------------------------------------------
-  // 1. Panoramic 3.40m x 1.40m Glazed Viewing Window (`outbuildings.gymGarageViewingWindow`)
+  // 1. Full-Height ("Double Height") 2.64m x 2.38m Glazed Double Door & Sidelight Screen
+  //    (`outbuildings.gymGarageGlassDoor`, `u = 5.77..5.97m, v = 0.88..3.52m, y = baseY0 (-0.60m) .. +1.78m`)
   // ---------------------------------------------------------------------------
-  const winUMid = uGymEnd + partT * 0.5; // 5.87m
-  const winVMin = 1.15;
-  const winVMax = 4.55;
-  const winVMid = (winVMin + winVMax) * 0.5; // 2.85m
-  const winW = winVMax - winVMin; // 3.40m wide
-  const sillRelY = 0.72; // Sill height above GYM floor (`baseY0`)
-  const winH = 1.4; // 1.40m tall viewing window (`y = baseY0 + 0.72m .. baseY0 + 2.12m`)
-  const jambT = 0.032;
+  const screenUMid = uGymEnd + partT * 0.5; // 5.87m
+  const screenVMin = 0.88;
+  const screenVMax = 3.52;
+  const screenVMid = (screenVMin + screenVMax) * 0.5; // 2.20m (right at hit point v = 2.139m!)
+  const screenW = screenVMax - screenVMin; // 2.64m wide
+  const screenH = 2.38; // Full height from `baseY0 = -0.60m` up to `y = +1.78m` (`2.38m` tall!)
+  const jambT = 0.034;
   const archW = 0.062;
   const archT = 0.018;
+  const thresholdStepH = 0.1; // Bridges `baseY0 = -0.60m` (Gym) up to `garageFloorTopY = -0.50m` (Garage)
 
-  const viewingWinGroup = new THREE.Group();
-  viewingWinGroup.name = 'outbuildings.gymGarageViewingWindow';
-  viewingWinGroup.position.set(winUMid, baseY0 + sillRelY, winVMid);
-  groundGroup.add(viewingWinGroup);
+  const glassDoorScreenGroup = new THREE.Group();
+  glassDoorScreenGroup.name = 'outbuildings.gymGarageGlassDoor';
+  glassDoorScreenGroup.userData.zone = 'courtyard';
+  glassDoorScreenGroup.position.set(screenUMid, baseY0, screenVMid);
+  groundGroup.add(glassDoorScreenGroup);
 
-  // Full-depth light-oak jamb linings (North & South) and top head lining
+  // Solid European Oak & Brushed-Stainless Threshold Step (`y = 0..0.10m` above `baseY0`)
+  const thresholdStep = new THREE.Mesh(
+    new THREE.BoxGeometry(partT + 0.04, thresholdStepH, screenW),
+    lightOakFrameMat
+  );
+  thresholdStep.name = 'outbuildings.gymGarageGlassDoor.threshold';
+  thresholdStep.position.set(0, thresholdStepH * 0.5, 0);
+  thresholdStep.receiveShadow = true;
+  glassDoorScreenGroup.add(thresholdStep);
+
+  const thresholdSillPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.006, screenW - jambT * 2),
+    brushedSteelHardwareMat
+  );
+  thresholdSillPlate.position.set(0, thresholdStepH + 0.003, 0);
+  glassDoorScreenGroup.add(thresholdSillPlate);
+
+  // Full-depth outer frame jamb linings (North & South) and top head lining
   for (const sideZ of [-1, 1] as const) {
     const jamb = new THREE.Mesh(
-      new THREE.BoxGeometry(partT + 0.01, winH, jambT),
-      lightOakFrameMat
+      new THREE.BoxGeometry(partT + 0.01, screenH - thresholdStepH, jambT),
+      satinBlackMullionMat
     );
-    jamb.position.set(0, winH * 0.5, sideZ * (winW * 0.5 - jambT * 0.5));
+    jamb.position.set(
+      0,
+      thresholdStepH + (screenH - thresholdStepH) * 0.5,
+      sideZ * (screenW * 0.5 - jambT * 0.5)
+    );
     jamb.castShadow = true;
     jamb.receiveShadow = true;
-    viewingWinGroup.add(jamb);
+    glassDoorScreenGroup.add(jamb);
   }
   const headLining = new THREE.Mesh(
-    new THREE.BoxGeometry(partT + 0.01, jambT, winW),
-    lightOakFrameMat
+    new THREE.BoxGeometry(partT + 0.01, jambT, screenW),
+    satinBlackMullionMat
   );
-  headLining.position.set(0, winH - jambT * 0.5, 0);
-  viewingWinGroup.add(headLining);
+  headLining.position.set(0, screenH - jambT * 0.5, 0);
+  glassDoorScreenGroup.add(headLining);
 
-  // Projecting bullnose solid light-oak window sill board + under-sill apron moulding on both GYM & Garage sides
-  const sillBoardD = partT + 0.072; // Projects 36mm proud on both GYM and Garage faces
-  const sillBoardH = 0.036;
-  const sillBoardW = winW + archW * 2 + 0.04;
-  const sillBoard = new THREE.Mesh(
-    new THREE.BoxGeometry(sillBoardD, sillBoardH, sillBoardW),
-    lightOakFrameMat
-  );
-  sillBoard.name = 'outbuildings.gymGarageViewingWindow.sill';
-  sillBoard.position.set(0, sillBoardH * 0.5, 0);
-  sillBoard.castShadow = true;
-  sillBoard.receiveShadow = true;
-  viewingWinGroup.add(sillBoard);
-
-  for (const sideX of [-1, 1] as const) {
-    const noseCyl = new THREE.Mesh(
-      new THREE.CylinderGeometry(sillBoardH * 0.5, sillBoardH * 0.5, sillBoardW, 12),
-      lightOakFrameMat
-    );
-    noseCyl.rotation.x = Math.PI / 2;
-    noseCyl.position.set(sideX * (sillBoardD * 0.5), sillBoardH * 0.5, 0);
-    viewingWinGroup.add(noseCyl);
-
-    const apron = new THREE.Mesh(
-      new THREE.BoxGeometry(archT, 0.048, winW + archW * 2 - 0.02),
-      lightOakTrimMat
-    );
-    apron.position.set(sideX * (partT * 0.5 + archT * 0.5), -0.024, 0);
-    viewingWinGroup.add(apron);
-  }
-
-  // Moulded light-oak architraves framing the sides and top on both the GYM (`-u`) and Garage (`+u`) wall faces
+  // Moulded perimeter architraves on both the GYM (`-u`) and Garage (`+u`) wall faces
   for (const sideX of [-1, 1] as const) {
     const xFace = sideX * (partT * 0.5 + archT * 0.5);
     for (const sideZ of [-1, 1] as const) {
       const archLeg = new THREE.Mesh(
-        new THREE.BoxGeometry(archT, winH + archW - sillBoardH, archW),
+        new THREE.BoxGeometry(archT, screenH + archW - thresholdStepH, archW),
         lightOakTrimMat
       );
       archLeg.position.set(
         xFace,
-        sillBoardH + (winH + archW - sillBoardH) * 0.5,
-        sideZ * (winW * 0.5 + archW * 0.5 - 0.012)
+        thresholdStepH + (screenH + archW - thresholdStepH) * 0.5,
+        sideZ * (screenW * 0.5 + archW * 0.5 - 0.012)
       );
-      viewingWinGroup.add(archLeg);
+      glassDoorScreenGroup.add(archLeg);
     }
     const archHeader = new THREE.Mesh(
-      new THREE.BoxGeometry(archT, archW, winW + archW * 2 - 0.024),
+      new THREE.BoxGeometry(archT, archW, screenW + archW * 2 - 0.024),
       lightOakTrimMat
     );
-    archHeader.position.set(xFace, winH + archW * 0.5 - 0.006, 0);
-    viewingWinGroup.add(archHeader);
+    archHeader.position.set(xFace, screenH + archW * 0.5 - 0.006, 0);
+    glassDoorScreenGroup.add(archHeader);
   }
 
-  // Inner satin-anthracite peripheral glazing sub-frame & 2 slim vertical mullions (3 wide panoramic bays)
-  const clearInnerW = winW - jambT * 2;
-  const clearInnerH = winH - sillBoardH - jambT;
-  const innerCenterY = sillBoardH + clearInnerH * 0.5;
-  const subFrameT = 0.026;
-  const subFrameD = 0.056;
+  // Clear opening above threshold (`clearH = 2.246m`, `clearW = 2.572m`):
+  // - North Fixed Full-Height Glazed Sidelight (`z = -1.286m .. -0.78m`, width `0.506m`)
+  // - Central Full-Height Interactive Double Glass Doors (`z = -0.78m .. +0.78m`, width `1.56m`, two `0.774m` leaves)
+  // - South Fixed Full-Height Glazed Sidelight (`z = +0.78m .. +1.286m`, width `0.506m`)
+  const clearBottomY = thresholdStepH; // 0.10m
+  const clearTopY = screenH - jambT; // 2.346m
+  const clearH = clearTopY - clearBottomY; // 2.246m
+  const clearMidY = clearBottomY + clearH * 0.5;
+  const doorOpeningHalfW = 0.78;
+  const mullionW = 0.036;
+  const mullionD = 0.064;
 
-  for (const sideY of [-1, 1] as const) {
-    const hBar = new THREE.Mesh(
-      new THREE.BoxGeometry(subFrameD, subFrameT, clearInnerW),
-      satinBlackMullionMat
-    );
-    hBar.position.set(0, innerCenterY + sideY * (clearInnerH * 0.5 - subFrameT * 0.5), 0);
-    viewingWinGroup.add(hBar);
-  }
+  // 2 Full-Height Vertical Structural Mullion Posts at `z = ±0.78m` flanking the double doors
   for (const sideZ of [-1, 1] as const) {
-    const vBar = new THREE.Mesh(
-      new THREE.BoxGeometry(subFrameD, clearInnerH - subFrameT * 2, subFrameT),
+    const postZ = sideZ * (doorOpeningHalfW + mullionW * 0.5);
+    const mullionPost = new THREE.Mesh(
+      new THREE.BoxGeometry(mullionD, clearH, mullionW),
       satinBlackMullionMat
     );
-    vBar.position.set(0, innerCenterY, sideZ * (clearInnerW * 0.5 - subFrameT * 0.5));
-    viewingWinGroup.add(vBar);
-  }
+    mullionPost.position.set(0, clearMidY, postZ);
+    mullionPost.castShadow = true;
+    glassDoorScreenGroup.add(mullionPost);
 
-  // 2 slim intermediate vertical mullions dividing the 3.40m span into 3 panoramic 1.09m bays
-  for (const mulZ of [-clearInnerW / 6, clearInnerW / 6] as const) {
-    const mullion = new THREE.Mesh(
-      new THREE.BoxGeometry(0.048, clearInnerH - subFrameT * 2, 0.032),
-      satinBlackMullionMat
+    // Fixed Full-Height Sidelight between `postZ` and outer jamb (`±(screenW * 0.5 - jambT)`)
+    const sidelightInnerZ = sideZ * (doorOpeningHalfW + mullionW);
+    const sidelightOuterZ = sideZ * (screenW * 0.5 - jambT);
+    const sidelightW = Math.abs(sidelightOuterZ - sidelightInnerZ);
+    const sidelightMidZ = (sidelightInnerZ + sidelightOuterZ) * 0.5;
+
+    for (const railY of [clearBottomY + 0.018, clearTopY - 0.018, clearBottomY + clearH * 0.34, clearBottomY + clearH * 0.67] as const) {
+      const hBar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.044, 0.024, sidelightW),
+        satinBlackMullionMat
+      );
+      hBar.position.set(0, railY, sidelightMidZ);
+      glassDoorScreenGroup.add(hBar);
+    }
+
+    const sidelightGlass = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, clearH - 0.036, sidelightW - 0.012),
+      viewingGlassMat
     );
-    mullion.position.set(0, innerCenterY, mulZ);
-    mullion.castShadow = true;
-    viewingWinGroup.add(mullion);
+    sidelightGlass.name = 'outbuildings.gymGarageGlassDoor.sidelightGlass';
+    sidelightGlass.position.set(0, clearMidY, sidelightMidZ);
+    glassDoorScreenGroup.add(sidelightGlass);
   }
 
-  // Crystal-clear architectural safety glass pane (`outbuildings.gymGarageViewingWindow.glass`)
-  const glassPane = new THREE.Mesh(
-    new THREE.BoxGeometry(0.016, clearInnerH - subFrameT * 2, clearInnerW - subFrameT * 2),
-    viewingGlassMat
-  );
-  glassPane.name = 'outbuildings.gymGarageViewingWindow.glass';
-  glassPane.position.set(0, innerCenterY, 0);
-  viewingWinGroup.add(glassPane);
+  // Two Interactive Full-Height ("Double Height") Glazed Door Leaves (`northLeaf` & `southLeaf`)
+  const leafW = doorOpeningHalfW - 0.004; // 0.776m per leaf
+  const leafH = clearH - 0.008; // 2.238m tall!
+  const leafT = 0.044;
+  const stileW = 0.046;
+
+  for (const [sideZ, leafName] of [
+    [-1, 'outbuildings.gymGarageGlassDoor.northLeaf'],
+    [1, 'outbuildings.gymGarageGlassDoor.southLeaf'],
+  ] as const) {
+    // Hinge pivot at the outer mullion post (`z = sideZ * (doorOpeningHalfW - 0.004)`)
+    const hingeZ = sideZ * (doorOpeningHalfW - 0.004);
+    const leafPivot = new THREE.Group();
+    leafPivot.name = leafName;
+    leafPivot.position.set(0, clearMidY, hingeZ);
+    glassDoorScreenGroup.add(leafPivot);
+
+    // Center of leaf relative to `hingeZ` is `-sideZ * (leafW * 0.5)`
+    const leafCenterRelZ = -sideZ * (leafW * 0.5);
+
+    // Outer hinge stile & inner meeting stile
+    for (const stileRelZ of [
+      -sideZ * (stileW * 0.5),
+      -sideZ * (leafW - stileW * 0.5),
+    ] as const) {
+      const stile = new THREE.Mesh(
+        new THREE.BoxGeometry(leafT, leafH, stileW),
+        satinBlackMullionMat
+      );
+      stile.position.set(0, 0, stileRelZ);
+      stile.castShadow = true;
+      leafPivot.add(stile);
+    }
+
+    // Top rail, bottom kick rail, and 2 slender Crittall horizontal glazing bars matching the sidelights
+    for (const [railRelY, railH] of [
+      [-leafH * 0.5 + 0.032, 0.064],
+      [leafH * 0.5 - 0.024, 0.048],
+      [-leafH * 0.5 + leafH * 0.34, 0.022],
+      [-leafH * 0.5 + leafH * 0.67, 0.022],
+    ] as const) {
+      const rail = new THREE.Mesh(
+        new THREE.BoxGeometry(leafT, railH, leafW - stileW * 2),
+        satinBlackMullionMat
+      );
+      rail.position.set(0, railRelY, leafCenterRelZ);
+      rail.castShadow = true;
+      leafPivot.add(rail);
+    }
+
+    // Full-Height Toughened Acoustic Glass Pane (`outbuildings.gymGarageGlassDoor.glass` & legacy alias `.gymGarageViewingWindow.glass`)
+    const doorGlass = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, leafH - 0.11, leafW - stileW * 2 + 0.008),
+      viewingGlassMat
+    );
+    doorGlass.name = 'outbuildings.gymGarageGlassDoor.glass';
+    doorGlass.position.set(0, 0.004, leafCenterRelZ);
+    leafPivot.add(doorGlass);
+
+    // Long vertical architectural brushed-stainless pull handles on both the GYM (`-x`) and Garage (`+x`) faces
+    const handleRelZ = -sideZ * (leafW - stileW - 0.028);
+    for (const faceX of [-1, 1] as const) {
+      const pullBar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.011, 0.011, 0.52, 14),
+        brushedSteelHardwareMat
+      );
+      pullBar.position.set(faceX * (leafT * 0.5 + 0.026), -0.06, handleRelZ);
+      leafPivot.add(pullBar);
+
+      for (const standY of [-0.22, 0.1] as const) {
+        const standoff = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.008, 0.008, 0.028, 10),
+          brushedSteelHardwareMat
+        );
+        standoff.rotation.z = Math.PI / 2;
+        standoff.position.set(faceX * (leafT * 0.5 + 0.013), standY, handleRelZ);
+        leafPivot.add(standoff);
+      }
+    }
+
+    // Register interactive hinged door so clicking either full-height glass leaf swings it smoothly open!
+    ctx.interactions.registerHingedDoor(
+      glassDoorScreenGroup,
+      leafPivot,
+      new THREE.Vector3(0, 0, 0),
+      'y',
+      sideZ * Math.PI * 0.48
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // 2. Profiled Architectural Skirting Boards around the GYM (`outbuildings.gym.skirting`)
@@ -779,8 +867,11 @@ export function buildGymOakDoorAndSkirting(
   };
 
   addSkirtingAlongV(vInnerNorth, vInnerSouth, wallT, 1);
-  // Continuous uninterrupted skirting along the entire GYM East partition wall (`u = 5.77m`) below the viewing window!
-  addSkirtingAlongV(vInnerNorth, vInnerSouth, uGymEnd, -1);
+  // Segmented skirting along the GYM East partition wall (`u = 5.77m`), stopping cleanly at
+  // the full-height glass double door (`v = 0.88..3.52m`) and the Gym-to-Shower-Room door (`v = 4.18..4.94m`)!
+  addSkirtingAlongV(vInnerNorth, 0.82, uGymEnd, -1);
+  addSkirtingAlongV(3.58, 4.12, uGymEnd, -1);
+  addSkirtingAlongV(5.0, vInnerSouth, uGymEnd, -1);
 
   addSkirtingAlongU(wallT, 2.71, vInnerNorth, 1);
   addSkirtingAlongV(vInnerNorth, vInnerNorth + 0.16 + skirtBaseT, 2.71, -1);
@@ -2080,20 +2171,24 @@ export function buildGarageToolBench(
   benchGroup.add(ledTaskBar);
 
   // ---------------------------------------------------------------------------
-  // 5. South-Wall Return Wing (`outbuildings.garage.toolBench.southWing`)
-  //    - Issue #3 ("No need for open section keep the drawers" at `[-12.839, 0.084, 20.622]`):
-  //      Full-depth Dark-Anthracite Steel Lower Cabinet Carcass, Plinth, Stiles & 3 Banks of 5-Tier
-  //      Brushed 304 Stainless-Steel Drawers (`outbuildings.garage.toolBench.southWing.drawer`) underneath!
-  //    - Issue #4 ("Smaller screen, only needs to be 32 inch not ultra wide." at `[-11.234, 0.819, 20.361]`):
-  //      Standard 32-Inch (`16:9`, `0.70m x 0.39m` screen, `0.72m x 0.41m` bezel) Wall-Mounted Monitor!
+  // 5. Shower-Room Front Cabinet & Workstation Section (`outbuildings.garage.toolBench.southWing`)
+  //    - Issue #3 ("Move this section of cabinet to in front of the shower room" at `[-11.363, 0.412, 20.06]`,
+  //      `outbuildings.garage.toolBench.southWing.butcherBlockTop`):
+  //      Moved from the SE corner (`u = 10.12..12.04m, v = 5.04m`) to sit directly in front of the Shower Room's
+  //      North wall (`v = 3.85m`, spanning `u = 6.91m..8.85m`, centered at `u = 7.88m, v = 3.48m`, which in
+  //      `benchGroup` local coordinates `(12.41, y, 3.375, rotY = +Math.PI/2)` is `localX = -0.105m, localZ = -4.53m`),
+  //      facing North (`-v`) toward the West Garage Double Door while leaving the Garage-to-Shower-Room door (`u = 6.07..6.83m`) clear!
+  //    - Full-depth Dark-Anthracite Steel Lower Cabinet Carcass, Plinth, Stiles & 3 Banks of 5-Tier
+  //      Brushed 304 Stainless-Steel Drawers (`outbuildings.garage.toolBench.southWing.drawer`) underneath,
+  //      plus the Wall-Mounted 32-Inch (`16:9`) Monitor on the Shower Room North wall behind it!
   // ---------------------------------------------------------------------------
-  const southReturnL = 1.92; // Spans `u = 10.12m..12.04m` along the Garage South wall (`v = 4.67m..5.41m`)
+  const southReturnL = 1.92; // Spans `u = 6.91m..8.85m` directly in front of the Shower Room North wall (`v = 3.85m`)
   const southWingGroup = new THREE.Group();
   southWingGroup.name = 'outbuildings.garage.toolBench.southWing';
   southWingGroup.position.set(
-    -totalW * 0.5 + benchD * 0.5, // localX = -1.665m -> v = 5.04m (`v = 4.67..5.41m`)
+    -0.105, // localX = -0.105m -> v = 3.48m (`v = 3.11..3.85m`, flush against the `v = 3.85m` Shower Room North wall!)
     0,
-    -benchD * 0.5 - southReturnL * 0.5 // localZ = -1.33m -> u = 11.08m (`u = 10.12..12.04m`)
+    -4.53 // localZ = -4.53m -> u = 7.88m (`u = 6.91..8.85m`)
   );
   southWingGroup.rotation.y = -Math.PI / 2;
   benchGroup.add(southWingGroup);
@@ -4504,11 +4599,9 @@ export function buildGarageStihlWallRack(
   rackGroup.name = 'outbuildings.garage.stihlWallRack';
   // Mounted on the North face (`-v`) of the Garage South Wall (`v = 5.428m`), centered at `u = 10.25m`.
   // With `rotation.y = Math.PI`, local `+Z` protrudes North (`-v`) into the Garage and local `+X` runs West (`-u`).
-  // Issue #2 ("Make this cetnered on this wall and a bit smaller and higher up" at `[-15.09, 0.857, 20.785]`):
-  // Centered on the open Garage South wall (`u = 5.97m..10.12m` -> center `u = 8.05m`), raised `+0.42m` higher up,
-  // and scaled to `0.76` so it sits compactly and cleanly on the wall.
-  // Issue #5 ([OBJECT MOVE / ROTATE]: Move outbuildings.garage.stihlWallRack to [-14.733, 1.016, 20.632] -> local `[7.362, 0.206, 5.415]`):
-  rackGroup.position.set(7.362, garageFloorTopY + 0.706, 5.415);
+  // Shifted to `u = 10.48m` on the Garage South wall (`u = 8.92m..12.04m` East bay, freed up by moving `southWing`
+  // to in front of the Shower Room) so it does not overlap the new Shower Room (`u = 5.97m..8.92m`)!
+  rackGroup.position.set(10.48, garageFloorTopY + 0.706, 5.415);
   rackGroup.rotation.y = Math.PI;
   rackGroup.scale.set(0.76, 0.76, 0.76);
   groundGroup.add(rackGroup);
@@ -5577,8 +5670,11 @@ export function buildGymTechnogymRunPersonal(
   runGroup.userData.zone = 'courtyard';
   // Placed in the GYM (`u = 3.10m, v = 3.55m`) facing East (`+u`, `rotation.y = Math.PI / 2`)
   // toward the panoramic 3.40m Garage viewing window so the runner looks straight through to the Porsche 992.2 Turbo S!
-  // Issue #1 [OBJECT MOVE / ROTATE]: Move outbuildings.gym.technogymRunPersonal to [4.222, gymFloorY, 3.99], Rotate Y to -0.085 deg
-  runGroup.position.set(4.222, gymFloorY, 3.99);
+  // Issue #6 ("Move this clloser to the wall and slightly to the right to make getting to toilet easier"
+  // at `[-18.144, -0.392, 19.851]`, `outbuildings.gym.technogymRunPersonal.runningBelt`):
+  // Moved closer to the South wall (`v = 4.32m`, tucking the front nose near `v = 5.30m`) and slightly to the right/West
+  // (`u = 3.68m`), opening a wide, unobstructed 1.80m walkway to the Gym-to-Shower/Toilet Room door!
+  runGroup.position.set(3.68, gymFloorY, 4.32);
   runGroup.rotation.y = -0.0015;
   groundGroup.add(runGroup);
 
@@ -7389,11 +7485,12 @@ export function buildGymMirrorsLightingAndPlants(
     0.24
   );
 
-  // 3B. SE Corner (`u = 5.45m, v = 5.02m`, between the SE Mirror Wall & Garage Viewing Window): Architectural Snake Plant / Dracaena
+  // 3B. Issue #5 ("move this plant out of the way" at `[-16.943, 0.117, 19.252]`, `outbuildings.gym.plants.seSnakePlant`):
+  // Moved away from the Gym-to-Shower/Toilet Room doorway to sit neatly against the central South brick pilaster (`u = 2.86m, v = 5.08m`)!
   addSculptedGymPlanter(
     'outbuildings.gym.plants.seSnakePlant',
-    5.45,
-    5.02,
+    2.86,
+    5.08,
     limestonePlanterMat,
     0.19,
     0.15,
@@ -7489,3 +7586,797 @@ export function buildGymMirrorsLightingAndPlants(
     nePlant.position.y = gymFloorY + 0.476;
   }
 }
+
+/**
+ * Generates a large-format Calacatta Gold & Honed Limestone porcelain tile texture (`512x512`)
+ * with warm alabaster stone veins and fine grout lines for the Garage/Gym Shower Room & WC.
+ */
+function createShowerRoomCalacattaTileTexture(): THREE.CanvasTexture {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.fillStyle = '#f2ede4';
+  ctx.fillRect(0, 0, size, size);
+
+  // Subtle marble veining across each 256x256 tile
+  for (let v = 0; v < 26; v++) {
+    const x0 = ((v * 97) % size);
+    const y0 = ((v * 53) % size);
+    ctx.strokeStyle =
+      v % 3 === 0 ? 'rgba(182, 162, 134, 0.22)' : 'rgba(145, 148, 154, 0.18)';
+    ctx.lineWidth = 1.2 + (v % 3) * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.bezierCurveTo(
+      x0 + 64,
+      y0 + 28,
+      x0 + 112,
+      y0 - 24,
+      x0 + 178,
+      y0 + 42
+    );
+    ctx.stroke();
+  }
+
+  // 2x2 large-format porcelain tile grout grid
+  ctx.strokeStyle = 'rgba(168, 160, 148, 0.55)';
+  ctx.lineWidth = 3;
+  for (const g of [0, 256]) {
+    ctx.beginPath();
+    ctx.moveTo(g, 0);
+    ctx.lineTo(g, size);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, g);
+    ctx.lineTo(size, g);
+    ctx.stroke();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 2);
+  return tex;
+}
+
+/**
+ * Issue #1 ("We need to fit a small shower room and toilet in this back corner."
+ * at `[-13.364, -0.5, 19.781]` -> Outbuilding `(u = 8.74m, y = -0.50m, v = 4.56m)`) &
+ * Issue #5 ("Entrance to shower room ideally from both gym and garage, or just from 1"
+ * at `[-15.934, -0.5, 19.899]` -> Outbuilding `(u = 6.17m, y = -0.50m, v = 4.46m)`):
+ *
+ * Builds the **Small Shower Room & Toilet (`outbuildings.garage.showerRoom`)** in the South-West back corner
+ * of the Garage (`u = 5.97m..8.92m, v = 3.85m..5.43m`, `2.95m` wide x `1.58m` deep) with **dual entrances from
+ * BOTH the Gym AND the Garage**:
+ * 1. **Gym Entrance Door (`outbuildings.garage.showerRoom.gymDoor`, `u = 5.77..5.97m, v = 4.18..4.94m`)**:
+ *    4-panel solid European oak door with oak step threshold (`gymFloorY = -0.588m` -> `garageFloorTopY = -0.50m`),
+ *    brushed-brass lever handles, privacy thumbturn, and interactive hinge (`ctx.interactions.registerHingedDoor`).
+ * 2. **Garage Entrance Door (`outbuildings.garage.showerRoom.garageDoor`, `v = 3.85..3.97m, u = 6.07..6.83m`)**:
+ *    4-panel solid European oak door on the West side of the Shower Room North wall (`v = 3.85m`, clear to the West
+ *    of the moved `southWing` cabinet at `u = 6.91..8.85m`), with interactive hinge (`ctx.interactions.registerHingedDoor`).
+ * 3. **Partition Walls (`v = 3.85..3.97m` North wall & `u = 8.80..8.92m` East wall) + Cutaway Ceiling Lid**:
+ *    Full-height (`y = -0.50m..1.94m`) insulated stud partition walls on `groundGroup` (so they stay at full height
+ *    in cutaway mode and back the moved `southWing` cabinet & 32" monitor!) + a cutaway-aware ceiling lid with
+ *    recessed LED downlights & extractor fan on `groundCeilingGroup`.
+ * 4. **Interior Fixtures**:
+ *    - Honed stone-tiled floor slab (`u = 5.97..8.80m, v = 3.97..5.43m, y = -0.492m`),
+ *    - **Walk-In Wet-Room Shower (`outbuildings.garage.showerRoom.shower`, `u = 7.92..8.80m, v = 3.97..5.43m`)**
+ *      in the East bay right at Issue #1's hit point `(u = 8.74m, v = 4.56m)`: low-profile stone-resin tray with
+ *      brushed-brass linear drain, full-height Calacatta marble wall tiling, frameless 10mm glass screen (`u = 7.92m,
+ *      v = 3.97..4.82m`), 300mm brushed-brass overhead rainfall shower head, thermostatic mixer & hand wand, and
+ *      recessed illuminated bottle niche,
+ *    - **Wall-Hung Rimless Ceramic Toilet & Concealed Cistern (`outbuildings.garage.showerRoom.toilet`)** on the
+ *      South wall (`u = 7.42m, v = 5.42m`, facing North `-v`) with oak cistern shelf & brass dual-flush plate,
+ *    - **Fluted-Oak & Carrara-Marble Vanity Basin + Backlit Round Brass Mirror (`outbuildings.garage.showerRoom.vanity`)**
+ *      on the North wall (`u = 7.38m, v = 3.97m`, facing South `+v`),
+ *    - **Brushed-Brass Heated Ladder Towel Rail (`outbuildings.garage.showerRoom.heatedTowelRail`)** on the South-West
+ *      wall (`u = 6.45m, v = 5.39m`).
+ */
+export function buildGarageShowerRoom(
+  ctx: SceneBuilderContext,
+  groundGroup: THREE.Group,
+  groundCeilingGroup: THREE.Group,
+  garageFloorTopY: number,
+  gymFloorY: number,
+  eaveTopY: number
+): void {
+  const roomGroup = new THREE.Group();
+  roomGroup.name = 'outbuildings.garage.showerRoom';
+  roomGroup.userData.zone = 'study';
+  groundGroup.add(roomGroup);
+
+  const wallPlasterMat = new THREE.MeshStandardMaterial({
+    color: 0xf2ede2,
+    roughness: 0.84,
+    metalness: 0.02,
+  });
+  const calacattaTileMat = new THREE.MeshStandardMaterial({
+    map: createShowerRoomCalacattaTileTexture(),
+    color: 0xffffff,
+    roughness: 0.24,
+    metalness: 0.05,
+  });
+  const floorStoneTileMat = new THREE.MeshStandardMaterial({
+    color: 0xd8d0c4,
+    roughness: 0.48,
+    metalness: 0.04,
+  });
+  const lightOakDoorMat = new THREE.MeshStandardMaterial({
+    color: 0xc2986b,
+    roughness: 0.42,
+    metalness: 0.04,
+  });
+  const darkOakRecessMat = new THREE.MeshStandardMaterial({
+    color: 0xa87e51,
+    roughness: 0.46,
+    metalness: 0.04,
+  });
+  const brushedBrassMat = new THREE.MeshStandardMaterial({
+    color: 0xc8a464,
+    roughness: 0.24,
+    metalness: 0.86,
+  });
+  const ceramicWhiteMat = new THREE.MeshStandardMaterial({
+    color: 0xf8f9fa,
+    roughness: 0.14,
+    metalness: 0.06,
+  });
+  const showerGlassMat = new THREE.MeshStandardMaterial({
+    color: 0xdcf2f9,
+    roughness: 0.05,
+    metalness: 0.12,
+    transparent: true,
+    opacity: 0.26,
+    side: THREE.DoubleSide,
+  });
+  const mirrorSilverMat = new THREE.MeshStandardMaterial({
+    map: createGymMirrorGlassTexture(),
+    color: 0xeef5fc,
+    roughness: 0.03,
+    metalness: 0.94,
+  });
+  const warmDownlightLedMat = new THREE.MeshStandardMaterial({
+    color: 0xfff5e4,
+    emissive: new THREE.Color(0xffc878),
+    emissiveIntensity: 2.6,
+    roughness: 0.15,
+  });
+
+  const uMin = 5.97;
+  const uEastInner = 8.8;
+  const uMax = 8.92; // 0.12m thick East partition wall
+  const vNorthOuter = 3.85;
+  const vNorthInner = 3.97; // 0.12m thick North partition wall
+  const vSouthInner = 5.43;
+  const partWallT = 0.12;
+  const wallH = eaveTopY - garageFloorTopY; // 2.44m (-0.50m to +1.94m)
+  const wallMidY = garageFloorTopY + wallH * 0.5;
+  const doorOpeningH = 1.98;
+  // ---------------------------------------------------------------------------
+  // 1. Shower Room Partition Walls (`groundGroup`, full height to `eaveTopY = 1.94m`)
+  //    Issue #4 ("This layout feels very tight, maybe remove the garage entrance to make it better"
+  //    at `[-14.835, -0.492, 20.209]`, `outbuildings.garage.showerRoom.tiledFloor`):
+  //    Removed the Garage-side doorway on the North wall so the North partition wall (`v = 3.85..3.97m`)
+  //    is a continuous, solid full-height wall across `u = 5.97..8.92m`, freeing the entire North-West
+  //    interior wall for a spacious staggered Vanity + Toilet + Walk-In Shower layout accessed from the Gym!
+  // ---------------------------------------------------------------------------
+  const northMainSpanU = uMax - uMin; // 2.95m (`u = 5.97..8.92m`)
+  const northMainWall = new THREE.Mesh(
+    new THREE.BoxGeometry(northMainSpanU, wallH, partWallT),
+    wallPlasterMat
+  );
+  northMainWall.name = 'outbuildings.garage.showerRoom.northWall';
+  northMainWall.userData.isArchitecturalShell = true;
+  northMainWall.position.set(uMin + northMainSpanU * 0.5, wallMidY, (vNorthOuter + vNorthInner) * 0.5);
+  northMainWall.castShadow = true;
+  northMainWall.receiveShadow = true;
+  roomGroup.add(northMainWall);
+
+  // 1B. East Partition Wall (`u = 8.80..8.92m, v = 3.97..5.43m, y = -0.50..1.94m`)
+  const eastWallSpanV = vSouthInner - vNorthInner; // 1.46m
+  const eastWall = new THREE.Mesh(
+    new THREE.BoxGeometry(partWallT, wallH, eastWallSpanV),
+    wallPlasterMat
+  );
+  eastWall.name = 'outbuildings.garage.showerRoom.eastWall';
+  eastWall.userData.isArchitecturalShell = true;
+  eastWall.position.set((uEastInner + uMax) * 0.5, wallMidY, (vNorthInner + vSouthInner) * 0.5);
+  eastWall.castShadow = true;
+  eastWall.receiveShadow = true;
+  roomGroup.add(eastWall);
+
+  // 1C. Interior Calacatta Marble Porcelain Tile Wall Linings (`y = -0.49..1.92m`)
+  const tileWallH = wallH - 0.03;
+  const tileWallMidY = garageFloorTopY + 0.01 + tileWallH * 0.5;
+
+  // North interior tiled lining across the full 2.815m interior North wall (`u = 5.98..8.795m, v = 3.974m`)
+  const northTileLining = new THREE.Mesh(
+    new THREE.BoxGeometry(2.815, tileWallH, 0.008),
+    calacattaTileMat
+  );
+  northTileLining.name = 'outbuildings.garage.showerRoom.northTileWall';
+  northTileLining.position.set(7.3875, tileWallMidY, vNorthInner + 0.004);
+  northTileLining.receiveShadow = true;
+  roomGroup.add(northTileLining);
+
+  // East interior tiled lining (`u = 8.796m, v = 3.975..5.425m`)
+  const eastTileLining = new THREE.Mesh(
+    new THREE.BoxGeometry(0.008, tileWallH, 1.45),
+    calacattaTileMat
+  );
+  eastTileLining.name = 'outbuildings.garage.showerRoom.eastTileWall';
+  eastTileLining.position.set(uEastInner - 0.004, tileWallMidY, 4.7);
+  eastTileLining.receiveShadow = true;
+  roomGroup.add(eastTileLining);
+
+  // South interior tiled lining (`u = 5.98..8.795m, v = 5.424m`)
+  const southTileLining = new THREE.Mesh(
+    new THREE.BoxGeometry(2.815, tileWallH, 0.008),
+    calacattaTileMat
+  );
+  southTileLining.name = 'outbuildings.garage.showerRoom.southTileWall';
+  southTileLining.position.set(7.3875, tileWallMidY, vSouthInner - 0.004);
+  southTileLining.receiveShadow = true;
+  roomGroup.add(southTileLining);
+
+  // ---------------------------------------------------------------------------
+  // 2. Honed Travertine / Limestone Tiled Floor Slab (`outbuildings.garage.showerRoom.tiledFloor`)
+  // ---------------------------------------------------------------------------
+  const floorW = uEastInner - uMin; // 2.83m
+  const floorD = vSouthInner - vNorthInner; // 1.46m
+  const floorSlab = new THREE.Mesh(
+    new THREE.BoxGeometry(floorW, 0.008, floorD),
+    floorStoneTileMat
+  );
+  floorSlab.name = 'outbuildings.garage.showerRoom.tiledFloor';
+  floorSlab.position.set(uMin + floorW * 0.5, garageFloorTopY + 0.004, vNorthInner + floorD * 0.5);
+  floorSlab.receiveShadow = true;
+  roomGroup.add(floorSlab);
+
+  // ---------------------------------------------------------------------------
+  // 3. Helper to Build Interactive 4-Panel Solid European Oak Doors (Gym Entrance & Garage Entrance)
+  // ---------------------------------------------------------------------------
+  const buildOakShowerDoor = (
+    doorGroupName: string,
+    frameCenterU: number,
+    frameCenterV: number,
+    frameDepthT: number,
+    openingW: number,
+    axis: 'u' | 'v', // 'v' = wall runs along V (Gym-to-Shower door at u = 5.87m), 'u' = wall runs along U (Garage-to-Shower door at v = 3.91m)
+    hingeSign: 1 | -1,
+    openAngle: number
+  ): void => {
+    const dAssy = new THREE.Group();
+    dAssy.name = `${doorGroupName}Frame`;
+    dAssy.position.set(frameCenterU, garageFloorTopY, frameCenterV);
+    if (axis === 'u') {
+      dAssy.rotation.y = Math.PI / 2; // Rotate so local X is across wall thickness and local Z is along opening width!
+    }
+    roomGroup.add(dAssy);
+
+    const jambT = 0.028;
+    const archW = 0.056;
+    const archT = 0.016;
+
+    // Jambs & Head Lining
+    for (const sideZ of [-1, 1] as const) {
+      const jamb = new THREE.Mesh(
+        new THREE.BoxGeometry(frameDepthT + 0.008, doorOpeningH, jambT),
+        lightOakDoorMat
+      );
+      jamb.position.set(0, doorOpeningH * 0.5, sideZ * (openingW * 0.5 - jambT * 0.5));
+      dAssy.add(jamb);
+    }
+    const head = new THREE.Mesh(
+      new THREE.BoxGeometry(frameDepthT + 0.008, jambT, openingW),
+      lightOakDoorMat
+    );
+    head.position.set(0, doorOpeningH - jambT * 0.5, 0);
+    dAssy.add(head);
+
+    // Moulded architraves on both faces
+    for (const faceX of [-1, 1] as const) {
+      const xPos = faceX * (frameDepthT * 0.5 + archT * 0.5);
+      for (const sideZ of [-1, 1] as const) {
+        const leg = new THREE.Mesh(
+          new THREE.BoxGeometry(archT, doorOpeningH + archW, archW),
+          darkOakRecessMat
+        );
+        leg.position.set(xPos, (doorOpeningH + archW) * 0.5, sideZ * (openingW * 0.5 + archW * 0.5 - 0.01));
+        dAssy.add(leg);
+      }
+      const topArch = new THREE.Mesh(
+        new THREE.BoxGeometry(archT, archW, openingW + archW * 2 - 0.02),
+        darkOakRecessMat
+      );
+      topArch.position.set(xPos, doorOpeningH + archW * 0.5 - 0.005, 0);
+      dAssy.add(topArch);
+    }
+
+    // Interactive 4-Panel Solid Oak Door Leaf
+    const leafW = openingW - jambT * 2 - 0.006; // 0.698m
+    const leafH = doorOpeningH - jambT - 0.012; // 1.94m
+    const leafT = 0.042;
+    const hingeZ = hingeSign * (leafW * 0.5);
+
+    const leafPivot = new THREE.Group();
+    leafPivot.name = doorGroupName;
+    leafPivot.position.set(0, 0.008 + leafH * 0.5, hingeZ);
+    dAssy.add(leafPivot);
+
+    const leafCenterZ = -hingeSign * (leafW * 0.5);
+    const leafCore = new THREE.Mesh(
+      new THREE.BoxGeometry(leafT - 0.012, leafH, leafW),
+      darkOakRecessMat
+    );
+    leafCore.name = doorGroupName;
+    leafCore.position.set(0, 0, leafCenterZ);
+    leafCore.castShadow = true;
+    leafCore.receiveShadow = true;
+    leafPivot.add(leafCore);
+
+    const stileW = 0.095;
+    for (const sz of [-leafW * 0.5 + stileW * 0.5, leafW * 0.5 - stileW * 0.5] as const) {
+      const stile = new THREE.Mesh(
+        new THREE.BoxGeometry(leafT, leafH, stileW),
+        lightOakDoorMat
+      );
+      stile.position.set(0, 0, leafCenterZ + sz);
+      stile.castShadow = true;
+      leafPivot.add(stile);
+    }
+    for (const [ry, rh] of [
+      [-leafH * 0.5 + 0.09, 0.18],
+      [-0.12, 0.13],
+      [leafH * 0.5 - 0.06, 0.12],
+    ] as const) {
+      const rail = new THREE.Mesh(
+        new THREE.BoxGeometry(leafT, rh, leafW - stileW * 2),
+        lightOakDoorMat
+      );
+      rail.position.set(0, ry, leafCenterZ);
+      leafPivot.add(rail);
+    }
+
+    // Brushed-brass lever handles & bathroom privacy thumbturn rose on both faces
+    const handleZ = leafCenterZ - hingeSign * (leafW * 0.5 - 0.055);
+    for (const faceX of [-1, 1] as const) {
+      const rose = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.026, 0.026, 0.008, 16),
+        brushedBrassMat
+      );
+      rose.rotation.z = Math.PI / 2;
+      rose.position.set(faceX * (leafT * 0.5 + 0.004), -0.05, handleZ);
+      leafPivot.add(rose);
+
+      const lever = new THREE.Mesh(
+        new THREE.BoxGeometry(0.014, 0.016, 0.115),
+        brushedBrassMat
+      );
+      lever.position.set(
+        faceX * (leafT * 0.5 + 0.038),
+        -0.05,
+        handleZ + hingeSign * 0.042
+      );
+      leafPivot.add(lever);
+
+      const thumbRose = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.018, 0.018, 0.008, 14),
+        brushedBrassMat
+      );
+      thumbRose.rotation.z = Math.PI / 2;
+      thumbRose.position.set(faceX * (leafT * 0.5 + 0.004), -0.14, handleZ);
+      leafPivot.add(thumbRose);
+    }
+
+    ctx.interactions.registerHingedDoor(
+      dAssy,
+      leafPivot,
+      new THREE.Vector3(0, 0, 0),
+      'y',
+      openAngle
+    );
+  };
+
+  // Entrance #1: Gym-to-Shower-Room Door (`u = 5.87m, v = 4.18..4.94m`, width `0.76m`) + Solid Oak Threshold Step
+  const gymStepH = garageFloorTopY - gymFloorY; // ~0.088m
+  const gymThreshold = new THREE.Mesh(
+    new THREE.BoxGeometry(0.24, Math.max(0.02, gymStepH), 0.76),
+    lightOakDoorMat
+  );
+  gymThreshold.name = 'outbuildings.garage.showerRoom.gymThreshold';
+  gymThreshold.position.set(5.87, gymFloorY + Math.max(0.02, gymStepH) * 0.5, 4.56);
+  gymThreshold.receiveShadow = true;
+  roomGroup.add(gymThreshold);
+
+  // Single Gym-to-Shower-Room Entrance Door (`u = 5.87m, v = 4.18..4.94m`, width `0.76m`),
+  // hinged on the South jamb so it opens cleanly without crowding the interior vanity!
+  buildOakShowerDoor(
+    'outbuildings.garage.showerRoom.gymDoor',
+    5.87,
+    4.56,
+    0.2,
+    0.76,
+    'v',
+    1,
+    Math.PI * 0.46
+  );
+
+  // ---------------------------------------------------------------------------
+  // 4. Walk-In Wet-Room Shower Enclosure (`outbuildings.garage.showerRoom.shower`, `u = 7.92..8.80m, v = 3.97..5.43m`)
+  //    Right at Issue #1's hit point `(u = 8.74m, v = 4.56m)`!
+  // ---------------------------------------------------------------------------
+  const showerGroup = new THREE.Group();
+  showerGroup.name = 'outbuildings.garage.showerRoom.shower';
+  showerGroup.position.set(8.36, garageFloorTopY + 0.008, 4.7);
+  roomGroup.add(showerGroup);
+
+  // Low-profile honed stone-resin wet-room tray (`0.86m x 1.44m`) + Brushed-Brass Linear Trench Drain
+  const showerTray = new THREE.Mesh(
+    new THREE.BoxGeometry(0.86, 0.026, 1.44),
+    ceramicWhiteMat
+  );
+  showerTray.name = 'outbuildings.garage.showerRoom.shower.tray';
+  showerTray.position.set(0, 0.013, 0);
+  showerTray.receiveShadow = true;
+  showerGroup.add(showerTray);
+
+  const linearDrain = new THREE.Mesh(
+    new THREE.BoxGeometry(0.065, 0.004, 1.18),
+    brushedBrassMat
+  );
+  linearDrain.position.set(0.32, 0.027, 0);
+  showerGroup.add(linearDrain);
+
+  // Frameless 10mm Low-Iron Toughened Glass Walk-In Shower Screen (`u = 7.92m, v = 3.98..4.82m`, height `2.00m`)
+  const screenSpanV = 0.84;
+  const screenH = 2.0;
+  const showerScreen = new THREE.Mesh(
+    new THREE.BoxGeometry(0.012, screenH, screenSpanV),
+    showerGlassMat
+  );
+  showerScreen.name = 'outbuildings.garage.showerRoom.shower.glassScreen';
+  showerScreen.position.set(-0.43, screenH * 0.5 + 0.01, -0.72 + screenSpanV * 0.5);
+  showerGroup.add(showerScreen);
+
+  // Slim Brushed-Brass U-Channel Wall & Floor Profiles + Overhead Stabilizer Bar
+  const wallChannel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.022, screenH, 0.022),
+    brushedBrassMat
+  );
+  wallChannel.position.set(-0.43, screenH * 0.5 + 0.01, -0.71);
+  showerGroup.add(wallChannel);
+
+  const floorChannel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.022, 0.018, screenSpanV),
+    brushedBrassMat
+  );
+  floorChannel.position.set(-0.43, 0.015, -0.72 + screenSpanV * 0.5);
+  showerGroup.add(floorChannel);
+
+  const supportArm = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.009, 0.009, 0.86, 12),
+    brushedBrassMat
+  );
+  supportArm.rotation.z = Math.PI / 2;
+  supportArm.position.set(0, screenH - 0.04, -0.72 + screenSpanV - 0.04);
+  showerGroup.add(supportArm);
+
+  // Brushed-Brass Overhead 300mm Rainfall Shower Head + Ceiling/Wall Arm + Thermostatic Mixer & Hand Wand on East Wall (`+x = +0.43m`)
+  const showerArm = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.012, 0.012, 0.42, 14),
+    brushedBrassMat
+  );
+  showerArm.rotation.z = Math.PI / 2;
+  showerArm.position.set(0.22, 2.08, -0.18);
+  showerGroup.add(showerArm);
+
+  const rainfallRose = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15, 0.15, 0.014, 28),
+    brushedBrassMat
+  );
+  rainfallRose.name = 'outbuildings.garage.showerRoom.shower.rainfallHead';
+  rainfallRose.position.set(0.02, 2.04, -0.18);
+  showerGroup.add(rainfallRose);
+
+  const mixerPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.012, 0.22, 0.11),
+    brushedBrassMat
+  );
+  mixerPlate.position.set(0.428, 1.12, -0.18);
+  showerGroup.add(mixerPlate);
+
+  for (const dy of [-0.055, 0.055] as const) {
+    const dial = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.024, 0.024, 0.036, 16),
+      brushedBrassMat
+    );
+    dial.rotation.z = Math.PI / 2;
+    dial.position.set(0.408, 1.12 + dy, -0.18);
+    showerGroup.add(dial);
+  }
+
+  const riserRail = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.009, 0.009, 0.68, 12),
+    brushedBrassMat
+  );
+  riserRail.position.set(0.395, 1.38, 0.08);
+  showerGroup.add(riserRail);
+
+  const handWand = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.014, 0.011, 0.21, 14),
+    brushedBrassMat
+  );
+  handWand.rotation.z = 0.28;
+  handWand.position.set(0.375, 1.48, 0.08);
+  showerGroup.add(handWand);
+
+  // Recessed Brass-Trimmed Illuminated Bottle Niche on East Shower Wall (`+x = 0.42m, z = +0.28m, y = 1.22m`)
+  const nicheFrame = new THREE.Mesh(
+    new THREE.BoxGeometry(0.024, 0.32, 0.44),
+    brushedBrassMat
+  );
+  nicheFrame.position.set(0.422, 1.22, 0.28);
+  showerGroup.add(nicheFrame);
+
+  // ---------------------------------------------------------------------------
+  // 5. Wall-Hung Rimless Ceramic Toilet & Concealed Cistern (`outbuildings.garage.showerRoom.toilet`)
+  //    Staggered East along the South Wall (`u = 7.56m, v = 5.42m`, facing North `-v`) so it is no longer
+  //    opposite the vanity (`u = 6.66m`), giving full 1.46m room-depth clearance!
+  // ---------------------------------------------------------------------------
+  const toiletGroup = new THREE.Group();
+  toiletGroup.name = 'outbuildings.garage.showerRoom.toilet';
+  toiletGroup.position.set(7.56, garageFloorTopY + 0.008, vSouthInner - 0.01);
+  toiletGroup.rotation.y = Math.PI; // Local `+z` projects North (`-v`) into the room!
+  roomGroup.add(toiletGroup);
+
+  // Half-height tiled concealed cistern boxing (`0.54m W x 1.12m H x 0.16m D`) + solid European oak top shelf
+  const cisternBox = new THREE.Mesh(
+    new THREE.BoxGeometry(0.54, 1.12, 0.16),
+    calacattaTileMat
+  );
+  cisternBox.name = 'outbuildings.garage.showerRoom.toilet.cisternBox';
+  cisternBox.position.set(0, 0.56, 0.08);
+  cisternBox.castShadow = true;
+  cisternBox.receiveShadow = true;
+  toiletGroup.add(cisternBox);
+
+  const cisternOakShelf = new THREE.Mesh(
+    new THREE.BoxGeometry(0.56, 0.028, 0.18),
+    lightOakDoorMat
+  );
+  cisternOakShelf.position.set(0, 1.134, 0.085);
+  cisternOakShelf.castShadow = true;
+  toiletGroup.add(cisternOakShelf);
+
+  // Brushed-Brass Dual-Flush Actuator Plate (`0.22m x 0.145m`)
+  const flushPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.22, 0.145, 0.01),
+    brushedBrassMat
+  );
+  flushPlate.name = 'outbuildings.garage.showerRoom.toilet.flushPlate';
+  flushPlate.position.set(0, 0.96, 0.164);
+  toiletGroup.add(flushPlate);
+
+  // Sculpted Wall-Hung Rimless Ceramic Toilet Pan (`y = 0.08..0.41m, z = 0.16..0.68m`) + Soft-Close Seat
+  const toiletBowl = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.185, 0.14, 0.31, 24),
+    ceramicWhiteMat
+  );
+  toiletBowl.name = 'outbuildings.garage.showerRoom.toilet.pan';
+  toiletBowl.scale.set(1.0, 1.0, 1.38);
+  toiletBowl.position.set(0, 0.245, 0.42);
+  toiletBowl.castShadow = true;
+  toiletBowl.receiveShadow = true;
+  toiletGroup.add(toiletBowl);
+
+  const toiletRearShroud = new THREE.Mesh(
+    new THREE.BoxGeometry(0.36, 0.31, 0.24),
+    ceramicWhiteMat
+  );
+  toiletRearShroud.position.set(0, 0.245, 0.28);
+  toiletRearShroud.castShadow = true;
+  toiletGroup.add(toiletRearShroud);
+
+  const toiletSeatLid = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.188, 0.188, 0.028, 24),
+    ceramicWhiteMat
+  );
+  toiletSeatLid.name = 'outbuildings.garage.showerRoom.toilet.seat';
+  toiletSeatLid.scale.set(1.0, 1.0, 1.38);
+  toiletSeatLid.position.set(0, 0.414, 0.42);
+  toiletSeatLid.castShadow = true;
+  toiletGroup.add(toiletSeatLid);
+
+  // Brushed-Brass Wall-Mounted Toilet Roll Holder (`x = +0.34m, y = 0.64m, z = 0.12m`)
+  const rollHolderArm = new THREE.Mesh(
+    new THREE.BoxGeometry(0.14, 0.022, 0.085),
+    brushedBrassMat
+  );
+  rollHolderArm.position.set(0.35, 0.64, 0.06);
+  toiletGroup.add(rollHolderArm);
+
+  const paperRoll = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.055, 0.055, 0.11, 18),
+    ceramicWhiteMat
+  );
+  paperRoll.rotation.z = Math.PI / 2;
+  paperRoll.position.set(0.35, 0.61, 0.08);
+  toiletGroup.add(paperRoll);
+
+  // ---------------------------------------------------------------------------
+  // 6. Fluted-Oak & Carrara-Marble Wall-Hung Vanity Basin + Backlit Mirror (`outbuildings.garage.showerRoom.vanity`)
+  //    Positioned on the solid North-West Wall (`u = 6.66m, v = 3.98m`, facing South `+v`) where the removed
+  //    Garage door used to be, staggered cleanly West of the Toilet (`u = 7.56m`)!
+  // ---------------------------------------------------------------------------
+  const vanityGroup = new THREE.Group();
+  vanityGroup.name = 'outbuildings.garage.showerRoom.vanity';
+  vanityGroup.position.set(6.66, garageFloorTopY + 0.008, vNorthInner + 0.01);
+  roomGroup.add(vanityGroup);
+
+  const vanityW = 0.58;
+  const vanityD = 0.36;
+  const vanityH = 0.44;
+  const vanityCabinet = new THREE.Mesh(
+    new THREE.BoxGeometry(vanityW, vanityH, vanityD),
+    lightOakDoorMat
+  );
+  vanityCabinet.name = 'outbuildings.garage.showerRoom.vanity.cabinet';
+  vanityCabinet.position.set(0, 0.4 + vanityH * 0.5, vanityD * 0.5);
+  vanityCabinet.castShadow = true;
+  vanityCabinet.receiveShadow = true;
+  vanityGroup.add(vanityCabinet);
+
+  // Vertical fluted oak ribs across the front drawer face (`z = vanityD + 0.004m`)
+  for (let r = -8; r <= 8; r++) {
+    const fluteRib = new THREE.Mesh(
+      new THREE.BoxGeometry(0.018, vanityH - 0.03, 0.008),
+      darkOakRecessMat
+    );
+    fluteRib.position.set(r * 0.031, 0.4 + vanityH * 0.5, vanityD + 0.004);
+    vanityGroup.add(fluteRib);
+  }
+
+  // Brushed-brass knurled drawer pull bar
+  const vanityPull = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.007, 0.007, 0.24, 12),
+    brushedBrassMat
+  );
+  vanityPull.rotation.z = Math.PI / 2;
+  vanityPull.position.set(0, 0.76, vanityD + 0.022);
+  vanityGroup.add(vanityPull);
+
+  // Carrara Marble Countertop (`0.60m x 0.028m x 0.38m`) + Oval Ceramic Countertop Vessel Basin
+  const marbleTop = new THREE.Mesh(
+    new THREE.BoxGeometry(vanityW + 0.02, 0.028, vanityD + 0.02),
+    calacattaTileMat
+  );
+  marbleTop.position.set(0, 0.854, (vanityD + 0.02) * 0.5);
+  marbleTop.castShadow = true;
+  vanityGroup.add(marbleTop);
+
+  const vesselBasin = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.19, 0.155, 0.125, 28),
+    ceramicWhiteMat
+  );
+  vesselBasin.name = 'outbuildings.garage.showerRoom.vanity.basin';
+  vesselBasin.scale.set(1.18, 1.0, 0.78);
+  vesselBasin.position.set(0, 0.93, 0.2);
+  vesselBasin.castShadow = true;
+  vanityGroup.add(vesselBasin);
+
+  // Brushed-Brass Tall Monobloc Basin Mixer Tap (`y = 0.87..1.09m, z = 0.06m`)
+  const tapStem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.02, 0.21, 16),
+    brushedBrassMat
+  );
+  tapStem.position.set(0, 0.97, 0.065);
+  vanityGroup.add(tapStem);
+
+  const tapSpout = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.011, 0.011, 0.13, 12),
+    brushedBrassMat
+  );
+  tapSpout.rotation.x = Math.PI / 2 + 0.18;
+  tapSpout.position.set(0, 1.055, 0.12);
+  vanityGroup.add(tapSpout);
+
+  // Circular Backlit Brushed-Brass Vanity Mirror (`r = 0.29m, y = 1.44m`)
+  const mirrorHalo = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.305, 0.305, 0.008, 32),
+    warmDownlightLedMat
+  );
+  mirrorHalo.rotation.x = Math.PI / 2;
+  mirrorHalo.position.set(0, 1.44, 0.008);
+  vanityGroup.add(mirrorHalo);
+
+  const mirrorRim = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.29, 0.29, 0.022, 32),
+    brushedBrassMat
+  );
+  mirrorRim.rotation.x = Math.PI / 2;
+  mirrorRim.position.set(0, 1.44, 0.016);
+  vanityGroup.add(mirrorRim);
+
+  const mirrorGlass = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.278, 0.278, 0.006, 32),
+    mirrorSilverMat
+  );
+  mirrorGlass.name = 'outbuildings.garage.showerRoom.vanity.mirror';
+  mirrorGlass.rotation.x = Math.PI / 2;
+  mirrorGlass.position.set(0, 1.44, 0.026);
+  vanityGroup.add(mirrorGlass);
+
+  // ---------------------------------------------------------------------------
+  // 7. Brushed-Brass Heated Ladder Towel Rail (`outbuildings.garage.showerRoom.heatedTowelRail`)
+  //    Mounted on the South-West Wall (`u = 6.45m, v = 5.39m`)
+  // ---------------------------------------------------------------------------
+  const towelRailGroup = new THREE.Group();
+  towelRailGroup.name = 'outbuildings.garage.showerRoom.heatedTowelRail';
+  towelRailGroup.position.set(6.45, garageFloorTopY + 0.65, vSouthInner - 0.045);
+  roomGroup.add(towelRailGroup);
+
+  for (const sx of [-0.22, 0.22] as const) {
+    const upright = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.014, 0.014, 0.96, 14),
+      brushedBrassMat
+    );
+    upright.position.set(sx, 0.48, 0);
+    towelRailGroup.add(upright);
+  }
+  for (let barIdx = 0; barIdx < 8; barIdx++) {
+    const crossBar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.009, 0.009, 0.44, 12),
+      brushedBrassMat
+    );
+    crossBar.rotation.z = Math.PI / 2;
+    crossBar.position.set(0, 0.08 + barIdx * 0.115, 0.012);
+    towelRailGroup.add(crossBar);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 8. Cutaway-Aware Shower Room Ceiling Lid & Warm LED Downlights (`groundCeilingGroup`)
+  //    Hides automatically when viewing the Ground Floor in Cutaway Mode (`ceilingCutaway = true`)!
+  // ---------------------------------------------------------------------------
+  const ceilingGroup = new THREE.Group();
+  ceilingGroup.name = 'outbuildings.garage.showerRoom.ceilingLid';
+  groundCeilingGroup.add(ceilingGroup);
+
+  const ceilingLid = new THREE.Mesh(
+    new THREE.BoxGeometry(uMax - uMin, 0.06, vSouthInner - vNorthOuter),
+    wallPlasterMat
+  );
+  ceilingLid.name = 'outbuildings.garage.showerRoom.ceilingLid';
+  ceilingLid.position.set(
+    (uMin + uMax) * 0.5,
+    eaveTopY - 0.03,
+    (vNorthOuter + vSouthInner) * 0.5
+  );
+  ceilingGroup.add(ceilingLid);
+
+  for (const du of [6.65, 8.15] as const) {
+    const downlightBezel = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.048, 0.048, 0.012, 18),
+      brushedBrassMat
+    );
+    downlightBezel.position.set(du, eaveTopY - 0.062, 4.7);
+    ceilingGroup.add(downlightBezel);
+
+    const downlightLens = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.038, 0.038, 0.014, 18),
+      warmDownlightLedMat
+    );
+    downlightLens.position.set(du, eaveTopY - 0.063, 4.7);
+    ceilingGroup.add(downlightLens);
+  }
+
+  // Warm 3000K PointLight inside the Shower Room
+  const showerRoomLight = new THREE.PointLight(0xfff1dc, 2.2, 5.2, 1.5);
+  showerRoomLight.position.set(7.45, eaveTopY - 0.22, 4.7);
+  roomGroup.add(showerRoomLight);
+}
+
