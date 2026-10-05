@@ -2990,11 +2990,6 @@ export function buildBarnSpiralStaircase(
   });
   const oakTreadMat: THREE.Material = sharedLightOakMat ?? fallbackLightOakMat;
   const oakHandrailMat: THREE.Material = sharedLightOakMat ?? fallbackLightOakMat;
-  const agedBronzeMat = new THREE.MeshStandardMaterial({
-    color: 0x46382b,
-    roughness: 0.34,
-    metalness: 0.78,
-  });
   const baseFlangeMat = new THREE.MeshStandardMaterial({
     color: 0x23272d,
     roughness: 0.38,
@@ -3026,28 +3021,18 @@ export function buildBarnSpiralStaircase(
   oakBasePlinth.receiveShadow = true;
   columnGroup.add(oakBasePlinth);
 
+  // Issue #1 ("These bannisters and ballistrages look too much lilke bamboo, it should be oak"):
+  // Single continuous turned solid European oak center column with zero segmented bamboo rings!
   const totalColumnH = totalRise + 1.02;
-  const numDrums = numSteps + 5;
-  const drumPitchH = totalColumnH / numDrums;
-  for (let d = 0; d < numDrums; d++) {
-    const dy = (d + 0.5) * drumPitchH;
-    const drumMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(columnRadius, columnRadius, drumPitchH - 0.008, 28),
-      oakHandrailMat
-    );
-    drumMesh.name = 'outbuildings.barn.spiralStaircase.centerColumn';
-    drumMesh.position.set(0, dy, 0);
-    drumMesh.castShadow = true;
-    drumMesh.receiveShadow = true;
-    columnGroup.add(drumMesh);
-
-    const shadowNeck = new THREE.Mesh(
-      new THREE.CylinderGeometry(columnRadius - 0.006, columnRadius - 0.006, 0.01, 24),
-      agedBronzeMat
-    );
-    shadowNeck.position.set(0, (d + 1) * drumPitchH, 0);
-    columnGroup.add(shadowNeck);
-  }
+  const columnShaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(columnRadius, columnRadius, totalColumnH, 32),
+    oakHandrailMat
+  );
+  columnShaft.name = 'outbuildings.barn.spiralStaircase.centerColumn';
+  columnShaft.position.set(0, totalColumnH * 0.5, 0);
+  columnShaft.castShadow = true;
+  columnShaft.receiveShadow = true;
+  columnGroup.add(columnShaft);
 
   const capitalCollar = new THREE.Mesh(
     new THREE.CylinderGeometry(columnRadius + 0.022, columnRadius + 0.008, 0.042, 28),
@@ -3189,60 +3174,12 @@ export function buildBarnSpiralStaircase(
   }
 
   // ---------------------------------------------------------------------------
-  // 3. Custom Solid Oak Quadrant Top Landing Platform (`outbuildings.barn.spiralStaircase.topLanding`)
+  // 3. Issue #1 ("THis piece of landing should be the same floor as the rest of the mezzanine,
+  //    continuous too not a separate piece." at `[-0.72, 1.545, 18.335]`):
+  //    The top landing sector (`u = 21.14..22.04m, v = 3.56..4.94m`) is now extruded directly as part
+  //    of the single continuous `outbuildings.firstFloor.westRoomSlab` floor mesh in `outbuildings-and-barns.ts`
+  //    (using `mezzaninePlankFloorMat` and continuous world-space plank UVs), eliminating any separate landing piece or seam!
   // ---------------------------------------------------------------------------
-  const landingShape = new THREE.Shape();
-  landingShape.moveTo(-columnRadius, -0.04);
-  landingShape.lineTo(-0.71, -0.44);
-  landingShape.lineTo(-0.94, -0.35);
-  landingShape.lineTo(-0.94, 0.94);
-  landingShape.lineTo(-0.04, 0.94);
-  landingShape.lineTo(-0.04, 0.06);
-  landingShape.closePath();
-
-  const landingDepth = 0.044;
-  const landingGeo = new THREE.ExtrudeGeometry(landingShape, {
-    depth: landingDepth,
-    bevelEnabled: true,
-    bevelThickness: 0.005,
-    bevelSize: 0.005,
-    bevelSegments: 3,
-  });
-  landingGeo.rotateX(-Math.PI / 2);
-  {
-    const pos = landingGeo.attributes.position;
-    const uv = landingGeo.attributes.uv;
-    if (pos && uv) {
-      for (let k = 0; k < pos.count; k++) {
-        uv.setXY(k, (centerU + pos.getX(k)) * 0.5, (centerV + pos.getZ(k)) * 0.5);
-      }
-      uv.needsUpdate = true;
-    }
-  }
-
-  const topLandingMesh = new THREE.Mesh(landingGeo, oakTreadMat);
-  topLandingMesh.name = 'outbuildings.barn.spiralStaircase.topLanding';
-  topLandingMesh.position.set(0, totalRise - landingDepth, 0);
-  topLandingMesh.castShadow = true;
-  topLandingMesh.receiveShadow = true;
-  topLandingGroup.add(topLandingMesh);
-
-  const landingApron = new THREE.Mesh(
-    new THREE.BoxGeometry(0.86, 0.11, 0.028),
-    oakHandrailMat
-  );
-  landingApron.position.set(-0.48, totalRise - 0.065, 0.22);
-  landingApron.rotation.y = -0.46;
-  topLandingGroup.add(landingApron);
-
-  // Solid oak East edge fascia apron along the open stairwell side of `topLandingMesh` (`x = -0.04m -> u = 22.04m, z = -0.94..-0.06m`)
-  const landingEastFascia = new THREE.Mesh(
-    new THREE.BoxGeometry(0.024, 0.135, 0.88),
-    oakHandrailMat
-  );
-  landingEastFascia.position.set(-0.04, totalRise - 0.0675, -0.5);
-  landingEastFascia.castShadow = true;
-  topLandingGroup.add(landingEastFascia);
 
   // ---------------------------------------------------------------------------
   // 4. Curved Helical Laminated Solid-Oak Outer Stringer Ribbon (`outbuildings.barn.spiralStaircase.outerStringer`)
