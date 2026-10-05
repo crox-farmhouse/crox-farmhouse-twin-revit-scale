@@ -1242,20 +1242,26 @@ function createDeWaltLogoTexture(): THREE.CanvasTexture {
  */
 export function buildGarageToolBench(
   groundGroup: THREE.Group,
-  garageFloorTopY: number
+  garageFloorTopY: number,
+  ctx?: SceneBuilderContext
 ): void {
   const benchGroup = new THREE.Group();
   benchGroup.name = 'outbuildings.garage.toolBench';
-  // Positioned along the Garage East Wall (`u = 12.07m`, centered at `v = 3.16m` spanning `v = 1.22..5.10m`).
-  // With `rotation.y = Math.PI / 2`, local `-Z` (the front of the drawers & tools) faces `-u` (West into the Garage at `u = 12.04m`)
-  // and local `+Z` (the back of the bench, pegboard & alcove housing) recesses East (`+u`) into the wall cutout (`u = 12.07..12.31m`)
-  // and Store room dead space (`u = 12.31..12.82m`)!
-  // Issue #2 ("Have this unit wrap around the corner" at `[-10.064, 0.482, 19.713]`) &
-  // Issue #3 ("shortern the unit slightly and have a door here which goes through to the bar..." at `[-10.37, 0.713, 15.833]`):
-  // Shortened slightly on the North end (`totalW = 3.76m`) and shifted South to `v = 3.53m` (`v = 1.65m..5.41m`)
-  // so `v = 0.28..1.63m` is clear for the Garage-to-Barn pass-through door, while the South end (`v = 5.41m`)
-  // meets the Garage South wall and wraps 90 degrees around the SE corner (`u = 9.88..12.04m, v = 4.67..5.41m`)!
-  benchGroup.position.set(12.41, garageFloorTopY, 3.53);
+  // Spans `v = 1.34m..5.41m` (`totalW = 4.07m`, centered at `v = 3.375m`) along the Garage East Wall (`u = 12.07m`):
+  // - North Section (`v = 1.34m..2.86m`, `localX = +0.515m..+2.035m`, width `1.52m`, height `2.16m`):
+  //   Issue #1 ("There is a gap here" at `[-9.565, -0.69, 16.38]`) &
+  //   Issue #2 ("Have a double stainless steel full height cupboard here. It can go higher than currently.
+  //   Inside will be storage for ladders, paint etc everything you wan tout of the way. One will have shelving the other full height."
+  //   at `[-10.269, -0.134, 17.336]`):
+  //   Butts 100% flush against the `v = 1.18..1.34m` pass-through door wall pier with zero gap, and rises `2.16m` high
+  //   (`y = -0.50m..+1.66m`), featuring two interactive full-height brushed 304 stainless-steel doors (`registerHingedDoor`)
+  //   opening to reveal a full-height ladder/tool compartment on the right (North) and a 5-tier shelved paint & hardware
+  //   storage compartment on the left (South)!
+  // - South Section (`v = 2.86m..5.41m`, `localX = -2.035m..+0.515m`, width `2.55m`):
+  //   Recessed Butcher-Block Workbench & 5-Tier Brushed 304 Stainless-Steel Drawer Banks (`Issue #3`), wrapping 90 degrees
+  //   around the SE corner (`v = 5.41m`) onto the Garage South wall (`u = 10.12m..12.04m`) with continuous lower drawer banks
+  //   (`Issue #3: "No need for open section keep the drawers"`) and a wall-mounted 32-inch 16:9 monitor (`Issue #4`)!
+  benchGroup.position.set(12.41, garageFloorTopY, 3.375);
   benchGroup.rotation.y = Math.PI / 2;
   groundGroup.add(benchGroup);
 
@@ -1330,69 +1336,503 @@ export function buildGarageToolBench(
     transparent: true,
     opacity: 0.48,
   });
+  const ledStripMat = new THREE.MeshStandardMaterial({
+    color: 0xf4f9ff,
+    emissive: new THREE.Color(0xd8eeff),
+    emissiveIntensity: 2.6,
+    roughness: 0.16,
+  });
 
-  // Shortened slightly to `totalW = 3.76m` (`v = 1.65..5.41m`) so the North end clears the pass-through door (`v = 0.52..1.38m`)
-  // and the South end (`v = 5.41m`) wraps 90 degrees around the SE corner onto the Garage South wall!
-  const totalW = 3.76;
+  const totalW = 4.07; // `localX = -2.035m..+2.035m` (`v = 5.41m..1.34m`)
+  const benchSpanW = 2.55; // `localX = -2.035m..+0.515m` (`v = 5.41m..2.86m`)
+  const benchCenterX = -2.035 + benchSpanW * 0.5; // -0.76m
+  const tallCupboardW = 1.52; // `localX = +0.515m..+2.035m` (`v = 2.86m..1.34m`)
+  const tallCupboardCenterX = 0.515 + tallCupboardW * 0.5; // +1.275m
+  const tallCupboardH = 2.16; // Rises to `y = 1.66m` world (`27cm` taller than the workbench upper cabinets!)
   const benchD = 0.74;
   const cabinetH = 0.86;
   const topT = 0.052;
   const worktopY = cabinetH + topT;
+  const frontZ = -benchD * 0.5 + 0.012;
 
   // ---------------------------------------------------------------------------
-  // Recessed Alcove Jamb Linings (`outbuildings.garage.toolBench.alcoveEnclosure`)
+  // 1. Recessed Alcove Jamb Linings (`outbuildings.garage.toolBench.alcoveEnclosure`)
   // ---------------------------------------------------------------------------
   const alcoveGroup = new THREE.Group();
   alcoveGroup.name = 'outbuildings.garage.toolBench.alcoveEnclosure';
   alcoveGroup.userData.isArchitecturalShell = true;
   benchGroup.add(alcoveGroup);
 
-  const alcoveH = 1.92;
-  const alcoveHalfW = totalW * 0.5 + 0.02; // 1.96m (matches v = 1.20..5.12m cutout)
-  for (const sideX of [-1, 1] as const) {
-    const jambLining = new THREE.Mesh(
-      new THREE.BoxGeometry(0.024, alcoveH, 0.73),
-      alcovePlasterMat
-    );
-    jambLining.userData.isArchitecturalShell = true;
-    jambLining.position.set(sideX * (alcoveHalfW - 0.008), alcoveH * 0.5, 0.025);
-    jambLining.castShadow = true;
-    jambLining.receiveShadow = true;
-    alcoveGroup.add(jambLining);
-  }
+  const northJambLining = new THREE.Mesh(
+    new THREE.BoxGeometry(0.024, tallCupboardH, 0.73),
+    alcovePlasterMat
+  );
+  northJambLining.userData.isArchitecturalShell = true;
+  northJambLining.position.set(totalW * 0.5 + 0.008, tallCupboardH * 0.5, 0.025);
+  northJambLining.castShadow = true;
+  northJambLining.receiveShadow = true;
+  alcoveGroup.add(northJambLining);
 
+  const southJambLining = new THREE.Mesh(
+    new THREE.BoxGeometry(0.024, 1.92, 0.73),
+    alcovePlasterMat
+  );
+  southJambLining.userData.isArchitecturalShell = true;
+  southJambLining.position.set(-totalW * 0.5 - 0.008, 1.92 * 0.5, 0.025);
+  southJambLining.castShadow = true;
+  southJambLining.receiveShadow = true;
+  alcoveGroup.add(southJambLining);
 
   // ---------------------------------------------------------------------------
-  // 5-Bay Cabinet Carcass, Plinth & Brushed 304 Stainless-Steel Drawers (`totalW = 3.88m`)
+  // 2. Issue #2: Double Stainless-Steel Full-Height Utility & Workshop Storage Cupboard
+  //    (`outbuildings.garage.toolBench.tallCupboard`, `localX = +0.515m..+2.035m`, `v = 1.34m..2.86m`, `h = 2.16m`)
+  //    - Left/South Bay (`localX = +0.535m..+1.265m`): 5-Tier Heavy-Duty Shelving for Paint Tins, Rollers, Aerosols & Bins
+  //    - Right/North Bay (`localX = +1.285m..+2.015m`): Full-Height Storage for Step Ladder, Extension Ladder, Spirit Level & Broom
   // ---------------------------------------------------------------------------
-  // Keep the South corner bay (`localX = -1.88..-1.11m`, `v = 4.64..5.41m`) open underneath so it flows seamlessly
-  // into the open-bottom South-wall return workstation (`Issue #1`), while housing 4 brushed-stainless drawer/cabinet bays
-  // across `localX = -1.11..+1.86m` (`v = 1.67..4.64m`)!
-  const eastCabSpanW = 2.97;
-  const eastCabCenterX = 0.375;
-  const carcass = new THREE.Mesh(
-    new THREE.BoxGeometry(eastCabSpanW, cabinetH - 0.05, benchD - 0.04),
+  const tallCupboardGroup = new THREE.Group();
+  tallCupboardGroup.name = 'outbuildings.garage.toolBench.tallCupboard';
+  tallCupboardGroup.position.set(tallCupboardCenterX, 0, 0);
+  benchGroup.add(tallCupboardGroup);
+
+  const tcWallT = 0.022;
+  const tcPlinthH = 0.06;
+  const tcTopCapH = 0.04;
+  const tcInnerH = tallCupboardH - tcPlinthH - tcTopCapH; // 2.06m clear interior height
+  const tcInnerBaseY = tcPlinthH;
+  const tcInnerTopY = tallCupboardH - tcTopCapH;
+
+  // Recessed dark-anthracite plinth & leveling feet
+  const tcPlinth = new THREE.Mesh(
+    new THREE.BoxGeometry(tallCupboardW - 0.02, tcPlinthH, benchD - 0.06),
+    dewaltBlackMat
+  );
+  tcPlinth.position.set(0, tcPlinthH * 0.5, 0.015);
+  tallCupboardGroup.add(tcPlinth);
+
+  // Outer stainless-clad & anthracite-lined cabinet box (back wall, top cap, bottom deck, left/right outer walls, central divider)
+  const tcBackWall = new THREE.Mesh(
+    new THREE.BoxGeometry(tallCupboardW, tallCupboardH - tcPlinthH, tcWallT),
     anthraciteSteelMat
   );
-  carcass.position.set(eastCabCenterX, 0.05 + (cabinetH - 0.05) * 0.5, 0.01);
+  tcBackWall.position.set(0, tcPlinthH + (tallCupboardH - tcPlinthH) * 0.5, benchD * 0.5 - tcWallT * 0.5);
+  tcBackWall.castShadow = true;
+  tcBackWall.receiveShadow = true;
+  tallCupboardGroup.add(tcBackWall);
+
+  const tcBottomDeck = new THREE.Mesh(
+    new THREE.BoxGeometry(tallCupboardW - tcWallT * 2, tcWallT, benchD - 0.03),
+    brushedStainlessMat
+  );
+  tcBottomDeck.position.set(0, tcPlinthH + tcWallT * 0.5, 0.005);
+  tcBottomDeck.receiveShadow = true;
+  tallCupboardGroup.add(tcBottomDeck);
+
+  const tcTopCap = new THREE.Mesh(
+    new THREE.BoxGeometry(tallCupboardW, tcTopCapH, benchD),
+    brushedStainlessMat
+  );
+  tcTopCap.position.set(0, tallCupboardH - tcTopCapH * 0.5, 0);
+  tcTopCap.castShadow = true;
+  tallCupboardGroup.add(tcTopCap);
+
+  // Left (`-0.749m`), Center Divider (`0.0m`), and Right (`+0.749m`) vertical walls + brushed stainless front stiles
+  for (const wallX of [-tallCupboardW * 0.5 + tcWallT * 0.5, 0, tallCupboardW * 0.5 - tcWallT * 0.5] as const) {
+    const vWall = new THREE.Mesh(
+      new THREE.BoxGeometry(tcWallT, tcInnerH, benchD - 0.03),
+      wallX === 0 ? anthraciteSteelMat : brushedStainlessMat
+    );
+    vWall.position.set(wallX, tcInnerBaseY + tcInnerH * 0.5, 0.005);
+    vWall.castShadow = true;
+    vWall.receiveShadow = true;
+    tallCupboardGroup.add(vWall);
+
+    const frontStile = new THREE.Mesh(
+      new THREE.BoxGeometry(0.026, tallCupboardH - tcPlinthH, 0.018),
+      brushedStainlessMat
+    );
+    frontStile.position.set(wallX, tcPlinthH + (tallCupboardH - tcPlinthH) * 0.5, frontZ + 0.01);
+    tallCupboardGroup.add(frontStile);
+  }
+
+  // Interior LED strip lights along the top of both compartments
+  for (const compX of [-tallCupboardW * 0.25, tallCupboardW * 0.25] as const) {
+    const innerLed = new THREE.Mesh(
+      new THREE.BoxGeometry(0.62, 0.012, 0.028),
+      ledStripMat
+    );
+    innerLed.position.set(compX, tcInnerTopY - 0.01, -0.12);
+    tallCupboardGroup.add(innerLed);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2A. Left / South Compartment (`compX = -0.375m`): 5-Tier Shelved Storage for Paint, Rollers, Oil & Hardware
+  // ---------------------------------------------------------------------------
+  const leftBayX = -tallCupboardW * 0.25; // -0.38m
+  const shelfW = tallCupboardW * 0.5 - tcWallT * 1.6; // ~0.72m
+  const shelfD = benchD - 0.08; // 0.66m
+  const shelfHeights = [0.48, 0.88, 1.28, 1.68] as const;
+
+  for (const sy of shelfHeights) {
+    const shelfMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(shelfW, 0.022, shelfD),
+      brushedStainlessMat
+    );
+    shelfMesh.name = 'outbuildings.garage.toolBench.tallCupboard.shelf';
+    shelfMesh.position.set(leftBayX, sy, 0.02);
+    shelfMesh.castShadow = true;
+    shelfMesh.receiveShadow = true;
+    tallCupboardGroup.add(shelfMesh);
+  }
+
+  const paintWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf4f3ee, roughness: 0.35, metalness: 0.1 });
+  const paintSageMat = new THREE.MeshStandardMaterial({ color: 0x6f8271, roughness: 0.38, metalness: 0.12 });
+  const paintNavyMat = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, roughness: 0.36, metalness: 0.15 });
+  const paintOchreMat = new THREE.MeshStandardMaterial({ color: 0xd9822b, roughness: 0.38, metalness: 0.12 });
+  const paintCrimsonMat = new THREE.MeshStandardMaterial({ color: 0xb83227, roughness: 0.36, metalness: 0.14 });
+  const wd40BlueMat = new THREE.MeshStandardMaterial({ color: 0x0055a5, roughness: 0.28, metalness: 0.35 });
+
+  // Tier 1 (Floor Deck `y = 0.08m`): Three large 5L & 2.5L Trade Paint Buckets + Paint Roller Tray & Roller
+  for (const [px, pz, r, h, lidMat] of [
+    [leftBayX - 0.21, -0.06, 0.105, 0.24, paintWhiteMat],
+    [leftBayX + 0.02, -0.08, 0.105, 0.24, paintSageMat],
+    [leftBayX - 0.09, 0.15, 0.095, 0.22, paintNavyMat],
+  ] as const) {
+    const bucketBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(r, r * 0.92, h, 18),
+      paintWhiteMat
+    );
+    bucketBody.name = 'outbuildings.garage.toolBench.tallCupboard.paintTin';
+    bucketBody.position.set(px, tcPlinthH + tcWallT + h * 0.5, pz);
+    bucketBody.castShadow = true;
+    tallCupboardGroup.add(bucketBody);
+
+    const colorBand = new THREE.Mesh(
+      new THREE.CylinderGeometry(r + 0.002, r * 0.96 + 0.002, h * 0.42, 18),
+      lidMat
+    );
+    colorBand.position.set(px, tcPlinthH + tcWallT + h * 0.55, pz);
+    tallCupboardGroup.add(colorBand);
+
+    const rimLid = new THREE.Mesh(
+      new THREE.CylinderGeometry(r + 0.004, r + 0.004, 0.016, 18),
+      aluminumTrimMat
+    );
+    rimLid.position.set(px, tcPlinthH + tcWallT + h + 0.006, pz);
+    tallCupboardGroup.add(rimLid);
+  }
+
+  // Paint roller tray & yellow/white sheepskin roller on right side of Tier 1
+  const rollerTray = new THREE.Mesh(
+    new THREE.BoxGeometry(0.22, 0.055, 0.34),
+    dewaltBlackMat
+  );
+  rollerTray.position.set(leftBayX + 0.22, tcPlinthH + tcWallT + 0.028, 0.02);
+  tallCupboardGroup.add(rollerTray);
+
+  const rollerSleeve = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.028, 0.028, 0.18, 14),
+    paintWhiteMat
+  );
+  rollerSleeve.rotation.z = Math.PI / 2;
+  rollerSleeve.position.set(leftBayX + 0.22, tcPlinthH + tcWallT + 0.072, -0.04);
+  tallCupboardGroup.add(rollerSleeve);
+
+  // Tier 2 (`y = 0.48m`): Six 1L Metal Decorator Paint & Wood-Varnish Tins + Brushes
+  for (const [tIdx, tx, tz, tinMat] of [
+    [0, leftBayX - 0.24, -0.10, paintSageMat],
+    [1, leftBayX - 0.08, -0.10, paintOchreMat],
+    [2, leftBayX + 0.08, -0.10, paintNavyMat],
+    [3, leftBayX + 0.24, -0.10, paintCrimsonMat],
+    [4, leftBayX - 0.16, 0.08, paintWhiteMat],
+    [5, leftBayX + 0.02, 0.08, butcherEdgeMat],
+  ] as const) {
+    const tinH = 0.145 - (tIdx % 2) * 0.015;
+    const tinR = 0.058;
+    const tinCan = new THREE.Mesh(
+      new THREE.CylinderGeometry(tinR, tinR, tinH, 16),
+      aluminumTrimMat
+    );
+    tinCan.name = 'outbuildings.garage.toolBench.tallCupboard.paintTin';
+    tinCan.position.set(tx, 0.49 + tinH * 0.5, tz);
+    tinCan.castShadow = true;
+    tallCupboardGroup.add(tinCan);
+
+    const tinLabel = new THREE.Mesh(
+      new THREE.CylinderGeometry(tinR + 0.0015, tinR + 0.0015, tinH * 0.58, 16),
+      tinMat
+    );
+    tinLabel.position.set(tx, 0.49 + tinH * 0.5, tz);
+    tallCupboardGroup.add(tinLabel);
+  }
+
+  // Tier 3 (`y = 0.88m`): WD-40 Aerosol Cans, Silicone Spray, 5L Golden Motor Oil Jug & Masking Tape Rolls
+  for (const [ax, az, aMat, capMat] of [
+    [leftBayX - 0.25, -0.12, wd40BlueMat, rockerSwitchMat],
+    [leftBayX - 0.16, -0.12, wd40BlueMat, rockerSwitchMat],
+    [leftBayX - 0.07, -0.12, dewaltBlackMat, dewaltYellowMat],
+    [leftBayX + 0.02, -0.12, paintCrimsonMat, paintWhiteMat],
+  ] as const) {
+    const canCyl = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.032, 0.032, 0.165, 14),
+      aMat
+    );
+    canCyl.position.set(ax, 0.89 + 0.0825, az);
+    tallCupboardGroup.add(canCyl);
+
+    const canCap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.031, 0.031, 0.042, 14),
+      capMat
+    );
+    canCap.position.set(ax, 0.89 + 0.186, az);
+    tallCupboardGroup.add(canCap);
+  }
+
+  const oilJug = new THREE.Mesh(
+    new THREE.BoxGeometry(0.14, 0.24, 0.19),
+    dewaltYellowMat
+  );
+  oilJug.position.set(leftBayX + 0.20, 0.89 + 0.12, -0.04);
+  tallCupboardGroup.add(oilJug);
+
+  for (let tapeIdx = 0; tapeIdx < 3; tapeIdx++) {
+    const tapeRoll = new THREE.Mesh(
+      new THREE.TorusGeometry(0.048, 0.016, 10, 18),
+      tapeIdx === 0 ? wd40BlueMat : paintWhiteMat
+    );
+    tapeRoll.rotation.x = Math.PI / 2;
+    tapeRoll.position.set(leftBayX - 0.12, 0.91 + tapeIdx * 0.032, 0.10);
+    tallCupboardGroup.add(tapeRoll);
+  }
+
+  // Tier 4 (`y = 1.28m`): 3 Modular Workshop Parts & Fastener Storage Bins
+  for (const [bIdx, bx] of [
+    [0, leftBayX - 0.22],
+    [1, leftBayX],
+    [2, leftBayX + 0.22],
+  ] as const) {
+    const binBox = new THREE.Mesh(
+      new THREE.BoxGeometry(0.19, 0.18, 0.36),
+      bIdx === 1 ? dewaltYellowMat : rockerSwitchMat
+    );
+    binBox.name = 'outbuildings.garage.toolBench.tallCupboard.storageBin';
+    binBox.position.set(bx, 1.29 + 0.09, -0.02);
+    binBox.castShadow = true;
+    tallCupboardGroup.add(binBox);
+  }
+
+  // Tier 5 (`y = 1.68m`): 2 Heavy-Duty Lidded Polypropylene Bulk Storage Crates
+  for (const cx of [leftBayX - 0.16, leftBayX + 0.16] as const) {
+    const crateBox = new THREE.Mesh(
+      new THREE.BoxGeometry(0.29, 0.22, 0.42),
+      dewaltBlackMat
+    );
+    crateBox.position.set(cx, 1.69 + 0.11, -0.01);
+    tallCupboardGroup.add(crateBox);
+
+    const crateLid = new THREE.Mesh(
+      new THREE.BoxGeometry(0.30, 0.024, 0.43),
+      dewaltYellowMat
+    );
+    crateLid.position.set(cx, 1.69 + 0.23, -0.01);
+    tallCupboardGroup.add(crateLid);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2B. Right / North Compartment (`compX = +0.38m`): Full-Height Storage for Ladders, Levels & Long Tools
+  // ---------------------------------------------------------------------------
+  const rightBayX = tallCupboardW * 0.25; // +0.38m
+
+  // 1) Folding Aluminium 6-Step A-Frame Workshop Step Ladder (`outbuildings.garage.toolBench.tallCupboard.stepLadder`)
+  const stepLadderGroup = new THREE.Group();
+  stepLadderGroup.name = 'outbuildings.garage.toolBench.tallCupboard.stepLadder';
+  stepLadderGroup.position.set(rightBayX + 0.14, tcPlinthH + tcWallT, 0.02);
+  stepLadderGroup.rotation.z = 0.07; // Leaned neatly inside the right compartment
+  tallCupboardGroup.add(stepLadderGroup);
+
+  const ladderH = 1.82;
+  const ladderSpanZ = 0.38;
+  for (const sz of [-1, 1] as const) {
+    const frontStile = new THREE.Mesh(
+      new THREE.BoxGeometry(0.024, ladderH, 0.052),
+      aluminumTrimMat
+    );
+    frontStile.position.set(-0.04, ladderH * 0.5, sz * (ladderSpanZ * 0.5));
+    frontStile.castShadow = true;
+    stepLadderGroup.add(frontStile);
+
+    const rearLeg = new THREE.Mesh(
+      new THREE.BoxGeometry(0.02, ladderH * 0.94, 0.038),
+      aluminumTrimMat
+    );
+    rearLeg.position.set(0.05, (ladderH * 0.94) * 0.5, sz * (ladderSpanZ * 0.46));
+    stepLadderGroup.add(rearLeg);
+
+    // Non-slip black/yellow rubber feet
+    const footCap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.032, 0.036, 0.06),
+      dewaltYellowMat
+    );
+    footCap.position.set(-0.04, 0.018, sz * (ladderSpanZ * 0.5));
+    stepLadderGroup.add(footCap);
+  }
+
+  // 6 Ribbed Aluminium Treads + Top Yellow Platform Cap
+  for (let r = 0; r < 6; r++) {
+    const ry = 0.24 + r * 0.25;
+    const stepTread = new THREE.Mesh(
+      new THREE.BoxGeometry(0.085, 0.018, ladderSpanZ - 0.02),
+       r === 5 ? dewaltYellowMat : aluminumTrimMat
+    );
+    stepTread.position.set(-0.02, ry, 0);
+    stepLadderGroup.add(stepTread);
+  }
+
+  // 2) 2-Section Telescopic Aluminium Extension Ladder (`outbuildings.garage.toolBench.tallCupboard.extensionLadder`)
+  const extLadderGroup = new THREE.Group();
+  extLadderGroup.name = 'outbuildings.garage.toolBench.tallCupboard.extensionLadder';
+  extLadderGroup.position.set(rightBayX - 0.14, tcPlinthH + tcWallT, 0.06);
+  tallCupboardGroup.add(extLadderGroup);
+
+  const extLadderH = 1.94;
+  for (const sx of [-0.14, 0.14] as const) {
+    const stileRail = new THREE.Mesh(
+      new THREE.BoxGeometry(0.028, extLadderH, 0.064),
+      aluminumTrimMat
+    );
+    stileRail.position.set(sx, extLadderH * 0.5, 0);
+    stileRail.castShadow = true;
+    extLadderGroup.add(stileRail);
+
+    const stabilizerCap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.038, 0.04, 0.076),
+      rockerSwitchMat
+    );
+    stabilizerCap.position.set(sx, 0.02, 0);
+    extLadderGroup.add(stabilizerCap);
+  }
+  for (let rung = 0; rung < 7; rung++) {
+    const rungMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.014, 0.014, 0.28, 10),
+      aluminumTrimMat
+    );
+    rungMesh.rotation.z = Math.PI / 2;
+    rungMesh.position.set(0, 0.22 + rung * 0.26, 0);
+    extLadderGroup.add(rungMesh);
+  }
+
+  // 3) Long Workshop Push Broom & 1200mm Box-Beam Spirit Level clipped in the front-left of the full-height bay
+  const broomHandle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.013, 0.013, 1.56, 10),
+    butcherEdgeMat
+  );
+  broomHandle.position.set(rightBayX - 0.25, tcPlinthH + 0.86, -0.14);
+  tallCupboardGroup.add(broomHandle);
+
+  const broomHead = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.065, 0.34),
+    dewaltYellowMat
+  );
+  broomHead.position.set(rightBayX - 0.25, tcPlinthH + 0.055, -0.14);
+  tallCupboardGroup.add(broomHead);
+
+  const tallLevel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.026, 1.22, 0.058),
+    dewaltYellowMat
+  );
+  tallLevel.position.set(rightBayX - 0.29, tcPlinthH + 0.64, 0.12);
+  tallCupboardGroup.add(tallLevel);
+
+  // ---------------------------------------------------------------------------
+  // 2C. Two Interactive Full-Height Brushed 304 Stainless-Steel Doors (`doorLeft` & `doorRight`)
+  // ---------------------------------------------------------------------------
+  const tcDoorW = tallCupboardW * 0.5 - 0.022; // 0.738m each
+  const tcDoorH = tallCupboardH - tcPlinthH - 0.024; // 2.076m tall
+  const tcDoorCenterY = tcPlinthH + tcDoorH * 0.5;
+  const tcDoorT = 0.022;
+
+  for (const [sideSign, doorName] of [
+    [-1, 'outbuildings.garage.toolBench.tallCupboard.doorLeft'],
+    [1, 'outbuildings.garage.toolBench.tallCupboard.doorRight'],
+  ] as const) {
+    const doorCX = sideSign * (tcDoorW * 0.5 + 0.004);
+    const doorGroup = new THREE.Group();
+    doorGroup.name = doorName;
+    doorGroup.position.set(doorCX, tcDoorCenterY, frontZ);
+    tallCupboardGroup.add(doorGroup);
+
+    const doorSlab = new THREE.Mesh(
+      new THREE.BoxGeometry(tcDoorW, tcDoorH, tcDoorT),
+      brushedStainlessMat
+    );
+    doorSlab.name = 'outbuildings.garage.toolBench.drawer';
+    doorSlab.castShadow = true;
+    doorSlab.receiveShadow = true;
+    doorGroup.add(doorSlab);
+
+    // Subtle recessed vertical stainless shadow-reveal border on door face
+    const doorTrim = new THREE.Mesh(
+      new THREE.BoxGeometry(tcDoorW - 0.08, tcDoorH - 0.12, 0.004),
+      aluminumTrimMat
+    );
+    doorTrim.position.set(0, 0, -tcDoorT * 0.5 - 0.001);
+    doorGroup.add(doorTrim);
+
+    // Long vertical anodized-aluminum bar handle near the center meeting stile
+    const handleOffsetX = -sideSign * (tcDoorW * 0.5 - 0.048);
+    const tallHandle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, 0.38, 0.032),
+      aluminumTrimMat
+    );
+    tallHandle.position.set(handleOffsetX, -0.12, -tcDoorT * 0.5 - 0.014);
+    doorGroup.add(tallHandle);
+
+    // Cylinder key lock above handle
+    const doorLock = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.01, 0.01, 0.026, 12),
+      aluminumTrimMat
+    );
+    doorLock.rotation.x = Math.PI / 2;
+    doorLock.position.set(handleOffsetX, 0.14, -tcDoorT * 0.5 - 0.004);
+    doorGroup.add(doorLock);
+
+    // Register interactive hinged door so clicking swings it wide open into the Garage (`-Z` in `benchGroup`)
+    if (ctx) {
+      const hingeOffsetX = sideSign * (tcDoorW * 0.5 - 0.014);
+      ctx.interactions.registerHingedDoor(
+        tallCupboardGroup,
+        doorGroup,
+        new THREE.Vector3(hingeOffsetX, 0, -0.008),
+        'y',
+        sideSign * Math.PI * 0.62
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. East-Wall Workbench Lower Cabinet Carcass, Plinth & Brushed 304 Stainless-Steel Drawers
+  //    (`localX = -2.035m..+0.515m`, `benchSpanW = 2.55m`, `v = 2.86m..5.41m` — Issue #3!)
+  // ---------------------------------------------------------------------------
+  const carcass = new THREE.Mesh(
+    new THREE.BoxGeometry(benchSpanW - 0.02, cabinetH - 0.05, benchD - 0.04),
+    anthraciteSteelMat
+  );
+  carcass.position.set(benchCenterX, 0.05 + (cabinetH - 0.05) * 0.5, 0.01);
   carcass.castShadow = true;
   carcass.receiveShadow = true;
   benchGroup.add(carcass);
 
   const plinth = new THREE.Mesh(
-    new THREE.BoxGeometry(eastCabSpanW - 0.04, 0.05, benchD - 0.08),
+    new THREE.BoxGeometry(benchSpanW - 0.04, 0.05, benchD - 0.08),
     dewaltBlackMat
   );
-  plinth.position.set(eastCabCenterX, 0.025, 0.02);
+  plinth.position.set(benchCenterX, 0.025, 0.02);
   benchGroup.add(plinth);
 
-  const frontZ = -benchD * 0.5 + 0.012;
   const postPositionsX = [
-    -1.11,
-    -0.37,
-    0.37,
-    1.11,
-    totalW * 0.5 - 0.025,
+    -1.295,
+    -0.695,
+    -0.095,
+    0.505,
   ] as const;
   for (const mx of postPositionsX) {
     const stile = new THREE.Mesh(
@@ -1403,7 +1843,7 @@ export function buildGarageToolBench(
     benchGroup.add(stile);
   }
 
-  for (const fx of postPositionsX) {
+  for (const fx of [-1.95, -1.295, -0.695, -0.095, 0.505] as const) {
     for (const fz of [-benchD * 0.5 + 0.07, benchD * 0.5 - 0.07]) {
       const footPad = new THREE.Mesh(
         new THREE.CylinderGeometry(0.036, 0.038, 0.014, 14),
@@ -1421,32 +1861,11 @@ export function buildGarageToolBench(
     }
   }
 
-  const drawerW = 0.715;
-  const bayCenters = [-1.47, -0.735, 0.0, 0.735, 1.47] as const;
-  const bankSpecs = [
-    {
-      cx: bayCenters[1],
-      w: drawerW,
-      drawerHeights: [0.085, 0.105, 0.135, 0.185, 0.22] as const,
-    },
-    {
-      cx: bayCenters[2],
-      w: drawerW,
-      drawerHeights: [0.085, 0.105, 0.135, 0.185, 0.22] as const,
-    },
-    {
-      cx: bayCenters[3],
-      w: drawerW,
-      drawerHeights: [0.085, 0.105, 0.135, 0.185, 0.22] as const,
-    },
-    {
-      cx: bayCenters[4],
-      w: drawerW,
-      drawerHeights: [0.095, 0.135] as const,
-    },
-  ] as const;
+  const eastDrawerW = 0.578;
+  const eastDrawerBanks = [-0.995, -0.395, 0.205] as const;
+  const fiveTierHeights = [0.085, 0.105, 0.135, 0.185, 0.22] as const;
 
-  for (const bank of bankSpecs) {
+  for (const cx of eastDrawerBanks) {
     let cursorY = cabinetH - 0.025;
 
     const keyLock = new THREE.Mesh(
@@ -1454,128 +1873,82 @@ export function buildGarageToolBench(
       aluminumTrimMat
     );
     keyLock.rotation.x = Math.PI / 2;
-    keyLock.position.set(bank.cx + bank.w * 0.5 - 0.032, cabinetH - 0.048, frontZ - 0.004);
+    keyLock.position.set(cx + eastDrawerW * 0.5 - 0.032, cabinetH - 0.048, frontZ - 0.004);
     benchGroup.add(keyLock);
 
-    for (let dIdx = 0; dIdx < bank.drawerHeights.length; dIdx++) {
-      const dh = bank.drawerHeights[dIdx]!;
+    for (let dIdx = 0; dIdx < fiveTierHeights.length; dIdx++) {
+      const dh = fiveTierHeights[dIdx]!;
       const dy = cursorY - dh * 0.5;
       const drawerFront = new THREE.Mesh(
-        new THREE.BoxGeometry(bank.w, dh - 0.007, 0.02),
+        new THREE.BoxGeometry(eastDrawerW, dh - 0.007, 0.02),
         brushedStainlessMat
       );
       drawerFront.name = 'outbuildings.garage.toolBench.drawer';
-      drawerFront.position.set(bank.cx, dy, frontZ);
+      drawerFront.position.set(cx, dy, frontZ);
       drawerFront.castShadow = true;
       drawerFront.receiveShadow = true;
       benchGroup.add(drawerFront);
 
       const pullBar = new THREE.Mesh(
-        new THREE.BoxGeometry(bank.w - 0.024, 0.016, 0.026),
+        new THREE.BoxGeometry(eastDrawerW - 0.024, 0.016, 0.026),
         aluminumTrimMat
       );
-      pullBar.position.set(bank.cx, dy + dh * 0.5 - 0.015, frontZ - 0.012);
+      pullBar.position.set(cx, dy + dh * 0.5 - 0.015, frontZ - 0.012);
       benchGroup.add(pullBar);
 
       const labelStrip = new THREE.Mesh(
-        new THREE.BoxGeometry(bank.w * 0.42, 0.007, 0.004),
+        new THREE.BoxGeometry(eastDrawerW * 0.42, 0.007, 0.004),
         dewaltBlackMat
       );
-      labelStrip.position.set(bank.cx, dy + dh * 0.5 - 0.015, frontZ - 0.025);
+      labelStrip.position.set(cx, dy + dh * 0.5 - 0.015, frontZ - 0.025);
       benchGroup.add(labelStrip);
 
       cursorY -= dh;
     }
   }
 
-  for (const sideX of [-1, 1] as const) {
-    const doorW = 0.362;
-    const doorPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(doorW, 0.495, 0.02),
-      brushedStainlessMat
-    );
-    doorPanel.name = 'outbuildings.garage.toolBench.drawer';
-    doorPanel.position.set(1.47 + sideX * (doorW * 0.5 + 0.004), 0.325, frontZ);
-    doorPanel.castShadow = true;
-    doorPanel.receiveShadow = true;
-    benchGroup.add(doorPanel);
-
-    const vHandle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.014, 0.15, 0.026),
-      aluminumTrimMat
-    );
-    vHandle.position.set(1.47 + sideX * 0.032, 0.42, frontZ - 0.012);
-    benchGroup.add(vHandle);
-  }
-
   // ---------------------------------------------------------------------------
-  // Multi-Part Laminated Hardwood Butcher-Block Worktop Assembly (`3.88m x 0.052m x 0.78m`)
+  // 4. Laminated Hardwood Butcher-Block Worktop, Pegboard & Upper Cabinets (`benchSpanW = 2.55m`)
   // ---------------------------------------------------------------------------
   const topD = 0.78;
   const butcherTop = new THREE.Mesh(
-    new THREE.BoxGeometry(totalW, topT, topD),
+    new THREE.BoxGeometry(benchSpanW, topT, topD),
     butcherBlockMat
   );
   butcherTop.name = 'outbuildings.garage.toolBench.butcherBlockTop';
-  butcherTop.position.set(0, cabinetH + topT * 0.5, 0);
+  butcherTop.position.set(benchCenterX, cabinetH + topT * 0.5, 0);
   butcherTop.castShadow = true;
   butcherTop.receiveShadow = true;
   benchGroup.add(butcherTop);
 
   const bullnoseRadius = topT * 0.5;
   const frontBullnose = new THREE.Mesh(
-    new THREE.CylinderGeometry(bullnoseRadius, bullnoseRadius, totalW, 16),
+    new THREE.CylinderGeometry(bullnoseRadius, bullnoseRadius, benchSpanW, 16),
     butcherBlockMat
   );
   frontBullnose.name = 'outbuildings.garage.toolBench.butcherBlockTop';
   frontBullnose.rotation.z = Math.PI / 2;
-  frontBullnose.position.set(0, cabinetH + topT * 0.5, -topD * 0.5);
+  frontBullnose.position.set(benchCenterX, cabinetH + topT * 0.5, -topD * 0.5);
   frontBullnose.castShadow = true;
   frontBullnose.receiveShadow = true;
   benchGroup.add(frontBullnose);
 
-  for (const sideX of [-1, 1] as const) {
-    const endCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, topT + 0.002, topD + 0.012),
-      butcherEdgeMat
-    );
-    endCap.position.set(sideX * (totalW * 0.5 + 0.004), cabinetH + topT * 0.5, 0);
-    endCap.castShadow = true;
-    benchGroup.add(endCap);
-
-    const cornerBracket = new THREE.Mesh(
-      new THREE.BoxGeometry(0.065, topT + 0.004, 0.065),
-      brushedStainlessMat
-    );
-    cornerBracket.position.set(
-      sideX * (totalW * 0.5 - 0.026),
-      cabinetH + topT * 0.5,
-      -topD * 0.5 + 0.022
-    );
-    benchGroup.add(cornerBracket);
-  }
+  const southEndCap = new THREE.Mesh(
+    new THREE.BoxGeometry(0.012, topT + 0.002, topD + 0.012),
+    butcherEdgeMat
+  );
+  southEndCap.position.set(-totalW * 0.5 - 0.004, cabinetH + topT * 0.5, 0);
+  southEndCap.castShadow = true;
+  benchGroup.add(southEndCap);
 
   const upstandH = 0.032;
   const upstandT = 0.012;
   const rearUpstand = new THREE.Mesh(
-    new THREE.BoxGeometry(totalW, upstandH, upstandT),
+    new THREE.BoxGeometry(benchSpanW, upstandH, upstandT),
     brushedStainlessMat
   );
-  rearUpstand.position.set(0, worktopY + upstandH * 0.5, benchD * 0.5 - upstandT * 0.5);
+  rearUpstand.position.set(benchCenterX, worktopY + upstandH * 0.5, benchD * 0.5 - upstandT * 0.5);
   benchGroup.add(rearUpstand);
-
-  for (const sideX of [-1, 1] as const) {
-    const sideUpstand = new THREE.Mesh(
-      new THREE.BoxGeometry(upstandT, upstandH, benchD * 0.65),
-      brushedStainlessMat
-    );
-    sideUpstand.position.set(
-      sideX * (totalW * 0.5 - upstandT * 0.5),
-      worktopY + upstandH * 0.5,
-      benchD * 0.5 - (benchD * 0.65) * 0.5
-    );
-    benchGroup.add(sideUpstand);
-  }
 
   const magTrayGroup = new THREE.Group();
   magTrayGroup.position.set(-1.24, worktopY, -0.22);
@@ -1606,11 +1979,11 @@ export function buildGarageToolBench(
 
   const pegboardH = 0.64;
   const pegboard = new THREE.Mesh(
-    new THREE.BoxGeometry(totalW - 0.04, pegboardH, 0.024),
+    new THREE.BoxGeometry(benchSpanW - 0.02, pegboardH, 0.024),
     anthraciteSteelMat
   );
   pegboard.name = 'outbuildings.garage.toolBench.pegboard';
-  pegboard.position.set(0, worktopY + pegboardH * 0.5, benchD * 0.5 - 0.02);
+  pegboard.position.set(benchCenterX, worktopY + pegboardH * 0.5, benchD * 0.5 - 0.02);
   benchGroup.add(pegboard);
 
   const powerStrip = new THREE.Mesh(
@@ -1618,11 +1991,11 @@ export function buildGarageToolBench(
     aluminumTrimMat
   );
   powerStrip.name = 'outbuildings.garage.toolBench.powerStrip';
-  powerStrip.position.set(0.0, worktopY + 0.11, benchD * 0.5 - 0.045);
+  powerStrip.position.set(-0.48, worktopY + 0.11, benchD * 0.5 - 0.045);
   benchGroup.add(powerStrip);
 
   for (let s = 0; s < 6; s++) {
-    const sx = -0.25 + s * 0.1;
+    const sx = -0.73 + s * 0.1;
     const socketFace = new THREE.Mesh(
       new THREE.BoxGeometry(0.048, 0.044, 0.008),
       dewaltBlackMat
@@ -1641,20 +2014,21 @@ export function buildGarageToolBench(
   const upperCabH = 0.34;
   const upperCabD = 0.32;
   const upperCab = new THREE.Mesh(
-    new THREE.BoxGeometry(totalW - 0.04, upperCabH, upperCabD),
+    new THREE.BoxGeometry(benchSpanW - 0.02, upperCabH, upperCabD),
     anthraciteSteelMat
   );
   upperCab.position.set(
-    0,
+    benchCenterX,
     worktopY + pegboardH + upperCabH * 0.5,
     benchD * 0.5 - upperCabD * 0.5
   );
   upperCab.castShadow = true;
   benchGroup.add(upperCab);
 
-  for (const ux of bayCenters) {
+  const upperDoorW = 0.81;
+  for (const ux of [-1.59, -0.76, 0.07] as const) {
     const upperDoor = new THREE.Mesh(
-      new THREE.BoxGeometry(drawerW, upperCabH - 0.03, 0.018),
+      new THREE.BoxGeometry(upperDoorW, upperCabH - 0.03, 0.018),
       brushedStainlessMat
     );
     upperDoor.name = 'outbuildings.garage.toolBench.drawer';
@@ -1677,86 +2051,117 @@ export function buildGarageToolBench(
     benchGroup.add(upperPull);
   }
 
-  const ledStripMat = new THREE.MeshStandardMaterial({
-    color: 0xf4f9ff,
-    emissive: new THREE.Color(0xd8eeff),
-    emissiveIntensity: 2.6,
-    roughness: 0.16,
-  });
   const ledTaskBar = new THREE.Mesh(
-    new THREE.BoxGeometry(3.7, 0.014, 0.038),
+    new THREE.BoxGeometry(benchSpanW - 0.08, 0.014, 0.038),
     ledStripMat
   );
-  ledTaskBar.position.set(0, worktopY + pegboardH - 0.007, benchD * 0.5 - upperCabD + 0.05);
+  ledTaskBar.position.set(benchCenterX, worktopY + pegboardH - 0.007, benchD * 0.5 - upperCabD + 0.05);
   benchGroup.add(ledTaskBar);
 
   // ---------------------------------------------------------------------------
-  // Authentic DeWALT 18V XR / 54V FLEXVOLT Suite spread across the `3.88m` worktop
-  // ---------------------------------------------------------------------------
-
-  // ---------------------------------------------------------------------------
-  // Issue #1 ("Tidy this up, make this open bottom and have a computer screen wall mounted at the back"
-  // at `[-11.473, 0.816, 19.75]`, `outbuildings.garage.toolBench.southWing.pegboard`):
-  // Open-Bottom South-Wall Wrap-Around Workstation Wing (`outbuildings.garage.toolBench.southWing`)
-  // In `benchGroup` (`position = (12.41, y, 3.53)`, `rotation.y = +Math.PI / 2`):
-  // Setting `southWingGroup.rotation.y = -Math.PI / 2` gives a net world/outbuilding rotation of `0`:
-  // - `+sx` points East (`+u`), meeting the front of the East-wall bench at `u = 12.04m`
-  // - `-sx` points West (`-u`), extending to `u = 10.12m` along the Garage South wall
-  // - `+sz` points South (`+v`), sitting flush against the Garage South wall (`v = 5.41m`)
-  // - `-sz` points North (`-v`), facing into the Garage (`v = 4.67m`)!
+  // 5. South-Wall Return Wing (`outbuildings.garage.toolBench.southWing`)
+  //    - Issue #3 ("No need for open section keep the drawers" at `[-12.839, 0.084, 20.622]`):
+  //      Full-depth Dark-Anthracite Steel Lower Cabinet Carcass, Plinth, Stiles & 3 Banks of 5-Tier
+  //      Brushed 304 Stainless-Steel Drawers (`outbuildings.garage.toolBench.southWing.drawer`) underneath!
+  //    - Issue #4 ("Smaller screen, only needs to be 32 inch not ultra wide." at `[-11.234, 0.819, 20.361]`):
+  //      Standard 32-Inch (`16:9`, `0.70m x 0.39m` screen, `0.72m x 0.41m` bezel) Wall-Mounted Monitor!
   // ---------------------------------------------------------------------------
   const southReturnL = 1.92; // Spans `u = 10.12m..12.04m` along the Garage South wall (`v = 4.67m..5.41m`)
   const southWingGroup = new THREE.Group();
   southWingGroup.name = 'outbuildings.garage.toolBench.southWing';
   southWingGroup.position.set(
-    -totalW * 0.5 + benchD * 0.5, // localX = -1.51m -> v = 5.04m (`v = 4.67..5.41m`)
+    -totalW * 0.5 + benchD * 0.5, // localX = -1.665m -> v = 5.04m (`v = 4.67..5.41m`)
     0,
     -benchD * 0.5 - southReturnL * 0.5 // localZ = -1.33m -> u = 11.08m (`u = 10.12..12.04m`)
   );
   southWingGroup.rotation.y = -Math.PI / 2;
   benchGroup.add(southWingGroup);
 
-  // Open-Bottom Heavy-Duty Square Tubular Steel Support Legs (`y = 0..0.86m`) & Brushed-Stainless Footrest Bar
-  const legTubeW = 0.048;
-  for (const lx of [-southReturnL * 0.5 + 0.04, southReturnL * 0.5 - 0.04] as const) {
-    for (const lz of [-benchD * 0.5 + 0.05, benchD * 0.5 - 0.05] as const) {
-      const legPost = new THREE.Mesh(
-        new THREE.BoxGeometry(legTubeW, cabinetH, legTubeW),
-        anthraciteSteelMat
-      );
-      legPost.position.set(lx, cabinetH * 0.5, lz);
-      legPost.castShadow = true;
-      southWingGroup.add(legPost);
-    }
-    // Side H-frame lower & upper tie rails
-    for (const railY of [0.18, cabinetH - 0.04] as const) {
-      const sideRail = new THREE.Mesh(
-        new THREE.BoxGeometry(legTubeW, 0.038, benchD - 0.10),
-        anthraciteSteelMat
-      );
-      sideRail.position.set(lx, railY, 0);
-      southWingGroup.add(sideRail);
-    }
-  }
+  // Issue #3: Full-Depth Lower Cabinet Carcass, Plinth & 3 Banks of 5-Tier Brushed 304 Stainless Drawers
+  const southCarcass = new THREE.Mesh(
+    new THREE.BoxGeometry(southReturnL - 0.02, cabinetH - 0.05, benchD - 0.04),
+    anthraciteSteelMat
+  );
+  southCarcass.position.set(0.01, 0.05 + (cabinetH - 0.05) * 0.5, 0.01);
+  southCarcass.castShadow = true;
+  southCarcass.receiveShadow = true;
+  southWingGroup.add(southCarcass);
 
-  // Under-worktop front & rear steel apron rails (`y = cabinetH - 0.035m`) leaving the entire bottom open for legroom
-  for (const lz of [-benchD * 0.5 + 0.05, benchD * 0.5 - 0.05] as const) {
-    const apronBeam = new THREE.Mesh(
-      new THREE.BoxGeometry(southReturnL - 0.04, 0.045, 0.038),
+  const southPlinth = new THREE.Mesh(
+    new THREE.BoxGeometry(southReturnL - 0.04, 0.05, benchD - 0.08),
+    dewaltBlackMat
+  );
+  southPlinth.position.set(0.01, 0.025, 0.02);
+  southWingGroup.add(southPlinth);
+
+  const southPostPositionsX = [-0.94, -0.31, 0.31, 0.94] as const;
+  for (const sx of southPostPositionsX) {
+    const sStile = new THREE.Mesh(
+      new THREE.BoxGeometry(0.022, cabinetH - 0.05, 0.016),
       anthraciteSteelMat
     );
-    apronBeam.position.set(0, cabinetH - 0.025, lz);
-    southWingGroup.add(apronBeam);
+    sStile.position.set(sx, 0.05 + (cabinetH - 0.05) * 0.5, frontZ + 0.004);
+    southWingGroup.add(sStile);
+
+    for (const sz of [-benchD * 0.5 + 0.07, benchD * 0.5 - 0.07]) {
+      const sFootPad = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.036, 0.038, 0.014, 14),
+        dewaltBlackMat
+      );
+      sFootPad.position.set(sx, 0.007, sz);
+      southWingGroup.add(sFootPad);
+
+      const sFootLeg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.024, 0.028, 0.042, 12),
+        aluminumTrimMat
+      );
+      sFootLeg.position.set(sx, 0.031, sz);
+      southWingGroup.add(sFootLeg);
+    }
   }
 
-  // Brushed 304 Stainless-Steel Tubular Footrest Stretcher Bar (`y = 0.18m`) across the open bottom
-  const footrestStretch = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.018, 0.018, southReturnL - 0.08, 16),
-    brushedStainlessMat
-  );
-  footrestStretch.rotation.z = Math.PI / 2;
-  footrestStretch.position.set(0, 0.18, 0.08);
-  southWingGroup.add(footrestStretch);
+  const southDrawerW = 0.602;
+  for (const scx of [-0.625, 0.0, 0.625] as const) {
+    let cursorY = cabinetH - 0.025;
+
+    const sKeyLock = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.009, 0.009, 0.026, 12),
+      aluminumTrimMat
+    );
+    sKeyLock.rotation.x = Math.PI / 2;
+    sKeyLock.position.set(scx + southDrawerW * 0.5 - 0.032, cabinetH - 0.048, frontZ - 0.004);
+    southWingGroup.add(sKeyLock);
+
+    for (let dIdx = 0; dIdx < fiveTierHeights.length; dIdx++) {
+      const dh = fiveTierHeights[dIdx]!;
+      const dy = cursorY - dh * 0.5;
+      const sDrawerFront = new THREE.Mesh(
+        new THREE.BoxGeometry(southDrawerW, dh - 0.007, 0.02),
+        brushedStainlessMat
+      );
+      sDrawerFront.name = 'outbuildings.garage.toolBench.southWing.drawer';
+      sDrawerFront.position.set(scx, dy, frontZ);
+      sDrawerFront.castShadow = true;
+      sDrawerFront.receiveShadow = true;
+      southWingGroup.add(sDrawerFront);
+
+      const sPullBar = new THREE.Mesh(
+        new THREE.BoxGeometry(southDrawerW - 0.024, 0.016, 0.026),
+        aluminumTrimMat
+      );
+      sPullBar.position.set(scx, dy + dh * 0.5 - 0.015, frontZ - 0.012);
+      southWingGroup.add(sPullBar);
+
+      const sLabelStrip = new THREE.Mesh(
+        new THREE.BoxGeometry(southDrawerW * 0.42, 0.007, 0.004),
+        dewaltBlackMat
+      );
+      sLabelStrip.position.set(scx, dy + dh * 0.5 - 0.015, frontZ - 0.025);
+      southWingGroup.add(sLabelStrip);
+
+      cursorY -= dh;
+    }
+  }
 
   // Continuous 52mm End-Grain Hardwood Butcher-Block Return Worktop (`1.94m x 0.052m x 0.78m`)
   const southButcherTop = new THREE.Mesh(
@@ -1794,65 +2199,65 @@ export function buildGarageToolBench(
   southPegboard.position.set(0, worktopY + pegboardH * 0.5, benchD * 0.5 - 0.015);
   southWingGroup.add(southPegboard);
 
-  // Wall-Mounted 34-Inch Ultrawide Computer Monitor (`outbuildings.garage.toolBench.southWing.monitor`)
-  // Mounted at the back on the South wall (`+sz`) facing North (`-sz`) over the open-bottom desk
+  // Issue #4 ("Smaller screen, only needs to be 32 inch not ultra wide." at `[-11.234, 0.819, 20.361]`):
+  // Wall-Mounted 32-Inch (`16:9` aspect ratio, `0.70m x 0.39m` active display, `0.72m x 0.41m` bezel) Computer Monitor
   const monCanvas = document.createElement('canvas');
   monCanvas.width = 512;
-  monCanvas.height = 256;
+  monCanvas.height = 288;
   const mCtx = monCanvas.getContext('2d');
   if (mCtx) {
-    const bg = mCtx.createLinearGradient(0, 0, 512, 256);
+    const bg = mCtx.createLinearGradient(0, 0, 512, 288);
     bg.addColorStop(0, '#0d1520');
     bg.addColorStop(1, '#162436');
     mCtx.fillStyle = bg;
-    mCtx.fillRect(0, 0, 512, 256);
+    mCtx.fillRect(0, 0, 512, 288);
 
     // Top telemetry status header
     mCtx.fillStyle = '#1e324a';
-    mCtx.fillRect(0, 0, 512, 34);
+    mCtx.fillRect(0, 0, 512, 36);
     mCtx.fillStyle = '#4fc3f7';
-    mCtx.font = 'bold 16px sans-serif';
-    mCtx.fillText('PORSCHE 992.2 TURBO S // PIWIS IV DIAGNOSTICS & CAD', 16, 22);
+    mCtx.font = 'bold 15px sans-serif';
+    mCtx.fillText('PORSCHE 992.2 TURBO S // PIWIS IV DIAGNOSTICS', 16, 23);
 
     // Left panel: Dyno / Boost & Tire pressure cards
     mCtx.strokeStyle = '#2b4c6f';
     mCtx.lineWidth = 2;
-    mCtx.strokeRect(16, 48, 228, 190);
+    mCtx.strokeRect(16, 52, 228, 216);
     mCtx.fillStyle = '#8ab4f8';
     mCtx.font = 'bold 14px sans-serif';
-    mCtx.fillText('TWIN-TURBO FLAT-6 TELEMETRY', 28, 72);
+    mCtx.fillText('TWIN-TURBO FLAT-6 TELEMETRY', 28, 78);
 
     mCtx.strokeStyle = '#00e676';
     mCtx.lineWidth = 3;
     mCtx.beginPath();
-    mCtx.moveTo(28, 195);
-    mCtx.bezierCurveTo(80, 190, 120, 105, 175, 96);
-    mCtx.lineTo(230, 92);
+    mCtx.moveTo(28, 220);
+    mCtx.bezierCurveTo(80, 212, 120, 118, 175, 108);
+    mCtx.lineTo(230, 102);
     mCtx.stroke();
 
     // Right panel: 3D wireframe / system gauges
     mCtx.strokeStyle = '#2b4c6f';
     mCtx.lineWidth = 2;
-    mCtx.strokeRect(260, 48, 236, 190);
+    mCtx.strokeRect(260, 52, 236, 216);
     for (let g = 0; g < 3; g++) {
       const gx = 306 + g * 72;
       mCtx.strokeStyle = g === 1 ? '#ffb300' : '#29b6f6';
       mCtx.lineWidth = 4;
       mCtx.beginPath();
-      mCtx.arc(gx, 118, 24, Math.PI * 0.75, Math.PI * 2.25);
+      mCtx.arc(gx, 132, 24, Math.PI * 0.75, Math.PI * 2.25);
       mCtx.stroke();
     }
     mCtx.fillStyle = '#b0bec5';
     mCtx.font = '13px monospace';
-    mCtx.fillText('BATTERY: 14.2V  |  OIL: 90C', 276, 186);
-    mCtx.fillText('PCCB TORQUE SPEC: 600 Nm', 276, 212);
+    mCtx.fillText('BATTERY: 14.2V  |  OIL: 90C', 276, 206);
+    mCtx.fillText('PCCB TORQUE SPEC: 600 Nm', 276, 234);
   }
   const monTex = new THREE.CanvasTexture(monCanvas);
   monTex.colorSpace = THREE.SRGBColorSpace;
 
   const monitorGroup = new THREE.Group();
   monitorGroup.name = 'outbuildings.garage.toolBench.southWing.monitor';
-  monitorGroup.position.set(0.04, worktopY + 0.36, benchD * 0.5 - 0.09);
+  monitorGroup.position.set(-0.04, worktopY + 0.35, benchD * 0.5 - 0.085);
   southWingGroup.add(monitorGroup);
 
   // Articulated VESA wall-mount bracket attached to the back panel
@@ -1860,26 +2265,26 @@ export function buildGarageToolBench(
     new THREE.BoxGeometry(0.14, 0.12, 0.018),
     dewaltBlackMat
   );
-  vesaWallPlate.position.set(0, 0, 0.065);
+  vesaWallPlate.position.set(0, 0, 0.062);
   monitorGroup.add(vesaWallPlate);
 
   const vesaArm = new THREE.Mesh(
-    new THREE.BoxGeometry(0.045, 0.045, 0.075),
+    new THREE.BoxGeometry(0.045, 0.045, 0.072),
     anthraciteSteelMat
   );
-  vesaArm.position.set(0, 0, 0.032);
+  vesaArm.position.set(0, 0, 0.03);
   monitorGroup.add(vesaArm);
 
-  // 34-inch Ultrawide Bezel Chassis (`0.82m wide x 0.37m high x 0.024m deep`)
+  // 32-inch 16:9 Bezel Chassis (`0.72m wide x 0.41m high x 0.022m deep`)
   const monitorChassis = new THREE.Mesh(
-    new THREE.BoxGeometry(0.82, 0.37, 0.024),
+    new THREE.BoxGeometry(0.72, 0.41, 0.022),
     dewaltBlackMat
   );
   monitorChassis.castShadow = true;
   monitorGroup.add(monitorChassis);
 
   const monitorScreen = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.79, 0.34),
+    new THREE.PlaneGeometry(0.70, 0.39),
     new THREE.MeshStandardMaterial({
       map: monTex,
       emissiveMap: monTex,
@@ -1891,29 +2296,29 @@ export function buildGarageToolBench(
   );
   monitorScreen.name = 'outbuildings.garage.toolBench.southWing.monitor.screen';
   monitorScreen.rotation.y = Math.PI; // Faces `-sz` (North into the Garage!)
-  monitorScreen.position.set(0, 0, -0.013);
+  monitorScreen.position.set(0, 0, -0.012);
   monitorGroup.add(monitorScreen);
 
-  // Desk Mat, Wireless Mechanical Keyboard & Mouse on the Butcher-Block Desk under the Wall-Mounted Monitor
+  // Desk Mat, Wireless Mechanical Keyboard & Mouse on the Butcher-Block Desk under the 32-Inch Monitor
   const deskMat = new THREE.Mesh(
-    new THREE.BoxGeometry(0.68, 0.004, 0.32),
+    new THREE.BoxGeometry(0.64, 0.004, 0.30),
     dewaltBlackMat
   );
-  deskMat.position.set(0.04, worktopY + 0.002, -0.06);
+  deskMat.position.set(-0.04, worktopY + 0.002, -0.06);
   southWingGroup.add(deskMat);
 
   const keyboardBody = new THREE.Mesh(
-    new THREE.BoxGeometry(0.36, 0.014, 0.125),
+    new THREE.BoxGeometry(0.35, 0.014, 0.125),
     aluminumTrimMat
   );
-  keyboardBody.position.set(-0.02, worktopY + 0.011, -0.05);
+  keyboardBody.position.set(-0.09, worktopY + 0.011, -0.05);
   southWingGroup.add(keyboardBody);
 
   const mouseBody = new THREE.Mesh(
     new THREE.BoxGeometry(0.062, 0.024, 0.105),
     dewaltBlackMat
   );
-  mouseBody.position.set(0.24, worktopY + 0.015, -0.05);
+  mouseBody.position.set(0.16, worktopY + 0.015, -0.05);
   southWingGroup.add(mouseBody);
 
   // A. Heavy Cast-Iron Engineer's Bench Vice mounted cleanly at the West front corner of the South Return Wing
@@ -1968,10 +2373,10 @@ export function buildGarageToolBench(
   tommyBar.position.set(0, 0.075, -0.168);
   viceGroup.add(tommyBar);
 
-  // B. DeWALT DWS780 305mm Double-Bevel Sliding Compound Mitre Saw (`x = -0.68m, z = -0.02m`)
+  // B. DeWALT DWS780 305mm Double-Bevel Sliding Compound Mitre Saw (`x = -0.82m, z = -0.02m`)
   const sawGroup = new THREE.Group();
   sawGroup.name = 'outbuildings.garage.toolBench.mitreSaw';
-  sawGroup.position.set(-0.68, worktopY, -0.02);
+  sawGroup.position.set(-0.82, worktopY, -0.02);
   benchGroup.add(sawGroup);
 
   const sawBase = new THREE.Mesh(
@@ -2089,10 +2494,10 @@ export function buildGarageToolBench(
   dustBag.position.set(0, 0.27, 0.16);
   sawGroup.add(dustBag);
 
-  // C. DeWALT DW752 Heavy-Duty Twin-Wheel Bench Grinder (`x = +0.12m, z = -0.06m`)
+  // C. DeWALT DW752 Heavy-Duty Twin-Wheel Bench Grinder (`x = -0.22m, z = -0.06m`)
   const grinderGroup = new THREE.Group();
   grinderGroup.name = 'outbuildings.garage.toolBench.benchGrinder';
-  grinderGroup.position.set(0.12, worktopY, -0.06);
+  grinderGroup.position.set(-0.22, worktopY, -0.06);
   benchGroup.add(grinderGroup);
 
   const grinderPedestal = new THREE.Mesh(
@@ -2159,14 +2564,14 @@ export function buildGarageToolBench(
     grinderGroup.add(eyeShield);
   }
 
-  // D. DeWALT DWE4257 125mm Angle Grinder & DeWALT DCW210 18V XR Random Orbit Sander (`x = +0.78m, z = -0.10m`)
+  // D. DeWALT DWE4257 125mm Angle Grinder & DeWALT DCW210 18V XR Random Orbit Sander (`x = +0.22m, z = -0.10m`)
   const grinderSanderGroup = new THREE.Group();
   grinderSanderGroup.name = 'outbuildings.garage.toolBench.angleGrinderAndSander';
-  grinderSanderGroup.position.set(0.78, worktopY, -0.1);
+  grinderSanderGroup.position.set(0.22, worktopY, -0.1);
   benchGroup.add(grinderSanderGroup);
 
   const agUnit = new THREE.Group();
-  agUnit.position.set(-0.1, 0, -0.04);
+  agUnit.position.set(-0.08, 0, -0.04);
   agUnit.rotation.y = 0.42;
   grinderSanderGroup.add(agUnit);
 
@@ -2217,7 +2622,7 @@ export function buildGarageToolBench(
   agUnit.add(agSideHandle);
 
   const sanderUnit = new THREE.Group();
-  sanderUnit.position.set(0.13, 0, 0.05);
+  sanderUnit.position.set(0.12, 0, 0.05);
   sanderUnit.rotation.y = -0.28;
   grinderSanderGroup.add(sanderUnit);
 
@@ -2250,17 +2655,18 @@ export function buildGarageToolBench(
   sanderBattery.position.set(0, 0.052, 0.062);
   sanderUnit.add(sanderBattery);
 
-  // E. DeWALT DCB132 Dual-Port 18V XR Charger + DeWALT DCD996 Hammer Drill, DCF887 Impact Driver & TSTAK Case (`x = +1.46m`)
+  // E. DeWALT DCB132 Dual-Port 18V XR Charger + DeWALT DCD996 Hammer Drill, DCF887 Impact Driver & TSTAK Case
+  //    Placed on the East end of the South Return Wing worktop (`sx = +0.58m`)
   const drillsGroup = new THREE.Group();
   drillsGroup.name = 'outbuildings.garage.toolBench.cordlessDrills';
-  drillsGroup.position.set(1.46, worktopY, -0.06);
-  benchGroup.add(drillsGroup);
+  drillsGroup.position.set(0.58, worktopY, -0.06);
+  southWingGroup.add(drillsGroup);
 
   const tstakCase = new THREE.Mesh(
     new THREE.BoxGeometry(0.32, 0.135, 0.22),
     dewaltBlackMat
   );
-  tstakCase.position.set(0.14, 0.0675, 0.16);
+  tstakCase.position.set(0.12, 0.0675, 0.16);
   tstakCase.castShadow = true;
   drillsGroup.add(tstakCase);
 
@@ -2268,14 +2674,14 @@ export function buildGarageToolBench(
     new THREE.BoxGeometry(0.28, 0.016, 0.18),
     dewaltYellowMat
   );
-  tstakLidAccent.position.set(0.14, 0.138, 0.16);
+  tstakLidAccent.position.set(0.12, 0.138, 0.16);
   drillsGroup.add(tstakLidAccent);
 
   const tstakBadge = new THREE.Mesh(
     new THREE.PlaneGeometry(0.14, 0.05),
     dewaltBadgeMat
   );
-  tstakBadge.position.set(0.14, 0.072, 0.049);
+  tstakBadge.position.set(0.12, 0.072, 0.049);
   drillsGroup.add(tstakBadge);
 
   const chargerDock = new THREE.Mesh(
@@ -2318,7 +2724,7 @@ export function buildGarageToolBench(
 
   for (const [dx, dz, yaw, bodyLen, isHammerDrill] of [
     [-0.08, -0.08, -0.32, 0.185, true],
-    [0.14, -0.06, -0.52, 0.135, false],
+    [0.12, -0.06, -0.52, 0.135, false],
   ] as const) {
     const drillUnit = new THREE.Group();
     drillUnit.position.set(dx, 0, dz);
@@ -2405,10 +2811,10 @@ export function buildGarageToolBench(
     }
   }
 
-  // F. Organized Hand Tools on Pegboard (`3.84m` width, with DeWALT Yellow & Black accents)
+  // F. Organized Hand Tools on East-Wall Pegboard (`localX = -1.95m..+0.45m`)
   const pegZ = benchD * 0.5 - 0.038;
   for (let wIdx = 0; wIdx < 12; wIdx++) {
-    const wx = -1.55 + wIdx * 0.058;
+    const wx = -1.85 + wIdx * 0.058;
     const wLen = 0.12 + wIdx * 0.014;
     const wrench = new THREE.Mesh(
       new THREE.BoxGeometry(0.016, wLen, 0.006),
@@ -2418,7 +2824,7 @@ export function buildGarageToolBench(
     benchGroup.add(wrench);
   }
   for (let sIdx = 0; sIdx < 10; sIdx++) {
-    const sx = -0.52 + sIdx * 0.056;
+    const sx = -0.95 + sIdx * 0.056;
     const handle = new THREE.Mesh(
       new THREE.CylinderGeometry(0.012, 0.01, 0.088, 10),
       sIdx % 2 === 0 ? dewaltYellowMat : dewaltBlackMat
@@ -2434,10 +2840,10 @@ export function buildGarageToolBench(
     benchGroup.add(shaft);
   }
   const spiritLevel = new THREE.Mesh(
-    new THREE.BoxGeometry(1.12, 0.05, 0.022),
+    new THREE.BoxGeometry(0.76, 0.05, 0.022),
     dewaltYellowMat
   );
-  spiritLevel.position.set(0.88, worktopY + 0.45, pegZ);
+  spiritLevel.position.set(0.02, worktopY + 0.45, pegZ);
   benchGroup.add(spiritLevel);
 }
 

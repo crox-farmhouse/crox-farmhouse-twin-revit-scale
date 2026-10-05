@@ -1809,7 +1809,7 @@ export function buildOutbuildingsAndBarns(
   // Issue #4 & #5 ("Put it against this wall and cut it in to make use of the dead space behind, make it slightly longer"
   // at `[-10.226, -0.27, 17.512]`):
   // Heavy-Duty 5-Bay Stainless-Steel & Butcher-Block Workshop Tool Bench (`outbuildings.garage.toolBench`) recessed into the Garage East wall
-  buildGarageWorkshopToolBench(groundGroup, garageFloorTopY);
+  buildGarageWorkshopToolBench(groundGroup, garageFloorTopY, ctx);
 
   // Issue #1 ("Porsche 992.2 Turbo S in ocean Blue metalic here" at `[-15.013, -0.5, 18.708]`):
   buildPorsche992TurboS(groundGroup, garageFloorTopY);
@@ -2029,35 +2029,36 @@ export function buildOutbuildingsAndBarns(
   const stableCeilEaveY =
     stableCeilRidgeY - 2.575 * ((stableRidgeH - stableUpperEaveH) / 3.055); // 3.507m vaulted ceiling eave in Stable
 
-  // Issue #2 & #3: Seamless Garage Resin Floor extension into the East Wall Workbench Alcove (`u = 12.07..12.82m, v = 1.52..5.428m`)
+  // Issue #1 ("There is a gap here" at `[-9.565, -0.69, 16.38]`) & Issue #2 & #3:
+  // Seamless Garage Resin Floor extension across the entire East Wall Alcove & sub-hallway (`u = 12.05..13.06m, v = 0.28..5.428m`)
+  // so no sub-base gap (`y = -0.69m`) is ever visible anywhere between the pass-through doorway, hallway wall, and tall cupboard!
   const benchAlcoveFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.75, garageFloorThickness, 3.908),
+    new THREE.BoxGeometry(1.01, garageFloorThickness, 5.148),
     garageResinFloorMat
   );
   benchAlcoveFloor.name = 'outbuildings.garage.resinFloor.alcove';
   benchAlcoveFloor.position.set(
-    uStoreStart + 0.375,
+    12.555,
     garageFloorTopY - garageFloorThickness * 0.5,
-    (1.52 + 5.428) * 0.5
+    (0.28 + 5.428) * 0.5
   );
   benchAlcoveFloor.receiveShadow = true;
   groundGroup.add(benchAlcoveFloor);
 
-  // Issue #3 ("Tidy up the toplogy in here so these voids are covered up etc." at `[-9.534, -0.4, 15.585]`):
   // Continuous Honed Limestone Floor (`barnLimestoneFloorMat` at `barnWestFloorY = -0.34m`) running seamlessly through
-  // the North Pass-Through Hallway (`u = 12.31..15.20m, v = 0.28..1.48m`) from the Garage pass-through door into the Barn!
+  // the North Pass-Through Hallway (`u = 12.07..15.22m, v = 0.28..1.34m`) from the Garage pass-through door into the Barn!
   const storeFloorTopY = -0.34;
-  const corridorFloorGeo = new THREE.BoxGeometry(2.89, 0.38, 1.20);
-  applyOutbuildingFloorUVs(corridorFloorGeo, 12.31 + 2.89 * 0.5, barnWestFloorY - 0.19, 0.28 + 0.60, 0.45);
+  const corridorFloorGeo = new THREE.BoxGeometry(3.15, 0.38, 1.06);
+  applyOutbuildingFloorUVs(corridorFloorGeo, 12.07 + 3.15 * 0.5, barnWestFloorY - 0.19, 0.28 + 0.53, 0.45);
   const storeFloor = new THREE.Mesh(
     corridorFloorGeo,
     barnLimestoneFloorMat
   );
   storeFloor.name = 'outbuildings.store.floor';
   storeFloor.position.set(
-    12.31 + 2.89 * 0.5,
+    12.07 + 3.15 * 0.5,
     barnWestFloorY - 0.19,
-    0.28 + 0.60
+    0.28 + 0.53
   );
   storeFloor.receiveShadow = true;
   groundGroup.add(storeFloor);
@@ -2227,7 +2228,8 @@ export function buildOutbuildingsAndBarns(
   const garagePassDoorVMin = 0.38;
   const garagePassDoorVMax = 1.18;
   const garagePassDoorTopY = 1.50;
-  const benchAlcoveVMin = 1.32;
+  const benchAlcoveVMin = 1.34;
+  const tallCupboardVMax = 2.86; // North Double Stainless-Steel Full-Height Cupboard (`v = 1.34..2.86m`, height `2.16m` -> world Y `1.66m`)
   const benchAlcoveVMax = vEastRangeSouth - wallT - 0.002; // 5.428m
 
   // 1. Lower sill / step wall (`y = barnLowerFloorY (-0.70m) .. garageFloorTopY (-0.50m)`): full span `vInnerNorth .. vInnerSouth`
@@ -2242,7 +2244,7 @@ export function buildOutbuildingsAndBarns(
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2a. North-most corner jamb pier (`v = 0.282m .. 0.48m`): `y = garageFloorTopY (-0.50m) .. eastRangeGroundTopY (1.94m)`
+  // 2a. North-most corner jamb pier (`v = 0.282m .. 0.38m`): `y = garageFloorTopY (-0.50m) .. eastRangeGroundTopY (1.94m)`
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -2254,7 +2256,7 @@ export function buildOutbuildingsAndBarns(
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2b. Over-door lintel (`v = 0.48m .. 1.34m`): `y = 1.50m .. eastRangeGroundTopY (1.94m)`
+  // 2b. Over-door lintel (`v = 0.38m .. 1.18m`): `y = 1.50m .. eastRangeGroundTopY (1.94m)`
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -2266,7 +2268,7 @@ export function buildOutbuildingsAndBarns(
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2c. Center pier between the Pass-Through Door and the Recessed Workbench Alcove (`v = 1.34m .. 1.52m`)
+  // 2c. Center pier between the Pass-Through Door (`v = 1.18m`) and the Tall Stainless Cupboard (`v = 1.34m`)
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -2278,35 +2280,47 @@ export function buildOutbuildingsAndBarns(
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 3. Upper lintel header above the recessed workbench (`v = 1.52m .. 5.428m, y = 1.42m .. eastRangeGroundTopY (1.94m)`)
+  // 3a. Upper lintel header above the Double Stainless-Steel Full-Height Cupboard (`v = 1.34m .. 2.86m, y = 1.66m .. 1.94m`)
+  addOutbuildingBrickWall(
+    groundGroup,
+    uStoreStart,
+    uStoreStart + 0.24,
+    1.66,
+    eastRangeGroundTopY,
+    benchAlcoveVMin,
+    tallCupboardVMax,
+    ['+x', '-x', '+z', '-z'],
+    warmRoomPlasterMat
+  );
+  // 3b. Upper lintel header above the recessed workbench (`v = 2.86m .. 5.428m, y = 1.42m .. eastRangeGroundTopY (1.94m)`)
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
     uStoreStart + 0.24,
     1.42,
     eastRangeGroundTopY,
-    benchAlcoveVMin,
+    tallCupboardVMax,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
 
-  // Issue #3 ("Tidy up the toplogy in here so these voids are covered up etc." at `[-9.534, -0.4, 15.585]`):
-  // - Continuous South Hallway Wall (`u = 12.31m..14.96m, v = 1.20m..1.32m, y = -0.50m..1.94m`) forming a clean, straight
-  //   corridor wall from the Garage pass-through door all the way to the Barn portal with zero gaps or exposed voids!
+  // Issue #1 ("There is a gap here" at `[-9.565, -0.69, 16.38]`) & Issue #3:
+  // - Continuous South Hallway Wall (`u = 12.31m..14.96m, v = 1.18m..1.34m, y = -0.50m..1.94m`) forming a 100% flush,
+  //   airtight corridor wall from the Garage pass-through door all the way to the Barn portal with zero gaps or exposed voids!
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart + 0.24,
     uBarnStart,
     garageFloorTopY,
     eastRangeGroundTopY,
-    1.20,
+    garagePassDoorVMax,
     benchAlcoveVMin,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // - Solid infill wall & top cap covering the void between the back of the recessed Garage workbench (`u = 12.78m`)
-  //   and the back of the Golf Simulator (`u = 13.04m`) across `v = 1.52m..5.428m`, plus the South pocket (`v = 5.095m..5.428m, u = 12.78..14.96m`)!
+  // - Solid infill wall & top caps covering the void between the back of the recessed Garage cupboard/workbench (`u = 12.78m`)
+  //   and the back of the Golf Simulator (`u = 13.04m`) across `v = 1.34m..5.428m`, plus the South pocket (`v = 5.12m..5.428m, u = 13.04..14.96m`)!
   addOutbuildingBrickWall(
     groundGroup,
     12.78,
@@ -2333,9 +2347,20 @@ export function buildOutbuildingsAndBarns(
     groundGroup,
     uStoreStart + 0.24,
     13.04,
+    1.66,
+    1.94,
+    garagePassDoorVMax,
+    tallCupboardVMax,
+    ['+x', '-x', '+z', '-z'],
+    warmRoomPlasterMat
+  );
+  addOutbuildingBrickWall(
+    groundGroup,
+    uStoreStart + 0.24,
+    13.04,
     1.42,
     1.94,
-    1.20,
+    tallCupboardVMax,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat

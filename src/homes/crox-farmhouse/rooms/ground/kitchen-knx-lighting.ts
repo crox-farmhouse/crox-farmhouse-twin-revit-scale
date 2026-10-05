@@ -619,8 +619,10 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     scene.add(finialBall);
   }
 
-  // Wall anchor eye-bolts along the Barn & Stable North wall eaves (`z_ew = 12.28m, 11.58m, 10.88m`) where the festoon cables terminate (Issue #3)
+  // Wall anchor eye-bolts along the Barn & Stable North wall eaves (`z_ew = 12.28m, 11.58m, 10.88m`)
+  // and on the Dining/Kitchen South wall at `(-4.13, 2.52, 2.26)` (world `[-4.21, 2.52, 4.038]`, Issue #5!)
   for (const [bx, by, bz] of [
+    [-4.13, 2.52, 2.26],
     [-1.85, 2.82, 12.28],
     [1.56, 2.82, 11.58],
     [4.82, 2.82, 10.88],
@@ -695,6 +697,26 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
       end: new THREE.Vector3(4.82, 2.82, 10.88),
       sag: 0.36,
       bulbCount: 7,
+    },
+    // Issue #5 ("Have a light string coming to here" at `[-4.21, 2.23, 4.038]` -> East-Wing `(-4.13, 2.52, 2.28)`):
+    {
+      start: new THREE.Vector3(-4.13, 2.52, 2.28),
+      end: new THREE.Vector3(-1.85, 2.72, patioPoleZ),
+      sag: 0.36,
+      bulbCount: 7,
+    },
+    // Issue #6 ("One to lamp post too" at `[-4.699, 2.342, 8.159]` -> `courtyard.reclaimedLampPost` at `(-4.024, 2.35, 6.30)`):
+    {
+      start: new THREE.Vector3(-4.13, 2.52, 2.28),
+      end: new THREE.Vector3(-4.024, 2.35, 6.3),
+      sag: 0.3,
+      bulbCount: 6,
+    },
+    {
+      start: new THREE.Vector3(-1.85, 2.72, patioPoleZ),
+      end: new THREE.Vector3(-4.024, 2.35, 6.3),
+      sag: 0.24,
+      bulbCount: 5,
     },
   ];
 
