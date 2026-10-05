@@ -3655,6 +3655,310 @@ export function buildBarnGolfSimulator(
   tmOrangeAccent.position.set(0, 0.028, 0);
   tmOrangeAccent.rotation.z = -0.18;
   tmGroup.add(tmOrangeAccent);
+
+  // ---------------------------------------------------------------------------
+  // Issue #5 ("Add a callaway tour golf bag here" at `[-6.028, -0.306, 19.306]` ->
+  // Outbuilding `(u = 16.099m, y = -0.306m, v = 4.701m)` -> `simGroup` local `(0.90, 0.034, 1.48)`):
+  // High-LOD Callaway Tour Staff Golf Bag & 14-Club Set (`outbuildings.barn.golfSimulator.callawayTourBag`)
+  // ---------------------------------------------------------------------------
+  const callawayCanvas = document.createElement('canvas');
+  callawayCanvas.width = 512;
+  callawayCanvas.height = 512;
+  const cCtx = callawayCanvas.getContext('2d')!;
+  cCtx.fillStyle = '#f4f6f9';
+  cCtx.fillRect(0, 0, 512, 512);
+  cCtx.fillStyle = '#0d1b33';
+  cCtx.fillRect(0, 0, 512, 76);
+  cCtx.fillRect(0, 420, 512, 92);
+  cCtx.fillStyle = '#1864ab';
+  cCtx.beginPath();
+  cCtx.moveTo(0, 110);
+  cCtx.lineTo(512, 68);
+  cCtx.lineTo(512, 108);
+  cCtx.lineTo(0, 148);
+  cCtx.closePath();
+  cCtx.fill();
+  cCtx.fillStyle = '#d4af37';
+  cCtx.fillRect(0, 412, 512, 8);
+  cCtx.strokeStyle = '#0d1b33';
+  cCtx.lineWidth = 14;
+  cCtx.beginPath();
+  cCtx.moveTo(206, 210);
+  cCtx.lineTo(256, 174);
+  cCtx.lineTo(306, 210);
+  cCtx.stroke();
+  cCtx.fillStyle = '#0d1b33';
+  cCtx.font = 'italic 900 66px Georgia, Times New Roman, serif';
+  cCtx.textAlign = 'center';
+  cCtx.textBaseline = 'middle';
+  cCtx.fillText('Callaway', 256, 272);
+  cCtx.fillStyle = '#1864ab';
+  cCtx.font = 'bold 26px Arial, sans-serif';
+  cCtx.fillText('PARADYM  Ai  SMOKE', 256, 344);
+
+  const callawayPanelTex = new THREE.CanvasTexture(callawayCanvas);
+  callawayPanelTex.colorSpace = THREE.SRGBColorSpace;
+
+  const tourWhitePanelMat = new THREE.MeshStandardMaterial({
+    map: callawayPanelTex,
+    color: 0xffffff,
+    roughness: 0.34,
+    metalness: 0.08,
+  });
+  const tourNavyLeatherMat = new THREE.MeshStandardMaterial({
+    color: 0x0d1b33,
+    roughness: 0.42,
+    metalness: 0.1,
+  });
+  const tourBlackTrimMat = new THREE.MeshStandardMaterial({
+    color: 0x17191d,
+    roughness: 0.56,
+    metalness: 0.08,
+  });
+  const tourBlueAccentMat = new THREE.MeshStandardMaterial({
+    color: 0x1864ab,
+    roughness: 0.32,
+    metalness: 0.22,
+  });
+  const chromeClubMat = new THREE.MeshStandardMaterial({
+    color: 0xe6ecf2,
+    roughness: 0.14,
+    metalness: 0.92,
+  });
+  const graphiteShaftMat = new THREE.MeshStandardMaterial({
+    color: 0x262a30,
+    roughness: 0.28,
+    metalness: 0.64,
+  });
+
+  const bagGroup = new THREE.Group();
+  bagGroup.name = 'outbuildings.barn.golfSimulator.callawayTourBag';
+  bagGroup.position.set(0.9, 0.034, 1.48);
+  bagGroup.rotation.y = -0.45;
+  simGroup.add(bagGroup);
+
+  const bagTiltGroup = new THREE.Group();
+  bagTiltGroup.rotation.z = 0.05;
+  bagGroup.add(bagTiltGroup);
+
+  const baseBoot = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.138, 0.132, 0.075, 24),
+    tourBlackTrimMat
+  );
+  baseBoot.position.set(0, 0.0375, 0);
+  baseBoot.castShadow = true;
+  baseBoot.receiveShadow = true;
+  bagTiltGroup.add(baseBoot);
+
+  const bagCore = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.132, 0.126, 0.79, 28),
+    tourNavyLeatherMat
+  );
+  bagCore.name = 'outbuildings.barn.golfSimulator.callawayTourBag';
+  bagCore.position.set(0, 0.465, 0);
+  bagCore.castShadow = true;
+  bagCore.receiveShadow = true;
+  bagTiltGroup.add(bagCore);
+
+  for (const sideZ of [-1, 1] as const) {
+    const sideBelly = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.68, 0.095),
+      tourWhitePanelMat
+    );
+    sideBelly.name = 'outbuildings.barn.golfSimulator.callawayTourBag';
+    sideBelly.position.set(0.01, 0.46, sideZ * 0.092);
+    sideBelly.rotation.y = sideZ * 0.08;
+    sideBelly.castShadow = true;
+    sideBelly.receiveShadow = true;
+    bagTiltGroup.add(sideBelly);
+
+    const pipingBand = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 0.68, 12),
+      tourBlueAccentMat
+    );
+    pipingBand.position.set(0.115, 0.46, sideZ * 0.115);
+    bagTiltGroup.add(pipingBand);
+  }
+
+  const frontBallPocket = new THREE.Mesh(
+    new THREE.BoxGeometry(0.11, 0.36, 0.18),
+    tourWhitePanelMat
+  );
+  frontBallPocket.position.set(-0.125, 0.28, 0);
+  frontBallPocket.castShadow = true;
+  bagTiltGroup.add(frontBallPocket);
+
+  const upperValuablesPocket = new THREE.Mesh(
+    new THREE.BoxGeometry(0.085, 0.22, 0.16),
+    tourNavyLeatherMat
+  );
+  upperValuablesPocket.position.set(-0.118, 0.61, 0);
+  upperValuablesPocket.castShadow = true;
+  bagTiltGroup.add(upperValuablesPocket);
+
+  const rearApparelPocket = new THREE.Mesh(
+    new THREE.BoxGeometry(0.115, 0.64, 0.19),
+    tourNavyLeatherMat
+  );
+  rearApparelPocket.position.set(0.128, 0.44, 0);
+  rearApparelPocket.castShadow = true;
+  bagTiltGroup.add(rearApparelPocket);
+
+  const tourShoulderStrap = new THREE.Mesh(
+    new THREE.BoxGeometry(0.048, 0.54, 0.095),
+    tourBlueAccentMat
+  );
+  tourShoulderStrap.position.set(0.195, 0.52, 0);
+  tourShoulderStrap.rotation.z = -0.14;
+  tourShoulderStrap.castShadow = true;
+  bagTiltGroup.add(tourShoulderStrap);
+
+  const grabHandle = new THREE.Mesh(
+    new THREE.TorusGeometry(0.055, 0.013, 10, 18, Math.PI),
+    tourBlackTrimMat
+  );
+  grabHandle.rotation.z = -Math.PI / 2;
+  grabHandle.position.set(0.135, 0.78, 0);
+  bagTiltGroup.add(grabHandle);
+
+  const topCuffTorus = new THREE.Mesh(
+    new THREE.TorusGeometry(0.126, 0.022, 14, 28),
+    tourBlackTrimMat
+  );
+  topCuffTorus.rotation.x = Math.PI / 2;
+  topCuffTorus.position.set(0, 0.865, 0);
+  bagTiltGroup.add(topCuffTorus);
+
+  for (const divX of [-0.045, 0.045] as const) {
+    const divBar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.012, 0.03, 0.23),
+      tourBlackTrimMat
+    );
+    divBar.position.set(divX, 0.865, 0);
+    bagTiltGroup.add(divBar);
+  }
+  const centerLengthDiv = new THREE.Mesh(
+    new THREE.BoxGeometry(0.23, 0.03, 0.012),
+    tourBlackTrimMat
+  );
+  centerLengthDiv.position.set(0, 0.865, 0);
+  bagTiltGroup.add(centerLengthDiv);
+
+  const towelRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.024, 0.004, 10, 18),
+    chromeClubMat
+  );
+  towelRing.position.set(-0.04, 0.82, -0.145);
+  bagTiltGroup.add(towelRing);
+
+  const golfTowel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.036, 0.42, 12),
+    tourWhitePanelMat
+  );
+  golfTowel.position.set(-0.04, 0.59, -0.155);
+  golfTowel.rotation.x = -0.06;
+  golfTowel.castShadow = true;
+  bagTiltGroup.add(golfTowel);
+
+  const woodSpecs: ReadonlyArray<readonly [number, number, number, number, number]> = [
+    [0.055, -0.045, 1.21, 0.056, 0.16],
+    [0.062, 0.045, 1.15, 0.044, 0.14],
+    [0.012, 0.065, 1.11, 0.04, 0.13],
+    [0.015, -0.065, 1.07, 0.034, 0.11],
+  ];
+  for (const [wx, wz, topY, headR, headH] of woodSpecs) {
+    const shaftLen = topY - 0.82;
+    const shaft = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.006, 0.005, shaftLen, 10),
+      graphiteShaftMat
+    );
+    shaft.position.set(wx, 0.82 + shaftLen * 0.5, wz);
+    bagTiltGroup.add(shaft);
+
+    const sockNeck = new THREE.Mesh(
+      new THREE.CylinderGeometry(headR * 0.58, headR * 0.45, 0.11, 14),
+      tourNavyLeatherMat
+    );
+    sockNeck.position.set(wx, topY - headH - 0.03, wz);
+    bagTiltGroup.add(sockNeck);
+
+    const headcoverBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(headR * 0.88, headR, headH, 18),
+      tourWhitePanelMat
+    );
+    headcoverBody.name = 'outbuildings.barn.golfSimulator.callawayTourBag.headcover';
+    headcoverBody.position.set(wx + 0.012, topY - headH * 0.5, wz);
+    headcoverBody.rotation.z = -0.22;
+    headcoverBody.castShadow = true;
+    bagTiltGroup.add(headcoverBody);
+
+    const headcoverCrown = new THREE.Mesh(
+      new THREE.SphereGeometry(headR * 0.88, 16, 12),
+      tourBlueAccentMat
+    );
+    headcoverCrown.scale.set(1.15, 0.65, 1);
+    headcoverCrown.position.set(wx + 0.022, topY - 0.01, wz);
+    bagTiltGroup.add(headcoverCrown);
+  }
+
+  const ironPositions: ReadonlyArray<readonly [number, number, number, number]> = [
+    [-0.035, -0.068, 1.04, 0.35],
+    [-0.048, -0.025, 1.025, 0.12],
+    [-0.042, 0.025, 1.01, -0.18],
+    [-0.032, 0.068, 0.995, -0.42],
+    [-0.078, -0.052, 0.98, 0.28],
+    [-0.086, -0.012, 0.965, 0.05],
+    [-0.084, 0.032, 0.95, -0.22],
+    [-0.068, 0.065, 0.935, -0.48],
+    [-0.095, -0.032, 0.92, 0.15],
+  ];
+  for (const [ix, iz, iTopY, iRotY] of ironPositions) {
+    const sLen = iTopY - 0.82;
+    const ironShaft = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.005, 0.0045, sLen, 8),
+      chromeClubMat
+    );
+    ironShaft.position.set(ix, 0.82 + sLen * 0.5, iz);
+    bagTiltGroup.add(ironShaft);
+
+    const ironHeadGroup = new THREE.Group();
+    ironHeadGroup.position.set(ix, iTopY, iz);
+    ironHeadGroup.rotation.y = iRotY;
+    bagTiltGroup.add(ironHeadGroup);
+
+    const hosel = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.006, 0.0055, 0.032, 10),
+      chromeClubMat
+    );
+    hosel.position.set(0, 0.01, 0);
+    ironHeadGroup.add(hosel);
+
+    const bladeHead = new THREE.Mesh(
+      new THREE.BoxGeometry(0.014, 0.032, 0.068),
+      chromeClubMat
+    );
+    bladeHead.name = 'outbuildings.barn.golfSimulator.callawayTourBag.iron';
+    bladeHead.position.set(-0.008, 0.024, 0.028);
+    bladeHead.rotation.x = -0.28;
+    bladeHead.rotation.z = 0.32;
+    bladeHead.castShadow = true;
+    ironHeadGroup.add(bladeHead);
+  }
+
+  const putterShaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0055, 0.005, 0.18, 10),
+    chromeClubMat
+  );
+  putterShaft.position.set(-0.092, 0.91, 0.012);
+  bagTiltGroup.add(putterShaft);
+
+  const putterHeadcover = new THREE.Mesh(
+    new THREE.BoxGeometry(0.056, 0.042, 0.092),
+    tourBlueAccentMat
+  );
+  putterHeadcover.position.set(-0.105, 1.005, 0.012);
+  putterHeadcover.castShadow = true;
+  bagTiltGroup.add(putterHeadcover);
 }
 
 /**
