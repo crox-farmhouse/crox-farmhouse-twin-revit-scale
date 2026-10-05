@@ -8,4 +8,87 @@
 
 over "CroxFarmhouse"
 {
+    over "Zones"
+    {
+        over "study"
+        {
+            over "outbuildings_garage_showerRoom_toilet_seat" (
+                doc = "Flip the shower entry around, improve the mesh of this toilet / shower fixture"
+            )
+            {
+                custom int twin:annotationId = 1
+                custom double3 twin:hitWorldPoint = (-14.615, -0.064, 20.352)
+                custom string twin:note = "Flip the shower entry around, improve the mesh of this toilet / shower fixture"
+            }
+
+            over "unnamed_mesh" (
+                doc = "Improve the mesh of the powertools"
+            )
+            {
+                custom int twin:annotationId = 2
+                custom double3 twin:hitWorldPoint = (-13.835, 0.466, 18.605)
+                custom string twin:note = "Improve the mesh of the powertools"
+            }
+
+            over "outbuildings_gym_technogymRunPersonal_motorHood" (
+                doc = "Move this treadmill about 20cm left"
+            )
+            {
+                custom int twin:annotationId = 3
+                custom double3 twin:hitWorldPoint = (-18.459, -0.324, 20.473)
+                custom string twin:note = "Move this treadmill about 20cm left"
+            }
+        }
+
+        over "courtyard"
+        {
+            over "unnamed_mesh" (
+                doc = "Make this a real door, improve the meshes"
+            )
+            {
+                custom int twin:annotationId = 8
+                custom double3 twin:hitWorldPoint = (1.802, 1.526, 18.061)
+                custom string twin:note = "Make this a real door, improve the meshes"
+            }
+
+            over "outbuildings_barn_horseShowCertificates_canvas" (
+                doc = "Make this less messy and on a white mount"
+            )
+            {
+                custom int twin:annotationId = 5
+                custom double3 twin:hitWorldPoint = (-5.257, 1.222, 19.93)
+                custom string twin:note = "Make this less messy and on a white mount"
+            }
+
+            over "outbuildings_firstFloor_stableBalconySlidingDoor_headFrame" (
+                doc = "In cutaway mode show this full wall"
+            )
+            {
+                custom int twin:annotationId = 9
+                custom double3 twin:hitWorldPoint = (6.619, 3.32, 17.805)
+                custom string twin:note = "In cutaway mode show this full wall"
+            }
+
+            over "outbuildings_roof_exteriorSlope" (
+                doc = "Improve the slate texture"
+            )
+            {
+                custom int twin:annotationId = 11
+                custom double3 twin:hitWorldPoint = (5.545, 4.42, 15.441)
+                custom string twin:note = "Improve the slate texture"
+            }
+        }
+
+        over "sitting"
+        {
+            over "unnamed_mesh" (
+                doc = "Make the extit stairs a spiral staircase on this side so we dont cover the door"
+            )
+            {
+                custom int twin:annotationId = 10
+                custom double3 twin:hitWorldPoint = (9.692, 1.228, 18.262)
+                custom string twin:note = "Make the extit stairs a spiral staircase on this side so we dont cover the door"
+            }
+        }
+    }
 }

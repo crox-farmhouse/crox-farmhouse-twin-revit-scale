@@ -3475,281 +3475,300 @@ function createStAndrewsOldCourseTexture(): THREE.CanvasTexture {
 }
 
 /**
- * Generates a high-resolution (`1024x640`) Hunter-Green Baize Display Board containing
- * 8 vintage parchment Equestrian Horse Show Championship Certificates with calligraphy headers,
- * horse/rider script, and crimson/gold wax seals (`Issue #6`).
+ * Issue #5 ("Make this less messy and on a white mount" at `[-5.257, 1.222, 19.93]`, `outbuildings.barn.horseShowCertificates.canvas`) &
+ * Issue #6 ("Put the certificates above the door" at `[-5.493, 1.885, 14.822]`):
+ * Generates a high-resolution (`1024x680`) architectural, museum-curated Equestrian Championship Frame
+ * on a Crisp Conservation White Mountboard Passepartout (`#f8f6f0`) with 4 symmetrical 45°-bevelled
+ * rectangular window apertures and a recessed lower ribbon & title plaque channel.
  */
 function createHorseShowCertificatesTexture(): THREE.CanvasTexture {
   const w = 1024;
-  const h = 640;
+  const h = 680;
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    // 1. Weathered Hunter-Green Baize & Cork Pinboard Backing (`#173628`) with worn felt grain and old pin-holes
-    ctx.fillStyle = '#163325';
+    // 1. Crisp Warm Conservation White / Ivory Museum Mountboard Passepartout (`#f8f6f0`) with fine cotton-rag grain
+    ctx.fillStyle = '#f8f6f0';
     ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < 4500; i++) {
+    for (let i = 0; i < 3600; i++) {
       const fx = (i * 97) % w;
       const fy = (i * 151) % h;
-      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.045)';
-      ctx.fillRect(fx, fy, 3, 2);
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.35)' : 'rgba(185,176,158,0.12)';
+      ctx.fillRect(fx, fy, 2, 2);
     }
-    ctx.strokeStyle = '#9c8244';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(14, 14, w - 28, h - 28);
 
-    // Issue #2 ("Too tidy" at `[-4.908, 0.937, 19.9]`, `outbuildings.barn.horseShowCertificates.canvas`):
-    // Replaced the rigid 2x4 grid with an authentic, lived-in, slightly chaotic collage of 14 overlapping,
-    // tilted (`-12°` to `+13°`), varied-size portrait & landscape horse show certificates, yellowing newspaper
-    // clippings, competitor bib numbers ("142" & "87"), and vintage sepia show-jumping photos pinned haphazardly over decades!
-    interface CertSpec {
-      readonly cx: number;
-      readonly cy: number;
-      readonly cw: number;
-      readonly ch: number;
-      readonly angleDeg: number;
+    // Subtle outer gold-ruled conservation framing line on the white mountboard
+    ctx.strokeStyle = '#c5a869';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(22, 22, w - 44, h - 44);
+    ctx.strokeStyle = 'rgba(197, 168, 105, 0.45)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(27, 27, w - 54, h - 54);
+
+    // Helper to draw a 45°-bevelled museum window aperture in the white mountboard
+    const drawBevelAperture = (ax: number, ay: number, aw: number, ah: number, bgTop: string, bgBot: string): void => {
+      // Gold-leaf outer sight line around aperture
+      ctx.strokeStyle = '#c5a869';
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(ax - 7, ay - 7, aw + 14, ah + 14);
+
+      // 45° bevel shadow (top & left bevels in soft shadow `#dcd6c8`, bottom & right bevels catching light `#ffffff`)
+      ctx.fillStyle = '#dcd6c8';
+      ctx.beginPath();
+      ctx.moveTo(ax - 4, ay - 4);
+      ctx.lineTo(ax + aw + 4, ay - 4);
+      ctx.lineTo(ax + aw, ay);
+      ctx.lineTo(ax, ay);
+      ctx.lineTo(ax, ay + ah);
+      ctx.lineTo(ax - 4, ay + ah + 4);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(ax + aw + 4, ay - 4);
+      ctx.lineTo(ax + aw + 4, ay + ah + 4);
+      ctx.lineTo(ax - 4, ay + ah + 4);
+      ctx.lineTo(ax, ay + ah);
+      ctx.lineTo(ax + aw, ay + ah);
+      ctx.lineTo(ax + aw, ay);
+      ctx.closePath();
+      ctx.fill();
+
+      // Recessed certificate vellum fill inside aperture
+      const pGrad = ctx.createLinearGradient(ax, ay, ax, ay + ah);
+      pGrad.addColorStop(0, bgTop);
+      pGrad.addColorStop(1, bgBot);
+      ctx.fillStyle = pGrad;
+      ctx.fillRect(ax, ay, aw, ah);
+
+      // Subtle inner aperture edge line
+      ctx.strokeStyle = '#c8c0b0';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(ax, ay, aw, ah);
+    };
+
+    // 2. 4 Symmetrical, Perfectly Aligned 45°-Bevelled Rectangular Certificate Window Apertures
+    interface MountedCertSpec {
+      readonly ax: number;
+      readonly ay: number;
+      readonly aw: number;
+      readonly ah: number;
       readonly paperTop: string;
       readonly paperBot: string;
       readonly borderCol: string;
-      readonly title: string;
-      readonly subtitle: string;
+      readonly showTitle: string;
+      readonly showSub: string;
+      readonly awardTitle: string;
+      readonly recipientLine: string;
+      readonly horseLine: string;
+      readonly yearStr: string;
       readonly sealCol: string;
-      readonly dogEarCorner: number; // 0=none, 1=topRight, 2=botRight, 3=botLeft
     }
 
-    const certs: ReadonlyArray<CertSpec> = [
-      // Back layer — older yellowed & faded certificates tucked underneath
+    const apertures: ReadonlyArray<MountedCertSpec> = [
       {
-        cx: 138, cy: 168, cw: 210, ch: 256, angleDeg: -8.5,
-        paperTop: '#efe2c2', paperBot: '#dcc89e', borderCol: '#7a2222',
-        title: 'BUCKS COUNTY SHOW 1984', subtitle: 'WORKING HUNTER · 1ST PRIZE',
-        sealCol: '#a82020', dogEarCorner: 1,
+        ax: 44, ay: 52, aw: 206, ah: 370,
+        paperTop: '#fdfbf5', paperBot: '#f5efe2',
+        borderCol: '#8b1e24',
+        showTitle: 'ROYAL WINDSOR',
+        showSub: 'HORSE SHOW',
+        awardTitle: 'FIRST PRIZE',
+        recipientLine: 'Presented to Crox Farmhouse Stables',
+        horseLine: 'Open Working Hunter',
+        yearStr: 'MCMXCIV',
+        sealCol: '#a61c22',
       },
       {
-        cx: 358, cy: 152, cw: 248, ch: 186, angleDeg: 6.2,
-        paperTop: '#dce7f0', paperBot: '#c6d6e4', borderCol: '#1b3f6b',
-        title: 'ROYAL WINDSOR HORSE SHOW', subtitle: 'OPEN SHOW JUMPING · RESERVE',
-        sealCol: '#1b3f6b', dogEarCorner: 0,
+        ax: 280, ay: 52, aw: 206, ah: 370,
+        paperTop: '#fcfaf2', paperBot: '#f3ecdc',
+        borderCol: '#1b3b6b',
+        showTitle: 'BURGHLEY',
+        showSub: 'HORSE TRIALS',
+        awardTitle: 'SUPREME CHAMPION',
+        recipientLine: 'Presented to Crox Farmhouse Stables',
+        horseLine: 'Four-Star Eventing',
+        yearStr: 'MCMXCVIII',
+        sealCol: '#1b3b6b',
       },
       {
-        cx: 618, cy: 164, cw: 204, ch: 248, angleDeg: -5.4,
-        paperTop: '#f6eedb', paperBot: '#e4d6b8', borderCol: '#245238',
-        title: 'CHILTERNS HUNTER TRIALS', subtitle: 'OPEN CROSS COUNTRY · WINNER',
-        sealCol: '#c4962c', dogEarCorner: 2,
+        ax: 538, ay: 52, aw: 206, ah: 370,
+        paperTop: '#fdfbf5', paperBot: '#f4eee0',
+        borderCol: '#1f4e34',
+        showTitle: 'HICKSTEAD',
+        showSub: 'DERBY MEETING',
+        awardTitle: 'CLEAR ROUND TROPHY',
+        recipientLine: 'Presented to Crox Farmhouse Stables',
+        horseLine: 'International Arena',
+        yearStr: 'MMVI',
+        sealCol: '#1f4e34',
       },
       {
-        cx: 868, cy: 176, cw: 218, ch: 242, angleDeg: 9.8,
-        paperTop: '#f2e0d8', paperBot: '#dfc7bc', borderCol: '#822436',
-        title: 'PONY CLUB AREA 12', subtitle: 'SENIOR EVENTING · TEAM 2ND',
-        sealCol: '#9e2424', dogEarCorner: 3,
-      },
-      {
-        cx: 162, cy: 458, cw: 244, ch: 192, angleDeg: 11.2,
-        paperTop: '#e8dec6', paperBot: '#d2c29f', borderCol: '#5c3c1e',
-        title: 'VALE OF AYLESBURY HUNT', subtitle: 'POINT-TO-POINT · ADJACENT HUNTS',
-        sealCol: '#a82020', dogEarCorner: 1,
-      },
-      {
-        cx: 432, cy: 472, cw: 212, ch: 246, angleDeg: -9.6,
-        paperTop: '#f8f2e2', paperBot: '#e5d9be', borderCol: '#1e3f66',
-        title: 'HICKSTEAD DERBY MEETING', subtitle: 'FOXHUNTER QUALIFIER · 1ST',
-        sealCol: '#b82222', dogEarCorner: 2,
-      },
-      {
-        cx: 688, cy: 462, cw: 252, ch: 188, angleDeg: 7.4,
-        paperTop: '#f5ebd2', paperBot: '#e0d0ad', borderCol: '#7d2020',
-        title: 'BRITISH SHOW JUMPING ASSOC.', subtitle: 'GRADE B & C CHAMPIONSHIP',
-        sealCol: '#c9972c', dogEarCorner: 0,
-      },
-      {
-        cx: 888, cy: 454, cw: 196, ch: 234, angleDeg: -11.4,
-        paperTop: '#e2eadc', paperBot: '#cbd8c2', borderCol: '#224c30',
-        title: 'TRING AGRICULTURAL SHOW', subtitle: 'SUPREME RIDDEN HUNTER',
-        sealCol: '#b82020', dogEarCorner: 1,
-      },
-      // Foreground overlapping certificates, show cards & clippings pinned on top at jaunty angles
-      {
-        cx: 262, cy: 298, cw: 226, ch: 178, angleDeg: -12.4,
-        paperTop: '#fbf5e8', paperBot: '#ebdfc6', borderCol: '#8c2424',
-        title: 'HORSE OF THE YEAR SHOW', subtitle: 'QUALIFIER · SMALL HUNTER',
-        sealCol: '#b81d1d', dogEarCorner: 2,
-      },
-      {
-        cx: 518, cy: 288, cw: 214, ch: 254, angleDeg: 4.8,
-        paperTop: '#f9f2df', paperBot: '#e7dac0', borderCol: '#b58d32',
-        title: 'CROX FARMHOUSE STUD', subtitle: 'SUPREME CHAMPION · CHALLENGE CUP',
-        sealCol: '#b82020', dogEarCorner: 0,
-      },
-      {
-        cx: 764, cy: 312, cw: 192, ch: 222, angleDeg: -7.8,
-        paperTop: '#efe4cc', paperBot: '#dac8a4', borderCol: '#264264',
-        title: 'HENLEY & DISTRICT SHOW', subtitle: 'FIRST PRIZE · COB CLASS',
-        sealCol: '#1e4678', dogEarCorner: 3,
+        ax: 774, ay: 52, aw: 206, ah: 370,
+        paperTop: '#fcfaf2', paperBot: '#f3ebdb',
+        borderCol: '#6e1d2c',
+        showTitle: 'BRITISH SHOWJUMPING',
+        showSub: 'NATIONAL FINALS',
+        awardTitle: 'COUNTY CHALLENGE CUP',
+        recipientLine: 'Presented to Crox Farmhouse Stables',
+        horseLine: 'Grade A Championship',
+        yearStr: 'MMXIV',
+        sealCol: '#7c1c2b',
       },
     ];
 
-    for (let idx = 0; idx < certs.length; idx++) {
-      const c = certs[idx]!;
-      ctx.save();
-      ctx.translate(c.cx, c.cy);
-      ctx.rotate((c.angleDeg * Math.PI) / 180);
+    for (let idx = 0; idx < apertures.length; idx++) {
+      const c = apertures[idx]!;
+      drawBevelAperture(c.ax, c.ay, c.aw, c.ah, c.paperTop, c.paperBot);
 
-      const x0 = -c.cw * 0.5;
-      const y0 = -c.ch * 0.5;
+      const cx = c.ax + c.aw * 0.5;
 
-      // Drop shadow on the green baize board so overlapping sheets have real depth
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.36)';
-      ctx.fillRect(x0 + 5, y0 + 6, c.cw, c.ch);
-
-      // Aged paper fill
-      const pGrad = ctx.createLinearGradient(x0, y0, x0 + c.cw, y0 + c.ch);
-      pGrad.addColorStop(0, c.paperTop);
-      pGrad.addColorStop(1, c.paperBot);
-      ctx.fillStyle = pGrad;
-      ctx.fillRect(x0, y0, c.cw, c.ch);
-
-      // Subtle coffee/rain water-stain ring on some older certificates
-      if (idx % 3 === 0) {
-        ctx.strokeStyle = 'rgba(138, 102, 54, 0.16)';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(x0 + c.cw * 0.72, y0 + c.ch * 0.28, 22, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Ornamental border
+      // Double formal border inside the certificate vellum
       ctx.strokeStyle = c.borderCol;
-      ctx.lineWidth = 2.6;
-      ctx.strokeRect(x0 + 8, y0 + 8, c.cw - 16, c.ch - 16);
-      ctx.strokeStyle = '#c29e46';
-      ctx.lineWidth = 1.2;
-      ctx.strokeRect(x0 + 12, y0 + 12, c.cw - 24, c.ch - 24);
+      ctx.lineWidth = 2.2;
+      ctx.strokeRect(c.ax + 12, c.ay + 12, c.aw - 24, c.ah - 24);
+      ctx.strokeStyle = '#c5a869';
+      ctx.lineWidth = 1.1;
+      ctx.strokeRect(c.ax + 17, c.ay + 17, c.aw - 34, c.ah - 34);
 
-      // Crest & Typography
+      // Corner foliate/gold ticks
+      for (const [dx, dy] of [
+        [c.ax + 17, c.ay + 17],
+        [c.ax + c.aw - 17, c.ay + 17],
+        [c.ax + 17, c.ay + c.ah - 17],
+        [c.ax + c.aw - 17, c.ay + c.ah - 17],
+      ] as const) {
+        ctx.fillStyle = '#c5a869';
+        ctx.beginPath();
+        ctx.arc(dx, dy, 3.0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Heraldic equestrian crest medallion at top center
       ctx.fillStyle = c.borderCol;
       ctx.beginPath();
-      ctx.arc(0, y0 + 28, 10, 0, Math.PI * 2);
+      ctx.arc(cx, c.ay + 48, 16, 0, Math.PI * 2);
       ctx.fill();
-
-      ctx.fillStyle = '#1e2022';
-      ctx.font = 'bold 10.5px Georgia, serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(c.title, 0, y0 + 52);
-
-      ctx.fillStyle = c.borderCol;
-      ctx.font = 'italic bold 9.5px Georgia, serif';
-      ctx.fillText(c.subtitle, 0, y0 + 68);
-
-      // Handwritten faded ink lines & signatures
-      ctx.strokeStyle = 'rgba(38, 32, 26, 0.52)';
-      ctx.lineWidth = 1.3;
-      const lineCount = c.ch > 210 ? 5 : 3;
-      for (let ln = 0; ln < lineCount; ln++) {
-        const ly = y0 + 90 + ln * 18;
-        const pad = 22 + ((ln * 11 + idx * 7) % 18);
-        ctx.beginPath();
-        ctx.moveTo(x0 + pad, ly);
-        ctx.bezierCurveTo(-18, ly - 3, 18, ly + 3, x0 + c.cw - pad, ly - 1);
-        ctx.stroke();
-      }
-
-      // Wax seal at bottom right
-      const sx = x0 + c.cw - 36;
-      const sy = y0 + c.ch - 34;
-      ctx.fillStyle = '#b8943c';
-      ctx.fillRect(sx - 5, sy + 5, 4, 16);
-      ctx.fillRect(sx + 1, sy + 5, 4, 16);
-      ctx.fillStyle = c.sealCol;
+      ctx.strokeStyle = '#c5a869';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(sx, sy, 11, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Dog-eared folded corner if specified
-      if (c.dogEarCorner === 1) {
-        ctx.fillStyle = '#cbb894';
-        ctx.beginPath();
-        ctx.moveTo(x0 + c.cw - 24, y0);
-        ctx.lineTo(x0 + c.cw, y0 + 24);
-        ctx.lineTo(x0 + c.cw - 24, y0 + 24);
-        ctx.closePath();
-        ctx.fill();
-      } else if (c.dogEarCorner === 2) {
-        ctx.fillStyle = '#cbb894';
-        ctx.beginPath();
-        ctx.moveTo(x0 + c.cw - 24, y0 + c.ch);
-        ctx.lineTo(x0 + c.cw, y0 + c.ch - 24);
-        ctx.lineTo(x0 + c.cw - 24, y0 + c.ch - 24);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      // Brass thumbtacks / drawing pins at top corners
-      for (const px of [x0 + 18, x0 + c.cw - 18]) {
-        ctx.fillStyle = '#d4af37';
-        ctx.beginPath();
-        ctx.arc(px, y0 + 14, 4.2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.restore();
-    }
-
-    // 2. Two Vintage Sepia Show-Jumping Photographs pinned over the certificates
-    for (const [px, py, pw, ph, pAng] of [
-      [118, 318, 148, 112, -14.5],
-      [642, 304, 154, 116, 12.8],
-    ] as const) {
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.rotate((pAng * Math.PI) / 180);
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.fillRect(-pw * 0.5 + 4, -ph * 0.5 + 5, pw, ph);
-      // White photo border
-      ctx.fillStyle = '#f4efe2';
-      ctx.fillRect(-pw * 0.5, -ph * 0.5, pw, ph);
-      // Sepia sky & grass field
-      ctx.fillStyle = '#c8b89a';
-      ctx.fillRect(-pw * 0.5 + 8, -ph * 0.5 + 8, pw - 16, ph - 24);
-      ctx.fillStyle = '#6e583f';
-      ctx.fillRect(-pw * 0.5 + 8, 4, pw - 16, ph * 0.5 - 20);
-      // Rustic timber jump fence & leaping horse silhouette
-      ctx.strokeStyle = '#f2ead8';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(-18, 22);
-      ctx.lineTo(22, 8);
+      ctx.arc(cx, c.ay + 48, 19, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = '#382819';
-      ctx.beginPath();
-      ctx.ellipse(-2, -4, 24, 11, -0.32, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // 3. Two Tied-On Competitor Number Bib Cards ("142" and "87") with masking tape & string holes
-    for (const [bx, by, bAng, numStr] of [
-      [388, 336, 9.5, '142'],
-      [832, 294, -13.2, '87'],
-    ] as const) {
-      ctx.save();
-      ctx.translate(bx, by);
-      ctx.rotate((bAng * Math.PI) / 180);
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.fillRect(-52, -36, 108, 76);
-      ctx.fillStyle = '#ece3ce';
-      ctx.fillRect(-54, -38, 108, 76);
-      ctx.fillStyle = '#181818';
-      ctx.font = '900 42px sans-serif';
+      ctx.fillStyle = '#fdfbf5';
+      ctx.font = 'bold 11px Georgia, serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(numStr, 0, 2);
-      // Masking tape strips across top corners
-      ctx.fillStyle = 'rgba(218, 198, 148, 0.78)';
-      ctx.fillRect(-62, -44, 34, 12);
-      ctx.fillRect(28, -44, 34, 12);
-      ctx.restore();
+      ctx.fillText('♛', cx, c.ay + 48);
+
+      // Formal Copperplate Typography
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = '#1c1e22';
+      ctx.font = 'bold 12.5px Georgia, serif';
+      ctx.fillText(c.showTitle, cx, c.ay + 92);
+      ctx.font = 'bold 10.5px Georgia, serif';
+      ctx.fillText(c.showSub, cx, c.ay + 108);
+
+      // Fine gold divider rule
+      ctx.strokeStyle = '#c5a869';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(c.ax + 34, c.ay + 120);
+      ctx.lineTo(c.ax + c.aw - 34, c.ay + 120);
+      ctx.stroke();
+
+      // Award Banner
+      ctx.fillStyle = c.borderCol;
+      ctx.font = 'bold 11.5px Georgia, serif';
+      ctx.fillText(c.awardTitle, cx, c.ay + 144);
+
+      ctx.fillStyle = '#18181a';
+      ctx.font = 'bold italic 9.5px Georgia, serif';
+      ctx.fillText(c.recipientLine, cx, c.ay + 174);
+
+      ctx.fillStyle = '#3c3830';
+      ctx.font = '10px Georgia, serif';
+      ctx.fillText(c.horseLine, cx, c.ay + 198);
+
+      // Neat calligraphic citation lines
+      ctx.strokeStyle = 'rgba(55, 48, 38, 0.38)';
+      ctx.lineWidth = 1.0;
+      for (let ln = 0; ln < 4; ln++) {
+        const ly = c.ay + 228 + ln * 16;
+        const pad = 28 + (ln === 3 ? 22 : 0);
+        ctx.beginPath();
+        ctx.moveTo(c.ax + pad, ly);
+        ctx.lineTo(c.ax + c.aw - pad, ly);
+        ctx.stroke();
+      }
+
+      // Formal Secretary Signature & Date on Left, Embossed Wax Seal & Gold Ribbon on Right
+      ctx.fillStyle = '#5a5348';
+      ctx.font = 'italic 9px Georgia, serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Hon. Secretary', c.ax + 26, c.ay + c.ah - 46);
+      ctx.font = 'bold 8.5px Georgia, serif';
+      ctx.fillText(c.yearStr, c.ax + 26, c.ay + c.ah - 30);
+
+      const sx = c.ax + c.aw - 42;
+      const sy = c.ay + c.ah - 42;
+      ctx.fillStyle = '#c5a869';
+      ctx.fillRect(sx - 5, sy + 6, 4, 18);
+      ctx.fillRect(sx + 1, sy + 6, 4, 18);
+      ctx.fillStyle = c.sealCol;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#c5a869';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 9, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // 3. Lower Horizontal Recessed White-Mounted Ribbon Display Channel (`[44, 468, 936, 160]`)
+    drawBevelAperture(44, 468, 936, 160, '#f4f1e8', '#ece7da');
+
+    // Fine inner gold frame line inside the lower ribbon display channel
+    ctx.strokeStyle = '#c5a869';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(54, 478, 916, 140);
+
+    // Central Gold-Ruled Museum Title Plaque (`"CROX FARMHOUSE EQUESTRIAN HONOURS · 1988 – 2024"`)
+    const plaqueW = 360;
+    const plaqueH = 44;
+    const plaqueX = (w - plaqueW) * 0.5;
+    const plaqueY = 468 + (160 - plaqueH) * 0.5;
+    ctx.fillStyle = '#fdfbf7';
+    ctx.fillRect(plaqueX, plaqueY, plaqueW, plaqueH);
+    ctx.strokeStyle = '#c5a869';
+    ctx.lineWidth = 1.8;
+    ctx.strokeRect(plaqueX, plaqueY, plaqueW, plaqueH);
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(plaqueX + 4, plaqueY + 4, plaqueW - 8, plaqueH - 8);
+
+    ctx.fillStyle = '#22201c';
+    ctx.font = 'bold 10px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('CROX FARMHOUSE EQUESTRIAN HONOURS · 1988 – 2024', w * 0.5, plaqueY + 16);
+    ctx.fillStyle = '#78663e';
+    ctx.font = 'bold 8.5px Georgia, serif';
+    ctx.fillText('CHAMPIONSHIP ROSETTES & CITATIONS', w * 0.5, plaqueY + 31);
+
+    // Symmetrical mounting pin-boss markers & subtle class labels under the 4 rosette positions
+    const rosetteMountCols: ReadonlyArray<readonly [number, string]> = [
+      [158, 'WINDSOR · 1ST'],
+      [332, 'BURGHLEY · CHAMP.'],
+      [692, 'HICKSTEAD · 1ST'],
+      [866, 'COUNTY CUP · 1ST'],
+    ];
+    for (const [rx, rLabel] of rosetteMountCols) {
+      ctx.fillStyle = '#6e6556';
+      ctx.font = 'bold 8.5px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(rLabel, rx, 608);
     }
   }
   const tex = new THREE.CanvasTexture(canvas);
@@ -3757,14 +3776,6 @@ function createHorseShowCertificatesTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-/**
- * Issue #5 ("Pixture on the wall of st andrews here" at `[-4.872, 1.18, 14.769]` -> `(u = 17.639m, y = 1.18m, v = 0.28m)`),
- * Issue #1 ("TOo big" at `[-4.938, 1.266, 14.81]`, `outbuildings.barn.stAndrewsPicture.canvas`),
- * Issue #6 ("Large framed picture of horse show certificates here (they were originally on the wall in the barn)") &
- * Issue #2 ("Too tidy" at `[-4.908, 0.937, 19.9]`, `outbuildings.barn.horseShowCertificates.canvas`):
- * Mounts the right-sized (`0.76m x 0.52m`) Framed Old Course at St Andrews Picture on the Barn North Wall and
- * the organic, lived-in Horse Show Certificates & 9 scattered 3D Silk Rosettes Display Case on the Barn South Wall.
- */
 /**
  * Issue #1 ("Samsung frame 55 inch on this wall, more task and ambient lighting in here"
  * at `[-1.221, 0.434, 19.624]` -> Outbuilding `(u = 20.861m, y = 0.434m, v = 5.43m)`):
@@ -3931,12 +3942,13 @@ export function buildBarnGroundWallArtworks(
 
   // ---------------------------------------------------------------------------
   // 1. Issue #1 ("TOo big" at `[-4.938, 1.266, 14.81]`):
-  //    Reduced `outbuildings.barn.stAndrewsPicture` from `1.32m x 0.88m` down to a tasteful `0.76m x 0.52m`!
+  //    Reduced `outbuildings.barn.stAndrewsPicture` from `1.32m x 0.88m` down to a tasteful `0.76m x 0.52m`,
+  //    centred on the wall pier East of the Barn Courtyard Door (`u = 17.75m, y = 1.12m, v = 0.295m`)!
   // ---------------------------------------------------------------------------
   const stAndrewsGroup = new THREE.Group();
   stAndrewsGroup.name = 'outbuildings.barn.stAndrewsPicture';
   stAndrewsGroup.userData.zone = 'courtyard';
-  stAndrewsGroup.position.set(17.64, 1.14, 0.295);
+  stAndrewsGroup.position.set(17.75, 1.12, 0.295);
   groundGroup.add(stAndrewsGroup);
 
   const stW = 0.76;
@@ -3970,22 +3982,24 @@ export function buildBarnGroundWallArtworks(
   stAndrewsGroup.add(stCanvasPlane);
 
   // ---------------------------------------------------------------------------
-  // 2. Issue #2 ("Too tidy" at `[-4.908, 0.937, 19.9]`, `outbuildings.barn.horseShowCertificates.canvas`):
-  //    Organic, overlapping Horse Show Certificates & 9 asymmetrically pinned 3D Silk Rosettes
+  // 2. Issue #5 ("Make this less messy and on a white mount" at `[-5.257, 1.222, 19.93]`, `outbuildings.barn.horseShowCertificates.canvas`) &
+  //    Issue #6 ("Put the certificates above the door" at `[-5.493, 1.885, 14.822]`):
+  //    Clean, architectural, museum-curated Equestrian Championship Frame on a Crisp Conservation White Mountboard Passepartout
+  //    mounted directly above the Barn North Courtyard Door (`u = 16.35m, y = 2.24m, v = 0.295m`, `rotY = 0` facing South `+z`)!
   // ---------------------------------------------------------------------------
   const certGroup = new THREE.Group();
   certGroup.name = 'outbuildings.barn.horseShowCertificates';
   certGroup.userData.zone = 'courtyard';
-  certGroup.position.set(17.15, 1.12, 5.412);
-  certGroup.rotation.y = Math.PI;
+  certGroup.position.set(16.35, 2.24, 0.295);
+  certGroup.rotation.y = 0;
   groundGroup.add(certGroup);
 
-  const certW = 1.50;
-  const certH = 0.96;
-  const certFrameD = 0.038;
+  const frameW = 1.18;
+  const frameH = 0.72;
+  const frameD = 0.038;
 
   const certFrameBox = new THREE.Mesh(
-    new THREE.BoxGeometry(certW + 0.08, certH + 0.08, certFrameD),
+    new THREE.BoxGeometry(frameW + 0.068, frameH + 0.068, frameD),
     walnutFrameMat
   );
   certFrameBox.name = 'outbuildings.barn.horseShowCertificates.frame';
@@ -3993,76 +4007,72 @@ export function buildBarnGroundWallArtworks(
   certGroup.add(certFrameBox);
 
   const certGiltSlip = new THREE.Mesh(
-    new THREE.BoxGeometry(certW + 0.02, certH + 0.02, certFrameD + 0.004),
+    new THREE.BoxGeometry(frameW + 0.018, frameH + 0.018, frameD + 0.004),
     giltSlipMat
   );
   certGroup.add(certGiltSlip);
 
   const certBoardPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(certW, certH),
+    new THREE.PlaneGeometry(frameW, frameH),
     new THREE.MeshStandardMaterial({
       map: createHorseShowCertificatesTexture(),
-      roughness: 0.34,
-      metalness: 0.04,
+      roughness: 0.26,
+      metalness: 0.02,
     })
   );
   certBoardPlane.name = 'outbuildings.barn.horseShowCertificates.canvas';
-  certBoardPlane.position.set(0, 0, certFrameD * 0.5 + 0.004);
+  certBoardPlane.position.set(0, 0, frameD * 0.5 + 0.003);
   certGroup.add(certBoardPlane);
 
-  // 9 Asymmetrically Pinned 3D Pleated Silk Equestrian Championship Rosettes of varied sizes & tilted angles
-  const rosetteSpecs: ReadonlyArray<readonly [number, number, number, number, number, number]> = [
-    // [rx, ry, radius, tiltZ, outerHex, innerHex]
-    [-0.58, 0.34, 0.058, 0.24, 0xc92424, 0xf2d03b],  // Top-left Crimson 1st Place
-    [-0.31, 0.21, 0.046, -0.18, 0x1e4ea8, 0xf5f2eb], // Upper-mid-left Royal Blue 2nd Place
-    [-0.08, 0.36, 0.064, 0.12, 0x6a248c, 0xd4af37],  // Top-center Supreme Champion Purple & Gold
-    [0.24, 0.28, 0.050, -0.26, 0xe0a81e, 0x9e2020],  // Upper-right Golden Yellow 3rd Place
-    [0.56, 0.33, 0.044, 0.31, 0x1e7a46, 0xf2d03b],   // Top-right Emerald Green 4th Place
-    [-0.48, -0.14, 0.052, -0.22, 0xb82020, 0x1e4ea8], // Mid-left Red/White/Blue Championship
-    [0.06, -0.06, 0.056, 0.19, 0xd96b27, 0xf5eedc],  // Center-right Rosette pinned over certificate corner
-    [-0.22, -0.34, 0.042, 0.28, 0x28589c, 0xe0a81e], // Bottom-left Blue & Gold
-    [0.44, -0.28, 0.054, -0.16, 0x9e1c28, 0xd4af37], // Bottom-right Claret & Gold Victor Ludorum
+  // 4 Neat, Symmetrical 3D Pleated Silk Equestrian Championship Rosettes in a straight horizontal row along the lower display band
+  const rosetteSpecs: ReadonlyArray<readonly [number, number, number, number, number]> = [
+    // [rx, ry, radius, outerHex, innerHex]
+    [-0.39, -0.20, 0.044, 0xa61c22, 0xd4af37], // 1. Royal Windsor Crimson & Gold 1st Prize
+    [-0.19, -0.20, 0.044, 0x1b3b6b, 0xf5f2eb], // 2. Burghley Royal Blue & Ivory Supreme Champion
+    [0.19, -0.20, 0.044, 0x1f4e34, 0xd4af37],  // 3. Hickstead Forest Green & Gold Trophy
+    [0.39, -0.20, 0.044, 0x6e1d2c, 0xd4af37],  // 4. British Showjumping Burgundy & Gold Cup
   ];
 
-  for (const [rx, ry, rad, tiltZ, outerHex, innerHex] of rosetteSpecs) {
+  for (let idx = 0; idx < rosetteSpecs.length; idx++) {
+    const [rx, ry, rad, outerHex, innerHex] = rosetteSpecs[idx]!;
     const rItem = new THREE.Group();
-    rItem.name = 'outbuildings.barn.horseShowCertificates.rosette';
-    rItem.position.set(rx, ry, certFrameD * 0.5 + 0.010);
-    rItem.rotation.z = tiltZ;
+    rItem.name = `outbuildings.barn.horseShowCertificates.rosette.${idx + 1}`;
+    rItem.position.set(rx, ry, frameD * 0.5 + 0.008);
+    rItem.rotation.z = 0;
     certGroup.add(rItem);
 
     const outerMat = new THREE.MeshStandardMaterial({
       color: outerHex,
-      roughness: 0.42,
+      roughness: 0.40,
       metalness: 0.08,
     });
     const innerMat = new THREE.MeshStandardMaterial({
       color: innerHex,
-      roughness: 0.38,
-      metalness: 0.12,
+      roughness: 0.36,
+      metalness: 0.14,
     });
 
     const pleatRing = new THREE.Mesh(
-      new THREE.CylinderGeometry(rad, rad, 0.011, 24),
+      new THREE.CylinderGeometry(rad, rad, 0.009, 24),
       outerMat
     );
     pleatRing.rotation.x = Math.PI / 2;
     rItem.add(pleatRing);
 
     const innerRing = new THREE.Mesh(
-      new THREE.CylinderGeometry(rad * 0.68, rad * 0.68, 0.014, 20),
+      new THREE.CylinderGeometry(rad * 0.68, rad * 0.68, 0.011, 20),
       innerMat
     );
     innerRing.rotation.x = Math.PI / 2;
-    innerRing.position.set(0, 0, 0.002);
+    innerRing.position.set(0, 0, 0.0015);
     rItem.add(innerRing);
 
     const goldCenter = new THREE.Mesh(
-      new THREE.CylinderGeometry(rad * 0.42, rad * 0.42, 0.017, 18),
+      new THREE.CylinderGeometry(rad * 0.42, rad * 0.42, 0.013, 18),
       giltSlipMat
     );
     goldCenter.rotation.x = Math.PI / 2;
-    goldCenter.position.set(0, 0, 0.004);
+    goldCenter.position.set(0, 0, 0.003);
     rItem.add(goldCenter);
 
     for (const [tailSide, tailColorMat] of [
@@ -4070,16 +4080,31 @@ export function buildBarnGroundWallArtworks(
       [0, innerMat],
       [1, outerMat],
     ] as const) {
-      const tailLen = rad * (tailSide === 0 ? 1.85 : 1.65);
+      const tailLen = rad * (tailSide === 0 ? 1.65 : 1.48);
       const tailRibbon = new THREE.Mesh(
-        new THREE.BoxGeometry(rad * 0.36, tailLen, 0.005),
+        new THREE.BoxGeometry(rad * 0.32, tailLen, 0.004),
         tailColorMat
       );
-      tailRibbon.position.set(tailSide * rad * 0.28, -rad * 0.75 - tailLen * 0.35, -0.002);
-      tailRibbon.rotation.z = tailSide * 0.19;
+      tailRibbon.position.set(tailSide * rad * 0.26, -rad * 0.72 - tailLen * 0.32, -0.0015);
+      tailRibbon.rotation.z = tailSide * 0.14;
       rItem.add(tailRibbon);
     }
   }
+
+  // Museum Conservation Glass Pane (`0.004m` clear glass pane) over the white mount
+  const certGlassPane = new THREE.Mesh(
+    new THREE.BoxGeometry(frameW, frameH, 0.004),
+    new THREE.MeshStandardMaterial({
+      color: 0xf4f9fc,
+      transparent: true,
+      opacity: 0.14,
+      roughness: 0.08,
+      metalness: 0.12,
+    })
+  );
+  certGlassPane.name = 'outbuildings.barn.horseShowCertificates.glass';
+  certGlassPane.position.set(0, 0, frameD * 0.5 + 0.016);
+  certGroup.add(certGlassPane);
 
   // ---------------------------------------------------------------------------
   // 3. Issue #1 ("Samsung frame 55 inch on this wall, more task and ambient lighting in here"
@@ -4552,10 +4577,10 @@ export function buildBarnGroundWallArtworks(
   }
 
   // 4F. 2 Brushed-Brass Gallery Picture Task Lights (`outbuildings.barn.pictureLight.1..2`)
-  //     over the St Andrews Picture (`u = 17.64m, y = 1.45m, v = 0.295m`) & Horse Show Certificates (`u = 17.15m, y = 1.65m, v = 5.412m`)
+  //     over the St Andrews Picture (`u = 17.75m, y = 1.46m, v = 0.295m`) & Horse Show Certificates above the North Door (`u = 16.35m, y = 2.69m, v = 0.295m`)
   for (const [pIdx, pu, py, pv, pRotY, barW] of [
-    [1, 17.64, 1.46, 0.295, 0, 0.44],
-    [2, 17.15, 1.66, 5.412, Math.PI, 0.78],
+    [1, 17.75, 1.46, 0.295, 0, 0.44],
+    [2, 16.35, 2.69, 0.295, 0, 0.68],
   ] as const) {
     const picLight = new THREE.Group();
     picLight.name = `outbuildings.barn.pictureLight.${pIdx}`;
@@ -7264,7 +7289,8 @@ export function buildStableGroundCloakroom(
   stableGroundFloorY: number,
   stableGroundTopY: number,
   warmRoomPlasterMat: THREE.Material,
-  lightJoineryOakMat: THREE.Material
+  lightJoineryOakMat: THREE.Material,
+  ctx?: SceneBuilderContext
 ): void {
   const cloakGroup = new THREE.Group();
   cloakGroup.name = 'outbuildings.stable.groundCloakroom';
@@ -7275,7 +7301,7 @@ export function buildStableGroundCloakroom(
   const uEast = 24.75; // 1.53m wide along u (cleanly West of the u = 25.31m South brick pilaster!)
   const vNorth = 3.94; // 1.488m deep along v (cleanly South of the v = 1.98..2.84m Barn-Stable glass door!)
   const vSouth = 5.428;
-  const wallT = 0.10;
+  const partT = 0.10;
   const wallH = stableGroundTopY - stableGroundFloorY; // 2.40m (-0.44m..+1.96m)
 
   const marbleTileMat = new THREE.MeshStandardMaterial({
@@ -7295,8 +7321,8 @@ export function buildStableGroundCloakroom(
   });
 
   // 1. Tiled Cloakroom Floor (`u = 23.22..24.70m, v = 3.99..5.425m`)
-  const floorW = uEast - wallT * 0.5 - uWest;
-  const floorD = vSouth - (vNorth + wallT * 0.5);
+  const floorW = uEast - partT * 0.5 - uWest;
+  const floorD = vSouth - (vNorth + partT * 0.5);
   const tiledFloor = new THREE.Mesh(
     new THREE.BoxGeometry(floorW, 0.012, floorD),
     marbleTileMat
@@ -7305,201 +7331,796 @@ export function buildStableGroundCloakroom(
   tiledFloor.position.set(
     uWest + floorW * 0.5,
     stableGroundFloorY + 0.006,
-    vNorth + wallT * 0.5 + floorD * 0.5
+    vNorth + partT * 0.5 + floorD * 0.5
   );
   tiledFloor.receiveShadow = true;
   cloakGroup.add(tiledFloor);
 
-  // 2. Plastered Stud Partition Walls (`vNorth = 3.94m` with `0.72m` doorway & `uEast = 24.75m`)
-  const doorU0 = 23.82;
-  const doorU1 = 24.54; // 0.72m cloakroom doorway
-  const doorW = doorU1 - doorU0;
-  const doorClearH = 1.98;
-  const lintelH = wallH - doorClearH;
+  // 2. Plastered Stud Partition Walls (`vNorth = 3.94m` with `0.76m` doorway & `uEast = 24.75m`)
+  const uDoor0 = 23.62;
+  const uDoor1 = 24.38; // 0.76m cloakroom doorway centered at midU = 24.00m
+  const doorW = uDoor1 - uDoor0;
+  const midU = (uDoor0 + uDoor1) * 0.5;
+  const doorH = 1.98;
+  const lintelH = wallH - doorH;
 
   const northWallWest = new THREE.Mesh(
-    new THREE.BoxGeometry(doorU0 - uWest, wallH, wallT),
+    new THREE.BoxGeometry(uDoor0 - uWest, wallH, partT),
     warmRoomPlasterMat
   );
   northWallWest.name = 'outbuildings.stable.groundCloakroom.northWallWest';
   northWallWest.userData.isArchitecturalShell = true;
-  northWallWest.position.set((uWest + doorU0) * 0.5, stableGroundFloorY + wallH * 0.5, vNorth);
+  northWallWest.position.set((uWest + uDoor0) * 0.5, stableGroundFloorY + wallH * 0.5, vNorth);
   northWallWest.castShadow = true;
   northWallWest.receiveShadow = true;
   cloakGroup.add(northWallWest);
 
   const northWallEast = new THREE.Mesh(
-    new THREE.BoxGeometry(uEast + wallT * 0.5 - doorU1, wallH, wallT),
+    new THREE.BoxGeometry(uEast + partT * 0.5 - uDoor1, wallH, partT),
     warmRoomPlasterMat
   );
   northWallEast.name = 'outbuildings.stable.groundCloakroom.northWallEast';
   northWallEast.userData.isArchitecturalShell = true;
-  northWallEast.position.set((doorU1 + uEast + wallT * 0.5) * 0.5, stableGroundFloorY + wallH * 0.5, vNorth);
+  northWallEast.position.set((uDoor1 + uEast + partT * 0.5) * 0.5, stableGroundFloorY + wallH * 0.5, vNorth);
   northWallEast.castShadow = true;
   northWallEast.receiveShadow = true;
   cloakGroup.add(northWallEast);
 
   const northLintel = new THREE.Mesh(
-    new THREE.BoxGeometry(doorW, lintelH, wallT),
+    new THREE.BoxGeometry(doorW, lintelH, partT),
     warmRoomPlasterMat
   );
-  northLintel.position.set((doorU0 + doorU1) * 0.5, stableGroundFloorY + doorClearH + lintelH * 0.5, vNorth);
+  northLintel.position.set(midU, stableGroundFloorY + doorH + lintelH * 0.5, vNorth);
   cloakGroup.add(northLintel);
 
   const eastWall = new THREE.Mesh(
-    new THREE.BoxGeometry(wallT, wallH, floorD),
+    new THREE.BoxGeometry(partT, wallH, floorD),
     warmRoomPlasterMat
   );
   eastWall.name = 'outbuildings.stable.groundCloakroom.eastWall';
   eastWall.userData.isArchitecturalShell = true;
-  eastWall.position.set(uEast, stableGroundFloorY + wallH * 0.5, vNorth + wallT * 0.5 + floorD * 0.5);
+  eastWall.position.set(uEast, stableGroundFloorY + wallH * 0.5, vNorth + partT * 0.5 + floorD * 0.5);
   eastWall.castShadow = true;
   eastWall.receiveShadow = true;
   cloakGroup.add(eastWall);
 
-  // Light-oak doorway jambs, threshold & ajar oak door leaf
+  // ---------------------------------------------------------------------------
+  // Issue #8 ("Make this a real door, improve the meshes" at `[1.802, 1.526, 18.061]`, `outbuildings.stable.groundCloakroom.door`):
+  // A. Full Solid Light-Oak Doorway Jamb Linings, Recessed Door Stops, Flush Threshold Sill,
+  //    Chamfered Architraves on BOTH North & South Faces, and Interactive Hinged 4-Panel Shaker Solid Oak Door!
+  // ---------------------------------------------------------------------------
+  const jambThick = 0.026;
+  const jambDepth = partT + 0.016;
   for (const jSide of [-1, 1] as const) {
     const jamb = new THREE.Mesh(
-      new THREE.BoxGeometry(0.022, doorClearH, wallT + 0.022),
+      new THREE.BoxGeometry(jambThick, doorH, jambDepth),
       lightJoineryOakMat
     );
+    jamb.name = 'outbuildings.stable.groundCloakroom.doorFrame.jamb';
     jamb.position.set(
-      (doorU0 + doorU1) * 0.5 + jSide * (doorW * 0.5 - 0.011),
-      stableGroundFloorY + doorClearH * 0.5,
+      midU + jSide * (doorW * 0.5 - jambThick * 0.5),
+      stableGroundFloorY + doorH * 0.5,
       vNorth
     );
+    jamb.castShadow = true;
     cloakGroup.add(jamb);
+
+    // Recessed solid oak door stop strip along each vertical jamb
+    const stopStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.012, doorH - jambThick, 0.016),
+      lightJoineryOakMat
+    );
+    stopStrip.position.set(
+      midU + jSide * (doorW * 0.5 - jambThick - 0.006),
+      stableGroundFloorY + (doorH - jambThick) * 0.5,
+      vNorth + 0.014
+    );
+    cloakGroup.add(stopStrip);
   }
+
   const headJamb = new THREE.Mesh(
-    new THREE.BoxGeometry(doorW, 0.022, wallT + 0.022),
+    new THREE.BoxGeometry(doorW, jambThick, jambDepth),
     lightJoineryOakMat
   );
-  headJamb.position.set((doorU0 + doorU1) * 0.5, stableGroundFloorY + doorClearH - 0.011, vNorth);
+  headJamb.name = 'outbuildings.stable.groundCloakroom.doorFrame.head';
+  headJamb.position.set(midU, stableGroundFloorY + doorH - jambThick * 0.5, vNorth);
   cloakGroup.add(headJamb);
 
-  const doorPivot = new THREE.Group();
-  doorPivot.name = 'outbuildings.stable.groundCloakroom.door';
-  doorPivot.position.set(doorU1 - 0.022, stableGroundFloorY + 0.012, vNorth - 0.02);
-  doorPivot.rotation.y = 0.42; // Slightly ajar outward into the Stable ground room
-  cloakGroup.add(doorPivot);
-
-  const leafW = doorW - 0.044;
-  const leafH = doorClearH - 0.026;
-  const doorLeaf = new THREE.Mesh(
-    new THREE.BoxGeometry(leafW, leafH, 0.040),
+  const headStop = new THREE.Mesh(
+    new THREE.BoxGeometry(doorW - jambThick * 2, 0.012, 0.016),
     lightJoineryOakMat
   );
-  doorLeaf.position.set(-leafW * 0.5, leafH * 0.5, 0);
-  doorLeaf.castShadow = true;
-  doorPivot.add(doorLeaf);
+  headStop.position.set(midU, stableGroundFloorY + doorH - jambThick - 0.006, vNorth + 0.014);
+  cloakGroup.add(headStop);
 
-  for (const hSideZ of [-0.03, 0.03] as const) {
-    const lever = new THREE.Mesh(
-      new THREE.BoxGeometry(0.11, 0.016, 0.022),
-      brushedBrassMat
+  // Flush solid light-oak threshold sill strip
+  const thresholdSill = new THREE.Mesh(
+    new THREE.BoxGeometry(doorW - jambThick * 2, 0.014, jambDepth),
+    lightJoineryOakMat
+  );
+  thresholdSill.name = 'outbuildings.stable.groundCloakroom.doorFrame.threshold';
+  thresholdSill.position.set(midU, stableGroundFloorY + 0.007, vNorth);
+  thresholdSill.receiveShadow = true;
+  cloakGroup.add(thresholdSill);
+
+  // Chamfered solid light-oak architraves (`0.058m` wide × `0.016m` thick) on BOTH North exterior (`v = 3.94 - 0.058`) and South interior (`v = 3.94 + 0.058`) faces
+  const archW = 0.058;
+  const archT = 0.016;
+  for (const faceDir of [-1, 1] as const) {
+    const archZ = vNorth + faceDir * (partT * 0.5 + archT * 0.5);
+    for (const sSide of [-1, 1] as const) {
+      const sideArch = new THREE.Mesh(
+        new THREE.BoxGeometry(archW, doorH + archW, archT),
+        lightJoineryOakMat
+      );
+      sideArch.name = 'outbuildings.stable.groundCloakroom.doorFrame.architrave';
+      sideArch.position.set(
+        midU + sSide * (doorW * 0.5 + archW * 0.5 - 0.012),
+        stableGroundFloorY + (doorH + archW) * 0.5,
+        archZ
+      );
+      sideArch.castShadow = true;
+      cloakGroup.add(sideArch);
+    }
+    const topArch = new THREE.Mesh(
+      new THREE.BoxGeometry(doorW + archW * 2 - 0.024, archW, archT),
+      lightJoineryOakMat
     );
-    lever.position.set(-leafW + 0.08, 0.96, hSideZ);
-    doorPivot.add(lever);
+    topArch.name = 'outbuildings.stable.groundCloakroom.doorFrame.architrave';
+    topArch.position.set(midU, stableGroundFloorY + doorH + archW * 0.5 - 0.012, archZ);
+    topArch.castShadow = true;
+    cloakGroup.add(topArch);
   }
 
-  // 3. Back-to-Wall Vitreous China Cloakroom Toilet (`outbuildings.stable.groundCloakroom.toilet`)
-  //    against the South Wall (`u = 24.08m, v = 5.06m`, right at hit point `[1.816, -0.44, 18.594]` -> `u = 23.98m, v = 4.67m`!)
-  const toiletGroup = new THREE.Group();
-  toiletGroup.name = 'outbuildings.stable.groundCloakroom.toilet';
-  toiletGroup.position.set(24.08, stableGroundFloorY + 0.012, 5.06);
-  cloakGroup.add(toiletGroup);
+  // Interactive Hinged 4-Panel Shaker Solid European Oak Door (`outbuildings.stable.groundCloakroom.door`)
+  // Positioned at the West hinge jamb `(uDoor0 + 0.026, stableGroundFloorY + 0.012, vNorth)`, closed flush by default (`rotation.y = 0`)
+  const doorPivot = new THREE.Group();
+  doorPivot.name = 'outbuildings.stable.groundCloakroom.door';
+  doorPivot.position.set(uDoor0 + jambThick, stableGroundFloorY + 0.012, vNorth);
+  doorPivot.rotation.y = 0;
+  cloakGroup.add(doorPivot);
 
-  const cisternBox = new THREE.Mesh(
-    new THREE.BoxGeometry(0.74, 0.92, 0.21),
-    marbleTileMat
-  );
-  cisternBox.position.set(0, 0.46, 0.24);
-  cisternBox.castShadow = true;
-  toiletGroup.add(cisternBox);
+  const clearW = 0.708; // doorW (0.76) - 2 * jambThick (0.052)
+  const clearH = 1.94;  // doorH (1.98) - jambThick (0.026) - threshold (0.014)
+  const doorT = 0.044;
+  const stileW = 0.095;
+  const muntinW = 0.075;
+  const botRailH = 0.18;
+  const lockRailH = 0.14;
+  const friezeRailH = 0.11;
+  const topRailH = 0.11;
+  const lockRailCenterY = 0.92;
 
-  const cisternShelf = new THREE.Mesh(
-    new THREE.BoxGeometry(0.76, 0.024, 0.23),
+  // Left (West hinge) & Right (East leading) vertical solid oak stiles
+  const leftStile = new THREE.Mesh(
+    new THREE.BoxGeometry(stileW, clearH, doorT),
     lightJoineryOakMat
   );
-  cisternShelf.position.set(0, 0.932, 0.235);
-  toiletGroup.add(cisternShelf);
+  leftStile.name = 'outbuildings.stable.groundCloakroom.door.stileWest';
+  leftStile.position.set(stileW * 0.5, clearH * 0.5, 0);
+  leftStile.castShadow = true;
+  leftStile.receiveShadow = true;
+  doorPivot.add(leftStile);
 
-  const flushPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.20, 0.13, 0.012),
+  const rightStile = new THREE.Mesh(
+    new THREE.BoxGeometry(stileW, clearH, doorT),
+    lightJoineryOakMat
+  );
+  rightStile.name = 'outbuildings.stable.groundCloakroom.door.stileEast';
+  rightStile.position.set(clearW - stileW * 0.5, clearH * 0.5, 0);
+  rightStile.castShadow = true;
+  rightStile.receiveShadow = true;
+  doorPivot.add(rightStile);
+
+  // Horizontal rails (bottom rail, lock rail, frieze rail, top rail) spanning between stiles
+  const innerRailW = clearW - stileW * 2;
+  const railCenterX = clearW * 0.5;
+  const friezeRailCenterY = clearH - topRailH - 0.34 - friezeRailH * 0.5;
+  for (const [rName, rY, rH] of [
+    ['bottomRail', botRailH * 0.5, botRailH],
+    ['lockRail', lockRailCenterY, lockRailH],
+    ['friezeRail', friezeRailCenterY, friezeRailH],
+    ['topRail', clearH - topRailH * 0.5, topRailH],
+  ] as const) {
+    const railMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(innerRailW, rH, doorT),
+      lightJoineryOakMat
+    );
+    railMesh.name = `outbuildings.stable.groundCloakroom.door.${rName}`;
+    railMesh.position.set(railCenterX, rY, 0);
+    railMesh.castShadow = true;
+    railMesh.receiveShadow = true;
+    doorPivot.add(railMesh);
+  }
+
+  // Central vertical muntin dividing lower & upper panel bays into 4 fielded Shaker panels
+  const lowerBayY0 = botRailH;
+  const lowerBayY1 = lockRailCenterY - lockRailH * 0.5;
+  const upperBayY0 = lockRailCenterY + lockRailH * 0.5;
+  const upperBayY1 = clearH - topRailH;
+
+  for (const [mName, y0, y1] of [
+    ['muntinLower', lowerBayY0, lowerBayY1],
+    ['muntinUpper', upperBayY0, upperBayY1],
+  ] as const) {
+    const muntin = new THREE.Mesh(
+      new THREE.BoxGeometry(muntinW, y1 - y0, doorT),
+      lightJoineryOakMat
+    );
+    muntin.name = `outbuildings.stable.groundCloakroom.door.${mName}`;
+    muntin.position.set(railCenterX, (y0 + y1) * 0.5, 0);
+    muntin.castShadow = true;
+    doorPivot.add(muntin);
+  }
+
+  // 4 Recessed solid oak panels (`0.024m` thick) with bevelled bolection/chamfered panel mouldings on both faces
+  const panelW = (innerRailW - muntinW) * 0.5;
+  const panelLeftX = stileW + panelW * 0.5;
+  const panelRightX = clearW - stileW - panelW * 0.5;
+  const panelBays: ReadonlyArray<readonly [number, number, number]> = [
+    [panelLeftX, (lowerBayY0 + lowerBayY1) * 0.5, lowerBayY1 - lowerBayY0],
+    [panelRightX, (lowerBayY0 + lowerBayY1) * 0.5, lowerBayY1 - lowerBayY0],
+    [panelLeftX, (upperBayY0 + upperBayY1) * 0.5, upperBayY1 - upperBayY0],
+    [panelRightX, (upperBayY0 + upperBayY1) * 0.5, upperBayY1 - upperBayY0],
+  ];
+
+  for (let pIdx = 0; pIdx < panelBays.length; pIdx++) {
+    const [px, py, ph] = panelBays[pIdx]!;
+    const recessedPanel = new THREE.Mesh(
+      new THREE.BoxGeometry(panelW + 0.004, ph + 0.004, 0.024),
+      lightJoineryOakMat
+    );
+    recessedPanel.name = `outbuildings.stable.groundCloakroom.door.panel.${pIdx + 1}`;
+    recessedPanel.position.set(px, py, 0);
+    recessedPanel.castShadow = true;
+    recessedPanel.receiveShadow = true;
+    doorPivot.add(recessedPanel);
+
+    // Raised fielded panel centre bevel on both faces
+    const fieldedCore = new THREE.Mesh(
+      new THREE.BoxGeometry(panelW - 0.032, ph - 0.036, 0.032),
+      lightJoineryOakMat
+    );
+    fieldedCore.position.set(px, py, 0);
+    doorPivot.add(fieldedCore);
+
+    // Chamfered perimeter bolection moulding strips on both North and South faces
+    for (const fz of [-0.015, 0.015] as const) {
+      const topMould = new THREE.Mesh(
+        new THREE.BoxGeometry(panelW, 0.012, 0.008),
+        lightJoineryOakMat
+      );
+      topMould.position.set(px, py + ph * 0.5 - 0.006, fz);
+      doorPivot.add(topMould);
+
+      const botMould = new THREE.Mesh(
+        new THREE.BoxGeometry(panelW, 0.012, 0.008),
+        lightJoineryOakMat
+      );
+      botMould.position.set(px, py - ph * 0.5 + 0.006, fz);
+      doorPivot.add(botMould);
+    }
+  }
+
+  // 3 Brushed-brass butt hinges (`CylinderGeometry` knuckles) along the West hinge stile (`x = 0`)
+  for (const hingeY of [0.24, 0.97, 1.68] as const) {
+    const hingeKnuckle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.007, 0.007, 0.076, 12),
+      brushedBrassMat
+    );
+    hingeKnuckle.name = 'outbuildings.stable.groundCloakroom.door.hinge';
+    hingeKnuckle.position.set(0, hingeY, -doorT * 0.5 - 0.004);
+    doorPivot.add(hingeKnuckle);
+  }
+
+  // Brushed-brass circular roses, contoured tubular lever handles (`handleN`, `handleS`), and bathroom privacy thumbturn/coin-release lock on both faces of East leading stile (`x = clearW - 0.055m`)
+  const handleX = clearW - 0.055;
+  const handleY = 0.96;
+  for (const [faceTag, fz] of [
+    ['handleN', -1],
+    ['handleS', 1],
+  ] as const) {
+    const rose = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.026, 0.026, 0.008, 20),
+      brushedBrassMat
+    );
+    rose.rotation.x = Math.PI / 2;
+    rose.position.set(handleX, handleY, fz * (doorT * 0.5 + 0.004));
+    doorPivot.add(rose);
+
+    const spindleNeck = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.009, 0.009, 0.036, 14),
+      brushedBrassMat
+    );
+    spindleNeck.rotation.x = Math.PI / 2;
+    spindleNeck.position.set(handleX, handleY, fz * (doorT * 0.5 + 0.022));
+    doorPivot.add(spindleNeck);
+
+    const leverGrip = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0085, 0.0075, 0.118, 14),
+      brushedBrassMat
+    );
+    leverGrip.name = `outbuildings.stable.groundCloakroom.door.${faceTag}`;
+    leverGrip.rotation.z = Math.PI / 2;
+    leverGrip.position.set(handleX - 0.052, handleY, fz * (doorT * 0.5 + 0.038));
+    leverGrip.castShadow = true;
+    doorPivot.add(leverGrip);
+
+    // Privacy lock escutcheon rose + thumbturn (interior South) / coin-release slot (exterior North) below handle
+    const lockRose = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.018, 0.018, 0.007, 18),
+      brushedBrassMat
+    );
+    lockRose.rotation.x = Math.PI / 2;
+    lockRose.position.set(handleX, handleY - 0.078, fz * (doorT * 0.5 + 0.0035));
+    doorPivot.add(lockRose);
+
+    if (fz > 0) {
+      const thumbTurn = new THREE.Mesh(
+        new THREE.BoxGeometry(0.028, 0.009, 0.016),
+        brushedBrassMat
+      );
+      thumbTurn.position.set(handleX, handleY - 0.078, fz * (doorT * 0.5 + 0.012));
+      doorPivot.add(thumbTurn);
+    }
+  }
+
+  // Register interactive hinged door so clicking smoothly swings it open and closed
+  ctx?.interactions.registerHingedDoor(
+    cloakGroup,
+    doorPivot,
+    new THREE.Vector3(0, 0, 0),
+    'y',
+    -Math.PI * 0.45
+  );
+
+  // ---------------------------------------------------------------------------
+  // B. Upgraded Cloakroom Toilet (`outbuildings.stable.groundCloakroom.toilet`)
+  //    at `(24.22, stableGroundFloorY + 0.012, vSouth - 0.32)` facing North (`-v`)
+  // ---------------------------------------------------------------------------
+  const toiletGroup = new THREE.Group();
+  toiletGroup.name = 'outbuildings.stable.groundCloakroom.toilet';
+  toiletGroup.position.set(24.22, stableGroundFloorY + 0.012, vSouth - 0.32);
+  cloakGroup.add(toiletGroup);
+
+  const waterBlueMat = new THREE.MeshStandardMaterial({
+    color: 0xd4eef7,
+    roughness: 0.06,
+    metalness: 0.08,
+    transparent: true,
+    opacity: 0.86,
+  });
+  const darkCavityMat = new THREE.MeshStandardMaterial({
+    color: 0xd8d6d0,
+    roughness: 0.25,
+    metalness: 0.04,
+  });
+
+  // Tiled boxing / concealed plumbing duct & solid oak shelf behind the close-coupled pan
+  const cisternDuct = new THREE.Mesh(
+    new THREE.BoxGeometry(0.68, 0.90, 0.16),
+    marbleTileMat
+  );
+  cisternDuct.position.set(0, 0.45, 0.22);
+  cisternDuct.castShadow = true;
+  cisternDuct.receiveShadow = true;
+  toiletGroup.add(cisternDuct);
+
+  const cisternOakLedge = new THREE.Mesh(
+    new THREE.BoxGeometry(0.70, 0.024, 0.18),
+    lightJoineryOakMat
+  );
+  cisternOakLedge.position.set(0, 0.912, 0.215);
+  toiletGroup.add(cisternOakLedge);
+
+  // Bevelled Vitreous China Close-Coupled Cistern Tank + Fitted Overhanging Ceramic Cistern Lid + Dual-Flush Coaxial Brass Button
+  const porcelainCistern = new THREE.Mesh(
+    new THREE.BoxGeometry(0.37, 0.36, 0.155),
+    ceramicWhiteMat
+  );
+  porcelainCistern.name = 'outbuildings.stable.groundCloakroom.toilet.cistern';
+  porcelainCistern.position.set(0, 0.58, 0.075);
+  porcelainCistern.castShadow = true;
+  toiletGroup.add(porcelainCistern);
+
+  const cisternLid = new THREE.Mesh(
+    new THREE.BoxGeometry(0.386, 0.028, 0.168),
+    ceramicWhiteMat
+  );
+  cisternLid.position.set(0, 0.772, 0.075);
+  cisternLid.castShadow = true;
+  toiletGroup.add(cisternLid);
+
+  const flushCollar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.024, 0.024, 0.008, 20),
     brushedBrassMat
   );
-  flushPlate.position.set(0, 0.76, 0.13);
-  toiletGroup.add(flushPlate);
+  flushCollar.position.set(0, 0.788, 0.075);
+  toiletGroup.add(flushCollar);
+
+  const flushInnerBtn = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.015, 0.015, 0.011, 18),
+    brushedBrassMat
+  );
+  flushInnerBtn.position.set(0, 0.790, 0.075);
+  toiletGroup.add(flushInnerBtn);
+
+  // Stepped ceramic base pedestal + sculpted curved D-shaped outer ceramic bowl shell
+  const basePlinth = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.145, 0.158, 0.045, 28),
+    ceramicWhiteMat
+  );
+  basePlinth.position.set(0, 0.0225, -0.05);
+  basePlinth.scale.set(1.0, 1.0, 1.42);
+  basePlinth.castShadow = true;
+  toiletGroup.add(basePlinth);
 
   const wcPedestal = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.16, 0.14, 0.38, 22),
+    new THREE.CylinderGeometry(0.172, 0.138, 0.35, 28),
     ceramicWhiteMat
   );
-  wcPedestal.position.set(0, 0.19, -0.02);
-  wcPedestal.scale.set(1.0, 1.0, 1.30);
+  wcPedestal.name = 'outbuildings.stable.groundCloakroom.toilet.bowl';
+  wcPedestal.position.set(0, 0.21, -0.06);
+  wcPedestal.scale.set(1.02, 1.0, 1.45);
   wcPedestal.castShadow = true;
+  wcPedestal.receiveShadow = true;
   toiletGroup.add(wcPedestal);
 
-  const wcSeatRim = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.17, 0.164, 0.03, 24),
+  const rearShroud = new THREE.Mesh(
+    new THREE.BoxGeometry(0.32, 0.39, 0.22),
     ceramicWhiteMat
   );
-  wcSeatRim.position.set(0, 0.395, -0.02);
-  wcSeatRim.scale.set(1.0, 1.0, 1.32);
-  toiletGroup.add(wcSeatRim);
+  rearShroud.position.set(0, 0.195, 0.04);
+  rearShroud.castShadow = true;
+  toiletGroup.add(rearShroud);
 
-  // 4. Compact Cloakroom Wall-Hung Hand-Rinse Basin & Mirror (`outbuildings.stable.groundCloakroom.basin`)
-  //    on the West Wall (`u = 23.38m, v = 4.46m`, facing East `+u`)
+  // Recessed inner porcelain bowl cavity + translucent water disc (`0xd4eef7`)
+  const bowlWell = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.138, 0.088, 0.14, 26),
+    darkCavityMat
+  );
+  bowlWell.position.set(0, 0.325, -0.08);
+  bowlWell.scale.set(1.0, 1.0, 1.34);
+  toiletGroup.add(bowlWell);
+
+  const waterDisc = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.095, 0.095, 0.008, 24),
+    waterBlueMat
+  );
+  waterDisc.position.set(0, 0.28, -0.075);
+  waterDisc.scale.set(1.0, 1.0, 1.28);
+  toiletGroup.add(waterDisc);
+
+  // Contoured ergonomic open-ring seat (`TorusGeometry` front + side seat rails + brass hinge pins) + contoured soft-close top lid
+  const seatRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.146, 0.026, 14, 32),
+    ceramicWhiteMat
+  );
+  seatRing.name = 'outbuildings.stable.groundCloakroom.toilet.seat';
+  seatRing.rotation.x = Math.PI / 2;
+  seatRing.position.set(0, 0.402, -0.075);
+  seatRing.scale.set(1.0, 1.38, 0.55);
+  seatRing.castShadow = true;
+  toiletGroup.add(seatRing);
+
+  for (const hx of [-0.085, 0.085] as const) {
+    const seatHingePin = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 0.022, 14),
+      brushedBrassMat
+    );
+    seatHingePin.position.set(hx, 0.408, 0.08);
+    toiletGroup.add(seatHingePin);
+  }
+
+  const softCloseLid = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.172, 0.172, 0.018, 28),
+    ceramicWhiteMat
+  );
+  softCloseLid.name = 'outbuildings.stable.groundCloakroom.toilet.lid';
+  softCloseLid.scale.set(1.0, 1.0, 1.36);
+  softCloseLid.rotation.x = -Math.PI * 0.46; // Raised upright against the cistern front
+  softCloseLid.position.set(0, 0.62, 0.005);
+  softCloseLid.castShadow = true;
+  toiletGroup.add(softCloseLid);
+
+  // Brass angle stop valve + braided flexible feed hose on left side of cistern
+  const stopValve = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.012, 0.012, 0.055, 12),
+    brushedBrassMat
+  );
+  stopValve.rotation.x = Math.PI / 2;
+  stopValve.position.set(-0.22, 0.22, 0.12);
+  toiletGroup.add(stopValve);
+
+  const braidedHose = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.006, 0.006, 0.19, 10),
+    brushedBrassMat
+  );
+  braidedHose.position.set(-0.20, 0.31, 0.09);
+  toiletGroup.add(braidedHose);
+
+  // Freestanding Brushed-Brass Toilet Brush Canister & Handle to the East of the pan
+  const brushCanister = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.046, 0.044, 0.26, 20),
+    brushedBrassMat
+  );
+  brushCanister.name = 'outbuildings.stable.groundCloakroom.toilet.brushSet';
+  brushCanister.position.set(0.28, 0.13, 0.02);
+  brushCanister.castShadow = true;
+  toiletGroup.add(brushCanister);
+
+  const brushRod = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.006, 0.006, 0.18, 12),
+    brushedBrassMat
+  );
+  brushRod.position.set(0.28, 0.32, 0.02);
+  toiletGroup.add(brushRod);
+
+  // Wall-mounted Brushed-Brass Toilet Paper Holder & Roll on the East Wall adjacent to the WC
+  const rollHolderArm = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.018, 0.14),
+    brushedBrassMat
+  );
+  rollHolderArm.position.set(0.42, 0.62, -0.14);
+  toiletGroup.add(rollHolderArm);
+
+  const paperRoll = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.056, 0.056, 0.11, 20),
+    ceramicWhiteMat
+  );
+  paperRoll.rotation.x = Math.PI / 2;
+  paperRoll.position.set(0.39, 0.60, -0.14);
+  paperRoll.castShadow = true;
+  toiletGroup.add(paperRoll);
+
+  // ---------------------------------------------------------------------------
+  // C. Upgraded Wall-Hung Shaker Solid-Oak Vanity & Sculpted Vitreous China Basin (`outbuildings.stable.groundCloakroom.basin`)
+  //    on the West Wall (`u = uWest + 0.16m, v = 4.46m`, facing East `+u`)
+  // ---------------------------------------------------------------------------
   const basinGroup = new THREE.Group();
   basinGroup.name = 'outbuildings.stable.groundCloakroom.basin';
   basinGroup.position.set(uWest + 0.16, stableGroundFloorY + 0.012, 4.46);
   cloakGroup.add(basinGroup);
 
-  const vanityCab = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, 0.44, 0.46),
+  const cabD = 0.30; // along u (x)
+  const cabH = 0.48; // along y
+  const cabW = 0.50; // along v (z)
+
+  // Framed Shaker Solid-Oak Vanity Carcass with internal shelf, recessed Shaker door panel, soft-close brass hinges & knurled brass knob
+  const vanityCarcass = new THREE.Mesh(
+    new THREE.BoxGeometry(cabD - 0.02, cabH, cabW),
     lightJoineryOakMat
   );
-  vanityCab.position.set(0, 0.56, 0);
-  vanityCab.castShadow = true;
-  basinGroup.add(vanityCab);
+  vanityCarcass.name = 'outbuildings.stable.groundCloakroom.basin.cabinet';
+  vanityCarcass.position.set(-0.01, 0.56, 0);
+  vanityCarcass.castShadow = true;
+  vanityCarcass.receiveShadow = true;
+  basinGroup.add(vanityCarcass);
 
-  const ceramicBasin = new THREE.Mesh(
-    new THREE.BoxGeometry(0.30, 0.10, 0.48),
+  // Shaker door outer stile/rail frame on East (`+x`) front face
+  for (const sz of [-1, 1] as const) {
+    const doorStile = new THREE.Mesh(
+      new THREE.BoxGeometry(0.018, cabH - 0.02, 0.055),
+      lightJoineryOakMat
+    );
+    doorStile.position.set(cabD * 0.5 - 0.005, 0.56, sz * (cabW * 0.5 - 0.032));
+    doorStile.castShadow = true;
+    basinGroup.add(doorStile);
+  }
+  for (const sy of [-1, 1] as const) {
+    const doorRail = new THREE.Mesh(
+      new THREE.BoxGeometry(0.018, 0.055, cabW - 0.12),
+      lightJoineryOakMat
+    );
+    doorRail.position.set(cabD * 0.5 - 0.005, 0.56 + sy * (cabH * 0.5 - 0.036), 0);
+    doorRail.castShadow = true;
+    basinGroup.add(doorRail);
+  }
+
+  const shakerDoorPanel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.010, cabH - 0.11, cabW - 0.11),
+    lightJoineryOakMat
+  );
+  shakerDoorPanel.position.set(cabD * 0.5 - 0.012, 0.56, 0);
+  basinGroup.add(shakerDoorPanel);
+
+  // Knurled brushed-brass cabinet pull knob + twin brass hinge knuckles
+  const cabKnob = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.013, 0.010, 0.024, 16),
+    brushedBrassMat
+  );
+  cabKnob.rotation.z = Math.PI / 2;
+  cabKnob.position.set(cabD * 0.5 + 0.014, 0.72, -cabW * 0.5 + 0.035);
+  basinGroup.add(cabKnob);
+
+  for (const hy of [0.40, 0.72] as const) {
+    const cabHinge = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.004, 0.004, 0.038, 10),
+      brushedBrassMat
+    );
+    cabHinge.position.set(cabD * 0.5 + 0.003, hy, cabW * 0.5 - 0.006);
+    basinGroup.add(cabHinge);
+  }
+
+  // Sculpted Vitreous China Basin Top with raised outer rim walls surrounding a recessed inner basin bowl (`basinWell`), overflow & brass click-clack waste
+  const basinBaseSlab = new THREE.Mesh(
+    new THREE.BoxGeometry(cabD + 0.02, 0.036, cabW + 0.02),
     ceramicWhiteMat
   );
-  ceramicBasin.position.set(0.01, 0.82, 0);
-  ceramicBasin.castShadow = true;
-  basinGroup.add(ceramicBasin);
+  basinBaseSlab.name = 'outbuildings.stable.groundCloakroom.basin.sink';
+  basinBaseSlab.position.set(0.005, 0.818, 0);
+  basinBaseSlab.castShadow = true;
+  basinBaseSlab.receiveShadow = true;
+  basinGroup.add(basinBaseSlab);
+
+  const rimH = 0.068;
+  const rimY = 0.836 + rimH * 0.5;
+  // Back deck wall (holds tap) & front lip wall
+  const backTapDeck = new THREE.Mesh(
+    new THREE.BoxGeometry(0.088, rimH, cabW + 0.02),
+    ceramicWhiteMat
+  );
+  backTapDeck.position.set(-cabD * 0.5 + 0.039, rimY, 0);
+  backTapDeck.castShadow = true;
+  basinGroup.add(backTapDeck);
+
+  const frontRimWall = new THREE.Mesh(
+    new THREE.BoxGeometry(0.034, rimH, cabW + 0.02),
+    ceramicWhiteMat
+  );
+  frontRimWall.position.set(cabD * 0.5 - 0.002, rimY, 0);
+  frontRimWall.castShadow = true;
+  basinGroup.add(frontRimWall);
+
+  for (const sz of [-1, 1] as const) {
+    const sideRimWall = new THREE.Mesh(
+      new THREE.BoxGeometry(cabD + 0.02, rimH, 0.042),
+      ceramicWhiteMat
+    );
+    sideRimWall.position.set(0.005, rimY, sz * (cabW * 0.5 - 0.011));
+    sideRimWall.castShadow = true;
+    basinGroup.add(sideRimWall);
+  }
+
+  // Raised rear ceramic upstand splashback lip against the West wall
+  const splashbackUpstand = new THREE.Mesh(
+    new THREE.BoxGeometry(0.022, 0.055, cabW + 0.02),
+    ceramicWhiteMat
+  );
+  splashbackUpstand.position.set(-cabD * 0.5 + 0.006, 0.904 + 0.0275, 0);
+  basinGroup.add(splashbackUpstand);
+
+  // Recessed inner basin bowl well (`basinWell`) + slotted brass overflow ring + brass pop-up click-clack waste plug
+  const basinWell = new THREE.Mesh(
+    new THREE.BoxGeometry(cabD - 0.10, 0.012, cabW - 0.07),
+    darkCavityMat
+  );
+  basinWell.name = 'outbuildings.stable.groundCloakroom.basin.well';
+  basinWell.position.set(0.026, 0.838, 0);
+  basinGroup.add(basinWell);
+
+  const wastePlug = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.021, 0.021, 0.008, 18),
+    brushedBrassMat
+  );
+  wastePlug.position.set(0.018, 0.844, 0);
+  basinGroup.add(wastePlug);
+
+  const overflowRing = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.009, 0.009, 0.006, 14),
+    brushedBrassMat
+  );
+  overflowRing.rotation.z = Math.PI / 2;
+  overflowRing.position.set(-0.060, 0.882, 0);
+  basinGroup.add(overflowRing);
+
+  // High-Arc Swan-Neck Brushed-Brass Monobloc Basin Mixer Tap (`CylinderGeometry` collar + stem + `TorusGeometry` arch spout + aerator + side pin lever)
+  const tapX = -0.102;
+  const tapDeckTopY = 0.904;
+  const tapCollar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.024, 0.014, 18),
+    brushedBrassMat
+  );
+  tapCollar.position.set(tapX, tapDeckTopY + 0.007, 0);
+  basinGroup.add(tapCollar);
 
   const tapStem = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.014, 0.016, 0.12, 12),
+    new THREE.CylinderGeometry(0.015, 0.016, 0.115, 16),
     brushedBrassMat
   );
-  tapStem.position.set(-0.08, 0.92, 0);
+  tapStem.name = 'outbuildings.stable.groundCloakroom.basin.tap';
+  tapStem.position.set(tapX, tapDeckTopY + 0.068, 0);
+  tapStem.castShadow = true;
   basinGroup.add(tapStem);
 
-  const tapSpout = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.008, 0.008, 0.09, 10),
+  const swanNeckSpout = new THREE.Mesh(
+    new THREE.TorusGeometry(0.052, 0.010, 12, 24, Math.PI),
     brushedBrassMat
   );
-  tapSpout.rotation.z = -Math.PI * 0.42;
-  tapSpout.position.set(-0.04, 0.96, 0);
-  basinGroup.add(tapSpout);
+  swanNeckSpout.position.set(tapX + 0.052, tapDeckTopY + 0.125, 0);
+  swanNeckSpout.castShadow = true;
+  basinGroup.add(swanNeckSpout);
+
+  const aeratorNozzle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.011, 0.010, 0.018, 14),
+    brushedBrassMat
+  );
+  aeratorNozzle.position.set(tapX + 0.104, tapDeckTopY + 0.118, 0);
+  basinGroup.add(aeratorNozzle);
+
+  const pinLever = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.004, 0.004, 0.065, 10),
+    brushedBrassMat
+  );
+  pinLever.rotation.x = Math.PI * 0.25;
+  pinLever.position.set(tapX, tapDeckTopY + 0.068, 0.032);
+  basinGroup.add(pinLever);
+
+  // Ceramic Pump Soap Dispenser on the North corner of the basin deck + Folded Waffle Hand Towel on a Brushed-Brass Towel Ring
+  const soapBottle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.028, 0.032, 0.105, 18),
+    new THREE.MeshStandardMaterial({ color: 0x3b4d3e, roughness: 0.28, metalness: 0.08 })
+  );
+  soapBottle.name = 'outbuildings.stable.groundCloakroom.basin.soapDispenser';
+  soapBottle.position.set(-0.095, tapDeckTopY + 0.052, -0.175);
+  soapBottle.castShadow = true;
+  basinGroup.add(soapBottle);
+
+  const soapPumpHead = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.008, 0.010, 0.028, 12),
+    brushedBrassMat
+  );
+  soapPumpHead.position.set(-0.095, tapDeckTopY + 0.116, -0.175);
+  basinGroup.add(soapPumpHead);
+
+  const towelRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.075, 0.006, 10, 24),
+    brushedBrassMat
+  );
+  towelRing.rotation.y = Math.PI / 2;
+  towelRing.position.set(-0.135, 0.92, 0.34);
+  basinGroup.add(towelRing);
+
+  const handTowel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.042, 0.28, 0.11),
+    new THREE.MeshStandardMaterial({ color: 0xe8e2d5, roughness: 0.88 })
+  );
+  handTowel.name = 'outbuildings.stable.groundCloakroom.basin.handTowel';
+  handTowel.position.set(-0.125, 0.76, 0.34);
+  handTowel.castShadow = true;
+  basinGroup.add(handTowel);
+
+  // Illuminated Circular Bevelled Brushed-Brass Vanity Mirror (`mirrorFrame` + `mirrorGlass` + warm backlit LED halo ring)
+  const mirrorHalo = new THREE.Mesh(
+    new THREE.TorusGeometry(0.268, 0.008, 12, 36),
+    new THREE.MeshStandardMaterial({
+      color: 0xfff5e0,
+      emissive: new THREE.Color(0xffd28a),
+      emissiveIntensity: 1.85,
+      roughness: 0.2,
+    })
+  );
+  mirrorHalo.rotation.y = Math.PI / 2;
+  mirrorHalo.position.set(-0.152, 1.38, 0);
+  basinGroup.add(mirrorHalo);
 
   const mirrorFrame = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.24, 0.24, 0.018, 26),
+    new THREE.CylinderGeometry(0.26, 0.26, 0.022, 32),
     brushedBrassMat
   );
+  mirrorFrame.name = 'outbuildings.stable.groundCloakroom.basin.mirrorFrame';
   mirrorFrame.rotation.z = Math.PI / 2;
-  mirrorFrame.position.set(-0.145, 1.32, 0);
+  mirrorFrame.position.set(-0.145, 1.38, 0);
+  mirrorFrame.castShadow = true;
   basinGroup.add(mirrorFrame);
 
   const mirrorGlass = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.224, 0.224, 0.022, 26),
-    new THREE.MeshStandardMaterial({ color: 0xdce8f2, roughness: 0.05, metalness: 0.92 })
+    new THREE.CylinderGeometry(0.242, 0.242, 0.025, 32),
+    new THREE.MeshStandardMaterial({ color: 0xdce8f2, roughness: 0.04, metalness: 0.94 })
   );
+  mirrorGlass.name = 'outbuildings.stable.groundCloakroom.basin.mirrorGlass';
   mirrorGlass.rotation.z = Math.PI / 2;
-  mirrorGlass.position.set(-0.143, 1.32, 0);
+  mirrorGlass.position.set(-0.143, 1.38, 0);
   basinGroup.add(mirrorGlass);
 
   const cloakLight = new THREE.PointLight(0xffd488, 1.4, 3.6, 1.6);
@@ -7626,20 +8247,21 @@ export function buildStableBalconyOutdoorFurniture(
     roughness: 0.74,
   });
 
-  // 1. Flatweave Outdoor Patio Rug (`1.72m x 2.18m` centered at `u = midU, v = 4.32m`)
+  // 1. Flatweave Outdoor Patio Rug (`1.72m x 2.18m` centered at `u = midU, v = 2.45m` — clear of SE spiral staircase!)
   const patioRug = new THREE.Mesh(
     new THREE.BoxGeometry(1.72, 0.008, 2.18),
     outdoorRugMat
   );
   patioRug.name = 'outbuildings.firstFloor.stableEastBalcony.outdoorRug';
-  patioRug.position.set(midU, deckY + 0.004, 4.32);
+  patioRug.position.set(midU, deckY + 0.004, 2.45);
   patioRug.receiveShadow = true;
   furnGroup.add(patioRug);
 
-  // 2. 2-Seater Weathered-Teak & Woven-Rope Outdoor Sofa (`v = 5.14m`, facing North `-v`)
+  // 2. 2-Seater Weathered-Teak & Woven-Rope Outdoor Sofa (`v = 1.50m`, `rotation.y = Math.PI` facing South `+v`)
   const sofaGroup = new THREE.Group();
   sofaGroup.name = 'outbuildings.firstFloor.stableEastBalcony.sofa';
-  sofaGroup.position.set(midU, deckY, 5.14);
+  sofaGroup.position.set(midU, deckY, 1.50);
+  sofaGroup.rotation.y = Math.PI;
   furnGroup.add(sofaGroup);
 
   const sofaW = 1.44; // along u
@@ -7725,10 +8347,10 @@ export function buildStableBalconyOutdoorFurniture(
     sofaGroup.add(throwPillow);
   }
 
-  // 3. 2 Matching Weathered-Teak & Woven-Rope Outdoor Lounge Armchairs (`v = 3.50m`, angled toward coffee table)
+  // 3. 2 Matching Weathered-Teak & Woven-Rope Outdoor Lounge Armchairs (`v = 3.32m`, facing North `-v` toward coffee table)
   for (const [cIdx, cu, cv, rotY] of [
-    [1, midU - 0.48, 3.50, 0.34],
-    [2, midU + 0.48, 3.50, -0.34],
+    [1, midU - 0.48, 3.32, 0.34],
+    [2, midU + 0.48, 3.32, -0.34],
   ] as const) {
     const chairGrp = new THREE.Group();
     chairGrp.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}`;
@@ -7764,7 +8386,7 @@ export function buildStableBalconyOutdoorFurniture(
       new THREE.BoxGeometry(cW, 0.42, 0.05),
       wovenRopeMat
     );
-    cBack.position.set(0, 0.47, -cD * 0.5 + 0.03);
+    cBack.position.set(0, 0.47, cD * 0.5 - 0.03);
     cBack.castShadow = true;
     chairGrp.add(cBack);
 
@@ -7782,7 +8404,7 @@ export function buildStableBalconyOutdoorFurniture(
       new THREE.BoxGeometry(cW - 0.11, 0.12, cD - 0.10),
       sunbrellaOatmealMat
     );
-    cSeat.position.set(0, 0.325, 0.02);
+    cSeat.position.set(0, 0.325, -0.02);
     cSeat.castShadow = true;
     chairGrp.add(cSeat);
 
@@ -7790,16 +8412,16 @@ export function buildStableBalconyOutdoorFurniture(
       new THREE.BoxGeometry(cW - 0.13, 0.32, 0.13),
       sunbrellaOatmealMat
     );
-    cBackCush.rotation.x = 0.18;
-    cBackCush.position.set(0, 0.52, -cD * 0.5 + 0.12);
+    cBackCush.rotation.x = -0.18;
+    cBackCush.position.set(0, 0.52, cD * 0.5 - 0.12);
     cBackCush.castShadow = true;
     chairGrp.add(cBackCush);
   }
 
-  // 4. Slatted Solid-Teak Outdoor Coffee Table (`u = midU, v = 4.30m`) with Hurricane Candle Lantern & Tray
+  // 4. Slatted Solid-Teak Outdoor Coffee Table (`u = midU, v = 2.42m`) with Hurricane Candle Lantern & Tray
   const tableGrp = new THREE.Group();
   tableGrp.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable';
-  tableGrp.position.set(midU, deckY, 4.30);
+  tableGrp.position.set(midU, deckY, 2.42);
   furnGroup.add(tableGrp);
 
   const tW = 0.88;
@@ -7879,8 +8501,8 @@ export function buildStableBalconyOutdoorFurniture(
   const oliveLeafMats = [oliveLeafDarkMat, oliveLeafMidMat, oliveLeafSilveryMat] as const;
 
   for (const [pIdx, pu, pv, seedRot] of [
-    [1, balEndU - 0.36, 5.32, 0.25],
-    [2, balEndU - 0.36, 1.46, 1.85],
+    [1, midU - 0.95, 0.55, 0.25],
+    [2, midU - 0.95, 5.15, 1.85],
   ] as const) {
     const potGrp = new THREE.Group();
     potGrp.name = `outbuildings.firstFloor.stableEastBalcony.planter.${pIdx}`;

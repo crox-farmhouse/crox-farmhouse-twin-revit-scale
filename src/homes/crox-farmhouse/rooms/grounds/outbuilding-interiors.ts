@@ -2489,6 +2489,58 @@ export function buildGarageToolBench(
   tommyBar.position.set(0, 0.075, -0.168);
   viceGroup.add(tommyBar);
 
+  // Procedural DeWALT 18V XR 5.0Ah Li-Ion Battery Side Decal Texture
+  const battDecalCanvas = document.createElement('canvas');
+  battDecalCanvas.width = 256;
+  battDecalCanvas.height = 96;
+  const bCtx = battDecalCanvas.getContext('2d');
+  if (bCtx) {
+    bCtx.fillStyle = '#181a1d';
+    bCtx.fillRect(0, 0, 256, 96);
+    bCtx.fillStyle = '#febd17';
+    bCtx.fillRect(0, 0, 256, 26);
+    bCtx.fillStyle = '#111315';
+    bCtx.font = 'bold 18px sans-serif';
+    bCtx.fillText('DeWALT  XR', 12, 19);
+    bCtx.fillStyle = '#febd17';
+    bCtx.font = 'bold 30px sans-serif';
+    bCtx.fillText('18V', 12, 62);
+    bCtx.fillStyle = '#ffffff';
+    bCtx.font = 'bold 22px sans-serif';
+    bCtx.fillText('5.0Ah LI-ION', 82, 60);
+    bCtx.fillStyle = '#d32f2f';
+    bCtx.fillRect(12, 74, 232, 8);
+  }
+  const battDecalTex = new THREE.CanvasTexture(battDecalCanvas);
+  battDecalTex.colorSpace = THREE.SRGBColorSpace;
+  const dewaltBattDecalMat = new THREE.MeshStandardMaterial({
+    map: battDecalTex,
+    roughness: 0.32,
+    metalness: 0.12,
+  });
+
+  const redAccentMat = new THREE.MeshStandardMaterial({
+    color: 0xd32f2f,
+    roughness: 0.35,
+    metalness: 0.15,
+  });
+  const hssSteelBitMat = new THREE.MeshStandardMaterial({
+    color: 0xdce2e8,
+    roughness: 0.18,
+    metalness: 0.92,
+  });
+  const blackOxideBitMat = new THREE.MeshStandardMaterial({
+    color: 0x22262b,
+    roughness: 0.28,
+    metalness: 0.85,
+  });
+  const worklightLedMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: new THREE.Color(0xe3f2fd),
+    emissiveIntensity: 1.8,
+    roughness: 0.15,
+  });
+
   // B. DeWALT DWS780 305mm Double-Bevel Sliding Compound Mitre Saw (`x = -0.82m, z = -0.02m`)
   const sawGroup = new THREE.Group();
   sawGroup.name = 'outbuildings.garage.toolBench.mitreSaw';
@@ -2496,12 +2548,20 @@ export function buildGarageToolBench(
   benchGroup.add(sawGroup);
 
   const sawBase = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.22, 0.24, 0.048, 24),
+    new THREE.CylinderGeometry(0.22, 0.24, 0.048, 28),
     castAluminumMat
   );
   sawBase.position.set(0, 0.024, 0);
   sawBase.castShadow = true;
   sawGroup.add(sawBase);
+
+  // Mitre detents scale ring & red pointer at front of rotary table
+  const mitreScaleRing = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.232, 0.236, 0.012, 28, 1, false, Math.PI * 0.6, Math.PI * 0.8),
+    dewaltBlackMat
+  );
+  mitreScaleRing.position.set(0, 0.038, 0);
+  sawGroup.add(mitreScaleRing);
 
   for (const sideX of [-1, 1] as const) {
     const extWing = new THREE.Mesh(
@@ -2511,6 +2571,17 @@ export function buildGarageToolBench(
     extWing.position.set(sideX * 0.25, 0.022, 0.02);
     extWing.castShadow = true;
     sawGroup.add(extWing);
+
+    // Sliding workpiece support rails extending from side wings
+    for (const rz of [-0.04, 0.08] as const) {
+      const extRail = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.006, 0.006, 0.09, 10),
+        hssSteelBitMat
+      );
+      extRail.rotation.z = Math.PI / 2;
+      extRail.position.set(sideX * 0.32, 0.026, rz);
+      sawGroup.add(extRail);
+    }
   }
 
   const kerfPlate = new THREE.Mesh(
@@ -2520,6 +2591,13 @@ export function buildGarageToolBench(
   kerfPlate.position.set(0, 0.049, -0.02);
   sawGroup.add(kerfPlate);
 
+  const kerfSlot = new THREE.Mesh(
+    new THREE.BoxGeometry(0.006, 0.005, 0.29),
+    dewaltBlackMat
+  );
+  kerfSlot.position.set(0, 0.05, -0.02);
+  sawGroup.add(kerfSlot);
+
   const mitreArm = new THREE.Mesh(
     new THREE.BoxGeometry(0.068, 0.032, 0.16),
     castAluminumMat
@@ -2528,12 +2606,19 @@ export function buildGarageToolBench(
   sawGroup.add(mitreArm);
 
   const mitreLockKnob = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.022, 0.018, 0.055, 12),
+    new THREE.CylinderGeometry(0.022, 0.018, 0.055, 14),
     dewaltYellowMat
   );
   mitreLockKnob.rotation.x = Math.PI / 2;
   mitreLockKnob.position.set(0, 0.032, -0.31);
   sawGroup.add(mitreLockKnob);
+
+  const mitreDetentTrigger = new THREE.Mesh(
+    new THREE.BoxGeometry(0.024, 0.018, 0.035),
+    redAccentMat
+  );
+  mitreDetentTrigger.position.set(0, 0.048, -0.28);
+  sawGroup.add(mitreDetentTrigger);
 
   const fenceBar = new THREE.Mesh(
     new THREE.BoxGeometry(0.54, 0.078, 0.032),
@@ -2542,23 +2627,77 @@ export function buildGarageToolBench(
   fenceBar.position.set(0, 0.086, 0.068);
   sawGroup.add(fenceBar);
 
+  // Rear bevel quadrant arch & linear slide carriage pillar
+  const bevelArch = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.085, 0.085, 0.036, 20, 1, false, 0, Math.PI),
+    castAluminumMat
+  );
+  bevelArch.rotation.y = Math.PI / 2;
+  bevelArch.position.set(0, 0.095, 0.185);
+  sawGroup.add(bevelArch);
+
+  // Hold-down material screw clamp on left fence
+  const clampPost = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.008, 0.008, 0.13, 10),
+    dewaltBlackMat
+  );
+  clampPost.position.set(-0.18, 0.11, 0.09);
+  sawGroup.add(clampPost);
+
+  const clampArm = new THREE.Mesh(
+    new THREE.BoxGeometry(0.022, 0.014, 0.095),
+    castAluminumMat
+  );
+  clampArm.position.set(-0.18, 0.165, 0.05);
+  sawGroup.add(clampArm);
+
+  const clampPad = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, 0.01, 12),
+    dewaltYellowMat
+  );
+  clampPad.position.set(-0.18, 0.13, 0.01);
+  sawGroup.add(clampPad);
+
   for (const rx of [-0.036, 0.036]) {
     const slideRod = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.013, 0.013, 0.36, 12),
-      aluminumTrimMat
+      new THREE.CylinderGeometry(0.013, 0.013, 0.36, 14),
+      hssSteelBitMat
     );
     slideRod.rotation.x = Math.PI / 2;
     slideRod.position.set(rx, 0.175, 0.045);
     sawGroup.add(slideRod);
   }
 
+  const railCarriage = new THREE.Mesh(
+    new THREE.BoxGeometry(0.11, 0.062, 0.075),
+    dewaltBlackMat
+  );
+  railCarriage.position.set(0, 0.175, 0.19);
+  sawGroup.add(railCarriage);
+
   const sawBlade = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.145, 0.145, 0.005, 28),
-    aluminumTrimMat
+    new THREE.CylinderGeometry(0.145, 0.145, 0.005, 32),
+    hssSteelBitMat
   );
   sawBlade.rotation.z = Math.PI / 2;
   sawBlade.position.set(0, 0.2, -0.015);
   sawGroup.add(sawBlade);
+
+  const bladeArborWasher = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.028, 0.028, 0.014, 16),
+    dewaltBlackMat
+  );
+  bladeArborWasher.rotation.z = Math.PI / 2;
+  bladeArborWasher.position.set(-0.006, 0.2, -0.015);
+  sawGroup.add(bladeArborWasher);
+
+  // XPS shadow cut-line LED module at front of upper blade guard
+  const xpsLightModule = new THREE.Mesh(
+    new THREE.BoxGeometry(0.032, 0.026, 0.042),
+    dewaltBlackMat
+  );
+  xpsLightModule.position.set(0, 0.295, -0.15);
+  sawGroup.add(xpsLightModule);
 
   const bladeGuard = new THREE.Mesh(
     new THREE.CylinderGeometry(0.158, 0.158, 0.044, 24, 1, false, 0, Math.PI * 1.22),
@@ -2568,6 +2707,15 @@ export function buildGarageToolBench(
   bladeGuard.position.set(0, 0.21, -0.015);
   bladeGuard.castShadow = true;
   sawGroup.add(bladeGuard);
+
+  // Clear polycarbonate lower retracting blade guard
+  const lowerClearGuard = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.152, 0.152, 0.036, 20, 1, false, Math.PI * 1.1, Math.PI * 0.85),
+    clearShieldMat
+  );
+  lowerClearGuard.rotation.z = Math.PI / 2;
+  lowerClearGuard.position.set(0, 0.195, -0.015);
+  sawGroup.add(lowerClearGuard);
 
   const sawBadge = new THREE.Mesh(
     new THREE.PlaneGeometry(0.11, 0.042),
@@ -2594,6 +2742,7 @@ export function buildGarageToolBench(
   sawMotorEndCap.position.set(0.195, 0.245, -0.015);
   sawGroup.add(sawMotorEndCap);
 
+  // Ergonomic D-handle with red safety trigger switch
   const sawHandle = new THREE.Mesh(
     new THREE.BoxGeometry(0.048, 0.038, 0.15),
     dewaltBlackMat
@@ -2602,13 +2751,35 @@ export function buildGarageToolBench(
   sawHandle.rotation.x = 0.32;
   sawGroup.add(sawHandle);
 
+  const dHandleLoop = new THREE.Mesh(
+    new THREE.BoxGeometry(0.095, 0.028, 0.034),
+    dewaltYellowMat
+  );
+  dHandleLoop.position.set(0.02, 0.355, -0.155);
+  sawGroup.add(dHandleLoop);
+
+  const dHandleTrigger = new THREE.Mesh(
+    new THREE.BoxGeometry(0.055, 0.014, 0.022),
+    redAccentMat
+  );
+  dHandleTrigger.position.set(0.02, 0.332, -0.145);
+  sawGroup.add(dHandleTrigger);
+
   const dustBag = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.032, 0.044, 0.16, 12),
+    new THREE.CylinderGeometry(0.032, 0.044, 0.16, 14),
     dewaltYellowMat
   );
   dustBag.rotation.x = -Math.PI * 0.38;
   dustBag.position.set(0, 0.27, 0.16);
   sawGroup.add(dustBag);
+
+  const dustNozzle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.024, 0.05, 12),
+    dewaltBlackMat
+  );
+  dustNozzle.rotation.x = -Math.PI * 0.38;
+  dustNozzle.position.set(0, 0.24, 0.09);
+  sawGroup.add(dustNozzle);
 
   // C. DeWALT DW752 Heavy-Duty Twin-Wheel Bench Grinder (`x = -0.22m, z = -0.06m`)
   const grinderGroup = new THREE.Group();
@@ -2623,15 +2794,30 @@ export function buildGarageToolBench(
   grinderPedestal.position.set(0, 0.021, 0);
   grinderGroup.add(grinderPedestal);
 
+  // Integrated front water quench tray + power toggle switch
+  const quenchTray = new THREE.Mesh(
+    new THREE.BoxGeometry(0.075, 0.024, 0.042),
+    castAluminumMat
+  );
+  quenchTray.position.set(0, 0.014, -0.092);
+  grinderGroup.add(quenchTray);
+
   const switchPlate = new THREE.Mesh(
     new THREE.BoxGeometry(0.052, 0.026, 0.012),
     dewaltYellowMat
   );
-  switchPlate.position.set(0, 0.022, -0.078);
+  switchPlate.position.set(0, 0.028, -0.076);
   grinderGroup.add(switchPlate);
 
+  const rockerButton = new THREE.Mesh(
+    new THREE.BoxGeometry(0.022, 0.014, 0.008),
+    redAccentMat
+  );
+  rockerButton.position.set(0, 0.028, -0.084);
+  grinderGroup.add(rockerButton);
+
   const grinderMotor = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.072, 0.072, 0.17, 18),
+    new THREE.CylinderGeometry(0.072, 0.072, 0.17, 20),
     dewaltYellowMat
   );
   grinderMotor.rotation.z = Math.PI / 2;
@@ -2639,16 +2825,27 @@ export function buildGarageToolBench(
   grinderMotor.castShadow = true;
   grinderGroup.add(grinderMotor);
 
+  // Cast cooling fins around the induction motor barrel
+  for (const fx of [-0.055, -0.035, 0.035, 0.055] as const) {
+    const coolingFin = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.075, 0.075, 0.006, 20),
+      dewaltBlackMat
+    );
+    coolingFin.rotation.z = Math.PI / 2;
+    coolingFin.position.set(fx, 0.12, 0);
+    grinderGroup.add(coolingFin);
+  }
+
   const grinderBadge = new THREE.Mesh(
     new THREE.PlaneGeometry(0.088, 0.034),
     dewaltBadgeMat
   );
-  grinderBadge.position.set(0, 0.125, -0.073);
+  grinderBadge.position.set(0, 0.125, -0.074);
   grinderGroup.add(grinderBadge);
 
   for (const sideX of [-1, 1] as const) {
     const wheelGuard = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.098, 0.098, 0.044, 20),
+      new THREE.CylinderGeometry(0.098, 0.098, 0.044, 22),
       dewaltBlackMat
     );
     wheelGuard.rotation.z = Math.PI / 2;
@@ -2657,26 +2854,41 @@ export function buildGarageToolBench(
     grinderGroup.add(wheelGuard);
 
     const abrasiveWheel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.085, 0.085, 0.028, 20),
-      aluminumTrimMat
+      new THREE.CylinderGeometry(0.085, 0.085, 0.028, 22),
+      sideX < 0 ? aluminumTrimMat : castAluminumMat
     );
     abrasiveWheel.rotation.z = Math.PI / 2;
     abrasiveWheel.position.set(sideX * 0.13, 0.12, -0.014);
     grinderGroup.add(abrasiveWheel);
 
     const toolRest = new THREE.Mesh(
-      new THREE.BoxGeometry(0.038, 0.008, 0.045),
-      aluminumTrimMat
+      new THREE.BoxGeometry(0.042, 0.008, 0.048),
+      castAluminumMat
     );
     toolRest.position.set(sideX * 0.13, 0.085, -0.095);
     grinderGroup.add(toolRest);
 
+    const sparkArrestor = new THREE.Mesh(
+      new THREE.BoxGeometry(0.038, 0.022, 0.018),
+      dewaltYellowMat
+    );
+    sparkArrestor.position.set(sideX * 0.13, 0.175, -0.068);
+    grinderGroup.add(sparkArrestor);
+
+    const shieldBracket = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.004, 0.004, 0.045, 8),
+      hssSteelBitMat
+    );
+    shieldBracket.rotation.x = 0.4;
+    shieldBracket.position.set(sideX * 0.13, 0.185, -0.075);
+    grinderGroup.add(shieldBracket);
+
     const eyeShield = new THREE.Mesh(
-      new THREE.BoxGeometry(0.056, 0.048, 0.006),
+      new THREE.BoxGeometry(0.062, 0.052, 0.006),
       clearShieldMat
     );
     eyeShield.rotation.x = -0.35;
-    eyeShield.position.set(sideX * 0.13, 0.195, -0.085);
+    eyeShield.position.set(sideX * 0.13, 0.198, -0.088);
     grinderGroup.add(eyeShield);
   }
 
@@ -2692,7 +2904,7 @@ export function buildGarageToolBench(
   grinderSanderGroup.add(agUnit);
 
   const agBody = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.028, 0.03, 0.19, 14),
+    new THREE.CylinderGeometry(0.028, 0.03, 0.19, 16),
     dewaltYellowMat
   );
   agBody.rotation.z = Math.PI / 2;
@@ -2700,8 +2912,23 @@ export function buildGarageToolBench(
   agBody.castShadow = true;
   agUnit.add(agBody);
 
+  const agPaddleSwitch = new THREE.Mesh(
+    new THREE.BoxGeometry(0.075, 0.01, 0.018),
+    dewaltBlackMat
+  );
+  agPaddleSwitch.position.set(0.02, 0.022, 0);
+  agUnit.add(agPaddleSwitch);
+
+  const agBadge = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.072, 0.022),
+    dewaltBadgeMat
+  );
+  agBadge.rotation.x = -Math.PI / 2;
+  agBadge.position.set(0, 0.076, 0);
+  agUnit.add(agBadge);
+
   const agTailGrip = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.026, 0.024, 0.08, 14),
+    new THREE.CylinderGeometry(0.026, 0.024, 0.08, 16),
     dewaltBlackMat
   );
   agTailGrip.rotation.z = Math.PI / 2;
@@ -2709,28 +2936,42 @@ export function buildGarageToolBench(
   agUnit.add(agTailGrip);
 
   const agGearHead = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.034, 0.036, 0.052, 14),
+    new THREE.CylinderGeometry(0.034, 0.036, 0.052, 16),
     castAluminumMat
   );
   agGearHead.position.set(-0.105, 0.046, 0);
   agUnit.add(agGearHead);
 
+  const spindleLockButton = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.007, 0.007, 0.01, 10),
+    redAccentMat
+  );
+  spindleLockButton.position.set(-0.105, 0.075, 0);
+  agUnit.add(spindleLockButton);
+
   const agGuard = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.068, 0.068, 0.018, 18, 1, false, 0, Math.PI * 1.1),
+    new THREE.CylinderGeometry(0.068, 0.068, 0.018, 20, 1, false, 0, Math.PI * 1.1),
     dewaltBlackMat
   );
   agGuard.position.set(-0.105, 0.022, 0);
   agUnit.add(agGuard);
 
   const agDisc = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.062, 0.062, 0.004, 20),
-    anthraciteSteelMat
+    new THREE.CylinderGeometry(0.062, 0.062, 0.004, 24),
+    hssSteelBitMat
   );
   agDisc.position.set(-0.105, 0.018, 0);
   agUnit.add(agDisc);
 
+  const agLockNut = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.016, 0.016, 0.008, 14),
+    dewaltBlackMat
+  );
+  agLockNut.position.set(-0.105, 0.015, 0);
+  agUnit.add(agLockNut);
+
   const agSideHandle = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.014, 0.011, 0.11, 10),
+    new THREE.CylinderGeometry(0.014, 0.011, 0.11, 12),
     dewaltBlackMat
   );
   agSideHandle.rotation.x = Math.PI / 2;
@@ -2743,14 +2984,21 @@ export function buildGarageToolBench(
   grinderSanderGroup.add(sanderUnit);
 
   const sandingPad = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.062, 0.062, 0.014, 18),
+    new THREE.CylinderGeometry(0.062, 0.062, 0.014, 22),
     dewaltBlackMat
   );
   sandingPad.position.set(0, 0.007, 0);
   sanderUnit.add(sandingPad);
 
+  const sandingDisc = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.061, 0.061, 0.003, 22),
+    redAccentMat
+  );
+  sandingDisc.position.set(0, 0.0015, 0);
+  sanderUnit.add(sandingDisc);
+
   const sanderHousing = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.042, 0.052, 0.088, 16),
+    new THREE.CylinderGeometry(0.042, 0.052, 0.088, 18),
     dewaltYellowMat
   );
   sanderHousing.position.set(0, 0.058, 0);
@@ -2758,26 +3006,44 @@ export function buildGarageToolBench(
   sanderUnit.add(sanderHousing);
 
   const sanderPalmCap = new THREE.Mesh(
-    new THREE.SphereGeometry(0.043, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
+    new THREE.SphereGeometry(0.043, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
     dewaltBlackMat
   );
   sanderPalmCap.position.set(0, 0.098, 0);
   sanderUnit.add(sanderPalmCap);
 
+  // Dust collection canister & filter bag at rear of random orbit sander
+  const sanderDustBox = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.026, 0.028, 0.085, 14),
+    dewaltBlackMat
+  );
+  sanderDustBox.rotation.x = Math.PI / 2;
+  sanderDustBox.position.set(0, 0.032, -0.072);
+  sanderUnit.add(sanderDustBox);
+
   const sanderBattery = new THREE.Mesh(
-    new THREE.BoxGeometry(0.068, 0.046, 0.085),
-    dewaltYellowMat
+    new THREE.BoxGeometry(0.068, 0.042, 0.085),
+    dewaltBlackMat
   );
   sanderBattery.position.set(0, 0.052, 0.062);
   sanderUnit.add(sanderBattery);
 
-  // E. DeWALT DCB132 Dual-Port 18V XR Charger + DeWALT DCD996 Hammer Drill, DCF887 Impact Driver & TSTAK Case
-  //    Placed on the East end of the South Return Wing worktop (`sx = +0.58m`)
+  const sanderBattCap = new THREE.Mesh(
+    new THREE.BoxGeometry(0.066, 0.016, 0.082),
+    dewaltYellowMat
+  );
+  sanderBattCap.position.set(0, 0.078, 0.062);
+  sanderUnit.add(sanderBattCap);
+
+  // E. High-LOD DeWALT DCB132 Dual-Port 18V XR Charger + DeWALT DCD996 Brushless Hammer Drill,
+  //    DCF887 Brushless Impact Driver & TSTAK Case (`outbuildings.garage.toolBench.cordlessDrills`)
+  //    Issue #2 ("Improve the mesh of the powertools" at `[-13.835, 0.466, 18.605]`):
   const drillsGroup = new THREE.Group();
   drillsGroup.name = 'outbuildings.garage.toolBench.cordlessDrills';
   drillsGroup.position.set(0.58, worktopY, -0.06);
   southWingGroup.add(drillsGroup);
 
+  // 1. DeWALT TSTAK Heavy-Duty Interlocking Kit Box (`x = 0.12m, z = 0.16m`)
   const tstakCase = new THREE.Mesh(
     new THREE.BoxGeometry(0.32, 0.135, 0.22),
     dewaltBlackMat
@@ -2787,19 +3053,55 @@ export function buildGarageToolBench(
   drillsGroup.add(tstakCase);
 
   const tstakLidAccent = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, 0.016, 0.18),
+    new THREE.BoxGeometry(0.29, 0.016, 0.19),
     dewaltYellowMat
   );
   tstakLidAccent.position.set(0.12, 0.138, 0.16);
   drillsGroup.add(tstakLidAccent);
 
+  // Top interlocking stacking ribs & recessed clear organizer compartments on TSTAK lid
+  for (const rx of [0.01, 0.12, 0.23] as const) {
+    const lidRib = new THREE.Mesh(
+      new THREE.BoxGeometry(0.018, 0.008, 0.175),
+      dewaltBlackMat
+    );
+    lidRib.position.set(rx, 0.148, 0.16);
+    drillsGroup.add(lidRib);
+  }
+
+  // Twin yellow heavy-duty folding front metal/polymer latches + bi-material carry handle
+  for (const lx of [0.03, 0.21] as const) {
+    const frontLatch = new THREE.Mesh(
+      new THREE.BoxGeometry(0.032, 0.044, 0.014),
+      dewaltYellowMat
+    );
+    frontLatch.position.set(lx, 0.105, 0.048);
+    drillsGroup.add(frontLatch);
+
+    const sideClip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.014, 0.048, 0.042),
+      dewaltYellowMat
+    );
+    sideClip.position.set(lx < 0.12 ? -0.044 : 0.284, 0.072, 0.16);
+    drillsGroup.add(sideClip);
+  }
+
+  const tstakHandle = new THREE.Mesh(
+    new THREE.BoxGeometry(0.11, 0.022, 0.032),
+    dewaltYellowMat
+  );
+  tstakHandle.position.set(0.12, 0.072, 0.036);
+  drillsGroup.add(tstakHandle);
+
   const tstakBadge = new THREE.Mesh(
     new THREE.PlaneGeometry(0.14, 0.05),
     dewaltBadgeMat
   );
-  tstakBadge.position.set(0.12, 0.072, 0.049);
+  tstakBadge.rotation.x = -Math.PI / 2;
+  tstakBadge.position.set(0.12, 0.153, 0.16);
   drillsGroup.add(tstakBadge);
 
+  // 2. DeWALT DCB132 Dual-Port 18V XR Fast Charger (`x = -0.18m, z = 0.13m`)
   const chargerDock = new THREE.Mesh(
     new THREE.BoxGeometry(0.24, 0.058, 0.165),
     dewaltBlackMat
@@ -2809,11 +3111,19 @@ export function buildGarageToolBench(
   drillsGroup.add(chargerDock);
 
   const chargerYellowTrim = new THREE.Mesh(
-    new THREE.BoxGeometry(0.242, 0.014, 0.04),
+    new THREE.BoxGeometry(0.242, 0.016, 0.044),
     dewaltYellowMat
   );
-  chargerYellowTrim.position.set(-0.18, 0.048, 0.065);
+  chargerYellowTrim.position.set(-0.18, 0.05, 0.065);
   drillsGroup.add(chargerYellowTrim);
+
+  const chargerFrontBadge = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.095, 0.028),
+    dewaltBadgeMat
+  );
+  chargerFrontBadge.rotation.x = -Math.PI * 0.35;
+  chargerFrontBadge.position.set(-0.18, 0.059, 0.065);
+  drillsGroup.add(chargerFrontBadge);
 
   for (const bx of [-0.235, -0.125]) {
     const batteryBase = new THREE.Mesh(
@@ -2830,100 +3140,319 @@ export function buildGarageToolBench(
     batteryCap.position.set(bx, 0.096, 0.125);
     drillsGroup.add(batteryCap);
 
+    const redRelease = new THREE.Mesh(
+      new THREE.BoxGeometry(0.028, 0.012, 0.014),
+      redAccentMat
+    );
+    redRelease.position.set(bx, 0.092, 0.07);
+    drillsGroup.add(redRelease);
+
     const chargeLed = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, 0.006, 0.008),
+      new THREE.BoxGeometry(0.014, 0.006, 0.008),
       greenLedMat
     );
     chargeLed.position.set(bx, 0.059, 0.052);
     drillsGroup.add(chargeLed);
   }
 
+  // 3. Sculpted DeWALT DCD996 18V XR Brushless 3-Speed Hammer Drill (`dx = -0.08m`) &
+  //    DeWALT DCF887 18V XR Brushless 3-Speed Impact Driver (`dx = +0.12m`)
   for (const [dx, dz, yaw, bodyLen, isHammerDrill] of [
-    [-0.08, -0.08, -0.32, 0.185, true],
-    [0.12, -0.06, -0.52, 0.135, false],
+    [-0.08, -0.08, -0.32, 0.175, true],
+    [0.12, -0.06, -0.52, 0.128, false],
   ] as const) {
     const drillUnit = new THREE.Group();
+    drillUnit.name = isHammerDrill
+      ? 'outbuildings.garage.toolBench.cordlessDrills.hammerDrill'
+      : 'outbuildings.garage.toolBench.cordlessDrills.impactDriver';
     drillUnit.position.set(dx, 0, dz);
     drillUnit.rotation.y = yaw;
     drillsGroup.add(drillUnit);
 
-    const battBlack = new THREE.Mesh(
-      new THREE.BoxGeometry(0.078, 0.036, 0.118),
+    // 3A. Multi-Part 18V 5.0Ah XR Li-Ion Slide Battery Pack (`y = 0..0.062m`)
+    const battFootBumper = new THREE.Mesh(
+      new THREE.BoxGeometry(0.082, 0.012, 0.124),
       dewaltBlackMat
     );
-    battBlack.position.set(0, 0.018, 0);
-    battBlack.castShadow = true;
-    drillUnit.add(battBlack);
+    battFootBumper.position.set(0, 0.006, 0);
+    battFootBumper.castShadow = true;
+    drillUnit.add(battFootBumper);
 
-    const battYellow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.076, 0.018, 0.114),
+    const battBlackCore = new THREE.Mesh(
+      new THREE.BoxGeometry(0.078, 0.032, 0.118),
+      dewaltBlackMat
+    );
+    battBlackCore.position.set(0, 0.026, 0);
+    battBlackCore.castShadow = true;
+    drillUnit.add(battBlackCore);
+
+    // Left & right procedural `DeWALT 18V XR 5.0Ah` battery side decals
+    for (const sideX of [-1, 1] as const) {
+      const battDecal = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.104, 0.034),
+        dewaltBattDecalMat
+      );
+      battDecal.rotation.y = sideX * (Math.PI / 2);
+      battDecal.position.set(sideX * 0.0395, 0.028, 0);
+      drillUnit.add(battDecal);
+    }
+
+    const battYellowRail = new THREE.Mesh(
+      new THREE.BoxGeometry(0.076, 0.018, 0.112),
       dewaltYellowMat
     );
-    battYellow.position.set(0, 0.045, 0);
-    drillUnit.add(battYellow);
+    battYellowRail.position.set(0, 0.051, 0);
+    drillUnit.add(battYellowRail);
 
+    // Red spring-loaded battery release latch button at front of pack (`-z`)
+    const battReleaseLatch = new THREE.Mesh(
+      new THREE.BoxGeometry(0.032, 0.014, 0.016),
+      redAccentMat
+    );
+    battReleaseLatch.position.set(0, 0.048, -0.054);
+    drillUnit.add(battReleaseLatch);
+
+    // Rear 3-LED green state-of-charge fuel gauge on back of battery (`+z`)
+    for (const lx of [-0.012, 0, 0.012] as const) {
+      const socLed = new THREE.Mesh(
+        new THREE.BoxGeometry(0.007, 0.005, 0.004),
+        greenLedMat
+      );
+      socLed.position.set(lx, 0.028, 0.059);
+      drillUnit.add(socLed);
+    }
+
+    // Tool foot base flare + stainless steel belt hook + magnetic bit holder
+    const footFlare = new THREE.Mesh(
+      new THREE.BoxGeometry(0.058, 0.022, 0.088),
+      dewaltYellowMat
+    );
+    footFlare.position.set(0, 0.068, 0.005);
+    drillUnit.add(footFlare);
+
+    const beltHook = new THREE.Mesh(
+      new THREE.BoxGeometry(0.008, 0.028, 0.046),
+      hssSteelBitMat
+    );
+    beltHook.position.set(-0.034, 0.064, 0.005);
+    drillUnit.add(beltHook);
+
+    // 3B. Ergonomic Contoured Pistol Grip with TPE Rubber Overmold Ribs & Variable-Speed Trigger
     const grip = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.019, 0.022, 0.13, 12),
+      new THREE.CylinderGeometry(0.019, 0.022, 0.125, 16),
       dewaltYellowMat
     );
-    grip.position.set(0, 0.112, 0.01);
+    grip.position.set(0, 0.122, 0.012);
     grip.rotation.x = -0.18;
     grip.castShadow = true;
     drillUnit.add(grip);
 
-    const gripRubber = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.02, 0.023, 0.085, 12),
+    const gripRubberBack = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0205, 0.0235, 0.092, 16),
       dewaltBlackMat
     );
-    gripRubber.position.set(0, 0.112, 0.014);
-    gripRubber.rotation.x = -0.18;
-    drillUnit.add(gripRubber);
+    gripRubberBack.position.set(0, 0.122, 0.016);
+    gripRubberBack.rotation.x = -0.18;
+    drillUnit.add(gripRubberBack);
 
+    // 5 tactile horizontal black TPE grip ribs along the handle
+    for (let r = 0; r < 5; r++) {
+      const ribY = 0.09 + r * 0.016;
+      const gripRib = new THREE.Mesh(
+        new THREE.TorusGeometry(0.021, 0.0025, 8, 16),
+        dewaltBlackMat
+      );
+      gripRib.rotation.x = Math.PI / 2 - 0.18;
+      gripRib.position.set(0, ribY, 0.018 - (ribY - 0.122) * 0.18);
+      drillUnit.add(gripRib);
+    }
+
+    // Variable-speed curved index trigger + red forward/reverse push-bar
+    const triggerSwitch = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, 0.028, 0.022),
+      dewaltBlackMat
+    );
+    triggerSwitch.position.set(0, 0.154, -0.012);
+    triggerSwitch.rotation.x = 0.22;
+    drillUnit.add(triggerSwitch);
+
+    const fwdRevSwitch = new THREE.Mesh(
+      new THREE.BoxGeometry(0.044, 0.009, 0.012),
+      redAccentMat
+    );
+    fwdRevSwitch.position.set(0, 0.172, -0.004);
+    drillUnit.add(fwdRevSwitch);
+
+    // 3C. Sculpted Brushless Motor Barrel Housing, Cooling Vents, Side Badges & Top Speed Selector
+    const barrelY = 0.202;
+    const barrelZ = -0.008;
     const barrel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.034, 0.034, bodyLen, 16),
+      new THREE.CylinderGeometry(0.034, 0.034, bodyLen, 20),
       dewaltYellowMat
     );
+    barrel.name = 'outbuildings.garage.toolBench.cordlessDrills';
     barrel.rotation.x = Math.PI / 2;
-    barrel.position.set(0, 0.192, -0.01);
+    barrel.position.set(0, barrelY, barrelZ);
     barrel.castShadow = true;
     drillUnit.add(barrel);
 
+    // Side DeWALT badges & 4 recessed black motor cooling gill slots on each side of the barrel
+    for (const sideX of [-1, 1] as const) {
+      const sideBadge = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.068, 0.024),
+        dewaltBadgeMat
+      );
+      sideBadge.rotation.y = sideX * (Math.PI / 2);
+      sideBadge.position.set(sideX * 0.0345, barrelY + 0.004, barrelZ - 0.01);
+      drillUnit.add(sideBadge);
+
+      for (let v = 0; v < 4; v++) {
+        const gill = new THREE.Mesh(
+          new THREE.BoxGeometry(0.004, 0.022, 0.006),
+          dewaltBlackMat
+        );
+        gill.position.set(
+          sideX * 0.033,
+          barrelY,
+          barrelZ + bodyLen * 0.22 + v * 0.011
+        );
+        gill.rotation.x = 0.25;
+        drillUnit.add(gill);
+      }
+    }
+
+    // Top red 3-speed mechanical slide switch
+    const speedSelector = new THREE.Mesh(
+      new THREE.BoxGeometry(0.018, 0.008, 0.032),
+      redAccentMat
+    );
+    speedSelector.position.set(0, barrelY + 0.034, barrelZ - 0.01);
+    drillUnit.add(speedSelector);
+
+    // Sculpted rear black rubber overmold endcap dome
     const rearCap = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.032, 0.028, 0.028, 16),
+      new THREE.CylinderGeometry(0.031, 0.034, 0.026, 20),
       dewaltBlackMat
     );
     rearCap.rotation.x = Math.PI / 2;
-    rearCap.position.set(0, 0.192, -0.01 + bodyLen * 0.5 + 0.012);
+    rearCap.position.set(0, barrelY, barrelZ + bodyLen * 0.5 + 0.012);
     drillUnit.add(rearCap);
 
-    const noseCone = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.024, 0.032, 0.032, 14),
-      castAluminumMat
-    );
-    noseCone.rotation.x = Math.PI / 2;
-    noseCone.position.set(0, 0.192, -0.01 - bodyLen * 0.5 - 0.014);
-    drillUnit.add(noseCone);
-
-    const chuck = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.014, 0.022, isHammerDrill ? 0.048 : 0.028, 12),
+    const rearDome = new THREE.Mesh(
+      new THREE.SphereGeometry(0.031, 16, 12),
       dewaltBlackMat
     );
-    chuck.rotation.x = Math.PI / 2;
-    chuck.position.set(
-      0,
-      0.192,
-      -0.01 - bodyLen * 0.5 - (isHammerDrill ? 0.048 : 0.036)
-    );
-    drillUnit.add(chuck);
+    rearDome.scale.set(1, 1, 0.45);
+    rearDome.position.set(0, barrelY, barrelZ + bodyLen * 0.5 + 0.024);
+    drillUnit.add(rearDome);
 
     if (isHammerDrill) {
+      // 3D-A. DeWALT DCD996 Hammer Drill: Torque-Clutch Collar, 2-Stage Metal Gearbox, Keyless Chuck & HSS Twist Drill Bit
+      const clutchCollar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.031, 0.033, 0.026, 18),
+        dewaltBlackMat
+      );
+      clutchCollar.rotation.x = Math.PI / 2;
+      clutchCollar.position.set(0, barrelY, barrelZ - bodyLen * 0.5 - 0.012);
+      drillUnit.add(clutchCollar);
+
+      const gearCaseNose = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.024, 0.029, 0.028, 18),
+        castAluminumMat
+      );
+      gearCaseNose.rotation.x = Math.PI / 2;
+      gearCaseNose.position.set(0, barrelY, barrelZ - bodyLen * 0.5 - 0.038);
+      drillUnit.add(gearCaseNose);
+
+      const keylessChuck = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.015, 0.022, 0.044, 16),
+        dewaltBlackMat
+      );
+      keylessChuck.rotation.x = Math.PI / 2;
+      keylessChuck.position.set(0, barrelY, barrelZ - bodyLen * 0.5 - 0.072);
+      drillUnit.add(keylessChuck);
+
+      const chuckFrontRing = new THREE.Mesh(
+        new THREE.TorusGeometry(0.0155, 0.0022, 8, 16),
+        redAccentMat
+      );
+      chuckFrontRing.position.set(0, barrelY, barrelZ - bodyLen * 0.5 - 0.092);
+      drillUnit.add(chuckFrontRing);
+
+      // Helical HSS twist drill bit (`r = 0.0035m, len = 0.078m`) protruding from chuck jaws
+      const twistBit = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0032, 0.0035, 0.078, 10),
+        hssSteelBitMat
+      );
+      twistBit.rotation.x = Math.PI / 2;
+      twistBit.position.set(0, barrelY, barrelZ - bodyLen * 0.5 - 0.13);
+      drillUnit.add(twistBit);
+
+      // Side 360° auxiliary handle with clamp collar
+      const auxCollar = new THREE.Mesh(
+        new THREE.TorusGeometry(0.028, 0.005, 10, 18),
+        dewaltBlackMat
+      );
+      auxCollar.position.set(0, barrelY, barrelZ - bodyLen * 0.5 - 0.032);
+      drillUnit.add(auxCollar);
+
       const auxHandle = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.013, 0.011, 0.12, 10),
+        new THREE.CylinderGeometry(0.014, 0.012, 0.125, 12),
         dewaltBlackMat
       );
       auxHandle.rotation.z = Math.PI / 2;
-      auxHandle.position.set(-0.075, 0.192, -0.01 - bodyLen * 0.5 - 0.012);
+      auxHandle.position.set(-0.082, barrelY, barrelZ - bodyLen * 0.5 - 0.032);
       drillUnit.add(auxHandle);
+
+      const auxEndCap = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.015, 0.015, 0.014, 12),
+        dewaltYellowMat
+      );
+      auxEndCap.rotation.z = Math.PI / 2;
+      auxEndCap.position.set(-0.148, barrelY, barrelZ - bodyLen * 0.5 - 0.032);
+      drillUnit.add(auxEndCap);
+    } else {
+      // 3D-B. DeWALT DCF887 Impact Driver: Cast-Aluminium Anvil Nose, Tri-LED Halo Ring, 1/4" Hex Collet & PZ2 Torsion Bit
+      const impactNose = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.022, 0.032, 0.034, 16),
+        castAluminumMat
+      );
+      impactNose.rotation.x = Math.PI / 2;
+      impactNose.position.set(0, barrelY, barrelZ - bodyLen * 0.5 - 0.016);
+      drillUnit.add(impactNose);
+
+      // Tri-LED worklight halo ring on front of impact nose
+      const triLedHalo = new THREE.Mesh(
+        new THREE.TorusGeometry(0.018, 0.003, 8, 16),
+        worklightLedMat
+      );
+      triLedHalo.position.set(0, barrelY, barrelZ - bodyLen * 0.5 - 0.033);
+      drillUnit.add(triLedHalo);
+
+      const hexCollet = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.011, 0.013, 0.022, 12),
+        dewaltBlackMat
+      );
+      hexCollet.rotation.x = Math.PI / 2;
+      hexCollet.position.set(0, barrelY, barrelZ - bodyLen * 0.5 - 0.042);
+      drillUnit.add(hexCollet);
+
+      // Black-oxide PZ2 torsion driver bit with yellow torsion band
+      const pz2Bit = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0028, 0.0032, 0.05, 6),
+        blackOxideBitMat
+      );
+      pz2Bit.rotation.x = Math.PI / 2;
+      pz2Bit.position.set(0, barrelY, barrelZ - bodyLen * 0.5 - 0.072);
+      drillUnit.add(pz2Bit);
+
+      const torsionBand = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0036, 0.0036, 0.012, 10),
+        dewaltYellowMat
+      );
+      torsionBand.rotation.x = Math.PI / 2;
+      torsionBand.position.set(0, barrelY, barrelZ - bodyLen * 0.5 - 0.068);
+      drillUnit.add(torsionBand);
     }
   }
 
@@ -4492,6 +5021,250 @@ export function buildBarnGolfSimulator(
   putterHeadcover.position.set(-0.105, 1.005, 0.012);
   putterHeadcover.castShadow = true;
   bagTiltGroup.add(putterHeadcover);
+
+  // ---------------------------------------------------------------------------
+  // Issue #7 ("computer monitor for golf sim here" at `[-5.071, 0.365, 19.955]`,
+  // Surface Normal `[-0.086, 0, -0.996]` -> Outbuilding `(u = 17.00m, y = 0.365m, v = 5.429m)`):
+  // Wall-Mounted TrackMan Golf Simulator Control Computer Monitor & Console (`outbuildings.barn.golfSimulator.controlMonitor`)
+  // mounted on the interior North-facing (`-z`) face of the Barn South Wall (`v = 5.415m`) right next to the Golf Simulator bay!
+  // ---------------------------------------------------------------------------
+  const controlGroup = new THREE.Group();
+  controlGroup.name = 'outbuildings.barn.golfSimulator.controlMonitor';
+  controlGroup.position.set(17.0, 0, 5.415);
+  controlGroup.rotation.y = Math.PI; // Local `+z` projects North (`-v`) into the Barn!
+  groundGroup.add(controlGroup);
+
+  const consoleOakMat = new THREE.MeshStandardMaterial({
+    color: 0xb88958,
+    roughness: 0.42,
+    metalness: 0.04,
+  });
+  const consoleAnthraciteMat = new THREE.MeshStandardMaterial({
+    color: 0x1e2228,
+    roughness: 0.34,
+    metalness: 0.52,
+  });
+  const consoleAluminumMat = new THREE.MeshStandardMaterial({
+    color: 0xd0d6de,
+    roughness: 0.24,
+    metalness: 0.86,
+  });
+
+  // 1. Floating Solid-Oak & Matte-Anthracite Control Console Shelf at `y = 0.365m` (exact hit elevation!)
+  const shelfY = 0.365;
+  const shelfW = 0.72;
+  const shelfH = 0.032;
+  const shelfD = 0.28;
+
+  const consoleShelf = new THREE.Mesh(
+    new THREE.BoxGeometry(shelfW, shelfH, shelfD),
+    consoleOakMat
+  );
+  consoleShelf.name = 'outbuildings.barn.golfSimulator.controlMonitor.shelf';
+  consoleShelf.position.set(0, shelfY, shelfD * 0.5);
+  consoleShelf.castShadow = true;
+  consoleShelf.receiveShadow = true;
+  controlGroup.add(consoleShelf);
+
+  const shelfFrontTrim = new THREE.Mesh(
+    new THREE.BoxGeometry(shelfW + 0.004, 0.01, 0.008),
+    consoleAnthraciteMat
+  );
+  shelfFrontTrim.position.set(0, shelfY, shelfD + 0.002);
+  controlGroup.add(shelfFrontTrim);
+
+  // Concealed steel wall brackets supporting the floating console shelf
+  for (const bx of [-0.26, 0.26] as const) {
+    const bracket = new THREE.Mesh(
+      new THREE.BoxGeometry(0.028, 0.11, 0.22),
+      consoleAnthraciteMat
+    );
+    bracket.position.set(bx, shelfY - 0.068, 0.11);
+    controlGroup.add(bracket);
+  }
+
+  // Dark micro-woven desk mat + Wireless Mechanical Keyboard + Precision Mouse + Brushed-Aluminium TrackMan Control Dial Puck
+  const deskPad = new THREE.Mesh(
+    new THREE.BoxGeometry(0.58, 0.004, 0.21),
+    velvetFrameMat
+  );
+  deskPad.position.set(0, shelfY + shelfH * 0.5 + 0.002, 0.145);
+  controlGroup.add(deskPad);
+
+  const kbChassis = new THREE.Mesh(
+    new THREE.BoxGeometry(0.32, 0.012, 0.115),
+    consoleAluminumMat
+  );
+  kbChassis.position.set(-0.08, shelfY + shelfH * 0.5 + 0.01, 0.145);
+  kbChassis.rotation.x = 0.06;
+  kbChassis.castShadow = true;
+  controlGroup.add(kbChassis);
+
+  for (let row = 0; row < 5; row++) {
+    const keyRow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.295, 0.005, 0.014),
+      consoleAnthraciteMat
+    );
+    keyRow.position.set(
+      -0.08,
+      shelfY + shelfH * 0.5 + 0.017,
+      0.105 + row * 0.02
+    );
+    controlGroup.add(keyRow);
+  }
+
+  const simMouse = new THREE.Mesh(
+    new THREE.BoxGeometry(0.058, 0.022, 0.098),
+    consoleAnthraciteMat
+  );
+  simMouse.position.set(0.16, shelfY + shelfH * 0.5 + 0.014, 0.145);
+  simMouse.castShadow = true;
+  controlGroup.add(simMouse);
+
+  const rotaryPuck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.028, 0.03, 0.018, 20),
+    consoleAluminumMat
+  );
+  rotaryPuck.position.set(-0.29, shelfY + shelfH * 0.5 + 0.011, 0.145);
+  controlGroup.add(rotaryPuck);
+
+  const rotaryRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.028, 0.003, 8, 20),
+    trackManOrangeMat
+  );
+  rotaryRing.rotation.x = Math.PI / 2;
+  rotaryRing.position.set(-0.29, shelfY + shelfH * 0.5 + 0.019, 0.145);
+  controlGroup.add(rotaryRing);
+
+  // 2. Compact Matte-Black Custom Sim PC / TrackMan Processing Unit mounted on wall cradle below shelf (`y = 0.08..0.30m`)
+  const pcChassis = new THREE.Mesh(
+    new THREE.BoxGeometry(0.32, 0.22, 0.115),
+    consoleAnthraciteMat
+  );
+  pcChassis.name = 'outbuildings.barn.golfSimulator.controlMonitor.pcUnit';
+  pcChassis.position.set(0, 0.18, 0.068);
+  pcChassis.castShadow = true;
+  controlGroup.add(pcChassis);
+
+  const pcOrangeStrip = new THREE.Mesh(
+    new THREE.BoxGeometry(0.28, 0.008, 0.006),
+    trackManOrangeMat
+  );
+  pcOrangeStrip.position.set(0, 0.24, 0.127);
+  controlGroup.add(pcOrangeStrip);
+
+  // Braided HDMI / Cat6 cable management conduit rising from shelf to monitor
+  const cableConduit = new THREE.Mesh(
+    new THREE.BoxGeometry(0.036, 0.34, 0.016),
+    consoleAnthraciteMat
+  );
+  cableConduit.position.set(0, 0.51, 0.008);
+  controlGroup.add(cableConduit);
+
+  // 3. Articulated Heavy-Duty VESA Wall Arm & 27-Inch 16:9 Touchscreen Control Monitor (`y = 0.68m`, `0.62m W x 0.36m H`)
+  const tmCtrlCanvas = document.createElement('canvas');
+  tmCtrlCanvas.width = 512;
+  tmCtrlCanvas.height = 288;
+  const tmCtx = tmCtrlCanvas.getContext('2d');
+  if (tmCtx) {
+    const bg = tmCtx.createLinearGradient(0, 0, 0, 288);
+    bg.addColorStop(0, '#0f1722');
+    bg.addColorStop(1, '#182434');
+    tmCtx.fillStyle = bg;
+    tmCtx.fillRect(0, 0, 512, 288);
+
+    // TrackMan Orange Top Header Bar
+    tmCtx.fillStyle = '#ff6b00';
+    tmCtx.fillRect(0, 0, 512, 34);
+    tmCtx.fillStyle = '#ffffff';
+    tmCtx.font = 'bold 16px sans-serif';
+    tmCtx.fillText('TRACKMAN iO // SHOT ANALYSIS & COURSE CONTROL', 16, 23);
+
+    // Left 3D Fairway Dispersion & Trajectory View
+    tmCtx.fillStyle = '#1b3d28';
+    tmCtx.fillRect(14, 46, 268, 156);
+    tmCtx.strokeStyle = '#2e6b44';
+    tmCtx.lineWidth = 1.5;
+    tmCtx.strokeRect(14, 46, 268, 156);
+
+    // Tracer arc
+    tmCtx.strokeStyle = '#ff6b00';
+    tmCtx.lineWidth = 3.5;
+    tmCtx.beginPath();
+    tmCtx.moveTo(148, 194);
+    tmCtx.quadraticCurveTo(132, 62, 146, 76);
+    tmCtx.stroke();
+
+    // Right Telemetry Data Tiles
+    const metrics: ReadonlyArray<readonly [string, string, number, number]> = [
+      ['CLUB SPEED', '114.2 mph', 296, 46],
+      ['BALL SPEED', '169.8 mph', 404, 46],
+      ['SMASH FACTOR', '1.49', 296, 126],
+      ['LAUNCH ANGLE', '11.8 deg', 404, 126],
+      ['SPIN RATE', '2,380 rpm', 14, 212],
+      ['CARRY', '286.4 yds', 180, 212],
+      ['TOTAL', '308.1 yds', 346, 212],
+    ];
+    for (const [label, val, mx, my] of metrics) {
+      const tileW = my > 200 ? 152 : 96;
+      const tileH = 66;
+      tmCtx.fillStyle = '#1e2c3e';
+      tmCtx.fillRect(mx, my, tileW, tileH);
+      tmCtx.strokeStyle = '#324863';
+      tmCtx.lineWidth = 1.5;
+      tmCtx.strokeRect(mx, my, tileW, tileH);
+      tmCtx.fillStyle = '#90a4ae';
+      tmCtx.font = 'bold 10px sans-serif';
+      tmCtx.fillText(label, mx + 8, my + 18);
+      tmCtx.fillStyle = '#ff9100';
+      tmCtx.font = 'bold 17px monospace';
+      tmCtx.fillText(val, mx + 8, my + 48);
+    }
+  }
+  const tmCtrlTex = new THREE.CanvasTexture(tmCtrlCanvas);
+  tmCtrlTex.colorSpace = THREE.SRGBColorSpace;
+
+  const monMountPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(0.14, 0.12, 0.016),
+    consoleAnthraciteMat
+  );
+  monMountPlate.position.set(0, 0.68, 0.008);
+  controlGroup.add(monMountPlate);
+
+  const monArm = new THREE.Mesh(
+    new THREE.BoxGeometry(0.045, 0.045, 0.085),
+    consoleAnthraciteMat
+  );
+  monArm.position.set(0, 0.68, 0.052);
+  controlGroup.add(monArm);
+
+  const monHeadGroup = new THREE.Group();
+  monHeadGroup.position.set(0, 0.68, 0.095);
+  monHeadGroup.rotation.x = -0.06; // Tilted slightly toward the standing player
+  controlGroup.add(monHeadGroup);
+
+  const monBezel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.62, 0.36, 0.022),
+    consoleAnthraciteMat
+  );
+  monBezel.name = 'outbuildings.barn.golfSimulator.controlMonitor';
+  monBezel.castShadow = true;
+  monHeadGroup.add(monBezel);
+
+  const monDisplay = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.596, 0.336),
+    new THREE.MeshStandardMaterial({
+      map: tmCtrlTex,
+      emissiveMap: tmCtrlTex,
+      emissive: new THREE.Color(0xffffff),
+      emissiveIntensity: 0.55,
+      roughness: 0.18,
+      metalness: 0.05,
+    })
+  );
+  monDisplay.name = 'outbuildings.barn.golfSimulator.controlMonitor.screen';
+  monDisplay.position.set(0, 0, 0.012);
+  monHeadGroup.add(monDisplay);
 }
 
 /**
@@ -5674,7 +6447,7 @@ export function buildGymTechnogymRunPersonal(
   // at `[-18.144, -0.392, 19.851]`, `outbuildings.gym.technogymRunPersonal.runningBelt`):
   // Moved closer to the South wall (`v = 4.32m`, tucking the front nose near `v = 5.30m`) and slightly to the right/West
   // (`u = 3.68m`), opening a wide, unobstructed 1.80m walkway to the Gym-to-Shower/Toilet Room door!
-  runGroup.position.set(3.68, gymFloorY, 4.32);
+  runGroup.position.set(3.88, gymFloorY, 4.32);
   runGroup.rotation.y = -0.0015;
   groundGroup.add(runGroup);
 
@@ -8008,14 +8781,51 @@ export function buildGarageShowerRoom(
 
   // ---------------------------------------------------------------------------
   // 4. Walk-In Wet-Room Shower Enclosure (`outbuildings.garage.showerRoom.shower`, `u = 7.92..8.80m, v = 3.97..5.43m`)
-  //    Right at Issue #1's hit point `(u = 8.74m, v = 4.56m)`!
+  //    Issue #1 ("Flip the shower entry around, improve the mesh of this toilet / shower fixture"
+  //    at `[-14.615, -0.064, 20.352]`, `outbuildings.garage.showerRoom.toilet.seat`):
+  //    - Flipped the frameless walk-in glass screen (`screenSpanV = 0.84m`), wall channel, floor channel,
+  //      and overhead stabilizer bar to the **South half (`z = -0.13m .. +0.71m`, anchored to the South wall
+  //      at `z = +halfD - 0.01 = +0.71m`)**, leaving the **North half (`z = -0.73m .. -0.13m`, `v = 3.97..4.57m`)**
+  //      wide open as the walk-in shower entry — directly aligned with the Gym door (`v = 4.18..4.94m`) and
+  //      completely clear of the Toilet (`u = 7.56m, v = 4.74..5.42m`)!
+  //    - Mirrored the deluge rainfall head, thermostatic mixer, and linear drain to the sheltered South zone
+  //      (`z = +0.22m`), with the adjustable hand-shower slide rail (`z = -0.04m`), catenary braided brass hose,
+  //      and recessed illuminated niche (`z = -0.32m`) with 3 amber apothecary pump bottles on the East wall.
   // ---------------------------------------------------------------------------
   const showerGroup = new THREE.Group();
   showerGroup.name = 'outbuildings.garage.showerRoom.shower';
   showerGroup.position.set(8.36, garageFloorTopY + 0.008, 4.7);
   roomGroup.add(showerGroup);
 
-  // Low-profile honed stone-resin wet-room tray (`0.86m x 1.44m`) + Brushed-Brass Linear Trench Drain
+  const halfD = 0.72;
+  const darkGunmetalMat = new THREE.MeshStandardMaterial({
+    color: 0x262a30,
+    roughness: 0.34,
+    metalness: 0.78,
+  });
+  const amberGlassMat = new THREE.MeshStandardMaterial({
+    color: 0x8d4014,
+    roughness: 0.14,
+    metalness: 0.08,
+    transparent: true,
+    opacity: 0.88,
+  });
+  const frostedHolderGlassMat = new THREE.MeshStandardMaterial({
+    color: 0xeef5f8,
+    roughness: 0.38,
+    metalness: 0.05,
+    transparent: true,
+    opacity: 0.78,
+  });
+  const waterSurfaceMat = new THREE.MeshStandardMaterial({
+    color: 0xd4eef7,
+    roughness: 0.06,
+    metalness: 0.12,
+    transparent: true,
+    opacity: 0.76,
+  });
+
+  // Low-profile honed stone-resin wet-room tray (`0.86m x 1.44m`)
   const showerTray = new THREE.Mesh(
     new THREE.BoxGeometry(0.86, 0.026, 1.44),
     ceramicWhiteMat
@@ -8025,108 +8835,301 @@ export function buildGarageShowerRoom(
   showerTray.receiveShadow = true;
   showerGroup.add(showerTray);
 
-  const linearDrain = new THREE.Mesh(
-    new THREE.BoxGeometry(0.065, 0.004, 1.18),
-    brushedBrassMat
-  );
-  linearDrain.position.set(0.32, 0.027, 0);
-  showerGroup.add(linearDrain);
-
-  // Frameless 10mm Low-Iron Toughened Glass Walk-In Shower Screen (`u = 7.92m, v = 3.98..4.82m`, height `2.00m`)
+  // Frameless 10mm Low-Iron Toughened Glass Walk-In Shower Screen anchored to the SOUTH Wall (`z = +0.71m`)
+  // Spans `z = -0.13m .. +0.71m` (centered at `z = +halfD - 0.01 - screenSpanV * 0.5 = +0.29m`),
+  // leaving the North half (`z = -0.73m .. -0.13m`) completely open as the walk-in entry!
   const screenSpanV = 0.84;
   const screenH = 2.0;
+  const screenCenterZ = halfD - 0.01 - screenSpanV * 0.5; // +0.29m
   const showerScreen = new THREE.Mesh(
     new THREE.BoxGeometry(0.012, screenH, screenSpanV),
     showerGlassMat
   );
-  showerScreen.name = 'outbuildings.garage.showerRoom.shower.glassScreen';
-  showerScreen.position.set(-0.43, screenH * 0.5 + 0.01, -0.72 + screenSpanV * 0.5);
+  showerScreen.name = 'outbuildings.garage.showerRoom.showerScreen';
+  showerScreen.position.set(-0.43, screenH * 0.5 + 0.01, screenCenterZ);
   showerGroup.add(showerScreen);
 
-  // Slim Brushed-Brass U-Channel Wall & Floor Profiles + Overhead Stabilizer Bar
+  // Slim Brushed-Brass U-Channel Wall Profile (on South wall `z = +halfD - 0.018`), Floor Profile & Overhead Support Bar (`z = -0.09m`)
   const wallChannel = new THREE.Mesh(
     new THREE.BoxGeometry(0.022, screenH, 0.022),
     brushedBrassMat
   );
-  wallChannel.position.set(-0.43, screenH * 0.5 + 0.01, -0.71);
+  wallChannel.name = 'outbuildings.garage.showerRoom.shower.glassScreen';
+  wallChannel.position.set(-0.43, screenH * 0.5 + 0.01, halfD - 0.018);
   showerGroup.add(wallChannel);
 
   const floorChannel = new THREE.Mesh(
     new THREE.BoxGeometry(0.022, 0.018, screenSpanV),
     brushedBrassMat
   );
-  floorChannel.position.set(-0.43, 0.015, -0.72 + screenSpanV * 0.5);
+  floorChannel.position.set(-0.43, 0.015, screenCenterZ);
   showerGroup.add(floorChannel);
 
   const supportArm = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.009, 0.009, 0.86, 12),
+    new THREE.CylinderGeometry(0.009, 0.009, 0.86, 14),
     brushedBrassMat
   );
   supportArm.rotation.z = Math.PI / 2;
-  supportArm.position.set(0, screenH - 0.04, -0.72 + screenSpanV - 0.04);
+  supportArm.position.set(0, screenH - 0.04, halfD - 0.01 - screenSpanV + 0.04);
   showerGroup.add(supportArm);
 
-  // Brushed-Brass Overhead 300mm Rainfall Shower Head + Ceiling/Wall Arm + Thermostatic Mixer & Hand Wand on East Wall (`+x = +0.43m`)
-  const showerArm = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.012, 0.012, 0.42, 14),
-    brushedBrassMat
-  );
-  showerArm.rotation.z = Math.PI / 2;
-  showerArm.position.set(0.22, 2.08, -0.18);
-  showerGroup.add(showerArm);
+  // High-LOD Brushed-Brass Shower Fixture Assembly (`outbuildings.garage.showerRoom.showerFixture`)
+  const showerFixtureGroup = new THREE.Group();
+  showerFixtureGroup.name = 'outbuildings.garage.showerRoom.showerFixture';
+  showerGroup.add(showerFixtureGroup);
 
-  const rainfallRose = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.15, 0.15, 0.014, 28),
+  // 4A. Slotted Brushed-Brass Linear Floor Drain Channel (`0.065m x 0.004m x 0.68m`) in the sheltered South zone (`z = +0.22m`)
+  const drainTrough = new THREE.Mesh(
+    new THREE.BoxGeometry(0.072, 0.004, 0.69),
+    darkGunmetalMat
+  );
+  drainTrough.position.set(0.32, 0.0265, 0.22);
+  showerFixtureGroup.add(drainTrough);
+
+  const linearDrain = new THREE.Mesh(
+    new THREE.BoxGeometry(0.058, 0.005, 0.67),
     brushedBrassMat
   );
-  rainfallRose.name = 'outbuildings.garage.showerRoom.shower.rainfallHead';
-  rainfallRose.position.set(0.02, 2.04, -0.18);
-  showerGroup.add(rainfallRose);
+  linearDrain.position.set(0.32, 0.028, 0.22);
+  showerFixtureGroup.add(linearDrain);
+
+  for (const sx of [-0.016, 0, 0.016] as const) {
+    const drainSlot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.005, 0.006, 0.62),
+      darkGunmetalMat
+    );
+    drainSlot.position.set(0.32 + sx, 0.0285, 0.22);
+    showerFixtureGroup.add(drainSlot);
+  }
+
+  // 4B. Concealed Thermostatic Mixer Valve Backplate, Knurled Dials & Diverter Button (`z = +0.22m`)
+  const mixerBezel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.008, 0.24, 0.12),
+    darkGunmetalMat
+  );
+  mixerBezel.position.set(0.431, 1.12, 0.22);
+  showerFixtureGroup.add(mixerBezel);
 
   const mixerPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.012, 0.22, 0.11),
+    new THREE.BoxGeometry(0.012, 0.225, 0.108),
     brushedBrassMat
   );
-  mixerPlate.position.set(0.428, 1.12, -0.18);
-  showerGroup.add(mixerPlate);
+  mixerPlate.position.set(0.427, 1.12, 0.22);
+  showerFixtureGroup.add(mixerPlate);
 
-  for (const dy of [-0.055, 0.055] as const) {
+  for (const dy of [-0.06, 0.06] as const) {
+    const indexRing = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.028, 0.028, 0.006, 20),
+      darkGunmetalMat
+    );
+    indexRing.rotation.z = Math.PI / 2;
+    indexRing.position.set(0.42, 1.12 + dy, 0.22);
+    showerFixtureGroup.add(indexRing);
+
     const dial = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.024, 0.024, 0.036, 16),
+      new THREE.CylinderGeometry(0.024, 0.024, 0.038, 20),
       brushedBrassMat
     );
     dial.rotation.z = Math.PI / 2;
-    dial.position.set(0.408, 1.12 + dy, -0.18);
-    showerGroup.add(dial);
+    dial.position.set(0.404, 1.12 + dy, 0.22);
+    showerFixtureGroup.add(dial);
+
+    const dialPin = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.004, 0.004, 0.026, 10),
+      brushedBrassMat
+    );
+    dialPin.position.set(0.396, 1.12 + dy + 0.022, 0.22);
+    showerFixtureGroup.add(dialPin);
   }
 
-  const riserRail = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.009, 0.009, 0.68, 12),
+  // Central push-button diverter between temperature and flow dials
+  const diverterButton = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.011, 0.011, 0.022, 16),
     brushedBrassMat
   );
-  riserRail.position.set(0.395, 1.38, 0.08);
-  showerGroup.add(riserRail);
+  diverterButton.rotation.z = Math.PI / 2;
+  diverterButton.position.set(0.414, 1.12, 0.22);
+  showerFixtureGroup.add(diverterButton);
+
+  // 4C. Exposed Vertical Brass Riser Pipe (`y = 1.12..2.06m, z = +0.22m`), Elbow & Overhead Deluge Arm
+  const riserPipe = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.011, 0.011, 0.94, 16),
+    brushedBrassMat
+  );
+  riserPipe.position.set(0.412, 1.59, 0.22);
+  showerFixtureGroup.add(riserPipe);
+
+  for (const wy of [1.34, 1.88] as const) {
+    const wallStandoff = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.008, 0.008, 0.036, 12),
+      brushedBrassMat
+    );
+    wallStandoff.rotation.z = Math.PI / 2;
+    wallStandoff.position.set(0.422, wy, 0.22);
+    showerFixtureGroup.add(wallStandoff);
+  }
+
+  const showerArm = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.012, 0.012, 0.42, 16),
+    brushedBrassMat
+  );
+  showerArm.rotation.z = Math.PI / 2;
+  showerArm.position.set(0.21, 2.06, 0.22);
+  showerFixtureGroup.add(showerArm);
+
+  const armWallFlange = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.028, 0.028, 0.012, 18),
+    brushedBrassMat
+  );
+  armWallFlange.rotation.z = Math.PI / 2;
+  armWallFlange.position.set(0.424, 2.06, 0.22);
+  showerFixtureGroup.add(armWallFlange);
+
+  // 4D. Ultra-Slim 300mm (`r = 0.15m`) Deluge Rainfall Rose with Ball-Joint Boss & Concentric Nozzle Rings (`z = +0.22m`)
+  const swivelBoss = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.028, 0.032, 18),
+    brushedBrassMat
+  );
+  swivelBoss.position.set(0.01, 2.042, 0.22);
+  showerFixtureGroup.add(swivelBoss);
+
+  const rainfallRose = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15, 0.15, 0.012, 32),
+    brushedBrassMat
+  );
+  rainfallRose.name = 'outbuildings.garage.showerRoom.rainfallHead';
+  rainfallRose.position.set(0.01, 2.022, 0.22);
+  rainfallRose.castShadow = true;
+  showerFixtureGroup.add(rainfallRose);
+
+  const nozzleFacePlate = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.142, 0.142, 0.004, 32),
+    darkGunmetalMat
+  );
+  nozzleFacePlate.name = 'outbuildings.garage.showerRoom.shower.rainfallHead';
+  nozzleFacePlate.position.set(0.01, 2.015, 0.22);
+  showerFixtureGroup.add(nozzleFacePlate);
+
+  for (const nr of [0.042, 0.084, 0.124] as const) {
+    const nozzleRing = new THREE.Mesh(
+      new THREE.TorusGeometry(nr, 0.0025, 8, 28),
+      brushedBrassMat
+    );
+    nozzleRing.rotation.x = Math.PI / 2;
+    nozzleRing.position.set(0.01, 2.013, 0.22);
+    showerFixtureGroup.add(nozzleRing);
+  }
+
+  // 4E. Adjustable Brass Slide Rail (`z = -0.04m`), Microphone Hand Wand & Catenary Flexible Braided Hose (`TubeGeometry`)
+  const riserRail = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.009, 0.009, 0.68, 14),
+    brushedBrassMat
+  );
+  riserRail.position.set(0.398, 1.38, -0.04);
+  showerFixtureGroup.add(riserRail);
+
+  for (const ry of [1.06, 1.70] as const) {
+    const railPost = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 0.04, 12),
+      brushedBrassMat
+    );
+    railPost.rotation.z = Math.PI / 2;
+    railPost.position.set(0.415, ry, -0.04);
+    showerFixtureGroup.add(railPost);
+  }
+
+  const sliderClamp = new THREE.Mesh(
+    new THREE.BoxGeometry(0.032, 0.036, 0.044),
+    brushedBrassMat
+  );
+  sliderClamp.position.set(0.388, 1.42, -0.04);
+  showerFixtureGroup.add(sliderClamp);
 
   const handWand = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.014, 0.011, 0.21, 14),
+    new THREE.CylinderGeometry(0.014, 0.011, 0.21, 16),
     brushedBrassMat
   );
-  handWand.rotation.z = 0.28;
-  handWand.position.set(0.375, 1.48, 0.08);
-  showerGroup.add(handWand);
+  handWand.rotation.z = 0.22;
+  handWand.position.set(0.372, 1.48, -0.04);
+  showerFixtureGroup.add(handWand);
 
-  // Recessed Brass-Trimmed Illuminated Bottle Niche on East Shower Wall (`+x = 0.42m, z = +0.28m, y = 1.22m`)
-  const nicheFrame = new THREE.Mesh(
-    new THREE.BoxGeometry(0.024, 0.32, 0.44),
+  const wandNozzleCap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0142, 0.0142, 0.008, 16),
+    darkGunmetalMat
+  );
+  wandNozzleCap.rotation.z = 0.22;
+  wandNozzleCap.position.set(0.35, 1.578, -0.04);
+  showerFixtureGroup.add(wandNozzleCap);
+
+  // Smooth 5-point catenary flexible braided-brass shower hose (`THREE.TubeGeometry`)
+  const hoseCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.412, 1.01, 0.22),
+    new THREE.Vector3(0.395, 0.82, 0.16),
+    new THREE.Vector3(0.382, 0.74, 0.08),
+    new THREE.Vector3(0.378, 0.96, 0.0),
+    new THREE.Vector3(0.388, 1.37, -0.04),
+  ]);
+  const showerHose = new THREE.Mesh(
+    new THREE.TubeGeometry(hoseCurve, 28, 0.0075, 10, false),
     brushedBrassMat
   );
-  nicheFrame.position.set(0.422, 1.22, 0.28);
-  showerGroup.add(nicheFrame);
+  showerFixtureGroup.add(showerHose);
+
+  // 4F. Recessed Brass-Trimmed Illuminated Bottle Niche on East Shower Wall (`z = -0.32m, y = 1.22m`) + 3 Apothecary Pump Bottles
+  const nicheBack = new THREE.Mesh(
+    new THREE.BoxGeometry(0.008, 0.30, 0.42),
+    darkGunmetalMat
+  );
+  nicheBack.position.set(0.428, 1.22, -0.32);
+  showerFixtureGroup.add(nicheBack);
+
+  const nicheFrame = new THREE.Mesh(
+    new THREE.BoxGeometry(0.026, 0.32, 0.44),
+    brushedBrassMat
+  );
+  nicheFrame.position.set(0.42, 1.22, -0.32);
+  showerFixtureGroup.add(nicheFrame);
+
+  const nicheLedStrip = new THREE.Mesh(
+    new THREE.BoxGeometry(0.018, 0.008, 0.40),
+    warmDownlightLedMat
+  );
+  nicheLedStrip.position.set(0.418, 1.365, -0.32);
+  showerFixtureGroup.add(nicheLedStrip);
+
+  for (const bz of [-0.43, -0.32, -0.21] as const) {
+    const bottleBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.028, 0.028, 0.125, 16),
+      amberGlassMat
+    );
+    bottleBody.position.set(0.412, 1.135, bz);
+    showerFixtureGroup.add(bottleBody);
+
+    const bottleLabel = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0285, 0.0285, 0.058, 16),
+      ceramicWhiteMat
+    );
+    bottleLabel.position.set(0.412, 1.132, bz);
+    showerFixtureGroup.add(bottleLabel);
+
+    const pumpCollar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.011, 0.013, 0.028, 12),
+      darkGunmetalMat
+    );
+    pumpCollar.position.set(0.412, 1.21, bz);
+    showerFixtureGroup.add(pumpCollar);
+
+    const pumpSpout = new THREE.Mesh(
+      new THREE.BoxGeometry(0.028, 0.006, 0.008),
+      darkGunmetalMat
+    );
+    pumpSpout.position.set(0.402, 1.222, bz);
+    showerFixtureGroup.add(pumpSpout);
+  }
 
   // ---------------------------------------------------------------------------
-  // 5. Wall-Hung Rimless Ceramic Toilet & Concealed Cistern (`outbuildings.garage.showerRoom.toilet`)
-  //    Staggered East along the South Wall (`u = 7.56m, v = 5.42m`, facing North `-v`) so it is no longer
-  //    opposite the vanity (`u = 6.66m`), giving full 1.46m room-depth clearance!
+  // 5. High-LOD Wall-Hung Rimless D-Shaped Ceramic Toilet & Concealed Cistern (`outbuildings.garage.showerRoom.toilet`)
+  //    Staggered along the South Wall (`u = 7.56m, v = 5.42m`, facing North `-v`, clear of the flipped shower entry!).
   // ---------------------------------------------------------------------------
   const toiletGroup = new THREE.Group();
   toiletGroup.name = 'outbuildings.garage.showerRoom.toilet';
@@ -8134,79 +9137,253 @@ export function buildGarageShowerRoom(
   toiletGroup.rotation.y = Math.PI; // Local `+z` projects North (`-v`) into the room!
   roomGroup.add(toiletGroup);
 
-  // Half-height tiled concealed cistern boxing (`0.54m W x 1.12m H x 0.16m D`) + solid European oak top shelf
+  // 5A. Half-height tiled concealed cistern boxing (`0.54m W x 1.08m H x 0.16m D`) + solid oak shelf + brass trim strip
   const cisternBox = new THREE.Mesh(
-    new THREE.BoxGeometry(0.54, 1.12, 0.16),
+    new THREE.BoxGeometry(0.54, 1.08, 0.16),
     calacattaTileMat
   );
   cisternBox.name = 'outbuildings.garage.showerRoom.toilet.cisternBox';
-  cisternBox.position.set(0, 0.56, 0.08);
+  cisternBox.position.set(0, 0.54, 0.08);
   cisternBox.castShadow = true;
   cisternBox.receiveShadow = true;
   toiletGroup.add(cisternBox);
 
+  const cisternBrassTrim = new THREE.Mesh(
+    new THREE.BoxGeometry(0.546, 0.008, 0.166),
+    brushedBrassMat
+  );
+  cisternBrassTrim.position.set(0, 1.082, 0.082);
+  toiletGroup.add(cisternBrassTrim);
+
   const cisternOakShelf = new THREE.Mesh(
-    new THREE.BoxGeometry(0.56, 0.028, 0.18),
+    new THREE.BoxGeometry(0.56, 0.026, 0.18),
     lightOakDoorMat
   );
-  cisternOakShelf.position.set(0, 1.134, 0.085);
+  cisternOakShelf.position.set(0, 1.098, 0.085);
   cisternOakShelf.castShadow = true;
   toiletGroup.add(cisternOakShelf);
 
-  // Brushed-Brass Dual-Flush Actuator Plate (`0.22m x 0.145m`)
+  // 5B. Brushed-Brass Dual-Flush Actuator Plate (`0.22m x 0.145m`) with Bevelled Bezel & Tactile Circular Buttons
+  const flushBezel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.228, 0.152, 0.006),
+    darkGunmetalMat
+  );
+  flushBezel.position.set(0, 0.94, 0.162);
+  toiletGroup.add(flushBezel);
+
   const flushPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.22, 0.145, 0.01),
+    new THREE.BoxGeometry(0.218, 0.142, 0.01),
     brushedBrassMat
   );
   flushPlate.name = 'outbuildings.garage.showerRoom.toilet.flushPlate';
-  flushPlate.position.set(0, 0.96, 0.164);
+  flushPlate.position.set(0, 0.94, 0.166);
   toiletGroup.add(flushPlate);
 
-  // Sculpted Wall-Hung Rimless Ceramic Toilet Pan (`y = 0.08..0.41m, z = 0.16..0.68m`) + Soft-Close Seat
-  const toiletBowl = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.185, 0.14, 0.31, 24),
-    ceramicWhiteMat
-  );
-  toiletBowl.name = 'outbuildings.garage.showerRoom.toilet.pan';
-  toiletBowl.scale.set(1.0, 1.0, 1.38);
-  toiletBowl.position.set(0, 0.245, 0.42);
-  toiletBowl.castShadow = true;
-  toiletBowl.receiveShadow = true;
-  toiletGroup.add(toiletBowl);
+  for (const [bx, br] of [
+    [-0.038, 0.026],
+    [0.038, 0.018],
+  ] as const) {
+    const btnRecess = new THREE.Mesh(
+      new THREE.CylinderGeometry(br + 0.003, br + 0.003, 0.006, 20),
+      darkGunmetalMat
+    );
+    btnRecess.rotation.x = Math.PI / 2;
+    btnRecess.position.set(bx, 0.94, 0.17);
+    toiletGroup.add(btnRecess);
 
+    const flushBtn = new THREE.Mesh(
+      new THREE.CylinderGeometry(br, br, 0.008, 20),
+      brushedBrassMat
+    );
+    flushBtn.rotation.x = Math.PI / 2;
+    flushBtn.position.set(bx, 0.94, 0.173);
+    toiletGroup.add(flushBtn);
+  }
+
+  // 5C. Sculpted Multi-Part D-Shaped Wall-Hung Rimless Ceramic WC Pan (`outbuildings.garage.showerRoom.toilet.pan`)
   const toiletRearShroud = new THREE.Mesh(
     new THREE.BoxGeometry(0.36, 0.31, 0.24),
     ceramicWhiteMat
   );
   toiletRearShroud.position.set(0, 0.245, 0.28);
   toiletRearShroud.castShadow = true;
+  toiletRearShroud.receiveShadow = true;
   toiletGroup.add(toiletRearShroud);
 
-  const toiletSeatLid = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.188, 0.188, 0.028, 24),
+  // Lower tapered ceramic trap skirt
+  const lowerTrapSkirt = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.165, 0.125, 0.27, 28),
     ceramicWhiteMat
   );
-  toiletSeatLid.name = 'outbuildings.garage.showerRoom.toilet.seat';
-  toiletSeatLid.scale.set(1.0, 1.0, 1.38);
-  toiletSeatLid.position.set(0, 0.414, 0.42);
-  toiletSeatLid.castShadow = true;
-  toiletGroup.add(toiletSeatLid);
+  lowerTrapSkirt.scale.set(1.0, 1.0, 1.34);
+  lowerTrapSkirt.position.set(0, 0.215, 0.43);
+  lowerTrapSkirt.castShadow = true;
+  lowerTrapSkirt.receiveShadow = true;
+  toiletGroup.add(lowerTrapSkirt);
 
-  // Brushed-Brass Wall-Mounted Toilet Roll Holder (`x = +0.34m, y = 0.64m, z = 0.12m`)
-  const rollHolderArm = new THREE.Mesh(
-    new THREE.BoxGeometry(0.14, 0.022, 0.085),
+  // Upper rimless D-shaped ceramic bowl shell
+  const toiletBowl = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.188, 0.165, 0.14, 32),
+    ceramicWhiteMat
+  );
+  toiletBowl.name = 'outbuildings.garage.showerRoom.toilet.pan';
+  toiletBowl.scale.set(1.0, 1.0, 1.36);
+  toiletBowl.position.set(0, 0.34, 0.44);
+  toiletBowl.castShadow = true;
+  toiletBowl.receiveShadow = true;
+  toiletGroup.add(toiletBowl);
+
+  // Molded rimless upper ceramic lip collar
+  const bowlRimTorus = new THREE.Mesh(
+    new THREE.TorusGeometry(0.166, 0.022, 14, 32),
+    ceramicWhiteMat
+  );
+  bowlRimTorus.rotation.x = Math.PI / 2;
+  bowlRimTorus.scale.set(1.0, 1.36, 0.55);
+  bowlRimTorus.position.set(0, 0.402, 0.44);
+  toiletGroup.add(bowlRimTorus);
+
+  // Recessed inner bowl cavity & translucent water surface disc (`y = 0.318m`)
+  const innerBowlWell = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.146, 0.088, 0.125, 24),
+    floorStoneTileMat
+  );
+  innerBowlWell.scale.set(1.0, 1.0, 1.32);
+  innerBowlWell.position.set(0, 0.342, 0.44);
+  toiletGroup.add(innerBowlWell);
+
+  const waterSurfaceDisc = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.092, 0.092, 0.006, 24),
+    waterSurfaceMat
+  );
+  waterSurfaceDisc.scale.set(1.0, 1.0, 1.28);
+  waterSurfaceDisc.position.set(0, 0.318, 0.44);
+  toiletGroup.add(waterSurfaceDisc);
+
+  // Concealed wall-mounting side bolt caps in brushed brass
+  for (const sx of [-0.182, 0.182] as const) {
+    const boltCap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.014, 0.014, 0.008, 14),
+      brushedBrassMat
+    );
+    boltCap.rotation.z = Math.PI / 2;
+    boltCap.position.set(sx, 0.22, 0.24);
+    toiletGroup.add(boltCap);
+  }
+
+  // 5D. Sculpted Ergonomic Open-Ring Soft-Close Seat (`outbuildings.garage.showerRoom.toilet.seat`) + Raised Soft-Close Lid (`lid`)
+  const toiletSeatRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.156, 0.03, 16, 32),
+    ceramicWhiteMat
+  );
+  toiletSeatRing.name = 'outbuildings.garage.showerRoom.toilet.seat';
+  toiletSeatRing.rotation.x = Math.PI / 2;
+  toiletSeatRing.scale.set(1.0, 1.36, 0.42);
+  toiletSeatRing.position.set(0, 0.418, 0.445);
+  toiletSeatRing.castShadow = true;
+  toiletGroup.add(toiletSeatRing);
+
+  const seatRearBridge = new THREE.Mesh(
+    new THREE.BoxGeometry(0.355, 0.022, 0.135),
+    ceramicWhiteMat
+  );
+  seatRearBridge.name = 'outbuildings.garage.showerRoom.toilet.seat';
+  seatRearBridge.position.set(0, 0.418, 0.26);
+  seatRearBridge.castShadow = true;
+  toiletGroup.add(seatRearBridge);
+
+  // 4 rubber seat bumpers underneath the open-ring seat + twin brushed-brass soft-close hinge pillars
+  for (const sx of [-0.135, 0.135] as const) {
+    for (const bz of [0.34, 0.52] as const) {
+      const bumper = new THREE.Mesh(
+        new THREE.BoxGeometry(0.018, 0.006, 0.032),
+        darkGunmetalMat
+      );
+      bumper.position.set(sx, 0.406, bz);
+      toiletGroup.add(bumper);
+    }
+  }
+  for (const hx of [-0.11, 0.11] as const) {
+    const hingePillar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 0.028, 14),
+      brushedBrassMat
+    );
+    hingePillar.position.set(hx, 0.426, 0.21);
+    toiletGroup.add(hingePillar);
+  }
+
+  // Contoured soft-close ceramic-white lid (`outbuildings.garage.showerRoom.toilet.lid`) hinged open against the cistern
+  const toiletLid = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.186, 0.186, 0.018, 28),
+    ceramicWhiteMat
+  );
+  toiletLid.name = 'outbuildings.garage.showerRoom.toilet.lid';
+  toiletLid.scale.set(1.0, 1.0, 1.36);
+  toiletLid.rotation.x = 1.42;
+  toiletLid.position.set(0, 0.65, 0.205);
+  toiletLid.castShadow = true;
+  toiletGroup.add(toiletLid);
+
+  // 5E. Wall-Mounted Brushed-Brass & Frosted-Glass Toilet Brush Holder (`x = -0.34m`) + Toilet Roll Holder (`x = +0.34m`)
+  const brushBracket = new THREE.Mesh(
+    new THREE.BoxGeometry(0.028, 0.028, 0.075),
     brushedBrassMat
   );
-  rollHolderArm.position.set(0.35, 0.64, 0.06);
+  brushBracket.position.set(-0.34, 0.20, 0.04);
+  toiletGroup.add(brushBracket);
+
+  const brushCollarRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.046, 0.006, 10, 20),
+    brushedBrassMat
+  );
+  brushCollarRing.rotation.x = Math.PI / 2;
+  brushCollarRing.position.set(-0.34, 0.20, 0.095);
+  toiletGroup.add(brushCollarRing);
+
+  const brushFrostedCup = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.044, 0.04, 0.14, 20),
+    frostedHolderGlassMat
+  );
+  brushFrostedCup.position.set(-0.34, 0.19, 0.095);
+  toiletGroup.add(brushFrostedCup);
+
+  const brushHandleRod = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.006, 0.006, 0.22, 12),
+    brushedBrassMat
+  );
+  brushHandleRod.position.set(-0.34, 0.31, 0.095);
+  toiletGroup.add(brushHandleRod);
+
+  const rollBackplate = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.024, 0.024, 0.008, 16),
+    brushedBrassMat
+  );
+  rollBackplate.rotation.x = Math.PI / 2;
+  rollBackplate.position.set(0.35, 0.64, 0.004);
+  toiletGroup.add(rollBackplate);
+
+  const rollHolderArm = new THREE.Mesh(
+    new THREE.BoxGeometry(0.14, 0.018, 0.085),
+    brushedBrassMat
+  );
+  rollHolderArm.position.set(0.35, 0.64, 0.045);
   toiletGroup.add(rollHolderArm);
 
   const paperRoll = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.055, 0.055, 0.11, 18),
+    new THREE.CylinderGeometry(0.055, 0.055, 0.11, 20),
     ceramicWhiteMat
   );
   paperRoll.rotation.z = Math.PI / 2;
-  paperRoll.position.set(0.35, 0.61, 0.08);
+  paperRoll.position.set(0.35, 0.61, 0.075);
   toiletGroup.add(paperRoll);
+
+  const rollCore = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.02, 0.02, 0.114, 16),
+    darkOakRecessMat
+  );
+  rollCore.rotation.z = Math.PI / 2;
+  rollCore.position.set(0.35, 0.61, 0.075);
+  toiletGroup.add(rollCore);
 
   // ---------------------------------------------------------------------------
   // 6. Fluted-Oak & Carrara-Marble Wall-Hung Vanity Basin + Backlit Mirror (`outbuildings.garage.showerRoom.vanity`)
