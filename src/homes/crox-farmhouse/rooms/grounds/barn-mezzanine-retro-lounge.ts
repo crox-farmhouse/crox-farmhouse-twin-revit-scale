@@ -4360,19 +4360,19 @@ export function buildBarnPoolTable(
   const poolGroup = new THREE.Group();
   poolGroup.name = 'outbuildings.barn.poolTable';
   poolGroup.userData.zone = 'courtyard';
-  // Rotated 90 degrees so the full-size 9ft table's 2.79m length runs North-South along v (`v = 0.925..3.715m`)
-  // and its 1.52m width spans `u = 19.92..21.44m`, clear of the West golf-viewing bar & stools, NE corner bar, and SE spiral staircase.
-  poolGroup.position.set(20.68, barnCarpetTopY, 2.32);
-  poolGroup.rotation.y = Math.PI / 2;
+  // Issue #2 & Issue #8 ([OBJECT MOVE / ROTATE]: Move `outbuildings.barn.poolTable` to `[20.38, -0.675, 2.08]`,
+  // rotated East-West `rotation.y = Math.PI`, and scaled to a standard 7ft x 4ft (`2.12m x 1.20m`) UK Domestic English Pool Table!):
+  poolGroup.position.set(20.38, barnCarpetTopY, 2.08);
+  poolGroup.rotation.y = Math.PI;
   groundGroup.add(poolGroup);
 
-  const tableL = 2.79; // Full-size 9ft tournament pool table outer length (9ft 2in)
-  const tableW = 1.52; // Full-size 9ft tournament pool table outer width (5ft)
-  const tableH = 0.80; // Regulation playing height
-  const railW = 0.125; // 5-inch solid oak cushion rails
-  const playL = tableL - railW * 2; // 2.54m (100-inch regulation 9ft playing length)
-  const playW = tableW - railW * 2; // 1.27m (50-inch regulation 9ft playing width)
-  const bedY = tableH - 0.036; // 0.764m slate bed level
+  const tableL = 2.12; // Standard 7ft UK domestic English pool table outer length (7ft / 2.12m)
+  const tableW = 1.20; // Standard 7ft UK domestic English pool table outer width (4ft / 1.20m)
+  const tableH = 0.79; // Regulation UK playing height (31 inches)
+  const railW = 0.105; // 4-1/8 inch solid oak cushion rails
+  const playL = tableL - railW * 2; // 1.91m (75-inch playing length)
+  const playW = tableW - railW * 2; // 0.99m (39-inch playing width)
+  const bedY = tableH - 0.036; // 0.754m slate bed level
 
   const baizeMat = new THREE.MeshStandardMaterial({
     map: createPoolTableBaizeTexture(),
@@ -4399,39 +4399,39 @@ export function buildBarnPoolTable(
     roughness: 0.92,
   });
 
-  // 1. 6 Turned Solid Light-Oak Legs (full-size 9ft 3-piece slate support: 3 per long side) with Brushed-Brass Levelling Feet
-  const legOffsetX = tableL * 0.5 - 0.18;
-  const legOffsetZ = tableW * 0.5 - 0.16;
-  const legH = tableH - 0.22; // 0.58m up to cabinet apron
+  // 1. 4 Turned Solid Light-Oak Corner Legs (standard 7ft UK pool table) with Brushed-Brass Levelling Feet
+  const legOffsetX = tableL * 0.5 - 0.15;
+  const legOffsetZ = tableW * 0.5 - 0.14;
+  const legH = tableH - 0.21; // 0.58m up to cabinet apron
 
-  for (const lx of [-legOffsetX, 0, legOffsetX] as const) {
+  for (const lx of [-legOffsetX, legOffsetX] as const) {
     for (const lz of [-legOffsetZ, legOffsetZ] as const) {
       const brassToe = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.052, 0.058, 0.048, 18),
+        new THREE.CylinderGeometry(0.048, 0.054, 0.046, 18),
         brushedBrassMat
       );
-      brassToe.position.set(lx, 0.024, lz);
+      brassToe.position.set(lx, 0.023, lz);
       poolGroup.add(brassToe);
 
       const turnedLeg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.072, 0.050, legH, 20),
+        new THREE.CylinderGeometry(0.066, 0.046, legH, 20),
         lightJoineryOakMat
       );
       turnedLeg.name = 'outbuildings.barn.poolTable.leg';
-      turnedLeg.position.set(lx, 0.048 + legH * 0.5, lz);
+      turnedLeg.position.set(lx, 0.046 + legH * 0.5, lz);
       turnedLeg.castShadow = true;
       turnedLeg.receiveShadow = true;
       poolGroup.add(turnedLeg);
     }
   }
 
-  // 2. Deep Solid Light-Oak Cabinet Apron (`y = 0.56..0.764m`)
+  // 2. Deep Solid Light-Oak Cabinet Apron (`y = 0.56..0.754m`)
   const apronCarcass = new THREE.Mesh(
-    new THREE.BoxGeometry(tableL - 0.08, 0.20, tableW - 0.08),
+    new THREE.BoxGeometry(tableL - 0.06, 0.19, tableW - 0.06),
     lightJoineryOakMat
   );
   apronCarcass.name = 'outbuildings.barn.poolTable.cabinet';
-  apronCarcass.position.set(0, tableH - 0.136, 0);
+  apronCarcass.position.set(0, tableH - 0.132, 0);
   apronCarcass.castShadow = true;
   apronCarcass.receiveShadow = true;
   poolGroup.add(apronCarcass);
@@ -4447,8 +4447,8 @@ export function buildBarnPoolTable(
   poolGroup.add(baizeBed);
 
   // 4. Polished Light-Oak Top Cushion Rails & Green Rubber Cushions (`y = bedY..tableH`)
-  const railH = 0.042;
-  const railCenterY = tableH - railH * 0.5 + 0.005;
+  const railH = 0.040;
+  const railCenterY = tableH - railH * 0.5 + 0.004;
   for (const sideZ of [-1, 1] as const) {
     const rz = sideZ * (tableW * 0.5 - railW * 0.5);
     const longRail = new THREE.Mesh(
@@ -4464,10 +4464,10 @@ export function buildBarnPoolTable(
     // 2 green rubber L-cushions along each long side (split by center pocket)
     for (const segX of [-playL * 0.25, playL * 0.25] as const) {
       const cushion = new THREE.Mesh(
-        new THREE.BoxGeometry(playL * 0.44, 0.032, 0.032),
+        new THREE.BoxGeometry(playL * 0.43, 0.030, 0.028),
         cushionGreenMat
       );
-      cushion.position.set(segX, bedY + 0.022, sideZ * (playW * 0.5 - 0.012));
+      cushion.position.set(segX, bedY + 0.021, sideZ * (playW * 0.5 - 0.011));
       poolGroup.add(cushion);
     }
   }
@@ -4485,25 +4485,25 @@ export function buildBarnPoolTable(
     poolGroup.add(shortRail);
 
     const endCushion = new THREE.Mesh(
-      new THREE.BoxGeometry(0.032, 0.032, playW - 0.12),
+      new THREE.BoxGeometry(0.028, 0.030, playW - 0.10),
       cushionGreenMat
     );
-    endCushion.position.set(sideX * (playL * 0.5 - 0.012), bedY + 0.022, 0);
+    endCushion.position.set(sideX * (playL * 0.5 - 0.011), bedY + 0.021, 0);
     poolGroup.add(endCushion);
   }
 
   // 5. 6 Brushed-Brass & Saddle-Leather Drop Pockets (4 corners + 2 center side pockets)
   const pocketCoords: ReadonlyArray<readonly [number, number]> = [
     [-playL * 0.5, -playW * 0.5],
-    [0, -playW * 0.5 - 0.015],
+    [0, -playW * 0.5 - 0.012],
     [playL * 0.5, -playW * 0.5],
     [-playL * 0.5, playW * 0.5],
-    [0, playW * 0.5 + 0.015],
+    [0, playW * 0.5 + 0.012],
     [playL * 0.5, playW * 0.5],
   ];
   for (const [px, pz] of pocketCoords) {
     const pocketWell = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.052, 0.048, 0.048, 18),
+      new THREE.CylinderGeometry(0.046, 0.042, 0.046, 18),
       pocketHoleMat
     );
     pocketWell.name = 'outbuildings.barn.poolTable.pocket';
@@ -4511,37 +4511,37 @@ export function buildBarnPoolTable(
     poolGroup.add(pocketWell);
 
     const brassPlate = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.068, 0.066, 0.014, 18),
+      new THREE.CylinderGeometry(0.060, 0.058, 0.013, 18),
       brushedBrassMat
     );
     brassPlate.position.set(px * 1.03, tableH + 0.004, pz * 1.04);
     poolGroup.add(brassPlate);
 
     const leatherBasket = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.054, 0.042, 0.12, 16),
+      new THREE.CylinderGeometry(0.048, 0.038, 0.11, 16),
       pocketLeatherMat
     );
-    leatherBasket.position.set(px * 1.03, tableH - 0.08, pz * 1.04);
+    leatherBasket.position.set(px * 1.03, tableH - 0.075, pz * 1.04);
     poolGroup.add(leatherBasket);
   }
 
-  // 6. Full 15-Ball Rack (Red & Yellow English Pool Balls + Black 8-Ball) + White Cue Ball + Oak Triangle + 2 Ash Pool Cues
-  const ballR = 0.0254; // 2-inch UK pool ball radius
+  // 6. Full 15-Ball Rack (Red & Yellow English Pool Balls + Black 8-Ball) + White Cue Ball + 2 Ash Pool Cues
+  const ballR = 0.0254; // 2-inch (50.8mm) regulation UK pool ball radius
   const ballY = bedY + 0.011 + ballR;
   const redBallMat = new THREE.MeshStandardMaterial({ color: 0xc92020, roughness: 0.12, metalness: 0.08 });
   const yellowBallMat = new THREE.MeshStandardMaterial({ color: 0xf0b818, roughness: 0.12, metalness: 0.08 });
   const blackBallMat = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.10, metalness: 0.12 });
   const cueBallMat = new THREE.MeshStandardMaterial({ color: 0xfaf8f2, roughness: 0.10, metalness: 0.08 });
 
-  // White Cue Ball on the head string / D-zone (`x = -0.635m, z = +0.08m`)
+  // White Cue Ball on the head string / D-zone (`x = -0.48m, z = +0.06m`)
   const cueBall = new THREE.Mesh(new THREE.SphereGeometry(ballR, 16, 14), cueBallMat);
   cueBall.name = 'outbuildings.barn.poolTable.cueBall';
-  cueBall.position.set(-0.635, ballY, 0.08);
+  cueBall.position.set(-0.48, ballY, 0.06);
   cueBall.castShadow = true;
   poolGroup.add(cueBall);
 
-  // 5-row triangle of 15 object balls starting at the regulation foot spot (`x = +0.635m`)
-  const apexX = 0.635;
+  // 5-row triangle of 15 object balls starting at the foot spot (`x = +0.46m`)
+  const apexX = 0.46;
   const rowStepX = ballR * 1.74;
   let ballCounter = 0;
   for (let row = 0; row < 5; row++) {
@@ -4564,11 +4564,11 @@ export function buildBarnPoolTable(
   // 2 Tapered Ash & Ebony Pool Cues resting across the table
   const ashCueMat = new THREE.MeshStandardMaterial({ color: 0xdcb98a, roughness: 0.32 });
   for (const [cIdx, cx, cz, cRotY] of [
-    [1, -0.18, -0.28, 0.18],
-    [2, -0.12, 0.32, -0.24],
+    [1, -0.14, -0.22, 0.18],
+    [2, -0.10, 0.24, -0.24],
   ] as const) {
     const cueShaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.005, 0.013, 1.42, 12),
+      new THREE.CylinderGeometry(0.0048, 0.012, 1.36, 12),
       ashCueMat
     );
     cueShaft.name = `outbuildings.barn.poolTable.cue.${cIdx}`;
@@ -4582,22 +4582,85 @@ export function buildBarnPoolTable(
   // 2 Blue Billiards Chalk Cubes on the North & South rails
   const chalkMat = new THREE.MeshStandardMaterial({ color: 0x1d68b8, roughness: 0.65 });
   for (const [cx, cz] of [
-    [-0.45, -tableW * 0.5 + railW * 0.5],
-    [0.25, tableW * 0.5 - railW * 0.5],
+    [-0.36, -tableW * 0.5 + railW * 0.5],
+    [0.20, tableW * 0.5 - railW * 0.5],
   ] as const) {
-    const chalk = new THREE.Mesh(new THREE.BoxGeometry(0.023, 0.023, 0.023), chalkMat);
-    chalk.position.set(cx, tableH + 0.016, cz);
+    const chalk = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.022, 0.022), chalkMat);
+    chalk.position.set(cx, tableH + 0.015, cz);
     chalk.rotation.y = 0.35;
     poolGroup.add(chalk);
   }
 }
 
 // ============================================================================
-// ISSUE #8: GOLF-VIEWING SPECTATOR BAR COUNTER & 3 LEATHER BAR STOOLS
+// ISSUE #8 & ISSUE #3: GOLF-VIEWING SPECTATOR BAR COUNTER WITH MARBLE TOP & 3 LEATHER BAR STOOLS
 // ("Make the lower section a little larger, move the steps forward slightly (maybe 50cm).
 //  On this side have a bar with some stools so people can watch the golf and wait their turn"
-//  at `[-3.975, -0.34, 18.437]` -> Outbuilding `(u = 18.218m, y = -0.34m, v = 4.011m)`)
+//  + Issue #1: "shift this section fotward, there is no point having steps in front of it the steps can but up against the edge of the bar"
+//  + Issue #3: "Marble top" at `[-3.662, 0.385, 18.089]`, `outbuildings.barn.golfViewingBar.top`)
 // ============================================================================
+function createCalacattaMarbleTopTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    // Warm creamy-white Calacatta / Carrara marble base
+    const bgGrad = ctx.createLinearGradient(0, 0, 512, 512);
+    bgGrad.addColorStop(0, '#f7f5f0');
+    bgGrad.addColorStop(0.5, '#f1eee7');
+    bgGrad.addColorStop(1, '#f6f4ee');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Soft cloudy mineral washes
+    for (let c = 0; c < 14; c++) {
+      const cx = ((c * 137) % 480) + 16;
+      const cy = ((c * 193) % 480) + 16;
+      const r = 60 + (c % 4) * 35;
+      const rad = ctx.createRadialGradient(cx, cy, 4, cx, cy, r);
+      rad.addColorStop(0, c % 2 === 0 ? 'rgba(184, 178, 168, 0.16)' : 'rgba(205, 192, 172, 0.12)');
+      rad.addColorStop(1, 'rgba(247, 245, 240, 0)');
+      ctx.fillStyle = rad;
+      ctx.fillRect(0, 0, 512, 512);
+    }
+
+    // Organic diagonal grey & warm taupe/gold Calacatta veins
+    const veinConfigs = [
+      { x0: -20, y0: 60, x1: 530, y1: 240, width: 3.2, color: 'rgba(130, 126, 120, 0.42)' },
+      { x0: -10, y0: 190, x1: 520, y1: 410, width: 2.4, color: 'rgba(145, 136, 124, 0.36)' },
+      { x0: 40, y0: -10, x1: 460, y1: 520, width: 1.8, color: 'rgba(168, 148, 118, 0.28)' },
+      { x0: -20, y0: 340, x1: 530, y1: 490, width: 2.8, color: 'rgba(122, 118, 114, 0.38)' },
+      { x0: 120, y0: -10, x1: 530, y1: 310, width: 1.4, color: 'rgba(150, 144, 136, 0.30)' },
+    ] as const;
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (let vIdx = 0; vIdx < veinConfigs.length; vIdx++) {
+      const v = veinConfigs[vIdx]!;
+      ctx.strokeStyle = v.color;
+      ctx.lineWidth = v.width;
+      ctx.beginPath();
+      const steps = 28;
+      for (let s = 0; s <= steps; s++) {
+        const t = s / steps;
+        const jitter = Math.sin(t * Math.PI * 5 + vIdx * 2.1) * 14 + Math.cos(t * Math.PI * 11 + vIdx) * 5;
+        const px = v.x0 + (v.x1 - v.x0) * t + jitter * 0.6;
+        const py = v.y0 + (v.y1 - v.y0) * t + jitter;
+        if (s === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1, 2);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 export function buildBarnGolfViewingBar(
   groundGroup: THREE.Group,
   barnCarpetTopY: number,
@@ -4624,6 +4687,12 @@ export function buildBarnGolfViewingBar(
   const bodyH = barH - plinthH - topT; // 0.96m
   const westFloorStepRiseH = (-0.34) - barnCarpetTopY; // 0.335m rise from -0.675m lower carpet to -0.34m upper limestone floor
 
+  const marbleTopMat = new THREE.MeshStandardMaterial({
+    map: createCalacattaMarbleTopTexture(),
+    color: 0xf7f5f0,
+    roughness: 0.16,
+    metalness: 0.04,
+  });
   const darkAnthraciteMat = new THREE.MeshStandardMaterial({
     color: 0x1e2126,
     roughness: 0.42,
@@ -4694,10 +4763,11 @@ export function buildBarnGolfViewingBar(
     viewingBarGroup.add(slat);
   }
 
-  // Overhanging Bullnose Solid Light-Oak Bar Top (`0.54m` deep x `0.040m` thick x `1.82m` long, overhanging `+x` toward the bar stools!)
+  // Issue #3 ("Marble top" at `[-3.662, 0.385, 18.089]`, `outbuildings.barn.golfViewingBar.top`):
+  // Overhanging Bullnose Polished Calacatta Marble Bar Top (`0.54m` deep x `0.040m` thick x `1.82m` long, overhanging `+x` toward the bar stools!)
   const counterTop = new THREE.Mesh(
     new THREE.BoxGeometry(barTopD, topT, barLenZ + 0.02),
-    lightJoineryOakMat
+    marbleTopMat
   );
   counterTop.name = 'outbuildings.barn.golfViewingBar.top';
   counterTop.position.set(0.03, barH - topT * 0.5, -0.01);
@@ -4705,11 +4775,11 @@ export function buildBarnGolfViewingBar(
   counterTop.receiveShadow = true;
   viewingBarGroup.add(counterTop);
 
-  // Half-round bullnose nosing along both West (`-x`) and East (`+x`) edges of the bar top
+  // Half-round bullnose marble nosing along both West (`-x`) and East (`+x`) edges of the marble bar top
   for (const edgeX of [0.03 - barTopD * 0.5, 0.03 + barTopD * 0.5] as const) {
     const noseCyl = new THREE.Mesh(
       new THREE.CylinderGeometry(topT * 0.5, topT * 0.5, barLenZ + 0.02, 14),
-      lightJoineryOakMat
+      marbleTopMat
     );
     noseCyl.rotation.x = Math.PI / 2;
     noseCyl.position.set(edgeX, barH - topT * 0.5, -0.01);

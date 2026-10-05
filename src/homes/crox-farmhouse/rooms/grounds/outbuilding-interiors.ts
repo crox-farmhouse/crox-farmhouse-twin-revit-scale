@@ -2948,7 +2948,8 @@ export function buildBarnSpiralStaircase(
   groundGroup: THREE.Group,
   barnLowerFloorY: number,
   mezzanineFloorY: number,
-  sharedLightOakMat?: THREE.Material
+  sharedLightOakMat?: THREE.Material,
+  firstFloorGroup?: THREE.Group
 ): void {
   const centerU = 22.08;
   const centerV = 4.5;
@@ -2963,6 +2964,19 @@ export function buildBarnSpiralStaircase(
   stairGroup.name = 'outbuildings.barn.spiralStaircase';
   stairGroup.position.set(centerU, barnLowerFloorY, centerV);
   groundGroup.add(stairGroup);
+
+  // Issue #4 ("In cutaway mode dont show this landing when looking at the ground floor" at `[-0.388, 1.545, 18.162]`,
+  // `outbuildings.barn.spiralStaircase.topLanding`):
+  // Attach the Mezzanine-level top landing platform (`topLanding`, `landingApron`, `landingEastFascia`, `topNewel`)
+  // to `firstFloorGroup` so it hides automatically when viewing the ground floor in cutaway mode!
+  const topLandingGroup = new THREE.Group();
+  topLandingGroup.name = 'outbuildings.barn.spiralStaircase.topLandingGroup';
+  if (firstFloorGroup) {
+    topLandingGroup.position.set(centerU, barnLowerFloorY, centerV);
+    firstFloorGroup.add(topLandingGroup);
+  } else {
+    stairGroup.add(topLandingGroup);
+  }
 
   // Issue #2 ("Same material on all of the stairs, and flooring (lighter oak" at `[-0.7, 1.545, 18.308]`):
   // Share the exact `lightJoineryOakMat` lighter oak material across all spiral staircase treads, landing,
@@ -3166,7 +3180,7 @@ export function buildBarnSpiralStaircase(
   topLandingMesh.position.set(0, totalRise - landingDepth, 0);
   topLandingMesh.castShadow = true;
   topLandingMesh.receiveShadow = true;
-  stairGroup.add(topLandingMesh);
+  topLandingGroup.add(topLandingMesh);
 
   const landingApron = new THREE.Mesh(
     new THREE.BoxGeometry(0.86, 0.11, 0.028),
@@ -3174,7 +3188,7 @@ export function buildBarnSpiralStaircase(
   );
   landingApron.position.set(-0.48, totalRise - 0.065, 0.22);
   landingApron.rotation.y = -0.46;
-  stairGroup.add(landingApron);
+  topLandingGroup.add(landingApron);
 
   // Solid oak East edge fascia apron along the open stairwell side of `topLandingMesh` (`x = -0.04m -> u = 22.04m, z = -0.94..-0.06m`)
   const landingEastFascia = new THREE.Mesh(
@@ -3183,7 +3197,7 @@ export function buildBarnSpiralStaircase(
   );
   landingEastFascia.position.set(-0.04, totalRise - 0.0675, -0.5);
   landingEastFascia.castShadow = true;
-  stairGroup.add(landingEastFascia);
+  topLandingGroup.add(landingEastFascia);
 
   // ---------------------------------------------------------------------------
   // 4. Curved Helical Laminated Solid-Oak Outer Stringer Ribbon (`outbuildings.barn.spiralStaircase.outerStringer`)
@@ -3404,14 +3418,14 @@ export function buildBarnSpiralStaircase(
   topNewel.name = 'outbuildings.barn.spiralStaircase.newelPost';
   topNewel.position.set(-0.96, totalRise + topNewelH * 0.5, 0.35);
   topNewel.castShadow = true;
-  stairGroup.add(topNewel);
+  topLandingGroup.add(topNewel);
 
   const topNewelCap = new THREE.Mesh(
     new THREE.SphereGeometry(0.042, 16, 12),
     oakHandrailMat
   );
   topNewelCap.position.set(-0.96, totalRise + topNewelH + 0.014, 0.35);
-  stairGroup.add(topNewelCap);
+  topLandingGroup.add(topNewelCap);
 
   // Issue #3 ("Glass banniesters (see the link I sent)" at `[0.916, 0.734, 19.272]`):
   // Build 6 Curved Helical Toughened Clear Glass Balustrade Panels (`outbuildings.barn.spiralStaircase.glassBanister`)

@@ -2834,10 +2834,12 @@ export function buildOutbuildingsAndBarns(
     groundCeilingGroup
   );
 
-  // Issue #2 ("Remove the ladder" at `[-3.328, 1.428, 18.92]`) &
-  // Issue #3 ("Spiral staircase here https://haldaneuk.com/projects/wooden-spiral-staircase/" at `[-0.025, 1.428, 18.785]`):
-  // Haldane UK Bespoke Freestanding Solid American White Oak Spiral Staircase (`outbuildings.barn.spiralStaircase`) in the SE corner of the Barn
-  buildBarnSpiralStaircase(groundGroup, barnCarpetTopY, mezzanineFloorY, lightJoineryOakMat);
+  // Issue #2 ("Remove the ladder" at `[-3.328, 1.428, 18.92]`),
+  // Issue #3 ("Spiral staircase here https://haldaneuk.com/projects/wooden-spiral-staircase/" at `[-0.025, 1.428, 18.785]`), &
+  // Issue #4 ("In cutaway mode dont show this landing when looking at the ground floor" at `[-0.388, 1.545, 18.162]`):
+  // Haldane UK Bespoke Freestanding Solid American White Oak Spiral Staircase (`outbuildings.barn.spiralStaircase`) in the SE corner of the Barn,
+  // with `topLanding` attached to `firstFloorGroup` so it hides in Ground-Floor Cutaway mode!
+  buildBarnSpiralStaircase(groundGroup, barnCarpetTopY, mezzanineFloorY, lightJoineryOakMat, firstFloorGroup);
   buildBarnGroundWallArtworks(groundGroup);
 
   // Issue #10 ("Bar in this corner with beer on tap, mini fridge like in the master bedroom" at `[0.516, -0.316, 14.617]`),
@@ -2848,15 +2850,15 @@ export function buildOutbuildingsAndBarns(
   buildBarnPoolTable(groundGroup, barnCarpetTopY, lightJoineryOakMat);
 
   // Internal Cross-Wall at u = 23.02m..23.22m (Barn/Stable Step #2):
-  // - Issue #11 ("Glass door through to the next room" at `[0.63, 0.255, 15.941]` -> `(u = 23.02m, y = 0.255m, v = 1.919m)`):
-  //   Below `mezzanineFloorY = 1.54m`, cut a `0.86m` wide doorway opening at `v = 1.52m..2.38m` (`y = stableGroundFloorY (-0.44m) .. 1.32m`)
-  //   fitted with an interactive Hinged Acoustic Glass & Light-Oak Door (`outbuildings.barn.stableGlassDoor`) and a solid light-oak
-  //   bullnose threshold step (`outbuildings.barn.stableDoorStep`) bridging from `barnCarpetTopY = -0.675m` up to `stableGroundFloorY = -0.44m`!
+  // - Issue #11 ("Glass door through to the next room" at `[0.63, 0.255, 15.941]` -> `(u = 23.02m, y = 0.255m, v = 1.919m)`) &
+  //   Issue #5 ("Move this door slightly to the right" at `[0.749, 0.141, 16.259]`):
+  //   Shifted the `0.86m`-wide doorway opening South ("to the right" when facing the door from the Barn) from `v = 1.52..2.38m`
+  //   to `v = 1.98..2.84m` (`midV = 2.41m`, centered cleanly between the NE Corner Bar `v = 0.28..1.42m` and the SE Spiral Staircase `v = 3.62..5.38m`).
   // - Issue #4 ("Could the bannisters here not be merged somehow? Rather than this akward gap between the 2"):
   //   Above `mezzanineFloorY = 1.54m`, the 1st-floor `UP` stair opening spans `v = 2.554m..3.554m` so its South banister (`v = 3.54m`)
   //   is 100% collinear with the stairwell North guardrail (`v = 3.54m`)!
-  const gDoorV0 = 1.52;
-  const gDoorV1 = 2.38;
+  const gDoorV0 = 1.98;
+  const gDoorV1 = 2.84;
   const gDoorBotY = stableGroundFloorY; // -0.44m
   const gDoorTopY = 1.32;
 
