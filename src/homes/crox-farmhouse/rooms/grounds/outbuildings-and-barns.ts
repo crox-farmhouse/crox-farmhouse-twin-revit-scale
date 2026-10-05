@@ -11,6 +11,7 @@ import {
   buildGarageStihlWallRack,
   buildGarageWorkshopToolBench,
   buildGymOakDoorAndSkirting,
+  buildGymTechnogymRunPersonal,
   buildNikeGrindDumbbellRack,
   createPouredResinFloorMaterial,
 } from './outbuilding-interiors.ts';
@@ -1806,6 +1807,9 @@ export function buildOutbuildingsAndBarns(
   // Issue #3 ("Nike grind dumbell rack here" at `[-21.015, -0.123, 16.156]`):
   // 3-Tier Commercial Nike Grind Hex Dumbbell Rack (`outbuildings.gym.nikeGrindDumbbellRack`) with 10 pairs (`5–50`) of light-grey multicolour-speckled Nike Grind hex dumbbells
   buildNikeGrindDumbbellRack(groundGroup, baseY0 + 0.012);
+
+  // Technogym Run Personal (Antonio Citterio design) in the GYM (`outbuildings.gym.technogymRunPersonal`)
+  buildGymTechnogymRunPersonal(groundGroup, baseY0 + 0.012);
 
   // Issue #4 & #5 ("Put it against this wall and cut it in to make use of the dead space behind, make it slightly longer"
   // at `[-10.226, -0.27, 17.512]`):
