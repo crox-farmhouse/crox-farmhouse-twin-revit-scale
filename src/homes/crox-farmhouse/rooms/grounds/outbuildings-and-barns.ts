@@ -456,8 +456,13 @@ export function buildOutbuildingsAndBarns(
     side: THREE.DoubleSide,
   });
 
-  // Issue #3 ("Larger limestone tiles here with a bit more texture" at `[-4.737, -0.34, 18.005]`, `outbuildings.barn.westFloor`):
-  // Dedicated high-resolution (1024x1024) Large-Format Tumbled Cotswold / Bourgogne Limestone Flagstone Texture & Relief Bump Map
+  // Issue #3 ("Larger limestone tiles here with a bit more texture" at `[-4.737, -0.34, 18.005]`, `outbuildings.barn.westFloor`) &
+  // Issue #2 ("This looks too much like a patio n ow" at `[-4.743, -0.34, 18.601]` + Reference Photo `media_1791215289945_a698ac57.jpg`):
+  // Dedicated high-resolution (1024x1024) Smooth Flat-Honed Interior French/Cotswold Limestone Tile Texture:
+  // - Very fine (`3px`), flush, pale-cream/ivory sanded grout lines (`#e7dfd0` — slightly lighter than the stone, zero dark recessed patio joints or dark border strokes!)
+  // - Warm sandy-biscuit / honey-oatmeal honed limestone (`rgb(208, 192, 166)` to `rgb(218, 202, 176)`)
+  // - Delicate white/cream calcitic fossil shell arcs, soft cloudy mineral mottling, and fine dark sedimentary fossil flecks
+  // - Smooth satin-honed interior surface (`roughness: 0.36`, `bumpScale: 0.004`)
   const createLargeLimestoneFlagstoneTextures = (): {
     colorMap: THREE.CanvasTexture;
     bumpMap: THREE.CanvasTexture;
@@ -480,30 +485,28 @@ export function buildOutbuildingsAndBarns(
     };
 
     if (cCtx && bCtx) {
-      // Recessed lime-mortar joint bed base
-      cCtx.fillStyle = '#b9afa0';
+      // Flush pale-cream / warm-ivory sanded interior tile grout (`#e7dfd0` — lighter than the limestone tiles, matching `media_1791215289945_a698ac57.jpg`!)
+      cCtx.fillStyle = '#e7dfd0';
       cCtx.fillRect(0, 0, size, size);
-      bCtx.fillStyle = '#262626';
+      bCtx.fillStyle = '#c8c8c8';
       bCtx.fillRect(0, 0, size, size);
 
-      // 3 coursed horizontal flagstone rows x 2 large ashlar slabs per repeat
-      // With uvScale = 0.34 (1 repeat = 2.94m), each flagstone is ~0.98m x 1.47m!
+      // 3 coursed horizontal honed limestone tile rows x 2 large rectangular tiles per repeat
       const rowHeights = [342, 338, 344];
       const stonePalette = [
-        [238, 229, 212],
-        [232, 221, 202],
-        [242, 234, 219],
-        [226, 215, 195],
-        [235, 225, 207],
-        [229, 218, 198],
+        [214, 198, 172],
+        [209, 193, 167],
+        [218, 202, 176],
+        [206, 190, 164],
+        [212, 196, 170],
+        [215, 199, 173],
       ] as const;
 
       let yCursor = 0;
-      const jointW = 10;
+      const jointW = 3; // Fine 3px flush interior sanded grout line
 
       for (let r = 0; r < rowHeights.length; r++) {
         const rH = rowHeights[r];
-        // Staggered vertical running-bond joints across the 2 large flagstones per course
         const colWidths = r % 2 === 0 ? [532, 492] : [476, 548];
         const staggerOffset = r === 1 ? 210 : r === 2 ? -140 : 0;
         let xCursor = staggerOffset;
@@ -516,95 +519,89 @@ export function buildOutbuildingsAndBarns(
           const sh = rH - jointW;
 
           const baseRGB = stonePalette[(r * 3 + c) % stonePalette.length];
-          const shadeDelta = Math.round((rand() - 0.5) * 10);
-          const sr = Math.min(250, Math.max(195, baseRGB[0] + shadeDelta));
-          const sg = Math.min(242, Math.max(185, baseRGB[1] + shadeDelta));
-          const sb = Math.min(228, Math.max(168, baseRGB[2] + shadeDelta));
+          const shadeDelta = Math.round((rand() - 0.5) * 6);
+          const sr = Math.min(226, Math.max(198, baseRGB[0] + shadeDelta));
+          const sg = Math.min(210, Math.max(182, baseRGB[1] + shadeDelta));
+          const sb = Math.min(186, Math.max(156, baseRGB[2] + shadeDelta));
 
-          // Helper to draw wrapped tile across X boundaries
           for (const wrapX of [-size, 0, size] as const) {
             const tx = sx + wrapX;
             if (tx + sw < 0 || tx > size) continue;
 
-            // 1. Base limestone slab body with subtle warm travertine gradient
+            // 1. Flat-honed warm sandy-beige limestone tile body
             const grad = cCtx.createLinearGradient(tx, sy, tx + sw, sy + sh);
-            grad.addColorStop(0, `rgb(${sr + 4}, ${sg + 4}, ${sb + 3})`);
+            grad.addColorStop(0, `rgb(${sr + 2}, ${sg + 2}, ${sb + 2})`);
             grad.addColorStop(0.5, `rgb(${sr}, ${sg}, ${sb})`);
-            grad.addColorStop(1, `rgb(${sr - 6}, ${sg - 6}, ${sb - 5})`);
+            grad.addColorStop(1, `rgb(${sr - 3}, ${sg - 3}, ${sb - 2})`);
             cCtx.fillStyle = grad;
             cCtx.fillRect(tx, sy, sw, sh);
 
-            // Pillowed / tumbled high-relief bump cushion at slab edges
-            bCtx.fillStyle = '#9a9a9a';
+            // Flat, flush honed stone bump surface (no pillowed patio edges!)
+            bCtx.fillStyle = '#d4d4d4';
             bCtx.fillRect(tx, sy, sw, sh);
-            bCtx.fillStyle = '#c8c8c8';
-            bCtx.fillRect(tx + 8, sy + 8, Math.max(1, sw - 16), Math.max(1, sh - 16));
-            bCtx.fillStyle = '#dcdcdc';
-            bCtx.fillRect(tx + 18, sy + 18, Math.max(1, sw - 36), Math.max(1, sh - 36));
 
-            // 2. Natural sedimentary bedding clouds & mottled mineral patches
-            for (let p = 0; p < 28; p++) {
-              const px = tx + 16 + rand() * Math.max(8, sw - 32);
-              const py = sy + 16 + rand() * Math.max(8, sh - 32);
-              const rx = 18 + rand() * 54;
-              const ry = 10 + rand() * 30;
-              const isWarm = rand() > 0.45;
-              cCtx.fillStyle = isWarm
-                ? `rgba(${sr - 14}, ${sg - 15}, ${sb - 18}, 0.14)`
-                : `rgba(${Math.min(255, sr + 12)}, ${Math.min(255, sg + 11)}, ${Math.min(255, sb + 9)}, 0.15)`;
+            // 2. Soft cloudy calcitic & sandy mineral mottling inside the stone
+            for (let p = 0; p < 34; p++) {
+              const px = tx + 10 + rand() * Math.max(8, sw - 20);
+              const py = sy + 10 + rand() * Math.max(8, sh - 20);
+              const rx = 20 + rand() * 58;
+              const ry = 12 + rand() * 34;
+              const isCreamCloud = rand() > 0.42;
+              cCtx.fillStyle = isCreamCloud
+                ? `rgba(${Math.min(255, sr + 22)}, ${Math.min(255, sg + 20)}, ${Math.min(255, sb + 18)}, 0.16)`
+                : `rgba(${sr - 14}, ${sg - 15}, ${sb - 16}, 0.12)`;
               cCtx.beginPath();
               cCtx.ellipse(px, py, rx, ry, rand() * Math.PI, 0, Math.PI * 2);
               cCtx.fill();
 
-              bCtx.fillStyle = isWarm ? 'rgba(60,60,60,0.18)' : 'rgba(245,245,245,0.16)';
+              bCtx.fillStyle = isCreamCloud ? 'rgba(222,222,222,0.12)' : 'rgba(198,198,198,0.12)';
               bCtx.beginPath();
-              bCtx.ellipse(px, py, rx * 0.85, ry * 0.85, 0, 0, Math.PI * 2);
+              bCtx.ellipse(px, py, rx * 0.8, ry * 0.8, 0, 0, Math.PI * 2);
               bCtx.fill();
             }
 
-            // 3. Travertine / Cotswold limestone mineral calcite veins & fossil shell arcs
-            for (let v = 0; v < 5; v++) {
-              let vx = tx + 20 + rand() * Math.max(10, sw - 40);
-              let vy = sy + 20 + rand() * Math.max(10, sh - 40);
+            // 3. Delicate pale-ivory calcitic fossil shell arcs & fine crystalline wisps (signature detail in `media_1791215289945_a698ac57.jpg`)
+            for (let v = 0; v < 9; v++) {
+              const vx = tx + 18 + rand() * Math.max(10, sw - 36);
+              const vy = sy + 18 + rand() * Math.max(10, sh - 36);
               cCtx.strokeStyle =
-                v % 2 === 0
-                  ? `rgba(${Math.min(255, sr + 18)}, ${Math.min(255, sg + 16)}, ${Math.min(255, sb + 12)}, 0.34)`
-                  : `rgba(${sr - 22}, ${sg - 24}, ${sb - 26}, 0.24)`;
-              cCtx.lineWidth = 1.2 + rand() * 1.8;
+                v % 3 !== 0
+                  ? 'rgba(246, 240, 228, 0.44)'
+                  : `rgba(${sr - 18}, ${sg - 19}, ${sb - 20}, 0.22)`;
+              cCtx.lineWidth = 0.9 + rand() * 1.3;
               cCtx.beginPath();
-              cCtx.moveTo(vx, vy);
-              for (let seg = 0; seg < 6; seg++) {
-                vx += (rand() - 0.35) * 42;
-                vy += (rand() - 0.5) * 24;
-                cCtx.lineTo(vx, vy);
+              if (v % 2 === 0) {
+                // Curved fossil shell cross-section arc
+                const shellR = 6 + rand() * 14;
+                const startA = rand() * Math.PI;
+                cCtx.arc(vx, vy, shellR, startA, startA + 0.9 + rand() * 1.2);
+              } else {
+                // Fine calcitic vein wisp
+                let cx = vx;
+                let cy = vy;
+                cCtx.moveTo(cx, cy);
+                for (let seg = 0; seg < 4; seg++) {
+                  cx += (rand() - 0.35) * 28;
+                  cy += (rand() - 0.5) * 16;
+                  cCtx.lineTo(cx, cy);
+                }
               }
               cCtx.stroke();
-
-              bCtx.strokeStyle = 'rgba(90, 90, 90, 0.32)';
-              bCtx.lineWidth = 1.6;
-              bCtx.stroke();
             }
 
-            // 4. Natural travertine pores & micro-pitted tumbled stone texture
-            for (let d = 0; d < 95; d++) {
-              const dx = tx + 10 + rand() * Math.max(6, sw - 20);
-              const dy = sy + 10 + rand() * Math.max(6, sh - 20);
-              const dr = 1.0 + rand() * 2.8;
-              cCtx.fillStyle = `rgba(${sr - 28}, ${sg - 28}, ${sb - 26}, 0.25)`;
+            // 4. Tiny dark-amber & umber sedimentary fossil/mineral flecks scattered naturally across the honed tile
+            for (let d = 0; d < 85; d++) {
+              const dx = tx + 6 + rand() * Math.max(6, sw - 12);
+              const dy = sy + 6 + rand() * Math.max(6, sh - 12);
+              const dr = 0.7 + rand() * 1.6;
+              cCtx.fillStyle =
+                d % 4 === 0
+                  ? 'rgba(248, 243, 232, 0.38)'
+                  : 'rgba(118, 98, 74, 0.28)';
               cCtx.beginPath();
               cCtx.arc(dx, dy, dr, 0, Math.PI * 2);
               cCtx.fill();
-
-              bCtx.fillStyle = 'rgba(45, 45, 45, 0.38)';
-              bCtx.beginPath();
-              bCtx.arc(dx, dy, dr * 1.15, 0, Math.PI * 2);
-              bCtx.fill();
             }
-
-            // 5. Hand-dressed chiseled chamfer highlight around slab perimeter
-            cCtx.strokeStyle = `rgba(${sr - 18}, ${sg - 18}, ${sb - 18}, 0.42)`;
-            cCtx.lineWidth = 3;
-            cCtx.strokeRect(tx + 1.5, sy + 1.5, sw - 3, sh - 3);
           }
 
           xCursor += cW;
@@ -630,10 +627,10 @@ export function buildOutbuildingsAndBarns(
     name: 'outbuildingBarnLimestoneFloor',
     map: limestoneFloorTextures.colorMap,
     bumpMap: limestoneFloorTextures.bumpMap,
-    bumpScale: 0.024,
-    color: 0xf7f2e7,
-    roughness: 0.62,
-    metalness: 0.03,
+    bumpScale: 0.004,
+    color: 0xf5efe4,
+    roughness: 0.36,
+    metalness: 0.04,
   });
 
   const gymSubFloorMat = new THREE.MeshStandardMaterial({
@@ -662,9 +659,11 @@ export function buildOutbuildingsAndBarns(
   const lightJoineryOakMat = new THREE.MeshStandardMaterial({
     name: 'outbuildingLightJoineryOak',
     map: (oakFloorMat as THREE.MeshStandardMaterial).map ?? null,
-    color: 0xe6cda8,
-    roughness: 0.42,
-    metalness: 0.03,
+    bumpMap: (oakFloorMat as THREE.MeshStandardMaterial).bumpMap ?? null,
+    bumpScale: 0.008,
+    color: 0xd6c3a8,
+    roughness: 0.68,
+    metalness: 0.01,
   });
   const lightJoineryOakPostMat = lightJoineryOakMat;
 

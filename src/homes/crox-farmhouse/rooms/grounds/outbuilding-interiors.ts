@@ -4057,18 +4057,29 @@ export function buildBarnGolfSimulator(
     simGroup.add(ball);
   }
 
+  // Issue #3 ("Trackman and projector seem to be inside the wall" at `[-6.981, 2.651, 17.826]`, `outbuildings.barn.golfSimulator.trackmanIO`):
+  // Mount both the 4K Short-Throw Laser Projector (`x = -1.04m`, `u = 14.16m`) and the TrackMan iO Launch Monitor (`x = -0.52m`, `u = 14.68m`)
+  // cleanly inside the simulator enclosure ceiling (`localY = 2.58m` & `2.62m`, `worldY = 2.24m` & `2.28m`), completely clear of the
+  // `u = 14.96..15.20m` (`x = -0.24..0.00m`) Store/Barn brick cross-wall, with compact ceiling mount stems terminating flush against
+  // the simulator's acoustic ceiling baffles (`localY = 2.82m`) so nothing protrudes through the wall or simulator roof lid!
   const projectorGroup = new THREE.Group();
   projectorGroup.name = 'outbuildings.barn.golfSimulator.projector';
-  // Short-throw 4K laser projector mounted at `x = -0.32m` (`1.70m` from screen), well forward of the TrackMan iO optical/radar cone
-  projectorGroup.position.set(-0.32, 2.74, 0);
+  projectorGroup.position.set(-1.04, 2.58, 0);
   simCeilingGroup.add(projectorGroup);
 
   const dropPole = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.022, 0.022, 1.68, 12),
+    new THREE.CylinderGeometry(0.022, 0.022, 0.24, 12),
     projectorBodyMat
   );
-  dropPole.position.set(0, 0.84, 0);
+  dropPole.position.set(0, 0.12, 0);
   projectorGroup.add(dropPole);
+
+  const projectorMountFlange = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.068, 0.068, 0.014, 16),
+    projectorBodyMat
+  );
+  projectorMountFlange.position.set(0, 0.233, 0);
+  projectorGroup.add(projectorMountFlange);
 
   const projectorChassis = new THREE.Mesh(
     new THREE.BoxGeometry(0.38, 0.14, 0.44),
@@ -4092,20 +4103,24 @@ export function buildBarnGolfSimulator(
   projectorLens.position.set(-0.195, -0.025, 0);
   projectorGroup.add(projectorLens);
 
-  // Official TrackMan iO Ceiling Mount Specification:
-  // - Mounted `1.02m` (`3'4"`) in front of the tee (`hittingX = 1.12m` -> `x = +0.10m`)
-  // - Mounted `2.95m` (`9'8"`) above the hitting surface
   const tmGroup = new THREE.Group();
   tmGroup.name = 'outbuildings.barn.golfSimulator.trackmanIO';
-  tmGroup.position.set(hittingX - 1.02, 2.95, 0);
+  tmGroup.position.set(-0.52, 2.62, 0);
   simCeilingGroup.add(tmGroup);
 
   const tmDropTube = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.02, 0.02, 1.44, 12),
+    new THREE.CylinderGeometry(0.02, 0.02, 0.20, 12),
     projectorBodyMat
   );
-  tmDropTube.position.set(0, 0.72, 0);
+  tmDropTube.position.set(0, 0.10, 0);
   tmGroup.add(tmDropTube);
+
+  const tmMountFlange = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.062, 0.062, 0.014, 16),
+    projectorBodyMat
+  );
+  tmMountFlange.position.set(0, 0.193, 0);
+  tmGroup.add(tmMountFlange);
 
   const tmCore = new THREE.Mesh(
     new THREE.BoxGeometry(0.26, 0.072, 0.34),

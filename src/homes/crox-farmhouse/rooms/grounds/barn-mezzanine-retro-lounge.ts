@@ -17,38 +17,307 @@ import * as THREE from 'three';
 // - 5-Shelf Oak Bookcase stocked with 90s Board Games, VHS/CDs, Boombox & Lava Lamps
 // ============================================================================
 
-function createTeakWoodTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.fillStyle = '#9e6230';
-    ctx.fillRect(0, 0, 512, 512);
-    for (let y = 0; y < 512; y += 2) {
-      const wave = Math.sin(y * 0.045) * 10 + Math.cos(y * 0.018) * 6;
-      const tone = Math.floor(wave);
-      const r = Math.min(255, Math.max(0, 156 + tone));
-      const g = Math.min(255, Math.max(0, 96 + Math.floor(tone * 0.65)));
-      const b = Math.min(255, Math.max(0, 46 + Math.floor(tone * 0.4)));
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
-      ctx.fillRect(0, y, 512, 2);
-    }
-    ctx.strokeStyle = 'rgba(68, 36, 14, 0.16)';
-    ctx.lineWidth = 1.2;
-    for (let i = 0; i < 42; i++) {
-      const y0 = (i * 13) % 512;
-      ctx.beginPath();
-      ctx.moveTo(0, y0);
-      ctx.bezierCurveTo(170, y0 + ((i % 3) - 1) * 14, 340, y0 - ((i % 3) - 1) * 14, 512, y0);
-      ctx.stroke();
+// Issue #7 ("Lighter oak less mahogany more like white oak" + "now the oak is too light and shiny looks like cheap ikea furniture"):
+// High-resolution (`1024x1024`) Brushed & Raw-Oiled Solid European / American White Oak Joinery Texture + Open-Pore Bump Map:
+// - Rich, grounded mid-tone earthy taupe-honey White Oak stave palette (`#9e7d56` to `#b08e66` — zero reddish mahogany, and zero pale yellow IKEA birch!)
+// - 6 edge-glued solid timber staves with subtle heartwood/sapwood tonal shifts, deep umber open-pore earlywood vessels,
+//   cathedral grain arches, quarter-sawn medullary ray flecks, small sound pin-knots, and a tactile wire-brushed bump map (`roughness: 0.72`).
+function createSolidWhiteOakJoineryTextures(): {
+  colorMap: THREE.CanvasTexture;
+  bumpMap: THREE.CanvasTexture;
+} {
+  const size = 1024;
+  const colorCanvas = document.createElement('canvas');
+  colorCanvas.width = size;
+  colorCanvas.height = size;
+  const cCtx = colorCanvas.getContext('2d');
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = size;
+  bumpCanvas.height = size;
+  const bCtx = bumpCanvas.getContext('2d');
+
+  let seed = 63917;
+  const rand = (): number => {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+  const clamp = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
+
+  if (cCtx && bCtx) {
+    // Authentic aged European / American White Oak stave palette (earthy warm taupe-umber & honey-brown, no orange/red mahogany and no pale yellow birch)
+    const stavePalette: ReadonlyArray<readonly [number, number, number]> = [
+      [164, 131, 93],  // Classic raw-oiled European White Oak (#a4835d)
+      [154, 122, 86],  // Deeper quarter-sawn heartwood White Oak (#9a7a56)
+      [172, 138, 99],  // Warm honeyed White Oak stave (#ac8a63)
+      [158, 126, 89],  // Muted taupe-umber White Oak (#9e7e59)
+      [168, 134, 96],  // Natural waxed White Oak (#a88660)
+      [150, 118, 83],  // Aged barn-seasoned White Oak (#967653)
+    ];
+
+    const numStaves = 6;
+    const staveH = size / numStaves;
+
+    for (let s = 0; s < numStaves; s++) {
+      const y0 = Math.round(s * staveH);
+      const y1 = Math.round((s + 1) * staveH);
+      const sh = y1 - y0;
+      const [baseR, baseG, baseB] = stavePalette[s % stavePalette.length]!;
+
+      // 1. Stave base fill + cross-stave heartwood/sapwood crown shading
+      cCtx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
+      cCtx.fillRect(0, y0, size, sh);
+
+      const bumpBase = 178 + (s % 3) * 6;
+      bCtx.fillStyle = `rgb(${bumpBase}, ${bumpBase}, ${bumpBase})`;
+      bCtx.fillRect(0, y0, size, sh);
+
+      const staveGrad = cCtx.createLinearGradient(0, y0, 0, y1);
+      const edgeDelta = s % 2 === 0 ? -9 : 8;
+      staveGrad.addColorStop(
+        0,
+        `rgba(${clamp(baseR + edgeDelta)}, ${clamp(baseG + edgeDelta)}, ${clamp(baseB + Math.round(edgeDelta * 0.85))}, 0.42)`
+      );
+      staveGrad.addColorStop(
+        0.5,
+        `rgba(${clamp(baseR - Math.round(edgeDelta * 0.6))}, ${clamp(baseG - Math.round(edgeDelta * 0.6))}, ${clamp(baseB - Math.round(edgeDelta * 0.5))}, 0.28)`
+      );
+      staveGrad.addColorStop(
+        1,
+        `rgba(${clamp(baseR + edgeDelta)}, ${clamp(baseG + edgeDelta)}, ${clamp(baseB + Math.round(edgeDelta * 0.85))}, 0.42)`
+      );
+      cCtx.fillStyle = staveGrad;
+      cCtx.fillRect(0, y0, size, sh);
+
+      // Subtle micro-joint line between edge-glued solid oak staves
+      cCtx.fillStyle = 'rgba(72, 52, 34, 0.32)';
+      cCtx.fillRect(0, y0, size, 1.5);
+      bCtx.fillStyle = 'rgb(110, 110, 110)';
+      bCtx.fillRect(0, y0, size, 2);
+
+      // Optional small sound pin-knot on alternating staves
+      const hasKnot = s === 1 || s === 4;
+      const knotX = hasKnot ? 220 + s * 135 : -999;
+      const knotY = y0 + sh * (s === 1 ? 0.44 : 0.58);
+
+      // 2. Dense wire-brushed longitudinal oak fibers & cathedral heartwood arches (84 fibers per stave)
+      const cathedralCenterY = y0 + sh * (0.36 + (s % 3) * 0.14);
+      const numFibers = 84;
+      for (let f = 0; f < numFibers; f++) {
+        const t = (f + 0.5) / numFibers;
+        const fyBase = y0 + 2 + t * (sh - 4);
+        const distCathedral = (fyBase - cathedralCenterY) / (sh * 0.5);
+        const isDarkPore = f % 3 === 0;
+        const isLightRidge = f % 5 === 2;
+
+        const delta = isDarkPore
+          ? -24 - Math.round(rand() * 12)
+          : isLightRidge
+            ? 11 + Math.round(rand() * 7)
+            : -6 + Math.round((rand() - 0.5) * 10);
+
+        cCtx.strokeStyle = `rgba(${clamp(baseR + delta)}, ${clamp(baseG + Math.round(delta * 0.92))}, ${clamp(baseB + Math.round(delta * 0.82))}, ${isDarkPore ? 0.52 : 0.36})`;
+        cCtx.lineWidth = isDarkPore ? 1.5 : 1.1;
+
+        const bumpVal = clamp(bumpBase + (isDarkPore ? -58 : isLightRidge ? 28 : -8));
+        bCtx.strokeStyle = `rgb(${bumpVal}, ${bumpVal}, ${bumpVal})`;
+        bCtx.lineWidth = isDarkPore ? 1.8 : 1.1;
+
+        cCtx.beginPath();
+        bCtx.beginPath();
+        for (let x = 0; x <= size; x += 16) {
+          const nx = x / size;
+          const archWave =
+            Math.sin(nx * Math.PI * 2 + s * 1.3) * (1 - Math.min(1, Math.abs(distCathedral))) * 9.5 +
+            Math.sin(nx * Math.PI * 4 + f * 0.15) * 2.4;
+          let py = fyBase + archWave;
+          if (hasKnot) {
+            const dx = x - knotX;
+            const dy = py - knotY;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < 3600) {
+              const push = Math.exp(-d2 / 900) * 11 * (dy >= 0 ? 1 : -1);
+              py += push;
+            }
+          }
+          const clampedY = Math.max(y0 + 1, Math.min(y1 - 1, py));
+          if (x === 0) {
+            cCtx.moveTo(x, clampedY);
+            bCtx.moveTo(x, clampedY);
+          } else {
+            cCtx.lineTo(x, clampedY);
+            bCtx.lineTo(x, clampedY);
+          }
+        }
+        cCtx.stroke();
+        bCtx.stroke();
+      }
+
+      // 3. Open-pore earlywood vessel dashes (characteristic ring-porous White Oak texture)
+      for (let p = 0; p < 220; p++) {
+        const px = rand() * size;
+        const py = y0 + 3 + rand() * (sh - 6);
+        const plen = 6 + rand() * 18;
+        cCtx.strokeStyle = 'rgba(68, 48, 30, 0.38)';
+        cCtx.lineWidth = 1.0;
+        cCtx.beginPath();
+        cCtx.moveTo(px, py);
+        cCtx.lineTo(Math.min(size, px + plen), py + (rand() - 0.5) * 1.2);
+        cCtx.stroke();
+
+        bCtx.strokeStyle = 'rgb(88, 88, 88)';
+        bCtx.lineWidth = 1.2;
+        bCtx.beginPath();
+        bCtx.moveTo(px, py);
+        bCtx.lineTo(Math.min(size, px + plen), py);
+        bCtx.stroke();
+      }
+
+      // 4. Quarter-sawn White Oak Medullary Ray Flecks ("silvery-taupe ribbon fleck")
+      for (let m = 0; m < 18; m++) {
+        const mx = rand() * (size - 36);
+        const my = y0 + 8 + rand() * (sh - 16);
+        const mw = 12 + rand() * 24;
+        const mh = 2.2 + rand() * 3.2;
+        cCtx.fillStyle = `rgba(${clamp(baseR + 24)}, ${clamp(baseG + 21)}, ${clamp(baseB + 16)}, 0.24)`;
+        cCtx.beginPath();
+        cCtx.ellipse(mx, my, mw, mh, (rand() - 0.5) * 0.12, 0, Math.PI * 2);
+        cCtx.fill();
+      }
+
+      // 5. Render small dark resin-filled sound pin-knot if present on this stave
+      if (hasKnot) {
+        const kGrad = cCtx.createRadialGradient(knotX, knotY, 1.5, knotX, knotY, 12);
+        kGrad.addColorStop(0, 'rgb(52, 36, 22)');
+        kGrad.addColorStop(0.55, 'rgb(82, 58, 36)');
+        kGrad.addColorStop(1, `rgba(${baseR}, ${baseG}, ${baseB}, 0)`);
+        cCtx.fillStyle = kGrad;
+        cCtx.beginPath();
+        cCtx.ellipse(knotX, knotY, 12, 6.5, 0.05, 0, Math.PI * 2);
+        cCtx.fill();
+
+        bCtx.fillStyle = 'rgb(75, 75, 75)';
+        bCtx.beginPath();
+        bCtx.ellipse(knotX, knotY, 8, 4.5, 0.05, 0, Math.PI * 2);
+        bCtx.fill();
+      }
     }
   }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+
+  const colorMap = new THREE.CanvasTexture(colorCanvas);
+  colorMap.wrapS = THREE.RepeatWrapping;
+  colorMap.wrapT = THREE.RepeatWrapping;
+  colorMap.colorSpace = THREE.SRGBColorSpace;
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.RepeatWrapping;
+
+  return { colorMap, bumpMap };
+}
+
+function createTeakWoodTexture(): THREE.CanvasTexture {
+  return createSolidWhiteOakJoineryTextures().colorMap;
+}
+
+// Issue #6 ("sheepskin beanbag" at `[-2.208, 2.109, 15.359]`, `outbuildings.mezzanine.beanbag.navyBack`):
+// Curly Warm-Ivory / Natural Cream New Zealand Sheepskin Fleece Texture & High-Relief Wool Curl Bump Map
+function createSheepskinFleeceTextures(): {
+  colorMap: THREE.CanvasTexture;
+  bumpMap: THREE.CanvasTexture;
+} {
+  const size = 512;
+  const colorCanvas = document.createElement('canvas');
+  colorCanvas.width = size;
+  colorCanvas.height = size;
+  const cCtx = colorCanvas.getContext('2d');
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = size;
+  bumpCanvas.height = size;
+  const bCtx = bumpCanvas.getContext('2d');
+
+  let seed = 41927;
+  const rand = (): number => {
+    seed = (seed * 16807) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+
+  if (cCtx && bCtx) {
+    cCtx.fillStyle = '#f2ead9';
+    cCtx.fillRect(0, 0, size, size);
+    bCtx.fillStyle = '#606060';
+    bCtx.fillRect(0, 0, size, size);
+
+    // Thousands of soft overlapping curly wool fleece tufts & bouclé ringlets
+    for (let i = 0; i < 2400; i++) {
+      const cx = rand() * size;
+      const cy = rand() * size;
+      const r = 3.5 + rand() * 7.5;
+      const warmShift = Math.round((rand() - 0.45) * 14);
+      const cr = Math.min(255, Math.max(225, 245 + warmShift));
+      const cg = Math.min(252, Math.max(216, 237 + warmShift));
+      const cb = Math.min(242, Math.max(198, 221 + warmShift));
+
+      for (const wx of [-size, 0, size] as const) {
+        for (const wy of [-size, 0, size] as const) {
+          const px = cx + wx;
+          const py = cy + wy;
+          if (px + r < 0 || px - r > size || py + r < 0 || py - r > size) continue;
+
+          const cGrad = cCtx.createRadialGradient(px - r * 0.25, py - r * 0.25, r * 0.1, px, py, r);
+          cGrad.addColorStop(0, `rgb(${Math.min(255, cr + 7)}, ${Math.min(255, cg + 7)}, ${Math.min(255, cb + 6)})`);
+          cGrad.addColorStop(0.7, `rgb(${cr}, ${cg}, ${cb})`);
+          cGrad.addColorStop(1, 'rgba(218, 206, 186, 0.35)');
+          cCtx.fillStyle = cGrad;
+          cCtx.beginPath();
+          cCtx.arc(px, py, r, 0, Math.PI * 2);
+          cCtx.fill();
+
+          const bGrad = bCtx.createRadialGradient(px - r * 0.2, py - r * 0.2, r * 0.1, px, py, r);
+          bGrad.addColorStop(0, 'rgba(248, 248, 248, 0.85)');
+          bGrad.addColorStop(0.65, 'rgba(185, 185, 185, 0.65)');
+          bGrad.addColorStop(1, 'rgba(70, 70, 70, 0)');
+          bCtx.fillStyle = bGrad;
+          bCtx.beginPath();
+          bCtx.arc(px, py, r, 0, Math.PI * 2);
+          bCtx.fill();
+        }
+      }
+    }
+
+    // Fine curly wool fiber strands across the surface
+    cCtx.lineWidth = 1.1;
+    bCtx.lineWidth = 1.4;
+    for (let s = 0; s < 1600; s++) {
+      const sx = rand() * size;
+      const sy = rand() * size;
+      const sr = 2.5 + rand() * 4.5;
+      const a0 = rand() * Math.PI * 2;
+      cCtx.strokeStyle = s % 2 === 0 ? 'rgba(255, 252, 245, 0.45)' : 'rgba(210, 196, 174, 0.32)';
+      cCtx.beginPath();
+      cCtx.arc(sx, sy, sr, a0, a0 + Math.PI * 1.25);
+      cCtx.stroke();
+
+      bCtx.strokeStyle = 'rgba(235, 235, 235, 0.45)';
+      bCtx.beginPath();
+      bCtx.arc(sx, sy, sr, a0, a0 + Math.PI * 1.25);
+      bCtx.stroke();
+    }
+  }
+
+  const colorMap = new THREE.CanvasTexture(colorCanvas);
+  colorMap.wrapS = THREE.RepeatWrapping;
+  colorMap.wrapT = THREE.RepeatWrapping;
+  colorMap.repeat.set(3, 3);
+  colorMap.colorSpace = THREE.SRGBColorSpace;
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.repeat.set(3, 3);
+
+  return { colorMap, bumpMap };
 }
 
 function createLionKingTrinitronScreenTexture(): THREE.CanvasTexture {
@@ -1202,18 +1471,24 @@ export function buildBarnMezzanineRetroLounge(
   loungeGroup.userData.zone = 'courtyard';
   firstFloorGroup.add(loungeGroup);
 
-  const teakTex = createTeakWoodTexture();
+  // Issue #7 ("Lighter oak less mahogany more like white oak" + "now the oak is too light and shiny looks like cheap ikea furniture"):
+  // Authentic Matte Wire-Brushed & Raw-Oiled Solid European/American White Oak (`roughness: 0.72`, `metalness: 0.01`, `bumpScale: 0.010`)
+  const whiteOakTextures = createSolidWhiteOakJoineryTextures();
   const teakMat = new THREE.MeshStandardMaterial({
-    color: 0xc88a52,
-    map: teakTex,
-    roughness: 0.42,
-    metalness: 0.04,
+    color: 0xffffff,
+    map: whiteOakTextures.colorMap,
+    bumpMap: whiteOakTextures.bumpMap,
+    bumpScale: 0.010,
+    roughness: 0.72,
+    metalness: 0.01,
   });
   const darkTeakMat = new THREE.MeshStandardMaterial({
-    color: 0x8f5b2d,
-    map: teakTex,
-    roughness: 0.48,
-    metalness: 0.05,
+    color: 0xccbba4,
+    map: whiteOakTextures.colorMap,
+    bumpMap: whiteOakTextures.bumpMap,
+    bumpScale: 0.010,
+    roughness: 0.76,
+    metalness: 0.01,
   });
   const trinitronCharcoalMat = new THREE.MeshStandardMaterial({
     color: 0x22252a,
@@ -2065,17 +2340,24 @@ export function buildBarnMezzanineRetroLounge(
   // Traditional style rug. Still wooden book case. Not bright purples and blacks like a CBBC studio."):
   // Matches `media_1791202879638_22365d89.jpg` with warm, cosy heritage navy corduroy, woven oatmeal/terracotta/navy tapestry,
   // deep slate-indigo corduroy in the back corner, and a round woven terracotta/cream pouffe!
-  const heritageNavyCorduroyMat = new THREE.MeshStandardMaterial({
+  // Issue #5 ("Terracotta cordoroy beanbag" at `[-2.701, 2.121, 18.522]`, `outbuildings.mezzanine.beanbag.navyFront`):
+  // Rich warm Terracotta Jumbo Corduroy Material (`#b8563a` wales with `#8e3d26` shadow valleys)
+  const terracottaCorduroyMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    map: createCorduroyFabricTexture('#233146', '#192434'),
+    map: createCorduroyFabricTexture('#b8563a', '#8e3d26'),
     roughness: 0.86,
     metalness: 0.02,
   });
-  const slateIndigoCorduroyMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    map: createCorduroyFabricTexture('#2c3c52', '#202d3f'),
-    roughness: 0.86,
-    metalness: 0.02,
+  // Issue #6 ("sheepskin beanbag" at `[-2.208, 2.109, 15.359]`, `outbuildings.mezzanine.beanbag.navyBack`):
+  // Plush curly warm-ivory New Zealand Sheepskin Fleece Material
+  const sheepskinTextures = createSheepskinFleeceTextures();
+  const sheepskinBeanbagMat = new THREE.MeshStandardMaterial({
+    color: 0xf8f3e6,
+    map: sheepskinTextures.colorMap,
+    bumpMap: sheepskinTextures.bumpMap,
+    bumpScale: 0.018,
+    roughness: 0.92,
+    metalness: 0.01,
   });
   const tapestryBeanbagMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
@@ -2093,8 +2375,8 @@ export function buildBarnMezzanineRetroLounge(
   const beanbagGeoLarge = createSculptedBeanbagGeometry(0.54, 0.68, 0.58);
   const beanbagGeoMed = createSculptedBeanbagGeometry(0.48, 0.62, 0.52);
 
-  // 1. Foreground South-West Heritage Navy Jumbo Corduroy Beanbag Chair (`u = 19.72m, v = 3.96m`)
-  const navyBeanbagFront = new THREE.Mesh(beanbagGeoLarge, heritageNavyCorduroyMat);
+  // 1. Foreground South-West Terracotta Jumbo Corduroy Beanbag Chair (`u = 19.72m, v = 3.96m` — Issue #5!)
+  const navyBeanbagFront = new THREE.Mesh(beanbagGeoLarge, terracottaCorduroyMat);
   navyBeanbagFront.name = 'outbuildings.mezzanine.beanbag.navyFront';
   navyBeanbagFront.position.set(19.72, mezzanineFloorY, 3.96);
   navyBeanbagFront.rotation.y = -2.28;
@@ -2111,8 +2393,8 @@ export function buildBarnMezzanineRetroLounge(
   tapestryBeanbag.receiveShadow = true;
   loungeSeatingGroup.add(tapestryBeanbag);
 
-  // 3. North-West Lounge Deep Slate-Indigo Corduroy Beanbag Chair (`u = 20.52m, v = 1.08m`, facing the coffee table & TV)
-  const navyBeanbagBack = new THREE.Mesh(beanbagGeoMed, slateIndigoCorduroyMat);
+  // 3. North-West Lounge Plush Curly Cream Sheepskin Beanbag Chair (`u = 20.52m, v = 1.08m` — Issue #6!)
+  const navyBeanbagBack = new THREE.Mesh(beanbagGeoMed, sheepskinBeanbagMat);
   navyBeanbagBack.name = 'outbuildings.mezzanine.beanbag.navyBack';
   navyBeanbagBack.position.set(20.52, mezzanineFloorY, 1.08);
   navyBeanbagBack.rotation.y = 0.52;
@@ -2241,20 +2523,8 @@ export function buildBarnMezzanineRetroLounge(
     coffeeTableGroup.add(bowl);
   }
 
-  // Stacked board game boxes beside/on edge of coffee table
-  for (let b = 0; b < 2; b++) {
-    const bgBox = new THREE.Mesh(
-      new THREE.BoxGeometry(0.26, 0.052, 0.38),
-      new THREE.MeshStandardMaterial({
-        color: b === 0 ? 0xd93228 : 0x26548c,
-        roughness: 0.45,
-      })
-    );
-    bgBox.position.set(0.18, ctH + 0.026 + b * 0.053, -0.42);
-    bgBox.rotation.y = b * 0.08 - 0.05;
-    bgBox.castShadow = true;
-    coffeeTableGroup.add(bgBox);
-  }
+  // Issue #4 ("Remove this book from table" at `[-0.774, 2.025, 15.338]`, `outbuildings.mezzanine.coffeeTable`):
+  // Removed the stacked book/box meshes from the edge of the coffee table.
 
   // =========================================================================
   // 7. 4 COLOURFUL 1990s GRAPHIC SKATEBOARD DECKS ON THE SOUTH WALL (`v = 5.405m`)
@@ -3785,7 +4055,12 @@ export function buildBarnGroundWallArtworks(
   poolTableTaskLight.position.set(20.38, 0.82, 2.08);
   barnLightingGroup.add(poolTableTaskLight);
 
-  // 4B. 2 Warm-Brass & Ribbed-Alabaster Pendant Task Lights over the Golf Viewing Bar (`u = 18.42m, v = 4.02m & 5.02m`)
+  // 4B. 2 Warm-Brass & Ribbed-Alabaster Pendant Task Lights over the Golf Viewing Bar (`u = 18.42m, v = 4.04m & 5.00m`)
+  // Issue #1 ("Put an arm / bracket on the mezzanine to hold the lights up" at `[-3.505, 1.384, 18.514]`, `outbuildings.barn.mezzanineFrontBeam`):
+  // Because the Golf Viewing Bar (`u = 18.42m`) sits `0.26m` West (in front) of the Mezzanine front bressummer beam (`u = 18.68m, y = 1.29..1.428m`),
+  // each pendant is held up by a bespoke Brushed-Brass & Blackened-Bronze Cantilever Bracket Arm (`outbuildings.barn.golfViewingBarPendant.bracket.1..2`)
+  // bolted directly onto the West (`-u`) face of `outbuildings.barn.mezzanineFrontBeam` at `u = 18.68m` (`localX = +0.26m`)!
+  // Attached to `barnLightingGroup` (`groundGroup`) so the brackets and pendant lights stay visible in both Ground and First-Floor cutaway modes!
   for (const [pIdx, pv] of [
     [1, 4.04],
     [2, 5.00],
@@ -3793,13 +4068,101 @@ export function buildBarnGroundWallArtworks(
     const barPendant = new THREE.Group();
     barPendant.name = `outbuildings.barn.golfViewingBarPendant.${pIdx}`;
     barPendant.position.set(18.42, 1.395, pv);
-    barnCeilingLightingGroup.add(barPendant);
+    barnLightingGroup.add(barPendant);
+
+    const bracketGroup = new THREE.Group();
+    bracketGroup.name = `outbuildings.barn.golfViewingBarPendant.bracket.${pIdx}`;
+    barPendant.add(bracketGroup);
+
+    // 1. Chamfered Rectangular Mounting Backplate bolted flush against the West (`-u`) face of `mezzanineFrontBeam` (`u = 18.68m` -> `localX = +0.26m`)
+    const beamBackplate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.014, 0.116, 0.068),
+      darkBronzeChannelMat
+    );
+    beamBackplate.name = `outbuildings.barn.golfViewingBarPendant.bracket.${pIdx}.backplate`;
+    beamBackplate.position.set(0.253, -0.036, 0);
+    beamBackplate.castShadow = true;
+    bracketGroup.add(beamBackplate);
+
+    // 4 Brushed-brass coach bolt heads at the corners of the mounting backplate
+    for (const [by, bz] of [
+      [-0.076, -0.022],
+      [-0.076, 0.022],
+      [0.004, -0.022],
+      [0.004, 0.022],
+    ] as const) {
+      const boltHead = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0045, 0.0045, 0.008, 8),
+        brushedBrassMat
+      );
+      boltHead.rotation.z = Math.PI / 2;
+      boltHead.position.set(0.244, by, bz);
+      bracketGroup.add(boltHead);
+    }
+
+    // Turned brass wall/beam boss collar (`localX = +0.240m, localY = -0.006m`)
+    const beamCollar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.018, 0.022, 0.018, 16),
+      brushedBrassMat
+    );
+    beamCollar.rotation.z = Math.PI / 2;
+    beamCollar.position.set(0.240, -0.006, 0);
+    bracketGroup.add(beamCollar);
+
+    // 2. Horizontal Cantilever Tubular Brass Arm projecting `0.26m` West from `u = 18.68m` (`localX = +0.255m`) out to `u = 18.42m` (`localX = -0.010m`)
+    const cantileverArm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.010, 0.011, 0.265, 14),
+      brushedBrassMat
+    );
+    cantileverArm.name = `outbuildings.barn.golfViewingBarPendant.bracket.${pIdx}.arm`;
+    cantileverArm.rotation.z = Math.PI / 2;
+    cantileverArm.position.set(0.1225, -0.006, 0);
+    cantileverArm.castShadow = true;
+    bracketGroup.add(cantileverArm);
+
+    // 3. Angled Lower Structural Support Strut Brace running from the lower backplate (`localX = +0.246m, localY = -0.078m`) up to the cantilever arm (`localX = +0.058m, localY = -0.008m`)
+    const strutDx = 0.246 - 0.058;
+    const strutDy = -0.008 - (-0.078);
+    const strutLen = Math.hypot(strutDx, strutDy);
+    const strutBrace = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.007, 0.007, strutLen, 12),
+      darkBronzeChannelMat
+    );
+    strutBrace.name = `outbuildings.barn.golfViewingBarPendant.bracket.${pIdx}.strut`;
+    strutBrace.position.set((0.246 + 0.058) * 0.5, (-0.078 + -0.008) * 0.5, 0);
+    strutBrace.rotation.z = Math.PI / 2 + Math.atan2(strutDy, strutDx);
+    strutBrace.castShadow = true;
+    bracketGroup.add(strutBrace);
+
+    // Brushed-brass mid-arm knuckle ring where the diagonal strut meets the horizontal cantilever arm (`localX = +0.058m`)
+    const strutKnuckle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.014, 0.014, 0.018, 14),
+      brushedBrassMat
+    );
+    strutKnuckle.rotation.z = Math.PI / 2;
+    strutKnuckle.position.set(0.058, -0.006, 0);
+    bracketGroup.add(strutKnuckle);
+
+    // 4. Turned Brushed-Brass Cord Knuckle & Top Acorn Finial at the cantilever tip (`localX = 0, localY = -0.006m`) holding the pendant cord
+    const tipKnuckle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.015, 0.015, 0.026, 16),
+      brushedBrassMat
+    );
+    tipKnuckle.position.set(0, -0.006, 0);
+    bracketGroup.add(tipKnuckle);
+
+    const tipFinial = new THREE.Mesh(
+      new THREE.SphereGeometry(0.012, 12, 10),
+      brushedBrassMat
+    );
+    tipFinial.position.set(0, 0.012, 0);
+    bracketGroup.add(tipFinial);
 
     const cord = new THREE.Mesh(
       new THREE.CylinderGeometry(0.005, 0.005, 0.34, 10),
       brushedBrassMat
     );
-    cord.position.set(0, -0.17, 0);
+    cord.position.set(0, -0.175, 0);
     barPendant.add(cord);
 
     const brassCap = new THREE.Mesh(
