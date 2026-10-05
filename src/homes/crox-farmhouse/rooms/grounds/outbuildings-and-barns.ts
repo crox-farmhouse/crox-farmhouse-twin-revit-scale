@@ -660,10 +660,10 @@ export function buildOutbuildingsAndBarns(
     name: 'outbuildingLightJoineryOak',
     map: (oakFloorMat as THREE.MeshStandardMaterial).map ?? null,
     bumpMap: (oakFloorMat as THREE.MeshStandardMaterial).bumpMap ?? null,
-    bumpScale: 0.008,
-    color: 0xd6c3a8,
-    roughness: 0.68,
-    metalness: 0.01,
+    bumpScale: 0.006,
+    color: 0xf2e6d4,
+    roughness: 0.52,
+    metalness: 0.03,
   });
   const lightJoineryOakPostMat = lightJoineryOakMat;
 

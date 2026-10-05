@@ -17,11 +17,11 @@ import * as THREE from 'three';
 // - 5-Shelf Oak Bookcase stocked with 90s Board Games, VHS/CDs, Boombox & Lava Lamps
 // ============================================================================
 
-// Issue #7 ("Lighter oak less mahogany more like white oak" + "now the oak is too light and shiny looks like cheap ikea furniture"):
-// High-resolution (`1024x1024`) Brushed & Raw-Oiled Solid European / American White Oak Joinery Texture + Open-Pore Bump Map:
-// - Rich, grounded mid-tone earthy taupe-honey White Oak stave palette (`#9e7d56` to `#b08e66` — zero reddish mahogany, and zero pale yellow IKEA birch!)
-// - 6 edge-glued solid timber staves with subtle heartwood/sapwood tonal shifts, deep umber open-pore earlywood vessels,
-//   cathedral grain arches, quarter-sawn medullary ray flecks, small sound pin-knots, and a tactile wire-brushed bump map (`roughness: 0.72`).
+// Issue #7 ("Lighter oak less mahogany more like white oak" + Reference Photo `media_1791202879638_22365d89.jpg`):
+// Seamless, Continuous Full-Board Solid European White Oak Cabinet Joinery Texture + Fine Open-Pore Bump Map:
+// - ZERO artificial horizontal stave seam lines (which previously read as striped cardboard/veneer)
+// - Rich, warm, satin hand-oiled natural European White Oak heartwood palette (`#b88856` to `#c89864` with deeper `#7e5430`
+//   cathedral grain pores, `#d4a876` latewood highlights, and subtle quarter-sawn medullary ray flecks)
 function createSolidWhiteOakJoineryTextures(): {
   colorMap: THREE.CanvasTexture;
   bumpMap: THREE.CanvasTexture;
@@ -37,7 +37,7 @@ function createSolidWhiteOakJoineryTextures(): {
   bumpCanvas.height = size;
   const bCtx = bumpCanvas.getContext('2d');
 
-  let seed = 63917;
+  let seed = 73919;
   const rand = (): number => {
     seed = (seed * 16807) % 2147483647;
     return (seed - 1) / 2147483646;
@@ -45,162 +45,128 @@ function createSolidWhiteOakJoineryTextures(): {
   const clamp = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
 
   if (cCtx && bCtx) {
-    // Authentic aged European / American White Oak stave palette (earthy warm taupe-umber & honey-brown, no orange/red mahogany and no pale yellow birch)
-    const stavePalette: ReadonlyArray<readonly [number, number, number]> = [
-      [164, 131, 93],  // Classic raw-oiled European White Oak (#a4835d)
-      [154, 122, 86],  // Deeper quarter-sawn heartwood White Oak (#9a7a56)
-      [172, 138, 99],  // Warm honeyed White Oak stave (#ac8a63)
-      [158, 126, 89],  // Muted taupe-umber White Oak (#9e7e59)
-      [168, 134, 96],  // Natural waxed White Oak (#a88660)
-      [150, 118, 83],  // Aged barn-seasoned White Oak (#967653)
-    ];
+    const baseR = 188;
+    const baseG = 142;
+    const baseB = 94;
 
-    const numStaves = 6;
-    const staveH = size / numStaves;
+    cCtx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
+    cCtx.fillRect(0, 0, size, size);
 
-    for (let s = 0; s < numStaves; s++) {
-      const y0 = Math.round(s * staveH);
-      const y1 = Math.round((s + 1) * staveH);
-      const sh = y1 - y0;
-      const [baseR, baseG, baseB] = stavePalette[s % stavePalette.length]!;
+    bCtx.fillStyle = 'rgb(184, 184, 184)';
+    bCtx.fillRect(0, 0, size, size);
 
-      // 1. Stave base fill + cross-stave heartwood/sapwood crown shading
-      cCtx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
-      cCtx.fillRect(0, y0, size, sh);
+    // 1. Smooth, periodic cross-grain heartwood/sapwood crown shading (100% seamless across y = 0..1024, zero hard lines!)
+    for (let y = 0; y < size; y += 2) {
+      const ny = y / size;
+      const crownWave =
+        Math.sin(ny * Math.PI * 2) * 9.0 +
+        Math.cos(ny * Math.PI * 4 + 0.8) * 5.5 +
+        Math.sin(ny * Math.PI * 6 + 1.9) * 3.0;
+      const r = clamp(baseR + crownWave);
+      const g = clamp(baseG + crownWave * 0.86);
+      const b = clamp(baseB + crownWave * 0.68);
+      cCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      cCtx.fillRect(0, y, size, 2);
+    }
 
-      const bumpBase = 178 + (s % 3) * 6;
-      bCtx.fillStyle = `rgb(${bumpBase}, ${bumpBase}, ${bumpBase})`;
-      bCtx.fillRect(0, y0, size, sh);
+    // 2. Continuous, organic longitudinal European White Oak fibers & cathedral heartwood figure along X (seamless across 0..1024)
+    const cathedralCenters = [0.24 * size, 0.74 * size];
+    const numFibers = 420;
+    for (let f = 0; f < numFibers; f++) {
+      const fyBase = ((f + 0.5) / numFibers) * size;
+      const d0 = (fyBase - cathedralCenters[0]!) / (size * 0.25);
+      const d1 = (fyBase - cathedralCenters[1]!) / (size * 0.25);
+      const nearCathedral = Math.abs(d0) < Math.abs(d1) ? d0 : d1;
 
-      const staveGrad = cCtx.createLinearGradient(0, y0, 0, y1);
-      const edgeDelta = s % 2 === 0 ? -9 : 8;
-      staveGrad.addColorStop(
-        0,
-        `rgba(${clamp(baseR + edgeDelta)}, ${clamp(baseG + edgeDelta)}, ${clamp(baseB + Math.round(edgeDelta * 0.85))}, 0.42)`
-      );
-      staveGrad.addColorStop(
-        0.5,
-        `rgba(${clamp(baseR - Math.round(edgeDelta * 0.6))}, ${clamp(baseG - Math.round(edgeDelta * 0.6))}, ${clamp(baseB - Math.round(edgeDelta * 0.5))}, 0.28)`
-      );
-      staveGrad.addColorStop(
-        1,
-        `rgba(${clamp(baseR + edgeDelta)}, ${clamp(baseG + edgeDelta)}, ${clamp(baseB + Math.round(edgeDelta * 0.85))}, 0.42)`
-      );
-      cCtx.fillStyle = staveGrad;
-      cCtx.fillRect(0, y0, size, sh);
+      const waveVal =
+        Math.sin(f * 0.92) * 6.5 +
+        Math.cos(f * 2.15 + 1.3) * 4.5 +
+        Math.sin(nearCathedral * Math.PI * 3.0) * 7.0;
+      const isDarkPore = waveVal < -3.2;
+      const isLightRidge = waveVal > 4.2;
 
-      // Subtle micro-joint line between edge-glued solid oak staves
-      cCtx.fillStyle = 'rgba(72, 52, 34, 0.32)';
-      cCtx.fillRect(0, y0, size, 1.5);
-      bCtx.fillStyle = 'rgb(110, 110, 110)';
-      bCtx.fillRect(0, y0, size, 2);
+      const delta = isDarkPore
+        ? -32 - Math.round(rand() * 14)
+        : isLightRidge
+          ? 16 + Math.round(rand() * 8)
+          : Math.round(waveVal * 1.4);
 
-      // Optional small sound pin-knot on alternating staves
-      const hasKnot = s === 1 || s === 4;
-      const knotX = hasKnot ? 220 + s * 135 : -999;
-      const knotY = y0 + sh * (s === 1 ? 0.44 : 0.58);
+      cCtx.strokeStyle = `rgba(${clamp(baseR + delta)}, ${clamp(baseG + Math.round(delta * 0.86))}, ${clamp(baseB + Math.round(delta * 0.72))}, ${isDarkPore ? 0.54 : isLightRidge ? 0.36 : 0.28})`;
+      cCtx.lineWidth = isDarkPore ? 1.55 : 1.15;
 
-      // 2. Dense wire-brushed longitudinal oak fibers & cathedral heartwood arches (84 fibers per stave)
-      const cathedralCenterY = y0 + sh * (0.36 + (s % 3) * 0.14);
-      const numFibers = 84;
-      for (let f = 0; f < numFibers; f++) {
-        const t = (f + 0.5) / numFibers;
-        const fyBase = y0 + 2 + t * (sh - 4);
-        const distCathedral = (fyBase - cathedralCenterY) / (sh * 0.5);
-        const isDarkPore = f % 3 === 0;
-        const isLightRidge = f % 5 === 2;
+      const bVal = clamp(184 + (isDarkPore ? -46 : isLightRidge ? 24 : Math.round(waveVal * 2.2)));
+      bCtx.strokeStyle = `rgb(${bVal}, ${bVal}, ${bVal})`;
+      bCtx.lineWidth = isDarkPore ? 1.6 : 1.1;
 
-        const delta = isDarkPore
-          ? -24 - Math.round(rand() * 12)
-          : isLightRidge
-            ? 11 + Math.round(rand() * 7)
-            : -6 + Math.round((rand() - 0.5) * 10);
+      const phase1 = (f % 7) * 0.9;
+      const phase2 = (f % 11) * 0.6;
+      const archAmp = (1 - Math.min(1, Math.abs(nearCathedral))) * 16.0 * Math.sign(nearCathedral || 1);
 
-        cCtx.strokeStyle = `rgba(${clamp(baseR + delta)}, ${clamp(baseG + Math.round(delta * 0.92))}, ${clamp(baseB + Math.round(delta * 0.82))}, ${isDarkPore ? 0.52 : 0.36})`;
-        cCtx.lineWidth = isDarkPore ? 1.5 : 1.1;
-
-        const bumpVal = clamp(bumpBase + (isDarkPore ? -58 : isLightRidge ? 28 : -8));
-        bCtx.strokeStyle = `rgb(${bumpVal}, ${bumpVal}, ${bumpVal})`;
-        bCtx.lineWidth = isDarkPore ? 1.8 : 1.1;
-
-        cCtx.beginPath();
-        bCtx.beginPath();
-        for (let x = 0; x <= size; x += 16) {
-          const nx = x / size;
-          const archWave =
-            Math.sin(nx * Math.PI * 2 + s * 1.3) * (1 - Math.min(1, Math.abs(distCathedral))) * 9.5 +
-            Math.sin(nx * Math.PI * 4 + f * 0.15) * 2.4;
-          let py = fyBase + archWave;
-          if (hasKnot) {
-            const dx = x - knotX;
-            const dy = py - knotY;
-            const d2 = dx * dx + dy * dy;
-            if (d2 < 3600) {
-              const push = Math.exp(-d2 / 900) * 11 * (dy >= 0 ? 1 : -1);
-              py += push;
-            }
-          }
-          const clampedY = Math.max(y0 + 1, Math.min(y1 - 1, py));
-          if (x === 0) {
-            cCtx.moveTo(x, clampedY);
-            bCtx.moveTo(x, clampedY);
+      cCtx.beginPath();
+      bCtx.beginPath();
+      for (let x = 0; x <= size; x += 16) {
+        const nx = x / size;
+        const py =
+          fyBase +
+          Math.sin(nx * Math.PI * 2 + phase1) * archAmp +
+          Math.cos(nx * Math.PI * 4 + phase2) * 3.2 +
+          Math.sin(nx * Math.PI * 6 + f * 0.12) * 1.2;
+        const wrappedY = ((py % size) + size) % size;
+        if (x === 0) {
+          cCtx.moveTo(x, wrappedY);
+          bCtx.moveTo(x, wrappedY);
+        } else {
+          // Avoid vertical jump if fiber wraps across 0/1024 boundary
+          const prevNx = (x - 16) / size;
+          const prevPy =
+            fyBase +
+            Math.sin(prevNx * Math.PI * 2 + phase1) * archAmp +
+            Math.cos(prevNx * Math.PI * 4 + phase2) * 3.2 +
+            Math.sin(prevNx * Math.PI * 6 + f * 0.12) * 1.2;
+          const prevWrappedY = ((prevPy % size) + size) % size;
+          if (Math.abs(wrappedY - prevWrappedY) > size * 0.5) {
+            cCtx.moveTo(x, wrappedY);
+            bCtx.moveTo(x, wrappedY);
           } else {
-            cCtx.lineTo(x, clampedY);
-            bCtx.lineTo(x, clampedY);
+            cCtx.lineTo(x, wrappedY);
+            bCtx.lineTo(x, wrappedY);
           }
         }
-        cCtx.stroke();
-        bCtx.stroke();
       }
+      cCtx.stroke();
+      bCtx.stroke();
+    }
 
-      // 3. Open-pore earlywood vessel dashes (characteristic ring-porous White Oak texture)
-      for (let p = 0; p < 220; p++) {
-        const px = rand() * size;
-        const py = y0 + 3 + rand() * (sh - 6);
-        const plen = 6 + rand() * 18;
-        cCtx.strokeStyle = 'rgba(68, 48, 30, 0.38)';
-        cCtx.lineWidth = 1.0;
-        cCtx.beginPath();
-        cCtx.moveTo(px, py);
-        cCtx.lineTo(Math.min(size, px + plen), py + (rand() - 0.5) * 1.2);
-        cCtx.stroke();
+    // 3. Characteristic ring-porous European White Oak open earlywood pores along the grain
+    for (let p = 0; p < 1400; p++) {
+      const px = rand() * (size - 28);
+      const py = rand() * size;
+      const plen = 7 + rand() * 20;
+      cCtx.strokeStyle = p % 3 === 0 ? 'rgba(92, 60, 34, 0.38)' : 'rgba(116, 78, 46, 0.30)';
+      cCtx.lineWidth = 1.05;
+      cCtx.beginPath();
+      cCtx.moveTo(px, py);
+      cCtx.lineTo(px + plen, py + (rand() - 0.5) * 0.8);
+      cCtx.stroke();
 
-        bCtx.strokeStyle = 'rgb(88, 88, 88)';
-        bCtx.lineWidth = 1.2;
-        bCtx.beginPath();
-        bCtx.moveTo(px, py);
-        bCtx.lineTo(Math.min(size, px + plen), py);
-        bCtx.stroke();
-      }
+      bCtx.strokeStyle = 'rgb(112, 112, 112)';
+      bCtx.lineWidth = 1.1;
+      bCtx.beginPath();
+      bCtx.moveTo(px, py);
+      bCtx.lineTo(px + plen, py);
+      bCtx.stroke();
+    }
 
-      // 4. Quarter-sawn White Oak Medullary Ray Flecks ("silvery-taupe ribbon fleck")
-      for (let m = 0; m < 18; m++) {
-        const mx = rand() * (size - 36);
-        const my = y0 + 8 + rand() * (sh - 16);
-        const mw = 12 + rand() * 24;
-        const mh = 2.2 + rand() * 3.2;
-        cCtx.fillStyle = `rgba(${clamp(baseR + 24)}, ${clamp(baseG + 21)}, ${clamp(baseB + 16)}, 0.24)`;
-        cCtx.beginPath();
-        cCtx.ellipse(mx, my, mw, mh, (rand() - 0.5) * 0.12, 0, Math.PI * 2);
-        cCtx.fill();
-      }
-
-      // 5. Render small dark resin-filled sound pin-knot if present on this stave
-      if (hasKnot) {
-        const kGrad = cCtx.createRadialGradient(knotX, knotY, 1.5, knotX, knotY, 12);
-        kGrad.addColorStop(0, 'rgb(52, 36, 22)');
-        kGrad.addColorStop(0.55, 'rgb(82, 58, 36)');
-        kGrad.addColorStop(1, `rgba(${baseR}, ${baseG}, ${baseB}, 0)`);
-        cCtx.fillStyle = kGrad;
-        cCtx.beginPath();
-        cCtx.ellipse(knotX, knotY, 12, 6.5, 0.05, 0, Math.PI * 2);
-        cCtx.fill();
-
-        bCtx.fillStyle = 'rgb(75, 75, 75)';
-        bCtx.beginPath();
-        bCtx.ellipse(knotX, knotY, 8, 4.5, 0.05, 0, Math.PI * 2);
-        bCtx.fill();
-      }
+    // 4. Quarter-sawn White Oak Medullary Ray Flecks (warm golden-amber silk ribbons)
+    for (let m = 0; m < 85; m++) {
+      const mx = rand() * (size - 40);
+      const my = rand() * (size - 12);
+      const mw = 14 + rand() * 26;
+      const mh = 1.8 + rand() * 2.6;
+      cCtx.fillStyle = 'rgba(218, 178, 128, 0.22)';
+      cCtx.beginPath();
+      cCtx.ellipse(mx, my, mw, mh, (rand() - 0.5) * 0.08, 0, Math.PI * 2);
+      cCtx.fill();
     }
   }
 
@@ -208,16 +174,64 @@ function createSolidWhiteOakJoineryTextures(): {
   colorMap.wrapS = THREE.RepeatWrapping;
   colorMap.wrapT = THREE.RepeatWrapping;
   colorMap.colorSpace = THREE.SRGBColorSpace;
+  colorMap.anisotropy = 8;
 
   const bumpMap = new THREE.CanvasTexture(bumpCanvas);
   bumpMap.wrapS = THREE.RepeatWrapping;
   bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.anisotropy = 8;
 
   return { colorMap, bumpMap };
 }
 
 function createTeakWoodTexture(): THREE.CanvasTexture {
   return createSolidWhiteOakJoineryTextures().colorMap;
+}
+
+/**
+ * Applies real-world metric planar woodgrain UVs to cabinet/furniture geometry so the oak grain
+ * (`u` in texture) runs along `grainAxis` ('y' for vertical doors/uprights/legs, 'z' for horizontal
+ * tops/drawers/shelves, or 'x' for front-to-back cross rails) with zero stretching or distortion.
+ */
+function applyOakJoineryUVs(
+  geo: THREE.BufferGeometry,
+  grainAxis: 'x' | 'y' | 'z',
+  scaleAlong: number = 1.15,
+  scaleAcross: number = 1.45,
+  uOffset: number = 0,
+  vOffset: number = 0
+): THREE.BufferGeometry {
+  geo.computeVertexNormals();
+  const pos = geo.attributes.position;
+  const norm = geo.attributes.normal;
+  let uv = geo.attributes.uv;
+  if (!pos || !norm) return geo;
+  if (!uv) {
+    uv = new THREE.Float32BufferAttribute(new Float32Array(pos.count * 2), 2);
+    geo.setAttribute('uv', uv);
+  }
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const nx = Math.abs(norm.getX(i));
+    const ny = Math.abs(norm.getY(i));
+    let along = z;
+    let across = y;
+    if (grainAxis === 'y') {
+      along = y;
+      across = nx >= 0.5 ? z : x;
+    } else if (grainAxis === 'z') {
+      along = z;
+      across = ny >= 0.5 ? x : y;
+    } else {
+      along = x;
+      across = ny >= 0.5 ? z : y;
+    }
+    uv.setXY(i, along * scaleAlong + uOffset, across * scaleAcross + vOffset);
+  }
+  uv.needsUpdate = true;
+  return geo;
 }
 
 // Issue #6 ("sheepskin beanbag" at `[-2.208, 2.109, 15.359]`, `outbuildings.mezzanine.beanbag.navyBack`):
@@ -1471,24 +1485,24 @@ export function buildBarnMezzanineRetroLounge(
   loungeGroup.userData.zone = 'courtyard';
   firstFloorGroup.add(loungeGroup);
 
-  // Issue #7 ("Lighter oak less mahogany more like white oak" + "now the oak is too light and shiny looks like cheap ikea furniture"):
-  // Authentic Matte Wire-Brushed & Raw-Oiled Solid European/American White Oak (`roughness: 0.72`, `metalness: 0.01`, `bumpScale: 0.010`)
+  // Issue #7 ("Lighter oak less mahogany more like white oak" + Reference Photo `media_1791202879638_22365d89.jpg`):
+  // Hand-Rubbed Satin-Oiled Solid European White Oak Joinery (`roughness: 0.48`, `metalness: 0.03`, `bumpScale: 0.006`)
   const whiteOakTextures = createSolidWhiteOakJoineryTextures();
   const teakMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
+    color: 0xf7efe4,
     map: whiteOakTextures.colorMap,
     bumpMap: whiteOakTextures.bumpMap,
-    bumpScale: 0.010,
-    roughness: 0.72,
-    metalness: 0.01,
+    bumpScale: 0.006,
+    roughness: 0.48,
+    metalness: 0.03,
   });
   const darkTeakMat = new THREE.MeshStandardMaterial({
-    color: 0xccbba4,
+    color: 0xdccab2,
     map: whiteOakTextures.colorMap,
     bumpMap: whiteOakTextures.bumpMap,
-    bumpScale: 0.010,
-    roughness: 0.76,
-    metalness: 0.01,
+    bumpScale: 0.006,
+    roughness: 0.52,
+    metalness: 0.03,
   });
   const trinitronCharcoalMat = new THREE.MeshStandardMaterial({
     color: 0x22252a,
@@ -1555,105 +1569,359 @@ export function buildBarnMezzanineRetroLounge(
   loungeGroup.add(persianRug);
 
   // =========================================================================
-  // 2. MID-CENTURY ROUNDED TEAK SIDEBOARD CREDENZA (`outbuildings.mezzanine.retroSideboard`)
-  //    Backed against the Front Mezzanine Balustrade (`u = 19.04m, v = 2.38m`), facing East (`+u`)
+  // 2. MID-CENTURY SCULPTED SOLID WHITE OAK SIDEBOARD CREDENZA (`outbuildings.mezzanine.retroSideboard`)
+  //    Backed against the Front Mezzanine Balustrade (`u = 19.16m, v = 2.38m`), facing East (`+u`)
+  //    Reference Photo: `media_1791202879638_22365d89.jpg`
+  //    - Hollow-fronted rounded-corner Y-Z stadium outer carcass frame (`1.56m` wide x `0.52m` high x `0.44m` deep)
+  //      with `R = 0.076m` rounded top/bottom shoulders and chamfered front perimeter moulding
+  //    - Dark recessed front shadow reveal cavity + solid oak internal divider stiles & drawer rails
+  //    - 2 flush-inset rounded-outer-corner cupboard doors (vertical oak grain) with sculpted vertical timber pulls
+  //    - 3 flush-inset central drawers (horizontal oak grain) with sculpted horizontal finger-lip bar pulls
+  //    - Sculpted solid-oak underframe apron with 4 splayed tapered legs
   // =========================================================================
-  // Issue #1 ("Move the tv unit slightly further from the rail its clipping" at `[-3.528, 2.727, 16.682]`):
-  // Shifted the Ercol TV unit and Sony Trinitron TV East (`+u`) from `u = 19.04m` to `u = 19.16m..19.20m`
-  // so both the sideboard back (`u = 18.94m`) and the CRT rear neck cap (`u = 18.89m`) sit cleanly clear of the `u = 18.76m` balustrade rail!
   const sideboardGroup = new THREE.Group();
   sideboardGroup.name = 'outbuildings.mezzanine.retroSideboard';
   sideboardGroup.position.set(19.16, mezzanineFloorY, 2.38);
   loungeGroup.add(sideboardGroup);
 
   const sbDepthU = 0.44;
-  const sbStraightLenV = 1.12;
-  const sbEndRadius = sbDepthU * 0.5; // 0.22m rounded ends (total widthV = 1.12 + 0.44 = 1.56m)
+  const sbTotalW = 1.56;
+  const sbHalfW = sbTotalW * 0.5; // 0.78m
   const sbLegH = 0.22;
   const sbBodyH = 0.52;
-  const sbBodyMidY = sbLegH + sbBodyH * 0.5; // 0.48m
+  const sbHalfH = sbBodyH * 0.5; // 0.26m
+  const sbBodyMidY = sbLegH + sbHalfH; // 0.48m
   const sbTopY = sbLegH + sbBodyH; // 0.74m
+  const sbOuterCornerR = 0.076;
+  const sbWallT = 0.026;
+  const sbInnerHalfW = sbHalfW - sbWallT; // 0.754m
+  const sbInnerHalfH = sbHalfH - sbWallT; // 0.234m
+  const sbInnerCornerR = 0.052;
 
-  // Rounded-end mid-century cabinet carcass (central box + 2 half-cylinder rounded ends)
-  const sbCenterBox = new THREE.Mesh(
-    new THREE.BoxGeometry(sbDepthU, sbBodyH, sbStraightLenV),
-    teakMat
+  const createRoundedRectPath = (
+    halfW: number,
+    halfH: number,
+    rLeftTop: number,
+    rLeftBot: number,
+    rRightBot: number,
+    rRightTop: number,
+    isHole: boolean = false
+  ): THREE.Shape | THREE.Path => {
+    const path = isHole ? new THREE.Path() : new THREE.Shape();
+    const segs = 14;
+    // Counter-clockwise around (x, y)
+    path.moveTo(-halfW + rLeftBot, -halfH);
+    path.lineTo(halfW - rRightBot, -halfH);
+    for (let s = 1; s <= segs; s++) {
+      const a = -Math.PI * 0.5 + (s / segs) * (Math.PI * 0.5);
+      path.lineTo(
+        halfW - rRightBot + Math.cos(a) * rRightBot,
+        -halfH + rRightBot + Math.sin(a) * rRightBot
+      );
+    }
+    path.lineTo(halfW, halfH - rRightTop);
+    for (let s = 1; s <= segs; s++) {
+      const a = (s / segs) * (Math.PI * 0.5);
+      path.lineTo(
+        halfW - rRightTop + Math.cos(a) * rRightTop,
+        halfH - rRightTop + Math.sin(a) * rRightTop
+      );
+    }
+    path.lineTo(-halfW + rLeftTop, halfH);
+    for (let s = 1; s <= segs; s++) {
+      const a = Math.PI * 0.5 + (s / segs) * (Math.PI * 0.5);
+      path.lineTo(
+        -halfW + rLeftTop + Math.cos(a) * rLeftTop,
+        halfH - rLeftTop + Math.sin(a) * rLeftTop
+      );
+    }
+    path.lineTo(-halfW, -halfH + rLeftBot);
+    for (let s = 1; s <= segs; s++) {
+      const a = Math.PI + (s / segs) * (Math.PI * 0.5);
+      path.lineTo(
+        -halfW + rLeftBot + Math.cos(a) * rLeftBot,
+        -halfH + rLeftBot + Math.sin(a) * rLeftBot
+      );
+    }
+    path.closePath();
+    return path;
+  };
+
+  // 1. Unified Hollow Rounded-Corner Solid Oak Outer Carcass Frame (zero cylinder/box overlap!)
+  const carcassShape = createRoundedRectPath(
+    sbHalfW,
+    sbHalfH,
+    sbOuterCornerR,
+    sbOuterCornerR,
+    sbOuterCornerR,
+    sbOuterCornerR,
+    false
+  ) as THREE.Shape;
+  const carcassHole = createRoundedRectPath(
+    sbInnerHalfW,
+    sbInnerHalfH,
+    sbInnerCornerR,
+    sbInnerCornerR,
+    sbInnerCornerR,
+    sbInnerCornerR,
+    true
   );
-  sbCenterBox.position.set(0, sbBodyMidY, 0);
-  sbCenterBox.castShadow = true;
-  sbCenterBox.receiveShadow = true;
-  sideboardGroup.add(sbCenterBox);
+  carcassShape.holes.push(carcassHole);
 
+  const carcassExtrudeDepth = sbDepthU - 0.010;
+  const carcassGeo = new THREE.ExtrudeGeometry(carcassShape, {
+    depth: carcassExtrudeDepth,
+    bevelEnabled: true,
+    bevelThickness: 0.005,
+    bevelSize: 0.005,
+    bevelSegments: 4,
+    curveSegments: 20,
+  });
+  carcassGeo.translate(0, 0, -carcassExtrudeDepth * 0.5);
+  carcassGeo.rotateY(Math.PI / 2);
+  // Compute continuous grain UVs: lengthwise along Z on top/bottom slabs, vertical along Y on rounded side walls
+  {
+    carcassGeo.computeVertexNormals();
+    const pos = carcassGeo.attributes.position;
+    const norm = carcassGeo.attributes.normal;
+    const uv = carcassGeo.attributes.uv;
+    if (pos && norm && uv) {
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const ny = Math.abs(norm.getY(i));
+        const nz = Math.abs(norm.getZ(i));
+        if (nz > ny && Math.abs(z) > sbHalfW - 0.12) {
+          // Vertical grain on left/right side panels
+          uv.setXY(i, y * 1.35 + 0.2, x * 1.5 + 0.5);
+        } else {
+          // Lengthwise grain along Z on top slab, bottom rail & front perimeter moulding
+          uv.setXY(i, z * 0.85 + 0.5, (x + y) * 1.45 + 0.3);
+        }
+      }
+      uv.needsUpdate = true;
+    }
+  }
+  const sbCarcassMesh = new THREE.Mesh(carcassGeo, teakMat);
+  sbCarcassMesh.name = 'outbuildings.mezzanine.retroSideboard.carcass';
+  sbCarcassMesh.position.set(0, sbBodyMidY, 0);
+  sbCarcassMesh.castShadow = true;
+  sbCarcassMesh.receiveShadow = true;
+  sideboardGroup.add(sbCarcassMesh);
+
+  // 2. Solid Oak Rear Back Panel (`x = -0.218..+0.190m`) & Dark Shadow Reveal Cavity (`x = +0.194m`)
+  const backPanelShape = createRoundedRectPath(
+    sbInnerHalfW + 0.004,
+    sbInnerHalfH + 0.004,
+    sbInnerCornerR,
+    sbInnerCornerR,
+    sbInnerCornerR,
+    sbInnerCornerR,
+    false
+  ) as THREE.Shape;
+  const backPanelGeo = new THREE.ExtrudeGeometry(backPanelShape, {
+    depth: sbDepthU - 0.032,
+    bevelEnabled: false,
+    curveSegments: 16,
+  });
+  backPanelGeo.translate(0, 0, -(sbDepthU - 0.032) * 0.5);
+  backPanelGeo.rotateY(Math.PI / 2);
+  applyOakJoineryUVs(backPanelGeo, 'z', 0.85, 1.35);
+  const sbBackCoreMesh = new THREE.Mesh(backPanelGeo, darkTeakMat);
+  sbBackCoreMesh.position.set(-0.012, sbBodyMidY, 0);
+  sbBackCoreMesh.castShadow = true;
+  sbBackCoreMesh.receiveShadow = true;
+  sideboardGroup.add(sbBackCoreMesh);
+
+  const shadowCavityMat = new THREE.MeshStandardMaterial({
+    color: 0x26190f,
+    roughness: 0.88,
+    metalness: 0.01,
+  });
+  const shadowCavityGeo = new THREE.ShapeGeometry(backPanelShape, 14);
+  shadowCavityGeo.rotateY(Math.PI / 2);
+  const shadowCavityMesh = new THREE.Mesh(shadowCavityGeo, shadowCavityMat);
+  shadowCavityMesh.position.set(sbDepthU * 0.5 - 0.023, sbBodyMidY, 0);
+  sideboardGroup.add(shadowCavityMesh);
+
+  // 3. Internal Vertical Oak Divider Stiles (`z = ±0.236m`) & Horizontal Drawer Rails
+  const dividerStileZ = 0.236;
+  const dividerStileW = 0.018;
   for (const sideZ of [-1, 1] as const) {
-    const roundedEnd = new THREE.Mesh(
-      new THREE.CylinderGeometry(sbEndRadius, sbEndRadius, sbBodyH, 24),
-      teakMat
+    const stileGeo = applyOakJoineryUVs(
+      new THREE.BoxGeometry(0.022, sbInnerHalfH * 2, dividerStileW),
+      'y',
+      1.35,
+      1.6,
+      sideZ * 0.17
     );
-    roundedEnd.position.set(0, sbBodyMidY, sideZ * (sbStraightLenV * 0.5));
-    roundedEnd.castShadow = true;
-    roundedEnd.receiveShadow = true;
-    sideboardGroup.add(roundedEnd);
+    const stileMesh = new THREE.Mesh(stileGeo, darkTeakMat);
+    stileMesh.position.set(sbDepthU * 0.5 - 0.015, sbBodyMidY, sideZ * dividerStileZ);
+    sideboardGroup.add(stileMesh);
   }
 
-  // Front face doors (left & right) + 3 central drawers facing `+x` (East into the Mezzanine)
-  const frontX = sbDepthU * 0.5 + 0.008;
+  // 4. Flush-Inset Left & Right Cupboard Doors (rounded outer top/bottom corners matching carcass, vertical oak grain)
+  //    In `rotateY(Math.PI / 2)`, `shapeX = -z`, so:
+  //    - For the Left Door (`z in [-0.749, -0.250]`): `shapeX in [+0.250, +0.749]` (outer rounded corners are on the RIGHT `+shapeX` of the shape!)
+  //    - For the Right Door (`z in [+0.250, +0.749]`): `shapeX in [-0.749, -0.250]` (outer rounded corners are on the LEFT `-shapeX` of the shape!)
+  const doorSpanZ = sbInnerHalfW - 0.005 - (dividerStileZ + dividerStileW * 0.5 + 0.004); // 0.749 - 0.249 = 0.500m
+  const doorCenterAbsZ = (dividerStileZ + dividerStileW * 0.5 + 0.004 + (sbInnerHalfW - 0.005)) * 0.5; // 0.499m
+  const doorHalfW = doorSpanZ * 0.5; // 0.250m
+  const doorHalfH = sbInnerHalfH - 0.005; // 0.229m
+  const doorOuterR = sbInnerCornerR - 0.005; // 0.047m
+  const doorInnerR = 0.003;
+  const insetFrontX = sbDepthU * 0.5 - 0.020;
+
   for (const sideZ of [-1, 1] as const) {
-    const doorZ = sideZ * 0.42;
-    const doorPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, sbBodyH - 0.05, 0.38),
-      teakMat
-    );
-    doorPanel.position.set(frontX, sbBodyMidY, doorZ);
+    // When sideZ === -1 (Left door at negative Z), in shape space `shapeX = -z > 0`, so the outer cabinet edge is on the RIGHT (`rRightBot, rRightTop`)!
+    const isLeftDoor = sideZ < 0;
+    const doorShape = createRoundedRectPath(
+      doorHalfW,
+      doorHalfH,
+      isLeftDoor ? doorInnerR : doorOuterR,
+      isLeftDoor ? doorInnerR : doorOuterR,
+      isLeftDoor ? doorOuterR : doorInnerR,
+      isLeftDoor ? doorOuterR : doorInnerR,
+      false
+    ) as THREE.Shape;
+    const doorGeo = new THREE.ExtrudeGeometry(doorShape, {
+      depth: 0.015,
+      bevelEnabled: true,
+      bevelThickness: 0.0025,
+      bevelSize: 0.0025,
+      bevelSegments: 3,
+      curveSegments: 14,
+    });
+    doorGeo.rotateY(Math.PI / 2);
+    applyOakJoineryUVs(doorGeo, 'y', 1.15, 1.25, isLeftDoor ? 0.12 : 0.58, isLeftDoor ? 0.08 : 0.44);
+
+    const doorPanel = new THREE.Mesh(doorGeo, teakMat);
+    doorPanel.name = 'outbuildings.mezzanine.retroSideboard.door';
+    doorPanel.position.set(insetFrontX, sbBodyMidY, sideZ * doorCenterAbsZ);
     doorPanel.castShadow = true;
+    doorPanel.receiveShadow = true;
     sideboardGroup.add(doorPanel);
 
-    // Sculpted vertical mid-century timber handle pull near the inner stile
-    const doorHandle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.022, 0.11, 0.018),
-      darkTeakMat
+    // Sculpted vertical mid-century solid-oak finger-pull handle near the inner stile
+    const handleZ = sideZ * (dividerStileZ + 0.042);
+    const handleShadow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.006, 0.118, 0.012),
+      shadowCavityMat
     );
-    doorHandle.position.set(frontX + 0.012, sbBodyMidY, sideZ * 0.26);
+    handleShadow.position.set(insetFrontX + 0.018, sbBodyMidY, handleZ - sideZ * 0.005);
+    sideboardGroup.add(handleShadow);
+
+    const handleGeo = applyOakJoineryUVs(
+      new THREE.BoxGeometry(0.018, 0.122, 0.015),
+      'y',
+      1.6,
+      1.6
+    );
+    const doorHandle = new THREE.Mesh(handleGeo, darkTeakMat);
+    doorHandle.position.set(insetFrontX + 0.023, sbBodyMidY, handleZ);
+    doorHandle.castShadow = true;
     sideboardGroup.add(doorHandle);
   }
 
-  // 3 central drawers with sculpted horizontal lip handles
-  const drawerH = (sbBodyH - 0.06) / 3;
+  // 5. Three Flush-Inset Central Drawers (horizontal oak grain + sculpted finger-lip pulls)
+  const drawerBayW = (dividerStileZ - dividerStileW * 0.5 - 0.004) * 2; // 0.446m
+  const drawerTotalH = sbInnerHalfH * 2 - 0.010; // 0.458m
+  const drawerGapY = 0.005;
+  const singleDrawerH = (drawerTotalH - drawerGapY * 2) / 3; // ~0.149m
+  const drawerShape = createRoundedRectPath(
+    drawerBayW * 0.5,
+    singleDrawerH * 0.5,
+    0.003,
+    0.003,
+    0.003,
+    0.003,
+    false
+  ) as THREE.Shape;
+
   for (let d = 0; d < 3; d++) {
-    const dy = sbLegH + 0.03 + drawerH * (d + 0.5);
-    const drawerFront = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, drawerH - 0.008, 0.44),
-      teakMat
-    );
-    drawerFront.position.set(frontX, dy, 0);
+    const dy =
+      sbBodyMidY -
+      drawerTotalH * 0.5 +
+      singleDrawerH * 0.5 +
+      d * (singleDrawerH + drawerGapY);
+    const drawerGeo = new THREE.ExtrudeGeometry(drawerShape, {
+      depth: 0.015,
+      bevelEnabled: true,
+      bevelThickness: 0.0025,
+      bevelSize: 0.0025,
+      bevelSegments: 3,
+    });
+    drawerGeo.rotateY(Math.PI / 2);
+    applyOakJoineryUVs(drawerGeo, 'z', 0.95, 1.35, d * 0.31, d * 0.27);
+
+    const drawerFront = new THREE.Mesh(drawerGeo, teakMat);
+    drawerFront.name = 'outbuildings.mezzanine.retroSideboard.drawer';
+    drawerFront.position.set(insetFrontX, dy, 0);
     drawerFront.castShadow = true;
+    drawerFront.receiveShadow = true;
     sideboardGroup.add(drawerFront);
 
-    const drawerPull = new THREE.Mesh(
-      new THREE.BoxGeometry(0.024, 0.018, 0.11),
-      darkTeakMat
+    // Dark finger-recess shadow under the horizontal drawer pull
+    const pullShadow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.008, 0.009, 0.118),
+      shadowCavityMat
     );
-    drawerPull.position.set(frontX + 0.012, dy, 0);
+    pullShadow.position.set(insetFrontX + 0.019, dy - 0.004, 0);
+    sideboardGroup.add(pullShadow);
+
+    const pullGeo = applyOakJoineryUVs(
+      new THREE.BoxGeometry(0.020, 0.016, 0.124),
+      'z',
+      1.2,
+      1.6,
+      d * 0.2
+    );
+    const drawerPull = new THREE.Mesh(pullGeo, darkTeakMat);
+    drawerPull.position.set(insetFrontX + 0.024, dy + 0.003, 0);
+    drawerPull.castShadow = true;
     sideboardGroup.add(drawerPull);
   }
 
-  // Under-frame stretcher apron & 4 splayed tapered wooden legs
-  const stretcherRail = new THREE.Mesh(
-    new THREE.BoxGeometry(sbDepthU * 0.72, 0.032, sbStraightLenV + 0.16),
-    darkTeakMat
-  );
-  stretcherRail.position.set(0, sbLegH - 0.016, 0);
-  sideboardGroup.add(stretcherRail);
+  // 6. Sculpted Mid-Century Solid Oak Underframe Stretcher Apron & 4 Splayed Tapered Legs
+  for (const railX of [-0.155, 0.155] as const) {
+    const railGeo = applyOakJoineryUVs(
+      new THREE.BoxGeometry(0.026, 0.032, sbTotalW - 0.28),
+      'z',
+      0.85,
+      1.5
+    );
+    const stretcherRail = new THREE.Mesh(railGeo, darkTeakMat);
+    stretcherRail.position.set(railX, sbLegH - 0.014, 0);
+    stretcherRail.castShadow = true;
+    sideboardGroup.add(stretcherRail);
+  }
+  for (const crossZ of [-0.60, 0, 0.60] as const) {
+    const crossGeo = applyOakJoineryUVs(
+      new THREE.BoxGeometry(0.31, 0.028, 0.028),
+      'x',
+      1.2,
+      1.5
+    );
+    const crossRail = new THREE.Mesh(crossGeo, darkTeakMat);
+    crossRail.position.set(0, sbLegH - 0.014, crossZ);
+    sideboardGroup.add(crossRail);
+  }
 
-  for (const lx of [-0.15, 0.15] as const) {
-    for (const lz of [-0.58, 0.58] as const) {
-      const leg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.022, 0.013, sbLegH + 0.02, 12),
-        darkTeakMat
+  for (const lx of [-0.155, 0.155] as const) {
+    for (const lz of [-0.61, 0.61] as const) {
+      const legGeo = applyOakJoineryUVs(
+        new THREE.CylinderGeometry(0.023, 0.013, sbLegH + 0.02, 16),
+        'y',
+        1.4,
+        2.0
       );
+      const leg = new THREE.Mesh(legGeo, darkTeakMat);
       leg.position.set(lx, sbLegH * 0.5, lz);
-      leg.rotation.z = lx > 0 ? 0.11 : -0.11;
-      leg.rotation.x = lz > 0 ? -0.10 : 0.10;
+      leg.rotation.z = lx > 0 ? 0.10 : -0.10;
+      leg.rotation.x = lz > 0 ? -0.09 : 0.09;
       leg.castShadow = true;
+      leg.receiveShadow = true;
       sideboardGroup.add(leg);
     }
   }
@@ -2423,7 +2691,7 @@ export function buildBarnMezzanineRetroLounge(
   const ctL = 0.96;
   const ctH = 0.38;
   const ctTop = new THREE.Mesh(
-    new THREE.BoxGeometry(ctW, 0.028, ctL),
+    applyOakJoineryUVs(new THREE.BoxGeometry(ctW, 0.028, ctL), 'z', 0.95, 1.35),
     teakMat
   );
   ctTop.position.set(0, ctH - 0.014, 0);
@@ -2644,7 +2912,7 @@ export function buildBarnMezzanineRetroLounge(
   // Bookcase wooden side uprights & back panel
   for (const sideZ of [-1, 1] as const) {
     const upright = new THREE.Mesh(
-      new THREE.BoxGeometry(bcDepthU, bcHeightY, shelfT),
+      applyOakJoineryUVs(new THREE.BoxGeometry(bcDepthU, bcHeightY, shelfT), 'y', 0.9, 1.4, sideZ * 0.25),
       teakMat
     );
     upright.position.set(0, bcHeightY * 0.5, sideZ * (bcWidthV * 0.5 - shelfT * 0.5));
@@ -2662,7 +2930,7 @@ export function buildBarnMezzanineRetroLounge(
   const shelfHeights = [0.06, 0.31, 0.54, 0.85, 1.08, 1.29];
   for (const sy of shelfHeights) {
     const shelf = new THREE.Mesh(
-      new THREE.BoxGeometry(bcDepthU, shelfT, bcWidthV - shelfT * 2),
+      applyOakJoineryUVs(new THREE.BoxGeometry(bcDepthU, shelfT, bcWidthV - shelfT * 2), 'z', 0.9, 1.4, sy * 0.4),
       teakMat
     );
     shelf.position.set(0, sy, 0);
