@@ -3659,26 +3659,26 @@ export function buildOutbuildingsAndBarns(
   westUpperRoomSlabEastNorth.receiveShadow = true;
   firstFloorGroup.add(westUpperRoomSlabEastNorth);
 
-  // 3. Solid light-oak stairwell edge fascia trim boards (`0.022m` thick x `0.145m` high, `y = 1.395..1.54m`) along the stairwell cutout edges
-  const stairwellWestFasciaGeo = new THREE.BoxGeometry(0.022, 0.145, 5.426 - 3.56);
-  applyOutbuildingFloorUVs(stairwellWestFasciaGeo, 21.14, 1.4675, (3.56 + 5.426) * 0.5, 0.5);
+  // 3. Solid light-oak stairwell edge fascia trim boards (`0.022m` thick x `0.145m` high, `y = 1.395..1.54m`) along the open stairwell cutout edges
+  const stairwellWestFasciaGeo = new THREE.BoxGeometry(0.022, 0.145, 5.426 - 4.85);
+  applyOutbuildingFloorUVs(stairwellWestFasciaGeo, 21.14, 1.4675, (4.85 + 5.426) * 0.5, 0.5);
   const stairwellWestFascia = new THREE.Mesh(
     stairwellWestFasciaGeo,
     lightJoineryOakMat
   );
   stairwellWestFascia.name = 'outbuildings.firstFloor.stairwellFascia.west';
-  stairwellWestFascia.position.set(21.14, 1.4675, (3.56 + 5.426) * 0.5);
+  stairwellWestFascia.position.set(21.14, 1.4675, (4.85 + 5.426) * 0.5);
   stairwellWestFascia.castShadow = true;
   firstFloorGroup.add(stairwellWestFascia);
 
-  const stairwellNorthFasciaGeo = new THREE.BoxGeometry(23.016 - 21.14, 0.145, 0.022);
-  applyOutbuildingFloorUVs(stairwellNorthFasciaGeo, 22.078, 1.4675, 3.56, 0.5);
+  const stairwellNorthFasciaGeo = new THREE.BoxGeometry(23.016 - 22.04, 0.145, 0.022);
+  applyOutbuildingFloorUVs(stairwellNorthFasciaGeo, (22.04 + 23.016) * 0.5, 1.4675, 3.56, 0.5);
   const stairwellNorthFascia = new THREE.Mesh(
     stairwellNorthFasciaGeo,
     lightJoineryOakMat
   );
   stairwellNorthFascia.name = 'outbuildings.firstFloor.stairwellFascia.north';
-  stairwellNorthFascia.position.set(22.078, 1.4675, 3.56);
+  stairwellNorthFascia.position.set((22.04 + 23.016) * 0.5, 1.4675, 3.56);
   stairwellNorthFascia.castShadow = true;
   firstFloorGroup.add(stairwellNorthFascia);
 
@@ -3782,54 +3782,87 @@ export function buildOutbuildingsAndBarns(
     }
   }
 
-  // Issue #1, #3 & #4: Stairwell Guardrail (`outbuildings.barn.mezzanineStairwellGuardrail`) with rounded cylindrical
-  // top handrails (`r = 0.026m` at `y = mezzanineFloorY + 0.86m`) and turned cylindrical newel posts with spherical caps:
-  // - North segment (`v = 3.54m, u = 21.12..22.24m`) joins seamlessly into the shared bottom newel post of `stableUpStairs` (`u = 22.24m, v = 3.54m`)
-  // - West segment (`u = 21.12m, v = 4.85..5.37m`) joins seamlessly into the shared top landing newel post of `spiralStaircase` (`u = 21.12m, v = 4.85m`)!
+  // Issue #1 ("Isn't this in the wrong place?" at `[-0.75, 2.126, 17.694]` -> `u = 21.495m, v = 3.547m`) &
+  // Issue #2 ("Should it not be across here?" at `[-0.192, 1.545, 18.252]` -> `u = 22.003m, v = 4.151m` on `spiralStaircase.topLanding`):
+  // Removed the guardrail across `v = 3.54m, u = 21.12..22.02m` (where `topLanding` and `westRoomSlab.eastNorth` are both at `y = 1.54m`)
+  // and placed the guardrail along the actual East drop-off edge of `spiralStaircase.topLanding` (`u = 22.02m, v = 3.54..4.44m`,
+  // tying into the Spiral Staircase Central Column at `u = 22.08m, v = 4.50m`) with a short `22cm` return (`u = 22.02..22.24m, v = 3.54m`)
+  // into the bottom South newel post of `stableUpStairs` (`u = 22.24m, v = 3.54m`)!
   const stairwellGuardrailGroup = new THREE.Group();
   stairwellGuardrailGroup.name = 'outbuildings.barn.mezzanineStairwellGuardrail';
   firstFloorGroup.add(stairwellGuardrailGroup);
 
-  const swNorthLenU = 22.24 - 21.12; // 1.12m (from u = 21.12m corner post to u = 22.24m shared stair newel post)
-  const swNorthMidU = (21.12 + 22.24) * 0.5; // 21.68m
-  const swNorthTopRail = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.026, 0.026, swNorthLenU, 20),
+  // 1. East Landing Guardrail running North-South along the East edge of `topLanding` (`u = 22.02m, v = 3.54..4.44m`)
+  const swEastU = 22.02;
+  const swEastLenV = 4.44 - 3.54; // 0.90m (from v = 3.54m corner newel post to v = 4.44m spiral central column!)
+  const swEastMidV = (3.54 + 4.44) * 0.5; // 3.99m
+  const swEastTopRail = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.026, 0.026, swEastLenV, 20),
     lightJoineryOakMat
   );
-  swNorthTopRail.name = 'outbuildings.barn.mezzanineStairwellGuardrail';
-  swNorthTopRail.rotation.z = Math.PI / 2;
-  swNorthTopRail.position.set(swNorthMidU, mezzanineFloorY + 0.86, 3.54);
-  swNorthTopRail.castShadow = true;
-  stairwellGuardrailGroup.add(swNorthTopRail);
+  swEastTopRail.name = 'outbuildings.barn.mezzanineStairwellGuardrail';
+  swEastTopRail.rotation.x = Math.PI / 2;
+  swEastTopRail.position.set(swEastU, mezzanineFloorY + 0.86, swEastMidV);
+  swEastTopRail.castShadow = true;
+  stairwellGuardrailGroup.add(swEastTopRail);
 
-  const swNorthBotRail = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.022, 0.022, swNorthLenU, 18),
+  const swEastBotRail = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.022, swEastLenV, 18),
     lightJoineryOakMat
   );
-  swNorthBotRail.rotation.z = Math.PI / 2;
-  swNorthBotRail.position.set(swNorthMidU, mezzanineFloorY + 0.07, 3.54);
-  stairwellGuardrailGroup.add(swNorthBotRail);
+  swEastBotRail.rotation.x = Math.PI / 2;
+  swEastBotRail.position.set(swEastU, mezzanineFloorY + 0.07, swEastMidV);
+  stairwellGuardrailGroup.add(swEastBotRail);
 
-  const swNorthGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(swNorthLenU - 0.1, 0.72, 0.014),
+  const swEastGlass = new THREE.Mesh(
+    new THREE.BoxGeometry(0.014, 0.72, swEastLenV - 0.08),
     windowGlassMat
   );
-  swNorthGlass.position.set(swNorthMidU, mezzanineFloorY + 0.465, 3.54);
-  stairwellGuardrailGroup.add(swNorthGlass);
+  swEastGlass.name = 'outbuildings.barn.mezzanineStairwellGuardrail';
+  swEastGlass.position.set(swEastU, mezzanineFloorY + 0.465, swEastMidV);
+  stairwellGuardrailGroup.add(swEastGlass);
 
-  for (const cuOff of [-0.36, 0.36] as const) {
+  for (const cvOff of [-0.28, 0.28] as const) {
     for (const cyOff of [0.12, 0.8] as const) {
       const clamp = new THREE.Mesh(
         new THREE.CylinderGeometry(0.016, 0.016, 0.036, 14),
         balustradeClampMat
       );
-      clamp.rotation.x = Math.PI / 2;
-      clamp.position.set(swNorthMidU + cuOff, mezzanineFloorY + cyOff, 3.54);
+      clamp.rotation.z = Math.PI / 2;
+      clamp.position.set(swEastU, mezzanineFloorY + cyOff, swEastMidV + cvOff);
       stairwellGuardrailGroup.add(clamp);
     }
   }
 
-  // South segment of West stairwell edge (`u = 21.12m, v = 4.85..5.37m`, meeting the shared spiral-staircase top newel post at `v = 4.85m`!)
+  // 2. Short `22cm` North Return (`u = 22.02..22.24m, v = 3.54m`) connecting `(22.02, 3.54)` to `stableUpStairs` bottom newel `(22.24, 3.54)`
+  const swReturnLenU = 22.24 - swEastU; // 0.22m
+  const swReturnMidU = (swEastU + 22.24) * 0.5; // 22.13m
+  const swReturnTopRail = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.026, 0.026, swReturnLenU, 18),
+    lightJoineryOakMat
+  );
+  swReturnTopRail.name = 'outbuildings.barn.mezzanineStairwellGuardrail';
+  swReturnTopRail.rotation.z = Math.PI / 2;
+  swReturnTopRail.position.set(swReturnMidU, mezzanineFloorY + 0.86, 3.54);
+  swReturnTopRail.castShadow = true;
+  stairwellGuardrailGroup.add(swReturnTopRail);
+
+  const swReturnBotRail = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.022, swReturnLenU, 16),
+    lightJoineryOakMat
+  );
+  swReturnBotRail.rotation.z = Math.PI / 2;
+  swReturnBotRail.position.set(swReturnMidU, mezzanineFloorY + 0.07, 3.54);
+  stairwellGuardrailGroup.add(swReturnBotRail);
+
+  const swReturnGlass = new THREE.Mesh(
+    new THREE.BoxGeometry(swReturnLenU - 0.06, 0.72, 0.014),
+    windowGlassMat
+  );
+  swReturnGlass.position.set(swReturnMidU, mezzanineFloorY + 0.465, 3.54);
+  stairwellGuardrailGroup.add(swReturnGlass);
+
+  // 3. South segment of West stairwell edge (`u = 21.12m, v = 4.85..5.37m`, meeting the shared spiral-staircase top newel post at `v = 4.85m`!)
   const swWestLenV = 5.37 - 4.85; // 0.52m
   const swWestMidV = (4.85 + 5.37) * 0.5; // 5.11m
   const swWestTopRail = new THREE.Mesh(
@@ -3870,7 +3903,7 @@ export function buildOutbuildingsAndBarns(
   }
 
   for (const [pu, pv] of [
-    [21.12, 3.54],
+    [swEastU, 3.54],
     [21.12, 5.37],
   ] as const) {
     const swPost = new THREE.Mesh(

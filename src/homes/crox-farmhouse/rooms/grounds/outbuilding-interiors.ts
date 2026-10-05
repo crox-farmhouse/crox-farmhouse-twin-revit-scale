@@ -2710,8 +2710,8 @@ export function buildBarnSpiralStaircase(
   landingShape.lineTo(-0.71, -0.44);
   landingShape.lineTo(-0.94, -0.35);
   landingShape.lineTo(-0.94, 0.94);
-  landingShape.lineTo(-0.08, 0.94);
-  landingShape.lineTo(-columnRadius * 0.7, columnRadius * 0.7);
+  landingShape.lineTo(-0.04, 0.94);
+  landingShape.lineTo(-0.04, 0.06);
   landingShape.closePath();
 
   const landingDepth = 0.044;
@@ -2748,6 +2748,15 @@ export function buildBarnSpiralStaircase(
   landingApron.position.set(-0.48, totalRise - 0.065, 0.22);
   landingApron.rotation.y = -0.46;
   stairGroup.add(landingApron);
+
+  // Solid oak East edge fascia apron along the open stairwell side of `topLandingMesh` (`x = -0.04m -> u = 22.04m, z = -0.94..-0.06m`)
+  const landingEastFascia = new THREE.Mesh(
+    new THREE.BoxGeometry(0.024, 0.135, 0.88),
+    oakHandrailMat
+  );
+  landingEastFascia.position.set(-0.04, totalRise - 0.0675, -0.5);
+  landingEastFascia.castShadow = true;
+  stairGroup.add(landingEastFascia);
 
   // ---------------------------------------------------------------------------
   // 4. Curved Helical Laminated Solid-Oak Outer Stringer Ribbon (`outbuildings.barn.spiralStaircase.outerStringer`)
