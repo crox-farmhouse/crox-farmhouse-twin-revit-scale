@@ -5580,8 +5580,9 @@ export function buildGymTechnogymRunPersonal(
   runGroup.userData.zone = 'courtyard';
   // Placed in the GYM (`u = 3.10m, v = 3.55m`) facing East (`+u`, `rotation.y = Math.PI / 2`)
   // toward the panoramic 3.40m Garage viewing window so the runner looks straight through to the Porsche 992.2 Turbo S!
-  runGroup.position.set(4.15, gymFloorY, 3.55);
-  runGroup.rotation.y = Math.PI / 2;
+  // Issue #1 [OBJECT MOVE / ROTATE]: Move outbuildings.gym.technogymRunPersonal to [4.222, gymFloorY, 3.99], Rotate Y to -0.085 deg
+  runGroup.position.set(4.222, gymFloorY, 3.99);
+  runGroup.rotation.y = -0.0015;
   groundGroup.add(runGroup);
 
   const matteCharcoalMat = new THREE.MeshStandardMaterial({
@@ -6227,8 +6228,9 @@ export function buildGymNikeSquatRack(
   const rackGroup = new THREE.Group();
   rackGroup.name = 'outbuildings.gym.nikeSquatRack';
   rackGroup.userData.zone = 'courtyard';
-  // Positioned in the Gym South-West bay (`u = 1.56m, v = 4.45m`) facing North (`-v`, `rotation.y = Math.PI`)
-  rackGroup.position.set(1.52, gymFloorY, 4.38);
+  // Positioned in the Gym South-West bay (`u = 1.52m, v = 4.02m`) facing North (`-v`, `rotation.y = Math.PI`),
+  // shifted forward away from the South wall (`v = 5.43m`) so a spotter can comfortably stand behind the rack!
+  rackGroup.position.set(1.52, gymFloorY, 4.02);
   rackGroup.rotation.y = Math.PI;
   groundGroup.add(rackGroup);
 
@@ -6939,16 +6941,84 @@ export function buildGymMirrorsLightingAndPlants(
     metalness: 0.84,
   });
 
-  // Helper to build a framed, backlit multi-bay wall mirror assembly
-  const addBacklitWallMirror = (
+  // Helper to create an arched 2D shape (`width = archW`, total `height = totalH` centered vertically at `y = 0`)
+  const makeArchShape = (archW: number, totalH: number): THREE.Shape => {
+    const r = archW * 0.5;
+    const yBot = -totalH * 0.5;
+    const ySpring = totalH * 0.5 - r;
+    const s = new THREE.Shape();
+    s.moveTo(-r, yBot);
+    s.lineTo(r, yBot);
+    s.lineTo(r, ySpring);
+    s.absarc(0, ySpring, r, 0, Math.PI, false);
+    s.lineTo(-r, yBot);
+    return s;
+  };
+
+  // Helper to create an arched perimeter frame / halo ring (`outerW, outerH` minus `innerW, innerH`)
+  const makeArchRingGeometry = (
+    outerW: number,
+    outerH: number,
+    borderT: number,
+    depthZ: number
+  ): THREE.ExtrudeGeometry => {
+    const outer = makeArchShape(outerW, outerH);
+    const innerW = outerW - borderT * 2;
+    const innerH = outerH - borderT * 2;
+    const rIn = innerW * 0.5;
+    const yBotIn = -innerH * 0.5;
+    const ySpringIn = innerH * 0.5 - rIn;
+    const hole = new THREE.Path();
+    hole.moveTo(-rIn, yBotIn);
+    hole.lineTo(rIn, yBotIn);
+    hole.lineTo(rIn, ySpringIn);
+    hole.absarc(0, ySpringIn, rIn, 0, Math.PI, false);
+    hole.lineTo(-rIn, yBotIn);
+    outer.holes.push(hole);
+
+    const geo = new THREE.ExtrudeGeometry(outer, {
+      depth: depthZ,
+      bevelEnabled: false,
+      curveSegments: 24,
+    });
+    geo.translate(0, 0, -depthZ * 0.5);
+    return geo;
+  };
+
+  // Helper to create an arched mirror glass pane with normalized [0..1] UVs
+  const makeArchGlassGeometry = (archW: number, totalH: number, depthZ: number): THREE.BufferGeometry => {
+    const shape = makeArchShape(archW - 0.016, totalH - 0.016);
+    const geo = new THREE.ExtrudeGeometry(shape, {
+      depth: depthZ,
+      bevelEnabled: false,
+      curveSegments: 24,
+    });
+    geo.translate(0, 0, -depthZ * 0.5);
+    const pos = geo.attributes.position;
+    const uv = geo.attributes.uv;
+    if (pos && uv) {
+      for (let i = 0; i < pos.count; i++) {
+        const u = (pos.getX(i) + archW * 0.5) / archW;
+        const v = (pos.getY(i) + totalH * 0.5) / totalH;
+        uv.setXY(i, u, v);
+      }
+      uv.needsUpdate = true;
+    }
+    return geo;
+  };
+
+  // Issue #2 ("I think the window is actually here, swap the mirror and window. Make the windows more like arches with a bit of separation between them with some backlighting behind"):
+  // Builds a row of individual, separated full-height Arched Mirrors with warm 2700K LED halo backlighting behind each arch!
+  const addBacklitArchedMirrorSet = (
     name: string,
     cx: number,
     cy: number,
     cz: number,
     rotY: number,
-    totalW: number,
-    totalH: number,
-    numBays: number
+    archW: number,
+    archH: number,
+    gapBetweenArches: number,
+    numArches: number
   ): void => {
     const mAssy = new THREE.Group();
     mAssy.name = name;
@@ -6956,129 +7026,95 @@ export function buildGymMirrorsLightingAndPlants(
     mAssy.rotation.y = rotY;
     mirrorGroup.add(mAssy);
 
-    const frameT = 0.022;
-    const frameD = 0.028;
+    const haloRingGeo = makeArchRingGeometry(archW + 0.036, archH + 0.036, 0.022, 0.01);
+    const frameRingGeo = makeArchRingGeometry(archW, archH, 0.02, 0.028);
+    const glassGeo = makeArchGlassGeometry(archW, archH, 0.01);
 
-    // Warm 2800K recessed LED backlight halo strips around the back perimeter (`z = -0.01m`)
-    const topHalo = new THREE.Mesh(
-      new THREE.BoxGeometry(totalW - 0.04, 0.014, 0.012),
-      warmHaloLedMat
-    );
-    topHalo.position.set(0, totalH * 0.5 + 0.004, -0.008);
-    mAssy.add(topHalo);
+    const stepX = archW + gapBetweenArches;
+    const startX = -((numArches - 1) * stepX) * 0.5;
 
-    const botHalo = new THREE.Mesh(
-      new THREE.BoxGeometry(totalW - 0.04, 0.014, 0.012),
-      warmHaloLedMat
-    );
-    botHalo.position.set(0, -totalH * 0.5 - 0.004, -0.008);
-    mAssy.add(botHalo);
+    for (let b = 0; b < numArches; b++) {
+      const bx = startX + b * stepX;
+      const archUnit = new THREE.Group();
+      archUnit.name = `${name}.arch.${b + 1}`;
+      archUnit.position.set(bx, 0, 0.012);
+      mAssy.add(archUnit);
 
-    for (const sideX of [-1, 1] as const) {
-      const sideHalo = new THREE.Mesh(
-        new THREE.BoxGeometry(0.014, totalH - 0.04, 0.012),
-        warmHaloLedMat
-      );
-      sideHalo.position.set(sideX * (totalW * 0.5 + 0.004), 0, -0.008);
-      mAssy.add(sideHalo);
-    }
+      // 1. Warm 2700K Arched LED Halo Backlighting glowing onto the wall/brick behind each separated arch
+      const haloMesh = new THREE.Mesh(haloRingGeo, warmHaloLedMat);
+      haloMesh.name = `${name}.backlight.${b + 1}`;
+      haloMesh.position.set(0, 0, -0.01);
+      archUnit.add(haloMesh);
 
-    // Outer satin-black anodized aluminium perimeter frame rails
-    for (const sideY of [-1, 1] as const) {
-      const hRail = new THREE.Mesh(
-        new THREE.BoxGeometry(totalW, frameT, frameD),
-        blackAnodizedFrameMat
-      );
-      hRail.position.set(0, sideY * (totalH * 0.5 - frameT * 0.5), 0);
-      mAssy.add(hRail);
-    }
-    for (const sideX of [-1, 1] as const) {
-      const vRail = new THREE.Mesh(
-        new THREE.BoxGeometry(frameT, totalH - frameT * 2, frameD),
-        blackAnodizedFrameMat
-      );
-      vRail.position.set(sideX * (totalW * 0.5 - frameT * 0.5), 0, 0);
-      mAssy.add(vRail);
-    }
-
-    // Individual mirror glass bays + slim vertical mullion dividers
-    const innerW = totalW - frameT * 2;
-    const innerH = totalH - frameT * 2;
-    const bayW = innerW / numBays;
-
-    for (let b = 0; b < numBays; b++) {
-      const bx = -innerW * 0.5 + (b + 0.5) * bayW;
-      const glassPane = new THREE.Mesh(
-        new THREE.BoxGeometry(bayW - 0.008, innerH, 0.01),
-        mirrorGlassMat
-      );
+      // 2. Clean Uninterrupted Arched Silvered Mirror Glass Pane (no internal grid lines)
+      const glassPane = new THREE.Mesh(glassGeo, mirrorGlassMat);
       glassPane.name = `${name}.glass.${b + 1}`;
-      glassPane.position.set(bx, 0, 0.004);
-      mAssy.add(glassPane);
+      glassPane.position.set(0, 0, 0.002);
+      archUnit.add(glassPane);
 
-      if (b > 0) {
-        const mullion = new THREE.Mesh(
-          new THREE.BoxGeometry(0.014, innerH, frameD - 0.004),
-          blackAnodizedFrameMat
-        );
-        mullion.position.set(-innerW * 0.5 + b * bayW, 0, 0.002);
-        mAssy.add(mullion);
-      }
+      // 3. Slim Matte-Black Anodized Steel Arched Outer Perimeter Frame
+      const archFrame = new THREE.Mesh(frameRingGeo, blackAnodizedFrameMat);
+      archFrame.position.set(0, 0, 0.006);
+      archFrame.castShadow = true;
+      archUnit.add(archFrame);
+
+      // 4. Dedicated Overhead Picture/Task Light Bar above each arch
+      const taskBarHousing = new THREE.Mesh(
+        new THREE.BoxGeometry(archW * 0.62, 0.022, 0.044),
+        blackAnodizedFrameMat
+      );
+      taskBarHousing.position.set(0, archH * 0.5 + 0.052, 0.036);
+      archUnit.add(taskBarHousing);
+
+      const taskBarDiffuser = new THREE.Mesh(
+        new THREE.BoxGeometry(archW * 0.58, 0.008, 0.028),
+        taskWhiteLedMat
+      );
+      taskBarDiffuser.position.set(0, archH * 0.5 + 0.039, 0.036);
+      archUnit.add(taskBarDiffuser);
     }
-
-    // Overhead Linear Task Light Bar mounted directly above the mirror (`y = totalH * 0.5 + 0.065m`)
-    const taskArmW = Math.min(totalW * 0.78, 1.65);
-    const taskBarHousing = new THREE.Mesh(
-      new THREE.BoxGeometry(taskArmW, 0.026, 0.048),
-      blackAnodizedFrameMat
-    );
-    taskBarHousing.position.set(0, totalH * 0.5 + 0.055, 0.045);
-    mAssy.add(taskBarHousing);
-
-    const taskBarDiffuser = new THREE.Mesh(
-      new THREE.BoxGeometry(taskArmW - 0.02, 0.008, 0.032),
-      taskWhiteLedMat
-    );
-    taskBarDiffuser.position.set(0, totalH * 0.5 + 0.041, 0.045);
-    mAssy.add(taskBarDiffuser);
   };
 
-  const mirrorCenterY = gymFloorY + 1.06; // Spans `y = gymFloorY + 0.18 .. gymFloorY + 1.94m` (`1.76m` tall)
-  const mirrorH = 1.76;
+  // Raised slightly so the bottom of each arched mirror (`gymFloorY + 0.34m`) sits ~20cm clear above the 0.142m skirting board!
+  const mirrorCenterY = gymFloorY + 1.15; // Spans `y = gymFloorY + 0.34 .. gymFloorY + 1.96m` (`1.62m` tall)
+  const mirrorH = 1.62;
 
-  // 1A. 3-Bay Full-Height Mirror Wall on the South-East Wall (`u = 3.22..5.30m, v = 5.405m`, facing North `-v`)
-  addBacklitWallMirror(
+  // 1A. 3 Separated Backlit Arched Mirrors on the South-East Exposed Brick Wall (`u = 3.32..5.20m, v = 5.405m`, facing North `-v`)
+  addBacklitArchedMirrorSet(
     'outbuildings.gym.wallMirrors.southEast',
     4.26,
     mirrorCenterY,
     5.405,
     Math.PI,
-    2.08,
+    0.58,
     mirrorH,
+    0.2,
     3
   );
 
-  // 1B. 2-Bay Full-Height Squat Rack Mirror on the South-West Wall (`u = 0.72..2.32m, v = 5.405m`, facing North `-v`)
-  addBacklitWallMirror(
+  // 1B. 2 Separated Backlit Arched Mirrors on the South-West Exposed Brick Wall (`u = 0.84..2.20m, v = 5.405m`, facing North `-v`)
+  addBacklitArchedMirrorSet(
     'outbuildings.gym.wallMirrors.southWest',
     1.52,
     mirrorCenterY,
     5.405,
     Math.PI,
-    1.6,
+    0.58,
     mirrorH,
+    0.22,
     2
   );
 
-  // 1C. 2-Bay Full-Height Free-Weight Mirror on the West Wall (`u = 0.305m, v = 2.48..3.88m`, facing East `+u`)
-  addBacklitWallMirror(
+  // 1C. 2 Separated Backlit Arched Mirrors on the West Wall (`u = 0.305m, centerV = 1.76m`, swapped with the West Gable Window at `v = 3.30m` — Issue #2!)
+  addBacklitArchedMirrorSet(
     'outbuildings.gym.wallMirrors.westWall',
     0.305,
     mirrorCenterY,
-    3.18,
+    1.76,
     Math.PI / 2,
-    1.4,
+    0.56,
     mirrorH,
+    0.2,
     2
   );
 

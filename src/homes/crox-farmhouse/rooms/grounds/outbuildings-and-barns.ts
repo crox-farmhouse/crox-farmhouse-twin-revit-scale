@@ -1666,13 +1666,13 @@ export function buildOutbuildingsAndBarns(
   garageFloor.receiveShadow = true;
   groundGroup.add(garageFloor);
 
-  // West Gable Wall of GYM facing the Front Road (u = 0.00m..0.28m, v = 0.00m..5.71m — Photos 2 & 3)
-  // Small cottage casement window (`0.68m` wide along `v = 1.61..2.29m` x `0.76m` high at `y = baseY0 + 1.00..baseY0 + 1.76m`)
-  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, northWestWallTopY, 0, 1.61, ['+x']);
-  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, baseY0 + 1.0, 1.61, 2.29, ['+x']);
-  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 + 1.76, northWestWallTopY, 1.61, 2.29, ['+x']);
-  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, northWestWallTopY, 2.29, vWestRangeSouth, ['+x']);
-  addOutbuildingWindow(groundGroup, wallT * 0.5, baseY0 + 1.38, 1.95, 0.68, 0.76, true);
+  // West Gable Wall of GYM facing the Front Road (u = 0.00m..0.28m, v = 0.00m..5.71m — Issue #2: swapped window to v = 2.96..3.64m!)
+  // Small cottage casement window (`0.68m` wide along `v = 2.96..3.64m` x `0.76m` high at `y = baseY0 + 1.00..baseY0 + 1.76m`)
+  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, northWestWallTopY, 0, 2.96, ['+x']);
+  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, baseY0 + 1.0, 2.96, 3.64, ['+x']);
+  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 + 1.76, northWestWallTopY, 2.96, 3.64, ['+x']);
+  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, northWestWallTopY, 3.64, vWestRangeSouth, ['+x']);
+  addOutbuildingWindow(groundGroup, wallT * 0.5, baseY0 + 1.38, 3.3, 0.68, 0.76, true);
 
   // Painted interior gable lining inside the GYM West Gable wall (`u = 0.25..0.285m`) up to the vaulted ceiling
   addInteriorPlasterGableWall(
@@ -1700,10 +1700,23 @@ export function buildOutbuildingsAndBarns(
     301
   );
 
-  // South Garden Wall of GYM & Garage (v = 5.43m..5.71m, u = 0.28m..12.07m — solid brick boundary wall per Floorplan)
+  // South Garden Wall of GYM & Garage (v = 5.43m..5.71m, u = 0.28m..12.07m):
+  // - Issue #3 ("Exposed brick on this wall" at `[-18.292, 1.776, 21.091]`) & Issue #4 ("And this one" at `[-20.281, 1.53, 21.262]`):
+  //   GYM South Wall (`u = wallT..uGymEnd`, both West and East bays) has exposed heritage brick on the interior (`plasterFaces = []`)!
+  // - Garage South Wall (`u = uGymEnd..uGarageEnd`) retains painted interior plaster (`plasterFaces = ['-z']`).
   addOutbuildingBrickWall(
     groundGroup,
     wallT,
+    uGymEnd,
+    baseY0 - 0.14,
+    northWestWallTopY,
+    vWestRangeSouth - wallT,
+    vWestRangeSouth,
+    []
+  );
+  addOutbuildingBrickWall(
+    groundGroup,
+    uGymEnd,
     uGarageEnd,
     baseY0 - 0.14,
     northWestWallTopY,
@@ -3475,7 +3488,7 @@ export function buildOutbuildingsAndBarns(
       pilasterTopY,
       vInnerSouth - pilasterD,
       vInnerSouth,
-      ['+x', '-x', '-z'],
+      bay.id === 'gym' ? [] : ['+x', '-x', '-z'],
       warmRoomPlasterMat
     );
 
