@@ -2293,7 +2293,8 @@ function createAmericanWhiteOakTexture(): THREE.CanvasTexture {
 export function buildBarnSpiralStaircase(
   groundGroup: THREE.Group,
   barnLowerFloorY: number,
-  mezzanineFloorY: number
+  mezzanineFloorY: number,
+  sharedLightOakMat?: THREE.Material
 ): void {
   const centerU = 22.08;
   const centerV = 4.5;
@@ -2309,19 +2310,18 @@ export function buildBarnSpiralStaircase(
   stairGroup.position.set(centerU, barnLowerFloorY, centerV);
   groundGroup.add(stairGroup);
 
+  // Issue #2 ("Same material on all of the stairs, and flooring (lighter oak" at `[-0.7, 1.545, 18.308]`):
+  // Share the exact `lightJoineryOakMat` lighter oak material across all spiral staircase treads, landing,
+  // central column, outer stringer, handrail, and the Mezzanine flooring & Stable stairs!
   const oakTex = createAmericanWhiteOakTexture();
-  const oakTreadMat = new THREE.MeshStandardMaterial({
+  const fallbackLightOakMat = new THREE.MeshStandardMaterial({
     map: oakTex,
-    color: 0xd6b48c,
-    roughness: 0.4,
+    color: 0xe6cda8,
+    roughness: 0.42,
     metalness: 0.03,
   });
-  const oakHandrailMat = new THREE.MeshStandardMaterial({
-    map: oakTex,
-    color: 0xcaa67c,
-    roughness: 0.36,
-    metalness: 0.04,
-  });
+  const oakTreadMat: THREE.Material = sharedLightOakMat ?? fallbackLightOakMat;
+  const oakHandrailMat: THREE.Material = sharedLightOakMat ?? fallbackLightOakMat;
   const agedBronzeMat = new THREE.MeshStandardMaterial({
     color: 0x46382b,
     roughness: 0.34,
@@ -2430,6 +2430,16 @@ export function buildBarnSpiralStaircase(
     bevelSegments: 3,
   });
   treadGeo.rotateX(-Math.PI / 2);
+  {
+    const pos = treadGeo.attributes.position;
+    const uv = treadGeo.attributes.uv;
+    if (pos && uv) {
+      for (let k = 0; k < pos.count; k++) {
+        uv.setXY(k, pos.getX(k) * 0.5, pos.getZ(k) * 0.5);
+      }
+      uv.needsUpdate = true;
+    }
+  }
 
   for (let i = 0; i < numSteps; i++) {
     const frac = i / (numSteps - 1);
@@ -2482,6 +2492,16 @@ export function buildBarnSpiralStaircase(
     bevelSegments: 3,
   });
   landingGeo.rotateX(-Math.PI / 2);
+  {
+    const pos = landingGeo.attributes.position;
+    const uv = landingGeo.attributes.uv;
+    if (pos && uv) {
+      for (let k = 0; k < pos.count; k++) {
+        uv.setXY(k, (centerU + pos.getX(k)) * 0.5, (centerV + pos.getZ(k)) * 0.5);
+      }
+      uv.needsUpdate = true;
+    }
+  }
 
   const topLandingMesh = new THREE.Mesh(landingGeo, oakTreadMat);
   topLandingMesh.name = 'outbuildings.barn.spiralStaircase.topLanding';

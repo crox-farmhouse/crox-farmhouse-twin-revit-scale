@@ -1970,8 +1970,11 @@ export function buildBarnMezzanineRetroLounge(
   bcBack.position.set(bcDepthU * 0.5 - 0.007, bcHeightY * 0.5, 0);
   bookcaseGroup.add(bcBack);
 
-  // 6 horizontal oak shelves (base plinth + 4 interior shelves + top cap)
-  const shelfHeights = [0.06, 0.31, 0.56, 0.81, 1.06, 1.288];
+  // Issue #4 ("Lava lamp is cutting through the bookcase" at `[-0.273, 2.112, 14.501]`):
+  // Spaced shelf 3 (`y = 0.54m`, top at `0.552m`) and shelf 4 (`y = 0.85m`, bottom at `0.838m`)
+  // with `0.286m` of clear vertical height, and scaled the bookcase Lava Lamp (`0.21m` tall)
+  // so it sits on shelf 3 with `7.4cm` of clear headroom below shelf 4!
+  const shelfHeights = [0.06, 0.31, 0.54, 0.85, 1.08, 1.29];
   for (const sy of shelfHeights) {
     const shelf = new THREE.Mesh(
       new THREE.BoxGeometry(bcDepthU, shelfT, bcWidthV - shelfT * 2),
@@ -1981,6 +1984,23 @@ export function buildBarnMezzanineRetroLounge(
     shelf.castShadow = true;
     shelf.receiveShadow = true;
     bookcaseGroup.add(shelf);
+  }
+
+  // Warm integrated under-shelf LED task light strips under shelves 3, 4, and 5 (`Issue #3`)
+  const underShelfLedMat = new THREE.MeshStandardMaterial({
+    color: 0xfff5de,
+    emissive: 0xffcf7a,
+    emissiveIntensity: 1.65,
+    roughness: 0.25,
+  });
+  for (const ledShelfY of [0.54, 0.85, 1.08, 1.29] as const) {
+    const ledStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.018, 0.008, bcWidthV - shelfT * 2 - 0.06),
+      underShelfLedMat
+    );
+    ledStrip.name = 'outbuildings.mezzanine.bookcase.taskLight';
+    ledStrip.position.set(-bcDepthU * 0.5 + 0.04, ledShelfY - shelfT * 0.5 - 0.004, 0);
+    bookcaseGroup.add(ledStrip);
   }
 
   // Stock shelves with horizontal board game boxes (bottom shelf), vertical VHS/books (shelves 2 & 3),
@@ -2002,13 +2022,15 @@ export function buildBarnMezzanineRetroLounge(
     }
   }
 
-  // Second & third shelves (`y = 0.322m` & `0.572m`): vertical rows of VHS tapes, books & CDs
-  for (const [shelfBaseY, itemH, count] of [
-    [0.322, 0.19, 18],
-    [0.572, 0.14, 16],
+  // Second & third shelves (`y = 0.322m` & `0.552m`): vertical rows of VHS tapes, books & CDs
+  // Leave a clean bay (`iz = +0.18..+0.42`) on shelf 3 (`0.552m`) around the bookcase Lava Lamp (`u = 22.18m` -> `iz = +0.30m`)!
+  for (const [shelfBaseY, itemH, count, isLavaShelf] of [
+    [0.322, 0.19, 18, false],
+    [0.552, 0.14, 14, true],
   ] as const) {
     for (let i = 0; i < count; i++) {
       const iz = -0.44 + i * 0.036;
+      if (isLavaShelf && iz > 0.16) continue;
       const spine = new THREE.Mesh(
         new THREE.BoxGeometry(0.16, itemH - (i % 3) * 0.012, 0.028),
         new THREE.MeshStandardMaterial({
@@ -2021,12 +2043,12 @@ export function buildBarnMezzanineRetroLounge(
     }
   }
 
-  // Fourth shelf (`y = 0.822m`): 1990s Stereo Boombox in center (`z = 0`)
+  // Fourth shelf (`y = 0.862m`): 1990s Stereo Boombox in center (`z = 0`)
   const boombox = new THREE.Mesh(
     new THREE.BoxGeometry(0.16, 0.13, 0.32),
     trinitronCharcoalMat
   );
-  boombox.position.set(-0.02, 0.822 + 0.065, 0);
+  boombox.position.set(-0.02, 0.862 + 0.065, 0);
   bookcaseGroup.add(boombox);
 
   // Helper to build a glowing 1990s Iconic Double-Cone Lava Lamp (`Mathmos Astro`)
@@ -2036,11 +2058,13 @@ export function buildBarnMezzanineRetroLounge(
     uz: number,
     waxColorHex: number,
     baseColorHex: number,
-    name: string
+    name: string,
+    scale: number = 1.0
   ): void => {
     const lampGroup = new THREE.Group();
     lampGroup.name = name;
     lampGroup.position.set(ux, uy, uz);
+    lampGroup.scale.setScalar(scale);
     loungeGroup.add(lampGroup);
 
     const baseMat = new THREE.MeshStandardMaterial({
@@ -2051,7 +2075,7 @@ export function buildBarnMezzanineRetroLounge(
     const lavaGlowMat = new THREE.MeshStandardMaterial({
       color: waxColorHex,
       emissive: waxColorHex,
-      emissiveIntensity: 1.35,
+      emissiveIntensity: 1.55,
       roughness: 0.18,
       transparent: true,
       opacity: 0.88,
@@ -2082,14 +2106,16 @@ export function buildBarnMezzanineRetroLounge(
     lampGroup.add(topCap);
   };
 
-  // Lava Lamp #1 inside the North-wall bookcase (`u = 22.18m, y = mezzanineFloorY + 0.572m, v = 0.45m`)
+  // Issue #4: Lava Lamp #1 inside the North-wall bookcase (`u = 22.18m, y = mezzanineFloorY + 0.552m, v = 0.45m, scale = 0.72` -> `0.212m` tall,
+  // sitting cleanly on shelf 3 with `7.4cm` clearance below shelf 4 at `mezzanineFloorY + 0.838m`!)
   addRetroLavaLamp(
     22.18,
-    mezzanineFloorY + 0.572,
+    mezzanineFloorY + 0.552,
     0.45,
     0xff38b8,
     0xd8dde4,
-    'outbuildings.mezzanine.lavaLamp.bookcase'
+    'outbuildings.mezzanine.lavaLamp.bookcase',
+    0.72
   );
 
   // Lava Lamp #2 on the North Hayloft Windowsill (`u = 19.85m, y = 2.02m, v = 0.26m`)!
@@ -2099,7 +2125,8 @@ export function buildBarnMezzanineRetroLounge(
     0.26,
     0xff4878,
     0x2848a8,
-    'outbuildings.mezzanine.lavaLamp.windowsill'
+    'outbuildings.mezzanine.lavaLamp.windowsill',
+    0.92
   );
 
   // White ribbed convector radiator mounted on the North wall below the hayloft window (`u = 19.85m, v = 0.32m`)
@@ -2134,11 +2161,653 @@ export function buildBarnMezzanineRetroLounge(
     new THREE.MeshStandardMaterial({
       color: 0xfff3d6,
       emissive: 0xffc86b,
-      emissiveIntensity: 0.82,
-      roughness: 0.55,
+      emissiveIntensity: 1.35,
+      roughness: 0.48,
     })
   );
   lampShade.name = 'outbuildings.mezzanine.tableLamp.shade';
   lampShade.position.set(22.64, mezzanineFloorY + 0.78, 0.46);
   loungeGroup.add(lampShade);
+
+  // =========================================================================
+  // 10. Issue #3 ("Some more task lighting, ambiet lighting in here" at `[-1.766, 1.552, 16.583]`):
+  //     Comprehensive Task & Ambient Lighting across the Mezzanine Retro Lounge:
+  //     - Warm overhead ambient PointLight + NE Table Lamp PointLight + Bookcase PointLight + CRT Glow PointLight
+  //     - Mid-Century Brass & Teak Articulated Floor Task Lamp (`outbuildings.mezzanine.floorTaskLamp`) in SW lounge corner
+  //     - Articulated 1990s Anglepoise Desk Task Lamp (`outbuildings.mezzanine.sideboardTaskLamp`) on south end of sideboard
+  //     - 2 Warm Brass & Pleated-Linen Wall Sconces (`outbuildings.mezzanine.wallSconce.1` & `.2`) on East & South walls
+  // =========================================================================
+  const lightingGroup = new THREE.Group();
+  lightingGroup.name = 'outbuildings.mezzanine.lighting';
+  loungeGroup.add(lightingGroup);
+
+  const warmBrassMat = new THREE.MeshStandardMaterial({
+    color: 0xd4af37,
+    roughness: 0.26,
+    metalness: 0.84,
+  });
+  const warmGlowingBulbMat = new THREE.MeshStandardMaterial({
+    color: 0xfff8e7,
+    emissive: 0xffd27a,
+    emissiveIntensity: 2.2,
+    roughness: 0.15,
+  });
+  const warmPleatedShadeMat = new THREE.MeshStandardMaterial({
+    color: 0xfff2d6,
+    emissive: 0xffc46b,
+    emissiveIntensity: 1.45,
+    roughness: 0.52,
+    side: THREE.DoubleSide,
+  });
+
+  // 1. Warm Overhead Ambient Lounge Light (`u = 20.65m, y = mezzanineFloorY + 1.85m, v = 2.55m`)
+  const mezzanineAmbientLight = new THREE.PointLight(0xffcf88, 2.2, 7.8, 1.45);
+  mezzanineAmbientLight.name = 'outbuildings.mezzanine.ambientLight';
+  mezzanineAmbientLight.position.set(20.65, mezzanineFloorY + 1.85, 2.55);
+  lightingGroup.add(mezzanineAmbientLight);
+
+  // 2. NE Table Lamp PointLight & Bookcase Task PointLight
+  const neTableLampLight = new THREE.PointLight(0xffb85c, 1.6, 4.5, 1.6);
+  neTableLampLight.name = 'outbuildings.mezzanine.tableLamp.light';
+  neTableLampLight.position.set(22.64, mezzanineFloorY + 0.78, 0.52);
+  lightingGroup.add(neTableLampLight);
+
+  const bookcaseTaskLight = new THREE.PointLight(0xffca78, 1.15, 3.2, 1.7);
+  bookcaseTaskLight.name = 'outbuildings.mezzanine.bookcase.light';
+  bookcaseTaskLight.position.set(21.88, mezzanineFloorY + 0.92, 0.68);
+  lightingGroup.add(bookcaseTaskLight);
+
+  // 3. Sony Trinitron CRT TV Blue-White Screen Glow Light (`u = 19.38m, y = mezzanineFloorY + 1.05m, v = 2.38m`)
+  const crtGlowLight = new THREE.PointLight(0x88c8ff, 0.95, 3.4, 1.8);
+  crtGlowLight.name = 'outbuildings.mezzanine.trinitronGlowLight';
+  crtGlowLight.position.set(19.38, mezzanineFloorY + 1.05, 2.38);
+  lightingGroup.add(crtGlowLight);
+
+  // 4. Mid-Century Brass & Teak Articulated Floor Reading/Task Lamp in SW Lounge Corner (`u = 19.25m, v = 4.88m`)
+  const floorLampGroup = new THREE.Group();
+  floorLampGroup.name = 'outbuildings.mezzanine.floorTaskLamp';
+  floorLampGroup.position.set(19.25, mezzanineFloorY, 4.88);
+  floorLampGroup.rotation.y = -0.68; // Aimed toward the terracotta beanbag & PS1 gaming rug
+  lightingGroup.add(floorLampGroup);
+
+  const flBaseOak = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.145, 0.16, 0.026, 24),
+    teakMat
+  );
+  flBaseOak.position.set(0, 0.013, 0);
+  flBaseOak.castShadow = true;
+  floorLampGroup.add(flBaseOak);
+
+  const flBaseBrass = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.095, 0.125, 0.018, 24),
+    warmBrassMat
+  );
+  flBaseBrass.position.set(0, 0.032, 0);
+  floorLampGroup.add(flBaseBrass);
+
+  const flStem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.013, 0.015, 1.36, 16),
+    warmBrassMat
+  );
+  flStem.position.set(0, 0.71, 0);
+  flStem.castShadow = true;
+  floorLampGroup.add(flStem);
+
+  const flTeakGrip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.022, 0.18, 16),
+    teakMat
+  );
+  flTeakGrip.position.set(0, 0.94, 0);
+  floorLampGroup.add(flTeakGrip);
+
+  const flBoomArm = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.009, 0.009, 0.38, 12),
+    warmBrassMat
+  );
+  flBoomArm.position.set(0.14, 1.40, 0);
+  flBoomArm.rotation.z = -1.12;
+  floorLampGroup.add(flBoomArm);
+
+  const flConeShade = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.042, 0.125, 0.17, 24, 1, true),
+    warmPleatedShadeMat
+  );
+  flConeShade.name = 'outbuildings.mezzanine.floorTaskLamp.shade';
+  flConeShade.position.set(0.28, 1.38, 0);
+  flConeShade.rotation.z = 0.36;
+  floorLampGroup.add(flConeShade);
+
+  const flBulb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.032, 14, 12),
+    warmGlowingBulbMat
+  );
+  flBulb.position.set(0.27, 1.35, 0);
+  floorLampGroup.add(flBulb);
+
+  const flTaskPointLight = new THREE.PointLight(0xffc266, 1.75, 5.2, 1.55);
+  flTaskPointLight.name = 'outbuildings.mezzanine.floorTaskLamp.light';
+  flTaskPointLight.position.set(0.32, 1.30, 0);
+  floorLampGroup.add(flTaskPointLight);
+
+  // 5. Articulated 1990s Anglepoise Task Desk Lamp on the South End of the Sideboard (`u = 19.04m, y = mezzanineFloorY + 0.72m, v = 3.04m`)
+  const deskLampGroup = new THREE.Group();
+  deskLampGroup.name = 'outbuildings.mezzanine.sideboardTaskLamp';
+  deskLampGroup.position.set(19.04, mezzanineFloorY + 0.72, 3.04);
+  deskLampGroup.rotation.y = -0.45;
+  lightingGroup.add(deskLampGroup);
+
+  const dlBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.078, 0.088, 0.024, 20),
+    warmBrassMat
+  );
+  dlBase.position.set(0, 0.012, 0);
+  deskLampGroup.add(dlBase);
+
+  const dlLowerArm = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.007, 0.007, 0.24, 10),
+    warmBrassMat
+  );
+  dlLowerArm.position.set(-0.04, 0.12, 0);
+  dlLowerArm.rotation.z = 0.34;
+  deskLampGroup.add(dlLowerArm);
+
+  const dlUpperArm = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.007, 0.007, 0.22, 10),
+    warmBrassMat
+  );
+  dlUpperArm.position.set(0.02, 0.27, 0);
+  dlUpperArm.rotation.z = -0.62;
+  deskLampGroup.add(dlUpperArm);
+
+  const dlShade = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.032, 0.078, 0.11, 20, 1, true),
+    warmPleatedShadeMat
+  );
+  dlShade.name = 'outbuildings.mezzanine.sideboardTaskLamp.shade';
+  dlShade.position.set(0.11, 0.29, 0);
+  dlShade.rotation.z = 0.28;
+  deskLampGroup.add(dlShade);
+
+  const dlBulb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.022, 12, 10),
+    warmGlowingBulbMat
+  );
+  dlBulb.position.set(0.11, 0.27, 0);
+  deskLampGroup.add(dlBulb);
+
+  const dlPointLight = new THREE.PointLight(0xffc470, 1.3, 3.8, 1.65);
+  dlPointLight.name = 'outbuildings.mezzanine.sideboardTaskLamp.light';
+  dlPointLight.position.set(0.14, 0.24, 0);
+  deskLampGroup.add(dlPointLight);
+
+  // 6. 2 Warm Brass & Pleated-Linen Wall Sconces (`outbuildings.mezzanine.wallSconce.1` on East wall & `.2` on South wall)
+  for (const [sIdx, su, sy, sv, sRotY] of [
+    [1, 23.005, mezzanineFloorY + 1.22, 0.72, -Math.PI / 2],
+    [2, 20.08, mezzanineFloorY + 1.22, 5.41, Math.PI],
+  ] as const) {
+    const sconceGroup = new THREE.Group();
+    sconceGroup.name = `outbuildings.mezzanine.wallSconce.${sIdx}`;
+    sconceGroup.position.set(su, sy, sv);
+    sconceGroup.rotation.y = sRotY;
+    lightingGroup.add(sconceGroup);
+
+    const backplate = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.052, 0.052, 0.014, 20),
+      warmBrassMat
+    );
+    backplate.rotation.x = Math.PI / 2;
+    backplate.position.set(0, 0, 0.007);
+    sconceGroup.add(backplate);
+
+    const sconceArm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.008, 0.008, 0.13, 12),
+      warmBrassMat
+    );
+    sconceArm.rotation.x = Math.PI * 0.38;
+    sconceArm.position.set(0, 0.02, 0.065);
+    sconceGroup.add(sconceArm);
+
+    const sconceShade = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.052, 0.092, 0.13, 20, 1, true),
+      warmPleatedShadeMat
+    );
+    sconceShade.name = `outbuildings.mezzanine.wallSconce.${sIdx}.shade`;
+    sconceShade.position.set(0, 0.095, 0.115);
+    sconceGroup.add(sconceShade);
+
+    const sconceBulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.022, 12, 10),
+      warmGlowingBulbMat
+    );
+    sconceBulb.position.set(0, 0.085, 0.115);
+    sconceGroup.add(sconceBulb);
+
+    const sconceLight = new THREE.PointLight(0xffc472, 1.15, 3.8, 1.7);
+    sconceLight.position.set(0, 0.09, 0.18);
+    sconceGroup.add(sconceLight);
+  }
+}
+
+/**
+ * Generates a high-resolution (`768x512`) painting/photograph of the Old Course at St Andrews
+ * featuring the iconic stone Swilcan Bridge in the foreground, the 18th fairway links turf,
+ * the Royal and Ancient Golf Club Clubhouse, and red-brick Hamilton Grand on the horizon (`Issue #5`).
+ */
+function createStAndrewsOldCourseTexture(): THREE.CanvasTexture {
+  const w = 768;
+  const h = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    // 1. Cream conservation passepartout mount border (`34px` border)
+    ctx.fillStyle = '#f2ede2';
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = '#c5aa6a';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(28, 28, w - 56, h - 56);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(34, 34, w - 68, h - 78);
+    ctx.clip();
+
+    // 2. Scottish Fife coastal sky with sunlit silver-gold clouds
+    const skyGrad = ctx.createLinearGradient(0, 34, 0, 260);
+    skyGrad.addColorStop(0, '#4674a6');
+    skyGrad.addColorStop(0.55, '#86adc9');
+    skyGrad.addColorStop(0.88, '#d8cfb8');
+    skyGrad.addColorStop(1, '#eee2c4');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(34, 34, w - 68, 230);
+
+    for (const [cx, cy, rx, ry] of [
+      [165, 98, 95, 24],
+      [340, 82, 128, 28],
+      [540, 106, 112, 25],
+      [645, 92, 85, 22],
+    ] as const) {
+      ctx.fillStyle = 'rgba(255, 250, 240, 0.78)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 3. Distant West Sands & North Sea strip on left horizon + St Andrews town skyline
+    ctx.fillStyle = '#3c688c';
+    ctx.fillRect(34, 236, 220, 14);
+    ctx.fillStyle = '#d9ccb2';
+    ctx.fillRect(34, 246, 240, 8);
+
+    // Iconic red-brick Victorian Hamilton Grand (`x = 285..405`)
+    ctx.fillStyle = '#8f4638';
+    ctx.fillRect(285, 178, 118, 72);
+    ctx.fillStyle = '#424952';
+    ctx.fillRect(282, 162, 124, 18);
+    // Turret dome on right corner of Hamilton Grand
+    ctx.beginPath();
+    ctx.arc(395, 162, 14, Math.PI, 0);
+    ctx.fill();
+    // Windows on Hamilton Grand
+    ctx.fillStyle = '#e8dec8';
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 7; c++) {
+        ctx.fillRect(293 + c * 15, 184 + r * 15, 7, 10);
+      }
+    }
+
+    // Royal & Ancient Golf Club Clubhouse (`x = 415..565`, classical sandstone facade & clock gable)
+    ctx.fillStyle = '#cbbca2';
+    ctx.fillRect(415, 198, 150, 52);
+    ctx.beginPath();
+    ctx.moveTo(465, 198);
+    ctx.lineTo(490, 174);
+    ctx.lineTo(515, 198);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#525b66';
+    ctx.fillRect(412, 188, 156, 11);
+
+    // 4. Rolling Emerald Links Turf of the 18th & 1st Fairways (`y = 248..456`)
+    const turfGrad = ctx.createLinearGradient(0, 248, 0, 460);
+    turfGrad.addColorStop(0, '#5a8f49');
+    turfGrad.addColorStop(0.45, '#467d38');
+    turfGrad.addColorStop(1, '#2f5e25');
+    ctx.fillStyle = turfGrad;
+    ctx.fillRect(34, 248, w - 68, 220);
+
+    // Mowed links fairway ribbons & Swilcan Burn stream channel
+    ctx.fillStyle = 'rgba(138, 196, 102, 0.25)';
+    ctx.beginPath();
+    ctx.moveTo(220, 250);
+    ctx.lineTo(560, 250);
+    ctx.lineTo(710, 456);
+    ctx.lineTo(60, 456);
+    ctx.closePath();
+    ctx.fill();
+
+    // Swilcan Burn water channel curving under the bridge
+    ctx.fillStyle = '#294d6b';
+    ctx.beginPath();
+    ctx.moveTo(34, 378);
+    ctx.quadraticCurveTo(384, 398, 734, 368);
+    ctx.lineTo(734, 412);
+    ctx.quadraticCurveTo(384, 436, 34, 408);
+    ctx.closePath();
+    ctx.fill();
+
+    // 5. Iconic Stone Swilcan Bridge in Foreground Center (`x = 205..565, y = 308..438`)
+    const stoneGrad = ctx.createLinearGradient(205, 308, 565, 430);
+    stoneGrad.addColorStop(0, '#9c9282');
+    stoneGrad.addColorStop(0.5, '#b5ab99');
+    stoneGrad.addColorStop(1, '#7d7365');
+    ctx.fillStyle = stoneGrad;
+    ctx.beginPath();
+    ctx.moveTo(190, 422);
+    ctx.quadraticCurveTo(384, 286, 578, 422);
+    ctx.lineTo(578, 450);
+    ctx.lineTo(190, 450);
+    ctx.closePath();
+    ctx.fill();
+
+    // Dark stone single arch opening over the Swilcan Burn + water reflection
+    ctx.fillStyle = '#1b2c3b';
+    ctx.beginPath();
+    ctx.arc(384, 434, 78, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Individual weathered stone blocks & arch voussoirs on the Swilcan Bridge
+    ctx.strokeStyle = 'rgba(48, 42, 35, 0.55)';
+    ctx.lineWidth = 2;
+    for (let row = 0; row < 5; row++) {
+      const ry = 335 + row * 18;
+      for (let col = 0; col < 11; col++) {
+        const rx = 225 + col * 30 + (row % 2) * 14;
+        if (ry > 365 && rx > 300 && rx < 460) continue;
+        ctx.strokeRect(rx, ry, 28, 16);
+      }
+    }
+
+    ctx.restore();
+
+    // Calligraphy caption on bottom passepartout margin
+    ctx.fillStyle = '#3a3228';
+    ctx.font = 'italic bold 15px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('THE OLD COURSE · ST ANDREWS — SWILCAN BRIDGE & 18TH FAIRWAY', w * 0.5, h - 16);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Generates a high-resolution (`1024x640`) Hunter-Green Baize Display Board containing
+ * 8 vintage parchment Equestrian Horse Show Championship Certificates with calligraphy headers,
+ * horse/rider script, and crimson/gold wax seals (`Issue #6`).
+ */
+function createHorseShowCertificatesTexture(): THREE.CanvasTexture {
+  const w = 1024;
+  const h = 640;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    // Deep Hunter-Green Baize wool backing board (`#173628`) with gilt inner border
+    ctx.fillStyle = '#173628';
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = '#c8a958';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(16, 16, w - 32, h - 32);
+
+    // Central brass & parchment heritage header plaque at top center
+    ctx.fillStyle = '#f5eedc';
+    ctx.fillRect(312, 26, 400, 42);
+    ctx.strokeStyle = '#b8943c';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(316, 30, 392, 34);
+    ctx.fillStyle = '#1f2421';
+    ctx.font = 'bold 17px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CROX FARMHOUSE EQUESTRIAN CHAMPIONSHIP AWARDS', 512, 53);
+
+    const titles = [
+      'ROYAL WINDSOR HORSE SHOW',
+      'HICKSTEAD DERBY MEETING',
+      'HORSE OF THE YEAR SHOW',
+      'BUCKINGHAMSHIRE COUNTY SHOW',
+      'CHILTERNS HUNTER TRIALS',
+      'NATIONAL SHOW JUMPING ASSOC.',
+      'SUPREME WORKING HUNTER',
+      'BRITISH DRESSAGE CHAMPIONSHIP',
+    ];
+    const awards = [
+      'FIRST PRIZE · SUPREME CHAMPION',
+      'CHAMPIONSHIP CHALLENGE CUP',
+      'FIRST PLACE · GRADE A JUMPING',
+      'RESERVE SUPREME HUNTER',
+      'FIRST PRIZE · OPEN CROSS COUNTRY',
+      'VICTOR LUDORUM TROPHY',
+      'FIRST PRIZE · HEAVYWEIGHT HUNTER',
+      'GOLD MEDAL QUALIFIER',
+    ];
+
+    // 2 rows x 4 columns of vintage parchment certificates
+    for (let r = 0; r < 2; r++) {
+      for (let c = 0; c < 4; c++) {
+        const idx = r * 4 + c;
+        const cx = 42 + c * 240;
+        const cy = 84 + r * 268;
+        const cw = 216;
+        const ch = 242;
+
+        // Aged cream parchment sheet with subtle warm vignette
+        const pGrad = ctx.createLinearGradient(cx, cy, cx + cw, cy + ch);
+        pGrad.addColorStop(0, '#f9f3e3');
+        pGrad.addColorStop(0.5, '#f3ead3');
+        pGrad.addColorStop(1, '#e8dcc0');
+        ctx.fillStyle = pGrad;
+        ctx.fillRect(cx, cy, cw, ch);
+
+        // Double Victorian ornamental border
+        ctx.strokeStyle = idx % 2 === 0 ? '#8c2626' : '#1e4268';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(cx + 8, cy + 8, cw - 16, ch - 16);
+        ctx.strokeStyle = '#c5a24a';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(cx + 13, cy + 13, cw - 26, ch - 26);
+
+        // Society crest emblem at top of certificate
+        ctx.fillStyle = '#c5a24a';
+        ctx.beginPath();
+        ctx.arc(cx + cw * 0.5, cy + 34, 13, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#8c2626';
+        ctx.beginPath();
+        ctx.arc(cx + cw * 0.5, cy + 34, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Society Header & Award Title
+        ctx.fillStyle = '#1b1d1e';
+        ctx.font = 'bold 11px Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(titles[idx], cx + cw * 0.5, cy + 64);
+
+        ctx.fillStyle = idx % 2 === 0 ? '#9e2222' : '#1c4472';
+        ctx.font = 'bold 10px Georgia, serif';
+        ctx.fillText(awards[idx], cx + cw * 0.5, cy + 84);
+
+        // Simulated handwritten calligraphy lines
+        ctx.strokeStyle = 'rgba(42, 36, 28, 0.58)';
+        ctx.lineWidth = 1.4;
+        for (let line = 0; line < 5; line++) {
+          const ly = cy + 108 + line * 18;
+          const pad = line === 2 ? 24 : 32;
+          ctx.beginPath();
+          ctx.moveTo(cx + pad, ly);
+          ctx.lineTo(cx + cw - pad, ly);
+          ctx.stroke();
+        }
+
+        // Embossed crimson/gold wax seal & ribbon at bottom right of certificate
+        const sealX = cx + cw - 42;
+        const sealY = cy + ch - 38;
+        ctx.fillStyle = '#b8943c';
+        ctx.fillRect(sealX - 6, sealY + 6, 5, 18);
+        ctx.fillRect(sealX + 1, sealY + 6, 5, 18);
+        ctx.fillStyle = idx % 3 === 0 ? '#b82020' : '#c9972c';
+        ctx.beginPath();
+        ctx.arc(sealX, sealY, 13, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Issue #5 ("Pixture on the wall of st andrews here" at `[-4.872, 1.18, 14.769]` -> `(u = 17.639m, y = 1.18m, v = 0.28m)`) &
+ * Issue #6 ("Large framed picture of horse show certificates here (they were originally on the wall in the barn)"
+ * at `[-4.915, 1.108, 19.942]` -> `(u = 17.153m, y = 1.108m, v = 5.43m)`):
+ * Mounts the Framed Old Course at St Andrews Picture on the Barn North Wall and the Large Framed
+ * Horse Show Certificates & 3D Silk Rosettes Display Case on the Barn South Wall.
+ */
+export function buildBarnGroundWallArtworks(groundGroup: THREE.Group): void {
+  const walnutFrameMat = new THREE.MeshStandardMaterial({
+    color: 0x3b2618,
+    roughness: 0.36,
+    metalness: 0.08,
+  });
+  const giltSlipMat = new THREE.MeshStandardMaterial({
+    color: 0xcfa84c,
+    roughness: 0.28,
+    metalness: 0.78,
+  });
+
+  // ---------------------------------------------------------------------------
+  // 1. Issue #5: Framed Panoramic Picture of St Andrews (`outbuildings.barn.stAndrewsPicture`)
+  //    Mounted on the interior `+z` face of the Barn North Courtyard Wall (`u = 17.64m, y = 1.16m, v = 0.295m`)
+  // ---------------------------------------------------------------------------
+  const stAndrewsGroup = new THREE.Group();
+  stAndrewsGroup.name = 'outbuildings.barn.stAndrewsPicture';
+  stAndrewsGroup.userData.zone = 'courtyard';
+  stAndrewsGroup.position.set(17.64, 1.16, 0.295);
+  groundGroup.add(stAndrewsGroup);
+
+  const stW = 1.32;
+  const stH = 0.88;
+  const stFrameD = 0.032;
+
+  const stFrameBox = new THREE.Mesh(
+    new THREE.BoxGeometry(stW + 0.07, stH + 0.07, stFrameD),
+    walnutFrameMat
+  );
+  stFrameBox.name = 'outbuildings.barn.stAndrewsPicture.frame';
+  stFrameBox.castShadow = true;
+  stAndrewsGroup.add(stFrameBox);
+
+  const stGiltSlip = new THREE.Mesh(
+    new THREE.BoxGeometry(stW + 0.018, stH + 0.018, stFrameD + 0.004),
+    giltSlipMat
+  );
+  stAndrewsGroup.add(stGiltSlip);
+
+  const stCanvasPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(stW, stH),
+    new THREE.MeshStandardMaterial({
+      map: createStAndrewsOldCourseTexture(),
+      roughness: 0.24,
+      metalness: 0.04,
+    })
+  );
+  stCanvasPlane.name = 'outbuildings.barn.stAndrewsPicture.canvas';
+  stCanvasPlane.position.set(0, 0, stFrameD * 0.5 + 0.004);
+  stAndrewsGroup.add(stCanvasPlane);
+
+  // ---------------------------------------------------------------------------
+  // 2. Issue #6: Large Framed Display Case of Horse Show Certificates & Rosettes (`outbuildings.barn.horseShowCertificates`)
+  //    Mounted on the interior `-z` face of the Barn South Wall (`u = 17.15m, y = 1.12m, v = 5.412m`, facing North `-z`)
+  // ---------------------------------------------------------------------------
+  const certGroup = new THREE.Group();
+  certGroup.name = 'outbuildings.barn.horseShowCertificates';
+  certGroup.userData.zone = 'courtyard';
+  certGroup.position.set(17.15, 1.12, 5.412);
+  certGroup.rotation.y = Math.PI;
+  groundGroup.add(certGroup);
+
+  const certW = 1.50;
+  const certH = 0.96;
+  const certFrameD = 0.038;
+
+  const certFrameBox = new THREE.Mesh(
+    new THREE.BoxGeometry(certW + 0.08, certH + 0.08, certFrameD),
+    walnutFrameMat
+  );
+  certFrameBox.name = 'outbuildings.barn.horseShowCertificates.frame';
+  certFrameBox.castShadow = true;
+  certGroup.add(certFrameBox);
+
+  const certGiltSlip = new THREE.Mesh(
+    new THREE.BoxGeometry(certW + 0.02, certH + 0.02, certFrameD + 0.004),
+    giltSlipMat
+  );
+  certGroup.add(certGiltSlip);
+
+  const certBoardPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(certW, certH),
+    new THREE.MeshStandardMaterial({
+      map: createHorseShowCertificatesTexture(),
+      roughness: 0.34,
+      metalness: 0.04,
+    })
+  );
+  certBoardPlane.name = 'outbuildings.barn.horseShowCertificates.canvas';
+  certBoardPlane.position.set(0, 0, certFrameD * 0.5 + 0.004);
+  certGroup.add(certBoardPlane);
+
+  // 5 Sculpted 3D Pleated Silk Equestrian Championship Rosettes with Hanging Satin Ribbons inside the display case
+  for (const [rx, ry, ribbonColorHex] of [
+    [-0.36, 0.02, 0xc92424], // 1st Place Crimson Red Rosette
+    [0.0, 0.04, 0x6a248c],   // Supreme Champion Royal Purple Rosette
+    [0.36, 0.02, 0x1e4ea8],  // 2nd Place Royal Blue Rosette
+    [-0.18, -0.34, 0xe0a81e], // 3rd Place Golden Yellow Rosette
+    [0.18, -0.34, 0x1e7a46],  // Special Award Emerald Rosette
+  ] as const) {
+    const rosetteMat = new THREE.MeshStandardMaterial({
+      color: ribbonColorHex,
+      roughness: 0.42,
+      metalness: 0.08,
+    });
+    const pleatRing = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.056, 0.056, 0.012, 24),
+      rosetteMat
+    );
+    pleatRing.name = 'outbuildings.barn.horseShowCertificates.rosette';
+    pleatRing.rotation.x = Math.PI / 2;
+    pleatRing.position.set(rx, ry, certFrameD * 0.5 + 0.010);
+    certGroup.add(pleatRing);
+
+    const goldCenter = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.028, 0.028, 0.016, 20),
+      giltSlipMat
+    );
+    goldCenter.rotation.x = Math.PI / 2;
+    goldCenter.position.set(rx, ry, certFrameD * 0.5 + 0.012);
+    certGroup.add(goldCenter);
+
+    for (const tailSide of [-1, 1] as const) {
+      const tailRibbon = new THREE.Mesh(
+        new THREE.BoxGeometry(0.022, 0.095, 0.006),
+        rosetteMat
+      );
+      tailRibbon.position.set(rx + tailSide * 0.016, ry - 0.068, certFrameD * 0.5 + 0.008);
+      tailRibbon.rotation.z = tailSide * 0.14;
+      certGroup.add(tailRibbon);
+    }
+  }
 }
