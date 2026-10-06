@@ -26,14 +26,14 @@ interface HingedDoorState {
   overheadTrackZ?: number;
   closedPosZ?: number;
   isFoldingFloorMat?: boolean;
-  basePivotPos?: THREE.Vector3;
+  closedPivotPos?: THREE.Vector3;
+  stowedPivotOffset?: THREE.Vector3;
   linkedDrawerId?: string;
   onStateChange?: (isOpen: boolean) => void;
   bargeSwingSign?: -1 | 1;
   fromAngle?: number;
   closedGeometry?: ClosedDoorwayGeometry;
 }
-
 
 interface BifoldCupboardState {
   readonly id: string;
@@ -334,19 +334,6 @@ export class SceneInteractionManager {
   /**
    * Registers the track-mounted sliding Golf Simulator front stance mat and links it
    * with the Callaway Tour Golf Bag (`bagGroup`).
-   *
-   * 2-Stage Cam-Lift & Roller-Track Kinematics:
-   * - Stage 1 (`progress = 0.00 .. 0.25`): The small side lever (`isGolfTrackLiftLeverPivot`) lifts up,
-   *   rotating the 8 eccentric cam linkages (`isGolfTrackCamLink`) so the 2 Outside Tracks
-   *   (`isGolfOutsideTrackLiftGroup`) and the Sliding Mat rise `+36 mm` (`y = 0 -> +0.036 m`)
-   *   to match the height of the 2 Inside Tracks that run through the inside mat.
-   * - Stage 2 (`progress = 0.25 .. 1.00`): The Sliding Mat rolls straight back (`dx = -1.98 m`)
-   *   on its 16 flanged track rollers (`isGolfMatTrackRoller`) from the lifted Outside Tracks
-   *   into the Inside Tracks over the top of the inside mat.
-   * - Rolling back out (`progress: 1.00 -> 0.00`) reverses the sequence: the mat rolls all the way
-   *   out onto the lifted Outside Tracks (`1.00 -> 0.25`), and once fully out (`0.25 -> 0.00`),
-   *   the small lever lowers the Outside Tracks back down onto the limestone tiles so both mats
-   *   sit 100% flush (`yTop = 0.034 m`) with one another!
    */
   public registerFoldingGolfMat(
     parent: THREE.Object3D,
@@ -379,19 +366,23 @@ export class SceneInteractionManager {
       pivot: matPivot,
       axis: 'z',
       closedAngle: 0,
-      openAngle,
+      openAngle: 0,
       isOpen: false,
       progress: 0,
       speed: 0.95,
       isFoldingFloorMat: true,
-      basePivotPos: matPivot.position.clone(),
+      closedPivotPos: matPivot.position.clone(),
+      stowedPivotOffset:
+        bagStowedDelta.lengthSq() > 0.001
+          ? bagStowedDelta.clone()
+          : new THREE.Vector3(-1.96, 0.036, 0),
       linkedDrawerId: bagDrawerId,
       onStateChange,
     });
 
     const closedPos = bagGroup.position.clone();
     const openPos = closedPos.clone();
-    void bagStowedDelta;
+    void openAngle;
     const fadeMaterials = prepareFadeMaterialsForGroup(bagGroup);
     this.slidingDrawers.set(bagDrawerId, {
       id: bagDrawerId,
@@ -409,42 +400,31 @@ export class SceneInteractionManager {
     return { matPivot, matDoorId, bagDrawerId };
   }
 
-  /**
-   * Applies the 2-phase Cam-Lift Lever + Roller-Track kinematics to the Barn Golf Simulator
-   * sliding mat, its 16 flanged track rollers, the 2 movable outside tracks, the 8 cam-lift
-   * linkages, and the small cam-lift lever.
-   */
   private applySlidingGolfMatKinematics(door: HingedDoorState): void {
-    if (!door.basePivotPos) {
-      door.basePivotPos = door.pivot.position.clone();
+    if (!door.closedPivotPos) {
+      door.closedPivotPos = door.pivot.position.clone();
     }
     const p = door.progress;
-    const liftEnd = 0.2;
-    const slideEnd = 0.8;
+    const rampEnd = 0.22;
 
-    const rawMatLift = Math.min(1, Math.max(0, p / liftEnd));
-    const rawSlide = Math.min(
-      1,
-      Math.max(0, (p - liftEnd) / (slideEnd - liftEnd))
-    );
-    const rawTrackLift =
-      p <= liftEnd
-        ? Math.min(1, Math.max(0, p / liftEnd))
-        : p <= slideEnd
-          ? 1
-          : Math.max(0, 1 - (p - slideEnd) / (1 - slideEnd));
-
+    // Dishwasher-Rack Threshold Ramp Kinematics:
+    // - Both sets of floor tracks (`outsideTrack` in the limestone tiles & `insideTrack` in the inside mat) remain 100% FIXED & FLUSH!
+    // - During `p in [0..0.22]`, the front rollers roll up the 220mm (8°) sloped threshold ramp bridge at `x = 0` while the rear edge is lifted 35mm into its step-up roller detent.
+    // - During `p in [0..1.00]`, the mat rolls smoothly along the fixed channels (`slideDistanceX = 1.98m`).
+    const rawMatLift = Math.min(1, Math.max(0, p / rampEnd));
     const matLiftSmooth = easeInOutCubic(rawMatLift);
-    const slideSmooth = easeInOutCubic(rawSlide);
-    const trackLiftSmooth = easeInOutCubic(rawTrackLift);
+    const slideSmooth = easeInOutCubic(p);
     const liftHeightY = 0.036;
     const slideDistanceX = 1.98;
 
-    door.pivot.rotation.set(0, 0, 0);
+    // Slight nose-up pitch (~0.8°) as the leading rollers climb the threshold ramp before the rear step-up rollers lock level
+    const rampPitchZ = p < rampEnd ? Math.sin((p / rampEnd) * Math.PI) * -0.014 : 0;
+
+    door.pivot.rotation.set(0, 0, rampPitchZ);
     door.pivot.position.set(
-      door.basePivotPos.x - slideSmooth * slideDistanceX,
-      door.basePivotPos.y + matLiftSmooth * liftHeightY,
-      door.basePivotPos.z
+      door.closedPivotPos.x - slideSmooth * slideDistanceX,
+      door.closedPivotPos.y + matLiftSmooth * liftHeightY,
+      door.closedPivotPos.z
     );
 
     const rollerAngleZ = (slideSmooth * slideDistanceX) / 0.009;
@@ -453,24 +433,6 @@ export class SceneInteractionManager {
         child.rotation.z = rollerAngleZ;
       }
     });
-
-    const simRoot = door.pivot.parent;
-    if (simRoot) {
-      simRoot.traverse((child) => {
-        const u = child.userData;
-        if (!u) return;
-        if (u.isGolfOutsideTrackLiftGroup) {
-          child.position.y = trackLiftSmooth * liftHeightY;
-          child.updateMatrixWorld(true);
-        } else if (u.isGolfTrackCamLink) {
-          child.rotation.z = trackLiftSmooth * 0.78;
-          child.updateMatrixWorld(true);
-        } else if (u.isGolfTrackLiftLeverPivot) {
-          child.rotation.z = -0.46 + trackLiftSmooth * (0.68 - -0.46);
-          child.updateMatrixWorld(true);
-        }
-      });
-    }
   }
 
   /**
@@ -707,8 +669,11 @@ export class SceneInteractionManager {
     if (door) {
       door.fromAngle = undefined;
       door.isOpen = !door.isOpen;
-      door.speed =
-        door.overheadTrackZ !== undefined ? 1.55 : door.isFoldingFloorMat ? 0.95 : 2.8;
+      door.speed = door.isFoldingFloorMat
+        ? 0.95
+        : door.overheadTrackZ !== undefined
+          ? 1.55
+          : 2.8;
       if (door.linkedDrawerId) {
         const linkedDrawer = this.slidingDrawers.get(door.linkedDrawerId);
         if (linkedDrawer) {
@@ -741,7 +706,7 @@ export class SceneInteractionManager {
         if (linkedDoor) {
           linkedDoor.fromAngle = undefined;
           linkedDoor.isOpen = drawer.isOpen;
-          linkedDoor.speed = linkedDoor.isFoldingFloorMat ? 0.95 : 1.55;
+          linkedDoor.speed = 1.55;
           linkedDoor.onStateChange?.(linkedDoor.isOpen);
         }
       }
@@ -1144,7 +1109,7 @@ export class SceneInteractionManager {
           return `${verb} AGA Oven Door`;
         }
         if (door.isFoldingFloorMat || chainNames.includes('turfmat')) {
-          return `${door.isOpen ? 'Roll Out & Lower Flush' : 'Lift Track & Roll In'} Golf Simulator Mat`;
+          return `${door.isOpen ? 'Roll Out Flush' : 'Lift & Roll In'} Golf Simulator Mat`;
         }
         if (door.overheadTrackZ !== undefined) {
           return `${verb} Garage Door`;
@@ -1171,7 +1136,7 @@ export class SceneInteractionManager {
       const drawer = this.slidingDrawers.get(id);
       if (drawer) {
         if (drawer.linkedDoorId) {
-          return `${drawer.isOpen ? 'Roll Out & Lower Flush' : 'Lift Track & Roll In'} Golf Simulator Mat`;
+          return `${drawer.isOpen ? 'Roll Out Flush' : 'Lift & Roll In'} Golf Simulator Mat`;
         }
         return `${drawer.isOpen ? 'Close' : 'Open'} Drawer`;
       }
@@ -1319,7 +1284,7 @@ export class SceneInteractionManager {
         door.openAngle = door.closedAngle + angleDelta;
         door.closedGeometry = undefined;
         if (door.isFoldingFloorMat) {
-          door.basePivotPos = newPivot.position.clone();
+          door.closedPivotPos = newPivot.position.clone();
           this.applySlidingGolfMatKinematics(door);
         } else {
           if (door.overheadTrackZ !== undefined && door.closedPosZ === undefined) {

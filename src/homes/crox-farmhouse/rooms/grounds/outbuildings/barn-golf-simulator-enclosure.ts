@@ -1228,7 +1228,6 @@ export function buildBarnGolfSimulatorEnclosure(
   const channelOuterH = 0.015; // 15.9mm (5/8") low-profile channel height
   const channelWallT = 0.003;  // 3.2mm (1/8") wall thickness (`19mm` clear internal roller trough)
   const trackSlotW = 0.027;    // Slim 27mm slot through the Inside Mat (`1mm` clearance per side)
-  const liftHeightY = 0.036;   // 36mm vertical cam-lift so the Sliding Mat lifts clear of the 34mm Inside Mat!
 
   const turfStartX = -recessDepthU + 0.16; // -2.00m
   const rearTurfEndX = -0.002; // Butts flush against `frontTurfStartX = +0.002m` at `x = 0`
@@ -1239,7 +1238,7 @@ export function buildBarnGolfSimulatorEnclosure(
   const frontLenX = 1.960;
   const turfEndX = frontTurfStartX + frontLenX; // +1.962m
   const frontCenterX = (frontTurfStartX + turfEndX) * 0.5; // +0.982m
-  const outsideTrackEndX = turfEndX + 0.068; // +2.030m (peeks out 68mm behind the mat on the tiles, right beside the small lever!)
+  const outsideTrackEndX = turfEndX; // +1.962m (ends flush with the rear edge of the sliding mat!)
 
   const centerStripW = (Math.abs(trackZPositions[0]) - trackSlotW * 0.5) * 2; // 2.073m (`z = -1.0365..+1.0365m`)
   const outerWingW = (deckOuterW - 0.028) * 0.5 - (Math.abs(trackZPositions[1]) + trackSlotW * 0.5); // 0.8375m
@@ -1302,8 +1301,12 @@ export function buildBarnGolfSimulatorEnclosure(
   }
 
   // ===========================================================================
-  // 2. Slim 25mm x 15mm x 3mm Aluminium U-Channel Track System (Limestone Powder-Coated on Tiles)
-  //    with Sub-Floor Concealed Torque Shaft & 245mm Ergonomic Rear Lever
+  // 2. Always-Flush Passive 25mm x 15mm x 3mm U-Channel Tracks & Dishwasher-Rack Threshold Ramp
+  //    - ZERO moving parts in the floor, ZERO levers, ZERO actuators!
+  //    - Outside channels (`outsideTrack.north/.south`) are permanently inset FLUSH into the limestone tiles (`#cfc5b3`).
+  //    - Inside channels (`insideTrack.north/.south`) are permanently inset FLUSH into the `34mm` Inside Mat.
+  //    - At the threshold (`x = -0.22m .. +0.02m`), a gentle 8° Dishwasher-Rack S-Curve Threshold Ramp + twin
+  //      lead-in Delrin bridge rollers allow the mat to be lifted slightly by hand and rolled straight up onto the inside tracks!
   // ===========================================================================
   const aluChannelMat = new THREE.MeshStandardMaterial({
     color: 0x5c646e,
@@ -1315,7 +1318,6 @@ export function buildBarnGolfSimulatorEnclosure(
     roughness: 0.42,
     metalness: 0.72,
   });
-  // Warm Cotswold Limestone matte architectural powder-coat (`RAL 1013 / Limestone #cfc5b3`) for the tile tracks!
   const limestonePowderCoatMat = new THREE.MeshStandardMaterial({
     color: 0xcfc5b3,
     roughness: 0.58,
@@ -1347,7 +1349,6 @@ export function buildBarnGolfSimulatorEnclosure(
   hingeAssy.position.set(0, 0, 0);
   simGroup.add(hingeAssy);
 
-  // Helper to build a slim `25mm x 15mm x 3mm` (`1" x 5/8" x 1/8"`) low-profile Aluminium U-Channel
   const populateSlimAluminiumUChannel = (
     targetGroup: THREE.Group,
     prefix: string,
@@ -1380,23 +1381,31 @@ export function buildBarnGolfSimulatorEnclosure(
     }
   };
 
-  // 2A. 2 Slim Inside `25x15x3mm` Aluminium Channels (`insideTrack.north/.south`) running FLUSH through the Inside Mat
-  //     Top edges of the channel sit flush with the `34mm` Inside Mat (`y = +0.019m .. +0.034m`, running bed at `y = +0.022m`)!
-  const insideTrackBaseY = 0.034 - channelOuterH; // 0.019m (so top of 15mm channel is flush at `y = 0.034m`!)
+  // 2A. 2 Fixed Inside `25x15x3mm` Aluminium Channels (`insideTrack.north/.south`) running FLUSH through the Inside Mat
+  //     plus the 240mm Dishwasher-Rack Threshold Entry Ramp (`thresholdRamp.north/.south`) & Lead-In Bridge Rollers at `x = 0`!
+  const insideTrackBaseY = 0.034 - channelOuterH; // 0.019m (top of 15mm channel sits 100% flush with the 34mm Inside Mat!)
+  const rampLenX = 0.22; // 220mm gentle dishwasher-rack threshold ramp (`x = -0.22m .. 0.00m`)
+  const flatInsideLenX = rearLenX - rampLenX; // 1.778m flat upper track run (`x = -2.00m .. -0.22m`)
+  const flatInsideCenterX = turfStartX + flatInsideLenX * 0.5;
+
   const insideTrackGroup = new THREE.Group();
   insideTrackGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.insideTrack';
   hingeAssy.add(insideTrackGroup);
+
+  const bridgeRollerGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.017, 14);
+  bridgeRollerGeo.rotateX(Math.PI / 2);
+  bridgeRollerGeo.computeBoundingSphere();
 
   for (const sideSign of [-1, 1] as const) {
     const sideTag = sideSign < 0 ? 'north' : 'south';
     const tz = sideSign * Math.abs(trackZPositions[1]);
     const inTrack = new THREE.Group();
     inTrack.name = `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}`;
-    inTrack.position.set(rearCenterX, insideTrackBaseY, tz);
+    inTrack.position.set(flatInsideCenterX, insideTrackBaseY, tz);
     insideTrackGroup.add(inTrack);
 
     const subBearer = new THREE.Mesh(
-      new THREE.BoxGeometry(rearLenX, insideTrackBaseY, channelOuterW - 0.002),
+      new THREE.BoxGeometry(flatInsideLenX, insideTrackBaseY, channelOuterW - 0.002),
       hingeSteelMat
     );
     subBearer.name = `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}.subBearer`;
@@ -1406,7 +1415,7 @@ export function buildBarnGolfSimulatorEnclosure(
     populateSlimAluminiumUChannel(
       inTrack,
       `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}`,
-      rearLenX,
+      flatInsideLenX,
       aluChannelMat,
       aluTroughFloorMat
     );
@@ -1416,93 +1425,69 @@ export function buildBarnGolfSimulatorEnclosure(
       neoprenePadMat
     );
     rearStop.name = `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}.rearStop`;
-    rearStop.position.set(-rearLenX * 0.5 + 0.012, channelWallT + 0.006, 0);
+    rearStop.position.set(-flatInsideLenX * 0.5 + 0.012, channelWallT + 0.006, 0);
     inTrack.add(rearStop);
-  }
 
-  // 2B. Flush Inset Floor Slot Liners & Sub-Floor Parallel Cam Linkages under the 2 Outside Tracks
-  //     When lowered (`trackLiftSmooth = 0`), the tracks and cam linkages retract INTO the floor slot (`y <= +0.0012m`)
-  //     so they sit 100% FLUSH with the limestone tiles instead of sitting on top of the floor!
-  const outsideTrackLenX = outsideTrackEndX - frontTurfStartX; // 2.028m (`x = +0.002m .. +2.030m`)
-  const outsideTrackCenterX = (frontTurfStartX + outsideTrackEndX) * 0.5; // +1.016m
-  const insetFlushRimY = 0.0012; // 1.2mm flush sight-line in the limestone tiles (avoids z-fighting with y = 0 floor slab)
-  const outsideTrackLoweredBaseY = -channelOuterH + insetFlushRimY; // -0.0138m (recessed inside the floor slot when lowered!)
+    // Dishwasher-Rack Sloped Threshold Ramp Bridge (`x = -0.22m .. 0.00m`, sloping 8° from the flush tile track up into the inside track!)
+    const rampGroup = new THREE.Group();
+    rampGroup.name = `outbuildings.barn.golfSimulator.trackSystem.thresholdRamp.${sideTag}`;
+    rampGroup.position.set(-rampLenX * 0.5, insideTrackBaseY * 0.5, tz);
+    rampGroup.rotation.z = -Math.atan2(insideTrackBaseY, rampLenX); // Slopes up toward `-x` (into the bay)
+    insideTrackGroup.add(rampGroup);
 
-  const tileBaseGroup = new THREE.Group();
-  tileBaseGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.tileMountingBase';
-  hingeAssy.add(tileBaseGroup);
-
-  const camStationsX = [0.24, 0.82, 1.40, 1.96] as const;
-  const camLinkArmLen = 0.036;
-
-  for (const sideSign of [-1, 1] as const) {
-    const sideTag = sideSign < 0 ? 'north' : 'south';
-    const tz = sideSign * Math.abs(trackZPositions[1]);
-
-    // Flush inset floor slot shadow liner at `y = +0.0005m` (visible inside the 19mm trough between the flush channel lips)
-    const tileSolePlate = new THREE.Mesh(
-      new THREE.BoxGeometry(outsideTrackLenX, 0.001, channelOuterW - channelWallT * 2),
-      limestoneTroughFloorMat
+    const rampHypotenuse = Math.hypot(rampLenX, insideTrackBaseY);
+    populateSlimAluminiumUChannel(
+      rampGroup,
+      `outbuildings.barn.golfSimulator.trackSystem.thresholdRamp.${sideTag}`,
+      rampHypotenuse,
+      aluChannelMat,
+      aluTroughFloorMat
     );
-    tileSolePlate.name = `outbuildings.barn.golfSimulator.trackSystem.tileBase.${sideTag}`;
-    tileSolePlate.position.set(outsideTrackCenterX, 0.0005, tz);
-    tileSolePlate.receiveShadow = true;
-    tileBaseGroup.add(tileSolePlate);
 
-    for (let cIdx = 0; cIdx < camStationsX.length; cIdx++) {
-      const cx = camStationsX[cIdx]!;
-      const camLinkPivot = new THREE.Group();
-      camLinkPivot.name = `outbuildings.barn.golfSimulator.trackSystem.camLink.${sideTag}.${cIdx + 1}`;
-      camLinkPivot.userData = { isGolfTrackCamLink: true };
-      // Pivots from inside the sub-floor slot (`y = -0.012m`) so it is completely hidden below the floor when flush!
-      camLinkPivot.position.set(cx - 0.016, -0.012, tz);
-      tileBaseGroup.add(camLinkPivot);
-
-      for (const lz of [-0.011, 0.011] as const) {
-        const linkArm = new THREE.Mesh(
-          new THREE.BoxGeometry(camLinkArmLen, 0.007, 0.004),
-          limestonePowderCoatMat
-        );
-        linkArm.name = `outbuildings.barn.golfSimulator.trackSystem.camLink.${sideTag}.${cIdx + 1}.arm.${lz < 0 ? 'inner' : 'outer'}`;
-        linkArm.position.set(camLinkArmLen * 0.5, 0, lz);
-        camLinkPivot.add(linkArm);
-      }
+    // Twin Fixed Dishwasher-Style Threshold Lead-In Bridge Rollers at the crest & mid-point of the threshold ramp
+    // so the mat's front rollers and underside glide effortlessly up onto the inside mat track!
+    for (const [brIdx, [brX, brY]] of (
+      [
+        [-0.022, 0.025],
+        [-0.185, 0.033],
+      ] as const
+    ).entries()) {
+      const bridgeRoller = new THREE.Mesh(bridgeRollerGeo, rollerPolyMat);
+      bridgeRoller.name = `outbuildings.barn.golfSimulator.trackSystem.thresholdRamp.${sideTag}.leadInRoller.${brIdx + 1}`;
+      bridgeRoller.position.set(brX, brY, tz);
+      insideTrackGroup.add(bridgeRoller);
     }
   }
 
-  // Sub-Floor Concealed 16mm Synchronizing Torque Shaft (`y = -0.018m`, recessed in a steel sleeve beneath the limestone tiles
-  // extending to the Barn South Wall so the lever sits right beside the wall and ZERO crossmember bar is visible!)
-  const leverX = 1.94; // Behind the hitting area (`x = +1.12m`), at the rear South-East corner of the mat
-  const leverZ = 5.43 - simCenterV - 0.065; // Tucked 65mm from the Barn South Wall (`v = 5.43m`), completely out of the floor!
-  const syncTorqueShaft = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.008, 0.008, Math.abs(trackZPositions[0]) + leverZ, 12),
-    hingeSteelMat
-  );
-  syncTorqueShaft.name = 'outbuildings.barn.golfSimulator.trackSystem.syncTorqueShaft';
-  syncTorqueShaft.rotation.x = Math.PI / 2;
-  syncTorqueShaft.position.set(leverX, -0.018, (leverZ - Math.abs(trackZPositions[0])) * 0.5);
-  syncTorqueShaft.visible = false; // Concealed beneath the limestone tile floor screed!
-  tileBaseGroup.add(syncTorqueShaft);
+  // 2B. 2 Always-Flush Passive Outside `25x15x3mm` Limestone Powder-Coated Channels (`outsideTrack.north/.south`)
+  //     Permanently inset FLUSH into the limestone floor tiles (`yTop = +0.0012m`) with zero moving parts!
+  const outsideTrackLenX = outsideTrackEndX - frontTurfStartX; // 1.960m (`x = +0.002m .. +1.962m`)
+  const outsideTrackCenterX = (frontTurfStartX + outsideTrackEndX) * 0.5; // +0.982m
+  const insetFlushRimY = 0.0012; // 1.2mm flush sight-line in the limestone tiles
+  const outsideTrackLoweredBaseY = -channelOuterH + insetFlushRimY; // -0.0138m (permanently inset flush in the floor!)
 
-  // 2C. 2 Slim Inset Outside `25x15x3mm` Limestone Powder-Coated Channels (`outsideTrack.north/.south`)
-  //     - When flush (`trackLiftSmooth = 0`): recessed at `y = -0.0138m .. +0.0012m` so the top lips sit FLUSH with the limestone tiles!
-  //     - When lifted (`trackLiftSmooth = 1`): rises out of the floor slot to match the Inside Track height!
-  const outsideTrackLiftGroup = new THREE.Group();
-  outsideTrackLiftGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.outsideTrack';
-  outsideTrackLiftGroup.userData = {
-    isGolfOutsideTrackLiftGroup: true,
-    liftHeightY,
-  };
-  outsideTrackLiftGroup.position.set(0, 0, 0);
-  hingeAssy.add(outsideTrackLiftGroup);
+  const outsideTrackGroup = new THREE.Group();
+  outsideTrackGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.outsideTrack';
+  hingeAssy.add(outsideTrackGroup);
 
   for (const sideSign of [-1, 1] as const) {
     const sideTag = sideSign < 0 ? 'north' : 'south';
     const tz = sideSign * Math.abs(trackZPositions[1]);
+
+    // Flush inset trough floor visible between the two limestone-powder-coated channel lips
+    const tileTroughLiner = new THREE.Mesh(
+      new THREE.BoxGeometry(outsideTrackLenX, 0.001, channelOuterW - channelWallT * 2),
+      limestoneTroughFloorMat
+    );
+    tileTroughLiner.name = `outbuildings.barn.golfSimulator.trackSystem.tileBase.${sideTag}`;
+    tileTroughLiner.position.set(outsideTrackCenterX, 0.0005, tz);
+    tileTroughLiner.receiveShadow = true;
+    outsideTrackGroup.add(tileTroughLiner);
+
     const outTrack = new THREE.Group();
     outTrack.name = `outbuildings.barn.golfSimulator.trackSystem.outsideTrack.${sideTag}`;
     outTrack.position.set(outsideTrackCenterX, outsideTrackLoweredBaseY, tz);
-    outsideTrackLiftGroup.add(outTrack);
+    outsideTrackGroup.add(outTrack);
 
     populateSlimAluminiumUChannel(
       outTrack,
@@ -1513,83 +1498,18 @@ export function buildBarnGolfSimulatorEnclosure(
     );
 
     const frontEndCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, channelOuterH, channelOuterW),
+      new THREE.BoxGeometry(0.008, channelOuterH, channelOuterW),
       limestonePowderCoatMat
     );
     frontEndCap.name = `outbuildings.barn.golfSimulator.trackSystem.outsideTrack.${sideTag}.frontEndCap`;
-    frontEndCap.position.set(outsideTrackLenX * 0.5 - 0.006, channelOuterH * 0.5, 0);
+    frontEndCap.position.set(outsideTrackLenX * 0.5 - 0.004, channelOuterH * 0.5, 0);
     outTrack.add(frontEndCap);
   }
-
-  // 2D. Ergonomic 245mm (9.6") Over-Centre Cam-Lift Lever (`outbuildings.barn.golfSimulator.trackSystem.liftLever`)
-  //     Rising through a flush limestone-powder-coated floor escutcheon plate tucked right against the Barn South Wall (`65mm` off the wall)!
-  const leverBaseGroup = new THREE.Group();
-  leverBaseGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.base';
-  leverBaseGroup.position.set(leverX, 0, leverZ);
-  hingeAssy.add(leverBaseGroup);
-
-  // Flush 2mm floor slot escutcheon plate (`y = 0..0.002m`)
-  const leverPlinth = new THREE.Mesh(
-    new THREE.BoxGeometry(0.076, 0.002, 0.032),
-    limestonePowderCoatMat
-  );
-  leverPlinth.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.plinth';
-  leverPlinth.position.set(0, 0.001, 0);
-  leverBaseGroup.add(leverPlinth);
-
-  const quadrantPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.052, 0.0015, 0.008),
-    aluTroughFloorMat
-  );
-  quadrantPlate.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.quadrant';
-  quadrantPlate.position.set(0, 0.0018, 0);
-  leverBaseGroup.add(quadrantPlate);
-
-  const leverPivot = new THREE.Group();
-  leverPivot.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever';
-  leverPivot.userData = {
-    isGolfTrackLiftLeverPivot: true,
-    loweredAngleZ: -0.46, // Forward/low when lowered flush
-    liftedAngleZ: 0.68,   // Pulled back over-centre when lifted
-  };
-  leverPivot.position.set(0, 0.002, 0);
-  leverPivot.rotation.z = -0.46;
-  leverBaseGroup.add(leverPivot);
-
-  const leverHub = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.009, 0.009, 0.016, 14),
-    limestonePowderCoatMat
-  );
-  leverHub.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.hub';
-  leverHub.rotation.x = Math.PI / 2;
-  leverPivot.add(leverHub);
-
-  // 245mm (`9.6"`) solid 11mm-diameter lever arm (powder-coated limestone to match the tile tracks)
-  const leverArm = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.0055, 0.0065, 0.245, 12),
-    limestonePowderCoatMat
-  );
-  leverArm.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.arm';
-  leverArm.position.set(0, 0.1225, 0);
-  leverArm.castShadow = true;
-  leverPivot.add(leverArm);
-
-  // 76mm-wide x Ø18mm matte-charcoal ergonomic cylindrical T-grip pointing inward (`-z`) away from the South wall
-  const leverGrip = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.009, 0.009, 0.076, 14),
-    neoprenePadMat
-  );
-  leverGrip.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.handle';
-  leverGrip.rotation.x = Math.PI / 2;
-  leverGrip.position.set(0, 0.245, -0.014);
-  leverGrip.castShadow = true;
-  leverPivot.add(leverGrip);
 
   // ===========================================================================
   // 3. Unbroken One-Piece Sliding Stance & Hitting Mat (`foldingMatGroup`, `x = +0.002m .. +1.962m`)
   //    - Top surface is 100% clean, continuous green turf (`yTop = 0.034m` when lowered flush) with ZERO plates or slots on top!
-  //    - 8 low-profile underside roller brackets & 16 Ø18mm polyurethane rollers are mounted underneath the mat
-  //      and run inside the 2 slim 25mm channels below!
+  //    - Equipped with Dishwasher-Rack Lead-In Rollers on the underside and a Flush Recessed Hand-Lift Grip on the rear edge!
   // ===========================================================================
   const foldingMatGroup = new THREE.Group();
   foldingMatGroup.name = 'outbuildings.barn.golfSimulator.turfMat.foldingLeaf';
@@ -1675,6 +1595,36 @@ export function buildBarnGolfSimulatorEnclosure(
       }
     }
   }
+
+  // Flush-Recessed Rear Hand-Lift Pocket (`outbuildings.barn.golfSimulator.turfMat.rearLiftHandle`)
+  // Inset flush into the dark rubber rear surround border (`x = +0.948m`, `z = 0`) so you can lift the rear edge 35mm by hand (wheelbarrow-style while the front rollers rest on the threshold ramp!)
+  const rearHandleGroup = new THREE.Group();
+  rearHandleGroup.name = 'outbuildings.barn.golfSimulator.turfMat.rearLiftHandle';
+  rearHandleGroup.position.set(frontLenX * 0.5 - 0.032, 0.006, 0);
+  foldingMatGroup.add(rearHandleGroup);
+
+  const handleBezel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.036, 0.008, 0.165),
+    hingeSteelMat
+  );
+  handleBezel.name = 'outbuildings.barn.golfSimulator.turfMat.rearLiftHandle.bezel';
+  rearHandleGroup.add(handleBezel);
+
+  const handlePocket = new THREE.Mesh(
+    new THREE.BoxGeometry(0.022, 0.009, 0.135),
+    stanceSurroundMat
+  );
+  handlePocket.name = 'outbuildings.barn.golfSimulator.turfMat.rearLiftHandle.pocket';
+  handlePocket.position.set(-0.002, 0.001, 0);
+  rearHandleGroup.add(handlePocket);
+
+  const handleGripBar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.004, 0.004, 0.132, 10),
+    aluChannelMat
+  );
+  handleGripBar.name = 'outbuildings.barn.golfSimulator.turfMat.rearLiftHandle.gripBar';
+  handleGripBar.position.set(0.004, 0.002, 0);
+  rearHandleGroup.add(handleGripBar);
 
   // Centered Replaceable Fiberbuilt / Divot-Action Hitting Strip & Bezel (`z = 0`, dead center on target line!)
   const hittingX = 1.12;
