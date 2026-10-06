@@ -1420,9 +1420,13 @@ export function buildBarnGolfSimulatorEnclosure(
     inTrack.add(rearStop);
   }
 
-  // 2B. Limestone Powder-Coated Tile Soleplates & Low-Profile Parallel Cam Linkages under the 2 Outside Tracks
+  // 2B. Flush Inset Floor Slot Liners & Sub-Floor Parallel Cam Linkages under the 2 Outside Tracks
+  //     When lowered (`trackLiftSmooth = 0`), the tracks and cam linkages retract INTO the floor slot (`y <= +0.0012m`)
+  //     so they sit 100% FLUSH with the limestone tiles instead of sitting on top of the floor!
   const outsideTrackLenX = outsideTrackEndX - frontTurfStartX; // 2.028m (`x = +0.002m .. +2.030m`)
   const outsideTrackCenterX = (frontTurfStartX + outsideTrackEndX) * 0.5; // +1.016m
+  const insetFlushRimY = 0.0012; // 1.2mm flush sight-line in the limestone tiles (avoids z-fighting with y = 0 floor slab)
+  const outsideTrackLoweredBaseY = -channelOuterH + insetFlushRimY; // -0.0138m (recessed inside the floor slot when lowered!)
 
   const tileBaseGroup = new THREE.Group();
   tileBaseGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.tileMountingBase';
@@ -1435,12 +1439,13 @@ export function buildBarnGolfSimulatorEnclosure(
     const sideTag = sideSign < 0 ? 'north' : 'south';
     const tz = sideSign * Math.abs(trackZPositions[1]);
 
+    // Flush inset floor slot shadow liner at `y = +0.0005m` (visible inside the 19mm trough between the flush channel lips)
     const tileSolePlate = new THREE.Mesh(
-      new THREE.BoxGeometry(outsideTrackLenX, 0.002, channelOuterW + 0.004),
-      limestonePowderCoatMat
+      new THREE.BoxGeometry(outsideTrackLenX, 0.001, channelOuterW - channelWallT * 2),
+      limestoneTroughFloorMat
     );
     tileSolePlate.name = `outbuildings.barn.golfSimulator.trackSystem.tileBase.${sideTag}`;
-    tileSolePlate.position.set(outsideTrackCenterX, 0.001, tz);
+    tileSolePlate.position.set(outsideTrackCenterX, 0.0005, tz);
     tileSolePlate.receiveShadow = true;
     tileBaseGroup.add(tileSolePlate);
 
@@ -1449,7 +1454,8 @@ export function buildBarnGolfSimulatorEnclosure(
       const camLinkPivot = new THREE.Group();
       camLinkPivot.name = `outbuildings.barn.golfSimulator.trackSystem.camLink.${sideTag}.${cIdx + 1}`;
       camLinkPivot.userData = { isGolfTrackCamLink: true };
-      camLinkPivot.position.set(cx - 0.016, 0.003, tz);
+      // Pivots from inside the sub-floor slot (`y = -0.012m`) so it is completely hidden below the floor when flush!
+      camLinkPivot.position.set(cx - 0.016, -0.012, tz);
       tileBaseGroup.add(camLinkPivot);
 
       for (const lz of [-0.011, 0.011] as const) {
@@ -1478,8 +1484,9 @@ export function buildBarnGolfSimulatorEnclosure(
   syncTorqueShaft.visible = false; // Concealed beneath the limestone tile floor screed!
   tileBaseGroup.add(syncTorqueShaft);
 
-  // 2C. 2 Slim Movable Outside `25x15x3mm` Limestone Powder-Coated Channels (`outsideTrack.north/.south`) on the Limestone Tiles
-  //     Powder-coated in warm Cotswold Limestone (`#cfc5b3`) so they blend harmoniously into the limestone floor tiles!
+  // 2C. 2 Slim Inset Outside `25x15x3mm` Limestone Powder-Coated Channels (`outsideTrack.north/.south`)
+  //     - When flush (`trackLiftSmooth = 0`): recessed at `y = -0.0138m .. +0.0012m` so the top lips sit FLUSH with the limestone tiles!
+  //     - When lifted (`trackLiftSmooth = 1`): rises out of the floor slot to match the Inside Track height!
   const outsideTrackLiftGroup = new THREE.Group();
   outsideTrackLiftGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.outsideTrack';
   outsideTrackLiftGroup.userData = {
@@ -1494,7 +1501,7 @@ export function buildBarnGolfSimulatorEnclosure(
     const tz = sideSign * Math.abs(trackZPositions[1]);
     const outTrack = new THREE.Group();
     outTrack.name = `outbuildings.barn.golfSimulator.trackSystem.outsideTrack.${sideTag}`;
-    outTrack.position.set(outsideTrackCenterX, 0, tz);
+    outTrack.position.set(outsideTrackCenterX, outsideTrackLoweredBaseY, tz);
     outsideTrackLiftGroup.add(outTrack);
 
     populateSlimAluminiumUChannel(
@@ -1515,29 +1522,27 @@ export function buildBarnGolfSimulatorEnclosure(
   }
 
   // 2D. Ergonomic 245mm (9.6") Over-Centre Cam-Lift Lever (`outbuildings.barn.golfSimulator.trackSystem.liftLever`)
-  //     Tucked right against the Barn South Wall (`65mm` off the wall at `x = +1.94m`, behind the hitting area),
-  //     driving the concealed sub-floor torque shaft with a 7.5:1 mechanical advantage (~5.5kg effort)!
+  //     Rising through a flush limestone-powder-coated floor escutcheon plate tucked right against the Barn South Wall (`65mm` off the wall)!
   const leverBaseGroup = new THREE.Group();
   leverBaseGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.base';
   leverBaseGroup.position.set(leverX, 0, leverZ);
   hingeAssy.add(leverBaseGroup);
 
+  // Flush 2mm floor slot escutcheon plate (`y = 0..0.002m`)
   const leverPlinth = new THREE.Mesh(
-    new THREE.BoxGeometry(0.088, 0.014, 0.044),
+    new THREE.BoxGeometry(0.076, 0.002, 0.032),
     limestonePowderCoatMat
   );
   leverPlinth.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.plinth';
-  leverPlinth.position.set(0, 0.007, 0);
-  leverPlinth.castShadow = true;
+  leverPlinth.position.set(0, 0.001, 0);
   leverBaseGroup.add(leverPlinth);
 
   const quadrantPlate = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.038, 0.038, 0.008, 20, 1, false, 0, Math.PI),
-    limestonePowderCoatMat
+    new THREE.BoxGeometry(0.052, 0.0015, 0.008),
+    aluTroughFloorMat
   );
   quadrantPlate.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.quadrant';
-  quadrantPlate.rotation.x = Math.PI / 2;
-  quadrantPlate.position.set(0, 0.012, 0.012);
+  quadrantPlate.position.set(0, 0.0018, 0);
   leverBaseGroup.add(quadrantPlate);
 
   const leverPivot = new THREE.Group();
@@ -1547,13 +1552,13 @@ export function buildBarnGolfSimulatorEnclosure(
     loweredAngleZ: -0.46, // Forward/low when lowered flush
     liftedAngleZ: 0.68,   // Pulled back over-centre when lifted
   };
-  leverPivot.position.set(0, 0.016, 0);
+  leverPivot.position.set(0, 0.002, 0);
   leverPivot.rotation.z = -0.46;
   leverBaseGroup.add(leverPivot);
 
   const leverHub = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.015, 0.015, 0.028, 14),
-    aluChannelMat
+    new THREE.CylinderGeometry(0.009, 0.009, 0.016, 14),
+    limestonePowderCoatMat
   );
   leverHub.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.hub';
   leverHub.rotation.x = Math.PI / 2;
