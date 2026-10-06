@@ -574,7 +574,7 @@ export function createGolfSimArtworkTexture(): THREE.CanvasTexture {
   if (cachedGolfSimArtworkTexture) {
     return cachedGolfSimArtworkTexture;
   }
-  const w = 1024;
+  const w = 1152;
   const h = 720;
   const canvas = document.createElement('canvas');
   canvas.width = w;
@@ -800,13 +800,13 @@ export interface BarnGolfSimulatorEnclosureHandles {
 
 export function buildBarnGolfSimulatorEnclosure(
   groundGroup: THREE.Group,
-  uWallMin: number,
+  _uWallMin: number,
   uWallMax: number,
   barnWestFloorY: number,
-  plasterMat: THREE.Material,
+  _plasterMat: THREE.Material,
   groundCeilingGroup?: THREE.Group
 ): BarnGolfSimulatorEnclosureHandles {
-  const simCenterV = 3.22;
+  const simCenterV = 3.355; // Centered on v = 1.33m..5.38m (clearW = 4.05m, leaving a 0.96m Part M/B North corridor v = 0.28m..1.24m!)
   const simGroup = new THREE.Group();
   simGroup.name = 'outbuildings.barn.golfSimulator';
   simGroup.position.set(uWallMax, barnWestFloorY, simCenterV);
@@ -817,20 +817,63 @@ export function buildBarnGolfSimulatorEnclosure(
   simCeilingGroup.position.set(uWallMax, barnWestFloorY, simCenterV);
   (groundCeilingGroup ?? groundGroup).add(simCeilingGroup);
 
-  const clearW = 3.80; // 12'6" TrackMan Widescreen enclosure width (v = 1.32m..5.12m)
+  const clearW = 4.05; // 13'3.5" Widescreen enclosure width (v = 1.33m..5.38m, reclaiming the 26cm South dead void!)
   const clearH = 2.85; // 9'4" (2.85m) official TrackMan iO minimum enclosure ceiling height
   const recessDepthU = 2.16;
-  const wallT = uWallMax - uWallMin;
+
+  // Procedural Upholstered Acoustic Impact Foam micro-suede texture & bevelled cushion bump map
+  const foamCanvas = document.createElement('canvas');
+  foamCanvas.width = 256;
+  foamCanvas.height = 256;
+  const fCtx = foamCanvas.getContext('2d');
+  const foamBumpCanvas = document.createElement('canvas');
+  foamBumpCanvas.width = 256;
+  foamBumpCanvas.height = 256;
+  const fbCtx = foamBumpCanvas.getContext('2d');
+  if (fCtx && fbCtx) {
+    fCtx.fillStyle = '#1e2126';
+    fCtx.fillRect(0, 0, 256, 256);
+    fbCtx.fillStyle = '#d8d8d8';
+    fbCtx.fillRect(0, 0, 256, 256);
+
+    // Subtle bevelled cushion border pillowing on bump map
+    const borderGrad = fbCtx.createRadialGradient(128, 128, 60, 128, 128, 175);
+    borderGrad.addColorStop(0, '#ffffff');
+    borderGrad.addColorStop(0.78, '#dcdcdc');
+    borderGrad.addColorStop(1, '#585858');
+    fbCtx.fillStyle = borderGrad;
+    fbCtx.fillRect(0, 0, 256, 256);
+
+    // Fine open-cell acoustic foam / suede micro-texture
+    for (let y = 0; y < 256; y += 2) {
+      for (let x = 0; x < 256; x += 2) {
+        const n = ((x * 73 + y * 151 + ((x * y) & 31)) % 29) - 14;
+        const v = 30 + Math.round(n * 0.45);
+        fCtx.fillStyle = `rgb(${v}, ${v + 3}, ${v + 7})`;
+        fCtx.fillRect(x, y, 2, 2);
+      }
+    }
+  }
+  const foamColorTex = new THREE.CanvasTexture(foamCanvas);
+  foamColorTex.wrapS = THREE.RepeatWrapping;
+  foamColorTex.wrapT = THREE.RepeatWrapping;
+  foamColorTex.colorSpace = THREE.SRGBColorSpace;
+  const foamBumpTex = new THREE.CanvasTexture(foamBumpCanvas);
+  foamBumpTex.wrapS = THREE.RepeatWrapping;
+  foamBumpTex.wrapT = THREE.RepeatWrapping;
 
   const acousticBaffleMat = new THREE.MeshStandardMaterial({
-    color: 0x1a1c20,
+    map: foamColorTex,
+    bumpMap: foamBumpTex,
+    bumpScale: 0.012,
+    color: 0xffffff,
     roughness: 0.92,
     metalness: 0.02,
   });
   const velvetFrameMat = new THREE.MeshStandardMaterial({
     color: 0x111316,
-    roughness: 0.88,
-    metalness: 0.04,
+    roughness: 0.9,
+    metalness: 0.03,
   });
 
   const { fairwayMap, hittingMap, bumpMap } = createGolfAstroturfTextures();
@@ -884,98 +927,254 @@ export function buildBarnGolfSimulatorEnclosure(
     metalness: 0.05,
   });
 
-  const storeBoxDepth = recessDepthU - wallT;
   const wallBoxH = clearH + 0.01;
-  const linerWallH = clearH - 0.004;
-  const storeBackWall = new THREE.Mesh(
-    new THREE.BoxGeometry(0.09, linerWallH, clearW + 0.18),
-    plasterMat
+
+  // Continuous Matte-Obsidian Acoustic Backing Substrate across the Ceiling and Both Side Walls
+  // so ZERO white plaster ever bleeds through the shadow seams between the padded foam cushions!
+  const ceilingFoamSubstrate = new THREE.Mesh(
+    new THREE.BoxGeometry(recessDepthU, 0.018, clearW),
+    velvetFrameMat
   );
-  storeBackWall.name = 'outbuildings.barn.golfSimulator.enclosureWall.back';
-  storeBackWall.userData.isArchitecturalShell = true;
-  storeBackWall.position.set(-recessDepthU - 0.045, linerWallH * 0.5, 0);
-  storeBackWall.castShadow = true;
-  storeBackWall.receiveShadow = true;
-  simGroup.add(storeBackWall);
+  ceilingFoamSubstrate.name = 'outbuildings.barn.golfSimulator.ceilingFoamSubstrate';
+  ceilingFoamSubstrate.position.set(-recessDepthU * 0.5, clearH - 0.009, 0);
+  ceilingFoamSubstrate.receiveShadow = true;
+  simGroup.add(ceilingFoamSubstrate);
 
   for (const sideZ of [-1, 1] as const) {
-    const storeSideWall = new THREE.Mesh(
-      new THREE.BoxGeometry(storeBoxDepth, linerWallH, 0.09),
-      plasterMat
+    const sideLabel = sideZ < 0 ? 'north' : 'south';
+    const sideFoamSubstrate = new THREE.Mesh(
+      new THREE.BoxGeometry(recessDepthU, clearH, 0.016),
+      velvetFrameMat
     );
-    storeSideWall.name = `outbuildings.barn.golfSimulator.enclosureWall.${sideZ < 0 ? 'north' : 'south'}`;
-    storeSideWall.userData.isArchitecturalShell = true;
-    storeSideWall.position.set(
-      -wallT - storeBoxDepth * 0.5,
-      linerWallH * 0.5,
-      sideZ * (clearW * 0.5 + 0.045)
+    sideFoamSubstrate.name = `outbuildings.barn.golfSimulator.sideFoamSubstrate.${sideLabel}`;
+    sideFoamSubstrate.position.set(
+      -recessDepthU * 0.5,
+      clearH * 0.5,
+      sideZ * (clearW * 0.5 - 0.010)
     );
-    storeSideWall.castShadow = true;
-    storeSideWall.receiveShadow = true;
-    simGroup.add(storeSideWall);
+    simGroup.add(sideFoamSubstrate);
   }
 
+  // 6 Columns × 3 Rows of Bevelled Padded Acoustic Foam Side Panels + 6×4 Grid of Padded Foam Ceiling Panels
+  // Attached directly to `simGroup` so the padded foam ceiling & walls remain a cohesive 3D bay in all views!
   const numBaffleCols = 6;
-  const baffleColW = recessDepthU / numBaffleCols;
+  const numSideRows = 3;
+  const numCeilColsZ = 4;
+  const foamDepthX = recessDepthU - 0.14; // Spans x = -2.02m (screen plane) to x = 0.00m (portal)
+  const baffleColW = foamDepthX / numBaffleCols;
+  const sideRowH = (clearH - 0.08) / numSideRows;
+  const ceilTileW = (clearW - 0.10) / numCeilColsZ;
+
   for (let c = 0; c < numBaffleCols; c++) {
-    const bx = -recessDepthU + (c + 0.5) * baffleColW;
+    const bx = -recessDepthU + 0.14 + (c + 0.5) * baffleColW;
 
     for (const sideZ of [-1, 1] as const) {
-      const sideBaffle = new THREE.Mesh(
-        new THREE.BoxGeometry(baffleColW - 0.015, clearH - 0.04, 0.055),
-        acousticBaffleMat
-      );
-      sideBaffle.name = `outbuildings.barn.golfSimulator.sideBaffle.${sideZ < 0 ? 'north' : 'south'}.${c + 1}`;
-      sideBaffle.position.set(bx, clearH * 0.5, sideZ * (clearW * 0.5 - 0.028));
-      sideBaffle.castShadow = true;
-      sideBaffle.receiveShadow = true;
-      simGroup.add(sideBaffle);
+      const sideLabel = sideZ < 0 ? 'north' : 'south';
+      for (let r = 0; r < numSideRows; r++) {
+        const by = 0.04 + (r + 0.5) * sideRowH;
+        const sideBaffle = new THREE.Mesh(
+          new THREE.BoxGeometry(baffleColW - 0.01, sideRowH - 0.01, 0.052),
+          acousticBaffleMat
+        );
+        sideBaffle.name = `outbuildings.barn.golfSimulator.sideBaffle.${sideLabel}.${c + 1}.${r + 1}`;
+        sideBaffle.position.set(bx, by, sideZ * (clearW * 0.5 - 0.032));
+        sideBaffle.castShadow = true;
+        sideBaffle.receiveShadow = true;
+        simGroup.add(sideBaffle);
+      }
     }
 
-    const ceilBaffle = new THREE.Mesh(
-      new THREE.BoxGeometry(baffleColW - 0.015, 0.055, clearW - 0.08),
-      acousticBaffleMat
-    );
-    ceilBaffle.name = 'outbuildings.barn.golfSimulator.ceilingBaffle';
-    ceilBaffle.position.set(bx, clearH - 0.028, 0);
-    simCeilingGroup.add(ceilBaffle);
+    for (let cz = 0; cz < numCeilColsZ; cz++) {
+      const bz = -(clearW - 0.10) * 0.5 + (cz + 0.5) * ceilTileW;
+      const ceilBaffle = new THREE.Mesh(
+        new THREE.BoxGeometry(baffleColW - 0.01, 0.056, ceilTileW - 0.01),
+        acousticBaffleMat
+      );
+      ceilBaffle.name = `outbuildings.barn.golfSimulator.ceilingBaffle.${c + 1}.${cz + 1}`;
+      ceilBaffle.position.set(bx, clearH - 0.034, bz);
+      ceilBaffle.castShadow = true;
+      ceilBaffle.receiveShadow = true;
+      simGroup.add(ceilBaffle);
+    }
   }
 
-  const frameTrimW = 0.095;
-  const portalTrimBottomY = 0.048;
+  // Upholstered Corner Foam Bolsters along Top-North, Top-South, Bottom-North & Bottom-South junctions
+  for (const sideZ of [-1, 1] as const) {
+    const sideLabel = sideZ < 0 ? 'north' : 'south';
+    const topBolster = new THREE.Mesh(
+      new THREE.BoxGeometry(foamDepthX, 0.058, 0.058),
+      velvetFrameMat
+    );
+    topBolster.name = `outbuildings.barn.golfSimulator.cornerBolster.top.${sideLabel}`;
+    topBolster.position.set(
+      -recessDepthU + 0.14 + foamDepthX * 0.5,
+      clearH - 0.029,
+      sideZ * (clearW * 0.5 - 0.029)
+    );
+    simGroup.add(topBolster);
+
+    const bottomBolster = new THREE.Mesh(
+      new THREE.BoxGeometry(foamDepthX, 0.044, 0.058),
+      velvetFrameMat
+    );
+    bottomBolster.name = `outbuildings.barn.golfSimulator.cornerBolster.bottom.${sideLabel}`;
+    bottomBolster.position.set(
+      -recessDepthU + 0.14 + foamDepthX * 0.5,
+      0.022,
+      sideZ * (clearW * 0.5 - 0.029)
+    );
+    simGroup.add(bottomBolster);
+  }
+
+  const frameTrimW = 0.075;
+  const portalTrimBottomY = 0.038;
   const portalTrimH = clearH - portalTrimBottomY;
   for (const sideZ of [-1, 1] as const) {
     const sideTrim = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, portalTrimH, frameTrimW),
+      new THREE.BoxGeometry(0.068, portalTrimH, frameTrimW),
       velvetFrameMat
     );
     sideTrim.name = `outbuildings.barn.golfSimulator.portalTrim.${sideZ < 0 ? 'north' : 'south'}`;
     sideTrim.position.set(
-      -0.04,
+      -0.032,
       portalTrimBottomY + portalTrimH * 0.5,
       sideZ * (clearW * 0.5 - frameTrimW * 0.5)
     );
     simGroup.add(sideTrim);
   }
   const topTrim = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, frameTrimW, clearW),
+    new THREE.BoxGeometry(0.068, frameTrimW, clearW),
     velvetFrameMat
   );
   topTrim.name = 'outbuildings.barn.golfSimulator.portalTrim.top';
-  topTrim.position.set(-0.04, clearH - frameTrimW * 0.5, 0);
-  simCeilingGroup.add(topTrim);
+  topTrim.position.set(-0.032, clearH - frameTrimW * 0.5, 0);
+  simGroup.add(topTrim);
+
+  // Issue #1 ("add an LED ring around the inside" at `[-8.083, 0.197, 16.157]`, `sideBaffle.north.4.1`):
+  // Recessed Architectural Warm-White (3000K) LED Halo Rings (`outbuildings.barn.golfSimulator.ledRing`)
+  // framing the interior perimeter of the simulator bay:
+  //   1. Mid-Bay Recessed Perimeter LED Ring (`x = -1.01m`, recessed into the central acoustic baffle channel
+  //      right at `sideBaffle.*.4.*`, running up the North wall, across the ceiling, and down the South wall + flush floor edge),
+  //   2. Inner Portal Perimeter LED Ring (`x = -0.072m`, framing the inside of the front portal opening),
+  //   3. Upper Corner Cove LED Strips (`x = -1.96m .. -0.072m`) along the North & South top bolster shadow gaps.
+  const ledRingGroup = new THREE.Group();
+  ledRingGroup.name = 'outbuildings.barn.golfSimulator.ledRing';
+  simGroup.add(ledRingGroup);
+
+  const ledChannelHousingMat = new THREE.MeshStandardMaterial({
+    color: 0x16181d,
+    roughness: 0.36,
+    metalness: 0.72,
+  });
+  const ledDiffuserMat = new THREE.MeshStandardMaterial({
+    color: 0xfff3dc,
+    emissive: new THREE.Color(0xffd9a0),
+    emissiveIntensity: 2.2,
+    roughness: 0.18,
+    metalness: 0.04,
+  });
+
+  const ringLoops: ReadonlyArray<{
+    readonly id: string;
+    readonly ringX: number;
+    readonly wallZ: number;
+    readonly topY: number;
+    readonly botY: number;
+  }> = [
+    {
+      id: 'midBay',
+      ringX: -recessDepthU + 0.14 + foamDepthX * 0.5, // -0.94m (exact central baffle seam between col 3 & col 4!)
+      wallZ: clearW * 0.5 - 0.056,
+      topY: clearH - 0.060,
+      botY: 0.040,
+    },
+    {
+      id: 'portalInner',
+      ringX: -0.070,
+      wallZ: clearW * 0.5 - 0.064,
+      topY: clearH - 0.068,
+      botY: 0.040,
+    },
+  ];
+
+  for (const loop of ringLoops) {
+    const vertH = loop.topY - loop.botY;
+    const vertMidY = (loop.botY + loop.topY) * 0.5;
+    const horizSpanZ = loop.wallZ * 2;
+
+    // North & South vertical LED ring legs
+    for (const sideZ of [-1, 1] as const) {
+      const sideLabel = sideZ < 0 ? 'north' : 'south';
+      const vHousing = new THREE.Mesh(
+        new THREE.BoxGeometry(0.022, vertH + 0.016, 0.014),
+        ledChannelHousingMat
+      );
+      vHousing.name = `outbuildings.barn.golfSimulator.ledRing.${loop.id}.${sideLabel}.housing`;
+      vHousing.position.set(loop.ringX, vertMidY, sideZ * (loop.wallZ + 0.004));
+      ledRingGroup.add(vHousing);
+
+      const vDiffuser = new THREE.Mesh(
+        new THREE.BoxGeometry(0.014, vertH, 0.010),
+        ledDiffuserMat
+      );
+      vDiffuser.name = `outbuildings.barn.golfSimulator.ledRing.${loop.id}.${sideLabel}`;
+      vDiffuser.position.set(loop.ringX, vertMidY, sideZ * loop.wallZ);
+      ledRingGroup.add(vDiffuser);
+    }
+
+    // Top ceiling horizontal LED ring leg
+    const tHousing = new THREE.Mesh(
+      new THREE.BoxGeometry(0.022, 0.014, horizSpanZ + 0.016),
+      ledChannelHousingMat
+    );
+    tHousing.name = `outbuildings.barn.golfSimulator.ledRing.${loop.id}.top.housing`;
+    tHousing.position.set(loop.ringX, loop.topY + 0.004, 0);
+    ledRingGroup.add(tHousing);
+
+    const tDiffuser = new THREE.Mesh(
+      new THREE.BoxGeometry(0.014, 0.010, horizSpanZ),
+      ledDiffuserMat
+    );
+    tDiffuser.name = `outbuildings.barn.golfSimulator.ledRing.${loop.id}.top`;
+    tDiffuser.position.set(loop.ringX, loop.topY, 0);
+    ledRingGroup.add(tDiffuser);
+
+  }
+
+  // Longitudinal Upper Ceiling Cove LED Strips connecting the Screen frame (`x = -1.98m`) to the Portal (`x = -0.07m`)
+  // (No floor-level LED strips per user request!)
+  const coveSpanX = (-0.070) - (-recessDepthU + 0.16);
+  const coveMidX = ((-0.070) + (-recessDepthU + 0.16)) * 0.5;
+  for (const sideZ of [-1, 1] as const) {
+    const sideLabel = sideZ < 0 ? 'north' : 'south';
+    const upperCove = new THREE.Mesh(
+      new THREE.BoxGeometry(coveSpanX, 0.010, 0.010),
+      ledDiffuserMat
+    );
+    upperCove.name = `outbuildings.barn.golfSimulator.ledRing.cove.top.${sideLabel}`;
+    upperCove.position.set(coveMidX, clearH - 0.060, sideZ * (clearW * 0.5 - 0.058));
+    ledRingGroup.add(upperCove);
+  }
+
+  // True 16:10 Widescreen Active Impact Screen (`3.95m W × 2.47m H = 1.599:1 = 16:10`)
+  // with a 300mm Padded Acoustic Foam Upper Pelmet (`y = 2.55m..2.85m`) & Bottom Velvet Bolster (`y = 0..0.04m`)!
+  const screenW = clearW - 0.1; // 3.95m (12'11.5")
+  const screenH = 2.47; // 2.47m (8'1.2" -> 3.95 / 2.47 = 1.60:1 = 16:10 Widescreen!)
+  const screenBottomY = 0.04;
+  const screenCenterY = screenBottomY + screenH * 0.5; // 1.275m
+  const screenTopY = screenBottomY + screenH; // 2.51m
 
   const screenMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(clearW - 0.1, clearH - 0.08),
+    new THREE.PlaneGeometry(screenW, screenH),
     impactScreenMat
   );
   screenMesh.name = 'outbuildings.barn.golfSimulator.screen';
   screenMesh.rotation.y = Math.PI / 2;
-  screenMesh.position.set(-recessDepthU + 0.14, clearH * 0.5, 0);
+  screenMesh.position.set(-recessDepthU + 0.14, screenCenterY, 0);
   simGroup.add(screenMesh);
 
   const screenBacking = new THREE.Mesh(
-    new THREE.PlaneGeometry(clearW - 0.06, clearH - 0.04),
+    new THREE.PlaneGeometry(clearW - 0.02, clearH - 0.02),
     velvetFrameMat
   );
   screenBacking.name = 'outbuildings.barn.golfSimulator.screen.backing';
@@ -983,47 +1182,82 @@ export function buildBarnGolfSimulatorEnclosure(
   screenBacking.position.set(-recessDepthU + 0.12, clearH * 0.5, 0);
   simGroup.add(screenBacking);
 
-  // Clear slot width between `portalTrim.north/.south` is `clearW - 2 * frameTrimW = 3.61m`
-  // and between `sideBaffle.north/.south` is `clearW - 0.111 = 3.689m`.
-  // Sizing `deckOuterW = clearW - 0.22 = 3.58m` gives 15mm clearance per side through the portal
-  // and leaves a 54.5mm mechanical channel per side inside the bay for the gas-strut counterbalances.
-  const deckOuterW = clearW - 0.22; // 3.58m
-  const trackZPositions = [-1.24, 1.24] as const; // North (`z = -1.24m`) & South (`z = +1.24m`) roller tracks
-  const trackSlotW = 0.068; // 68mm clear slot width through the mats for the 54mm C-channel track
-  const liftHeightY = 0.036; // 36mm vertical cam-lift so the sliding mat clears the 34mm inside mat when rolling in
+  // Bottom Velvet Ball-Stop Bolster (`y = 0.00m..0.042m`) & Left/Right Velvet Tension Stiles
+  const screenBottomBolster = new THREE.Mesh(
+    new THREE.BoxGeometry(0.048, 0.042, clearW - 0.08),
+    velvetFrameMat
+  );
+  screenBottomBolster.name = 'outbuildings.barn.golfSimulator.screen.bottomBolster';
+  screenBottomBolster.position.set(-recessDepthU + 0.148, 0.021, 0);
+  simGroup.add(screenBottomBolster);
+
+  // Horizontal Black Velvet Tension Bar (`y = 2.51m..2.555m`) & 4-Panel Padded Foam Upper Pelmet (`y = 2.555m..2.85m`)
+  const screenTopVelvetBar = new THREE.Mesh(
+    new THREE.BoxGeometry(0.048, 0.045, clearW - 0.08),
+    velvetFrameMat
+  );
+  screenTopVelvetBar.name = 'outbuildings.barn.golfSimulator.screen.topTensionBar';
+  screenTopVelvetBar.position.set(-recessDepthU + 0.148, screenTopY + 0.0225, 0);
+  simGroup.add(screenTopVelvetBar);
+
+  const pelmetH = clearH - (screenTopY + 0.045) - 0.03; // Padded foam header panels below ceiling baffles
+  for (let cz = 0; cz < numCeilColsZ; cz++) {
+    const bz = -(clearW - 0.10) * 0.5 + (cz + 0.5) * ceilTileW;
+    const pelmetTile = new THREE.Mesh(
+      new THREE.BoxGeometry(0.068, pelmetH - 0.008, ceilTileW - 0.01),
+      acousticBaffleMat
+    );
+    pelmetTile.name = `outbuildings.barn.golfSimulator.screenUpperPelmet.${cz + 1}`;
+    pelmetTile.position.set(
+      -recessDepthU + 0.165,
+      screenTopY + 0.045 + pelmetH * 0.5,
+      bz
+    );
+    pelmetTile.castShadow = true;
+    pelmetTile.receiveShadow = true;
+    simGroup.add(pelmetTile);
+  }
+
+  // ===========================================================================
+  // Issue #1: Slim 25mm x 15mm x 3mm Low-Profile Aluminium Channel Tracks (`z = ±1.05m`),
+  //           Underside Polyurethane Rollers & Small Subtle Cam-Lift Lever Behind the Hitting Area
+  // ===========================================================================
+  const deckOuterW = clearW - 0.22; // 3.83m in building-regs fork (`3.83 - 0.028 = 3.802m` turf width)
+  const trackZPositions = [-1.05, 1.05] as const; // North (`z = -1.05m`) & South (`z = +1.05m`) slim 25mm channels
+  const channelOuterW = 0.025; // 25.4mm (1") slim off-the-shelf Aluminium Channel width
+  const channelOuterH = 0.015; // 15.9mm (5/8") low-profile channel height
+  const channelWallT = 0.003;  // 3.2mm (1/8") wall thickness (`19mm` clear internal roller trough)
+  const trackSlotW = 0.027;    // Slim 27mm slot through the Inside Mat (`1mm` clearance per side)
+  const liftHeightY = 0.036;   // 36mm vertical cam-lift so the Sliding Mat lifts clear of the 34mm Inside Mat!
 
   const turfStartX = -recessDepthU + 0.16; // -2.00m
-  const rearTurfEndX = -0.002; // Butts flush against `frontTurfStartX = +0.002m` at `x = 0`!
+  const rearTurfEndX = -0.002; // Butts flush against `frontTurfStartX = +0.002m` at `x = 0`
   const rearLenX = rearTurfEndX - turfStartX; // 1.998m
   const rearCenterX = (turfStartX + rearTurfEndX) * 0.5; // -1.001m
 
   const frontTurfStartX = 0.002;
-  const frontLenX = 1.964; // Matches `BoxGeometry(1.932..1.964)` sliding mat span
-  const turfEndX = frontTurfStartX + frontLenX; // +1.966m
-  const frontCenterX = (frontTurfStartX + turfEndX) * 0.5; // +0.984m
-  const outsideTrackEndX = turfEndX + 0.114; // +2.080m on the limestone tiles
+  const frontLenX = 1.960;
+  const turfEndX = frontTurfStartX + frontLenX; // +1.962m
+  const frontCenterX = (frontTurfStartX + turfEndX) * 0.5; // +0.982m
+  const outsideTrackEndX = turfEndX + 0.068; // +2.030m (peeks out 68mm behind the mat on the tiles, right beside the small lever!)
 
-  // ===========================================================================
+  const centerStripW = (Math.abs(trackZPositions[0]) - trackSlotW * 0.5) * 2; // 2.073m (`z = -1.0365..+1.0365m`)
+  const outerWingW = (deckOuterW - 0.028) * 0.5 - (Math.abs(trackZPositions[1]) + trackSlotW * 0.5); // 0.8375m
+  const outerWingCenterZ = Math.abs(trackZPositions[1]) + trackSlotW * 0.5 + outerWingW * 0.5; // 1.482m
+
   // 1. Fixed Inside Putting Mat (`rearFairwayTurf`, `x = -2.00m .. -0.002m`, `yTop = 0.034m`)
-  //    Split into 3 precision turf sections around `z = -1.24m` and `z = +1.24m` so the
-  //    2 Inside Roller Tracks (`insideTrack.north` & `insideTrack.south`) run cleanly THROUGH the inside mat!
-  // ===========================================================================
-  const rearSurroundBase = new THREE.Mesh(
-    new THREE.BoxGeometry(rearLenX + 0.036, 0.028, clearW - 0.06),
+  //    Split around two slim 27mm slots at `z = ±1.05m` so the 2 Inside Tracks run subtly THROUGH the inside mat!
+  const rearSurroundCenter = new THREE.Mesh(
+    new THREE.BoxGeometry(rearLenX, 0.028, centerStripW),
     stanceSurroundMat
   );
-  rearSurroundBase.name = 'outbuildings.barn.golfSimulator.turfMat.rearSurround';
-  rearSurroundBase.position.set(rearCenterX - 0.016, 0.014, 0);
-  rearSurroundBase.receiveShadow = true;
-  simGroup.add(rearSurroundBase);
+  rearSurroundCenter.name = 'outbuildings.barn.golfSimulator.turfMat.rearSurround';
+  rearSurroundCenter.position.set(rearCenterX, 0.014, 0);
+  rearSurroundCenter.receiveShadow = true;
+  simGroup.add(rearSurroundCenter);
 
-  const centerStripW = (Math.abs(trackZPositions[0]) - trackSlotW * 0.5) * 2; // 2.412m (`z = -1.206..+1.206m`)
-  const outerWingW = deckOuterW * 0.5 - (Math.abs(trackZPositions[1]) + trackSlotW * 0.5); // 0.516m
-  const outerWingCenterZ = Math.abs(trackZPositions[1]) + trackSlotW * 0.5 + outerWingW * 0.5; // 1.532m
-
-  // 1A. Central Fixed Inside Turf Panel (`z = -1.206m .. +1.206m`, `y = 0..0.034m`)
   const rearFairwayTurf = new THREE.Mesh(
-    new THREE.BoxGeometry(rearLenX, 0.034, centerStripW),
+    new THREE.BoxGeometry(rearLenX - 0.016, 0.034, centerStripW),
     fairwayTurfMat
   );
   rearFairwayTurf.name = 'outbuildings.barn.golfSimulator.turfMat.rearFixed';
@@ -1031,11 +1265,19 @@ export function buildBarnGolfSimulatorEnclosure(
   rearFairwayTurf.receiveShadow = true;
   simGroup.add(rearFairwayTurf);
 
-  // 1B. North & South Outer Fixed Inside Turf Wings flanking the 2 Inside Tracks (`z = ±1.532m`)
   for (const sideSign of [-1, 1] as const) {
     const sideTag = sideSign < 0 ? 'northWing' : 'southWing';
+    const rearWingSurround = new THREE.Mesh(
+      new THREE.BoxGeometry(rearLenX, 0.028, outerWingW + 0.014),
+      stanceSurroundMat
+    );
+    rearWingSurround.name = `outbuildings.barn.golfSimulator.turfMat.rearSurround.${sideTag}`;
+    rearWingSurround.position.set(rearCenterX, 0.014, sideSign * outerWingCenterZ);
+    rearWingSurround.receiveShadow = true;
+    simGroup.add(rearWingSurround);
+
     const rearWingTurf = new THREE.Mesh(
-      new THREE.BoxGeometry(rearLenX, 0.034, outerWingW),
+      new THREE.BoxGeometry(rearLenX - 0.016, 0.034, outerWingW),
       fairwayTurfMat
     );
     rearWingTurf.name = `outbuildings.barn.golfSimulator.turfMat.rearFixed.${sideTag}`;
@@ -1046,8 +1288,8 @@ export function buildBarnGolfSimulatorEnclosure(
 
   for (const [cupIdx, [cupX, cupZ]] of (
     [
-      [-0.35, -0.92],
-      [-0.35, 0.92],
+      [-0.38, -0.78],
+      [-0.38, 0.78],
     ] as const
   ).entries()) {
     const cup = new THREE.Mesh(
@@ -1060,35 +1302,27 @@ export function buildBarnGolfSimulatorEnclosure(
   }
 
   // ===========================================================================
-  // 2. Twin Parallel Linear Roller Tracks (`z = ±1.24m`) & Cam-Lift Lever Mechanism
-  //    - 2 Inside Tracks (`insideTrack.north/.south`) running THROUGH the inside mat at `y = +0.036m`
-  //    - 2 Outside Tracks (`outsideTrack.north/.south`) on the limestone tiles (`x = +0.002..+2.080m`)
-  //      mounted on a parallel-link cam-lift frame controlled by the Small Cam-Lift Lever (`liftLever`):
-  //      * When rolled all the way out (`liftProgress = 0`): Outside Tracks sit DOWN (`y = 0`) on the tiles
-  //        so the Sliding Mat (`yTop = 0.034m`) sits 100% FLUSH with the Inside Mat (`yTop = 0.034m`).
-  //      * When the Small Lever is pulled (`liftProgress = 1`): Outside Tracks lift UP by `+0.036m` to
-  //        match the exact height of the Inside Tracks (`y = +0.036m`), allowing the Sliding Mat to roll
-  //        effortlessly on its rollers straight back over the Inside Mat!
+  // 2. Slim 25mm x 15mm x 3mm Anodised Aluminium U-Channel Track System & Subtle Rear Lever
   // ===========================================================================
-  const trackSteelMat = new THREE.MeshStandardMaterial({
-    color: 0x2c323b,
-    roughness: 0.26,
-    metalness: 0.86,
+  const aluChannelMat = new THREE.MeshStandardMaterial({
+    color: 0x5c646e,
+    roughness: 0.32,
+    metalness: 0.82,
   });
-  const trackRailSilverMat = new THREE.MeshStandardMaterial({
-    color: 0xb8c0ca,
-    roughness: 0.22,
-    metalness: 0.9,
+  const aluTroughFloorMat = new THREE.MeshStandardMaterial({
+    color: 0x2a2f36,
+    roughness: 0.42,
+    metalness: 0.72,
   });
-  const trackBrassMat = new THREE.MeshStandardMaterial({
-    color: 0xc59b58,
-    roughness: 0.24,
-    metalness: 0.88,
+  const hingeSteelMat = new THREE.MeshStandardMaterial({
+    color: 0x262b32,
+    roughness: 0.36,
+    metalness: 0.8,
   });
   const rollerPolyMat = new THREE.MeshStandardMaterial({
-    color: 0xd96b27,
-    roughness: 0.35,
-    metalness: 0.12,
+    color: 0x323842,
+    roughness: 0.4,
+    metalness: 0.15,
   });
   const neoprenePadMat = new THREE.MeshStandardMaterial({
     color: 0x181a1e,
@@ -1096,16 +1330,45 @@ export function buildBarnGolfSimulatorEnclosure(
     metalness: 0.04,
   });
 
-  // `hingeAssy` serves as the interactive root container for the Track & Cam-Lift Lever System
   const hingeAssy = new THREE.Group();
   hingeAssy.name = 'outbuildings.barn.golfSimulator.trackSystem';
   hingeAssy.position.set(0, 0, 0);
   simGroup.add(hingeAssy);
 
-  // 2A. Fixed Inside Tracks (`insideTrack.north` & `insideTrack.south`) running THROUGH the inside mat
-  //     Positioned with their roller running bed at `y = liftHeightY = +0.036m` (supported on steel pedestals
-  //     through the 68mm slot in the inside mat) so that when the sliding mat rolls in, its underside clears
-  //     the `y = 0.034m` inside mat by 2mm!
+  // Helper to build a slim `25mm x 15mm x 3mm` (`1" x 5/8" x 1/8"`) low-profile Aluminium U-Channel
+  const populateSlimAluminiumUChannel = (
+    targetGroup: THREE.Group,
+    prefix: string,
+    lengthX: number
+  ): void => {
+    const webMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(lengthX, channelWallT, channelOuterW),
+      aluTroughFloorMat
+    );
+    webMesh.name = `${prefix}.web3mm`;
+    webMesh.position.set(0, channelWallT * 0.5, 0);
+    webMesh.receiveShadow = true;
+    targetGroup.add(webMesh);
+
+    const flangeOffsetZ = (channelOuterW - channelWallT) * 0.5; // 0.011m (`19mm` clear internal trough)
+    for (const [flangeTag, fz] of [
+      ['innerFlange', -flangeOffsetZ],
+      ['outerFlange', flangeOffsetZ],
+    ] as const) {
+      const flangeMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(lengthX, channelOuterH, channelWallT),
+        aluChannelMat
+      );
+      flangeMesh.name = `${prefix}.${flangeTag}`;
+      flangeMesh.position.set(0, channelOuterH * 0.5, fz);
+      flangeMesh.receiveShadow = true;
+      targetGroup.add(flangeMesh);
+    }
+  };
+
+  // 2A. 2 Slim Inside `25x15x3mm` Aluminium Channels (`insideTrack.north/.south`) running FLUSH through the Inside Mat
+  //     Top edges of the channel sit flush with the `34mm` Inside Mat (`y = +0.019m .. +0.034m`, running bed at `y = +0.022m`)!
+  const insideTrackBaseY = 0.034 - channelOuterH; // 0.019m (so top of 15mm channel is flush at `y = 0.034m`!)
   const insideTrackGroup = new THREE.Group();
   insideTrackGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.insideTrack';
   hingeAssy.add(insideTrackGroup);
@@ -1115,107 +1378,68 @@ export function buildBarnGolfSimulatorEnclosure(
     const tz = sideSign * Math.abs(trackZPositions[1]);
     const inTrack = new THREE.Group();
     inTrack.name = `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}`;
-    inTrack.position.set(rearCenterX, 0, tz);
+    inTrack.position.set(rearCenterX, insideTrackBaseY, tz);
     insideTrackGroup.add(inTrack);
 
-    // Full-length recessed sub-base channel anchored to the bay slab (`y = 0..0.036m`) inside the mat slot
-    const supportWeb = new THREE.Mesh(
-      new THREE.BoxGeometry(rearLenX, liftHeightY, 0.038),
-      trackSteelMat
+    const subBearer = new THREE.Mesh(
+      new THREE.BoxGeometry(rearLenX, insideTrackBaseY, channelOuterW - 0.002),
+      hingeSteelMat
     );
-    supportWeb.name = `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}.supportWeb`;
-    supportWeb.position.set(0, liftHeightY * 0.5, 0);
-    inTrack.add(supportWeb);
+    subBearer.name = `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}.subBearer`;
+    subBearer.position.set(0, -insideTrackBaseY * 0.5, 0);
+    inTrack.add(subBearer);
 
-    // Raised C-Channel Roller Running Bed at `y = liftHeightY = 0.036m`
-    const railBed = new THREE.Mesh(
-      new THREE.BoxGeometry(rearLenX, 0.004, 0.054),
-      trackRailSilverMat
+    populateSlimAluminiumUChannel(
+      inTrack,
+      `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}`,
+      rearLenX
     );
-    railBed.name = `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}.railBed`;
-    railBed.position.set(0, liftHeightY + 0.002, 0);
-    railBed.receiveShadow = true;
-    inTrack.add(railBed);
 
-    // Twin vertical guide walls (`z = ±0.024m`, forming a 42mm wide precision roller trough at `y = 0.036..0.052m`)
-    for (const [wallTag, wz] of [
-      ['innerFlange', -sideSign * 0.024],
-      ['outerFlange', sideSign * 0.024],
-    ] as const) {
-      const flange = new THREE.Mesh(
-        new THREE.BoxGeometry(rearLenX, 0.016, 0.006),
-        trackSteelMat
-      );
-      flange.name = `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}.${wallTag}`;
-      flange.position.set(0, liftHeightY + 0.01, wz);
-      flange.castShadow = true;
-      inTrack.add(flange);
-
-      const brassLip = new THREE.Mesh(
-        new THREE.BoxGeometry(rearLenX, 0.0025, 0.008),
-        trackBrassMat
-      );
-      brassLip.name = `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}.${wallTag}.brassLip`;
-      brassLip.position.set(0, liftHeightY + 0.019, wz);
-      inTrack.add(brassLip);
-    }
-
-    // Rear rubber bumper stop at `x = turfStartX + 0.025m`
-    const rearBumper = new THREE.Mesh(
-      new THREE.BoxGeometry(0.028, 0.018, 0.044),
+    const rearStop = new THREE.Mesh(
+      new THREE.BoxGeometry(0.018, 0.012, 0.018),
       neoprenePadMat
     );
-    rearBumper.name = `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}.rearStop`;
-    rearBumper.position.set(-rearLenX * 0.5 + 0.018, liftHeightY + 0.011, 0);
-    inTrack.add(rearBumper);
+    rearStop.name = `outbuildings.barn.golfSimulator.trackSystem.insideTrack.${sideTag}.rearStop`;
+    rearStop.position.set(-rearLenX * 0.5 + 0.012, channelWallT + 0.006, 0);
+    inTrack.add(rearStop);
   }
 
-  // 2B. Stationary Tile Base Plates, Synchronizing Cross-Shaft & Pivoting Cam-Lift Rockers on the Limestone Tiles
-  const outsideTrackLenX = outsideTrackEndX - frontTurfStartX; // 2.078m (`x = +0.002m .. +2.080m`)
-  const outsideTrackCenterX = (frontTurfStartX + outsideTrackEndX) * 0.5; // +1.041m
+  // 2B. Stationary Tile Soleplates & Low-Profile Parallel Cam Linkages under the 2 Outside Tracks
+  const outsideTrackLenX = outsideTrackEndX - frontTurfStartX; // 2.028m (`x = +0.002m .. +2.030m`)
+  const outsideTrackCenterX = (frontTurfStartX + outsideTrackEndX) * 0.5; // +1.016m
 
   const tileBaseGroup = new THREE.Group();
   tileBaseGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.tileMountingBase';
   hingeAssy.add(tileBaseGroup);
 
-  const camStationsX = [0.22, 0.78, 1.34, 1.92] as const;
-  const camLinkArmLen = 0.052; // 52mm parallel-link cam arms (`sin(44°) * 0.052 ≈ 0.036m` lift!)
+  const camStationsX = [0.24, 0.82, 1.40, 1.96] as const;
+  const camLinkArmLen = 0.032;
 
   for (const sideSign of [-1, 1] as const) {
     const sideTag = sideSign < 0 ? 'north' : 'south';
     const tz = sideSign * Math.abs(trackZPositions[1]);
 
-    // Low-profile dark-steel mounting soleplate bolted to the limestone tiles (`y = 0..0.003m`)
     const tileSolePlate = new THREE.Mesh(
-      new THREE.BoxGeometry(outsideTrackLenX + 0.02, 0.003, 0.064),
-      trackSteelMat
+      new THREE.BoxGeometry(outsideTrackLenX, 0.002, channelOuterW + 0.004),
+      hingeSteelMat
     );
     tileSolePlate.name = `outbuildings.barn.golfSimulator.trackSystem.tileBase.${sideTag}`;
-    tileSolePlate.position.set(outsideTrackCenterX, 0.0015, tz);
+    tileSolePlate.position.set(outsideTrackCenterX, 0.001, tz);
     tileSolePlate.receiveShadow = true;
     tileBaseGroup.add(tileSolePlate);
 
-    // 4 Pivoting Eccentric Cam-Lift Linkages per track (`userData.isGolfTrackCamLink = true`)
     for (let cIdx = 0; cIdx < camStationsX.length; cIdx++) {
       const cx = camStationsX[cIdx]!;
-      const clevisBase = new THREE.Mesh(
-        new THREE.BoxGeometry(0.044, 0.008, 0.058),
-        trackBrassMat
-      );
-      clevisBase.name = `outbuildings.barn.golfSimulator.trackSystem.camClevis.${sideTag}.${cIdx + 1}`;
-      clevisBase.position.set(cx, 0.005, tz);
-      tileBaseGroup.add(clevisBase);
-
       const camLinkPivot = new THREE.Group();
       camLinkPivot.name = `outbuildings.barn.golfSimulator.trackSystem.camLink.${sideTag}.${cIdx + 1}`;
       camLinkPivot.userData = { isGolfTrackCamLink: true };
-      camLinkPivot.position.set(cx - 0.018, 0.006, tz);
+      camLinkPivot.position.set(cx - 0.014, 0.003, tz);
       tileBaseGroup.add(camLinkPivot);
 
-      for (const lz of [-0.021, 0.021] as const) {
+      for (const lz of [-0.011, 0.011] as const) {
         const linkArm = new THREE.Mesh(
-          new THREE.BoxGeometry(camLinkArmLen, 0.007, 0.005),
-          trackBrassMat
+          new THREE.BoxGeometry(camLinkArmLen, 0.006, 0.003),
+          hingeSteelMat
         );
         linkArm.name = `outbuildings.barn.golfSimulator.trackSystem.camLink.${sideTag}.${cIdx + 1}.arm.${lz < 0 ? 'inner' : 'outer'}`;
         linkArm.position.set(camLinkArmLen * 0.5, 0, lz);
@@ -1224,18 +1448,21 @@ export function buildBarnGolfSimulatorEnclosure(
     }
   }
 
-  // Transverse Synchronizing Cam Torque Shaft (`x = +0.22m`, linking North & South outside tracks + lever)
+  // Concealed 10mm Synchronizing Rod tucked underneath the rear skirt of the mat (`x = +1.95m`)
+  const leverX = 1.985; // Behind the hitting area (`x = +1.12m`), right at the rear end of the South Outside Track!
+  const leverZ = Math.abs(trackZPositions[1]) + 0.055; // z = +1.105m (tucked right beside the South Outside Track)
   const syncTorqueShaft = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.007, 0.007, Math.abs(trackZPositions[1]) * 2 + 0.24, 14),
-    trackSteelMat
+    new THREE.CylinderGeometry(0.0045, 0.0045, Math.abs(trackZPositions[0]) + leverZ, 12),
+    hingeSteelMat
   );
   syncTorqueShaft.name = 'outbuildings.barn.golfSimulator.trackSystem.syncTorqueShaft';
   syncTorqueShaft.rotation.x = Math.PI / 2;
-  syncTorqueShaft.position.set(0.22, 0.007, 0.08);
+  syncTorqueShaft.position.set(1.95, 0.005, (leverZ - Math.abs(trackZPositions[0])) * 0.5);
   tileBaseGroup.add(syncTorqueShaft);
 
-  // 2C. Movable Outside Tracks (`outsideTrackLiftGroup`) on the Limestone Tiles
-  //     Lifts vertically from `y = 0` (Flush Play Mode) to `y = +0.036m` (Aligned Roll-In Mode, matching `insideTrack`)!
+  // 2C. 2 Slim Movable Outside `25x15x3mm` Aluminium Channels (`outsideTrack.north/.south`) on the Limestone Tiles
+  //     When lowered (`progress = 0`): sits low on the tiles (`y = 0 .. +0.015m`, tucked under the mat and peeking out 68mm at the rear).
+  //     When lifted (`progress >= 0.25`): lifts up to match the Inside Track height so the Sliding Mat rolls straight into the bay!
   const outsideTrackLiftGroup = new THREE.Group();
   outsideTrackLiftGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.outsideTrack';
   outsideTrackLiftGroup.userData = {
@@ -1253,213 +1480,116 @@ export function buildBarnGolfSimulatorEnclosure(
     outTrack.position.set(outsideTrackCenterX, 0, tz);
     outsideTrackLiftGroup.add(outTrack);
 
-    // C-Channel Roller Running Bed (`y = 0.002m` when lowered, lifting to `y = 0.038m` to match `insideTrack.railBed`!)
-    const railBed = new THREE.Mesh(
-      new THREE.BoxGeometry(outsideTrackLenX, 0.004, 0.054),
-      trackRailSilverMat
+    populateSlimAluminiumUChannel(
+      outTrack,
+      `outbuildings.barn.golfSimulator.trackSystem.outsideTrack.${sideTag}`,
+      outsideTrackLenX
     );
-    railBed.name = `outbuildings.barn.golfSimulator.trackSystem.outsideTrack.${sideTag}.railBed`;
-    railBed.position.set(0, 0.004, 0);
-    railBed.receiveShadow = true;
-    outTrack.add(railBed);
 
-    // Twin vertical guide walls (`z = ±0.024m`)
-    for (const [wallTag, wz] of [
-      ['innerFlange', -sideSign * 0.024],
-      ['outerFlange', sideSign * 0.024],
-    ] as const) {
-      const flange = new THREE.Mesh(
-        new THREE.BoxGeometry(outsideTrackLenX, 0.016, 0.006),
-        trackSteelMat
-      );
-      flange.name = `outbuildings.barn.golfSimulator.trackSystem.outsideTrack.${sideTag}.${wallTag}`;
-      flange.position.set(0, 0.012, wz);
-      flange.castShadow = true;
-      outTrack.add(flange);
-
-      const brassLip = new THREE.Mesh(
-        new THREE.BoxGeometry(outsideTrackLenX, 0.0025, 0.008),
-        trackBrassMat
-      );
-      brassLip.name = `outbuildings.barn.golfSimulator.trackSystem.outsideTrack.${sideTag}.${wallTag}.brassLip`;
-      brassLip.position.set(0, 0.021, wz);
-      outTrack.add(brassLip);
-    }
-
-    // Front cushioned end-stop & bevelled brass nose cap on the limestone tiles (`x = +2.07m`)
     const frontEndCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.026, 0.02, 0.056),
-      trackBrassMat
+      new THREE.BoxGeometry(0.012, channelOuterH, channelOuterW),
+      aluChannelMat
     );
     frontEndCap.name = `outbuildings.barn.golfSimulator.trackSystem.outsideTrack.${sideTag}.frontEndCap`;
-    frontEndCap.position.set(outsideTrackLenX * 0.5 - 0.013, 0.011, 0);
+    frontEndCap.position.set(outsideTrackLenX * 0.5 - 0.006, channelOuterH * 0.5, 0);
     outTrack.add(frontEndCap);
   }
 
-  // 2D. Small Cam-Lift Lever (`outbuildings.barn.golfSimulator.trackSystem.liftLever`)
-  //     Mounted on the limestone tiles beside the South Outside Track (`x = +0.22m, z = +1.38m`).
-  //     Throwing the lever lifts the outside tracks up `+36mm` to match the inside tracks, and lowering
-  //     it when the mat is rolled all the way out drops the outside tracks back down so the mats sit flush!
+  // 2D. Small, Subtle Low-Profile Cam-Lift Lever (`outbuildings.barn.golfSimulator.trackSystem.liftLever`)
+  //     Positioned BEHIND the hitting area at `(x = +1.985m, z = +1.105m)` right next to the rear tip of the South Outside Track!
   const leverBaseGroup = new THREE.Group();
   leverBaseGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.base';
-  leverBaseGroup.position.set(0.22, 0, Math.abs(trackZPositions[1]) + 0.14);
+  leverBaseGroup.position.set(leverX, 0, leverZ);
   hingeAssy.add(leverBaseGroup);
 
   const leverPlinth = new THREE.Mesh(
-    new THREE.BoxGeometry(0.11, 0.014, 0.072),
-    trackSteelMat
+    new THREE.BoxGeometry(0.052, 0.008, 0.026),
+    hingeSteelMat
   );
   leverPlinth.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.plinth';
-  leverPlinth.position.set(0, 0.007, 0);
-  leverPlinth.castShadow = true;
+  leverPlinth.position.set(0, 0.004, 0);
   leverBaseGroup.add(leverPlinth);
-
-  // Ratchet quadrant arch with "FLUSH" and "LIFT" detent notches
-  const quadrantPlate = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.048, 0.048, 0.01, 20, 1, false, 0, Math.PI),
-    trackBrassMat
-  );
-  quadrantPlate.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.quadrant';
-  quadrantPlate.rotation.x = Math.PI / 2;
-  quadrantPlate.position.set(0, 0.014, -0.014);
-  leverBaseGroup.add(quadrantPlate);
 
   const leverPivot = new THREE.Group();
   leverPivot.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever';
   leverPivot.userData = {
     isGolfTrackLiftLeverPivot: true,
-    loweredAngleZ: -0.42, // Forward/down when outside track is lowered flush
-    liftedAngleZ: 0.72,   // Pulled up/back when outside track is lifted to inside track height
+    loweredAngleZ: -0.52, // Low/discreet when lowered flush
+    liftedAngleZ: 0.65,   // Flipped over-centre when lifted
   };
-  leverPivot.position.set(0, 0.018, 0);
-  leverPivot.rotation.z = -0.42;
+  leverPivot.position.set(0, 0.01, 0);
+  leverPivot.rotation.z = -0.52;
   leverBaseGroup.add(leverPivot);
 
   const leverHub = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.018, 0.018, 0.036, 16),
-    trackBrassMat
+    new THREE.CylinderGeometry(0.009, 0.009, 0.018, 12),
+    aluChannelMat
   );
   leverHub.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.hub';
   leverHub.rotation.x = Math.PI / 2;
   leverPivot.add(leverHub);
 
+  // Compact 105mm dark-anodised lever arm (subtle foot/hand toggle behind the mat)
   const leverArm = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.0065, 0.0085, 0.21, 12),
-    trackSteelMat
+    new THREE.CylinderGeometry(0.004, 0.005, 0.105, 10),
+    aluChannelMat
   );
   leverArm.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.arm';
-  leverArm.position.set(0, 0.105, 0);
+  leverArm.position.set(0, 0.052, 0);
   leverArm.castShadow = true;
   leverPivot.add(leverArm);
 
-  // Ergonomic Brushed-Brass & TrackMan-Orange T-Handle Grip at top of lever
   const leverGrip = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.013, 0.013, 0.068, 16),
-    trackBrassMat
+    new THREE.CylinderGeometry(0.007, 0.007, 0.032, 12),
+    neoprenePadMat
   );
   leverGrip.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.handle';
   leverGrip.rotation.x = Math.PI / 2;
-  leverGrip.position.set(0, 0.215, 0.012);
-  leverGrip.castShadow = true;
+  leverGrip.position.set(0, 0.105, 0.006);
   leverPivot.add(leverGrip);
 
-  const leverReleaseButton = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.008, 0.008, 0.014, 12),
-    trackManOrangeMat
-  );
-  leverReleaseButton.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.detentButton';
-  leverReleaseButton.rotation.x = Math.PI / 2;
-  leverReleaseButton.position.set(0, 0.215, 0.048);
-  leverPivot.add(leverReleaseButton);
-
   // ===========================================================================
-  // 3. Sliding Stance & Hitting Mat on Rollers (`foldingMatGroup`, `x = +0.002m .. +1.966m`)
-  //    - Sits at `yTop = 0.034m` (100% FLUSH with `rearFairwayTurf` at `yTop = 0.034m`) when rolled out!
-  //    - Split into 3 turf panels around the 2 roller-track slots (`z = ±1.24m`) and equipped with
-  //      8 CNC-machined Roller Carriages (`rollerCarriage.1..8`) & 16 Flanged Polyurethane Rollers
-  //      (`roller.1..16`) that visibly run inside the North & South tracks!
+  // 3. Unbroken One-Piece Sliding Stance & Hitting Mat (`foldingMatGroup`, `x = +0.002m .. +1.962m`)
+  //    - Top surface is 100% clean, continuous green turf (`yTop = 0.034m` when lowered flush) with ZERO plates or slots on top!
+  //    - 8 low-profile underside roller brackets & 16 Ø18mm polyurethane rollers are mounted underneath the mat
+  //      and run inside the 2 slim 25mm channels below!
   // ===========================================================================
-  const foldingOakEdgeMat = new THREE.MeshStandardMaterial({
-    color: 0xa6794a,
-    roughness: 0.42,
-    metalness: 0.04,
-  });
-
   const foldingMatGroup = new THREE.Group();
   foldingMatGroup.name = 'outbuildings.barn.golfSimulator.turfMat.foldingLeaf';
   foldingMatGroup.position.set(frontCenterX, 0.017, 0);
   simGroup.add(foldingMatGroup);
 
-  // 3A. Structural Rigid Aluminium-Honeycomb & Neoprene Base Tray (`y = -0.014m .. +0.006m` in local coords)
-  //     Split around `z = ±1.24m` so the 2 tracks and rollers are visible from above and below!
-  const centerTray = new THREE.Mesh(
-    new THREE.BoxGeometry(frontLenX - 0.008, 0.014, centerStripW),
-    trackSteelMat
-  );
-  centerTray.name = 'outbuildings.barn.golfSimulator.turfMat.lvtCoreSubstrate';
-  centerTray.position.set(0, -0.008, 0);
-  centerTray.castShadow = true;
-  centerTray.receiveShadow = true;
-  foldingMatGroup.add(centerTray);
+  const fullSlidingTurfW = deckOuterW - 0.028; // 3.802m continuous unbroken width
 
-  // 3B. Central Sliding Fairway Turf Panel (`outbuildings.barn.golfSimulator.turfMat`, `yTop = +0.017m` local = `0.034m` world)
+  const frontSurroundBase = new THREE.Mesh(
+    new THREE.BoxGeometry(frontLenX, 0.028, deckOuterW),
+    stanceSurroundMat
+  );
+  frontSurroundBase.name = 'outbuildings.barn.golfSimulator.turfMat.frontSurround';
+  frontSurroundBase.position.set(0, -0.003, 0);
+  frontSurroundBase.castShadow = true;
+  frontSurroundBase.receiveShadow = true;
+  foldingMatGroup.add(frontSurroundBase);
+
   const frontFairwayTurf = new THREE.Mesh(
-    new THREE.BoxGeometry(frontLenX, 0.02, centerStripW),
+    new THREE.BoxGeometry(frontLenX - 0.016, 0.020, fullSlidingTurfW),
     fairwayTurfMat
   );
   frontFairwayTurf.name = 'outbuildings.barn.golfSimulator.turfMat';
   frontFairwayTurf.position.set(0, 0.007, 0);
+  frontFairwayTurf.castShadow = true;
   frontFairwayTurf.receiveShadow = true;
   foldingMatGroup.add(frontFairwayTurf);
 
-  // 3C. North & South Outer Sliding Turf Wings (`z = ±1.532m`, flanking the 2 roller tracks)
-  for (const sideSign of [-1, 1] as const) {
-    const sideTag = sideSign < 0 ? 'northWing' : 'southWing';
-    const wingTray = new THREE.Mesh(
-      new THREE.BoxGeometry(frontLenX - 0.008, 0.014, outerWingW),
-      trackSteelMat
-    );
-    wingTray.name = `outbuildings.barn.golfSimulator.turfMat.wingTray.${sideTag}`;
-    wingTray.position.set(0, -0.008, sideSign * outerWingCenterZ);
-    foldingMatGroup.add(wingTray);
-
-    const wingTurf = new THREE.Mesh(
-      new THREE.BoxGeometry(frontLenX, 0.02, outerWingW),
-      fairwayTurfMat
-    );
-    wingTurf.name = `outbuildings.barn.golfSimulator.turfMat.${sideTag}`;
-    wingTurf.position.set(0, 0.007, sideSign * outerWingCenterZ);
-    wingTurf.receiveShadow = true;
-    foldingMatGroup.add(wingTurf);
-
-    const sideOakEdge = new THREE.Mesh(
-      new THREE.BoxGeometry(frontLenX, 0.032, 0.014),
-      foldingOakEdgeMat
-    );
-    sideOakEdge.name =
-      sideSign < 0
-        ? 'outbuildings.barn.golfSimulator.turfMat.oakBorder.north'
-        : 'outbuildings.barn.golfSimulator.turfMat.oakBorder.south';
-    sideOakEdge.position.set(0, 0.0, sideSign * (deckOuterW * 0.5 - 0.007));
-    sideOakEdge.receiveShadow = true;
-    foldingMatGroup.add(sideOakEdge);
-  }
-
-  // 3D. 8 Precision Twin-Wheel Track Roller Bogie Carriages (`rollerCarriage.1..8` & `roller.1..16`)
-  //     Mounted along the North (`z = -1.24m`) and South (`z = +1.24m`) track channels of the sliding mat.
-  //     Each bogie bridges the center and outer mat sections and carries 2 flanged polyurethane/steel rollers
-  //     that ride directly inside the `outsideTrack` and `insideTrack` C-channels!
+  // 8 Concealed Underside Roller Carriages (`rollerCarriage.1..8`) & 16 Ø18mm Polyurethane Rollers (`roller.1..16`)
+  // Mounted entirely to the UNDERSIDE of the Sliding Mat (`y < 0` in `foldingMatGroup` local coordinates) so nothing appears on top of the mat!
   const bogieRelXs = [-0.78, -0.26, 0.26, 0.78] as const;
-  const rollerRadius = 0.013;
-  const rollerGeo = new THREE.CylinderGeometry(rollerRadius, rollerRadius, 0.024, 18);
+  const rollerRadius = 0.009; // Ø18mm low-profile polyurethane roller wheel inside the 19mm channel trough
+  const rollerGeo = new THREE.CylinderGeometry(rollerRadius, rollerRadius, 0.015, 14);
   rollerGeo.rotateX(Math.PI / 2);
   rollerGeo.computeBoundingSphere();
 
-  const flangeRingGeo = new THREE.CylinderGeometry(rollerRadius + 0.0035, rollerRadius + 0.0035, 0.003, 18);
-  flangeRingGeo.rotateX(Math.PI / 2);
-  flangeRingGeo.computeBoundingSphere();
-
-  const axleGeo = new THREE.CylinderGeometry(0.0045, 0.0045, 0.042, 12);
+  const axleGeo = new THREE.CylinderGeometry(0.003, 0.003, 0.018, 10);
   axleGeo.rotateX(Math.PI / 2);
   axleGeo.computeBoundingSphere();
 
@@ -1474,32 +1604,20 @@ export function buildBarnGolfSimulatorEnclosure(
       bogieGroup.position.set(bx, 0, tz);
       foldingMatGroup.add(bogieGroup);
 
-      // Structural steel/brass top bridge plate spanning across the 68mm track slot (`z = -0.052..+0.052m`)
-      const bridgePlate = new THREE.Mesh(
-        new THREE.BoxGeometry(0.112, 0.006, 0.104),
-        trackBrassMat
-      );
-      bridgePlate.name = `outbuildings.barn.golfSimulator.turfMat.rollerCarriage.${bogieIdx}.bridgePlate`;
-      bridgePlate.position.set(0, 0.011, 0);
-      bridgePlate.castShadow = true;
-      bogieGroup.add(bridgePlate);
-
-      // Twin side cheek plates dropping down into the track channel (`z = ±0.016m`)
       for (const [cheekTag, cz] of [
-        ['innerCheek', -0.016],
-        ['outerCheek', 0.016],
+        ['innerCheek', -0.008],
+        ['outerCheek', 0.008],
       ] as const) {
         const cheek = new THREE.Mesh(
-          new THREE.BoxGeometry(0.092, 0.018, 0.004),
-          trackSteelMat
+          new THREE.BoxGeometry(0.056, 0.012, 0.0025),
+          hingeSteelMat
         );
         cheek.name = `outbuildings.barn.golfSimulator.turfMat.rollerCarriage.${bogieIdx}.${cheekTag}`;
-        cheek.position.set(0, 0.0, cz);
+        cheek.position.set(0, -0.006, cz);
         bogieGroup.add(cheek);
       }
 
-      // Twin Flanged Track Rollers per bogie (`wx = -0.028m` & `+0.028m`), resting on the track railBed (`y = -0.011m` local = `0.006m` world)
-      for (const wx of [-0.028, 0.028] as const) {
+      for (const wx of [-0.016, 0.016] as const) {
         rollerIdx++;
         const wheelGroup = new THREE.Group();
         wheelGroup.name = `outbuildings.barn.golfSimulator.turfMat.roller.${rollerIdx}`;
@@ -1507,32 +1625,27 @@ export function buildBarnGolfSimulatorEnclosure(
           isGolfMatTrackRoller: true,
           rollerRadius,
         };
-        wheelGroup.position.set(wx, -0.001, 0);
+        wheelGroup.position.set(wx, -0.005, 0);
         bogieGroup.add(wheelGroup);
 
         const tireMesh = new THREE.Mesh(rollerGeo, rollerPolyMat);
         tireMesh.name = `outbuildings.barn.golfSimulator.turfMat.roller.${rollerIdx}.tire`;
         wheelGroup.add(tireMesh);
 
-        const guideFlange = new THREE.Mesh(flangeRingGeo, trackRailSilverMat);
-        guideFlange.name = `outbuildings.barn.golfSimulator.turfMat.roller.${rollerIdx}.flange`;
-        guideFlange.position.set(0, 0, -sideSign * 0.011);
-        wheelGroup.add(guideFlange);
-
-        const axlePin = new THREE.Mesh(axleGeo, trackBrassMat);
+        const axlePin = new THREE.Mesh(axleGeo, aluChannelMat);
         axlePin.name = `outbuildings.barn.golfSimulator.turfMat.roller.${rollerIdx}.axle`;
         wheelGroup.add(axlePin);
       }
     }
   }
 
-  // F. Centered Replaceable Fiberbuilt / Divot-Action Hitting Strip & Steel Bezel (`z = 0`, dead center on target line!)
+  // Centered Replaceable Fiberbuilt / Divot-Action Hitting Strip & Bezel (`z = 0`, dead center on target line!)
   const hittingX = 1.12;
   const hittingRelX = hittingX - frontCenterX;
 
   const hittingBezel = new THREE.Mesh(
     new THREE.BoxGeometry(0.388, 0.023, 0.968),
-    trackSteelMat
+    hingeSteelMat
   );
   hittingBezel.name = 'outbuildings.barn.golfSimulator.hittingStrip.bezel';
   hittingBezel.position.set(hittingRelX, 0.0065, 0);
@@ -1585,36 +1698,126 @@ export function buildBarnGolfSimulatorEnclosure(
     foldingMatGroup.add(ball);
   }
 
+  // 4. High-Mounted Purlin-to-Purlin Structural Steel Rigging Crossbar (`outbuildings.barn.golfSimulator.overheadCrossbar`),
+  //    BenQ LK936ST 4K UHD Laser Golf Projector & Rear-Zone TrackMan iO Launch Monitor
+  //    - Fixed high up in the vaulted roof space directly between the North and South longitudinal oak roof purlins
+  //      (`outbuildings.roofTrusses.purlin.4.north` at `v = 1.5675m` and `purlin.4.south` at `v = 4.1425m`,
+  //       `world y = 3.5093m` -> `local y = 3.8493m`, span = `2.575m` / 8'5.4"!).
+  //    - Heavy matte-black steel timber-beam saddle brackets (`148mm × 148mm`) wrap around both 130mm × 130mm oak purlins
+  //      with coach bolts and diagonal knee gussets supporting the horizontal `60mm × 60mm` steel crossbar at `x = +1.68m, y = 3.8493m`.
+  //    - Both the BenQ LK936ST (`x = +1.68m, y = 2.94m`, `3.70m` throw distance = `TR 0.843:1`) and the TrackMan iO
+  //      (`x = +1.44m, y = 3.12m` on a forward outrigger arm) hang cleanly from the high purlin crossbar!
+  const crossbarX = 1.68;
+  const purlinWorldY = 2.92 + (2.575 * ((4.84 - 3.24) / 3.055) - 0.01) * 0.5 - 0.08; // 3.5093m exact oak purlin centerline
+  const crossbarY = purlinWorldY - barnWestFloorY; // 3.8493m above the -0.34m West Barn floor!
+  const northPurlinV = 2.855 - 5.15 * 0.25; // 1.5675m exact North oak purlin V
+  const southPurlinV = 2.855 + 5.15 * 0.25; // 4.1425m exact South oak purlin V
+  const crossbarSpanV = southPurlinV - northPurlinV; // 2.575m purlin-to-purlin span
+  const crossbarMidZ = (northPurlinV + southPurlinV) * 0.5 - simCenterV; // 2.855 - 3.355 = -0.50m
 
-  // 4. Real-Spec BenQ LK936ST 4K UHD Laser Golf Projector & Rear-Zone Overhead Launch Monitor
-  //    Positioned BEHIND the golfer/tee (`hittingX = +1.12m`) so neither device can ever be struck by a golf ball:
-  //    - Impact Screen (`screenMesh`) is at `x = -2.02m` (`2.77m` active height).
-  //    - Teed Ball (`teedBall`) is at `x = +1.12m` (`3.14m` / 10'3.6" ball-to-screen distance).
-  //    - Overhead Launch Monitor Sensor (`trackmanIO`) is mounted at `x = +1.52m, y = 2.98m`
-  //      (`0.40m` / 16" BEHIND the teed ball, tilted forward `-x` toward the hitting strip, and `0.18m` above
-  //       the projector's optical beam so it never casts a shadow on the screen).
-  //    - BenQ LK936ST 4K Laser Projector (`5,100 ANSI Lumens`, `0.81–0.89:1` short-throw zoom lens,
-  //      `351mm D × 166mm H × 416mm W` chassis) is mounted at `x = +2.03m, y = 2.80m`
-  //      (`0.91m` / 3'0" BEHIND the teed ball, giving an exact `4.05m` / 13'3.5" throw distance to the `-2.02m` screen,
-  //       matching `TR = 0.822:1` on the native 16:9 DMD array to fill the full `2.77m` screen height!).
-  const barnCeilEaveWorldY = 2.92;
-  const barnCeilRidgeWorldY = 2.92 + 2.575 * ((4.84 - 3.24) / 3.055); // 4.2686m
-  const roofSlopeTan = (barnCeilRidgeWorldY - barnCeilEaveWorldY) / 2.575;
-  const roofSlopeAngle = Math.atan(roofSlopeTan);
-  const vaultedCeilWorldY =
-    barnCeilRidgeWorldY - Math.abs(simCenterV - 2.855) * roofSlopeTan;
-  const vaultedCeilLocalY = vaultedCeilWorldY - barnWestFloorY;
+  const crossbarGroup = new THREE.Group();
+  crossbarGroup.name = 'outbuildings.barn.golfSimulator.overheadCrossbar';
+  crossbarGroup.position.set(crossbarX, crossbarY, 0);
+  simGroup.add(crossbarGroup);
 
-  const projectorY = 2.8;
-  const projectorDropH = Math.max(0.24, vaultedCeilLocalY - projectorY);
+  // Main horizontal 60mm × 60mm structural steel RHS box-section beam spanning between the North & South oak purlins
+  const crossbarBeam = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, 0.06, crossbarSpanV - 0.12),
+    hingeSteelMat
+  );
+  crossbarBeam.name = 'outbuildings.barn.golfSimulator.overheadCrossbar.beam';
+  crossbarBeam.position.set(0, 0, crossbarMidZ);
+  crossbarBeam.castShadow = true;
+  crossbarBeam.receiveShadow = true;
+  crossbarGroup.add(crossbarBeam);
+
+  // Upper cable management conduit channel along the top of the steel crossbar
+  const crossbarCableTray = new THREE.Mesh(
+    new THREE.BoxGeometry(0.036, 0.022, crossbarSpanV - 0.16),
+    projectorBodyMat
+  );
+  crossbarCableTray.name = 'outbuildings.barn.golfSimulator.overheadCrossbar.cableTray';
+  crossbarCableTray.position.set(0, 0.041, crossbarMidZ);
+  crossbarGroup.add(crossbarCableTray);
+
+  // Wrap-around wrought-iron / powder-coated steel Purlin Saddle Clamps & Gussets bolted around the North & South 130mm × 130mm oak purlins
+  for (const [sideLabel, purlinV, dirZ] of [
+    ['north', northPurlinV, 1],
+    ['south', southPurlinV, -1],
+  ] as const) {
+    const purlinLocalZ = purlinV - simCenterV;
+    const bracketGrp = new THREE.Group();
+    bracketGrp.name = `outbuildings.barn.golfSimulator.overheadCrossbar.purlinBracket.${sideLabel}`;
+    bracketGrp.position.set(0, 0, purlinLocalZ);
+    crossbarGroup.add(bracketGrp);
+
+    // Full wrap-around steel box stirrup (`148mm × 148mm × 148mm`) embracing the 130mm × 130mm oak purlin
+    const purlinStirrupCollar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.148, 0.148, 0.148),
+      hingeSteelMat
+    );
+    purlinStirrupCollar.name = `outbuildings.barn.golfSimulator.overheadCrossbar.purlinBracket.${sideLabel}.stirrup`;
+    purlinStirrupCollar.castShadow = true;
+    bracketGrp.add(purlinStirrupCollar);
+
+    // Inner socket boss where the 60mm × 60mm steel crossbar welds into the purlin stirrup
+    const socketCollar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.084, 0.084, 0.048),
+      projectorBodyMat
+    );
+    socketCollar.name = `outbuildings.barn.golfSimulator.overheadCrossbar.purlinBracket.${sideLabel}.collar`;
+    socketCollar.position.set(0, 0, dirZ * 0.088);
+    bracketGrp.add(socketCollar);
+
+    // Diagonal steel web gusset bracing the crossbar underside to the bottom of the purlin stirrup
+    const lowerGusset = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, 0.085, 0.11),
+      hingeSteelMat
+    );
+    lowerGusset.name = `outbuildings.barn.golfSimulator.overheadCrossbar.purlinBracket.${sideLabel}.gusset`;
+    lowerGusset.position.set(0, -0.048, dirZ * 0.095);
+    lowerGusset.rotation.x = dirZ * 0.52;
+    bracketGrp.add(lowerGusset);
+
+    for (const [bIdx, [bx, by]] of (
+      [
+        [-0.045, 0.045],
+        [0.045, 0.045],
+        [-0.045, -0.045],
+        [0.045, -0.045],
+      ] as const
+    ).entries()) {
+      const coachBolt = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.008, 0.008, 0.162, 8),
+        aluChannelMat
+      );
+      coachBolt.name = `outbuildings.barn.golfSimulator.overheadCrossbar.purlinBracket.${sideLabel}.bolt.${bIdx + 1}`;
+      coachBolt.userData = { lodTier: 'high', lodMaxDistance: 14 };
+      coachBolt.rotation.x = Math.PI / 2;
+      coachBolt.position.set(bx, by, 0);
+      bracketGrp.add(coachBolt);
+    }
+  }
+
+  // BenQ LK936ST 4K UHD Laser Golf Projector suspended from the purlin crossbar at `(x = +1.68m, y = 2.94m, z = 0)`
+  const projectorY = 2.94;
+  const projectorDropH = crossbarY - projectorY; // 0.909m rigid drop column from the purlin crossbar!
 
   const projectorGroup = new THREE.Group();
   projectorGroup.name = 'outbuildings.barn.golfSimulator.projector';
-  projectorGroup.position.set(2.03, projectorY, 0);
-  simCeilingGroup.add(projectorGroup);
+  projectorGroup.position.set(crossbarX, projectorY, 0);
+  simGroup.add(projectorGroup);
+
+  const projectorCrossbarClamp = new THREE.Mesh(
+    new THREE.BoxGeometry(0.092, 0.092, 0.14),
+    projectorBodyMat
+  );
+  projectorCrossbarClamp.name = 'outbuildings.barn.golfSimulator.projector.mountFlange';
+  projectorCrossbarClamp.position.set(0, projectorDropH, 0);
+  projectorGroup.add(projectorCrossbarClamp);
 
   const dropPole = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.024, 0.024, projectorDropH, 14),
+    new THREE.CylinderGeometry(0.026, 0.026, projectorDropH, 14),
     projectorBodyMat
   );
   dropPole.name = 'outbuildings.barn.golfSimulator.projector.dropPole';
@@ -1623,25 +1826,16 @@ export function buildBarnGolfSimulatorEnclosure(
   projectorGroup.add(dropPole);
 
   const projectorPoleCollar = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.032, 0.032, 0.048, 14),
-    trackSteelMat
+    new THREE.CylinderGeometry(0.036, 0.036, 0.048, 14),
+    hingeSteelMat
   );
   projectorPoleCollar.name = 'outbuildings.barn.golfSimulator.projector.poleCollar';
   projectorPoleCollar.userData = { lodTier: 'high', lodMaxDistance: 14 };
-  projectorPoleCollar.position.set(0, projectorDropH * 0.45, 0);
+  projectorPoleCollar.position.set(0, projectorDropH * 0.48, 0);
   projectorGroup.add(projectorPoleCollar);
 
-  const projectorMountFlange = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.078, 0.078, 0.016, 18),
-    projectorBodyMat
-  );
-  projectorMountFlange.name = 'outbuildings.barn.golfSimulator.projector.mountFlange';
-  projectorMountFlange.position.set(0, projectorDropH - 0.008, 0);
-  projectorMountFlange.rotation.x = simCenterV >= 2.855 ? roofSlopeAngle : -roofSlopeAngle;
-  projectorGroup.add(projectorMountFlange);
-
   // BenQ LK936ST Chassis (`351mm D × 166mm H × 416mm W`, subtle downward pitch + vertical lens shift toward screen)
-  const projTiltZ = 0.08;
+  const projTiltZ = 0.09;
   const projectorChassis = new THREE.Mesh(
     new THREE.BoxGeometry(0.351, 0.166, 0.416),
     projectorBodyMat
@@ -1682,35 +1876,49 @@ export function buildBarnGolfSimulatorEnclosure(
   projectorLens.position.set(-0.184, -0.015, 0.035);
   projectorGroup.add(projectorLens);
 
-  // Rear-Zone Overhead Launch Monitor (`trackmanIO`) at `x = +1.52m, y = 2.98m` (`0.40m` behind the teed ball!)
-  const tmY = 2.98;
-  const tmDropH = Math.max(0.2, vaultedCeilLocalY - tmY);
+  // Official Spec-Compliant Overhead Launch Monitor (`trackmanIO`):
+  // Mounted `0.90m` (`35.4"`) IN FRONT of the teed ball (`hittingX = 1.12m` -> `tmX = +0.22m`)
+  // at `tmY = 2.78m` (`9' 1.5"` above floor / `9' 0"` above hitting mat) on a rigid steel outrigger bracket
+  // bolted to the portal header (`x = -0.03m`), angled backward (`tmTiltZ = -0.28`) toward the hitting strip!
+  const tmX = hittingX - 0.90; // +0.22m (exact 0.90m / 35.4" forward of the teed ball!)
+  const tmY = 2.78;
+  const outriggerBackX = -0.25; // Cantilevers from the portal header at x = -0.03m to tmX = +0.22m
+  const outriggerRiseY = 0.06;
 
   const tmGroup = new THREE.Group();
   tmGroup.name = 'outbuildings.barn.golfSimulator.trackmanIO';
-  tmGroup.position.set(1.52, tmY, 0);
-  simCeilingGroup.add(tmGroup);
-
-  const tmDropTube = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.02, 0.02, tmDropH, 12),
-    projectorBodyMat
-  );
-  tmDropTube.name = 'outbuildings.barn.golfSimulator.trackmanIO.dropTube';
-  tmDropTube.position.set(0, tmDropH * 0.5, 0);
-  tmDropTube.castShadow = true;
-  tmGroup.add(tmDropTube);
+  tmGroup.position.set(tmX, tmY, 0);
+  simGroup.add(tmGroup);
 
   const tmMountFlange = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.068, 0.068, 0.014, 16),
+    new THREE.BoxGeometry(0.048, 0.068, 0.088),
     projectorBodyMat
   );
   tmMountFlange.name = 'outbuildings.barn.golfSimulator.trackmanIO.mountFlange';
-  tmMountFlange.position.set(0, tmDropH - 0.007, 0);
-  tmMountFlange.rotation.x = simCenterV >= 2.855 ? roofSlopeAngle : -roofSlopeAngle;
+  tmMountFlange.position.set(outriggerBackX, outriggerRiseY, 0);
   tmGroup.add(tmMountFlange);
 
-  // Tilted forward (`+0.26 rad` around Z so `-x,-y` bottom/front cameras look forward at the hitting strip `x = +1.12m`)
-  const tmTiltZ = 0.26;
+  // Rigid horizontal steel outrigger boom (`32mm × 44mm`) cantilevered from the portal header (`x = -0.03m`) to `tmX = +0.22m`
+  const tmOutriggerBoom = new THREE.Mesh(
+    new THREE.BoxGeometry(Math.abs(outriggerBackX) + 0.02, 0.032, 0.044),
+    hingeSteelMat
+  );
+  tmOutriggerBoom.name = 'outbuildings.barn.golfSimulator.trackmanIO.outriggerBoom';
+  tmOutriggerBoom.position.set(outriggerBackX * 0.5, outriggerRiseY, 0);
+  tmOutriggerBoom.castShadow = true;
+  tmGroup.add(tmOutriggerBoom);
+
+  const tmDropTube = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.02, 0.02, outriggerRiseY + 0.02, 12),
+    projectorBodyMat
+  );
+  tmDropTube.name = 'outbuildings.barn.golfSimulator.trackmanIO.dropTube';
+  tmDropTube.position.set(0, outriggerRiseY * 0.5, 0);
+  tmDropTube.castShadow = true;
+  tmGroup.add(tmDropTube);
+
+  // Tilted toward the golfer (`-0.28 rad` around Z so `+x,-y` radar/optical cameras look back at the hitting strip `x = +1.12m`)
+  const tmTiltZ = -0.28;
   const tmCore = new THREE.Mesh(
     new THREE.BoxGeometry(0.26, 0.072, 0.34),
     projectorBodyMat
@@ -1727,9 +1935,9 @@ export function buildBarnGolfSimulatorEnclosure(
       projectorBodyMat
     );
     tmWing.name = `outbuildings.barn.golfSimulator.trackmanIO.wing.${sideLabel}`;
-    tmWing.position.set(-0.01, -0.004, sideZ * 0.22);
+    tmWing.position.set(0.01, -0.004, sideZ * 0.22);
     tmWing.rotation.z = tmTiltZ;
-    tmWing.rotation.y = sideZ * 0.16;
+    tmWing.rotation.y = -sideZ * 0.16;
     tmWing.castShadow = true;
     tmGroup.add(tmWing);
 
@@ -1739,7 +1947,7 @@ export function buildBarnGolfSimulatorEnclosure(
     );
     camGlass.name = `outbuildings.barn.golfSimulator.trackmanIO.cameraLens.${sideLabel}`;
     camGlass.rotation.z = tmTiltZ;
-    camGlass.position.set(-0.02, -0.036, sideZ * 0.2);
+    camGlass.position.set(0.02, -0.036, sideZ * 0.2);
     tmGroup.add(camGlass);
   }
 
@@ -1773,63 +1981,7 @@ export function buildBarnGolfSimulatorEnclosure(
   });
   statusBeaconRedMat.userData = { isDynamicGolfStatusLight: true };
 
-  const lintelStatusGroup = new THREE.Group();
-  lintelStatusGroup.name = 'outbuildings.barn.golfSimulator.statusSign';
-  lintelStatusGroup.position.set(0.012, 2.64 - barnWestFloorY, 1.28 - simCenterV);
-  simGroup.add(lintelStatusGroup);
-
-  const statusHousing = new THREE.Mesh(
-    new THREE.BoxGeometry(0.022, 0.11, 0.26),
-    projectorBodyMat
-  );
-  statusHousing.name = 'outbuildings.barn.golfSimulator.statusSign';
-  lintelStatusGroup.add(statusHousing);
-
-  const statusFace = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.24, 0.09),
-    statusSignFaceMat
-  );
-  statusFace.name = 'outbuildings.barn.golfSimulator.statusSign.face';
-  statusFace.rotation.y = Math.PI / 2;
-  statusFace.position.set(0.012, 0, 0);
-  lintelStatusGroup.add(statusFace);
-
-  const statusDome = new THREE.Mesh(
-    new THREE.SphereGeometry(0.018, 14, 12),
-    statusBeaconRedMat
-  );
-  statusDome.name = 'outbuildings.barn.golfSimulator.statusSign.beacon';
-  statusDome.position.set(0.012, 0.068, 0);
-  lintelStatusGroup.add(statusDome);
-
-  const garageHallBeaconGroup = new THREE.Group();
-  garageHallBeaconGroup.name = 'outbuildings.garage.golfStatusLight';
-  garageHallBeaconGroup.position.set(12.06 - uWallMax, 1.80 - barnWestFloorY, 0.78 - simCenterV);
-  simGroup.add(garageHallBeaconGroup);
-
-  const garageBeaconBezel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.024, 0.085, 0.22),
-    projectorBodyMat
-  );
-  garageBeaconBezel.name = 'outbuildings.garage.golfStatusLight.bezel';
-  garageHallBeaconGroup.add(garageBeaconBezel);
-
-  const garageBeaconFace = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.20, 0.068),
-    statusSignFaceMat
-  );
-  garageBeaconFace.name = 'outbuildings.garage.golfStatusLight.face';
-  garageBeaconFace.rotation.y = -Math.PI / 2;
-  garageBeaconFace.position.set(-0.013, 0, 0);
-  garageHallBeaconGroup.add(garageBeaconFace);
-
-  const garageBeaconLens = new THREE.Mesh(
-    new THREE.SphereGeometry(0.018, 14, 12),
-    statusBeaconRedMat
-  );
-  garageBeaconLens.name = 'outbuildings.garage.golfStatusLight.beacon';
-  garageBeaconLens.position.set(-0.014, 0.052, 0);
-  garageHallBeaconGroup.add(garageBeaconLens);
+  // 'GOLF BAY IN USE' status signs removed per user request
 
   return {
     simGroup,
