@@ -401,6 +401,8 @@ export function createOutbuildingShellContext(
   const groundGroup = new THREE.Group();
   groundGroup.name = 'outbuildings.groundShell';
   groundGroup.userData.isArchitecturalShell = true;
+  groundGroup.userData.containerOffset = [OUTBUILDING_ORIGIN_X, 0, OUTBUILDING_ORIGIN_Z];
+  groundGroup.userData.containerRotationY = OUTBUILDING_ROTATION_Y;
   groundGroup.position.set(OUTBUILDING_ORIGIN_X, 0, OUTBUILDING_ORIGIN_Z);
   groundGroup.rotation.y = OUTBUILDING_ROTATION_Y;
   scene.add(groundGroup);
@@ -408,6 +410,8 @@ export function createOutbuildingShellContext(
   const firstFloorGroup = new THREE.Group();
   firstFloorGroup.name = 'outbuildings.firstFloor';
   firstFloorGroup.userData.isArchitecturalShell = true;
+  firstFloorGroup.userData.containerOffset = [OUTBUILDING_ORIGIN_X, 0, OUTBUILDING_ORIGIN_Z];
+  firstFloorGroup.userData.containerRotationY = OUTBUILDING_ROTATION_Y;
   firstFloorGroup.position.set(OUTBUILDING_ORIGIN_X, 0, OUTBUILDING_ORIGIN_Z);
   firstFloorGroup.rotation.y = OUTBUILDING_ROTATION_Y;
   firstFloorMeshGroup.add(firstFloorGroup);
@@ -829,7 +833,57 @@ export function createOutbuildingShellContext(
   const wallT = 0.28;
   const partT = 0.2;
 
-  // Helper to add a brick/plaster wall box in Outbuilding local coordinates (u, y, v)
+  // Part L1 / BS 5250 Breathable 60mm Steico/Pavatex Wood-Fibre Insulation Board Material
+  const createWoodFibreInsulationTexture = (): THREE.CanvasTexture => {
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const c = canvas.getContext('2d')!;
+    c.fillStyle = '#c69c63';
+    c.fillRect(0, 0, size, size);
+    let s = 41827;
+    const r = (): number => {
+      s = (s * 16807) % 2147483647;
+      return (s - 1) / 2147483646;
+    };
+    for (let i = 0; i < 900; i++) {
+      const x = r() * size;
+      const y = r() * size;
+      const len = 4 + r() * 12;
+      const ang = r() * Math.PI;
+      c.strokeStyle = i % 2 === 0 ? 'rgba(162, 120, 68, 0.42)' : 'rgba(224, 188, 132, 0.38)';
+      c.lineWidth = 1 + r() * 1.4;
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+      c.stroke();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.repeat.set(2, 2);
+    return tex;
+  };
+
+  const woodFibreTex = createWoodFibreInsulationTexture();
+  const woodFibreCoreMat = new THREE.MeshStandardMaterial({
+    name: 'steicoWoodFibreInsulation60mm',
+    map: woodFibreTex,
+    bumpMap: woodFibreTex,
+    bumpScale: 0.004,
+    color: 0xc89e65,
+    roughness: 0.92,
+    metalness: 0.01,
+  });
+
+  // Helper to add a brick/plaster wall box in Outbuilding local coordinates (u, y, v).
+  // On the Building Regs fork, every heated exterior wall and every internal thermal-envelope
+  // partition against the unheated Garage is built as a true 3-layer composite assembly:
+  //   1. 205mm (9-inch) Solid Brick Wythe (`exteriorBrickMat`)
+  //   2. 60mm Breathable Wood-Fibre Insulation Core (`woodFibreCoreMat`, visible at cutaway top & reveals)
+  //   3. 15mm Breathable NHL 3.5 Lime Plaster Inner Leaf (`overridePlasterMat`)
   let brickWallSeq = 0;
   const addOutbuildingBrickWall = (
     parent: THREE.Object3D,
@@ -843,15 +897,188 @@ export function createOutbuildingShellContext(
     overrideExteriorMat: THREE.Material = exteriorBrickMat,
     overridePlasterMat: THREE.Material = warmRoomPlasterMat
   ): THREE.Mesh => {
+    const wallId = ++brickWallSeq;
     const w = uMax - uMin;
     const h = yMax - yMin;
     const d = vMax - vMin;
     const cu = (uMin + uMax) * 0.5;
     const cy = (yMin + yMax) * 0.5;
     const cv = (vMin + vMax) * 0.5;
+    const pSet = new Set(plasterFaces);
+
+    const isNorthExt = Math.abs(vMin - 0) < 0.012 && Math.abs(vMax - wallT) < 0.012;
+    const isSouthExt = Math.abs(vMin - (5.71 - wallT)) < 0.012 && Math.abs(vMax - 5.71) < 0.012;
+    const isWestExt = Math.abs(uMin - 0) < 0.012 && Math.abs(uMax - wallT) < 0.012;
+    const isEastUpperExt = Math.abs(uMin - (29.05 - wallT)) < 0.012 && Math.abs(uMax - 29.05) < 0.012 && yMin >= 1.90;
+    const isEastGroundExt = Math.abs(uMin - (31.85 - wallT)) < 0.012 && Math.abs(uMax - 31.85) < 0.012;
+    const floorTag: 'ground' | 'first' = parent === firstFloorGroup ? 'first' : 'ground';
+
+    const cutawaySpec = isNorthExt
+      ? {
+          axis: 'z' as const,
+          coord: cv,
+          minSpan: uMin,
+          maxSpan: uMax,
+          floor: floorTag,
+          outwardSide: 'north' as const,
+          includeInFirstFloorCutaway: true,
+        }
+      : isSouthExt
+        ? {
+            axis: 'z' as const,
+            coord: cv,
+            minSpan: uMin,
+            maxSpan: uMax,
+            floor: floorTag,
+            outwardSide: 'south' as const,
+            includeInFirstFloorCutaway: true,
+          }
+        : isWestExt
+          ? {
+              axis: 'x' as const,
+              coord: cu,
+              minSpan: vMin,
+              maxSpan: vMax,
+              floor: floorTag,
+              outwardSide: 'west' as const,
+              includeInFirstFloorCutaway: true,
+            }
+          : isEastUpperExt || isEastGroundExt
+            ? {
+                axis: 'x' as const,
+                coord: cu,
+                minSpan: vMin,
+                maxSpan: vMax,
+                floor: floorTag,
+                outwardSide: 'east' as const,
+                includeInFirstFloorCutaway: true,
+              }
+            : undefined;
+
+    const buildBoxPart = (
+      bu0: number,
+      bu1: number,
+      by0: number,
+      by1: number,
+      bv0: number,
+      bv1: number,
+      mats: THREE.Material | THREE.Material[],
+      partSuffix: string,
+      applyBrickUV: boolean
+    ): THREE.Mesh => {
+      const bw = bu1 - bu0;
+      const bh = by1 - by0;
+      const bd = bv1 - bv0;
+      const bcu = (bu0 + bu1) * 0.5;
+      const bcy = (by0 + by1) * 0.5;
+      const bcv = (bv0 + bv1) * 0.5;
+      const geo = new THREE.BoxGeometry(bw, bh, bd);
+      if (applyBrickUV) {
+        applyWorldSpaceBrickUVs(geo, OUTBUILDING_ORIGIN_X + bcu, bcy, OUTBUILDING_ORIGIN_Z + bcv);
+      }
+      const m = new THREE.Mesh(geo, mats);
+      m.name = `${parent.name || 'outbuildings'}.brickWall.${wallId}${partSuffix}`;
+      m.userData.isArchitecturalShell = true;
+      if (cutawaySpec) {
+        m.userData.cutawayWall = cutawaySpec;
+      }
+      m.position.set(bcu, bcy, bcv);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      parent.add(m);
+      return m;
+    };
+
+    const iwiT = 0.06; // 60mm Breathable Wood-Fibre Board
+    const limeT = 0.015; // 15mm Breathable NHL 3.5 Lime Plaster
+
+    // 1. North Exterior Wall (`v = 0.00..0.28m`)
+    const isUnheatedGarageNorth = isNorthExt && uMin >= 5.95 && uMax <= 12.08;
+    if (isNorthExt && !isUnheatedGarageNorth) {
+      const brickVMax = vMax - iwiT - limeT; // 0.205m
+      const iwiVMax = vMax - limeT; // 0.265m
+      const brickMats: THREE.Material[] = [
+        pSet.has('+x') ? overridePlasterMat : overrideExteriorMat,
+        pSet.has('-x') ? overridePlasterMat : overrideExteriorMat,
+        wallCapMat,
+        overrideExteriorMat,
+        overrideExteriorMat,
+        overrideExteriorMat,
+      ];
+      const primary = buildBoxPart(uMin, uMax, yMin, yMax, vMin, brickVMax, brickMats, '', true);
+      buildBoxPart(uMin, uMax, yMin, yMax + 0.0015, brickVMax, iwiVMax, woodFibreCoreMat, '.woodFibreInsulation', false);
+      buildBoxPart(uMin, uMax, yMin, yMax, iwiVMax, vMax, overridePlasterMat, '.limePlaster', false);
+      return primary;
+    }
+
+    // 2. South Exterior Wall (`v = 5.43..5.71m`)
+    const isUnheatedGarageSouth = isSouthExt && uMin >= 8.90 && uMax <= 12.08;
+    if (isSouthExt && !isUnheatedGarageSouth) {
+      const limeVMax = vMin + limeT; // 5.445m
+      const iwiVMax = vMin + limeT + iwiT; // 5.505m
+      const innerFinishMat = pSet.has('-z') ? overridePlasterMat : overrideExteriorMat;
+      const brickMats: THREE.Material[] = [
+        pSet.has('+x') ? overridePlasterMat : overrideExteriorMat,
+        pSet.has('-x') ? overridePlasterMat : overrideExteriorMat,
+        wallCapMat,
+        overrideExteriorMat,
+        overrideExteriorMat,
+        overrideExteriorMat,
+      ];
+      const primary = buildBoxPart(uMin, uMax, yMin, yMax, iwiVMax, vMax, brickMats, '', true);
+      buildBoxPart(uMin, uMax, yMin, yMax + 0.0015, limeVMax, iwiVMax, woodFibreCoreMat, '.woodFibreInsulation', false);
+      buildBoxPart(uMin, uMax, yMin, yMax, vMin, limeVMax, innerFinishMat, '.limePlaster', innerFinishMat === overrideExteriorMat);
+      return primary;
+    }
+
+    // 3. West Exterior Gable Wall of Heated Gym (`u = 0.00..0.28m`)
+    if (isWestExt) {
+      const brickUMax = uMax - iwiT - limeT; // 0.205m
+      const iwiUMax = uMax - limeT; // 0.265m
+      const innerV0 = Math.max(vMin, 0.205);
+      const innerV1 = Math.min(vMax, 5.505);
+      const brickMats: THREE.Material[] = [
+        overrideExteriorMat,
+        overrideExteriorMat,
+        wallCapMat,
+        overrideExteriorMat,
+        overrideExteriorMat,
+        overrideExteriorMat,
+      ];
+      const primary = buildBoxPart(uMin, brickUMax, yMin, yMax, vMin, vMax, brickMats, '', true);
+      if (innerV1 > innerV0 + 0.02) {
+        buildBoxPart(brickUMax, iwiUMax, yMin, yMax + 0.0015, innerV0, innerV1, woodFibreCoreMat, '.woodFibreInsulation', false);
+        buildBoxPart(iwiUMax, uMax, yMin, yMax, Math.max(vMin, 0.265), Math.min(vMax, 5.445), overridePlasterMat, '.limePlaster', false);
+      }
+      return primary;
+    }
+
+    // 4. East Exterior End Walls of Heated Stable (`u = 28.77..29.05m` on 1st Floor & `u = 31.57..31.85m` on Ground Floor)
+    if (isEastUpperExt || isEastGroundExt) {
+      const limeUMax = uMin + limeT;
+      const iwiUMax = uMin + limeT + iwiT;
+      const innerV0 = Math.max(vMin, 0.205);
+      const innerV1 = Math.min(vMax, 5.505);
+      const brickMats: THREE.Material[] = [
+        overrideExteriorMat,
+        overrideExteriorMat,
+        wallCapMat,
+        overrideExteriorMat,
+        overrideExteriorMat,
+        overrideExteriorMat,
+      ];
+      const primary = buildBoxPart(iwiUMax, uMax, yMin, yMax, vMin, vMax, brickMats, '', true);
+      if (innerV1 > innerV0 + 0.02) {
+        buildBoxPart(limeUMax, iwiUMax, yMin, yMax + 0.0015, innerV0, innerV1, woodFibreCoreMat, '.woodFibreInsulation', false);
+        buildBoxPart(uMin, limeUMax, yMin, yMax, Math.max(vMin, 0.265), Math.min(vMax, 5.445), overridePlasterMat, '.limePlaster', false);
+      }
+      return primary;
+    }
+
+    // 5. Default wall box + embedded 60mm Wood-Fibre Insulation Core on all Thermal-Boundary Internal Partitions
+    //    separating the unheated Garage / Recessed Workbench Alcove from the heated Gym, Corridor, Store Loft & Barn!
     const geo = new THREE.BoxGeometry(w, h, d);
     applyWorldSpaceBrickUVs(geo, OUTBUILDING_ORIGIN_X + cu, cy, OUTBUILDING_ORIGIN_Z + cv);
-    const pSet = new Set(plasterFaces);
     const mats: THREE.Material[] = [
       pSet.has('+x') ? overridePlasterMat : overrideExteriorMat,
       pSet.has('-x') ? overridePlasterMat : overrideExteriorMat,
@@ -861,12 +1088,34 @@ export function createOutbuildingShellContext(
       pSet.has('-z') ? overridePlasterMat : overrideExteriorMat,
     ];
     const mesh = new THREE.Mesh(geo, mats);
-    mesh.name = `${parent.name || "outbuildings"}.brickWall.${++brickWallSeq}`;
+    mesh.name = `${parent.name || "outbuildings"}.brickWall.${wallId}`;
     mesh.userData.isArchitecturalShell = true;
+    if (cutawaySpec) {
+      mesh.userData.cutawayWall = cutawaySpec;
+    }
     mesh.position.set(cu, cy, cv);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     parent.add(mesh);
+
+    // Check if this internal partition wall is part of the Heated / Unheated Garage Thermal Boundary:
+    const isGymGaragePartition = Math.abs(uMin - 5.77) < 0.015 && Math.abs(uMax - 5.97) < 0.015;
+    const isGarageStoreStepWall = Math.abs(uMin - 12.07) < 0.015 && Math.abs(uMax - 12.31) < 0.015;
+    const isStoreBarnGolfBackWall = Math.abs(uMin - 14.96) < 0.015 && Math.abs(uMax - 15.20) < 0.015;
+    const isCorridorAlcoveWall = uMin >= 12.30 && uMax <= 14.97 && vMin >= 1.38;
+
+    if (isGymGaragePartition) {
+      buildBoxPart(uMin + limeT, uMin + limeT + iwiT, yMin, yMax + 0.0015, vMin, vMax, woodFibreCoreMat, '.woodFibreInsulation', false);
+    } else if (isGarageStoreStepWall || isStoreBarnGolfBackWall) {
+      buildBoxPart(uMax - limeT - iwiT, uMax - limeT, yMin, yMax + 0.0015, vMin, vMax, woodFibreCoreMat, '.woodFibreInsulation', false);
+    } else if (isCorridorAlcoveWall) {
+      if (w >= d) {
+        buildBoxPart(uMin, uMax, yMin, yMax + 0.0015, cv - iwiT * 0.5, cv + iwiT * 0.5, woodFibreCoreMat, '.woodFibreInsulation', false);
+      } else {
+        buildBoxPart(cu - iwiT * 0.5, cu + iwiT * 0.5, yMin, yMax + 0.0015, vMin, vMax, woodFibreCoreMat, '.woodFibreInsulation', false);
+      }
+    }
+
     return mesh;
   };
 
@@ -888,6 +1137,15 @@ export function createOutbuildingShellContext(
     const doorSlug = doorLabel.replace(/\s+/g, '');
     const doorGroup = new THREE.Group();
     doorGroup.name = `outbuildings.door.${doorSlug}`;
+    doorGroup.userData.cutawayWall = {
+      axis: 'z',
+      coord: vWallCenter,
+      minSpan: uCenter - width * 0.5,
+      maxSpan: uCenter + width * 0.5,
+      floor: parent === firstFloorGroup ? 'first' : 'ground',
+      outwardSide: vWallCenter < 1.0 ? 'north' : 'south',
+      includeInFirstFloorCutaway: true,
+    };
     doorGroup.position.set(uCenter, yBase, vWallCenter);
 
     // Timber outer frame jambs & head lintel set cleanly INSIDE the masonry opening
@@ -1280,6 +1538,15 @@ export function createOutbuildingShellContext(
   ): void => {
     const screenGroup = new THREE.Group();
     screenGroup.name = 'outbuildings.gym.northGlazedScreen';
+    screenGroup.userData.cutawayWall = {
+      axis: 'z',
+      coord: vWallCenter,
+      minSpan: uCenter - width * 0.5,
+      maxSpan: uCenter + width * 0.5,
+      floor: parent === firstFloorGroup ? 'first' : 'ground',
+      outwardSide: vWallCenter < 1.0 ? 'north' : 'south',
+      includeInFirstFloorCutaway: true,
+    };
     screenGroup.position.set(uCenter, yBase, vWallCenter);
 
     // Outer perimeter frame & stone threshold sill set cleanly inside the opening (Issue #6: zero brick z-fighting!)
@@ -1427,6 +1694,25 @@ export function createOutbuildingShellContext(
     const winId = `outbuildings.window.${++outbuildingWinSeq}`;
     const winGroup = new THREE.Group();
     winGroup.name = winId;
+    winGroup.userData.cutawayWall = alongV
+      ? {
+          axis: 'x',
+          coord: uCenter,
+          minSpan: vCenter - width * 0.5,
+          maxSpan: vCenter + width * 0.5,
+          floor: parent === firstFloorGroup ? 'first' : 'ground',
+          outwardSide: uCenter < 1.0 ? 'west' : 'east',
+          includeInFirstFloorCutaway: true,
+        }
+      : {
+          axis: 'z',
+          coord: vCenter,
+          minSpan: uCenter - width * 0.5,
+          maxSpan: uCenter + width * 0.5,
+          floor: parent === firstFloorGroup ? 'first' : 'ground',
+          outwardSide: vCenter < 1.0 ? 'north' : 'south',
+          includeInFirstFloorCutaway: true,
+        };
     winGroup.position.set(uCenter, yCenter, vCenter);
     if (alongV) {
       winGroup.rotation.y = Math.PI / 2;
@@ -2201,6 +2487,122 @@ export function createOutbuildingShellContext(
   };
 
 
+  // Issues #9, #10 & #11 ("add some up / down lights iether side here" at `[6.511, 2.983, 13.951]`,
+  // `[9.297, 0.706, 13.669]`, and `[9.673, 0.603, 18.047]`):
+  // Architectural Bronze / Anthracite Cylindrical Dual-Beam Up/Down Exterior Wall Sconce Light
+  // mounted on the East (`+u`) face of the Outbuilding Stable walls (`u = 29.05m` 1st floor & `u = 31.85m` ground floor).
+  const upDownLensMat = new THREE.MeshStandardMaterial({
+    color: 0xfff3d6,
+    emissive: 0xffcf7c,
+    emissiveIntensity: 2.2,
+    roughness: 0.16,
+    metalness: 0.05,
+  });
+  const upDownConeBeamMat = new THREE.MeshBasicMaterial({
+    color: 0xffe2a6,
+    transparent: true,
+    opacity: 0.14,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+
+  const addOutbuildingExteriorUpDownWallLight = (
+    parent: THREE.Object3D,
+    uWallFace: number,
+    yCenter: number,
+    vCenter: number,
+    lightName: string,
+    floorTag: 'ground' | 'first',
+    minSpanV: number,
+    maxSpanV: number
+  ): void => {
+    const sconceGroup = new THREE.Group();
+    sconceGroup.name = lightName;
+    sconceGroup.userData.cutawayWall = {
+      axis: 'x',
+      coord: uWallFace - wallT * 0.5,
+      minSpan: minSpanV,
+      maxSpan: maxSpanV,
+      floor: floorTag,
+      outwardSide: 'east',
+      includeInFirstFloorCutaway: true,
+    };
+    sconceGroup.position.set(uWallFace, yCenter, vCenter);
+
+    // 1. Rectangular die-cast anthracite wall mounting backplate & arm stand-off (`x = 0..0.038m`)
+    const backplate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.014, 0.088, 0.056),
+      spotlightHousingMat
+    );
+    backplate.name = `${lightName}.backplate`;
+    backplate.position.set(0.007, 0, 0);
+    backplate.castShadow = true;
+    sconceGroup.add(backplate);
+
+    const mountArm = new THREE.Mesh(
+      new THREE.BoxGeometry(0.032, 0.044, 0.036),
+      spotlightHousingMat
+    );
+    mountArm.name = `${lightName}.mountArm`;
+    mountArm.position.set(0.028, 0, 0);
+    mountArm.castShadow = true;
+    sconceGroup.add(mountArm);
+
+    // 2. Cylindrical twin-aperture Up/Down architectural luminaire barrel (`r = 0.038m, h = 0.21m` at `x = 0.068m`)
+    const barrelX = 0.068;
+    const barrelH = 0.21;
+    const barrelR = 0.038;
+    const barrel = new THREE.Mesh(
+      new THREE.CylinderGeometry(barrelR, barrelR, barrelH, 20),
+      spotlightHousingMat
+    );
+    barrel.name = `${lightName}.barrel`;
+    barrel.position.set(barrelX, 0, 0);
+    barrel.castShadow = true;
+    barrel.receiveShadow = true;
+    sconceGroup.add(barrel);
+
+    // 3. Upper & lower brushed-brass knurled lens bezel rings + recessed warm-white COB LED emitter lenses
+    for (const dirY of [-1, 1] as const) {
+      const tag = dirY > 0 ? 'up' : 'down';
+      const bezel = new THREE.Mesh(
+        new THREE.CylinderGeometry(barrelR + 0.002, barrelR + 0.002, 0.016, 20),
+        spotlightBrassTrimMat
+      );
+      bezel.name = `${lightName}.bezel.${tag}`;
+      bezel.position.set(barrelX, dirY * (barrelH * 0.5 - 0.007), 0);
+      sconceGroup.add(bezel);
+
+      const lens = new THREE.Mesh(
+        new THREE.CylinderGeometry(barrelR - 0.005, barrelR - 0.005, 0.006, 18),
+        upDownLensMat
+      );
+      lens.name = `${lightName}.lens.${tag}`;
+      lens.position.set(barrelX, dirY * (barrelH * 0.5 + 0.001), 0);
+      sconceGroup.add(lens);
+
+      // Soft warm-white architectural wall-wash light cone grazing upward & downward along the brickwork
+      const coneH = 0.46;
+      const coneGeo = new THREE.ConeGeometry(0.16, coneH, 18, 1, true);
+      const coneMesh = new THREE.Mesh(coneGeo, upDownConeBeamMat);
+      coneMesh.name = `${lightName}.beam.${tag}`;
+      // ConeGeometry apex is at `+y`, base is at `-y`:
+      // For `dirY = +1` (upward beam), rotate `Math.PI` so apex is at bottom (`+barrelH * 0.5`) and wide base flares upward!
+      // For `dirY = -1` (downward beam), keep rotation `0` so apex is at top (`-barrelH * 0.5`) and wide base flares downward!
+      coneMesh.rotation.z = dirY > 0 ? Math.PI : 0;
+      coneMesh.position.set(0.036, dirY * (barrelH * 0.5 + coneH * 0.5), 0);
+      sconceGroup.add(coneMesh);
+    }
+
+    // 4. Warm architectural exterior wall-wash PointLight
+    const wallLight = new THREE.PointLight(0xffcf86, 0.55, 3.6, 1.8);
+    wallLight.name = `${lightName}.pointLight`;
+    wallLight.position.set(0.11, 0, 0);
+    sconceGroup.add(wallLight);
+
+    parent.add(sconceGroup);
+  };
+
   return {
     ctx,
     kit,
@@ -2231,6 +2633,7 @@ export function createOutbuildingShellContext(
     mezzaninePlankFloorMat,
     settingPlasterMat,
     cromartyWallMat,
+    woodFibreCoreMat,
     frostedWindowGlassMat,
     veluxFlashingMat,
     spotlightHousingMat,
@@ -2244,6 +2647,7 @@ export function createOutbuildingShellContext(
     addGlazedGymCoachScreen,
     addOutbuildingWindow,
     addOutbuildingBrickWallWithWindows,
+    addOutbuildingExteriorUpDownWallLight,
     createExtrudedVYPolygon,
     addPitchedOutbuildingRoofSection,
     addInteriorPlasterGableWall,

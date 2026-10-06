@@ -246,6 +246,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     impactScreenMat,
     screenTex,
     artworkTex,
+    ledDiffuserMat,
     statusSignFaceMat,
     statusBeaconRedMat,
     rearFairwayTurf,
@@ -255,9 +256,9 @@ export function buildBarnGolfSimulatorPropsAndLoft(
   } = enclosure;
 
   const loftLenU = 2.65; // u = 12.31m .. 14.96m
-  const loftSpanV = 4.248; // v = 1.18m .. 5.428m
+  const loftSpanV = 4.188; // v = 1.24m .. 5.428m (0.96m North corridor v = 0.28m..1.24m)
   const localLoftX = 13.635 - uWallMax; // -1.565m
-  const localLoftZ = 3.304 - simCenterV; // +0.084m
+  const localLoftZ = 3.334 - simCenterV; // -0.021m
   const loftSubfloorH = 0.072; // y = 2.52m .. 2.592m
   const loftOakDeckH = 0.018; // y = 2.592m .. 2.610m (exact top surface y = 2.61m!)
 
@@ -309,7 +310,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
   loftOakFloorDeck.receiveShadow = true;
   simCeilingGroup.add(loftOakFloorDeck);
 
-  const northLoftEdgeZ = 1.18 - simCenterV; // -2.04m
+  const northLoftEdgeZ = 1.24 - simCenterV; // -1.94m
   const loftNorthFascia = new THREE.Mesh(
     new THREE.BoxGeometry(loftLenU, loftSubfloorH + loftOakDeckH, 0.02),
     loftOakTrimMat
@@ -324,7 +325,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
   simCeilingGroup.add(loftNorthFascia);
 
   const loftTopLocalY = wallBoxH + loftSubfloorH + loftOakDeckH; // 2.95m (world y = 2.61m)
-  const guardRailH = 0.84;
+  const guardRailH = 0.91; // Part K compliant >= 900mm internal loft guardrail height
   const guardZ = northLoftEdgeZ + 0.035; // v = 1.215m
   for (const [segName, xMin, xMax] of [
     ['west', 12.34 - uWallMax, 13.92 - uWallMax],
@@ -405,17 +406,15 @@ export function buildBarnGolfSimulatorPropsAndLoft(
   const roofPitchRad = Math.atan2(4.269 - 2.92, 2.575); // 0.4826 rad (27.65°)
   const battenLenU = 2.26; // spans u = 12.505m .. 14.765m across the 2.65m Store Loft bay
   const roofSlopeLeds: ReadonlyArray<{
-    readonly sideName: 'northUpper' | 'northLower' | 'southUpper' | 'southLower';
+    readonly sideName: 'north' | 'south';
     readonly localY: number;
     readonly localZ: number;
     readonly rotX: number;
   }> = [
-    // North roof slope (`v < 2.855m` -> `localZ < -0.365m`, angled `+roofPitchRad` facing down/inward into the loft)
-    { sideName: 'northUpper', localY: 4.18, localZ: 2.02 - simCenterV, rotX: roofPitchRad },
-    { sideName: 'northLower', localY: 3.74, localZ: 1.42 - simCenterV, rotX: roofPitchRad },
-    // South roof slope (`v > 2.855m` -> `localZ > -0.365m`, angled `-roofPitchRad` facing down/inward into the loft)
-    { sideName: 'southUpper', localY: 4.18, localZ: 3.69 - simCenterV, rotX: -roofPitchRad },
-    { sideName: 'southLower', localY: 3.74, localZ: 4.29 - simCenterV, rotX: -roofPitchRad },
+    // Issue #1 ("only 1 light on each side up here 4 is overkill" at `[-9.258, 2.61, 18.314]`):
+    // 1 linear LED batten centered on the North roof slope and 1 centered on the South roof slope.
+    { sideName: 'north', localY: 3.96, localZ: 1.72 - simCenterV, rotX: roofPitchRad },
+    { sideName: 'south', localY: 3.96, localZ: 3.99 - simCenterV, rotX: -roofPitchRad },
   ];
 
   for (const spec of roofSlopeLeds) {
@@ -821,7 +820,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
 
   const bagGroup = new THREE.Group();
   bagGroup.name = 'outbuildings.barn.golfSimulator.callawayTourBag';
-  bagGroup.position.set(0.9, 0.034, 1.48);
+  bagGroup.position.set(0.9, 0.034, 1.68);
   bagGroup.rotation.y = -0.45;
   simGroup.add(bagGroup);
 
@@ -1077,7 +1076,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
   const ladderGroup = new THREE.Group();
   ladderGroup.name = 'outbuildings.store.loftLadder';
   ladderGroup.userData.zone = 'courtyard';
-  ladderGroup.position.set(14.21, barnWestFloorY, 1.18);
+  ladderGroup.position.set(14.21, barnWestFloorY, 1.24);
   groundGroup.add(ladderGroup);
 
   const ladderClimbH = 2.95; // From hallway floor y = -0.34m to flat loft floor y = +2.61m
@@ -1169,10 +1168,10 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     const { matDoorId } = interactions.registerFoldingGolfMat(
       simGroup,
       foldingMatGroup,
-      new THREE.Vector3(-frontLenX * 0.5 - 0.006, 0.019, 0),
-      bagGroup,
       new THREE.Vector3(0, 0, 0),
-      Math.PI * 0.996,
+      bagGroup,
+      new THREE.Vector3(-frontLenX, 0.034, 0),
+      0,
       (isFolded) => {
         const nextTex = isFolded ? artworkTex : screenTex;
         impactScreenMat.map = nextTex;
@@ -1180,10 +1179,19 @@ export function buildBarnGolfSimulatorPropsAndLoft(
         impactScreenMat.emissiveIntensity = isFolded ? 0.26 : 0.44;
         impactScreenMat.needsUpdate = true;
 
-        statusSignFaceMat.emissiveIntensity = isFolded ? 0.08 : 1.35;
+        // Turn the Golf Simulator bay LED rings & cove strips completely OFF when the mat is retracted!
+        ledDiffuserMat.emissiveIntensity = isFolded ? 0.0 : 2.2;
+        ledDiffuserMat.color.setHex(isFolded ? 0x2a2d34 : 0xfff3dc);
+        ledDiffuserMat.needsUpdate = true;
+
+        trackManOrangeMat.emissiveIntensity = isFolded ? 0.0 : 0.25;
+        trackManOrangeMat.color.setHex(isFolded ? 0x4a2810 : 0xff6b00);
+        trackManOrangeMat.needsUpdate = true;
+
+        statusSignFaceMat.emissiveIntensity = isFolded ? 0.0 : 1.35;
         statusSignFaceMat.needsUpdate = true;
-        statusBeaconRedMat.emissiveIntensity = isFolded ? 0.05 : 2.2;
-        statusBeaconRedMat.color.setHex(isFolded ? 0x4a1c1a : 0xff2418);
+        statusBeaconRedMat.emissiveIntensity = isFolded ? 0.0 : 2.2;
+        statusBeaconRedMat.color.setHex(isFolded ? 0x2a1414 : 0xff2418);
         statusBeaconRedMat.needsUpdate = true;
       }
     );
@@ -1202,7 +1210,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
   // Wall-Mounted TrackMan Golf Simulator Control Computer Monitor & Console (`outbuildings.barn.golfSimulator.controlMonitor`)
   const controlGroup = new THREE.Group();
   controlGroup.name = 'outbuildings.barn.golfSimulator.controlMonitor';
-  controlGroup.position.set(17.0, 0, 5.415);
+  controlGroup.position.set(17.60, 0, 5.415);
   controlGroup.rotation.y = Math.PI;
   groundGroup.add(controlGroup);
 

@@ -790,6 +790,7 @@ export interface BarnGolfSimulatorEnclosureHandles {
   readonly impactScreenMat: THREE.MeshStandardMaterial;
   readonly screenTex: THREE.CanvasTexture;
   readonly artworkTex: THREE.CanvasTexture;
+  readonly ledDiffuserMat: THREE.MeshStandardMaterial;
   readonly statusSignFaceMat: THREE.MeshStandardMaterial;
   readonly statusBeaconRedMat: THREE.MeshStandardMaterial;
   readonly rearFairwayTurf: THREE.Mesh;
@@ -1984,6 +1985,7 @@ export function buildBarnGolfSimulatorEnclosure(
     impactScreenMat,
     screenTex,
     artworkTex,
+    ledDiffuserMat,
     statusSignFaceMat,
     statusBeaconRedMat,
     rearFairwayTurf,

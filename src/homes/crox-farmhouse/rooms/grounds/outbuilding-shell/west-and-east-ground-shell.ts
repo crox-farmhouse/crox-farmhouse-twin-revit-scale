@@ -21,8 +21,6 @@ import {
   buildStableGroundCloakroom,
 } from '../barn-mezzanine-retro-lounge.ts';
 import {
-  OUTBUILDING_ORIGIN_X,
-  OUTBUILDING_ORIGIN_Z,
   createChamferedGymRubberTilesGeometry,
   type OutbuildingShellContext,
 } from './outbuilding-coords-and-materials.ts';
@@ -59,6 +57,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     addGlazedGymCoachScreen,
     addOutbuildingWindow,
     addOutbuildingBrickWallWithWindows,
+    addOutbuildingExteriorUpDownWallLight,
     addPitchedOutbuildingRoofSection,
     addInteriorPlasterGableWall,
     addVaultedRoomEaveFriezeStrips,
@@ -201,9 +200,21 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     vWestRangeSouth,
     []
   );
+  // Heated Garage Shower Room South Exterior Wall (`u = 5.77..8.92m`) -> 3-layer insulated!
   addOutbuildingBrickWall(
     groundGroup,
     uGymEnd,
+    8.92,
+    baseY0 - 0.14,
+    northWestWallTopY,
+    vWestRangeSouth - wallT,
+    vWestRangeSouth,
+    ['-z']
+  );
+  // Unheated Main Garage South Exterior Wall (`u = 8.92..12.07m`) -> uninsulated 9-inch brick!
+  addOutbuildingBrickWall(
+    groundGroup,
+    8.92,
     uGarageEnd,
     baseY0 - 0.14,
     northWestWallTopY,
@@ -345,26 +356,24 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   // High-LOD STIHL Chainsaws, Hedge Trimmers, Pole Trimmer, Blower & Battery Charger Wall Rack on the Garage South Wall (`v = 5.415m`)
   buildGarageStihlWallRack(groundGroup, garageFloorTopY);
 
-  // Issue #1 ("We need to fit a small shower room and toilet in this back corner." at `[-13.364, -0.5, 19.781]`) &
-  // Issue #5 ("Entrance to shower room ideally from both gym and garage, or just from 1" at `[-15.934, -0.5, 19.899]`):
-  // Small Shower Room & Toilet (`outbuildings.garage.showerRoom`) in the SW back corner of the Garage (`u = 5.97..8.92m, v = 3.85..5.43m`)
-  // with dual interactive oak doors from both the Gym and the Garage!
+  // Issue #1 ("We need to fit a small shower room and toilet in this back corner." at `[-13.364, -0.5, 19.781]`),
+  // Issue #5 ("Entrance to shower room ideally from both gym and garage, or just from 1" at `[-15.934, -0.5, 19.899]`), &
+  // Issue #2 ("in cutaway mode dont show the ceiling" at `[-14.572, 1.94, 19.933]`, `outbuildings.garage.showerRoom.ceilingLid`):
+  // Attach `outbuildings.garage.showerRoom.ceilingLid` to `roofGroup` (`ceilingMeshGroup`) so it hides in cutaway mode
+  // regardless of whether `floor === 'ground'` or `floor === 'first'`!
   buildGarageShowerRoom(
     ctx,
     groundGroup,
-    groundCeilingGroup,
+    roofGroup,
     garageFloorTopY,
     baseY0 + 0.012,
     northWestWallTopY
   );
 
-  // Issue #8 ("Some brighter LED lighting in here (cool)" at `[-15.005, 0.851, 20.809]`, Garage South Wall at `u = 7.02m, y = 0.851m, v = 5.43m`):
-  // High-Output Cool-White (`5600K`, `#ebf6ff`) Linear LED Batten Lighting System (`outbuildings.garage.ledLighting`):
-  // - 4 sleek cool-white linear LED cornice batten fixtures (`1.85m` long) along the Garage North (`v = 0.31m`) & South (`v = 5.40m`) walls
-  //   at `u = 7.35m` (West bay over the Porsche 992.2 Turbo S) and `u = 10.40m` (East bay over the STIHL wall rack & workbench)
-  // - 2 vertical cool-white LED wall-wash light bars on the Garage South wall at `u = 7.02m` (exact hit point `[-15.005, 0.851, 20.809]`!)
-  //   and `u = 8.85m` (`y = 0.25m..1.52m`)
-  // - 4 overhead vaulted-ceiling cool-white linear LED battens in `groundCeilingGroup` + 2 bright cool-white `THREE.PointLight`s
+  // Issue #8 ("Some brighter LED lighting in here (cool)" at `[-15.005, 0.851, 20.809]`) &
+  // Issue #8 ("this LED bar carn be removed its intersecting the ceiling of the toilet" at `[-15.041, 1.917, 19.226]`):
+  // High-Output Cool-White (`5600K`, `#ebf6ff`) Linear LED Batten Lighting System (`outbuildings.garage.ledLighting`),
+  // omitting the SW batten `(cu = 7.35, cv = 3.85)` that sat over/intersected the Garage Shower Room ceiling (`v = 3.85..5.43m`)!
   {
     const garageLedGroup = new THREE.Group();
     garageLedGroup.name = 'outbuildings.garage.ledLighting';
@@ -391,35 +400,33 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       depthWrite: false,
     });
 
-    // Issue #2 ("Remove this off the back wall" at `[-15.014, 0.677, 20.769]`, `outbuildings.garage.ledLighting.southVerticalDiffuser.1`):
-    // Removed the vertical & horizontal LED bars from the Garage South (back) wall; kept only the 2 North over-door
-    // cornice LED battens (`v = wallT + 0.024`) plus the 4 overhead ceiling LED battens and cool-white PointLights.
-
-    // 4 Overhead High-Bay Linear Cool-White LED Strips attached to `garageLedGroup` (`y = 2.02m`, visible at low opacity!)
+    // 3 Overhead High-Bay Linear Cool-White LED Strips over the open Garage bays (`(7.35, 1.85)`, `(10.4, 1.85)`, `(10.4, 3.85)`)
     const ceilingLedGroup = new THREE.Group();
     ceilingLedGroup.name = 'outbuildings.garage.ledLighting.ceilingBattens';
     garageLedGroup.add(ceilingLedGroup);
 
     let ceilLedSeq = 0;
-    for (const cu of [7.35, 10.4] as const) {
-      for (const cv of [1.85, 3.85] as const) {
-        const ceilLedId = ++ceilLedSeq;
-        const cHousing = new THREE.Mesh(
-          new THREE.BoxGeometry(2.05, 0.032, 0.056),
-          ledHousingMat
-        );
-        cHousing.name = `outbuildings.garage.ledLighting.ceilingHousing.${ceilLedId}`;
-        cHousing.position.set(cu, 2.02, cv);
-        ceilingLedGroup.add(cHousing);
+    for (const [cu, cv] of [
+      [7.35, 1.85],
+      [10.4, 1.85],
+      [10.4, 3.85],
+    ] as const) {
+      const ceilLedId = ++ceilLedSeq;
+      const cHousing = new THREE.Mesh(
+        new THREE.BoxGeometry(2.05, 0.032, 0.056),
+        ledHousingMat
+      );
+      cHousing.name = `outbuildings.garage.ledLighting.ceilingHousing.${ceilLedId}`;
+      cHousing.position.set(cu, 2.02, cv);
+      ceilingLedGroup.add(cHousing);
 
-        const cDiffuser = new THREE.Mesh(
-          new THREE.BoxGeometry(2.0, 0.018, 0.042),
-          coolWhiteLedTubeMat
-        );
-        cDiffuser.name = `outbuildings.garage.ledLighting.ceilingDiffuser.${ceilLedId}`;
-        cDiffuser.position.set(cu, 2.005, cv);
-        ceilingLedGroup.add(cDiffuser);
-      }
+      const cDiffuser = new THREE.Mesh(
+        new THREE.BoxGeometry(2.0, 0.018, 0.042),
+        coolWhiteLedTubeMat
+      );
+      cDiffuser.name = `outbuildings.garage.ledLighting.ceilingDiffuser.${ceilLedId}`;
+      cDiffuser.position.set(cu, 2.005, cv);
+      ceilingLedGroup.add(cDiffuser);
     }
 
     // 2 Cool-White (`5600K`, `0xe4f3ff`) PointLights illuminating the Porsche 992.2 Turbo S and East Workshop Bay
@@ -451,7 +458,8 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   addGlazedGymCoachScreen(groundGroup, 4.25, baseY0 + 0.012, wallT * 0.5, 2.4, 2.088);
 
   // Pier between GYM glazed screen and Garage Double Door #1 (u = 5.45m..6.08m)
-  addOutbuildingBrickWall(groundGroup, 5.45, 6.08, baseY0 - 0.14, northWestWallTopY, 0, wallT, ['+z']);
+  addOutbuildingBrickWall(groundGroup, 5.45, 5.97, baseY0 - 0.14, northWestWallTopY, 0, wallT, ['+z']);
+  addOutbuildingBrickWall(groundGroup, 5.97, 6.08, baseY0 - 0.14, northWestWallTopY, 0, wallT, ['+z']);
 
   // Garage Double Coach/Garage Door #1 (u = 6.08m..8.72m, width = 2.64m, seated flush at `garageFloorTopY = -0.50m` — Issue #7 & Issue #5!)
   const garageDoorHeight = 2.14;
@@ -556,8 +564,8 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   const storeFloorTopY = -0.34;
   const storeFloorSpanU = (uBarnStart + 0.24) - (uStoreStart + 0.24); // 2.89m (12.31m..15.20m)
   const storeFloorCenterU = uStoreStart + 0.24 + storeFloorSpanU * 0.5; // 13.755m
-  const storeFloorSpanV = 0.893; // v = 0.285m..1.178m
-  const storeFloorCenterV = 0.285 + storeFloorSpanV * 0.5; // 0.7315m
+  const storeFloorSpanV = 0.955; // v = 0.285m..1.24m (flush with hallwayWallVMin = 1.24m!)
+  const storeFloorCenterV = 0.285 + storeFloorSpanV * 0.5; // 0.7625m
   const corridorFloorGeo = new THREE.BoxGeometry(storeFloorSpanU, 0.38, storeFloorSpanV);
   applyOutbuildingFloorUVs(corridorFloorGeo, storeFloorCenterU, barnWestFloorY - 0.19, storeFloorCenterV, 0.34);
   const storeFloor = new THREE.Mesh(
@@ -768,10 +776,10 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   // Issue #3 ("shortern the unit slightly and have a door here which goes through to the bar, it will open up behind the back of the golf simulator. Have a red light above which goes red if someone is playing golf" at `[-10.37, 0.713, 15.833]`),
   // Issue #4 ("Height of this section should match the cupboards" at `[-9.737, 1.207, 18.647]`), &
   // Issue #7 ("Make this a more standard oak door" at `[-10.25, 0.533, 15.572]`):
-  const garagePassDoorVMin = 0.38;
-  const garagePassDoorVMax = 1.18;
+  const garagePassDoorVMin = 0.36;
+  const garagePassDoorVMax = 1.22; // 0.86m structural opening for Part M / FD30S fire door in the 0.96m corridor!
   const garagePassDoorTopY = 1.66; // Standard 2.00m door height above the -0.34m threshold step (`2.16m` above `-0.50m` garage floor, flush with `1.66m` cupboard top!)
-  const benchAlcoveVMin = 1.34;
+  const benchAlcoveVMin = 1.56; // Aligns with the 1.30m Tall Stainless Cupboard in the Garage
   const benchAlcoveVMax = vEastRangeSouth - wallT - 0.002; // 5.428m
 
   // 1. Lower sill / step wall (`y = barnLowerFloorY (-0.70m) .. garageFloorTopY (-0.50m)`): full span `vInnerNorth .. vInnerSouth`
@@ -786,43 +794,44 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2a. North-most corner jamb pier (`v = 0.282m .. 0.38m`): `y = garageFloorTopY (-0.50m) .. eastRangeGroundTopY (1.94m)`
+  const storeLoftSlabBotY = 2.52;
+  // 2a. North-most corner jamb pier (`v = 0.282m .. 0.38m`): `y = garageFloorTopY (-0.50m) .. storeLoftSlabBotY (2.52m)`
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
     uStoreStart + 0.24,
     garageFloorTopY,
-    eastRangeGroundTopY,
+    storeLoftSlabBotY,
     vEastRangeNorth + wallT + 0.002,
     garagePassDoorVMin,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2b. Over-door lintel (`v = 0.38m .. 1.18m`): `y = 1.66m .. eastRangeGroundTopY (1.94m)`
+  // 2b. Over-door lintel (`v = 0.38m .. 1.18m`): `y = 1.66m .. storeLoftSlabBotY (2.52m)`
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
     uStoreStart + 0.24,
     garagePassDoorTopY,
-    eastRangeGroundTopY,
+    storeLoftSlabBotY,
     garagePassDoorVMin,
     garagePassDoorVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2c. Center pier between the Pass-Through Door (`v = 1.18m`) and the Tall Stainless Cupboard (`v = 1.34m`)
+  // 2c. Center pier between the Pass-Through Door (`v = 1.18m`) and the Tall Stainless Cupboard (`v = 1.56m`)
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
     uStoreStart + 0.24,
     garageFloorTopY,
-    eastRangeGroundTopY,
+    storeLoftSlabBotY,
     garagePassDoorVMax,
     benchAlcoveVMin,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 3. Unified upper lintel header above both the Tall Stainless Cupboard and the Recessed Workbench (`v = 1.34m .. 5.428m, y = 1.66m .. 1.94m` — Issue #4!)
+  // 3. Unified upper lintel header above both the Tall Stainless Cupboard and the Recessed Workbench (`v = 1.56m .. 5.428m, y = 1.66m .. 1.94m` — Issue #4!)
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -835,20 +844,14 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     warmRoomPlasterMat
   );
 
-  // Issue #1 ("There is a gap here" at `[-9.565, -0.69, 16.38]`), Issue #3,
-  // Issue #4 ("Flatten the floor in this loft space and level the floor where its not level" at `[-8.51, 2.61, 17.685]`), &
-  // Issue #5 ("Put a ladder here to access the loft space above" at `[-8.212, 1.186, 15.959]`):
-  // - Extend the South Hallway Wall (`u = 12.31m..14.96m, v = 1.18m..1.34m`) and the Store-side enclosure walls
-  //   (`u = 12.31m..13.04m` and `v = 5.12m..5.428m`) continuously up to `storeLoftSlabBotY = 2.52m` so the entire
-  //   Store Loft space (`u = 12.31m..14.96m, v = 1.18m..5.428m`) supports a single flat, 100% level oak floor at `y = 2.61m`!
-  const storeLoftSlabBotY = 2.52;
+  // Backing wall behind the Garage Tall Stainless Cupboard (`u = 12.31m..13.04m, v = 1.33m..1.56m`, South of `corridorSouthWall`)
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart + 0.24,
-    uBarnStart,
+    13.04,
     garageFloorTopY,
     storeLoftSlabBotY,
-    garagePassDoorVMax,
+    1.33,
     benchAlcoveVMin,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
@@ -864,13 +867,14 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
+  // Flush 48mm South backing liner against the insulated South brick wall (v = 5.38m..5.428m — reclaiming +260mm of dead void!)
   addOutbuildingBrickWall(
     groundGroup,
     13.04,
     uBarnStart,
     garageFloorTopY,
     storeLoftSlabBotY,
-    5.12,
+    5.38,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
@@ -950,6 +954,68 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       headArch.position.set(faceX, passDoorH + 0.032, 0);
       passDoorGroup.add(headArch);
     }
+
+    // Building Regulations Part B (Fire Safety — Garage to Habitable Building Separation):
+    // Self-Closing FD30S 4-Panel Solid European Oak Fire & Cold-Smoke Door (`outbuildings.garage.golfPassThroughDoor.fireDoor`)
+    // with intumescent/brush smoke perimeter seals, overhead brushed-brass scissor-arm door closer, and interactive swing.
+    const fireDoorClearW = passDoorW - jambT * 2 - 0.008; // 0.848m clear Part M compliant leaf width
+    const fireDoorClearH = passDoorH - 0.16 - jambT - 0.008; // 1.96m leaf height above the 160mm fuel-spill step
+    const fireDoorT = 0.044; // 44mm statutory FD30S fire door thickness
+    const fireLeafPivot = new THREE.Group();
+    fireLeafPivot.name = 'outbuildings.garage.golfPassThroughDoor.fireDoor';
+    fireLeafPivot.position.set(0, 0.162, -fireDoorClearW * 0.5);
+    passDoorGroup.add(fireLeafPivot);
+
+    const fireDoorPanel = new THREE.Mesh(
+      new THREE.BoxGeometry(fireDoorT, fireDoorClearH, fireDoorClearW),
+      lightJoineryOakMat
+    );
+    fireDoorPanel.name = 'outbuildings.garage.golfPassThroughDoor.fireDoor.leaf';
+    fireDoorPanel.position.set(0, fireDoorClearH * 0.5, fireDoorClearW * 0.5);
+    fireDoorPanel.castShadow = true;
+    fireDoorPanel.receiveShadow = true;
+    fireLeafPivot.add(fireDoorPanel);
+
+    // Intumescent & cold-smoke brush strip along the leading edge and top rail of the FD30S door
+    const intumescentMat = new THREE.MeshStandardMaterial({
+      color: 0x1e2228,
+      roughness: 0.85,
+      metalness: 0.05,
+    });
+    const smokeSealLeading = new THREE.Mesh(
+      new THREE.BoxGeometry(0.012, fireDoorClearH - 0.01, 0.004),
+      intumescentMat
+    );
+    smokeSealLeading.name = 'outbuildings.garage.golfPassThroughDoor.fireDoor.intumescentSeal';
+    smokeSealLeading.position.set(0, fireDoorClearH * 0.5, fireDoorClearW + 0.001);
+    fireLeafPivot.add(smokeSealLeading);
+
+    // Brushed-brass FD30S fire-rated lever handles & circular roses on both faces + overhead scissor-arm closer
+    for (const faceSign of [-1, 1] as const) {
+      const handleLever = new THREE.Mesh(
+        new THREE.BoxGeometry(0.022, 0.018, 0.12),
+        spotlightBrassTrimMat
+      );
+      handleLever.name = `outbuildings.garage.golfPassThroughDoor.fireDoor.handle.${faceSign < 0 ? 'garage' : 'corridor'}`;
+      handleLever.position.set(faceSign * 0.036, 0.98, fireDoorClearW - 0.065);
+      fireLeafPivot.add(handleLever);
+    }
+
+    const closerBody = new THREE.Mesh(
+      new THREE.BoxGeometry(0.048, 0.054, 0.22),
+      spotlightBrassTrimMat
+    );
+    closerBody.name = 'outbuildings.garage.golfPassThroughDoor.fireDoor.overheadCloser';
+    closerBody.position.set(0.038, fireDoorClearH - 0.045, 0.18);
+    fireLeafPivot.add(closerBody);
+
+    ctx.interactions.registerHingedDoor(
+      passDoorGroup,
+      fireLeafPivot,
+      new THREE.Vector3(0, 0, 0),
+      'y',
+      -Math.PI * 0.46
+    );
   }
   // Issue #3 ("Show this full wall in cutout view incl gable from the inside " at `[-10.207, 1.803, 17.731]`):
   // Attach both the Garage-side interior plaster gable (`u = 12.07..12.165m`) and the full-height Store-side
@@ -988,252 +1054,326 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   // The Store/Barn cross-wall (`u = 14.96..15.20m`) framing the Golf Simulator (North pier, South pier, upper lintel,
   // and Barn-side upper gable `outbuildings.storeBarnPartitionGable`) uses exposed red/multi-stock brickwork (`exteriorBrickMat`)
   // on the Barn face (`+x`) and portal reveals (`+z`, `-z`), keeping only the Store back face (`-x`) plastered!
-  const simCutoutVMin = 1.32;
-  const simCutoutVMax = 5.12;
+  const simCutoutVMin = 1.33; // 4.05m Widescreen bay (v = 1.33m..5.38m -> 3.95m × 2.47m 16:10 Widescreen screen!)
+  const simCutoutVMax = 5.38;
   const simCutoutTopY = barnWestFloorY + 2.85; // 2.51m (9'4" TrackMan iO minimum height)
-  const barnHallPortalVMin = 0.38;
-  const barnHallPortalVMax = 1.18;
-  const barnHallPortalTopY = 1.78;
-  // North corner brick pier (`v = 0.282m .. 0.44m`)
-  addOutbuildingBrickWall(
-    groundGroup,
-    uBarnStart,
-    uBarnStart + 0.24,
-    storeFloorTopY - 0.12,
-    barnUpperTopY,
-    vEastRangeNorth + wallT + 0.002,
-    barnHallPortalVMin,
-    ['-x'],
-    exteriorBrickMat
-  );
-  // Over-portal brick lintel above the North Hallway walk-through opening (`v = 0.38m .. 1.18m, y = 1.78m .. 2.92m`)
-  addOutbuildingBrickWall(
-    groundGroup,
-    uBarnStart,
-    uBarnStart + 0.24,
-    barnHallPortalTopY,
-    barnUpperTopY,
-    barnHallPortalVMin,
-    barnHallPortalVMax,
-    ['-x'],
-    exteriorBrickMat
-  );
-  // Issue #4 ("Line this door too" at `[-7.48, 1.84, 15.711]`, `BoxGeometry(0.24 × 1.14 × 0.8)`):
-  // Cased Solid Light-Oak Walkthrough Archway (`outbuildings.barn.hallWalkthroughDoor`) lining the Store-to-Barn
-  // corridor portal (`u = 14.96..15.20m, v = 0.38..1.18m, y = -0.34..1.78m`) with oak threshold strip, jamb linings,
-  // head lining, and chamfered oak architraves on both the Store corridor (`-x`) and Barn exposed-brick (`+x`) faces!
+  const corridorSouthV = 1.24; // Full 0.958m clear North corridor width (`v = 0.282m .. 1.240m`)
+  // Structural Engineering Pass (Issue #1 at `[-7.107, 2.74, 17.247]`, `outbuildings.groundShell.brickWall.40`)
+  // & Corridor Entry Refinement (Issue #1 at `[-7.271, 2.281, 15.568]`):
+  //   "Maybe remove this door lining and just have an opening into this corridor with the door at the end?"
+  // Solution:
+  //   1. Demolish 100% of the brickwork on the `u = 14.96..15.20m` cross-wall line (zero bricks below or above!).
+  //   2. Leave the North Corridor entrance at `u = 15.08m` (`v = 0.282m .. 1.240m`, `y = -0.34m .. 2.515m`)
+  //      completely open and unobstructed up to the underside of the continuous `203×203×46 UC` steel header beam
+  //      (no door lining, no North wall nib column, and no dropped spandrel at the Barn end — the sole door is
+  //      the self-closing FD30S oak door `outbuildings.garage.golfPassThroughDoor` at the far West end `u = 12.19m`!).
+  //   3. Support the full-width `203×203×46 UC` steel header beam (`y = 2.515..2.720m, v = 0.282..5.428m`) on:
+  //      - A structural padstone pocketed into the North exterior masonry wall (`v = 0.282m`),
+  //      - The vertical `90×200mm` RHS structural steel mullion post (`centerMullionColumn` at `v = 1.240..1.330m`),
+  //        whose North face (`v = 1.240m`) sits 100% flush with the plastered corridor South wall (`outbuildings.store.corridorSouthWall`),
+  //      - The South wall structural steel column (`southWallColumn` at `v = 5.380..5.428m`).
+  //   4. Seat the Principal Weathered-Oak King-Post Roof Truss (`outbuildings.roofTruss.storeBarn`, `y = 2.72..4.269m`)
+  //      directly on top of the `203×203×46 UC` steel header beam, with recessed plasterboard infill (`outbuildings.storeBarnStudPartition`)
+  //      inside the upper truss triangles (`y = 2.92..4.21m`).
   {
-    const portalW = barnHallPortalVMax - barnHallPortalVMin; // 0.80m
-    const portalH = barnHallPortalTopY - barnWestFloorY; // 2.12m (from -0.34m floor to 1.78m lintel)
-    const portalCenterV = (barnHallPortalVMin + barnHallPortalVMax) * 0.5; // 0.78m
-    const portalCenterU = uBarnStart + 0.12; // 15.08m
+    const structuralSteelMat = new THREE.MeshStandardMaterial({
+      color: 0x22262c,
+      roughness: 0.32,
+      metalness: 0.78,
+    });
+    const steelBoltMat = new THREE.MeshStandardMaterial({
+      color: 0x3a4048,
+      roughness: 0.26,
+      metalness: 0.86,
+    });
 
-    const hallDoorwayGroup = new THREE.Group();
-    hallDoorwayGroup.name = 'outbuildings.barn.hallWalkthroughDoor';
-    hallDoorwayGroup.userData.zone = 'courtyard';
-    hallDoorwayGroup.position.set(portalCenterU, barnWestFloorY, portalCenterV);
-    groundGroup.add(hallDoorwayGroup);
+    const portalFrameGroup = new THREE.Group();
+    portalFrameGroup.name = 'outbuildings.barn.golfSimulator.steelPortalFrame';
+    portalFrameGroup.userData.zone = 'courtyard';
+    portalFrameGroup.userData.isArchitecturalShell = true;
+    groundGroup.add(portalFrameGroup);
 
-    const threshStrip = new THREE.Mesh(
-      new THREE.BoxGeometry(0.244, 0.018, portalW),
-      lightJoineryOakMat
-    );
-    threshStrip.name = 'outbuildings.barn.hallWalkthroughDoor.threshold';
-    threshStrip.position.set(0, 0.009, 0);
-    threshStrip.receiveShadow = true;
-    hallDoorwayGroup.add(threshStrip);
+    const colBotY = barnWestFloorY; // -0.34m
+    const beamBotY = simCutoutTopY + 0.005; // 2.515m (clear of 2.51m Golf Sim opening & full-height North corridor!)
+    const beamTopY = 2.72; // Directly supports the Principal Oak Truss tie-beam (`y = 2.72..2.92m`)!
+    const beamH = beamTopY - beamBotY; // 0.205m (203×203×46 UC Universal Beam)
+    const beamMidY = (beamBotY + beamTopY) * 0.5; // 2.6175m
+    const colH = beamBotY - colBotY; // 2.855m
+    const colMidY = colBotY + colH * 0.5;
+    const frameCenterU = uBarnStart + 0.12; // 15.08m
+    const vFrameMin = vEastRangeNorth + wallT + 0.002; // 0.282m (inner plaster face of North wall)
+    const vFrameMax = vEastRangeSouth - wallT - 0.002; // 5.428m (inner plaster face of South wall)
 
-    const jambT = 0.032;
-    const jambD = 0.244;
-    for (const sideZ of [-1, 1] as const) {
-      const jamb = new THREE.Mesh(
-        new THREE.BoxGeometry(jambD, portalH - 0.018, jambT),
-        lightJoineryOakMat
+    // Statutory Part A / BS EN 1996-1-1 Masonry End Bearing (`150mm` pocketed into both the 280mm North & South brick walls!):
+    // - Beam extends from `v = 0.132m` (`150mm` inside the North wall inner leaf) to `v = 5.578m` (`150mm` inside the South wall inner leaf),
+    //   leaving `132mm` of outer face brickwork untouched on the building exterior!
+    const endBearingDepthV = 0.15; // 150mm statutory structural end bearing on C40 precast concrete padstones
+    const vBeamStart = vFrameMin - endBearingDepthV; // 0.132m
+    const vBeamEnd = vFrameMax + endBearingDepthV;   // 5.578m
+    const fullBeamSpanV = vBeamEnd - vBeamStart;     // 5.446m total steel beam length (5.146m clear + 2 × 150mm bearings)
+    const fullBeamMidV = (vBeamStart + vBeamEnd) * 0.5; // 2.855m
+
+    // 1. Vertical Structural Steel Columns:
+    //    - `centerMullionColumn`: 160×70×8 RHS post inside the 90mm corridor partition (`v = 1.250..1.318m`) with a 150mm-wide bolted spreader cap plate
+    //    - `southWallColumn`: Full 100×200×10 RHS column (`v = 5.380..5.480m`, pocketed 52mm into the inner masonry leaf of the South wall for a full 100mm column section + 150mm masonry padstone bearing above!)
+    const columnSpecs: ReadonlyArray<{
+      id: string;
+      uDepth: number;
+      v0: number;
+      v1: number;
+      capSpanV: number;
+    }> = [
+      { id: 'centerMullionColumn', uDepth: 0.16, v0: corridorSouthV + 0.012, v1: simCutoutVMin - 0.012, capSpanV: 0.15 },
+      { id: 'southWallColumn', uDepth: 0.20, v0: simCutoutVMax, v1: simCutoutVMax + 0.10, capSpanV: 0.16 },
+    ];
+
+    for (const col of columnSpecs) {
+      const colSpanV = col.v1 - col.v0;
+      const colMidV = (col.v0 + col.v1) * 0.5;
+      const colMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(col.uDepth, colH - 0.02, colSpanV),
+        structuralSteelMat
       );
-      jamb.name = 'outbuildings.barn.hallWalkthroughDoor.jamb';
-      jamb.position.set(0, 0.018 + (portalH - 0.018) * 0.5, sideZ * (portalW * 0.5 - jambT * 0.5));
-      jamb.castShadow = true;
-      hallDoorwayGroup.add(jamb);
+      colMesh.name = `outbuildings.barn.golfSimulator.steelPortalFrame.${col.id}`;
+      colMesh.userData.isArchitecturalShell = true;
+      colMesh.position.set(frameCenterU, colMidY, colMidV);
+      colMesh.castShadow = true;
+      colMesh.receiveShadow = true;
+      portalFrameGroup.add(colMesh);
+
+      const plateU = col.id === 'centerMullionColumn' ? col.uDepth : 0.224;
+      const basePlate = new THREE.Mesh(
+        new THREE.BoxGeometry(plateU, 0.016, col.capSpanV),
+        structuralSteelMat
+      );
+      basePlate.name = `outbuildings.barn.golfSimulator.steelPortalFrame.${col.id}.basePlate`;
+      basePlate.userData.isArchitecturalShell = true;
+      basePlate.position.set(frameCenterU, colBotY + 0.012, colMidV);
+      portalFrameGroup.add(basePlate);
+
+      const capPlate = new THREE.Mesh(
+        new THREE.BoxGeometry(plateU, 0.016, col.capSpanV),
+        structuralSteelMat
+      );
+      capPlate.name = `outbuildings.barn.golfSimulator.steelPortalFrame.${col.id}.capPlate`;
+      capPlate.userData.isArchitecturalShell = true;
+      capPlate.position.set(frameCenterU, beamBotY - 0.008, colMidV);
+      portalFrameGroup.add(capPlate);
     }
 
-    const headJamb = new THREE.Mesh(
-      new THREE.BoxGeometry(jambD, jambT, portalW),
-      lightJoineryOakMat
-    );
-    headJamb.name = 'outbuildings.barn.hallWalkthroughDoor.headJamb';
-    headJamb.position.set(0, portalH - jambT * 0.5, 0);
-    headJamb.castShadow = true;
-    hallDoorwayGroup.add(headJamb);
-
-    for (const faceX of [-0.125, 0.125] as const) {
-      for (const sideZ of [-1, 1] as const) {
-        const legArch = new THREE.Mesh(
-          new THREE.BoxGeometry(0.018, portalH + 0.065, 0.068),
-          lightJoineryOakMat
-        );
-        legArch.name = 'outbuildings.barn.hallWalkthroughDoor.architrave';
-        legArch.position.set(faceX, (portalH + 0.065) * 0.5, sideZ * (portalW * 0.5 + 0.018));
-        legArch.castShadow = true;
-        hallDoorwayGroup.add(legArch);
-      }
-      const headArch = new THREE.Mesh(
-        new THREE.BoxGeometry(0.018, 0.068, portalW + 0.172),
-        lightJoineryOakMat
+    // Statutory C40 High-Strength Precast Concrete Padstones (`440mm × 215mm × 165mm`) & 16mm Steel Spreader Bearing Plates
+    // Pocketed 150mm into the North (`v = 0.125..0.290m`) and South (`v = 5.420..5.585m`) brick walls directly beneath the UC beam ends!
+    for (const [endSide, padMidV] of [
+      ['north', vFrameMin - endBearingDepthV * 0.5 + 0.005],
+      ['south', vFrameMax + endBearingDepthV * 0.5 - 0.005],
+    ] as const) {
+      const padstone = new THREE.Mesh(
+        new THREE.BoxGeometry(0.44, 0.215, endBearingDepthV + 0.016),
+        stoneSillMat
       );
-      headArch.name = 'outbuildings.barn.hallWalkthroughDoor.architrave';
-      headArch.position.set(faceX, portalH + 0.032, 0);
-      headArch.castShadow = true;
-      hallDoorwayGroup.add(headArch);
+      padstone.name = `outbuildings.barn.golfSimulator.steelPortalFrame.${endSide}Padstone`;
+      padstone.userData.isArchitecturalShell = true;
+      padstone.position.set(frameCenterU, beamBotY - 0.016 - 0.1075, padMidV);
+      padstone.castShadow = true;
+      padstone.receiveShadow = true;
+      portalFrameGroup.add(padstone);
+
+      const bearingPlate = new THREE.Mesh(
+        new THREE.BoxGeometry(0.24, 0.016, endBearingDepthV + 0.024),
+        structuralSteelMat
+      );
+      bearingPlate.name = `outbuildings.barn.golfSimulator.steelPortalFrame.${endSide}WallBearingPlate`;
+      bearingPlate.userData.isArchitecturalShell = true;
+      bearingPlate.position.set(frameCenterU, beamBotY - 0.008, padMidV);
+      portalFrameGroup.add(bearingPlate);
     }
-  }
-  // Issue #6 ("there will be an oak lintel here probably" at `[-7.069, 2.646, 17.691]` -> `u = 15.08m, y = 2.646m, v = 3.22m`):
-  // Heavy Structural Seasoned European Oak Bressummer Lintel (`outbuildings.barn.golfSimulator.oakLintel`)
-  // spanning across the top of the `3.80m` Golf Simulator opening (`y = 2.51m..2.74m`, `v = 1.18m..5.28m` with `0.14m..0.16m`
-  // end-bearing pockets resting on the flanking brick piers), supporting the upper courses of brickwork (`y = 2.74m..2.92m`)!
-  const simOakLintelH = 0.23; // Spans y = 2.51m .. 2.74m (covering hit point y = 2.646m!)
-  const simOakLintelTopY = simCutoutTopY + simOakLintelH; // 2.74m
-  const simOakLintelVMin = barnHallPortalVMax; // 1.18m (0.14m North bearing on the dividing brick pier)
-  const simOakLintelVMax = simCutoutVMax + 0.16; // 5.28m (0.16m South bearing on the South brick pier)
 
-  // Dividing brick pier between the North Hallway Portal (`v = 1.18m`) and the Golf Simulator (`v = 1.32m`) below the oak lintel
-  addOutbuildingBrickWall(
-    groundGroup,
-    uBarnStart,
-    uBarnStart + 0.24,
-    storeFloorTopY - 0.12,
-    simCutoutTopY,
-    barnHallPortalVMax,
-    simCutoutVMin,
-    ['-x'],
-    exteriorBrickMat
-  );
-  // South brick pier alongside the Golf Simulator (`v = 5.12..5.428m`) below the oak lintel
-  addOutbuildingBrickWall(
-    groundGroup,
-    uBarnStart,
-    uBarnStart + 0.24,
-    storeFloorTopY - 0.12,
-    simCutoutTopY,
-    simCutoutVMax,
-    vEastRangeSouth - wallT - 0.002,
-    ['-x'],
-    exteriorBrickMat
-  );
-  // South outer brick pier alongside the oak lintel end-bearing (`v = 5.28..5.428m, y = 2.51..2.74m`)
-  addOutbuildingBrickWall(
-    groundGroup,
-    uBarnStart,
-    uBarnStart + 0.24,
-    simCutoutTopY,
-    simOakLintelTopY,
-    simOakLintelVMax,
-    vEastRangeSouth - wallT - 0.002,
-    ['-x'],
-    exteriorBrickMat
-  );
-  // Issue #2 ("No baseboards up here. Just put some clear storage boxes full of stuff" at `[-7.363, 2.72, 17.168]`,
-  // Surface Normal `[-0.996, 0, 0.086]` on `outbuildings.barn.golfSimulator.oakLintel.beam`):
-  // Keep the Oak Bressummer Lintel (`outbuildings.barn.golfSimulator.oakLintel`) on the Barn (`+x`) half of the wall
-  // (`u = 15.06m .. 15.208m`) while the Store Loft (`-x`) half (`u = 14.96m .. 15.06m`) is flush plastered wall (`warmRoomPlasterMat`),
-  // so the oak lintel never protrudes through the West (`-x`) Store Loft wall face like a baseboard at `y = 2.61..2.74m`!
-  addOutbuildingBrickWall(
-    groundGroup,
-    uBarnStart,
-    uBarnStart + 0.10,
-    simCutoutTopY,
-    simOakLintelTopY,
-    simOakLintelVMin,
-    simOakLintelVMax,
-    ['-x'],
-    exteriorBrickMat
-  );
-  {
-    const lintelLenV = simOakLintelVMax - simOakLintelVMin; // 4.10m
-    const lintelMidV = (simOakLintelVMin + simOakLintelVMax) * 0.5; // 3.23m
-    const lintelMidY = simCutoutTopY + simOakLintelH * 0.5; // 2.625m
-    const lintelDepthU = 0.148; // Spans u = 15.06m .. 15.208m (projects 8mm proud on the Barn +x face only!)
-    const lintelMidU = uBarnStart + 0.24 + 0.008 - lintelDepthU * 0.5; // 15.134m
+    // 2. Full-Width 203×203×46 UC Structural Steel Universal Beam Header (`y = 2.515m .. 2.720m`, `v = 0.132m .. 5.578m` with 150mm masonry end bearings!)
+    const flangeT = 0.014;
+    const beamDepthU = 0.21; // u = 14.985m .. 15.195m
+    const beamCenterU = uBarnStart + 0.13; // 15.09m (flush/proud on the Barn +x face, lined with plasterboard on the Store Loft -x face)
 
-    const oakLintelGroup = new THREE.Group();
-    oakLintelGroup.name = 'outbuildings.barn.golfSimulator.oakLintel';
-    oakLintelGroup.userData.zone = 'courtyard';
-    oakLintelGroup.userData.isArchitecturalShell = true;
-    oakLintelGroup.position.set(lintelMidU, lintelMidY, lintelMidV);
-    groundGroup.add(oakLintelGroup);
-
-    const lintelBeamGeo = new THREE.BoxGeometry(lintelDepthU, simOakLintelH, lintelLenV);
-    applyOutbuildingFloorUVs(
-      lintelBeamGeo,
-      OUTBUILDING_ORIGIN_X + lintelMidU,
-      lintelMidY,
-      OUTBUILDING_ORIGIN_Z + lintelMidV,
-      0.5
+    const bottomFlange = new THREE.Mesh(
+      new THREE.BoxGeometry(beamDepthU, flangeT, fullBeamSpanV),
+      structuralSteelMat
     );
-    const lintelBeam = new THREE.Mesh(lintelBeamGeo, lightJoineryOakMat);
-    lintelBeam.name = 'outbuildings.barn.golfSimulator.oakLintel.beam';
-    lintelBeam.userData.isArchitecturalShell = true;
-    lintelBeam.castShadow = true;
-    lintelBeam.receiveShadow = true;
-    oakLintelGroup.add(lintelBeam);
+    bottomFlange.name = 'outbuildings.barn.golfSimulator.steelPortalFrame.headerBeam.bottomFlange';
+    bottomFlange.userData.isArchitecturalShell = true;
+    bottomFlange.position.set(beamCenterU, beamBotY + flangeT * 0.5, fullBeamMidV);
+    bottomFlange.castShadow = true;
+    bottomFlange.receiveShadow = true;
+    portalFrameGroup.add(bottomFlange);
 
-    // Traditional chamfered lower arris shadow molding and square oak treenail pegs on the Barn (+x) face
-    const lowerChamfer = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, 0.018, lintelLenV + 0.008),
-      lightJoineryOakMat
+    const topFlange = new THREE.Mesh(
+      new THREE.BoxGeometry(beamDepthU, flangeT, fullBeamSpanV),
+      structuralSteelMat
     );
-    lowerChamfer.name = 'outbuildings.barn.golfSimulator.oakLintel.lowerChamfer';
-    lowerChamfer.userData.lodTier = 'high';
-    lowerChamfer.position.set(lintelDepthU * 0.5 + 0.003, -simOakLintelH * 0.5 + 0.012, 0);
-    oakLintelGroup.add(lowerChamfer);
+    topFlange.name = 'outbuildings.barn.golfSimulator.steelPortalFrame.headerBeam.topFlange';
+    topFlange.userData.isArchitecturalShell = true;
+    topFlange.position.set(beamCenterU, beamTopY - flangeT * 0.5, fullBeamMidV);
+    topFlange.castShadow = true;
+    topFlange.receiveShadow = true;
+    portalFrameGroup.add(topFlange);
 
-    for (const endZ of [-lintelLenV * 0.5 + 0.07, -lintelLenV * 0.5 + 0.12, lintelLenV * 0.5 - 0.12, lintelLenV * 0.5 - 0.07] as const) {
-      for (const pegY of [-0.045, 0.045] as const) {
-        const oakPeg = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.011, 0.011, 0.014, 8),
-          lightJoineryOakMat
-        );
-        oakPeg.name = 'outbuildings.barn.golfSimulator.oakLintel.peg';
-        oakPeg.rotation.z = Math.PI / 2;
-        oakPeg.position.set(lintelDepthU * 0.5 + 0.004, pegY, endZ);
-        oakLintelGroup.add(oakPeg);
+    const webH = beamH - flangeT * 2;
+    const beamWeb = new THREE.Mesh(
+      new THREE.BoxGeometry(0.014, webH, fullBeamSpanV),
+      structuralSteelMat
+    );
+    beamWeb.name = 'outbuildings.barn.golfSimulator.steelPortalFrame.headerBeam.web';
+    beamWeb.userData.isArchitecturalShell = true;
+    beamWeb.position.set(beamCenterU, beamMidY, fullBeamMidV);
+    beamWeb.castShadow = true;
+    beamWeb.receiveShadow = true;
+    portalFrameGroup.add(beamWeb);
+
+    // Welded vertical web stiffener plates + M20 structural hex bolt groups along the Barn (+x) web pocket
+    const stiffenerVs = [0.36, 1.285, 2.10, 2.95, 3.80, 4.60, 5.38] as const;
+    const boltGeo = new THREE.CylinderGeometry(0.009, 0.009, 0.016, 6);
+    boltGeo.rotateZ(Math.PI / 2);
+    for (let sIdx = 0; sIdx < stiffenerVs.length; sIdx++) {
+      const sv = stiffenerVs[sIdx];
+      const stiffener = new THREE.Mesh(
+        new THREE.BoxGeometry(beamDepthU * 0.48, webH, 0.012),
+        structuralSteelMat
+      );
+      stiffener.name = `outbuildings.barn.golfSimulator.steelPortalFrame.headerBeam.webStiffener.${sIdx + 1}`;
+      stiffener.userData.isArchitecturalShell = true;
+      stiffener.position.set(beamCenterU + beamDepthU * 0.24, beamMidY, sv);
+      portalFrameGroup.add(stiffener);
+
+      for (const by of [-0.048, 0.048] as const) {
+        const bolt = new THREE.Mesh(boltGeo, steelBoltMat);
+        bolt.name = `outbuildings.barn.golfSimulator.steelPortalFrame.headerBeam.bolt.${sIdx + 1}`;
+        bolt.userData.lodTier = 'high';
+        bolt.position.set(beamCenterU + beamDepthU * 0.46, beamMidY + by, sv + 0.028);
+        portalFrameGroup.add(bolt);
       }
     }
+
+    // Flush Fire-Rated Plasterboard Web Liner on the Store Loft (-x) side (`u = 14.96..15.075m, y = 2.515..2.720m, v = 1.24..5.428m`)
+    // so the Store Loft East wall (`u = 14.96m`) above the `y = 2.61m` loft deck is a clean plastered wall with no protruding ledge!
+    const linerNorthV = simCutoutVMin + 0.004;
+    const storeLoftWebLiner = new THREE.Mesh(
+      new THREE.BoxGeometry(0.115, beamH, vFrameMax - linerNorthV),
+      warmRoomPlasterMat
+    );
+    storeLoftWebLiner.name = 'outbuildings.storeBarnStudPartition.loftHeaderPlasterLiner';
+    storeLoftWebLiner.userData.isArchitecturalShell = true;
+    storeLoftWebLiner.position.set(
+      uBarnStart + 0.0575,
+      beamMidY,
+      (linerNorthV + vFrameMax) * 0.5
+    );
+    storeLoftWebLiner.castShadow = true;
+    storeLoftWebLiner.receiveShadow = true;
+    portalFrameGroup.add(storeLoftWebLiner);
+
+    // 3. Lightweight Timber-Stud & Acoustic Plasterboard Infill Partition (`outbuildings.storeBarnStudPartition`):
+    //    - Plastered North Corridor South Partition Wall (`outbuildings.store.corridorSouthWall`, `u = 12.315..15.180m, v = 1.240..1.326m, y = -0.34..2.515m`)
+    //      encasing `centerMullionColumn` cleanly and stopping 4mm North of `sideFoamSubstrate.north` (`v = 1.330m`)
+    //      and at `y = beamBotY = 2.515m` so ZERO faces ever Z-fight!
+    const studPartitionGroup = new THREE.Group();
+    studPartitionGroup.name = 'outbuildings.storeBarnStudPartition';
+    studPartitionGroup.userData.zone = 'courtyard';
+    studPartitionGroup.userData.isArchitecturalShell = true;
+    groundGroup.add(studPartitionGroup);
+
+    const corridorWallU0 = uStoreStart + 0.245; // 12.315m (meets Garage/Store East wall)
+    const corridorNorthV = vEastRangeNorth + wallT + 0.002;
+    const corridorWallH = beamBotY - colBotY; // 2.855m (`y = -0.34m .. 2.515m`, flush with underside of UC header beam)
+    const corridorWallMidY = colBotY + corridorWallH * 0.5;
+    const corridorWallSouthFaceV = simCutoutVMin; // 1.330m (meets `portalTrim.north` cleanly with zero gap)
+    const corridorWallT = corridorWallSouthFaceV - corridorSouthV; // 0.086m (`v = 1.240m .. 1.326m`)
+    const corridorWallMidV = (corridorSouthV + corridorWallSouthFaceV) * 0.5; // 1.283m
+
+    // Extend `corridorSouthWall` to `u = 15.18m` (East face of `centerMullionColumn`) and paint in
+    // Farrow & Ball Setting Plaster (`settingPlasterMat`) so the corridor matches the Barn walls all the way down!
+    const corridorSouthFullU1 = frameCenterU + 0.10; // 15.18m
+    const corridorSouthFullLenU = corridorSouthFullU1 - corridorWallU0;
+    const corridorSouthFullMidU = (corridorWallU0 + corridorSouthFullU1) * 0.5;
+    const corridorSouthWall = new THREE.Mesh(
+      new THREE.BoxGeometry(corridorSouthFullLenU, corridorWallH, corridorWallT),
+      settingPlasterMat
+    );
+    corridorSouthWall.name = 'outbuildings.store.corridorSouthWall';
+    corridorSouthWall.userData.isArchitecturalShell = true;
+    corridorSouthWall.position.set(corridorSouthFullMidU, corridorWallMidY, corridorWallMidV);
+    corridorSouthWall.castShadow = true;
+    corridorSouthWall.receiveShadow = true;
+    studPartitionGroup.add(corridorSouthWall);
+
+    // Setting Plaster finish on the West end wall of the North Corridor (`u = 12.313m, v = 0.282..1.240m`)
+    // around the FD30S fire door (`v = 0.38..1.18m, y = -0.34..1.66m`)
+    const westEndNorthPier = new THREE.Mesh(
+      new THREE.BoxGeometry(0.006, corridorWallH, garagePassDoorVMin - corridorNorthV),
+      settingPlasterMat
+    );
+    westEndNorthPier.name = 'outbuildings.store.corridorWestEndWall.northPier';
+    westEndNorthPier.userData.isArchitecturalShell = true;
+    westEndNorthPier.position.set(
+      corridorWallU0,
+      corridorWallMidY,
+      (corridorNorthV + garagePassDoorVMin) * 0.5
+    );
+    studPartitionGroup.add(westEndNorthPier);
+
+    const westEndSouthPier = new THREE.Mesh(
+      new THREE.BoxGeometry(0.006, corridorWallH, corridorSouthV - garagePassDoorVMax),
+      settingPlasterMat
+    );
+    westEndSouthPier.name = 'outbuildings.store.corridorWestEndWall.southPier';
+    westEndSouthPier.userData.isArchitecturalShell = true;
+    westEndSouthPier.position.set(
+      corridorWallU0,
+      corridorWallMidY,
+      (garagePassDoorVMax + corridorSouthV) * 0.5
+    );
+    studPartitionGroup.add(westEndSouthPier);
+
+    const westEndHeaderH = 2.52 - garagePassDoorTopY;
+    const westEndHeader = new THREE.Mesh(
+      new THREE.BoxGeometry(0.006, westEndHeaderH, garagePassDoorVMax - garagePassDoorVMin),
+      settingPlasterMat
+    );
+    westEndHeader.name = 'outbuildings.store.corridorWestEndWall.header';
+    westEndHeader.userData.isArchitecturalShell = true;
+    westEndHeader.position.set(
+      corridorWallU0,
+      garagePassDoorTopY + westEndHeaderH * 0.5,
+      (garagePassDoorVMin + garagePassDoorVMax) * 0.5
+    );
+    studPartitionGroup.add(westEndHeader);
+
+    // Upper Stud & Plasterboard Truss-Infill Gable (`y = 2.92..4.21m`, recessed at `u = 15.025..15.135m`)
+    // Store-Loft side (`-x` warm cream plasterboard `u = 15.025..15.080m`)
+    addInteriorPlasterGableWall(
+      studPartitionGroup,
+      uBarnStart + 0.065,
+      uBarnStart + 0.12,
+      vFrameMin,
+      vFrameMax,
+      barnUpperTopY,
+      barnCeilEaveY,
+      barnCeilRidgeY - 0.04,
+      'outbuildings.storeBarnStudPartition.upperTrussInfill.storePlaster',
+      warmRoomPlasterMat
+    );
+    // Barn side (`+x` Farrow & Ball Setting Plaster plasterboard `u = 15.080..15.135m`)
+    addInteriorPlasterGableWall(
+      studPartitionGroup,
+      uBarnStart + 0.12,
+      uBarnStart + 0.175,
+      vFrameMin,
+      vFrameMax,
+      barnUpperTopY,
+      barnCeilEaveY,
+      barnCeilRidgeY - 0.04,
+      'outbuildings.storeBarnStudPartition.upperTrussInfill.barnPlaster',
+      settingPlasterMat
+    );
   }
-  // Upper exposed-brick courses supported on top of the Oak Lintel (`y = 2.74m .. 2.92m, v = 1.18m .. 5.428m`)
-  addOutbuildingBrickWall(
-    groundGroup,
-    uBarnStart,
-    uBarnStart + 0.24,
-    simOakLintelTopY,
-    barnUpperTopY,
-    simOakLintelVMin,
-    vEastRangeSouth - wallT - 0.002,
-    ['-x'],
-    exteriorBrickMat
-  );
-  addInteriorPlasterGableWall(
-    groundGroup,
-    uBarnStart,
-    uBarnStart + 0.24,
-    vEastRangeNorth + wallT + 0.002,
-    vEastRangeSouth - wallT - 0.002,
-    barnUpperTopY,
-    barnCeilEaveY,
-    barnCeilRidgeY,
-    'outbuildings.storeBarnPartitionGable',
-    exteriorBrickMat
-  );
-  addInteriorPlasterGableWall(
-    groundGroup,
-    uBarnStart - 0.005,
-    uBarnStart + 0.015,
-    vEastRangeNorth + wallT + 0.002,
-    vEastRangeSouth - wallT - 0.002,
-    barnUpperTopY,
-    barnCeilEaveY,
-    barnCeilRidgeY,
-    'outbuildings.storeBarnPartitionGable.storePlaster'
-  );
+
 
   // Build the Recessed Widescreen TrackMan iO Golf Simulator (`outbuildings.barn.golfSimulator`) backing into the Store room
   buildBarnGolfSimulator(
@@ -1593,7 +1733,9 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     barnUpperTopY,
     vEastRangeNorth,
     vEastRangeNorth + wallT,
-    ['+z']
+    ['+z'],
+    exteriorBrickMat,
+    settingPlasterMat
   );
   addOutbuildingBrickWall(
     groundGroup,
@@ -1603,7 +1745,9 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     barnUpperTopY,
     vEastRangeNorth,
     vEastRangeNorth + wallT,
-    ['+z']
+    ['+z'],
+    exteriorBrickMat,
+    settingPlasterMat
   );
   addBoardedBarnDoor(
     groundGroup,
@@ -1624,7 +1768,9 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     barnUpperTopY,
     vEastRangeNorth,
     vEastRangeNorth + wallT,
-    ['+z']
+    ['+z'],
+    exteriorBrickMat,
+    settingPlasterMat
   );
   addOutbuildingBrickWall(
     groundGroup,
@@ -1795,6 +1941,81 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
 
   // Batch 1 Issue #2 ("Small cloakroom toilet here" at `[1.816, -0.44, 18.594]` -> `u = 23.978m, y = -0.44m, v = 4.666m`):
   // Compact Ground-Floor Cloakroom WC in the SW corner of the Stable Ground Floor (`u = 23.22..24.75m, v = 3.94..5.428m`)!
+  // =========================================================================
+  // BUILDING REGULATIONS PASS (Part L Breathable 60mm Wood-Fibre IWI, Part C
+  // Sunken Damp-Proof Cavity Membrane, Part B Interlinked LD2 Fire Alarms,
+  // Part H Boxed 110mm SVP Soil Stack & Part F Extract Ventilation)
+  // =========================================================================
+  {
+    const regsGroup = new THREE.Group();
+    regsGroup.name = 'outbuildings.buildingRegs';
+    regsGroup.userData.zone = 'courtyard';
+    regsGroup.userData.isArchitecturalShell = true;
+    groundGroup.add(regsGroup);
+
+    // 1. Part C (Resistance to Moisture — Sunken East Barn Perimeter Cavity-Drain Damp Membrane & Drainage Channel):
+    //    Because `barnCarpetTopY = -0.675m` sits 335-455mm below external ground level, a Newton 508 Type C drained
+    //    cavity membrane & recessed perimeter inspection channel runs flush along the toe of the North & South baseboards.
+    const dampChannelMat = new THREE.MeshStandardMaterial({
+      color: 0x2a2e34,
+      roughness: 0.55,
+      metalness: 0.45,
+    });
+    for (const [sideTag, vChan] of [
+      ['north', wallT + 0.026],
+      ['south', vEastRangeSouth - wallT - 0.026],
+    ] as const) {
+      const perimeterDrain = new THREE.Mesh(
+        new THREE.BoxGeometry(4.48, 0.006, 0.028),
+        dampChannelMat
+      );
+      perimeterDrain.name = `outbuildings.buildingRegs.partCCavityDrainChannel.${sideTag}`;
+      perimeterDrain.position.set(20.74, barnCarpetTopY + 0.002, vChan);
+      regsGroup.add(perimeterDrain);
+    }
+
+    // 3. Part H (Drainage and Waste Disposal — Boxed 110mm SVP Soil Stack & Internal Durgo AAV in SW Stable Corner):
+    //    Vertically connects the 1st-Floor Stable Ensuite WC (`u = 23.22..25.84m`) through the Ground Cloakroom WC (`u = 23.22..24.75m`).
+    const svpPipe = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.055, 0.055, stableGroundTopY - stableGroundFloorY, 16),
+      dampChannelMat
+    );
+    svpPipe.name = 'outbuildings.buildingRegs.partHSvpSoilStack.groundPipe';
+    svpPipe.position.set(23.34, (stableGroundFloorY + stableGroundTopY) * 0.5, 5.28);
+    regsGroup.add(svpPipe);
+
+    // 4. Part F (Ventilation — 15 L/s Humidity-Controlled Mechanical Extract Fan in Stable Ground Cloakroom WC):
+    const fanBodyMat = new THREE.MeshStandardMaterial({
+      color: 0xf7f5f0,
+      roughness: 0.32,
+      metalness: 0.08,
+    });
+    const cloakExtractFan = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.085, 0.085, 0.018, 20),
+      fanBodyMat
+    );
+    cloakExtractFan.name = 'outbuildings.buildingRegs.partFExtractFan.stableCloakroom';
+    cloakExtractFan.position.set(24.0, stableGroundTopY - 0.01, 4.95);
+    regsGroup.add(cloakExtractFan);
+
+    // 5. Part B (Fire Detection — Interlinked LD2 Grade D1 Optical Smoke & Heat Detectors):
+    for (const [alarmTag, au, ay, av] of [
+      ['gym', 2.85, 2.95, 2.855],
+      ['garageHeat', 8.90, 2.95, 2.855],
+      ['barnWest', 16.80, 3.85, 2.855],
+      ['barnUnderMezzanine', 20.60, mezzanineFloorY - 0.155, 2.45],
+      ['stableGround', 26.80, stableGroundTopY - 0.015, 2.855],
+    ] as const) {
+      const detector = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.054, 0.058, 0.024, 18),
+        fanBodyMat
+      );
+      detector.name = `outbuildings.buildingRegs.fireAlarm.${alarmTag}`;
+      detector.position.set(au, ay, av);
+      regsGroup.add(detector);
+    }
+  }
+
   buildStableGroundCloakroom(
     groundGroup,
     stableGroundFloorY,
@@ -1859,6 +2080,15 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     const dMidV = (vEastDoorV0 + vEastDoorV1) * 0.5; // 2.50m
     const dSpanV = vEastDoorV1 - vEastDoorV0; // 2.70m
     const dSpanH = eastDoorTopY - eastDoorBotY; // 2.08m
+    eastGlassDoorGroup.userData.cutawayWall = {
+      axis: 'x',
+      coord: dMidU,
+      minSpan: vEastDoorV0,
+      maxSpan: vEastDoorV1,
+      floor: 'ground',
+      outwardSide: 'east',
+      includeInFirstFloorCutaway: true,
+    };
     eastGlassDoorGroup.position.set(dMidU, eastDoorBotY, dMidV);
     groundGroup.add(eastGlassDoorGroup);
 
@@ -2019,6 +2249,31 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
         sideSign < 0 ? Math.PI * 0.46 : -Math.PI * 0.46
       );
     }
+
+    // Issues #10 & #11 ("and here" at `[9.297, 0.706, 13.669]` on `outbuildings.groundShell.brickWall.73`
+    // and `[9.673, 0.603, 18.047]` on `outbuildings.groundShell.brickWall.76`):
+    // Architectural Up/Down Exterior Wall Sconce Lights flanking the Stable Ground-Floor East Extension Glazed Door
+    // on the North brick pier (`v = 0.00..1.15m`, centered at `v = 0.58m`) and South brick pier (`v = 3.85..5.71m`, centered at `v = 4.65m`).
+    addOutbuildingExteriorUpDownWallLight(
+      groundGroup,
+      uStableExtEnd,
+      0.72,
+      0.58,
+      'outbuildings.stable.eastWallLight.north',
+      'ground',
+      0.0,
+      vEastDoorV0
+    );
+    addOutbuildingExteriorUpDownWallLight(
+      groundGroup,
+      uStableExtEnd,
+      0.72,
+      4.65,
+      'outbuildings.stable.eastWallLight.south',
+      'ground',
+      vEastDoorV1,
+      vEastRangeSouth
+    );
   }
 
   // Cast-iron rainwater downpipes at Step #1 (`u = 12.14m`) and Step #2 (`u = 23.28m`)
