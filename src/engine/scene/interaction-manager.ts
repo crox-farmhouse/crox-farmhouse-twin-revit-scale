@@ -418,25 +418,36 @@ export class SceneInteractionManager {
     if (!door.basePivotPos) {
       door.basePivotPos = door.pivot.position.clone();
     }
-    const liftFraction = 0.25;
-    const rawLift = Math.min(1, Math.max(0, door.progress / liftFraction));
+    const p = door.progress;
+    const liftEnd = 0.2;
+    const slideEnd = 0.8;
+
+    const rawMatLift = Math.min(1, Math.max(0, p / liftEnd));
     const rawSlide = Math.min(
       1,
-      Math.max(0, (door.progress - liftFraction) / (1 - liftFraction))
+      Math.max(0, (p - liftEnd) / (slideEnd - liftEnd))
     );
-    const liftSmooth = easeInOutCubic(rawLift);
+    const rawTrackLift =
+      p <= liftEnd
+        ? Math.min(1, Math.max(0, p / liftEnd))
+        : p <= slideEnd
+          ? 1
+          : Math.max(0, 1 - (p - slideEnd) / (1 - slideEnd));
+
+    const matLiftSmooth = easeInOutCubic(rawMatLift);
     const slideSmooth = easeInOutCubic(rawSlide);
+    const trackLiftSmooth = easeInOutCubic(rawTrackLift);
     const liftHeightY = 0.036;
     const slideDistanceX = 1.98;
 
     door.pivot.rotation.set(0, 0, 0);
     door.pivot.position.set(
       door.basePivotPos.x - slideSmooth * slideDistanceX,
-      door.basePivotPos.y + liftSmooth * liftHeightY,
+      door.basePivotPos.y + matLiftSmooth * liftHeightY,
       door.basePivotPos.z
     );
 
-    const rollerAngleZ = (slideSmooth * slideDistanceX) / 0.013;
+    const rollerAngleZ = (slideSmooth * slideDistanceX) / 0.009;
     door.pivot.traverse((child) => {
       if (child.userData?.isGolfMatTrackRoller) {
         child.rotation.z = rollerAngleZ;
@@ -449,13 +460,13 @@ export class SceneInteractionManager {
         const u = child.userData;
         if (!u) return;
         if (u.isGolfOutsideTrackLiftGroup) {
-          child.position.y = liftSmooth * liftHeightY;
+          child.position.y = trackLiftSmooth * liftHeightY;
           child.updateMatrixWorld(true);
         } else if (u.isGolfTrackCamLink) {
-          child.rotation.z = liftSmooth * 0.78;
+          child.rotation.z = trackLiftSmooth * 0.78;
           child.updateMatrixWorld(true);
         } else if (u.isGolfTrackLiftLeverPivot) {
-          child.rotation.z = -0.42 + liftSmooth * (0.72 - -0.42);
+          child.rotation.z = -0.46 + trackLiftSmooth * (0.68 - -0.46);
           child.updateMatrixWorld(true);
         }
       });
