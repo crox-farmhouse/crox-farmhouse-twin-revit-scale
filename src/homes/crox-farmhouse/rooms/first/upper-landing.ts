@@ -4,6 +4,38 @@ import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
 
+function ensureNamedAddedChildren(
+  parent: THREE.Object3D,
+  startIdx: number,
+  prefix: string
+): void {
+  let meshCount = 0;
+  let groupCount = 0;
+  for (let i = startIdx; i < parent.children.length; i++) {
+    const child = parent.children[i]!;
+    child.traverse((node) => {
+      if (node instanceof THREE.Mesh) {
+        if (!node.name) {
+          meshCount += 1;
+          node.name = `${prefix}.mesh_${meshCount}`;
+        }
+        const geo = node.geometry as THREE.BufferGeometry | undefined;
+        if (geo && !geo.boundingSphere) {
+          geo.computeBoundingSphere();
+        }
+      } else if (node instanceof THREE.Group && !node.name) {
+        groupCount += 1;
+        node.name = groupCount === 1 && node === child ? prefix : `${prefix}.group_${groupCount}`;
+      }
+    });
+  }
+}
+
+function tagHighLodDetail(mesh: THREE.Mesh): void {
+  mesh.userData.lodTier = 'high';
+  mesh.userData.lodMaxDistance = 12;
+}
+
 /**
  * Main staircase landing (`upperLanding`).
  *
@@ -52,7 +84,7 @@ export function buildUpperLanding(
 
   // Non-Square Polygonal Floor Slab for Main Staircase Landing (wrapping around the X = -17.69m..-15.36m, Z = -2.50m..-0.58m stairwell void,
   // stopping at the z_ew = 2.22m North face of the 0.46m South wall, and extending into the West Cross-Wall cased opening reveal z_ew = 1.232m..2.090m!)
-  buildPolygonalFloorSlab(
+  const landingFloorSlab = buildPolygonalFloorSlab(
     scene,
     [
       [-15.36, -2.5],
@@ -71,6 +103,9 @@ export function buildUpperLanding(
     oakFloorMat,
     0.5
   );
+  landingFloorSlab.name = 'upperLanding.floorSlab';
+  landingFloorSlab.userData.isArchitecturalShell = true;
+  landingFloorSlab.geometry.computeBoundingSphere();
 
   // White Balustrade & Handrail Gallery around the Stairwell Opening on the First Floor Landing (Photos 3 & 4)
   // Issue #8: Extend South gallery handrail & balustrade along Z = -0.58m all the way to the West cross-wall (X = -17.57m..-15.36m)
@@ -81,92 +116,94 @@ export function buildUpperLanding(
   const southRailSpan = southRailEndX - southRailStartX; // 2.21m
   const southRailCenterX = (southRailStartX + southRailEndX) / 2; // -16.465m
 
-  const southGalleryRail = new THREE.Mesh(
-    new THREE.BoxGeometry(southRailSpan, 0.055, 0.065),
-    skirtingMat
-  );
+  const southGalleryRailGeo = new THREE.BoxGeometry(southRailSpan, 0.055, 0.065);
+  southGalleryRailGeo.computeBoundingSphere();
+  const southGalleryRail = new THREE.Mesh(southGalleryRailGeo, skirtingMat);
   southGalleryRail.name = 'upperLanding.southGalleryRail';
   southGalleryRail.position.set(southRailCenterX, floorTopY + 0.88, -0.58);
   southGalleryRail.castShadow = true;
   landingRailGroup.add(southGalleryRail);
 
-  const southGalleryShoeRail = new THREE.Mesh(
-    new THREE.BoxGeometry(southRailSpan, 0.032, 0.052),
-    skirtingMat
-  );
+  const southGalleryShoeRailGeo = new THREE.BoxGeometry(southRailSpan, 0.032, 0.052);
+  southGalleryShoeRailGeo.computeBoundingSphere();
+  const southGalleryShoeRail = new THREE.Mesh(southGalleryShoeRailGeo, skirtingMat);
+  southGalleryShoeRail.name = 'upperLanding.southGalleryShoeRail';
   southGalleryShoeRail.position.set(southRailCenterX, floorTopY + 0.016, -0.58);
   landingRailGroup.add(southGalleryShoeRail);
+
+  // Shared BufferGeometry across all 14 South spindles and 6 East spindles
+  const sharedBalustradeSpindleGeo = new THREE.BoxGeometry(0.032, 0.84, 0.032);
+  sharedBalustradeSpindleGeo.computeBoundingSphere();
 
   const southSpindleCount = 14;
   for (let i = 0; i < southSpindleCount; i++) {
     const gx = THREE.MathUtils.lerp(-17.43, -15.5, i / (southSpindleCount - 1));
-    const spindle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.032, 0.84, 0.032),
-      skirtingMat
-    );
+    const spindle = new THREE.Mesh(sharedBalustradeSpindleGeo, skirtingMat);
+    spindle.name = `upperLanding.balustrade.southSpindle_${i + 1}`;
     spindle.position.set(gx, floorTopY + 0.436, -0.58);
     spindle.castShadow = true;
+    tagHighLodDetail(spindle);
     landingRailGroup.add(spindle);
   }
 
   // West wall half-newel post where the South gallery rail meets the West cross-wall (X = -17.54m, Z = -0.58m)
-  const westWallNewel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.065, 0.96, 0.095),
-    skirtingMat
-  );
+  const westWallNewelGeo = new THREE.BoxGeometry(0.065, 0.96, 0.095);
+  westWallNewelGeo.computeBoundingSphere();
+  const westWallNewel = new THREE.Mesh(westWallNewelGeo, skirtingMat);
   westWallNewel.name = 'upperLanding.westWallNewel';
   westWallNewel.position.set(-17.535, floorTopY + 0.48, -0.58);
   westWallNewel.castShadow = true;
   landingRailGroup.add(westWallNewel);
 
-  const westWallNewelCap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.082, 0.026, 0.112),
-    skirtingMat
-  );
+  const westWallNewelCapGeo = new THREE.BoxGeometry(0.082, 0.026, 0.112);
+  westWallNewelCapGeo.computeBoundingSphere();
+  const westWallNewelCap = new THREE.Mesh(westWallNewelCapGeo, skirtingMat);
+  westWallNewelCap.name = 'upperLanding.westWallNewelCap';
   westWallNewelCap.position.set(-17.535, floorTopY + 0.973, -0.58);
+  tagHighLodDetail(westWallNewelCap);
   landingRailGroup.add(westWallNewelCap);
 
   // East gallery return handrail at X = -15.36m (Z = -1.65m..-0.58m)
-  const eastGalleryRail = new THREE.Mesh(
-    new THREE.BoxGeometry(0.065, 0.055, 1.07),
-    skirtingMat
-  );
+  const eastGalleryRailGeo = new THREE.BoxGeometry(0.065, 0.055, 1.07);
+  eastGalleryRailGeo.computeBoundingSphere();
+  const eastGalleryRail = new THREE.Mesh(eastGalleryRailGeo, skirtingMat);
   eastGalleryRail.name = 'upperLanding.eastGalleryRail';
   eastGalleryRail.position.set(-15.36, floorTopY + 0.88, -1.115);
   eastGalleryRail.castShadow = true;
   landingRailGroup.add(eastGalleryRail);
 
-  const eastGalleryShoeRail = new THREE.Mesh(
-    new THREE.BoxGeometry(0.052, 0.032, 1.07),
-    skirtingMat
-  );
+  const eastGalleryShoeRailGeo = new THREE.BoxGeometry(0.052, 0.032, 1.07);
+  eastGalleryShoeRailGeo.computeBoundingSphere();
+  const eastGalleryShoeRail = new THREE.Mesh(eastGalleryShoeRailGeo, skirtingMat);
+  eastGalleryShoeRail.name = 'upperLanding.eastGalleryShoeRail';
   eastGalleryShoeRail.position.set(-15.36, floorTopY + 0.016, -1.115);
   landingRailGroup.add(eastGalleryShoeRail);
 
+  let eastSpindleIdx = 0;
   for (let gz = -1.52; gz <= -0.72; gz += 0.16) {
-    const spindle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.032, 0.84, 0.032),
-      skirtingMat
-    );
+    eastSpindleIdx += 1;
+    const spindle = new THREE.Mesh(sharedBalustradeSpindleGeo, skirtingMat);
+    spindle.name = `upperLanding.balustrade.eastSpindle_${eastSpindleIdx}`;
     spindle.position.set(-15.36, floorTopY + 0.436, gz);
     spindle.castShadow = true;
+    tagHighLodDetail(spindle);
     landingRailGroup.add(spindle);
   }
 
-  const cornerNewel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.095, 0.96, 0.095),
-    skirtingMat
-  );
+  const cornerNewelGeo = new THREE.BoxGeometry(0.095, 0.96, 0.095);
+  cornerNewelGeo.computeBoundingSphere();
+  const cornerNewel = new THREE.Mesh(cornerNewelGeo, skirtingMat);
   cornerNewel.name = 'upperLanding.cornerNewel';
   cornerNewel.position.set(-15.36, floorTopY + 0.48, -0.58);
   cornerNewel.castShadow = true;
   landingRailGroup.add(cornerNewel);
 
-  const cornerNewelCap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.114, 0.026, 0.114),
-    skirtingMat
-  );
+  const cornerNewelCapGeo = new THREE.BoxGeometry(0.114, 0.026, 0.114);
+  cornerNewelCapGeo.computeBoundingSphere();
+  const cornerNewelCap = new THREE.Mesh(cornerNewelCapGeo, skirtingMat);
+  cornerNewelCap.name = 'upperLanding.cornerNewelCap';
   cornerNewelCap.position.set(-15.36, floorTopY + 0.973, -0.58);
+  tagHighLodDetail(cornerNewelCap);
   landingRailGroup.add(cornerNewelCap);
 
   scene.add(landingRailGroup);
@@ -188,6 +225,7 @@ export function buildUpperLanding(
 
     const northBrickGeo = new THREE.BoxGeometry(northW, northH, 0.28);
     applyWorldSpaceBrickUVs(northBrickGeo, northCx, northCy, northCz);
+    northBrickGeo.computeBoundingSphere();
     const northWallMats: THREE.Material[] = [
       exteriorBrickMat,
       exteriorBrickMat,
@@ -204,10 +242,10 @@ export function buildUpperLanding(
     tagUpperCutawayWall(northBrickWall, northCutawayDescriptor);
     scene.add(northBrickWall);
 
-    const northWallCap = new THREE.Mesh(
-      new THREE.BoxGeometry(northW - 0.012, 0.016, 0.268),
-      wallCapMat
-    );
+    const northWallCapGeo = new THREE.BoxGeometry(northW - 0.012, 0.016, 0.268);
+    northWallCapGeo.computeBoundingSphere();
+    const northWallCap = new THREE.Mesh(northWallCapGeo, wallCapMat);
+    northWallCap.name = 'upperLanding.northSolidBrickWall.cap';
     northWallCap.position.set(northCx, upperWallTopY - 0.006, northCz);
     tagUpperCutawayWall(northWallCap, northCutawayDescriptor);
     scene.add(northWallCap);
@@ -222,6 +260,7 @@ export function buildUpperLanding(
     const lowerBrickCy = (lowerBrickBottomY + lowerBrickTopY) / 2;
     const northInteriorBrickGeo = new THREE.BoxGeometry(lowerBrickW, lowerBrickH, 0.012);
     applyWorldSpaceBrickUVs(northInteriorBrickGeo, lowerBrickCx, lowerBrickCy, -2.496);
+    northInteriorBrickGeo.computeBoundingSphere();
     const northInteriorBrickPanel = new THREE.Mesh(
       northInteriorBrickGeo,
       exteriorBrickMat
@@ -234,8 +273,10 @@ export function buildUpperLanding(
 
     // Horizontal Stepped Natural Oak Timber Beam & Framing going across the middle of the North wall
     // (Y = floorTopY + 1.05m = 3.21m, X = -17.48m..-13.05m, Z = -2.478m — Wooden beams like downstairs!)
+    const northWallMidBeamGeo = new THREE.BoxGeometry(lowerBrickW, 0.14, 0.058);
+    northWallMidBeamGeo.computeBoundingSphere();
     const northWallMidBeam = new THREE.Mesh(
-      new THREE.BoxGeometry(lowerBrickW, 0.14, 0.058),
+      northWallMidBeamGeo,
       darkTimberBeamMat
     );
     northWallMidBeam.name = 'upperLanding.northWallMiddleBeam';
@@ -246,19 +287,24 @@ export function buildUpperLanding(
     scene.add(northWallMidBeam);
 
     // Projecting stepped oak moulding fillet along the middle of `northWallMiddleBeam` (matching `hall.fireplaceBeam.midMoulding` downstairs)
+    const northWallMidBeamMouldingGeo = new THREE.BoxGeometry(lowerBrickW + 0.01, 0.036, 0.072);
+    northWallMidBeamMouldingGeo.computeBoundingSphere();
     const northWallMidBeamMoulding = new THREE.Mesh(
-      new THREE.BoxGeometry(lowerBrickW + 0.01, 0.036, 0.072),
+      northWallMidBeamMouldingGeo,
       antiqueOakSkirtingMat
     );
     northWallMidBeamMoulding.name = 'upperLanding.northWallMiddleBeam.moulding';
     northWallMidBeamMoulding.position.set(lowerBrickCx, floorTopY + 1.05, -2.471);
     northWallMidBeamMoulding.castShadow = true;
+    tagHighLodDetail(northWallMidBeamMoulding);
     tagUpperCutawayWall(northWallMidBeamMoulding, northCutawayDescriptor);
     scene.add(northWallMidBeamMoulding);
 
     // Upper Natural Oak Eaves Wall-Plate Beam along the top of the North wall (Y = upperWallTopY - 0.06m = 4.10m)
+    const northWallTopPlateBeamGeo = new THREE.BoxGeometry(lowerBrickW, 0.12, 0.058);
+    northWallTopPlateBeamGeo.computeBoundingSphere();
     const northWallTopPlateBeam = new THREE.Mesh(
-      new THREE.BoxGeometry(lowerBrickW, 0.12, 0.058),
+      northWallTopPlateBeamGeo,
       darkTimberBeamMat
     );
     northWallTopPlateBeam.name = 'upperLanding.northWallTopPlateBeam';
@@ -268,6 +314,17 @@ export function buildUpperLanding(
     tagUpperCutawayWall(northWallTopPlateBeam, northCutawayDescriptor);
     scene.add(northWallTopPlateBeam);
 
+    // Shared BufferGeometries for the 3 lower and 3 upper vertical natural oak wall posts
+    const lowerPostH = (floorTopY + 0.98) - (floorTopY + 0.146);
+    const sharedLowerPostGeo = new THREE.BoxGeometry(0.115, lowerPostH, 0.052);
+    sharedLowerPostGeo.computeBoundingSphere();
+
+    const upperPostBottomY = floorTopY + 1.12;
+    const upperPostTopY = upperWallTopY - 0.12;
+    const upperPostH = upperPostTopY - upperPostBottomY;
+    const sharedUpperPostGeo = new THREE.BoxGeometry(0.115, upperPostH, 0.052);
+    sharedUpperPostGeo.computeBoundingSphere();
+
     // Vertical Natural Oak Wall Posts / Studs framing the North wall (West corner, Stairwell Newel alignment at X = -15.38m, and East Chimney Breast corner)
     for (const [postIdx, postX] of [
       [1, -17.42],
@@ -275,11 +332,7 @@ export function buildUpperLanding(
       [3, -13.38],
     ] as const) {
       // Lower oak post across the exposed brick panel (between oak stringer and middle beam)
-      const lowerPostH = (floorTopY + 0.98) - (floorTopY + 0.146);
-      const lowerPost = new THREE.Mesh(
-        new THREE.BoxGeometry(0.115, lowerPostH, 0.052),
-        darkTimberBeamMat
-      );
+      const lowerPost = new THREE.Mesh(sharedLowerPostGeo, darkTimberBeamMat);
       lowerPost.name = `upperLanding.northWallPost.lower.${postIdx}`;
       lowerPost.position.set(
         postX,
@@ -292,13 +345,7 @@ export function buildUpperLanding(
       scene.add(lowerPost);
 
       // Upper oak post between the middle beam and the eaves wall-plate beam
-      const upperPostBottomY = floorTopY + 1.12;
-      const upperPostTopY = upperWallTopY - 0.12;
-      const upperPostH = upperPostTopY - upperPostBottomY;
-      const upperPost = new THREE.Mesh(
-        new THREE.BoxGeometry(0.115, upperPostH, 0.052),
-        darkTimberBeamMat
-      );
+      const upperPost = new THREE.Mesh(sharedUpperPostGeo, darkTimberBeamMat);
       upperPost.name = `upperLanding.northWallPost.upper.${postIdx}`;
       upperPost.position.set(
         postX,
@@ -312,8 +359,10 @@ export function buildUpperLanding(
     }
 
     // Diagonal Natural Oak Timber Brace in the upper North wall bay above the stairwell
+    const northWallDiagonalBraceGeo = new THREE.BoxGeometry(0.11, 1.08, 0.048);
+    northWallDiagonalBraceGeo.computeBoundingSphere();
     const northWallDiagonalBrace = new THREE.Mesh(
-      new THREE.BoxGeometry(0.11, 1.08, 0.048),
+      northWallDiagonalBraceGeo,
       darkTimberBeamMat
     );
     northWallDiagonalBrace.name = 'upperLanding.northWallDiagonalBrace';
@@ -327,27 +376,30 @@ export function buildUpperLanding(
   // Issues #4, #6 & #11: Continuous 0.46m-thick South Wall of Main Stair Landing (Z = +2.22m..+2.68m, X = -17.80m..-12.93m)
   // Stops at `x_ew = -12.93m` inside the East cross-wall (`x_ew = -13.05m..-12.81m`) so its `+X` brick end face never Z-fights
   // with the East face of the cross-wall at `x_ew = -12.81m` (Issue #11)!
-  addUpperBrickWallAlongXWithWindow(
-    -17.8,
-    -12.93,
-    2.22,
-    2.68,
-    -15.35,
-    1.16,
-    3.02,
-    3.78,
-    'north',
-    3,
-    { skirtingMin: -17.788, skirtingMax: -13.072 }
-  );
+  {
+    const idx = scene.children.length;
+    addUpperBrickWallAlongXWithWindow(
+      -17.8,
+      -12.93,
+      2.22,
+      2.68,
+      -15.35,
+      1.16,
+      3.02,
+      3.78,
+      'north',
+      3,
+      { skirtingMin: -17.788, skirtingMax: -13.072 }
+    );
+    ensureNamedAddedChildren(scene, idx, 'upperLanding.southExteriorWall');
+  }
 
   // Top interior plaster frieze strip (`Y = 4.15m..4.225m, Z = 2.22m..2.45m`) sealing the inner face (`Z = 2.22m`)
   // of the 0.46m-thick Upper Landing South wall up to `eastWing.vaultedCeiling.southSkeiling` (Issue #9)
   {
-    const southTopFrieze = new THREE.Mesh(
-      new THREE.BoxGeometry(-12.93 - -17.8, 0.075, 0.23),
-      warmRoomPlasterMat
-    );
+    const southTopFriezeGeo = new THREE.BoxGeometry(-12.93 - -17.8, 0.075, 0.23);
+    southTopFriezeGeo.computeBoundingSphere();
+    const southTopFrieze = new THREE.Mesh(southTopFriezeGeo, warmRoomPlasterMat);
     southTopFrieze.name = 'upperLanding.southWallTopFrieze';
     southTopFrieze.userData.isArchitecturalShell = true;
     southTopFrieze.position.set((-17.8 + -12.93) / 2, upperWallTopY + 0.0275, 2.335);
@@ -377,6 +429,7 @@ export function buildUpperLanding(
     });
     southCladGeo.rotateX(-Math.PI / 2);
     southCladGeo.translate(0, floorBaseY, 0);
+    southCladGeo.computeBoundingSphere();
     const southCorridorClad = new THREE.Mesh(southCladGeo, warmRoomPlasterMat);
     southCorridorClad.name = 'upperLanding.southWallCorridorCladding';
     southCorridorClad.userData.isArchitecturalShell = true;
@@ -427,12 +480,63 @@ export function buildUpperLanding(
     const topBarrelY = legClearanceY + bodyHeight - 0.042;
     const botBarrelY = legClearanceY + 0.042;
 
+    // Shared BufferGeometries for radiator components
+    const collectorBarrelGeo = new THREE.CylinderGeometry(
+      0.024,
+      0.024,
+      totalWidth + 0.05,
+      12
+    );
+    collectorBarrelGeo.computeBoundingSphere();
+
+    const sectionCrownGeo = new THREE.BoxGeometry(0.042, 0.052, 0.142);
+    sectionCrownGeo.computeBoundingSphere();
+
+    const colTubeGeo = new THREE.CylinderGeometry(
+      0.0115,
+      0.0115,
+      bodyHeight - 0.03,
+      10
+    );
+    colTubeGeo.computeBoundingSphere();
+
+    const footLegGeo = new THREE.BoxGeometry(
+      0.036,
+      legClearanceY + 0.025,
+      0.032
+    );
+    footLegGeo.computeBoundingSphere();
+
+    const footPadGeo = new THREE.BoxGeometry(0.044, 0.014, 0.046);
+    footPadGeo.computeBoundingSphere();
+
+    const wallStayGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.11, 8);
+    wallStayGeo.computeBoundingSphere();
+
+    const riserPipeGeo = new THREE.CylinderGeometry(
+      0.008,
+      0.008,
+      botBarrelY + 0.02,
+      10
+    );
+    riserPipeGeo.computeBoundingSphere();
+
+    const floorCollarGeo = new THREE.CylinderGeometry(0.022, 0.024, 0.012, 12);
+    floorCollarGeo.computeBoundingSphere();
+
+    const valveBodyGeo = new THREE.BoxGeometry(0.055, 0.036, 0.036);
+    valveBodyGeo.computeBoundingSphere();
+
+    const wheelHeadGeo = new THREE.CylinderGeometry(0.018, 0.014, 0.042, 10);
+    wheelHeadGeo.computeBoundingSphere();
+
     // Top & bottom horizontal cast-iron water collector barrels connecting all sections
-    for (const barrelY of [botBarrelY, topBarrelY]) {
-      const collectorBarrel = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.024, 0.024, totalWidth + 0.05, 12),
-        castIronMat
-      );
+    for (const [barrelKey, barrelY] of [
+      ['bottomBarrel', botBarrelY],
+      ['topBarrel', topBarrelY],
+    ] as const) {
+      const collectorBarrel = new THREE.Mesh(collectorBarrelGeo, castIronMat);
+      collectorBarrel.name = `upperLanding.southCastIronRadiator.${barrelKey}`;
       collectorBarrel.rotation.z = Math.PI / 2;
       collectorBarrel.position.set(0, barrelY, 0);
       collectorBarrel.castShadow = true;
@@ -441,98 +545,102 @@ export function buildUpperLanding(
     }
 
     // Individual 4-column cast-iron sections with integral splayed feet on the outer & center support sections
-    const colZOffsets = [-0.051, -0.017, 0.017, 0.051];
+    const colZOffsets = [-0.051, -0.017, 0.017, 0.051] as const;
     for (let i = 0; i < numSections; i++) {
       const sx = -totalWidth / 2 + i * sectionPitch;
       const isFootSection = i === 0 || i === numSections - 1;
 
       // Top and bottom cast manifold crowns for this section
-      for (const crownY of [botBarrelY, topBarrelY]) {
-        const crown = new THREE.Mesh(
-          new THREE.BoxGeometry(0.042, 0.052, 0.142),
-          castIronMat
-        );
+      for (const [crownKey, crownY] of [
+        ['bottomCrown', botBarrelY],
+        ['topCrown', topBarrelY],
+      ] as const) {
+        const crown = new THREE.Mesh(sectionCrownGeo, castIronMat);
+        crown.name = `upperLanding.southCastIronRadiator.section_${i + 1}.${crownKey}`;
         crown.position.set(sx, crownY, 0);
         crown.castShadow = true;
         crown.receiveShadow = true;
+        tagHighLodDetail(crown);
         radiatorGroup.add(crown);
       }
 
       // 4 vertical cast-iron tube columns per section
-      for (const cz of colZOffsets) {
-        const colTube = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.0115, 0.0115, bodyHeight - 0.03, 10),
-          castIronMat
-        );
+      for (let colIdx = 0; colIdx < colZOffsets.length; colIdx++) {
+        const cz = colZOffsets[colIdx]!;
+        const colTube = new THREE.Mesh(colTubeGeo, castIronMat);
+        colTube.name = `upperLanding.southCastIronRadiator.section_${i + 1}.column_${colIdx + 1}`;
         colTube.position.set(sx, bodyCenterY, cz);
         colTube.castShadow = true;
         colTube.receiveShadow = true;
+        tagHighLodDetail(colTube);
         radiatorGroup.add(colTube);
       }
 
       // Integral splayed cast-iron feet resting directly on the landing carpet at the outer sections
       if (isFootSection) {
-        for (const fzSign of [-1, 1]) {
-          const footLeg = new THREE.Mesh(
-            new THREE.BoxGeometry(0.036, legClearanceY + 0.025, 0.032),
-            castIronMat
-          );
+        for (const [fzKey, fzSign] of [
+          ['north', -1],
+          ['south', 1],
+        ] as const) {
+          const footLeg = new THREE.Mesh(footLegGeo, castIronMat);
+          footLeg.name = `upperLanding.southCastIronRadiator.section_${i + 1}.footLeg_${fzKey}`;
           footLeg.position.set(sx, (legClearanceY + 0.025) / 2, fzSign * 0.054);
           footLeg.rotation.x = fzSign * 0.12;
           footLeg.castShadow = true;
+          tagHighLodDetail(footLeg);
           radiatorGroup.add(footLeg);
 
-          const footPad = new THREE.Mesh(
-            new THREE.BoxGeometry(0.044, 0.014, 0.046),
-            castIronMat
-          );
+          const footPad = new THREE.Mesh(footPadGeo, castIronMat);
+          footPad.name = `upperLanding.southCastIronRadiator.section_${i + 1}.footPad_${fzKey}`;
           footPad.position.set(sx, 0.007, fzSign * 0.06);
+          tagHighLodDetail(footPad);
           radiatorGroup.add(footPad);
         }
       }
     }
 
     // Cast-iron wall stays anchoring the radiator back into the thick South wall (Z = 2.22m -> local Z = +0.11m)
-    for (const stayX of [-totalWidth / 2 + sectionPitch * 2, totalWidth / 2 - sectionPitch * 2]) {
-      const wallStay = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.006, 0.006, 0.11, 8),
-        castIronMat
-      );
+    for (const [stayKey, stayX] of [
+      ['west', -totalWidth / 2 + sectionPitch * 2],
+      ['east', totalWidth / 2 - sectionPitch * 2],
+    ] as const) {
+      const wallStay = new THREE.Mesh(wallStayGeo, castIronMat);
+      wallStay.name = `upperLanding.southCastIronRadiator.wallStay_${stayKey}`;
       wallStay.rotation.x = Math.PI / 2;
       wallStay.position.set(stayX, topBarrelY, 0.055);
+      tagHighLodDetail(wallStay);
       radiatorGroup.add(wallStay);
     }
 
     // Traditional aged-brass TRV & lockshield valves + vertical copper/brass riser pipes from the floor
-    for (const sideSign of [-1, 1]) {
+    for (const [sideKey, sideSign] of [
+      ['west', -1],
+      ['east', 1],
+    ] as const) {
       const valveX = sideSign * (totalWidth / 2 + 0.055);
-      const riserPipe = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.008, 0.008, botBarrelY + 0.02, 10),
-        radiatorBrassMat
-      );
+      const riserPipe = new THREE.Mesh(riserPipeGeo, radiatorBrassMat);
+      riserPipe.name = `upperLanding.southCastIronRadiator.riserPipe_${sideKey}`;
       riserPipe.position.set(valveX, (botBarrelY + 0.02) / 2, 0);
       riserPipe.castShadow = true;
+      tagHighLodDetail(riserPipe);
       radiatorGroup.add(riserPipe);
 
-      const floorCollar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.022, 0.024, 0.012, 12),
-        radiatorBrassMat
-      );
+      const floorCollar = new THREE.Mesh(floorCollarGeo, radiatorBrassMat);
+      floorCollar.name = `upperLanding.southCastIronRadiator.floorCollar_${sideKey}`;
       floorCollar.position.set(valveX, 0.006, 0);
+      tagHighLodDetail(floorCollar);
       radiatorGroup.add(floorCollar);
 
-      const valveBody = new THREE.Mesh(
-        new THREE.BoxGeometry(0.055, 0.036, 0.036),
-        radiatorBrassMat
-      );
+      const valveBody = new THREE.Mesh(valveBodyGeo, radiatorBrassMat);
+      valveBody.name = `upperLanding.southCastIronRadiator.valveBody_${sideKey}`;
       valveBody.position.set(valveX - sideSign * 0.012, botBarrelY, 0);
+      tagHighLodDetail(valveBody);
       radiatorGroup.add(valveBody);
 
-      const wheelHead = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.018, 0.014, 0.042, 10),
-        radiatorBrassMat
-      );
+      const wheelHead = new THREE.Mesh(wheelHeadGeo, radiatorBrassMat);
+      wheelHead.name = `upperLanding.southCastIronRadiator.wheelHead_${sideKey}`;
       wheelHead.position.set(valveX, botBarrelY + 0.035, 0);
+      tagHighLodDetail(wheelHead);
       radiatorGroup.add(wheelHead);
     }
 
@@ -615,12 +723,12 @@ export function buildUpperLanding(
         ringPts.push(sampleRingPoint(t, ip));
       }
       for (let ip = 0; ip <= segProfile; ip++) {
-        const [px, pz] = ringPts[ip];
+        const [px, pz] = ringPts[ip]!;
         positions.push(px, y, pz);
         uvs.push((ip / segProfile) * 2.2, t * 1.6);
 
-        const prev = ringPts[Math.max(0, ip - 1)];
-        const next = ringPts[Math.min(segProfile, ip + 1)];
+        const prev = ringPts[Math.max(0, ip - 1)]!;
+        const next = ringPts[Math.min(segProfile, ip + 1)]!;
         const tx = next[0] - prev[0];
         const tz = next[1] - prev[1];
         const len = Math.hypot(tx, tz) || 1;
@@ -668,6 +776,7 @@ export function buildUpperLanding(
     );
     chimneyGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     chimneyGeo.setIndex(indices);
+    chimneyGeo.computeBoundingSphere();
 
     const chimneyMesh = new THREE.Mesh(chimneyGeo, warmRoomPlasterMat);
     chimneyMesh.name = 'upperLanding.eastChimneyBreast';
@@ -691,8 +800,8 @@ export function buildUpperLanding(
         basePts.push(sampleRingPoint(0, ip));
       }
       const outPts: Array<[number, number]> = basePts.map(([px, pz], ip) => {
-        const prev = basePts[Math.max(0, ip - 1)];
-        const next = basePts[Math.min(segProfile, ip + 1)];
+        const prev = basePts[Math.max(0, ip - 1)]!;
+        const next = basePts[Math.min(segProfile, ip + 1)]!;
         const tx = next[0] - prev[0];
         const tz = next[1] - prev[1];
         const len = Math.hypot(tx, tz) || 1;
@@ -705,7 +814,7 @@ export function buildUpperLanding(
       for (let iy = 0; iy <= 1; iy++) {
         const y = iy === 0 ? y0 : y1;
         for (let ip = 0; ip <= segProfile; ip++) {
-          const [ox, oz] = outPts[ip];
+          const [ox, oz] = outPts[ip]!;
           bandPos.push(ox, y, oz);
           bandUvs.push((ip / segProfile) * 2.2, iy * 0.15);
         }
@@ -721,8 +830,8 @@ export function buildUpperLanding(
       // Top ledge cap connecting outPts back to the chimney breast basePts at y1
       const topStart = bandPos.length / 3;
       for (let ip = 0; ip <= segProfile; ip++) {
-        const [bx, bz] = basePts[ip];
-        const [ox, oz] = outPts[ip];
+        const [bx, bz] = basePts[ip]!;
+        const [ox, oz] = outPts[ip]!;
         bandPos.push(bx, y1, bz, ox, y1, oz);
         bandUvs.push((ip / segProfile) * 2.2, 0, (ip / segProfile) * 2.2, 0.04);
       }
@@ -739,6 +848,7 @@ export function buildUpperLanding(
       geo.setAttribute('uv', new THREE.Float32BufferAttribute(bandUvs, 2));
       geo.setIndex(bandIdx);
       geo.computeVertexNormals();
+      geo.computeBoundingSphere();
       const mesh = new THREE.Mesh(geo, antiqueOakSkirtingMat);
       mesh.name = name;
       mesh.userData.isArchitecturalShell = true;
@@ -770,6 +880,7 @@ export function buildUpperLanding(
   // (0.24m thick, [-17.55, -2.50] -> [-17.92, +2.68] — aligned with Ground Floor Hall/Front Room cross-wall,
   // with the cased UP entrance opening `upperLandingToWestWingPortal` at the South end `uCenter = 4.18m, width = 0.86m`!)
   // Uses `skipWallBody: true` and `skipCap: true` so the entire vaulted wall from `Y = 2.06m` to `Y = 4.52m` is built as a single seamless one-piece mesh below (Issues #3 & #6)!
+  const crossWallStartIdx = scene.children.length;
   const upperLandingCrossWallFrame = buildAngledWallSegment(scene, interactions, {
     start: [-17.55, -2.5],
     end: [-17.92, 2.68],
@@ -801,6 +912,7 @@ export function buildUpperLanding(
       },
     ],
   });
+  ensureNamedAddedChildren(scene, crossWallStartIdx, 'upperLanding.westCrossWall');
 
   // Issues #3 & #6: Single One-Piece Full-Height Vaulted West Cross-Wall (`Y = floorBaseY..collarCeilingY`, `u = 0..5.2098m`)
   // Eliminates the horizontal split/cap seam at `Y = 4.16m` (Issue #6) and miters the South end at `z_ew = 2.688m` (Issue #3)!
@@ -848,6 +960,7 @@ export function buildUpperLanding(
     posAttr.needsUpdate = true;
     if (uvAttr) uvAttr.needsUpdate = true;
     westGableGeo.computeVertexNormals();
+    westGableGeo.computeBoundingSphere();
 
     const westUpperGable = new THREE.Mesh(westGableGeo, warmRoomPlasterMat);
     westUpperGable.name = 'upperLanding.westWallUpperGable';
@@ -869,8 +982,10 @@ export function buildUpperLanding(
   // Exposed Natural Seasoned Oak Timber Wall Framing on the West Landing Wall (media_1790502987279.webp):
   // - Horizontal natural oak timber beam with stepped moulding across the middle of the wall (`Y = 3.24m`)
   // - Diagonal natural oak timber brace rising from the horizontal beam up to the ceiling (`u = 1.35m, Y = 4.44m`)
+  const westWallTimberHeadBeamGeo = new THREE.BoxGeometry(3.69, 0.14, 0.055);
+  westWallTimberHeadBeamGeo.computeBoundingSphere();
   const westWallTimberHeadBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(3.69, 0.14, 0.055),
+    westWallTimberHeadBeamGeo,
     darkTimberBeamMat
   );
   westWallTimberHeadBeam.name = 'upperLanding.westWallTimberBeam';
@@ -889,8 +1004,10 @@ export function buildUpperLanding(
   });
   scene.add(westWallTimberHeadBeam);
 
+  const westWallTimberHeadMouldingGeo = new THREE.BoxGeometry(3.7, 0.036, 0.068);
+  westWallTimberHeadMouldingGeo.computeBoundingSphere();
   const westWallTimberHeadMoulding = new THREE.Mesh(
-    new THREE.BoxGeometry(3.7, 0.036, 0.068),
+    westWallTimberHeadMouldingGeo,
     antiqueOakSkirtingMat
   );
   westWallTimberHeadMoulding.name = 'upperLanding.westWallTimberBeam.moulding';
@@ -899,6 +1016,7 @@ export function buildUpperLanding(
   );
   westWallTimberHeadMoulding.rotation.y = upperLandingCrossWallFrame.rotationY;
   westWallTimberHeadMoulding.castShadow = true;
+  tagHighLodDetail(westWallTimberHeadMoulding);
   tagUpperCutawayWall(westWallTimberHeadMoulding, {
     axis: 'x',
     coord: -17.72,
@@ -908,8 +1026,10 @@ export function buildUpperLanding(
   });
   scene.add(westWallTimberHeadMoulding);
 
+  const westWallDiagonalBraceGeo = new THREE.BoxGeometry(0.13, 1.24, 0.052);
+  westWallDiagonalBraceGeo.computeBoundingSphere();
   const westWallDiagonalBrace = new THREE.Mesh(
-    new THREE.BoxGeometry(0.13, 1.24, 0.052),
+    westWallDiagonalBraceGeo,
     darkTimberBeamMat
   );
   westWallDiagonalBrace.name = 'upperLanding.westWallDiagonalBrace';

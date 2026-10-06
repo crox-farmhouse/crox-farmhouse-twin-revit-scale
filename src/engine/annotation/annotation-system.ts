@@ -217,107 +217,6 @@ export function extractSceneAnnotationHit(
   };
 }
 
-function createBadgeSpriteTexture(
-  id: number,
-  isSelected: boolean,
-  kind: AnnotationKind = 'pin'
-): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.clearRect(0, 0, 128, 128);
-
-    const baseFill = isSelected
-      ? 'rgba(255, 196, 77, 0.96)'
-      : kind === 'move'
-        ? 'rgba(168, 85, 247, 0.95)'
-        : kind === 'measure'
-          ? 'rgba(14, 165, 233, 0.95)'
-          : 'rgba(235, 77, 61, 0.95)';
-
-    // Outer halo ring
-    ctx.beginPath();
-    ctx.arc(64, 64, 52, 0, Math.PI * 2);
-    ctx.fillStyle = baseFill;
-    ctx.fill();
-    ctx.lineWidth = 7;
-    ctx.strokeStyle = isSelected ? '#ffffff' : '#181a1f';
-    ctx.stroke();
-
-    // Inner dark badge circle
-    ctx.beginPath();
-    ctx.arc(64, 64, 38, 0, Math.PI * 2);
-    ctx.fillStyle = isSelected ? '#1d222b' : '#181a20';
-    ctx.fill();
-
-    // Label text
-    ctx.font = 'bold 40px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isSelected ? '#ffd470' : '#ffffff';
-    ctx.fillText(`#${id}`, 64, 66);
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-
-function createPillSpriteTexture(
-  primaryText: string,
-  secondaryText: string,
-  accentHex: string,
-  isSelected: boolean
-): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.clearRect(0, 0, 512, 128);
-
-    const r = 28;
-    const x = 12;
-    const y = 14;
-    const w = 488;
-    const h = 100;
-
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-
-    ctx.fillStyle = 'rgba(18, 21, 27, 0.93)';
-    ctx.fill();
-    ctx.lineWidth = isSelected ? 6 : 4;
-    ctx.strokeStyle = isSelected ? '#ffc44d' : accentHex;
-    ctx.stroke();
-
-    ctx.font = 'bold 34px "SFMono-Regular", Consolas, -apple-system, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isSelected ? '#ffd470' : '#ffffff';
-    ctx.fillText(primaryText, 256, secondaryText ? 48 : 64, 464);
-
-    if (secondaryText) {
-      ctx.font = '600 23px "SFMono-Regular", Consolas, -apple-system, sans-serif';
-      ctx.fillStyle = isSelected ? '#f8dfa1' : '#9ec6e8';
-      ctx.fillText(secondaryText, 256, 86, 464);
-    }
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-
 export function buildAnnotationMarker3D(
   record: SceneAnnotationRecord,
   isSelected: boolean
@@ -325,7 +224,7 @@ export function buildAnnotationMarker3D(
   const kind: AnnotationKind = record.kind ?? 'pin';
 
   // -------------------------------------------------------------------------
-  // 1. MEASUREMENT SPAN MARKER (Start Point A <-> End Point B + Dimension Pill)
+  // 1. MEASUREMENT SPAN MARKER (Start Point A <-> End Point B, HTML tag handles label)
   // -------------------------------------------------------------------------
   if (kind === 'measure' && record.measurement) {
     const m = record.measurement;
@@ -338,10 +237,9 @@ export function buildAnnotationMarker3D(
     const mid = new THREE.Vector3().addVectors(pA, pB).multiplyScalar(0.5);
 
     const spanColor = isSelected ? 0xffc44d : 0x38bdf8;
-    const accentHex = isSelected ? '#ffc44d' : '#38bdf8';
 
     // Endpoint spheres & perpendicular architectural tick rings at A and B
-    const endGeo = new THREE.SphereGeometry(isSelected ? 0.034 : 0.026, 14, 14);
+    const endGeo = new THREE.SphereGeometry(isSelected ? 0.032 : 0.024, 14, 14);
     const endMat = new THREE.MeshBasicMaterial({
       color: spanColor,
       depthTest: false,
@@ -412,32 +310,11 @@ export function buildAnnotationMarker3D(
       markerGroup.add(projLine);
     }
 
-    // Floating Dimension Pill Badge above the midpoint of the span
-    const primaryLabel = m.targetMeasurement?.trim()
-      ? `#${record.id} · ${m.distanceM.toFixed(3)}m → ${m.targetMeasurement.trim()}`
-      : `#${record.id} · ${m.distanceM.toFixed(3)} m (${(m.distanceM * 100).toFixed(1)} cm)`;
-    const [dx, dy, dz] = m.deltaXYZ;
-    const secondaryLabel = `ΔX=${dx.toFixed(2)}  ΔY=${dy.toFixed(2)}  ΔZ=${dz.toFixed(2)}m`;
-
-    const pillMat = new THREE.SpriteMaterial({
-      map: createPillSpriteTexture(primaryLabel, secondaryLabel, accentHex, isSelected),
-      depthTest: false,
-      depthWrite: false,
-      sizeAttenuation: false,
-    });
-    const pillSprite = new THREE.Sprite(pillMat);
-    pillSprite.position.copy(mid).add(new THREE.Vector3(0, 0.14, 0));
-    const pillW = isSelected ? 0.19 : 0.165;
-    pillSprite.scale.set(pillW, pillW * 0.25, 1);
-    pillSprite.renderOrder = 999;
-    pillSprite.userData.annotationId = record.id;
-    markerGroup.add(pillSprite);
-
     return markerGroup;
   }
 
   // -------------------------------------------------------------------------
-  // 2. OBJECT MOVE / ROTATE MARKER (Origin Ghost -> Arrow -> New Center Badge)
+  // 2. OBJECT MOVE / ROTATE MARKER (Origin Ghost -> Arrow, HTML tag handles label)
   // -------------------------------------------------------------------------
   if (kind === 'move' && record.objectTransform) {
     const tf = record.objectTransform;
@@ -456,11 +333,10 @@ export function buildAnnotationMarker3D(
       tf.newWorldCenter[2]
     );
     const moveColor = isSelected ? 0xffc44d : 0xa855f7;
-    const accentHex = isSelected ? '#ffc44d' : '#a855f7';
 
     // Origin ghost ring/sphere at initial position
     const originSphere = new THREE.Mesh(
-      new THREE.SphereGeometry(0.028, 12, 12),
+      new THREE.SphereGeometry(0.026, 12, 12),
       new THREE.MeshBasicMaterial({
         color: 0xc084fc,
         depthTest: false,
@@ -509,9 +385,7 @@ export function buildAnnotationMarker3D(
     }
 
     // 3D circular rotation arc ring around pEnd when the object has been rotated
-    const [dx, dy, dz] = tf.deltaTranslation;
     const [drx, dry, drz] = tf.deltaRotationDeg;
-    const hasMove = moveDist > 0.005;
     const hasRot = Math.hypot(drx, dry, drz) >= 0.5;
 
     if (hasRot) {
@@ -531,36 +405,11 @@ export function buildAnnotationMarker3D(
       markerGroup.add(rotRing);
     }
 
-    // Pill badge at newWorldCenter
-    const tagWord = hasMove && hasRot ? 'MOVE+ROT' : hasRot ? 'ROTATE' : 'MOVE';
-    const primaryLabel = `#${record.id} ${tagWord} · ${tf.targetName}`;
-    const movePart = hasMove
-      ? `Δ[${dx >= 0 ? '+' : ''}${dx.toFixed(2)}, ${dy >= 0 ? '+' : ''}${dy.toFixed(2)}, ${dz >= 0 ? '+' : ''}${dz.toFixed(2)}]m`
-      : '';
-    const rotPart = hasRot
-      ? `ΔRot[${drx >= 0 ? '+' : ''}${drx.toFixed(0)}°, ${dry >= 0 ? '+' : ''}${dry.toFixed(1)}°, ${drz >= 0 ? '+' : ''}${drz.toFixed(0)}°]`
-      : '';
-    const secondaryLabel = [movePart, rotPart].filter(Boolean).join(' · ') || 'Δ[0, 0, 0]m';
-
-    const pillMat = new THREE.SpriteMaterial({
-      map: createPillSpriteTexture(primaryLabel, secondaryLabel, accentHex, isSelected),
-      depthTest: false,
-      depthWrite: false,
-      sizeAttenuation: false,
-    });
-    const pillSprite = new THREE.Sprite(pillMat);
-    pillSprite.position.copy(pEnd).add(new THREE.Vector3(0, 0.24, 0));
-    const pillW = isSelected ? 0.19 : 0.165;
-    pillSprite.scale.set(pillW, pillW * 0.25, 1);
-    pillSprite.renderOrder = 999;
-    pillSprite.userData.annotationId = record.id;
-    markerGroup.add(pillSprite);
-
     return markerGroup;
   }
 
   // -------------------------------------------------------------------------
-  // 3. STANDARD POINT PIN MARKER (#1, #2, ...)
+  // 3. STANDARD POINT PIN MARKER (Subtle surface contact dot + ring; HTML tag renders #id)
   // -------------------------------------------------------------------------
   const markerGroup = new THREE.Group();
   markerGroup.name = `annotationMarker.${record.id}`;
@@ -586,8 +435,8 @@ export function buildAnnotationMarker3D(
 
   const pinColor = isSelected ? 0xffc44d : 0xeb4d3d;
 
-  // Contact sphere right at the exact clicked 3D point
-  const tipGeo = new THREE.SphereGeometry(isSelected ? 0.038 : 0.03, 14, 14);
+  // Compact contact sphere right at the exact clicked 3D point
+  const tipGeo = new THREE.SphereGeometry(isSelected ? 0.026 : 0.02, 14, 14);
   const tipMat = new THREE.MeshBasicMaterial({
     color: pinColor,
   });
@@ -595,14 +444,14 @@ export function buildAnnotationMarker3D(
   tipMesh.userData.annotationId = record.id;
   markerGroup.add(tipMesh);
 
-  // Outer wireframe/ring pulse on surface
-  const ringGeo = new THREE.RingGeometry(0.048, 0.068, 20);
+  // Subtle surface ring around the contact point
+  const ringGeo = new THREE.RingGeometry(0.034, 0.048, 20);
   const ringMat = new THREE.MeshBasicMaterial({
     color: pinColor,
     side: THREE.DoubleSide,
     depthTest: false,
     transparent: true,
-    opacity: isSelected ? 0.95 : 0.75,
+    opacity: isSelected ? 0.92 : 0.72,
   });
   const ringMesh = new THREE.Mesh(ringGeo, ringMat);
   const targetQuat = new THREE.Quaternion().setFromUnitVectors(
@@ -614,40 +463,6 @@ export function buildAnnotationMarker3D(
   ringMesh.renderOrder = 998;
   ringMesh.userData.annotationId = record.id;
   markerGroup.add(ringMesh);
-
-  // Stem extending outward along surface normal + slight upward bias so badge is clearly readable
-  const stemDir = normalVec
-    .clone()
-    .multiplyScalar(0.18)
-    .add(new THREE.Vector3(0, 0.14, 0))
-    .normalize();
-  const stemLen = 0.24;
-  const stemGeo = new THREE.CylinderGeometry(0.006, 0.006, stemLen, 8);
-  const stemMat = new THREE.MeshBasicMaterial({
-    color: pinColor,
-    depthTest: false,
-  });
-  const stemMesh = new THREE.Mesh(stemGeo, stemMat);
-  stemMesh.position.copy(stemDir).multiplyScalar(stemLen * 0.5);
-  stemMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), stemDir);
-  stemMesh.renderOrder = 998;
-  stemMesh.userData.annotationId = record.id;
-  markerGroup.add(stemMesh);
-
-  // Numbered Sprite Badge (#1, #2, ...)
-  const spriteMat = new THREE.SpriteMaterial({
-    map: createBadgeSpriteTexture(record.id, isSelected, 'pin'),
-    depthTest: false,
-    depthWrite: false,
-    sizeAttenuation: false,
-  });
-  const sprite = new THREE.Sprite(spriteMat);
-  sprite.position.copy(stemDir).multiplyScalar(stemLen + 0.04);
-  const badgeScale = isSelected ? 0.052 : 0.044;
-  sprite.scale.set(badgeScale, badgeScale, 1);
-  sprite.renderOrder = 999;
-  sprite.userData.annotationId = record.id;
-  markerGroup.add(sprite);
 
   return markerGroup;
 }
@@ -667,10 +482,9 @@ export function buildLiveMeasurePreview3D(
 
   const pA = new THREE.Vector3(startPoint[0], startPoint[1], startPoint[2]);
   const accentColor = axisSnapLocked ? 0x4ade80 : 0x38bdf8;
-  const accentHex = axisSnapLocked ? '#4ade80' : '#38bdf8';
 
   const startSphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.035, 14, 14),
+    new THREE.SphereGeometry(0.03, 14, 14),
     new THREE.MeshBasicMaterial({
       color: accentColor,
       depthTest: false,
@@ -684,7 +498,7 @@ export function buildLiveMeasurePreview3D(
 
   const pB = new THREE.Vector3(endPoint[0], endPoint[1], endPoint[2]);
   const endSphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.032, 14, 14),
+    new THREE.SphereGeometry(0.028, 14, 14),
     new THREE.MeshBasicMaterial({
       color: 0xffc44d,
       depthTest: false,
@@ -701,7 +515,7 @@ export function buildLiveMeasurePreview3D(
     const spanDir = spanVec.clone().normalize();
 
     const lineMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0075, 0.0075, spanLen, 10),
+      new THREE.CylinderGeometry(0.007, 0.007, spanLen, 10),
       new THREE.MeshBasicMaterial({
         color: accentColor,
         depthTest: false,
@@ -727,24 +541,6 @@ export function buildLiveMeasurePreview3D(
     );
     projLine.renderOrder = 997;
     previewGroup.add(projLine);
-
-    const dx = Math.abs(pB.x - pA.x);
-    const dy = Math.abs(pB.y - pA.y);
-    const dz = Math.abs(pB.z - pA.z);
-    const primaryText = `${spanLen.toFixed(3)} m (${(spanLen * 100).toFixed(1)} cm)${axisSnapLocked ? ' [AXIS SNAP]' : ''}`;
-    const secondaryText = `ΔX=${dx.toFixed(2)}  ΔY=${dy.toFixed(2)}  ΔZ=${dz.toFixed(2)}m · Click to save`;
-
-    const pillMat = new THREE.SpriteMaterial({
-      map: createPillSpriteTexture(primaryText, secondaryText, accentHex, true),
-      depthTest: false,
-      depthWrite: false,
-      sizeAttenuation: false,
-    });
-    const pillSprite = new THREE.Sprite(pillMat);
-    pillSprite.position.copy(mid).add(new THREE.Vector3(0, 0.15, 0));
-    pillSprite.scale.set(0.195, 0.195 * 0.25, 1);
-    pillSprite.renderOrder = 999;
-    previewGroup.add(pillSprite);
   }
 
   return previewGroup;

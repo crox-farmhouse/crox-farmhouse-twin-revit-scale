@@ -59,7 +59,7 @@ export function buildSittingRoom(
     0.08,
     greyRoomCarpetMat,
     0.5
-  );
+  ).name = 'sittingRoom.floor';
 
   // West Exterior Brick Wall & Symmetrical 3-Sided Canted Bay Window of Living Room (Z = +3.70m..+8.39m, centered at Z = +5.92m)
   // Issue #14: Farrow & Ball "Cord" (`farrowAndBallCordMat`) on the Sitting Room interior walls!

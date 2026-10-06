@@ -86,6 +86,7 @@ export function createFirstFloorShellKit(
    * Builds a First Floor structural floor/ceiling slab segment (`Y = 3.00m..3.14m`)
    * with warm plaster on its underside (`-Y`, Ground Floor ceiling) and floor finish on top (`+Y`).
    */
+  let ffSlabSeq = 0;
   const addFirstFloorSlab = (
     minX: number,
     maxX: number,
@@ -125,6 +126,7 @@ export function createFirstFloorShellKit(
       plasterMat,
     ];
     const slab = new THREE.Mesh(geo, mats);
+    slab.name = `firstFloor.slab.${++ffSlabSeq}`;
     slab.position.set(cx, cy, cz);
     slab.castShadow = true;
     slab.receiveShadow = true;
@@ -135,6 +137,7 @@ export function createFirstFloorShellKit(
    * Builds an interior First Floor wall segment (`Y = 3.14m..5.70m`) with a cutaway cap on top
    * and antique oak skirting boards along the floor when `yBottom <= floorTopY + 0.05`.
    */
+  let ffIntWallSeq = 0;
   const addUpperInteriorWall = (
     x: number,
     yBottom: number,
@@ -156,7 +159,9 @@ export function createFirstFloorShellKit(
     const h = yTop - yBottom;
     const cy = (yBottom + yTop) / 2;
 
+    const wallId = `firstFloor.interiorWall.${++ffIntWallSeq}`;
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    mesh.name = wallId;
     mesh.userData.isArchitecturalShell = true;
     mesh.position.set(x, cy, z);
     mesh.castShadow = true;
@@ -168,6 +173,7 @@ export function createFirstFloorShellKit(
         new THREE.BoxGeometry(w + 0.004, 0.025, d + 0.004),
         options?.capMaterial ?? wallCapMat
       );
+      cap.name = `${wallId}.cap`;
       cap.userData.isArchitecturalShell = true;
       cap.position.set(x, upperWallTopY + 0.012, z);
       scene.add(cap);
@@ -193,6 +199,7 @@ export function createFirstFloorShellKit(
               new THREE.BoxGeometry(sW, baseH, skirtT),
               antiqueOakSkirtingMat
             );
+            skirt.name = `${wallId}.skirting.${side < 0 ? "north" : "south"}`;
             skirt.userData.isArchitecturalShell = true;
             skirt.position.set(sCx, effFloorY + baseH / 2, faceZ);
             skirt.castShadow = true;
@@ -203,6 +210,7 @@ export function createFirstFloorShellKit(
               new THREE.BoxGeometry(sW, capH, capT),
               antiqueOakSkirtingMat
             );
+            skirtCap.name = `${wallId}.skirtingCap.${side < 0 ? "north" : "south"}`;
             skirtCap.userData.isArchitecturalShell = true;
             skirtCap.position.set(sCx, effFloorY + baseH + capH / 2, capZ);
             skirtCap.castShadow = true;
@@ -223,6 +231,7 @@ export function createFirstFloorShellKit(
               new THREE.BoxGeometry(skirtT, baseH, sD),
               antiqueOakSkirtingMat
             );
+            skirt.name = `${wallId}.skirting.${side < 0 ? "west" : "east"}`;
             skirt.userData.isArchitecturalShell = true;
             skirt.position.set(faceX, effFloorY + baseH / 2, sCz);
             skirt.castShadow = true;
@@ -233,6 +242,7 @@ export function createFirstFloorShellKit(
               new THREE.BoxGeometry(capT, capH, sD),
               antiqueOakSkirtingMat
             );
+            skirtCap.name = `${wallId}.skirtingCap.${side < 0 ? "west" : "east"}`;
             skirtCap.userData.isArchitecturalShell = true;
             skirtCap.position.set(capX, effFloorY + baseH + capH / 2, sCz);
             skirtCap.castShadow = true;
@@ -268,6 +278,7 @@ export function createFirstFloorShellKit(
     return geo;
   };
 
+  let ffExtSkirtSeq = 0;
   const emitExteriorWallSkirting = (
     minX: number,
     maxX: number,
@@ -310,7 +321,9 @@ export function createFirstFloorShellKit(
     const skirtGeo = isAlongX
       ? new THREE.BoxGeometry(sSpan, baseH, skirtT)
       : shearGeometryAlongZ(new THREE.BoxGeometry(skirtT, baseH, sSpan), slopeXPerZ);
+    const skirtId = `firstFloor.exteriorSkirting.${++ffExtSkirtSeq}`;
     const skirt = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
+    skirt.name = skirtId;
     const sx =
       interiorSide === 'east'
         ? effMaxX + skirtT / 2 - 0.002
@@ -333,6 +346,7 @@ export function createFirstFloorShellKit(
       ? new THREE.BoxGeometry(sSpan, capH, capT)
       : shearGeometryAlongZ(new THREE.BoxGeometry(capT, capH, sSpan), slopeXPerZ);
     const skirtCap = new THREE.Mesh(capGeo, antiqueOakSkirtingMat);
+    skirtCap.name = `${skirtId}.cap`;
     const capSx =
       interiorSide === 'east'
         ? effMaxX + capT / 2 - 0.002
@@ -356,6 +370,7 @@ export function createFirstFloorShellKit(
    * Builds a 0.28m First Floor exterior brick wall segment (`Y = 3.00m..5.70m`) with world-space
    * Imperial Brick UVs on the exterior faces and warm plaster + antique oak skirting on the interior face.
    */
+  let ffExtWallSeq = 0;
   const addUpperExteriorBrickWall = (
     minX: number,
     maxX: number,
@@ -419,7 +434,9 @@ export function createFirstFloorShellKit(
       interiorSide === 'north' ? warmRoomPlasterMat : exteriorBrickMat,
     ];
 
+    const wallId = `firstFloor.exteriorBrickWall.${++ffExtWallSeq}`;
     const brickMesh = new THREE.Mesh(geo, materials);
+    brickMesh.name = wallId;
     brickMesh.position.set(cx, cy, cz);
     brickMesh.castShadow = true;
     brickMesh.receiveShadow = true;
@@ -434,6 +451,7 @@ export function createFirstFloorShellKit(
         ),
         wallCapMat
       );
+      cap.name = `${wallId}.cap`;
       cap.position.set(cx, upperWallTopY - 0.006, cz);
       tagUpperCutawayWall(cap, descriptor);
       scene.add(cap);
@@ -460,6 +478,7 @@ export function createFirstFloorShellKit(
   /**
    * Builds a First Floor exterior brick wall along X (North or South facade) with a Georgian casement window.
    */
+  let ffWinXSeq = 0;
   const addUpperBrickWallAlongXWithWindow = (
     minX: number,
     maxX: number,
@@ -505,9 +524,11 @@ export function createFirstFloorShellKit(
       emitExteriorWallSkirting(minX, maxX, minZ, maxZ, interiorSide, descriptor, options);
     }
 
+    const winId = `firstFloor.windowX.${++ffWinXSeq}`;
     const winH = effHeadY - effSillY;
     const cy = effSillY + winH / 2;
     const winGroup = new THREE.Group();
+    winGroup.name = winId;
     tagUpperCutawayWall(winGroup, descriptor);
 
     const extSignZ = interiorSide === 'south' ? -1 : 1;
@@ -521,6 +542,7 @@ export function createFirstFloorShellKit(
       new THREE.BoxGeometry(winWidth + 0.12, 0.06, sillDepthZ),
       stoneSillMat
     );
+    sillMesh.name = `${winId}.stoneSill`;
     sillMesh.position.set(
       winCenterX,
       effSillY - 0.02,
@@ -536,6 +558,7 @@ export function createFirstFloorShellKit(
         new THREE.BoxGeometry(0.012, winH, intRevealDepthZ),
         warmRoomPlasterMat
       );
+      revealJamb.name = `${winId}.revealJamb.${sideX < 0 ? "left" : "right"}`;
       revealJamb.position.set(
         winCenterX + sideX * (winWidth * 0.5 - 0.005),
         cy,
@@ -548,6 +571,7 @@ export function createFirstFloorShellKit(
       new THREE.BoxGeometry(winWidth, 0.012, intRevealDepthZ),
       warmRoomPlasterMat
     );
+    revealHead.name = `${winId}.revealHead`;
     revealHead.position.set(winCenterX, effHeadY - 0.005, intRevealCenterZ);
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
@@ -556,6 +580,7 @@ export function createFirstFloorShellKit(
       new THREE.BoxGeometry(winWidth + 0.04, 0.024, intRevealDepthZ + 0.028),
       skirtingMat
     );
+    windowBoard.name = `${winId}.windowBoard`;
     windowBoard.position.set(
       winCenterX,
       effSillY + 0.01,
@@ -569,6 +594,7 @@ export function createFirstFloorShellKit(
       new THREE.BoxGeometry(winWidth, 0.05, frameDepth),
       windowFrameMat
     );
+    topRail.name = `${winId}.topRail`;
     topRail.position.set(winCenterX, effHeadY - 0.025, frameZ);
     winGroup.add(topRail);
 
@@ -576,6 +602,7 @@ export function createFirstFloorShellKit(
       new THREE.BoxGeometry(winWidth, 0.05, frameDepth),
       windowFrameMat
     );
+    botRail.name = `${winId}.bottomRail`;
     botRail.position.set(winCenterX, effSillY + 0.025, frameZ);
     winGroup.add(botRail);
 
@@ -585,6 +612,7 @@ export function createFirstFloorShellKit(
         new THREE.BoxGeometry(0.042, winH, frameDepth),
         windowFrameMat
       );
+      mullion.name = `${winId}.mullion.${i + 1}`;
       mullion.position.set(mx, cy, frameZ);
       winGroup.add(mullion);
     }
@@ -593,6 +621,7 @@ export function createFirstFloorShellKit(
       new THREE.BoxGeometry(winWidth, 0.026, frameDepth * 0.7),
       windowFrameMat
     );
+    transBar.name = `${winId}.transomBar`;
     transBar.position.set(winCenterX, effSillY + winH * 0.52, frameZ);
     winGroup.add(transBar);
 
@@ -600,6 +629,7 @@ export function createFirstFloorShellKit(
       new THREE.BoxGeometry(winWidth - 0.06, winH - 0.08, 0.016),
       windowGlassMat
     );
+    glass.name = `${winId}.glass`;
     glass.position.set(winCenterX, cy, frameZ);
     winGroup.add(glass);
 
@@ -609,6 +639,7 @@ export function createFirstFloorShellKit(
   /**
    * Builds a First Floor exterior brick wall along Z (East or West facade) with a Georgian casement window.
    */
+  let ffWinZSeq = 0;
   const addUpperBrickWallAlongZWithWindow = (
     minX: number,
     maxX: number,
@@ -662,9 +693,11 @@ export function createFirstFloorShellKit(
       emitExteriorWallSkirting(minX, maxX, minZ, maxZ, interiorSide, descriptor, options);
     }
 
+    const winId = `firstFloor.windowZ.${++ffWinZSeq}`;
     const winH = effHeadY - effSillY;
     const cy = effSillY + winH / 2;
     const winGroup = new THREE.Group();
+    winGroup.name = winId;
     tagUpperCutawayWall(winGroup, descriptor);
 
     const wallDepthX = maxX - minX;
@@ -678,6 +711,7 @@ export function createFirstFloorShellKit(
       ),
       stoneSillMat
     );
+    sillMesh.name = `${winId}.sill`;
     sillMesh.position.set(
       cx + extSignX * (wallDepthX * 0.23 + 0.022),
       effSillY - 0.02,
@@ -697,6 +731,7 @@ export function createFirstFloorShellKit(
         new THREE.BoxGeometry(intRevealDepthX, winH, 0.012),
         warmRoomPlasterMat
       );
+      revealJamb.name = `${winId}.revealJamb.${sideZ < 0 ? "north" : "south"}`;
       revealJamb.position.set(
         jambCx + intSignX * (wallDepthX * 0.24),
         cy,
@@ -712,6 +747,7 @@ export function createFirstFloorShellKit(
       ),
       warmRoomPlasterMat
     );
+    revealHead.name = `${winId}.revealHead`;
     revealHead.position.set(intRevealCenterX, effHeadY - 0.005, winCenterZ);
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
@@ -723,6 +759,7 @@ export function createFirstFloorShellKit(
       ),
       skirtingMat
     );
+    windowBoard.name = `${winId}.windowBoard`;
     windowBoard.position.set(
       cx + intSignX * (wallDepthX * 0.25 + 0.012),
       effSillY + 0.01,
@@ -739,6 +776,7 @@ export function createFirstFloorShellKit(
       ),
       windowFrameMat
     );
+    topRail.name = `${winId}.topRail`;
     topRail.position.set(cx, effHeadY - 0.025, winCenterZ);
     winGroup.add(topRail);
 
@@ -749,6 +787,7 @@ export function createFirstFloorShellKit(
       ),
       windowFrameMat
     );
+    botRail.name = `${winId}.bottomRail`;
     botRail.position.set(cx, effSillY + 0.025, winCenterZ);
     winGroup.add(botRail);
 
@@ -761,6 +800,7 @@ export function createFirstFloorShellKit(
         new THREE.BoxGeometry(frameDepth, winH, 0.042),
         windowFrameMat
       );
+      mullion.name = `${winId}.mullion.${i + 1}`;
       mullion.position.set(mCx, cy, mz);
       winGroup.add(mullion);
     }
@@ -772,6 +812,7 @@ export function createFirstFloorShellKit(
       ),
       windowFrameMat
     );
+    transBar.name = `${winId}.transomBar`;
     transBar.position.set(cx, effSillY + winH * 0.52, winCenterZ);
     winGroup.add(transBar);
 
@@ -782,6 +823,7 @@ export function createFirstFloorShellKit(
       ),
       windowGlassMat
     );
+    glass.name = `${winId}.glass`;
     glass.position.set(cx, cy, winCenterZ);
     winGroup.add(glass);
 
@@ -1298,6 +1340,7 @@ export function createFirstFloorShellKit(
         new THREE.BoxGeometry(kerbT, kerbH, hearthFrontProj - kerbT),
         blackCastIronMat
       );
+      sideKerb.name = `${fpGroup.name}.hearthFender.side.${sideSign < 0 ? "left" : "right"}`;
       sideKerb.position.set(
         sideSign * (hearthW / 2 - kerbT / 2 + 0.004),
         floorY + kerbH / 2,
@@ -1352,6 +1395,8 @@ export function createFirstFloorShellKit(
           new THREE.BoxGeometry(0.009, jambH - 0.1, 0.005),
           blackCastIronMat
         );
+        reed.name = `${namePrefix}.fireplace.jambReed.${sideSign < 0 ? "left" : "right"}.${rIdx + 2}`;
+        reed.userData.lodTier = 'high';
         reed.position.set(
           jambX + rIdx * 0.022,
           surroundBaseY + 0.075 + (jambH - 0.085) / 2,
@@ -1379,6 +1424,8 @@ export function createFirstFloorShellKit(
       new THREE.BoxGeometry(0.21, 0.068, 0.008),
       blackCastIronMat
     );
+    friezeTablet.name = `${namePrefix}.fireplace.friezeTablet`;
+    friezeTablet.userData.lodTier = 'high';
     friezeTablet.position.set(0, friezeY, frontZ - jambD - 0.003);
     friezeTablet.castShadow = true;
     fpGroup.add(friezeTablet);
@@ -1389,6 +1436,8 @@ export function createFirstFloorShellKit(
         new THREE.BoxGeometry(jambW + 0.006, friezeH + 0.004, 0.006),
         blackCastIronMat
       );
+      bossBlock.name = `${namePrefix}.fireplace.bossBlock.${sideSign < 0 ? "left" : "right"}`;
+      bossBlock.userData.lodTier = 'high';
       bossBlock.position.set(
         sideSign * (openW / 2 + jambW / 2),
         friezeY,
@@ -1400,6 +1449,8 @@ export function createFirstFloorShellKit(
         new THREE.CylinderGeometry(0.026, 0.026, 0.01, 16),
         blackCastIronMat
       );
+      rosette.name = `${namePrefix}.fireplace.rosette.${sideSign < 0 ? "left" : "right"}`;
+      rosette.userData.lodTier = 'high';
       rosette.rotation.x = Math.PI / 2;
       rosette.position.set(
         sideSign * (openW / 2 + jambW / 2),
@@ -1416,6 +1467,7 @@ export function createFirstFloorShellKit(
       new THREE.BoxGeometry(surroundOuterW + 0.036, 0.018, 0.048),
       blackCastIronMat
     );
+    subMantel.name = `${namePrefix}.fireplace.subMantel`;
     subMantel.position.set(0, subMantelY, frontZ - 0.024);
     subMantel.castShadow = true;
     subMantel.receiveShadow = true;
@@ -1456,6 +1508,7 @@ export function createFirstFloorShellKit(
       bevelSize: 0.003,
       bevelSegments: 2,
     });
+    registerPlateGeo.computeBoundingSphere();
     const registerPlate = new THREE.Mesh(registerPlateGeo, blackCastIronMat);
     registerPlate.name = `${namePrefix}.fireplace.registerPlate`;
     registerPlate.position.set(0, surroundBaseY, frontZ - 0.018);
@@ -1491,6 +1544,8 @@ export function createFirstFloorShellKit(
         new THREE.BoxGeometry(0.018, 0.2, 0.018),
         blackCastIronMat
       );
+      standard.name = `${namePrefix}.fireplace.grateStandard.${sideSign < 0 ? "left" : "right"}`;
+      standard.userData.lodTier = 'high';
       standard.position.set(
         sideSign * (grateW / 2 - 0.009),
         surroundBaseY + 0.1,

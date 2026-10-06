@@ -5,6 +5,17 @@ import type { createGroundFloorShellKit } from '../../structure/ground-floor-she
 import type { defineTier2Levels } from '../../structure/tier2-levels.ts';
 import type { buildHallStaircase } from './hall-staircase.ts';
 
+function createSharedGeo<T extends THREE.BufferGeometry>(geo: T): T {
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+function tagHighLod<T extends THREE.Object3D>(obj: T, maxDistance = 12): T {
+  obj.userData.lodTier = 'high';
+  obj.userData.lodMaxDistance = maxDistance;
+  return obj;
+}
+
 /**
  * Sitting Room (`sittingRoom`) red-brick inglenook fireplace, alcove bookcases, TV and speakers.
  *
@@ -13,8 +24,21 @@ import type { buildHallStaircase } from './hall-staircase.ts';
  */
 export function buildSittingRoomFireplace(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'castIronMat' | 'ceramicWhiteMat' | 'exteriorBrickMat' | 'frontWallH' | 'singleClayBrickMat' | 'skirtingMat'> &
-    Pick<ReturnType<typeof createGroundFloorShellKit>, 'addSlattedRadiatorCover' | 'eastCourtyardWallAngleY' | 'getEastCourtyardWallCenterX'> &
+  kit: Pick<
+    ReturnType<typeof createGroundFloorMaterials>,
+    | 'antiqueOakSkirtingMat'
+    | 'brassMat'
+    | 'castIronMat'
+    | 'ceramicWhiteMat'
+    | 'exteriorBrickMat'
+    | 'frontWallH'
+    | 'singleClayBrickMat'
+    | 'skirtingMat'
+  > &
+    Pick<
+      ReturnType<typeof createGroundFloorShellKit>,
+      'addSlattedRadiatorCover' | 'eastCourtyardWallAngleY' | 'getEastCourtyardWallCenterX'
+    > &
     Pick<ReturnType<typeof defineTier2Levels>, 'frontTier2WallH' | 'tier2FloorY'> &
     Pick<ReturnType<typeof buildHallStaircase>, 'buildQAcousticsSpeaker'>
 ): void {
@@ -85,6 +109,7 @@ export function buildSittingRoomFireplace(
       }
     }
     uv.needsUpdate = true;
+    geo.computeBoundingSphere();
   };
 
   // 1. Left (East, X = -18.95m..-19.25m) & Right (West, X = -20.35m..-20.65m) 1.5-Brick Piers (`pierW = 0.30m`)
@@ -123,7 +148,7 @@ export function buildSittingRoomFireplace(
   // (`Y = +1.364m..+1.544m` = `tier2FloorY + 1.964m..+2.144m`, height = `0.18m`)
   // with ONLY ONE COURSE of exposed red brick (`0.081m`) above it up to the `frontWallH = 1.625m` ceiling (Issue #1!)
   const livingFpWhiteLintel = new THREE.Mesh(
-    new THREE.BoxGeometry(1.71, 0.18, 0.48),
+    createSharedGeo(new THREE.BoxGeometry(1.71, 0.18, 0.48)),
     skirtingMat
   );
   livingFpWhiteLintel.name = 'sittingRoom.fireplace.whiteLintel';
@@ -145,14 +170,17 @@ export function buildSittingRoomFireplace(
   // 2. Cambered Soldier-Course Red-Brick Arch with Projecting Central Keystone & Black Wrought-Iron Arch Bar
   //    spanning the 5.5-brick (`1.10m`) firebox opening (`X = -19.25m..-20.35m`, `Y ≈ +0.75m..+0.83m`, `Z = +7.68m`)
   const archBricks = 17;
+  const standardArchBrickGeo = createSharedGeo(new THREE.BoxGeometry(0.064, 0.16, 0.12));
+  const keystoneArchBrickGeo = createSharedGeo(new THREE.BoxGeometry(0.064, 0.2, 0.12));
   for (let i = 0; i < archBricks; i++) {
     const u = (i - (archBricks - 1) / 2) / ((archBricks - 1) / 2); // -1..+1
     const isKeystone = i === Math.floor(archBricks / 2);
     const bx = -19.8 + u * 0.52;
     const archCurveY = (1 - u * u) * 0.055;
-    const brickH = isKeystone ? 0.2 : 0.16;
-    const soldierGeo = new THREE.BoxGeometry(0.064, brickH, 0.12);
-    const soldierBrick = new THREE.Mesh(soldierGeo, singleClayBrickMat);
+    const soldierBrick = tagHighLod(
+      new THREE.Mesh(isKeystone ? keystoneArchBrickGeo : standardArchBrickGeo, singleClayBrickMat)
+    );
+    soldierBrick.name = `sittingRoom.fireplace.archBrick.${i + 1}`;
     soldierBrick.position.set(
       bx,
       tier2FloorY + 1.355 + archCurveY + (isKeystone ? 0.012 : 0),
@@ -164,68 +192,65 @@ export function buildSittingRoomFireplace(
   }
 
   // Black wrought-iron cambered arch support bar with turned-down end lugs across the 1.10m opening (media_1790514908916.webp)
-  const ironArchBar = new THREE.Mesh(
-    new THREE.BoxGeometry(1.14, 0.018, 0.045),
-    castIronMat
+  const ironArchBar = tagHighLod(
+    new THREE.Mesh(createSharedGeo(new THREE.BoxGeometry(1.14, 0.018, 0.045)), castIronMat)
   );
+  ironArchBar.name = 'sittingRoom.fireplace.archBar';
   ironArchBar.position.set(-19.8, tier2FloorY + 1.295, 7.7);
   livingFpGroup.add(ironArchBar);
 
+  const ironArchLugGeo = createSharedGeo(new THREE.BoxGeometry(0.018, 0.095, 0.045));
   for (const lugX of [-19.235, -20.365]) {
-    const ironArchLug = new THREE.Mesh(
-      new THREE.BoxGeometry(0.018, 0.095, 0.045),
-      castIronMat
-    );
+    const ironArchLug = tagHighLod(new THREE.Mesh(ironArchLugGeo, castIronMat));
+    ironArchLug.name = `sittingRoom.fireplace.archLug.${lugX > -19.8 ? 'east' : 'west'}`;
     ironArchLug.position.set(lugX, tier2FloorY + 1.25, 7.7);
     livingFpGroup.add(ironArchLug);
   }
 
   // 3. Pair of Black Wrought-Iron L-Shaped Corner Plates with Double-Scroll Loop Handles on Left & Right 1.5-Brick Piers
   //    (Dedicated close-up photo media_1790514908882.webp & media_1790514908916.webp!)
-  for (const [plateX, innerJambX] of [
-    [-19.1, -19.248],
-    [-20.5, -20.352],
+  const frontIronPlateGeo = createSharedGeo(new THREE.BoxGeometry(0.195, 0.19, 0.008));
+  const jambReturnFlangeGeo = createSharedGeo(new THREE.BoxGeometry(0.008, 0.19, 0.085));
+  const scrollCylinderGeo = createSharedGeo(new THREE.CylinderGeometry(0.016, 0.016, 0.022, 12));
+  const scrollCoreGeo = createSharedGeo(new THREE.CylinderGeometry(0.006, 0.006, 0.025, 10));
+  const forgedBowHandleGeo = createSharedGeo(
+    new THREE.TorusGeometry(0.048, 0.0075, 8, 18, Math.PI)
+  );
+
+  for (const [plateX, innerJambX, sideTag] of [
+    [-19.1, -19.248, 'east'],
+    [-20.5, -20.352, 'west'],
   ] as const) {
     const plateY = tier2FloorY + 0.78;
     // Front black wrought-iron plate (0.195m x 0.19m) flush on the North face of the brick pier
-    const frontIronPlate = new THREE.Mesh(
-      new THREE.BoxGeometry(0.195, 0.19, 0.008),
-      castIronMat
-    );
+    const frontIronPlate = tagHighLod(new THREE.Mesh(frontIronPlateGeo, castIronMat));
+    frontIronPlate.name = `sittingRoom.fireplace.cornerPlate.${sideTag}`;
     frontIronPlate.position.set(plateX, plateY, 7.675);
     frontIronPlate.castShadow = true;
     livingFpGroup.add(frontIronPlate);
 
     // L-shaped return flange wrapping around the inner brick corner into the firebox reveal
-    const jambReturnFlange = new THREE.Mesh(
-      new THREE.BoxGeometry(0.008, 0.19, 0.085),
-      castIronMat
-    );
+    const jambReturnFlange = tagHighLod(new THREE.Mesh(jambReturnFlangeGeo, castIronMat));
+    jambReturnFlange.name = `sittingRoom.fireplace.jambFlange.${sideTag}`;
     jambReturnFlange.position.set(innerJambX, plateY, 7.718);
     livingFpGroup.add(jambReturnFlange);
 
     // Two inward-curling spiral scroll bosses + curved forged iron loop handle (media_1790514908882.webp)
     const handleY = plateY - 0.032;
-    for (const scrollDx of [-0.036, 0.036]) {
-      const scrollCylinder = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.016, 0.016, 0.022, 12),
-        castIronMat
-      );
+    for (const [sIdx, scrollDx] of ([-0.036, 0.036] as const).entries()) {
+      const scrollCylinder = tagHighLod(new THREE.Mesh(scrollCylinderGeo, castIronMat));
+      scrollCylinder.name = `sittingRoom.fireplace.scrollBoss.${sideTag}.${sIdx + 1}`;
       scrollCylinder.position.set(plateX + scrollDx, handleY, 7.658);
       livingFpGroup.add(scrollCylinder);
 
-      const scrollCore = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.006, 0.006, 0.025, 10),
-        castIronMat
-      );
+      const scrollCore = tagHighLod(new THREE.Mesh(scrollCoreGeo, castIronMat));
+      scrollCore.name = `sittingRoom.fireplace.scrollCore.${sideTag}.${sIdx + 1}`;
       scrollCore.position.set(plateX + scrollDx * 0.78, handleY, 7.656);
       livingFpGroup.add(scrollCore);
     }
 
-    const forgedBowHandle = new THREE.Mesh(
-      new THREE.TorusGeometry(0.048, 0.0075, 8, 18, Math.PI),
-      castIronMat
-    );
+    const forgedBowHandle = tagHighLod(new THREE.Mesh(forgedBowHandleGeo, castIronMat));
+    forgedBowHandle.name = `sittingRoom.fireplace.bowHandle.${sideTag}`;
     forgedBowHandle.rotation.x = Math.PI / 2;
     forgedBowHandle.position.set(plateX, handleY, 7.662);
     forgedBowHandle.castShadow = true;
@@ -247,13 +272,15 @@ export function buildSittingRoomFireplace(
   const lowerFirebackGeo = new THREE.BoxGeometry(1.12, 0.6, 0.06);
   applyFireplaceBrickUVs(lowerFirebackGeo, -19.8, tier2FloorY + 0.44, 8.11);
   const lowerFireback = new THREE.Mesh(lowerFirebackGeo, exteriorBrickMat);
+  lowerFireback.name = 'sittingRoom.fireplace.lowerFireback';
   lowerFireback.position.set(-19.8, tier2FloorY + 0.44, 8.11);
   livingFpGroup.add(lowerFireback);
 
   const upperSootFireback = new THREE.Mesh(
-    new THREE.BoxGeometry(1.12, 0.64, 0.06),
+    createSharedGeo(new THREE.BoxGeometry(1.12, 0.64, 0.06)),
     sootBrickMat
   );
+  upperSootFireback.name = 'sittingRoom.fireplace.upperFireback';
   upperSootFireback.position.set(-19.8, tier2FloorY + 1.06, 8.11);
   livingFpGroup.add(upperSootFireback);
 
@@ -262,6 +289,7 @@ export function buildSittingRoomFireplace(
     const hobGeo = new THREE.BoxGeometry(0.13, 0.28, 0.38);
     applyFireplaceBrickUVs(hobGeo, hobX, tier2FloorY + 0.28, 7.92);
     const hobMesh = new THREE.Mesh(hobGeo, exteriorBrickMat);
+    hobMesh.name = `sittingRoom.fireplace.hob.${hobX > -19.8 ? 'east' : 'west'}`;
     hobMesh.position.set(hobX, tier2FloorY + 0.28, 7.92);
     hobMesh.receiveShadow = true;
     livingFpGroup.add(hobMesh);
@@ -271,6 +299,7 @@ export function buildSittingRoomFireplace(
   const innerStepGeo = new THREE.BoxGeometry(1.12, 0.145, 0.44);
   applyFireplaceBrickUVs(innerStepGeo, -19.8, tier2FloorY + 0.0725, 7.9);
   const innerStep = new THREE.Mesh(innerStepGeo, exteriorBrickMat);
+  innerStep.name = 'sittingRoom.fireplace.innerStep';
   innerStep.position.set(-19.8, tier2FloorY + 0.0725, 7.9);
   innerStep.receiveShadow = true;
   livingFpGroup.add(innerStep);
@@ -280,12 +309,11 @@ export function buildSittingRoomFireplace(
     color: 0xb88468,
     roughness: 0.9,
   });
+  const firebrickGeo = createSharedGeo(new THREE.BoxGeometry(0.056, 0.088, 0.25));
   for (let fb = 0; fb < 8; fb++) {
     const fbx = -19.8 + (fb - 3.5) * 0.068;
-    const firebrick = new THREE.Mesh(
-      new THREE.BoxGeometry(0.056, 0.088, 0.25),
-      firebrickMat
-    );
+    const firebrick = tagHighLod(new THREE.Mesh(firebrickGeo, firebrickMat));
+    firebrick.name = `sittingRoom.fireplace.firebrick.${fb + 1}`;
     firebrick.position.set(fbx, tier2FloorY + 0.189, 7.89);
     firebrick.castShadow = true;
     firebrick.receiveShadow = true;
@@ -294,65 +322,66 @@ export function buildSittingRoomFireplace(
 
   // Ornate Cast-Iron Fire Basket / Log Grate standing on the 8 firebricks (media_1790514908951.webp center!)
   const grateGroup = new THREE.Group();
+  grateGroup.name = 'sittingRoom.fireplace.grate';
   grateGroup.position.set(-19.8, tier2FloorY + 0.233, 7.89);
 
   // Grate bottom bed & low rear fireback plate
   const grateBed = new THREE.Mesh(
-    new THREE.BoxGeometry(0.44, 0.022, 0.22),
+    createSharedGeo(new THREE.BoxGeometry(0.44, 0.022, 0.22)),
     castIronMat
   );
+  grateBed.name = 'sittingRoom.fireplace.grate.bed';
   grateBed.position.set(0, 0.06, 0);
   grateBed.castShadow = true;
   grateGroup.add(grateBed);
 
   const grateBackPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.42, 0.22, 0.022),
+    createSharedGeo(new THREE.BoxGeometry(0.42, 0.22, 0.022)),
     castIronMat
   );
+  grateBackPlate.name = 'sittingRoom.fireplace.grate.backPlate';
   grateBackPlate.position.set(0, 0.17, 0.095);
   grateGroup.add(grateBackPlate);
 
   // 4 curved cast-iron legs at the corners of the basket
-  for (const [lx, lz] of [
-    [-0.2, -0.095],
-    [0.2, -0.095],
-    [-0.2, 0.095],
-    [0.2, 0.095],
-  ] as const) {
-    const leg = new THREE.Mesh(
-      new THREE.BoxGeometry(0.024, 0.075, 0.024),
-      castIronMat
-    );
+  const grateLegGeo = createSharedGeo(new THREE.BoxGeometry(0.024, 0.075, 0.024));
+  for (const [lIdx, [lx, lz]] of (
+    [
+      [-0.2, -0.095],
+      [0.2, -0.095],
+      [-0.2, 0.095],
+      [0.2, 0.095],
+    ] as const
+  ).entries()) {
+    const leg = tagHighLod(new THREE.Mesh(grateLegGeo, castIronMat));
+    leg.name = `sittingRoom.fireplace.grate.leg.${lIdx + 1}`;
     leg.position.set(lx, 0.035, lz);
     grateGroup.add(leg);
   }
 
   // Front top & bottom horizontal cast-iron rails + 9 vertical decorative leaf-patterned bars
-  for (const ry of [0.072, 0.205]) {
-    const frontRail = new THREE.Mesh(
-      new THREE.BoxGeometry(0.45, 0.018, 0.018),
-      castIronMat
-    );
+  const grateFrontRailGeo = createSharedGeo(new THREE.BoxGeometry(0.45, 0.018, 0.018));
+  for (const [rIdx, ry] of ([0.072, 0.205] as const).entries()) {
+    const frontRail = tagHighLod(new THREE.Mesh(grateFrontRailGeo, castIronMat));
+    frontRail.name = `sittingRoom.fireplace.grate.frontRail.${rIdx === 0 ? 'bottom' : 'top'}`;
     frontRail.position.set(0, ry, -0.095);
     grateGroup.add(frontRail);
   }
+  const grateVBarGeo = createSharedGeo(new THREE.BoxGeometry(0.02, 0.155, 0.016));
   for (let b = 0; b < 9; b++) {
     const bx = (b - 4) * 0.05;
-    const vBar = new THREE.Mesh(
-      new THREE.BoxGeometry(0.02, 0.155, 0.016),
-      castIronMat
-    );
+    const vBar = tagHighLod(new THREE.Mesh(grateVBarGeo, castIronMat));
+    vBar.name = `sittingRoom.fireplace.grate.verticalBar.${b + 1}`;
     vBar.position.set(bx, 0.14, -0.095);
     vBar.castShadow = true;
     grateGroup.add(vBar);
   }
 
   // Left & right side basket wings with top rail
+  const grateSideWingGeo = createSharedGeo(new THREE.BoxGeometry(0.018, 0.15, 0.2));
   for (const sx of [-0.215, 0.215]) {
-    const sideWing = new THREE.Mesh(
-      new THREE.BoxGeometry(0.018, 0.15, 0.2),
-      castIronMat
-    );
+    const sideWing = tagHighLod(new THREE.Mesh(grateSideWingGeo, castIronMat));
+    sideWing.name = `sittingRoom.fireplace.grate.sideWing.${sx < 0 ? 'west' : 'east'}`;
     sideWing.position.set(sx, 0.14, 0);
     grateGroup.add(sideWing);
   }
@@ -360,9 +389,10 @@ export function buildSittingRoomFireplace(
 
   // Angled Black Sheet-Metal Canopy Hood at the top of the firebox opening (media_1790514908951.webp top)
   const canopyHood = new THREE.Mesh(
-    new THREE.BoxGeometry(0.98, 0.18, 0.34),
+    createSharedGeo(new THREE.BoxGeometry(0.98, 0.18, 0.34)),
     castIronMat
   );
+  canopyHood.name = 'sittingRoom.fireplace.canopyHood';
   canopyHood.position.set(-19.8, tier2FloorY + 1.2, 7.89);
   canopyHood.rotation.x = 0.22;
   canopyHood.castShadow = true;
@@ -456,19 +486,52 @@ export function buildSittingRoomFireplace(
     roughness: 0.64,
   });
 
+  // Shared geometries across both alcoves
+  const doorHShaker = 0.58;
+  const upperBookcaseH = frontTier2WallH - 0.84; // 1.385m
+  const dStileGeo = createSharedGeo(new THREE.BoxGeometry(0.052, doorHShaker, 0.022));
+  const knobRoseGeo = createSharedGeo(new THREE.CylinderGeometry(0.012, 0.012, 0.004, 14));
+  const knobStemGeo = createSharedGeo(new THREE.CylinderGeometry(0.005, 0.006, 0.012, 10));
+  const knobHeadGeo = createSharedGeo(new THREE.SphereGeometry(0.0135, 14, 12));
+  const sideCheekGeo = createSharedGeo(new THREE.BoxGeometry(0.04, upperBookcaseH, 0.36));
+  const frontPilasterGeo = createSharedGeo(new THREE.BoxGeometry(0.095, upperBookcaseH, 0.032));
+  const ornamentOrbGeo = createSharedGeo(new THREE.SphereGeometry(0.036, 14, 12));
+  const tallVaseBodyGeo = createSharedGeo(new THREE.CylinderGeometry(0.034, 0.048, 0.165, 16));
+  const shortVaseBodyGeo = createSharedGeo(new THREE.CylinderGeometry(0.052, 0.042, 0.115, 16));
+  const vaseNeckGeo = createSharedGeo(new THREE.CylinderGeometry(0.022, 0.028, 0.038, 14));
+  const plantPotGeo = createSharedGeo(new THREE.CylinderGeometry(0.068, 0.052, 0.125, 16));
+  const hBookGeos = [0, 1, 2].map((s) =>
+    createSharedGeo(new THREE.BoxGeometry(0.22 - s * 0.018, 0.028, 0.17 - s * 0.012))
+  );
+  const leafClusterSpecs = [
+    [0, 0.145, 0, 0.062, false],
+    [-0.038, 0.135, -0.024, 0.048, true],
+    [0.042, 0.138, -0.02, 0.05, false],
+    [-0.025, 0.162, 0.022, 0.046, true],
+    [0.028, 0.158, 0.025, 0.045, true],
+    [0, 0.182, -0.01, 0.044, false],
+  ] as const;
+  const leafClusterGeos = leafClusterSpecs.map(([, , , fr]) =>
+    createSharedGeo(new THREE.SphereGeometry(fr, 10, 10))
+  );
+  const vineLeafGeos = [0, 1, 2, 3, 4, 5].map((v) =>
+    createSharedGeo(new THREE.SphereGeometry(0.022 - v * 0.002, 8, 8))
+  );
+
   for (const [minBx, maxBx, hasTv] of [
     [-18.95, -17.2, false],
     [-22.19, -20.65, true],
   ] as const) {
+    const alcoveSide = hasTv ? 'west' : 'east';
     const bw = maxBx - minBx;
     const bcx = (minBx + maxBx) / 2;
     const alcoveGroup = new THREE.Group();
-    alcoveGroup.name = hasTv ? 'sittingRoom.alcove.west' : 'sittingRoom.alcove.east';
+    alcoveGroup.name = `sittingRoom.alcove.${alcoveSide}`;
     alcoveGroup.userData.zone = 'sittingRoom';
 
     // Deep moulded skirting plinth at bottom of base cabinet (height 0.13m)
     const basePlinth = new THREE.Mesh(
-      new THREE.BoxGeometry(bw, 0.13, 0.45),
+      createSharedGeo(new THREE.BoxGeometry(bw, 0.13, 0.45)),
       antiqueOakSkirtingMat
     );
     basePlinth.name = 'sittingRoom.alcove.basePlinth';
@@ -478,7 +541,7 @@ export function buildSittingRoomFireplace(
 
     // Lower base cabinet carcass (Y = tier2FloorY + 0.13m..+0.76m, depth 0.43m)
     const baseCarcass = new THREE.Mesh(
-      new THREE.BoxGeometry(bw, 0.63, 0.43),
+      createSharedGeo(new THREE.BoxGeometry(bw, 0.63, 0.43)),
       alcoveJoineryMat
     );
     baseCarcass.name = 'sittingRoom.alcove.baseCarcass';
@@ -490,36 +553,36 @@ export function buildSittingRoomFireplace(
     // 4 Framed Shaker Cupboard Doors across the front of the base cabinet (media_1790514908328.webp bottom!)
     const doorCount = 4;
     const doorSpanW = (bw - 0.08) / doorCount;
-    const doorHShaker = 0.58;
     const doorCenterY = tier2FloorY + 0.445;
+    const dw = doorSpanW - 0.012;
+    const shakerPanelGeo = createSharedGeo(
+      new THREE.BoxGeometry(dw - 0.09, doorHShaker - 0.09, 0.012)
+    );
+    const dRailGeo = createSharedGeo(new THREE.BoxGeometry(dw - 0.09, 0.056, 0.022));
+
     for (let d = 0; d < doorCount; d++) {
       const dx = minBx + 0.04 + (d + 0.5) * doorSpanW;
-      const dw = doorSpanW - 0.012;
 
       // Recessed flat Shaker center panel
-      const shakerPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(dw - 0.09, doorHShaker - 0.09, 0.012),
-        alcoveRecessPanelMat
-      );
+      const shakerPanel = new THREE.Mesh(shakerPanelGeo, alcoveRecessPanelMat);
+      shakerPanel.name = `sittingRoom.alcoveCabinet.${alcoveSide}.door${d + 1}.panel`;
       shakerPanel.position.set(dx, doorCenterY, 7.716);
       alcoveGroup.add(shakerPanel);
 
       // Left & right raised Shaker door stiles
-      for (const sx of [dx - dw / 2 + 0.026, dx + dw / 2 - 0.026]) {
-        const dStile = new THREE.Mesh(
-          new THREE.BoxGeometry(0.052, doorHShaker, 0.022),
-          alcoveJoineryMat
-        );
+      for (const [sIdx, sx] of ([dx - dw / 2 + 0.026, dx + dw / 2 - 0.026] as const).entries()) {
+        const dStile = new THREE.Mesh(dStileGeo, alcoveJoineryMat);
+        dStile.name = `sittingRoom.alcoveCabinet.${alcoveSide}.door${d + 1}.stile.${sIdx === 0 ? 'west' : 'east'}`;
         dStile.position.set(sx, doorCenterY, 7.715);
         dStile.castShadow = true;
         alcoveGroup.add(dStile);
       }
       // Top & bottom raised Shaker door rails
-      for (const ry of [doorCenterY - doorHShaker / 2 + 0.028, doorCenterY + doorHShaker / 2 - 0.028]) {
-        const dRail = new THREE.Mesh(
-          new THREE.BoxGeometry(dw - 0.09, 0.056, 0.022),
-          alcoveJoineryMat
-        );
+      for (const [rIdx, ry] of (
+        [doorCenterY - doorHShaker / 2 + 0.028, doorCenterY + doorHShaker / 2 - 0.028] as const
+      ).entries()) {
+        const dRail = new THREE.Mesh(dRailGeo, alcoveJoineryMat);
+        dRail.name = `sittingRoom.alcoveCabinet.${alcoveSide}.door${d + 1}.rail.${rIdx === 0 ? 'bottom' : 'top'}`;
         dRail.position.set(dx, ry, 7.715);
         dRail.castShadow = true;
         alcoveGroup.add(dRail);
@@ -530,28 +593,21 @@ export function buildSittingRoomFireplace(
       const knobX = isLeftOfPair ? dx + dw * 0.5 - 0.026 : dx - dw * 0.5 + 0.026;
       const knobY = doorCenterY + doorHShaker * 0.5 - 0.078;
 
-      const knobRose = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.012, 0.012, 0.004, 14),
-        brassMat
-      );
+      const knobRose = tagHighLod(new THREE.Mesh(knobRoseGeo, brassMat));
+      knobRose.name = `sittingRoom.alcoveCabinet.${alcoveSide}.door${d + 1}.knobRose`;
       knobRose.rotation.x = Math.PI / 2;
       knobRose.position.set(knobX, knobY, 7.702);
       alcoveGroup.add(knobRose);
 
-      const knobStem = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.005, 0.006, 0.012, 10),
-        brassMat
-      );
+      const knobStem = tagHighLod(new THREE.Mesh(knobStemGeo, brassMat));
+      knobStem.name = `sittingRoom.alcoveCabinet.${alcoveSide}.door${d + 1}.knobStem`;
       knobStem.rotation.x = Math.PI / 2;
       knobStem.position.set(knobX, knobY, 7.694);
       alcoveGroup.add(knobStem);
 
-      const knobHead = new THREE.Mesh(
-        new THREE.SphereGeometry(0.0135, 14, 12),
-        brassMat
-      );
+      const knobHead = tagHighLod(new THREE.Mesh(knobHeadGeo, brassMat));
       knobHead.scale.set(1, 1, 0.72);
-      knobHead.name = `sittingRoom.alcoveCabinet.${hasTv ? 'west' : 'east'}.door${d + 1}.brassKnob`;
+      knobHead.name = `sittingRoom.alcoveCabinet.${alcoveSide}.door${d + 1}.brassKnob`;
       knobHead.position.set(knobX, knobY, 7.686);
       knobHead.castShadow = true;
       alcoveGroup.add(knobHead);
@@ -559,7 +615,7 @@ export function buildSittingRoomFireplace(
 
     // Projecting Stepped/Moulded Countertop Ledge above the 4 Shaker doors (Y = tier2FloorY + 0.76m..+0.80m)
     const counterLedge = new THREE.Mesh(
-      new THREE.BoxGeometry(bw, 0.042, 0.47),
+      createSharedGeo(new THREE.BoxGeometry(bw, 0.042, 0.47)),
       alcoveJoineryMat
     );
     counterLedge.name = 'sittingRoom.alcove.counterLedge';
@@ -570,35 +626,32 @@ export function buildSittingRoomFireplace(
 
     // Upper Bookcase Vertical Tongue-and-Groove (T&G) V-Jointed Boarding Back Panel
     // (12 vertical v-grooved planks across the back wall, Y = tier2FloorY + 0.80m..+2.185m for frontWallH = 1.625m — Issue #1)
-    const upperBookcaseH = frontTier2WallH - 0.84; // 1.385m
     const upperBookcaseMidY = tier2FloorY + 0.8 + upperBookcaseH * 0.5;
     const tgPlanks = 12;
     const plankStep = (bw - 0.14) / tgPlanks;
+    const tgPlankGeo = createSharedGeo(
+      new THREE.BoxGeometry(plankStep - 0.006, upperBookcaseH, 0.024)
+    );
     for (let p = 0; p < tgPlanks; p++) {
       const px = minBx + 0.07 + (p + 0.5) * plankStep;
-      const tgPlank = new THREE.Mesh(
-        new THREE.BoxGeometry(plankStep - 0.006, upperBookcaseH, 0.024),
-        alcoveRecessPanelMat
-      );
+      const tgPlank = new THREE.Mesh(tgPlankGeo, alcoveRecessPanelMat);
+      tgPlank.name = `sittingRoom.alcove.${alcoveSide}.tgPlank.${p + 1}`;
       tgPlank.position.set(px, upperBookcaseMidY, 8.125);
       tgPlank.receiveShadow = true;
       alcoveGroup.add(tgPlank);
     }
 
     // Left & right wide vertical bookcase side pilasters + deep side cheeks
-    for (const sideX of [minBx + 0.048, maxBx - 0.048]) {
-      const sideCheek = new THREE.Mesh(
-        new THREE.BoxGeometry(0.04, upperBookcaseH, 0.36),
-        alcoveJoineryMat
-      );
+    for (const [cIdx, sideX] of ([minBx + 0.048, maxBx - 0.048] as const).entries()) {
+      const cSideTag = cIdx === 0 ? 'west' : 'east';
+      const sideCheek = new THREE.Mesh(sideCheekGeo, alcoveJoineryMat);
+      sideCheek.name = `sittingRoom.alcove.${alcoveSide}.sideCheek.${cSideTag}`;
       sideCheek.position.set(sideX, upperBookcaseMidY, 7.96);
       sideCheek.castShadow = true;
       alcoveGroup.add(sideCheek);
 
-      const frontPilaster = new THREE.Mesh(
-        new THREE.BoxGeometry(0.095, upperBookcaseH, 0.032),
-        alcoveJoineryMat
-      );
+      const frontPilaster = new THREE.Mesh(frontPilasterGeo, alcoveJoineryMat);
+      frontPilaster.name = `sittingRoom.alcove.${alcoveSide}.frontPilaster.${cSideTag}`;
       frontPilaster.position.set(sideX, upperBookcaseMidY, 7.775);
       frontPilaster.castShadow = true;
       alcoveGroup.add(frontPilaster);
@@ -606,9 +659,10 @@ export function buildSittingRoomFireplace(
 
     // Projecting Moulded Cornice Crown Header at the top of the bookcase right under the 1.625m ceiling
     const corniceCrown = new THREE.Mesh(
-      new THREE.BoxGeometry(bw, 0.09, 0.42),
+      createSharedGeo(new THREE.BoxGeometry(bw, 0.09, 0.42)),
       skirtingMat
     );
+    corniceCrown.name = `sittingRoom.alcove.${alcoveSide}.corniceCrown`;
     corniceCrown.position.set(bcx, frontWallH - 0.045, 7.94);
     corniceCrown.castShadow = true;
     alcoveGroup.add(corniceCrown);
@@ -632,39 +686,32 @@ export function buildSittingRoomFireplace(
       metalness: 0.45,
     });
 
+    const shelfBoardGeo = createSharedGeo(new THREE.BoxGeometry(bw - 0.1, 0.038, 0.35));
+    const shelfNosingGeo = createSharedGeo(new THREE.BoxGeometry(bw - 0.1, 0.046, 0.024));
+    const ledChannelGeo = createSharedGeo(new THREE.BoxGeometry(bw - 0.14, 0.008, 0.022));
+    const ledDiffuserGeo = createSharedGeo(new THREE.BoxGeometry(bw - 0.16, 0.006, 0.014));
+
     const shelfHeights = hasTv ? [1.48, 1.81] : [1.14, 1.48, 1.81];
     for (const sy of shelfHeights) {
-      const shelfBoard = new THREE.Mesh(
-        new THREE.BoxGeometry(bw - 0.1, 0.038, 0.35),
-        alcoveJoineryMat
-      );
+      const shelfBoard = new THREE.Mesh(shelfBoardGeo, alcoveJoineryMat);
       shelfBoard.name = 'sittingRoom.alcove.shelfBoard';
       shelfBoard.position.set(bcx, tier2FloorY + sy, 7.96);
       shelfBoard.castShadow = true;
       shelfBoard.receiveShadow = true;
       alcoveGroup.add(shelfBoard);
 
-      const shelfNosing = new THREE.Mesh(
-        new THREE.BoxGeometry(bw - 0.1, 0.046, 0.024),
-        skirtingMat
-      );
+      const shelfNosing = new THREE.Mesh(shelfNosingGeo, skirtingMat);
       shelfNosing.name = 'sittingRoom.alcove.shelfNosing';
       shelfNosing.position.set(bcx, tier2FloorY + sy, 7.782);
       alcoveGroup.add(shelfNosing);
 
       // Recessed Aluminum LED Profile + Warm 2700K Diffuser Strip under each alcove shelf (Issue #2)
-      const ledChannel = new THREE.Mesh(
-        new THREE.BoxGeometry(bw - 0.14, 0.008, 0.022),
-        alcoveLedChannelMat
-      );
+      const ledChannel = tagHighLod(new THREE.Mesh(ledChannelGeo, alcoveLedChannelMat));
       ledChannel.name = 'sittingRoom.alcove.ledChannel';
       ledChannel.position.set(bcx, tier2FloorY + sy - 0.021, 7.835);
       alcoveGroup.add(ledChannel);
 
-      const ledDiffuser = new THREE.Mesh(
-        new THREE.BoxGeometry(bw - 0.16, 0.006, 0.014),
-        alcoveLedStripMat
-      );
+      const ledDiffuser = tagHighLod(new THREE.Mesh(ledDiffuserGeo, alcoveLedStripMat));
       ledDiffuser.name = 'sittingRoom.alcove.ledStrip';
       ledDiffuser.position.set(bcx, tier2FloorY + sy - 0.024, 7.835);
       alcoveGroup.add(ledDiffuser);
@@ -723,9 +770,8 @@ export function buildSittingRoomFireplace(
             roughness: 0.64,
           });
           const isLeaning = leanLast && b === count - 1;
-          const bookMesh = new THREE.Mesh(
-            new THREE.BoxGeometry(bwBook, bhBook, bdBook),
-            bMat
+          const bookMesh = tagHighLod(
+            new THREE.Mesh(createSharedGeo(new THREE.BoxGeometry(bwBook, bhBook, bdBook)), bMat)
           );
           bookMesh.name = 'sittingRoom.alcove.book';
           bookMesh.position.set(
@@ -751,16 +797,13 @@ export function buildSittingRoomFireplace(
       ): void => {
         let stackY = shelfTopY;
         for (let s = 0; s < 3; s++) {
-          const wStack = 0.22 - s * 0.018;
           const hStack = 0.028;
-          const dStack = 0.17 - s * 0.012;
           const bMat = new THREE.MeshStandardMaterial({
             color: bookPalette[(seed + s * 3) % bookPalette.length]!,
             roughness: 0.62,
           });
-          const hBook = new THREE.Mesh(
-            new THREE.BoxGeometry(wStack, hStack, dStack),
-            s % 2 === 1 ? bookPageMat : bMat
+          const hBook = tagHighLod(
+            new THREE.Mesh(hBookGeos[s]!, s % 2 === 1 ? bookPageMat : bMat)
           );
           hBook.name = 'sittingRoom.alcove.bookStack';
           hBook.position.set(stackX, stackY + hStack * 0.5, 7.92);
@@ -770,10 +813,7 @@ export function buildSittingRoomFireplace(
           stackY += hStack;
         }
         if (withTopOrb) {
-          const orb = new THREE.Mesh(
-            new THREE.SphereGeometry(0.036, 14, 12),
-            brassMat
-          );
+          const orb = tagHighLod(new THREE.Mesh(ornamentOrbGeo, brassMat));
           orb.name = 'sittingRoom.alcove.ornamentOrb';
           orb.position.set(stackX, stackY + 0.036, 7.92);
           orb.castShadow = true;
@@ -791,20 +831,21 @@ export function buildSittingRoomFireplace(
         vGroup.position.set(vx, shelfTopY, 7.91);
 
         const bodyH = tall ? 0.165 : 0.115;
-        const bodyRTop = tall ? 0.034 : 0.052;
-        const bodyRBot = tall ? 0.048 : 0.042;
-        const vaseBody = new THREE.Mesh(
-          new THREE.CylinderGeometry(bodyRTop, bodyRBot, bodyH, 16),
-          tall ? ornamentStonewareMat : ornamentTerracottaMat
+        const vaseBody = tagHighLod(
+          new THREE.Mesh(
+            tall ? tallVaseBodyGeo : shortVaseBodyGeo,
+            tall ? ornamentStonewareMat : ornamentTerracottaMat
+          )
         );
+        vaseBody.name = 'sittingRoom.alcove.ornamentVase.body';
         vaseBody.position.set(0, bodyH * 0.5, 0);
         vaseBody.castShadow = true;
         vGroup.add(vaseBody);
 
-        const vaseNeck = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.022, 0.028, 0.038, 14),
-          tall ? ornamentStonewareMat : ornamentTerracottaMat
+        const vaseNeck = tagHighLod(
+          new THREE.Mesh(vaseNeckGeo, tall ? ornamentStonewareMat : ornamentTerracottaMat)
         );
+        vaseNeck.name = 'sittingRoom.alcove.ornamentVase.neck';
         vaseNeck.position.set(0, bodyH + 0.018, 0);
         vGroup.add(vaseNeck);
 
@@ -821,9 +862,8 @@ export function buildSittingRoomFireplace(
         plantGroup.position.set(px, shelfTopY, 7.89);
 
         // Glazed stoneware / aged terracotta planter pot
-        const pot = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.068, 0.052, 0.125, 16),
-          trailing ? ornamentStonewareMat : ornamentTerracottaMat
+        const pot = tagHighLod(
+          new THREE.Mesh(plantPotGeo, trailing ? ornamentStonewareMat : ornamentTerracottaMat)
         );
         pot.name = 'sittingRoom.alcove.shelfPlant.pot';
         pot.position.set(0, 0.0625, 0);
@@ -831,18 +871,11 @@ export function buildSittingRoomFireplace(
         plantGroup.add(pot);
 
         // Lush bushy foliage crown in the pot
-        for (const [fx, fy, fz, fr, isBright] of [
-          [0, 0.145, 0, 0.062, false],
-          [-0.038, 0.135, -0.024, 0.048, true],
-          [0.042, 0.138, -0.02, 0.05, false],
-          [-0.025, 0.162, 0.022, 0.046, true],
-          [0.028, 0.158, 0.025, 0.045, true],
-          [0, 0.182, -0.01, 0.044, false],
-        ] as const) {
-          const leafCluster = new THREE.Mesh(
-            new THREE.SphereGeometry(fr, 10, 10),
-            isBright ? foliageBrightMat : foliageDeepMat
+        for (const [cIdx, [fx, fy, fz, , isBright]] of leafClusterSpecs.entries()) {
+          const leafCluster = tagHighLod(
+            new THREE.Mesh(leafClusterGeos[cIdx]!, isBright ? foliageBrightMat : foliageDeepMat)
           );
+          leafCluster.name = `sittingRoom.alcove.shelfPlant.leafCluster.${cIdx + 1}`;
           leafCluster.scale.set(1.15, 0.88, 1.1);
           leafCluster.position.set(fx, fy, fz);
           leafCluster.castShadow = true;
@@ -851,13 +884,13 @@ export function buildSittingRoomFireplace(
 
         // Trailing ivy / pothos vines cascading over the front (-Z) edge of the shelf
         if (trailing) {
-          for (const vineX of [-0.036, -0.006, 0.028]) {
+          for (const [vIdx, vineX] of ([-0.036, -0.006, 0.028] as const).entries()) {
             const vineDrops = vineX < 0 ? 6 : 5;
             for (let v = 0; v < vineDrops; v++) {
-              const leafNode = new THREE.Mesh(
-                new THREE.SphereGeometry(0.022 - v * 0.002, 8, 8),
-                v % 2 === 0 ? foliageBrightMat : foliageDeepMat
+              const leafNode = tagHighLod(
+                new THREE.Mesh(vineLeafGeos[v]!, v % 2 === 0 ? foliageBrightMat : foliageDeepMat)
               );
+              leafNode.name = `sittingRoom.alcove.shelfPlant.vineLeaf.${vIdx + 1}.${v + 1}`;
               leafNode.scale.set(1.2, 0.75, 0.9);
               leafNode.position.set(
                 vineX + Math.sin(v * 1.3) * 0.008,
@@ -936,16 +969,19 @@ export function buildSittingRoomFireplace(
       lightGroups.livingRoomPendant.emissives.push(lampShadeMat);
 
       // Aged brass foot plinth
-      const lampPlinth = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.072, 0.078, 0.016, 18),
-        lampBrassMat
+      const lampPlinth = tagHighLod(
+        new THREE.Mesh(
+          createSharedGeo(new THREE.CylinderGeometry(0.072, 0.078, 0.016, 18)),
+          lampBrassMat
+        )
       );
+      lampPlinth.name = 'sittingRoom.leftAlcoveLamp.plinth';
       lampPlinth.position.set(0, 0.008, 0);
       lampGroup.add(lampPlinth);
 
       // Baluster ceramic lamp body
       const lampBody = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.046, 0.082, 0.175, 20),
+        createSharedGeo(new THREE.CylinderGeometry(0.046, 0.082, 0.175, 20)),
         lampBaseMat
       );
       lampBody.name = 'sittingRoom.leftAlcoveLamp.base';
@@ -954,16 +990,19 @@ export function buildSittingRoomFireplace(
       lampGroup.add(lampBody);
 
       // Brass stem & bulb socket
-      const lampStem = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.01, 0.012, 0.065, 12),
-        lampBrassMat
+      const lampStem = tagHighLod(
+        new THREE.Mesh(
+          createSharedGeo(new THREE.CylinderGeometry(0.01, 0.012, 0.065, 12)),
+          lampBrassMat
+        )
       );
+      lampStem.name = 'sittingRoom.leftAlcoveLamp.stem';
       lampStem.position.set(0, 0.218, 0);
       lampGroup.add(lampStem);
 
       // Tapered warm pleated linen empire shade (open top/bottom silhouette)
       const lampShade = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.082, 0.138, 0.165, 22, 1, true),
+        createSharedGeo(new THREE.CylinderGeometry(0.082, 0.138, 0.165, 22, 1, true)),
         lampShadeMat
       );
       lampShade.name = 'sittingRoom.leftAlcoveLamp.shade';
@@ -972,10 +1011,10 @@ export function buildSittingRoomFireplace(
       lampGroup.add(lampShade);
 
       // Warm internal LED bulb glow
-      const lampBulb = new THREE.Mesh(
-        new THREE.SphereGeometry(0.024, 12, 12),
-        alcoveLedStripMat
+      const lampBulb = tagHighLod(
+        new THREE.Mesh(createSharedGeo(new THREE.SphereGeometry(0.024, 12, 12)), alcoveLedStripMat)
       );
+      lampBulb.name = 'sittingRoom.leftAlcoveLamp.bulb';
       lampBulb.position.set(0, 0.26, 0);
       lampGroup.add(lampBulb);
 
@@ -989,7 +1028,7 @@ export function buildSittingRoomFireplace(
         roughness: 0.35,
       });
       const candleBowl = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.115, 0.095, 0.068, 20),
+        createSharedGeo(new THREE.CylinderGeometry(0.115, 0.095, 0.068, 20)),
         candleBowlMat
       );
       candleBowl.name = 'sittingRoom.fireplace.hearthCandleBowl';
@@ -997,9 +1036,11 @@ export function buildSittingRoomFireplace(
       candleBowl.castShadow = true;
       alcoveGroup.add(candleBowl);
 
-      const candleWax = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.105, 0.105, 0.02, 18),
-        ceramicWhiteMat
+      const candleWax = tagHighLod(
+        new THREE.Mesh(
+          createSharedGeo(new THREE.CylinderGeometry(0.105, 0.105, 0.02, 18)),
+          ceramicWhiteMat
+        )
       );
       candleWax.name = 'sittingRoom.fireplace.hearthCandleWax';
       candleWax.position.set(-19.22, hearthSurfaceY + 0.061, 7.38);
@@ -1043,26 +1084,23 @@ export function buildSittingRoomFireplace(
       });
 
       const panelW = 0.932; // Official LG 42" C5 width: 932mm
-      const panelH = 0.54;  // Official LG 42" C5 panel height: 540mm
+      const panelH = 0.54; // Official LG 42" C5 panel height: 540mm
       const standLiftH = 0.037; // Official LG 42" C5 stand height: 577mm - 540mm = 37mm
       const panelCenterY = standLiftH + panelH * 0.5; // 0.307m above counter
 
       // Dual wide-set LG 42" C5 angled dark metallic blade feet (footprint depth 170mm)
-      for (const side of [-1, 1]) {
+      const footBaseGeo = createSharedGeo(new THREE.BoxGeometry(0.022, 0.008, 0.17));
+      const footNeckGeo = createSharedGeo(new THREE.BoxGeometry(0.028, standLiftH + 0.025, 0.026));
+      for (const side of [-1, 1] as const) {
         const footX = side * 0.365;
-        const footBase = new THREE.Mesh(
-          new THREE.BoxGeometry(0.022, 0.008, 0.17),
-          oledFootMat
-        );
+        const footBase = tagHighLod(new THREE.Mesh(footBaseGeo, oledFootMat));
         footBase.name = 'sittingRoom.lg42C5Oled.standFoot';
         footBase.position.set(footX, 0.004, 0.01);
         footBase.castShadow = true;
         lgC5Group.add(footBase);
 
-        const footNeck = new THREE.Mesh(
-          new THREE.BoxGeometry(0.028, standLiftH + 0.025, 0.026),
-          oledFootMat
-        );
+        const footNeck = tagHighLod(new THREE.Mesh(footNeckGeo, oledFootMat));
+        footNeck.name = `sittingRoom.lg42C5Oled.standNeck.${side < 0 ? 'west' : 'east'}`;
         footNeck.position.set(footX, (standLiftH + 0.015) * 0.5, 0.018);
         footNeck.rotation.x = -0.14;
         lgC5Group.add(footNeck);
@@ -1070,7 +1108,7 @@ export function buildSittingRoomFireplace(
 
       // Wafer-thin 6mm OLED evo metallic backplate + 4mm ultra-narrow bezel (932mm x 540mm x 6mm)
       const waferPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(panelW, panelH, 0.006),
+        createSharedGeo(new THREE.BoxGeometry(panelW, panelH, 0.006)),
         oledBezelMat
       );
       waferPanel.name = 'sittingRoom.lg42C5Oled.waferPanel';
@@ -1080,7 +1118,7 @@ export function buildSittingRoomFireplace(
 
       // Glossy anti-reflective OLED active screen surface (inset 4mm inside bezel)
       const activeOledScreen = new THREE.Mesh(
-        new THREE.BoxGeometry(panelW - 0.008, panelH - 0.008, 0.002),
+        createSharedGeo(new THREE.BoxGeometry(panelW - 0.008, panelH - 0.008, 0.002)),
         oledPanelGlassMat
       );
       activeOledScreen.name = 'sittingRoom.lg42C5Oled.screen';
@@ -1089,7 +1127,7 @@ export function buildSittingRoomFireplace(
 
       // Lower-rear sculpted electronics & VESA housing (brings total depth to 41.1mm)
       const rearHousing = new THREE.Mesh(
-        new THREE.BoxGeometry(0.68, 0.34, 0.035),
+        createSharedGeo(new THREE.BoxGeometry(0.68, 0.34, 0.035)),
         oledBezelMat
       );
       rearHousing.name = 'sittingRoom.lg42C5Oled.rearHousing';
@@ -1098,10 +1136,10 @@ export function buildSittingRoomFireplace(
       lgC5Group.add(rearHousing);
 
       // Bottom-center IR receiver bump & subtle standby indicator
-      const irBump = new THREE.Mesh(
-        new THREE.BoxGeometry(0.056, 0.007, 0.012),
-        oledBezelMat
+      const irBump = tagHighLod(
+        new THREE.Mesh(createSharedGeo(new THREE.BoxGeometry(0.056, 0.007, 0.012)), oledBezelMat)
       );
+      irBump.name = 'sittingRoom.lg42C5Oled.irSensor';
       irBump.position.set(0, standLiftH - 0.003, -0.001);
       lgC5Group.add(irBump);
 

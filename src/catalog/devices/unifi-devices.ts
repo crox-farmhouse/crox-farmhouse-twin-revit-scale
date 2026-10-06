@@ -72,6 +72,7 @@ export function createUniFiProtectCamera3D(
     new THREE.CylinderGeometry(0.048, 0.052, 0.018, 16),
     bodyMat
   );
+  if (!basePlate.name) basePlate.name = 'unifi.device.basePlate';
   basePlate.rotation.x = Math.PI / 2;
   basePlate.position.z = -0.11;
   headGroup.add(basePlate);
@@ -80,6 +81,7 @@ export function createUniFiProtectCamera3D(
     new THREE.CylinderGeometry(0.018, 0.022, 0.09, 12),
     bodyMat
   );
+  if (!mountArm.name) mountArm.name = 'unifi.device.mountArm';
   mountArm.rotation.x = Math.PI / 2;
   mountArm.position.z = -0.065;
   headGroup.add(mountArm);
@@ -91,6 +93,7 @@ export function createUniFiProtectCamera3D(
     new THREE.CylinderGeometry(bodyRad, bodyRad * 0.94, bodyLen, 20),
     bodyMat
   );
+  if (!barrel.name) barrel.name = 'unifi.device.barrel';
   barrel.rotation.x = Math.PI / 2;
   barrel.castShadow = true;
   const userData: InteractiveUserData = {
@@ -107,6 +110,7 @@ export function createUniFiProtectCamera3D(
     new THREE.CylinderGeometry(bodyRad * 0.92, bodyRad * 0.92, 0.012, 20),
     darkMetalMat
   );
+  if (!bezel.name) bezel.name = 'unifi.device.bezel';
   bezel.rotation.x = Math.PI / 2;
   bezel.position.z = bodyLen * 0.5 + 0.004;
   headGroup.add(bezel);
@@ -115,6 +119,7 @@ export function createUniFiProtectCamera3D(
     new THREE.SphereGeometry(bodyRad * 0.48, 16, 12),
     lensGlassMat
   );
+  if (!lens.name) lens.name = 'unifi.device.lens';
   lens.scale.set(1, 1, 0.45);
   lens.position.z = bodyLen * 0.5 + 0.008;
   headGroup.add(lens);
@@ -124,6 +129,7 @@ export function createUniFiProtectCamera3D(
     new THREE.TorusGeometry(bodyRad * 0.76, 0.0035, 8, 24),
     statusRingMat
   );
+  if (!statusRing.name) statusRing.name = 'unifi.device.statusRing';
   statusRing.position.z = bodyLen * 0.5 + 0.011;
   headGroup.add(statusRing);
 
@@ -213,6 +219,7 @@ export function createUniFiAccessReader3D(
     new THREE.BoxGeometry(0.085, 0.175, 0.028),
     chassisMat
   );
+  if (!chassis.name) chassis.name = 'unifi.device.chassis';
   chassis.castShadow = true;
   const userData: InteractiveUserData = {
     isUniFiAccessReader: true,
@@ -227,6 +234,7 @@ export function createUniFiAccessReader3D(
     new THREE.BoxGeometry(0.068, 0.125, 0.004),
     screenMat
   );
+  if (!display.name) display.name = 'unifi.device.display';
   display.position.set(0, 0.012, 0.015);
   display.userData = userData;
   interactiveMeshes.push(display);
@@ -236,6 +244,7 @@ export function createUniFiAccessReader3D(
     new THREE.BoxGeometry(0.052, 0.007, 0.005),
     statusLedMat
   );
+  if (!statusLedBar.name) statusLedBar.name = 'unifi.device.statusLedBar';
   statusLedBar.position.set(0, -0.066, 0.015);
   rootGroup.add(statusLedBar);
 

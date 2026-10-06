@@ -1,0 +1,920 @@
+/* ============================================================================
+   Floating 3D Issue Annotator Palette (Top-Left)
+   ============================================================================ */
+
+.annotator-window {
+  left: 14px;
+  right: auto;
+  top: 14px;
+  width: 318px;
+}
+
+.annotator-body {
+  max-height: calc(100vh - 60px);
+}
+
+.annotator-top-row {
+  margin-bottom: 5px;
+}
+
+.annotator-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+  padding: 5px 8px;
+}
+
+.annotator-mode-btn.is-active-mode {
+  background: #3b201e;
+  border-color: #82332c;
+  box-shadow: inset 0 1px 0 #592e2a;
+}
+
+.annotator-mode-btn.is-active-mode .hud-rocker-dot {
+  background: #ff5c4d;
+  box-shadow: 0 0 6px rgba(255, 92, 77, 0.85);
+}
+
+/* Annotator Sub-Tool Selector Bar (Pin / Move / Rotate / Measure) */
+.annotator-tools-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+  margin-bottom: 5px;
+}
+
+.annotator-tool-btn {
+  background: #232323;
+  border: 1px solid #121212;
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 #333;
+  color: #bbb;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 4px 3px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.annotator-tool-btn:hover {
+  background: #2d2d2d;
+  color: #eee;
+}
+
+#annotator-tool-pin.is-active {
+  background: #42221f;
+  border-color: #9e3d35;
+  box-shadow: inset 0 1px 0 #663430;
+  color: #ffd9d5;
+}
+
+#annotator-tool-move.is-active,
+#annotator-tool-rotate.is-active {
+  background: #2c2046;
+  border-color: #7c56cc;
+  box-shadow: inset 0 1px 0 #4c3778;
+  color: #eadfff;
+}
+
+#annotator-tool-measure.is-active {
+  background: #173444;
+  border-color: #2c88b8;
+  box-shadow: inset 0 1px 0 #265973;
+  color: #d4f2ff;
+}
+
+.annotator-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.annotator-copy-btn {
+  background: #2b4458;
+  border-color: #14222e;
+  box-shadow: inset 0 1px 0 #3f617c;
+  color: #edf5fc;
+}
+
+.annotator-copy-btn:hover {
+  background: #36556e;
+}
+
+/* Sub-Boxes for Move/Rotate & Measure Span */
+.annotator-sub-box {
+  background: #17191e;
+  border: 1px solid #2b313b;
+  border-radius: 3px;
+  padding: 6px;
+  margin-bottom: 6px;
+}
+
+.annotator-sub-box[hidden] {
+  display: none;
+}
+
+.annotator-move-box {
+  border-color: #4b3975;
+  background: #181621;
+}
+
+.annotator-measure-box {
+  border-color: #265670;
+  background: #141c22;
+}
+
+.annotator-sub-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.annotator-sub-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #dcdcdc;
+}
+
+.annotator-move-box .annotator-sub-title {
+  color: #c8b2ff;
+}
+
+.annotator-measure-box .annotator-sub-title {
+  color: #74d4ff;
+}
+
+.annotator-gizmo-switch {
+  display: flex;
+  gap: 3px;
+}
+
+.annotator-gizmo-switch .hud-inline-btn.is-active {
+  background: #533b85;
+  border-color: #8c6be0;
+  color: #fff;
+}
+
+.annotator-sub-hint {
+  font-size: 9px;
+  color: #9e9e9e;
+  line-height: 1.35;
+}
+
+.annotator-move-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.annotator-field-label {
+  font-size: 8.5px;
+  font-weight: 600;
+  color: #aaa;
+  white-space: nowrap;
+}
+
+.annotator-move-select {
+  flex: 1;
+  min-width: 0;
+  background: #121216;
+  color: #e4e4e4;
+  border: 1px solid #353046;
+  border-radius: 2px;
+  font-size: 9px;
+  padding: 2px 4px;
+}
+
+.annotator-move-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.annotator-num-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.annotator-num-field span {
+  font-size: 8px;
+  color: #9d94b8;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.annotator-num-field input {
+  width: 100%;
+  background: #111015;
+  border: 1px solid #352f47;
+  border-radius: 2px;
+  color: #f0ecff;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  padding: 2px 3px;
+}
+
+.annotator-rot-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.annotator-rot-slider {
+  flex: 1;
+  height: 4px;
+  accent-color: #9b72f2;
+  cursor: pointer;
+}
+
+.annotator-rot-readout {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8.5px;
+  color: #d8c7ff;
+  min-width: 34px;
+  text-align: right;
+}
+
+.annotator-nudge-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+
+.annotator-nudge-bar .hud-inline-btn {
+  padding: 2px 4px;
+  font-size: 8.5px;
+  flex: 1 0 auto;
+  text-align: center;
+}
+
+.annotator-reset-btn {
+  background: #3d2222;
+  border-color: #6b3232;
+  color: #ffcccc;
+}
+
+.annotator-reset-btn:hover {
+  background: #572b2b;
+}
+
+/* Measure Span Controls */
+.annotator-measure-opts {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.annotator-snap-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 8.5px;
+  color: #a8d4ea;
+  cursor: pointer;
+}
+
+.annotator-snap-label input {
+  margin: 0;
+}
+
+.annotator-measure-status {
+  font-size: 9px;
+  color: #b4cad6;
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+
+.annotator-measure-readout {
+  background: #0f161b;
+  border: 1px solid #23475c;
+  border-radius: 3px;
+  padding: 4px 6px;
+  margin-bottom: 5px;
+}
+
+.annotator-measure-readout[hidden],
+.annotator-measure-target-row[hidden],
+#annotator-move-controls[hidden],
+#annotator-move-empty[hidden] {
+  display: none;
+}
+
+.annotator-measure-primary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.annotator-measure-val {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #4dd2ff;
+}
+
+.annotator-measure-sub {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  color: #9ec6e8;
+}
+
+.annotator-measure-target-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.annotator-target-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.annotator-editor-box {
+  background: #181a1f;
+  border: 1px solid #2b313b;
+  border-radius: 3px;
+  padding: 6px;
+  margin-bottom: 6px;
+}
+
+.annotator-editor-box[hidden] {
+  display: none;
+}
+
+.annotator-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.annotator-editor-title {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #ffc44d;
+  letter-spacing: 0.03em;
+}
+
+.annotator-editor-coords {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  color: #9ec6e8;
+}
+
+.annotator-editor-meta {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8.5px;
+  color: #9a9a9a;
+  margin-bottom: 5px;
+  word-break: break-all;
+}
+
+.annotator-note-input {
+  width: 100%;
+}
+
+.annotator-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.annotator-empty {
+  font-size: 9.5px;
+  color: #8e8e8e;
+  line-height: 1.35;
+  background: #181818;
+  border: 1px solid #111;
+  border-radius: 3px;
+  padding: 6px 7px;
+}
+
+.annotator-item {
+  background: #1b1b1b;
+  border: 1px solid #111;
+  border-radius: 3px;
+  padding: 5px 6px;
+  cursor: pointer;
+}
+
+.annotator-item:hover {
+  background: #232323;
+}
+
+.annotator-item.is-selected {
+  background: #24211b;
+  border-color: #6b5322;
+}
+
+.annotator-item-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 3px;
+}
+
+.annotator-item-badge {
+  background: #eb4d3d;
+  color: #fff;
+  font-weight: 700;
+  font-size: 8.5px;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.annotator-item-badge.kind-move {
+  background: #7c56cc;
+  color: #fff;
+}
+
+.annotator-item-badge.kind-measure {
+  background: #1f8fb8;
+  color: #fff;
+}
+
+.annotator-item.is-selected .annotator-item-badge {
+  background: #ffc44d;
+  color: #181818;
+}
+
+.annotator-item-room {
+  font-weight: 600;
+  font-size: 9.5px;
+  color: #dcdcdc;
+}
+
+.annotator-item-coords {
+  margin-left: auto;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8.5px;
+  color: #8ab4d8;
+}
+
+.annotator-item-btn {
+  padding: 1px 4px;
+  font-size: 8.5px;
+}
+
+.annotator-del-btn:hover {
+  background: #6b2424;
+  color: #ffd6d6;
+}
+
+.annotator-item-note {
+  font-size: 9.8px;
+  color: #efefef;
+  margin-bottom: 2px;
+  word-break: break-word;
+}
+
+.annotator-item-meta {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  color: #808080;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+
+
+/* ============================================================================
+   Floating OpenUSD Stage Studio HUD (#usd-stage-panel)
+   ============================================================================ */
+
+.usd-stage-window {
+  left: 342px;
+  right: auto;
+  top: 14px;
+  width: 356px;
+  border-color: #1e425e;
+}
+
+.usd-stage-titlebar {
+  background: linear-gradient(180deg, #1b3144 0%, #152433 100%);
+  border-bottom-color: #0e1a24;
+}
+
+.usd-stage-titlebar code {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  color: #7dd3fc;
+  font-size: 9.5px;
+}
+
+.usd-count-badge {
+  background: #0c4a6e;
+  color: #bae6fd;
+  border: 1px solid #0284c7;
+}
+
+.usd-stage-body {
+  max-height: calc(100vh - 60px);
+}
+
+.usd-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.usd-stat-cell {
+  background: #141920;
+  border: 1px solid #243040;
+  border-radius: 3px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.usd-stat-label {
+  font-size: 7.5px;
+  font-weight: 700;
+  color: #7da2c4;
+  letter-spacing: 0.04em;
+}
+
+.usd-stat-val {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8.8px;
+  font-weight: 600;
+  color: #e2f1ff;
+}
+
+.usd-export-links-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+
+.usd-dl-btn {
+  text-decoration: none;
+  text-align: center;
+  padding: 3px 4px;
+  font-size: 8.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.usd-dl-primary {
+  background: #164e63;
+  border-color: #0891b2;
+  color: #cffafe;
+  font-weight: 700;
+}
+
+.usd-dl-primary:hover {
+  background: #155e75;
+}
+
+.usd-diag-row {
+  margin-bottom: 4px;
+}
+
+.usd-diag-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 6px;
+  background: #12171d;
+  border: 1px solid #222e3c;
+  border-radius: 3px;
+}
+
+.usd-legend-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8.5px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  color: #cbd5e1;
+}
+
+.usd-legend-pill i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.usd-variant-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.usd-variant-row:last-child {
+  margin-bottom: 0;
+}
+
+.usd-variant-label {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8.5px;
+  color: #93c5fd;
+  min-width: 72px;
+}
+
+.usd-variant-seg {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.usd-prim-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.usd-prim-path {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: #38bdf8;
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+
+.usd-prim-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.usd-badge {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+.usd-badge-type {
+  background: #1e3a8a;
+  color: #bfdbfe;
+  border: 1px solid #3b82f6;
+}
+
+.usd-badge-kind {
+  background: #27272a;
+  color: #d4d4d8;
+  border: 1px solid #52525b;
+}
+
+.usd-badge-phys {
+  background: #064e3b;
+  color: #a7f3d0;
+  border: 1px solid #10b981;
+}
+
+.usd-badge-link {
+  background: #1f2937;
+  color: #93c5fd;
+  border: 1px solid #374151;
+  text-decoration: none;
+}
+
+.usd-badge-link:hover {
+  background: #374151;
+}
+
+.usd-prim-mat {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8.2px;
+  color: #c4b5fd;
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
+.usd-prim-pre {
+  margin: 0;
+  padding: 5px 6px;
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 3px;
+  color: #a5d6ff;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  line-height: 1.35;
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre;
+}
+
+.usd-sublayer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 138px;
+  overflow-y: auto;
+  background: #121519;
+  border: 1px solid #1e242c;
+  border-radius: 3px;
+  padding: 3px 4px;
+}
+
+.usd-sublayer-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 3px;
+  border-radius: 2px;
+  font-size: 8.8px;
+}
+
+.usd-sublayer-row:hover {
+  background: #1b222c;
+}
+
+.usd-sublayer-row.is-muted {
+  opacity: 0.48;
+}
+
+.usd-sublayer-row input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.usd-sublayer-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #e2e8f0;
+}
+
+.usd-sublayer-meta {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  color: #94a3b8;
+}
+
+.usd-solo-btn {
+  padding: 1px 4px;
+  font-size: 7.8px;
+}
+
+.usd-sublayer-link {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  color: #38bdf8;
+  text-decoration: none;
+}
+
+.usd-sublayer-link:hover {
+  text-decoration: underline;
+}
+
+.usd-override-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0d1117;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+  border-radius: 3px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8.2px;
+  line-height: 1.35;
+  padding: 5px 6px;
+  resize: vertical;
+  margin-bottom: 5px;
+}
+
+.usd-override-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.usd-apply-btn {
+  flex: 1;
+  background: #155e75;
+  border-color: #0891b2;
+  color: #ecfeff;
+}
+
+.usd-apply-btn:hover {
+  background: #0e7490;
+}
+
+.usd-pxr-btn {
+  background: #1e293b;
+  border-color: #475569;
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.usd-compile-status {
+  margin-top: 5px;
+  padding: 4px 6px;
+  background: #0f172a;
+  border: 1px solid #1e3a8a;
+  border-radius: 3px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 8px;
+  color: #93c5fd;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+
+/* ============================================================================
+   60 Hz GPU-Composited Screen-Space Annotation Pin Overlay & Summary Pill
+   ============================================================================ */
+
+.annotator-summary-pill-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  margin-bottom: 6px;
+  padding: 3px 6px;
+  background: #1a1d24;
+  border: 1px solid #262b36;
+  border-radius: 3px;
+  font-family: var(--hud-font-mono);
+  font-size: 8.5px;
+  color: #9ca3af;
+}
+
+.annotator-summary-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.annotator-summary-tag {
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: #252932;
+  color: #d1d5db;
+}
+
+.annotator-summary-tag.is-active {
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.annotator-pins-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+  overflow: hidden;
+}
+
+.annotator-screen-pin {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  margin-left: -14px;
+  margin-top: -26px;
+  border-radius: 999px;
+  background: rgba(24, 26, 32, 0.92);
+  border: 1.5px solid #eb4d3d;
+  color: #ffffff;
+  font-family: var(--hud-font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
+}
+
+.annotator-screen-pin.kind-move {
+  border-color: #a855f7;
+}
+
+.annotator-screen-pin.kind-measure {
+  border-color: #0ea5e9;
+}
+
+.annotator-screen-pin.is-selected {
+  border-color: #ffc44d;
+  color: #ffd470;
+  background: rgba(29, 34, 43, 0.96);
+  z-index: 2;
+}

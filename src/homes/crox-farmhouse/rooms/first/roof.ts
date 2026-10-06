@@ -10,6 +10,11 @@ import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
 
+function tagHighLodDetail(mesh: THREE.Mesh): void {
+  mesh.userData.lodTier = 'high';
+  mesh.userData.lodMaxDistance = 12;
+}
+
 /**
  * First-floor ceilings, L-plan Welsh slate roof and chimneys.
  */
@@ -161,6 +166,7 @@ export function buildFirstFloorCeilingsAndRoof(
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.computeBoundingSphere();
     const mesh = new THREE.Mesh(geo, upperCeilingMat);
     mesh.name = name;
     mesh.userData.isArchitecturalShell = true;
@@ -308,6 +314,8 @@ export function buildFirstFloorCeilingsAndRoof(
       0.5
     );
     collarSlab.name = 'bedroom2.vaultedCeiling.collar';
+    collarSlab.userData.isArchitecturalShell = true;
+    collarSlab.geometry.computeBoundingSphere();
 
     // 3. Planar East pitched skeiling slope (`Y = 5.02m` -> actual East cross-wall at `Y = 4.16m`, meeting North wall at `zNorthAtX(-16.876)` — Issue #4!)
     buildVaultedCeilingQuad(
@@ -324,7 +332,7 @@ export function buildFirstFloorCeilingsAndRoof(
   {
     const [landingSouthWestX, , landingSouthWestZ] = transformEastWingTuple(-18.04, 0, 2.688);
     const [landingSouthEastX, , landingSouthEastZ] = transformEastWingTuple(-16.956, 0, 2.688);
-    buildPolygonalFloorSlab(
+    const corridorCeilingSlab = buildPolygonalFloorSlab(
       ceilingMeshGroup,
       [
         [-22.32, 1.905],
@@ -345,6 +353,9 @@ export function buildFirstFloorCeilingsAndRoof(
       upperCeilingMat,
       0.5
     );
+    corridorCeilingSlab.name = 'roof.westWingCorridor.ceilingSlab';
+    corridorCeilingSlab.userData.isArchitecturalShell = true;
+    corridorCeilingSlab.geometry.computeBoundingSphere();
   }
 
   // Issue #15 & Issue #1: Partially Vaulted Ceiling over Bedroom 3 (`X = -22.19m..-18.475m, Z = 4.175m/4.925m..8.15m`)
@@ -387,6 +398,8 @@ export function buildFirstFloorCeilingsAndRoof(
       0.5
     );
     bed3CollarSlab.name = 'bedroom3.vaultedCeiling.collar';
+    bed3CollarSlab.userData.isArchitecturalShell = true;
+    bed3CollarSlab.geometry.computeBoundingSphere();
 
     // 3. East pitched skeiling slope (`X = -18.95m, Y = 5.02m` -> `X = -18.475m, Y = 4.16m` across `Z = 4.925m..8.15m`)
     buildVaultedCeilingQuad(
@@ -446,6 +459,7 @@ export function buildFirstFloorCeilingsAndRoof(
   //    Eliminates all L-corner overlap and guarantees horizontal slate courses!
   // -------------------------------------------------------------------------
   const createCoplanarRoofQuadMesh = (
+    name: string,
     p0: THREE.Vector3,
     p1: THREE.Vector3,
     p2: THREE.Vector3,
@@ -532,8 +546,10 @@ export function buildFirstFloorCeilingsAndRoof(
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.computeBoundingSphere();
 
     const mesh = new THREE.Mesh(geo, slateRoofMat);
+    mesh.name = name;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     ceilingMeshGroup.add(mesh);
@@ -580,6 +596,7 @@ export function buildFirstFloorCeilingsAndRoof(
 
   // 1. East-West Wing — South (Courtyard) Slate Slope (Trapezoid from Courtyard Valley to East Gable)
   createCoplanarRoofQuadMesh(
+    'roof.eastWing.southCourtyardSlope',
     pRidgeJunction,
     pRidgeEastGable,
     pEastGableSouthEave,
@@ -589,6 +606,7 @@ export function buildFirstFloorCeilingsAndRoof(
 
   // 2. East-West Wing — North Slate Slope (Trapezoid from East Gable to North Valley)
   createCoplanarRoofQuadMesh(
+    'roof.eastWing.northSlope',
     pRidgeEastGable,
     pRidgeJunction,
     pNorthValleyEave,
@@ -598,6 +616,7 @@ export function buildFirstFloorCeilingsAndRoof(
 
   // 3. North-South Front Wing — West Front Slate Slope (Full Rectangle from North Gable to South Gable)
   createCoplanarRoofQuadMesh(
+    'roof.westWing.westFrontSlope',
     pRidgeNorthGable,
     pRidgeSouthGable,
     new THREE.Vector3(westEaveX, eaveY, southGableZ),
@@ -607,6 +626,7 @@ export function buildFirstFloorCeilingsAndRoof(
 
   // 4. North-South Front Wing — East Courtyard Slate Slope (Trapezoid from South Gable to Courtyard Valley)
   createCoplanarRoofQuadMesh(
+    'roof.westWing.eastCourtyardSlope',
     pRidgeSouthGable,
     pRidgeJunction,
     pCourtyardValleyEave,
@@ -616,6 +636,7 @@ export function buildFirstFloorCeilingsAndRoof(
 
   // 5. North-South Front Wing — North-East Gable Slate Slope (Triangle from Valley Junction to North Gable)
   createCoplanarRoofQuadMesh(
+    'roof.westWing.northEastGableSlope',
     pRidgeJunction,
     pRidgeNorthGable,
     pNorthValleyEave,
@@ -623,16 +644,58 @@ export function buildFirstFloorCeilingsAndRoof(
     slateThick
   );
 
+  // Shared-BufferGeometry Timber Roof Rafters inside the upper ridge void (`Y = 5.10m..5.65m`, completely enclosed between collar ceiling and slate roof)
+  {
+    const roofTimberMat = new THREE.MeshStandardMaterial({
+      color: 0x8f6b47,
+      roughness: 0.56,
+      metalness: 0.04,
+    });
+    const sharedRoofRafterGeo = new THREE.BoxGeometry(0.075, 0.11, 1.15);
+    sharedRoofRafterGeo.computeBoundingSphere();
+
+    const raftersGroup = new THREE.Group();
+    raftersGroup.name = 'roof.eastWing.rafters';
+    const rafterPitch = Math.atan2(0.62, 1.05);
+    let rafterIdx = 0;
+    for (let rx = -16.2; rx <= -5.4; rx += 1.35) {
+      rafterIdx += 1;
+      const northRafter = new THREE.Mesh(sharedRoofRafterGeo, roofTimberMat);
+      northRafter.name = `roof.eastWing.rafters.northRafter_${rafterIdx}`;
+      northRafter.position.set(rx, 5.36, -0.58);
+      northRafter.rotation.x = -rafterPitch;
+      tagHighLodDetail(northRafter);
+      raftersGroup.add(northRafter);
+
+      const southRafter = new THREE.Mesh(sharedRoofRafterGeo, roofTimberMat);
+      southRafter.name = `roof.eastWing.rafters.southRafter_${rafterIdx}`;
+      southRafter.position.set(rx, 5.36, 0.48);
+      southRafter.rotation.x = rafterPitch;
+      tagHighLodDetail(southRafter);
+      raftersGroup.add(southRafter);
+    }
+    ewCeilingMeshGroup.add(raftersGroup);
+  }
+
   // -------------------------------------------------------------------------
   // C. Lead Ridge Caps & Lead-Lined Valley Flashing Channels (Photos 1 & 2)
   // -------------------------------------------------------------------------
   // East-West Lead Ridge Roll Cap (local X = -20.162m to -4.41m at local Z = ewRidgeZ, Y = 5.83m)
   const ewRidgeEndLocalX = ewEastGableX - 0.01;
   const ewRidgeLen = ewRidgeEndLocalX - ewRidgeJunctionLocalX;
-  const ewRidgeCap = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.062, 0.062, ewRidgeLen, 16, 1, false, 0, Math.PI),
-    ridgeLeadMat
+  const ewRidgeCapGeo = new THREE.CylinderGeometry(
+    0.062,
+    0.062,
+    ewRidgeLen,
+    16,
+    1,
+    false,
+    0,
+    Math.PI
   );
+  ewRidgeCapGeo.computeBoundingSphere();
+  const ewRidgeCap = new THREE.Mesh(ewRidgeCapGeo, ridgeLeadMat);
+  ewRidgeCap.name = 'roof.eastWing.ridgeLeadCap';
   ewRidgeCap.rotation.z = Math.PI / 2;
   ewRidgeCap.position.set((ewRidgeJunctionLocalX + ewRidgeEndLocalX) / 2, ridgeY + 0.01, ewRidgeZ);
   ewRidgeCap.castShadow = true;
@@ -642,10 +705,19 @@ export function buildFirstFloorCeilingsAndRoof(
   const nsRidgeStartZ = northGableRidgeZ + 0.015;
   const nsRidgeEndZ = southGableZ - 0.015;
   const nsRidgeLen = nsRidgeEndZ - nsRidgeStartZ;
-  const nsRidgeCap = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.062, 0.062, nsRidgeLen, 16, 1, false, 0, Math.PI),
-    ridgeLeadMat
+  const nsRidgeCapGeo = new THREE.CylinderGeometry(
+    0.062,
+    0.062,
+    nsRidgeLen,
+    16,
+    1,
+    false,
+    0,
+    Math.PI
   );
+  nsRidgeCapGeo.computeBoundingSphere();
+  const nsRidgeCap = new THREE.Mesh(nsRidgeCapGeo, ridgeLeadMat);
+  nsRidgeCap.name = 'roof.westWing.ridgeLeadCap';
   nsRidgeCap.rotation.x = Math.PI / 2;
   nsRidgeCap.rotation.z = Math.PI;
   nsRidgeCap.position.set(nsRidgeX, ridgeY + 0.01, (nsRidgeStartZ + nsRidgeEndZ) / 2);
@@ -653,13 +725,15 @@ export function buildFirstFloorCeilingsAndRoof(
   ceilingMeshGroup.add(nsRidgeCap);
 
   // Lead-Lined V-Channel Valley Flashing Strips along both Valley Intersections (coplanar with the two adjacent roof slopes)
-  for (const [valleyEavePt, wingDirA, wingDirB] of [
+  for (const [valleySuffix, valleyEavePt, wingDirA, wingDirB] of [
     [
+      'courtyard',
       pCourtyardValleyEave,
       new THREE.Vector3().subVectors(pEastGableSouthEave, pCourtyardValleyEave).normalize(),
       new THREE.Vector3(eastEaveX - pCourtyardValleyEave.x, 0, southGableZ - pCourtyardValleyEave.z).normalize(),
     ],
     [
+      'north',
       pNorthValleyEave,
       new THREE.Vector3().subVectors(pEastGableNorthEave, pNorthValleyEave).normalize(),
       new THREE.Vector3(0, 0, -1),
@@ -694,7 +768,7 @@ export function buildFirstFloorCeilingsAndRoof(
     valleyGeo.computeBoundingSphere();
 
     const valleyFlashing = new THREE.Mesh(valleyGeo, ridgeLeadMat);
-    valleyFlashing.name = 'mainHouse.roof.valleyFlashing';
+    valleyFlashing.name = `mainHouse.roof.valleyFlashing.${valleySuffix}`;
     ceilingMeshGroup.add(valleyFlashing);
   }
 
@@ -718,7 +792,9 @@ export function buildFirstFloorCeilingsAndRoof(
   });
   ewEastGableGeo.rotateY(Math.PI / 2);
   applyWorldSpaceBrickUVs(ewEastGableGeo, -4.64, gableCollarY, 0);
+  ewEastGableGeo.computeBoundingSphere();
   const ewEastGable = new THREE.Mesh(ewEastGableGeo, exteriorBrickMat);
+  ewEastGable.name = 'roof.eastGable.upperBrickApex';
   ewEastGable.position.set(-4.64, gableCollarY, 0);
   ewEastGable.castShadow = true;
   ewEastGable.receiveShadow = true;
@@ -746,7 +822,9 @@ export function buildFirstFloorCeilingsAndRoof(
     }
     nsNorthUv.needsUpdate = true;
   }
+  nsNorthGableGeo.computeBoundingSphere();
   const nsNorthGable = new THREE.Mesh(nsNorthGableGeo, exteriorBrickMat);
+  nsNorthGable.name = 'roof.northGable.upperBrickApex';
   nsNorthGable.position.set(-22.47, 0, -3.359);
   nsNorthGable.rotation.y = MAIN_EAST_WING_ROTATION_Y;
   nsNorthGable.castShadow = true;
@@ -765,7 +843,9 @@ export function buildFirstFloorCeilingsAndRoof(
   });
   nsSouthGableGeo.translate(0, 0, 11.49);
   applyWorldSpaceBrickUVs(nsSouthGableGeo, 0, 0, 0);
+  nsSouthGableGeo.computeBoundingSphere();
   const nsSouthGable = new THREE.Mesh(nsSouthGableGeo, exteriorBrickMat);
+  nsSouthGable.name = 'roof.southGable.upperBrickApex';
   nsSouthGable.castShadow = true;
   nsSouthGable.receiveShadow = true;
   ceilingMeshGroup.add(nsSouthGable);
@@ -773,6 +853,7 @@ export function buildFirstFloorCeilingsAndRoof(
   // Plumb-Mitered White Painted Verge Bargeboards + Sloped Boxed Verge Soffits along all 3 Gables (Issues #5 & #6):
   // Eliminates the X-crossing / V-notch at the ridge apex and closes the underside overhang between the bargeboard and brick gable wall!
   const addMiteredGableBargeboardsAndSoffit = (
+    gablePrefix: string,
     uLeft: number,
     uRidge: number,
     uRight: number,
@@ -790,6 +871,7 @@ export function buildFirstFloorCeilingsAndRoof(
     const soffitThickY = 0.022;
 
     const addExtrudedSlopeStrip = (
+      partName: string,
       u0: number,
       yBot0: number,
       yTop0: number,
@@ -817,18 +899,21 @@ export function buildFirstFloorCeilingsAndRoof(
         geo.rotateY(Math.PI / 2);
       }
       geo.computeVertexNormals();
+      geo.computeBoundingSphere();
       const mesh = new THREE.Mesh(geo, soffitFasciaMat);
+      mesh.name = `${gablePrefix}.${partName}`;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       targetGroup.add(mesh);
     };
 
     // Left & Right Plumb-Mitered Verge Bargeboards (meet along exact vertical plumb line u = uRidge!)
-    addExtrudedSlopeStrip(uLeft, eaveBotY, eaveTopY, uRidge, ridgeBotY, ridgeTopY, bargeZMin, bargeZMax);
-    addExtrudedSlopeStrip(uRidge, ridgeBotY, ridgeTopY, uRight, eaveBotY, eaveTopY, bargeZMin, bargeZMax);
+    addExtrudedSlopeStrip('bargeboard.left', uLeft, eaveBotY, eaveTopY, uRidge, ridgeBotY, ridgeTopY, bargeZMin, bargeZMax);
+    addExtrudedSlopeStrip('bargeboard.right', uRidge, ridgeBotY, ridgeTopY, uRight, eaveBotY, eaveTopY, bargeZMin, bargeZMax);
 
     // Left & Right Sloped Boxed Verge Soffits (close the 0.22m overhang between the bargeboard and brick gable wall!)
     addExtrudedSlopeStrip(
+      'vergeSoffit.left',
       uLeft,
       eaveBotY,
       eaveBotY + soffitThickY,
@@ -839,6 +924,7 @@ export function buildFirstFloorCeilingsAndRoof(
       soffitZMax
     );
     addExtrudedSlopeStrip(
+      'vergeSoffit.right',
       uRidge,
       ridgeBotY,
       ridgeBotY + soffitThickY,
@@ -852,6 +938,7 @@ export function buildFirstFloorCeilingsAndRoof(
 
   // 1. North Gable Plumb-Mitered Bargeboards & Sloped Verge Soffit (in ewCeilingMeshGroup at z_ew = -2.992m..-2.750m — Issues #5 & #6!)
   addMiteredGableBargeboardsAndSoffit(
+    'roof.northGable',
     ewNorthGableWestLocalX,
     ewNorthGableRidgeLocalX,
     ewNorthValleyLocalX,
@@ -865,6 +952,7 @@ export function buildFirstFloorCeilingsAndRoof(
 
   // 2. South Gable Plumb-Mitered Bargeboards & Sloped Verge Soffit (in ceilingMeshGroup at Z = 11.750m..11.950m)
   addMiteredGableBargeboardsAndSoffit(
+    'roof.southGable',
     westEaveX,
     nsRidgeX,
     eastEaveX,
@@ -879,6 +967,7 @@ export function buildFirstFloorCeilingsAndRoof(
   // 3. East Gable Plumb-Mitered Bargeboards & Sloped Verge Soffit (in ewCeilingMeshGroup at x_ew = -4.650m..-4.392m)
   // Note: with rotateY(Math.PI / 2), (u, y, z) maps to (z, y, -u), so u = -ewSouthEaveZ..-ewNorthEaveZ maps to z_ew = +2.90m..-3.00m!
   addMiteredGableBargeboardsAndSoffit(
+    'roof.eastGable',
     -ewSouthEaveZ,
     -ewRidgeZ,
     -ewNorthEaveZ,
@@ -893,30 +982,38 @@ export function buildFirstFloorCeilingsAndRoof(
   // White Painted Eaves Fascia Boards, Boxed Eaves Soffits & Pale Sage-Green Half-Round Gutters at Y = 4.18m (Issue #11, Issue #3, Issue #1 & Issue #6)
   const ewNorthEaveSpanX = ewEastGableX - ewNorthValleyLocalX; // 13.230852m (from -17.630852m to -4.400m)
   const ewNorthEaveMidX = (ewNorthValleyLocalX + ewEastGableX) * 0.5; // -11.015426m
-  for (const [fasciaZ, signZ, fasciaSpanX, fasciaMidX, soffitSpanX, soffitMidX, gutterSpanX, gutterMidX] of [
-    [ewNorthEaveZ + 0.02, -1, ewNorthEaveSpanX, ewNorthEaveMidX, ewNorthEaveSpanX, ewNorthEaveMidX, ewNorthEaveSpanX, ewNorthEaveMidX], // East-West North eaves joined seamlessly at North Valley (x_ew = -17.630852m — Issue #6!)
-    [ewSouthEaveZ - 0.02, 1, 12.057, -10.4285, 12.275, -10.5375, 12.087, -10.4435],  // East-West South courtyard eaves extended cleanly into L-corner
+  for (const [sideKey, fasciaZ, signZ, fasciaSpanX, fasciaMidX, soffitSpanX, soffitMidX, gutterSpanX, gutterMidX] of [
+    ['north', ewNorthEaveZ + 0.02, -1, ewNorthEaveSpanX, ewNorthEaveMidX, ewNorthEaveSpanX, ewNorthEaveMidX, ewNorthEaveSpanX, ewNorthEaveMidX], // East-West North eaves joined seamlessly at North Valley (x_ew = -17.630852m — Issue #6!)
+    ['south', ewSouthEaveZ - 0.02, 1, 12.057, -10.4285, 12.275, -10.5375, 12.087, -10.4435],  // East-West South courtyard eaves extended cleanly into L-corner
   ] as const) {
-    const fascia = new THREE.Mesh(
-      new THREE.BoxGeometry(fasciaSpanX, 0.151, 0.024),
-      soffitFasciaMat
-    );
+    const fasciaGeo = new THREE.BoxGeometry(fasciaSpanX, 0.151, 0.024);
+    fasciaGeo.computeBoundingSphere();
+    const fascia = new THREE.Mesh(fasciaGeo, soffitFasciaMat);
+    fascia.name = `roof.eastWing.${sideKey}Fascia`;
     fascia.position.set(fasciaMidX, eaveY - 0.0405, fasciaZ);
     fascia.castShadow = true;
     ewCeilingMeshGroup.add(fascia);
 
-    const soffit = new THREE.Mesh(
-      new THREE.BoxGeometry(soffitSpanX, 0.022, 0.24),
-      soffitFasciaMat
-    );
+    const soffitGeo = new THREE.BoxGeometry(soffitSpanX, 0.022, 0.24);
+    soffitGeo.computeBoundingSphere();
+    const soffit = new THREE.Mesh(soffitGeo, soffitFasciaMat);
+    soffit.name = `roof.eastWing.${sideKey}Soffit`;
     soffit.position.set(soffitMidX, eaveY - 0.105, fasciaZ - signZ * 0.11);
     ewCeilingMeshGroup.add(soffit);
 
-    const gutter = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.056, 0.056, gutterSpanX, 14, 1, true, Math.PI, Math.PI),
-      gutterPaleGreenMat
+    const gutterGeo = new THREE.CylinderGeometry(
+      0.056,
+      0.056,
+      gutterSpanX,
+      14,
+      1,
+      true,
+      Math.PI,
+      Math.PI
     );
-    gutter.name = 'mainHouse.gutter.ew';
+    gutterGeo.computeBoundingSphere();
+    const gutter = new THREE.Mesh(gutterGeo, gutterPaleGreenMat);
+    gutter.name = `mainHouse.gutter.ew.${sideKey}`;
     gutter.rotation.z = Math.PI / 2;
     gutter.position.set(gutterMidX, eaveY - 0.01, fasciaZ + signZ * 0.068);
     ewCeilingMeshGroup.add(gutter);
@@ -929,7 +1026,9 @@ export function buildFirstFloorCeilingsAndRoof(
     const northBackingCx = (-17.78 + -4.64) * 0.5;
     const northBackingGeo = new THREE.BoxGeometry(northBackingW, 0.156, 0.28);
     applyWorldSpaceBrickUVs(northBackingGeo, northBackingCx, 4.142, -2.64);
+    northBackingGeo.computeBoundingSphere();
     const northEaveBacking = new THREE.Mesh(northBackingGeo, exteriorBrickMat);
+    northEaveBacking.name = 'roof.eastWing.northEaveBrickBacking';
     northEaveBacking.position.set(northBackingCx, 4.142, -2.64);
     ewCeilingMeshGroup.add(northEaveBacking);
   }
@@ -939,26 +1038,34 @@ export function buildFirstFloorCeilingsAndRoof(
   const westFrontMidZ = (northGableZ + southGableZ) * 0.5;
   {
     const westFasciaX = westEaveX + 0.02;
-    const westFascia = new THREE.Mesh(
-      new THREE.BoxGeometry(0.024, 0.15, westFrontSpanZ),
-      soffitFasciaMat
-    );
+    const westFasciaGeo = new THREE.BoxGeometry(0.024, 0.15, westFrontSpanZ);
+    westFasciaGeo.computeBoundingSphere();
+    const westFascia = new THREE.Mesh(westFasciaGeo, soffitFasciaMat);
+    westFascia.name = 'roof.westWing.westFascia';
     westFascia.position.set(westFasciaX, eaveY - 0.04, westFrontMidZ);
     westFascia.castShadow = true;
     ceilingMeshGroup.add(westFascia);
 
-    const westSoffit = new THREE.Mesh(
-      new THREE.BoxGeometry(0.24, 0.022, westFrontSpanZ),
-      soffitFasciaMat
-    );
+    const westSoffitGeo = new THREE.BoxGeometry(0.24, 0.022, westFrontSpanZ);
+    westSoffitGeo.computeBoundingSphere();
+    const westSoffit = new THREE.Mesh(westSoffitGeo, soffitFasciaMat);
+    westSoffit.name = 'roof.westWing.westSoffit';
     westSoffit.position.set(westFasciaX + 0.11, eaveY - 0.105, westFrontMidZ);
     ceilingMeshGroup.add(westSoffit);
 
-    const westGutter = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.056, 0.056, westFrontSpanZ, 14, 1, true, Math.PI, Math.PI),
-      gutterPaleGreenMat
+    const westGutterGeo = new THREE.CylinderGeometry(
+      0.056,
+      0.056,
+      westFrontSpanZ,
+      14,
+      1,
+      true,
+      Math.PI,
+      Math.PI
     );
-    westGutter.name = 'mainHouse.gutter.ns';
+    westGutterGeo.computeBoundingSphere();
+    const westGutter = new THREE.Mesh(westGutterGeo, gutterPaleGreenMat);
+    westGutter.name = 'mainHouse.gutter.ns.west';
     westGutter.rotation.x = Math.PI / 2;
     westGutter.position.set(westFasciaX - 0.068, eaveY - 0.01, westFrontMidZ);
     ceilingMeshGroup.add(westGutter);
@@ -974,29 +1081,42 @@ export function buildFirstFloorCeilingsAndRoof(
     const eastCourtyardMidZ = (pCourtyardValleyEave.z + southGableZ) * 0.5;
 
     const eastEaveGroup = new THREE.Group();
+    eastEaveGroup.name = 'roof.westWing.eastCourtyardEaves';
     eastEaveGroup.position.set(eastCourtyardMidX, 0, eastCourtyardMidZ);
     eastEaveGroup.rotation.y = eastCourtyardAngleY;
 
-    const eastFascia = new THREE.Mesh(
-      new THREE.BoxGeometry(0.024, 0.15, eastCourtyardSpanLen + 0.022),
-      soffitFasciaMat
+    const eastFasciaGeo = new THREE.BoxGeometry(
+      0.024,
+      0.15,
+      eastCourtyardSpanLen + 0.022
     );
+    eastFasciaGeo.computeBoundingSphere();
+    const eastFascia = new THREE.Mesh(eastFasciaGeo, soffitFasciaMat);
+    eastFascia.name = 'roof.westWing.eastCourtyardFascia';
     eastFascia.position.set(-0.02, eaveY - 0.04, -0.011);
     eastFascia.castShadow = true;
     eastEaveGroup.add(eastFascia);
 
-    const eastSoffit = new THREE.Mesh(
-      new THREE.BoxGeometry(0.24, 0.022, eastCourtyardSpanLen),
-      soffitFasciaMat
-    );
+    const eastSoffitGeo = new THREE.BoxGeometry(0.24, 0.022, eastCourtyardSpanLen);
+    eastSoffitGeo.computeBoundingSphere();
+    const eastSoffit = new THREE.Mesh(eastSoffitGeo, soffitFasciaMat);
+    eastSoffit.name = 'roof.westWing.eastCourtyardSoffit';
     eastSoffit.position.set(-0.13, eaveY - 0.105, 0);
     eastEaveGroup.add(eastSoffit);
 
-    const eastGutter = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.056, 0.056, eastCourtyardSpanLen + 0.052, 14, 1, true, Math.PI, Math.PI),
-      gutterPaleGreenMat
+    const eastGutterGeo = new THREE.CylinderGeometry(
+      0.056,
+      0.056,
+      eastCourtyardSpanLen + 0.052,
+      14,
+      1,
+      true,
+      Math.PI,
+      Math.PI
     );
-    eastGutter.name = 'mainHouse.gutter.ns';
+    eastGutterGeo.computeBoundingSphere();
+    const eastGutter = new THREE.Mesh(eastGutterGeo, gutterPaleGreenMat);
+    eastGutter.name = 'mainHouse.gutter.ns.east';
     eastGutter.rotation.x = Math.PI / 2;
     eastGutter.position.set(0.048, eaveY - 0.01, -0.026);
     eastEaveGroup.add(eastGutter);
@@ -1004,7 +1124,7 @@ export function buildFirstFloorCeilingsAndRoof(
     ceilingMeshGroup.add(eastEaveGroup);
 
     // Mitered L-Corner Boxed Eaves Soffit, Brick Eave Backing & Gutter Angle Union at [-16.703, 3.958, 2.902] (Issue #1)
-    buildPolygonalFloorSlab(
+    const cornerSoffit = buildPolygonalFloorSlab(
       ceilingMeshGroup,
       [
         [-16.715, 2.765],
@@ -1017,16 +1137,22 @@ export function buildFirstFloorCeilingsAndRoof(
       0.022,
       soffitFasciaMat,
       0.5
-    ).name = 'mainHouse.roof.courtyardCornerSoffit';
+    );
+    cornerSoffit.name = 'mainHouse.roof.courtyardCornerSoffit';
+    cornerSoffit.geometry.computeBoundingSphere();
 
     const cornerEaveBackingGeo = new THREE.BoxGeometry(0.26, 0.18, 0.3);
     applyWorldSpaceBrickUVs(cornerEaveBackingGeo, -16.82, eaveY - 0.01, 2.75);
+    cornerEaveBackingGeo.computeBoundingSphere();
     const cornerEaveBacking = new THREE.Mesh(cornerEaveBackingGeo, exteriorBrickMat);
+    cornerEaveBacking.name = 'roof.courtyardCorner.brickBacking';
     cornerEaveBacking.position.set(-16.82, eaveY - 0.01, 2.75);
     ceilingMeshGroup.add(cornerEaveBacking);
 
+    const gutterCornerUnionGeo = new THREE.BoxGeometry(0.118, 0.058, 0.118);
+    gutterCornerUnionGeo.computeBoundingSphere();
     const gutterCornerUnion = new THREE.Mesh(
-      new THREE.BoxGeometry(0.118, 0.058, 0.118),
+      gutterCornerUnionGeo,
       gutterPaleGreenMat
     );
     gutterCornerUnion.name = 'mainHouse.gutter.cornerUnion';
@@ -1037,6 +1163,25 @@ export function buildFirstFloorCeilingsAndRoof(
 
   // Two-Storey Cast-Iron Rainwater Downpipes with Uniform-Radius Swan-Neck Offsets, Pipe Collars & Shoes (Issues #11, #12, #3 & #4)
   const dpPipeR = 0.036;
+  const sharedGutterNozzleGeo = new THREE.CylinderGeometry(
+    dpPipeR + 0.008,
+    dpPipeR + 0.002,
+    0.055,
+    16
+  );
+  sharedGutterNozzleGeo.computeBoundingSphere();
+  const sharedDpCollarGeo = new THREE.CylinderGeometry(
+    dpPipeR + 0.006,
+    dpPipeR + 0.006,
+    0.028,
+    16
+  );
+  sharedDpCollarGeo.computeBoundingSphere();
+  const sharedEarBracketGeoX = new THREE.BoxGeometry(0.024, 0.028, 0.13);
+  sharedEarBracketGeoX.computeBoundingSphere();
+  const sharedEarBracketGeoZ = new THREE.BoxGeometry(0.13, 0.028, 0.024);
+  sharedEarBracketGeoZ.computeBoundingSphere();
+
   for (const [dpName, px, pz, groundY, gutterOffsetX, gutterOffsetZ, parentGroup] of [
     ['downpipe.bootLobbyCourtyard', -9.58, 2.715, -0.1, 0, 0.233, ewCeilingMeshGroup],      // Boot Lobby / Dining Room junction
     ['downpipe.mainBedroomEastCourtyard', -4.88, 2.715, 0.0, 0, 0.233, ewCeilingMeshGroup], // Main Bedroom / Dining Room East Courtyard wall (Issue #4)
@@ -1050,26 +1195,25 @@ export function buildFirstFloorCeilingsAndRoof(
     const dpH = shaftTopY - shaftBotY;
 
     // Main vertical cast-iron rainwater downpipe shaft against the brick wall (radius = 0.036m)
-    const dpShaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(dpPipeR, dpPipeR, dpH, 16),
-      gutterCastIronMat
-    );
+    const dpShaftGeo = new THREE.CylinderGeometry(dpPipeR, dpPipeR, dpH, 16);
+    dpShaftGeo.computeBoundingSphere();
+    const dpShaft = new THREE.Mesh(dpShaftGeo, gutterCastIronMat);
+    dpShaft.name = `mainHouse.${dpName}.shaft`;
     dpShaft.position.set(px, shaftBotY + dpH / 2, pz);
     dpShaft.castShadow = true;
     dpShaft.receiveShadow = true;
     dpGroup.add(dpShaft);
 
     // Gutter drop outlet nozzle directly under the half-round eaves gutter trough
-    const gutterNozzle = new THREE.Mesh(
-      new THREE.CylinderGeometry(dpPipeR + 0.008, dpPipeR + 0.002, 0.055, 16),
-      gutterCastIronMat
-    );
+    const gutterNozzle = new THREE.Mesh(sharedGutterNozzleGeo, gutterCastIronMat);
+    gutterNozzle.name = `mainHouse.${dpName}.gutterNozzle`;
     gutterNozzle.position.set(
       px + gutterOffsetX,
       eaveY - 0.055,
       pz + gutterOffsetZ
     );
     gutterNozzle.castShadow = true;
+    tagHighLodDetail(gutterNozzle);
     dpGroup.add(gutterNozzle);
 
     // Continuous uniform-radius (0.036m) tubular swan-neck connecting the gutter underside to the vertical shaft
@@ -1084,10 +1228,10 @@ export function buildFirstFloorCeilingsAndRoof(
       new THREE.Vector3(px, shaftTopY + 0.025, pz),
       new THREE.Vector3(px, shaftTopY - 0.015, pz),
     ]);
-    const swanNeck = new THREE.Mesh(
-      new THREE.TubeGeometry(swanCurve, 18, dpPipeR, 16, false),
-      gutterCastIronMat
-    );
+    const swanNeckGeo = new THREE.TubeGeometry(swanCurve, 18, dpPipeR, 16, false);
+    swanNeckGeo.computeBoundingSphere();
+    const swanNeck = new THREE.Mesh(swanNeckGeo, gutterCastIronMat);
+    swanNeck.name = `mainHouse.${dpName}.swanNeck`;
     swanNeck.castShadow = true;
     dpGroup.add(swanNeck);
 
@@ -1098,12 +1242,18 @@ export function buildFirstFloorCeilingsAndRoof(
       const kitchenGutterY = 3.125;
       const kitchenGutterZ = 2.585;
 
-      const branchNozzle = new THREE.Mesh(
-        new THREE.CylinderGeometry(dpPipeR + 0.008, dpPipeR + 0.002, 0.05, 16),
-        gutterCastIronMat
+      const branchNozzleGeo = new THREE.CylinderGeometry(
+        dpPipeR + 0.008,
+        dpPipeR + 0.002,
+        0.05,
+        16
       );
+      branchNozzleGeo.computeBoundingSphere();
+      const branchNozzle = new THREE.Mesh(branchNozzleGeo, gutterCastIronMat);
+      branchNozzle.name = `mainHouse.${dpName}.branchNozzle`;
       branchNozzle.position.set(kitchenGutterX, kitchenGutterY - 0.045, kitchenGutterZ);
       branchNozzle.castShadow = true;
+      tagHighLodDetail(branchNozzle);
       dpGroup.add(branchNozzle);
 
       const branchCurve = new THREE.CatmullRomCurve3([
@@ -1113,32 +1263,31 @@ export function buildFirstFloorCeilingsAndRoof(
         new THREE.Vector3(px, 2.93, pz),
         new THREE.Vector3(px, 2.89, pz),
       ]);
-      const branchTube = new THREE.Mesh(
-        new THREE.TubeGeometry(branchCurve, 16, dpPipeR, 16, false),
-        gutterCastIronMat
-      );
+      const branchTubeGeo = new THREE.TubeGeometry(branchCurve, 16, dpPipeR, 16, false);
+      branchTubeGeo.computeBoundingSphere();
+      const branchTube = new THREE.Mesh(branchTubeGeo, gutterCastIronMat);
+      branchTube.name = `mainHouse.${dpName}.branchTube`;
       branchTube.castShadow = true;
       dpGroup.add(branchTube);
     }
 
     // Cast-iron eared wall fixing collars every ~1.25m up the brick wall
+    let collarIdx = 0;
     for (let cy = groundY + 0.45; cy < eaveY - 0.35; cy += 1.25) {
-      const collar = new THREE.Mesh(
-        new THREE.CylinderGeometry(dpPipeR + 0.006, dpPipeR + 0.006, 0.028, 16),
-        gutterCastIronMat
-      );
+      collarIdx += 1;
+      const collar = new THREE.Mesh(sharedDpCollarGeo, gutterCastIronMat);
+      collar.name = `mainHouse.${dpName}.collar_${collarIdx}`;
       collar.position.set(px, cy, pz);
+      tagHighLodDetail(collar);
       dpGroup.add(collar);
 
       const earBracket = new THREE.Mesh(
-        new THREE.BoxGeometry(
-          gutterOffsetX !== 0 ? 0.024 : 0.13,
-          0.028,
-          gutterOffsetZ !== 0 ? 0.024 : 0.13
-        ),
+        gutterOffsetX !== 0 ? sharedEarBracketGeoX : sharedEarBracketGeoZ,
         gutterCastIronMat
       );
+      earBracket.name = `mainHouse.${dpName}.earBracket_${collarIdx}`;
       earBracket.position.set(px, cy, pz);
+      tagHighLodDetail(earBracket);
       dpGroup.add(earBracket);
     }
 
@@ -1150,10 +1299,10 @@ export function buildFirstFloorCeilingsAndRoof(
       new THREE.Vector3(px + shoeDirX * 0.012, groundY + 0.065, pz + shoeDirZ * 0.012),
       new THREE.Vector3(px + shoeDirX * 0.048, groundY + 0.025, pz + shoeDirZ * 0.048),
     ]);
-    const bottomShoe = new THREE.Mesh(
-      new THREE.TubeGeometry(shoeCurve, 10, dpPipeR, 16, false),
-      gutterCastIronMat
-    );
+    const bottomShoeGeo = new THREE.TubeGeometry(shoeCurve, 10, dpPipeR, 16, false);
+    bottomShoeGeo.computeBoundingSphere();
+    const bottomShoe = new THREE.Mesh(bottomShoeGeo, gutterCastIronMat);
+    bottomShoe.name = `mainHouse.${dpName}.bottomShoe`;
     bottomShoe.castShadow = true;
     dpGroup.add(bottomShoe);
 
@@ -1165,7 +1314,16 @@ export function buildFirstFloorCeilingsAndRoof(
   //    Rising from inside the roof structure (`roofExitY - 0.32m`) through the Two-Storey
   //    Main House Ridge (`Y = 5.60m..6.88m` + pots, Photos 1 & 2, Issue #8: never protruding outside gable walls!)
   // -------------------------------------------------------------------------
+  const potH = 0.48;
+  const sharedPotBodyGeo = new THREE.CylinderGeometry(0.095, 0.115, potH, 14);
+  sharedPotBodyGeo.computeBoundingSphere();
+  const sharedPotCollarGeo = new THREE.TorusGeometry(0.102, 0.014, 8, 14);
+  sharedPotCollarGeo.computeBoundingSphere();
+  const sharedFlueTopGeo = new THREE.CylinderGeometry(0.078, 0.078, 0.02, 12);
+  sharedFlueTopGeo.computeBoundingSphere();
+
   const addVictorianBrickChimneyStack = (
+    stackName: string,
     cx: number,
     cz: number,
     stackW: number,
@@ -1177,11 +1335,12 @@ export function buildFirstFloorCeilingsAndRoof(
     targetGroup: THREE.Group = ceilingMeshGroup
   ): void => {
     const stackGroup = new THREE.Group();
+    stackGroup.name = stackName;
 
-    const leadApron = new THREE.Mesh(
-      new THREE.BoxGeometry(stackW + 0.12, 0.16, stackD + 0.12),
-      ridgeLeadMat
-    );
+    const leadApronGeo = new THREE.BoxGeometry(stackW + 0.12, 0.16, stackD + 0.12);
+    leadApronGeo.computeBoundingSphere();
+    const leadApron = new THREE.Mesh(leadApronGeo, ridgeLeadMat);
+    leadApron.name = `${stackName}.leadApron`;
     leadApron.position.set(cx, roofExitY + 0.08, cz);
     stackGroup.add(leadApron);
 
@@ -1190,29 +1349,34 @@ export function buildFirstFloorCeilingsAndRoof(
     const shaftH = topY - shaftBottomY;
     const shaftGeo = new THREE.BoxGeometry(stackW, shaftH, stackD);
     applyWorldSpaceBrickUVs(shaftGeo, cx, shaftBottomY + shaftH / 2, cz);
+    shaftGeo.computeBoundingSphere();
     const shaftMesh = new THREE.Mesh(shaftGeo, exteriorBrickMat);
+    shaftMesh.name = `${stackName}.brickShaft`;
     shaftMesh.position.set(cx, shaftBottomY + shaftH / 2, cz);
     shaftMesh.castShadow = true;
     shaftMesh.receiveShadow = true;
     stackGroup.add(shaftMesh);
 
-    for (const [yOff, expand] of [
-      [-0.18, 0.06],
-      [-0.1, 0.11],
-      [-0.03, 0.06],
-    ] as const) {
+    const corbelCourses = [
+      [1, -0.18, 0.06],
+      [2, -0.1, 0.11],
+      [3, -0.03, 0.06],
+    ] as const;
+    for (const [corbelIdx, yOff, expand] of corbelCourses) {
       const corbelGeo = new THREE.BoxGeometry(stackW + expand, 0.065, stackD + expand);
       applyWorldSpaceBrickUVs(corbelGeo, cx, topY + yOff, cz);
+      corbelGeo.computeBoundingSphere();
       const corbel = new THREE.Mesh(corbelGeo, exteriorBrickMat);
+      corbel.name = `${stackName}.corbelCourse_${corbelIdx}`;
       corbel.position.set(cx, topY + yOff, cz);
       corbel.castShadow = true;
       stackGroup.add(corbel);
     }
 
-    const flaunchCap = new THREE.Mesh(
-      new THREE.BoxGeometry(stackW + 0.08, 0.055, stackD + 0.08),
-      stoneSillMat
-    );
+    const flaunchCapGeo = new THREE.BoxGeometry(stackW + 0.08, 0.055, stackD + 0.08);
+    flaunchCapGeo.computeBoundingSphere();
+    const flaunchCap = new THREE.Mesh(flaunchCapGeo, stoneSillMat);
+    flaunchCap.name = `${stackName}.flaunchCap`;
     flaunchCap.position.set(cx, topY + 0.028, cz);
     stackGroup.add(flaunchCap);
 
@@ -1221,43 +1385,43 @@ export function buildFirstFloorCeilingsAndRoof(
       const offset = (i - (potCount - 1) / 2) * spacing;
       const px = potAxis === 'x' ? cx + offset : cx;
       const pz = potAxis === 'z' ? cz + offset : cz;
-      const potH = 0.48;
 
-      const potBody = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.095, 0.115, potH, 14),
-        terracottaPotMat
-      );
+      const potGroup = new THREE.Group();
+      potGroup.name = `${stackName}.pot_${i + 1}`;
+
+      const potBody = new THREE.Mesh(sharedPotBodyGeo, terracottaPotMat);
+      potBody.name = `${stackName}.pot_${i + 1}.body`;
       potBody.position.set(px, topY + 0.055 + potH / 2, pz);
       potBody.castShadow = true;
-      stackGroup.add(potBody);
+      potGroup.add(potBody);
 
-      const potCollar = new THREE.Mesh(
-        new THREE.TorusGeometry(0.102, 0.014, 8, 14),
-        terracottaPotMat
-      );
+      const potCollar = new THREE.Mesh(sharedPotCollarGeo, terracottaPotMat);
+      potCollar.name = `${stackName}.pot_${i + 1}.collar`;
       potCollar.rotation.x = Math.PI / 2;
       potCollar.position.set(px, topY + 0.055 + potH - 0.05, pz);
-      stackGroup.add(potCollar);
+      tagHighLodDetail(potCollar);
+      potGroup.add(potCollar);
 
-      const flueTop = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.078, 0.078, 0.02, 12),
-        sootFlueMat
-      );
+      const flueTop = new THREE.Mesh(sharedFlueTopGeo, sootFlueMat);
+      flueTop.name = `${stackName}.pot_${i + 1}.flueTop`;
       flueTop.position.set(px, topY + 0.055 + potH + 0.002, pz);
-      stackGroup.add(flueTop);
+      tagHighLodDetail(flueTop);
+      potGroup.add(flueTop);
+
+      stackGroup.add(potGroup);
     }
 
     targetGroup.add(stackGroup);
   };
 
   // 1. East Gable Stack (above Main Bedroom / Dining Room East chimney breast at local X = -4.84m, Z = -0.015m — 3 pots along Z)
-  addVictorianBrickChimneyStack(-4.84, -0.015, 0.72, 1.42, 5.38, 6.66, 3, 'z', ewCeilingMeshGroup);
+  addVictorianBrickChimneyStack('roof.chimneyStack.eastGable', -4.84, -0.015, 0.72, 1.42, 5.38, 6.66, 3, 'z', ewCeilingMeshGroup);
   // 2. East-West Ridge Stack (above Main Stair Landing / Boot Lobby cross-wall at local X = -13.18m, Z = -0.05m — 2 pots along Z)
-  addVictorianBrickChimneyStack(-13.18, -0.05, 0.58, 1.12, 5.4, 6.62, 2, 'z', ewCeilingMeshGroup);
+  addVictorianBrickChimneyStack('roof.chimneyStack.eastWingRidge', -13.18, -0.05, 0.58, 1.12, 5.4, 6.62, 2, 'z', ewCeilingMeshGroup);
   // 3. North-South Ridge North Stack (above Bedroom 2 / Living Room fireplace at X = -19.95m, Z = +2.18m — 3 pots along X)
-  addVictorianBrickChimneyStack(-19.95, 2.18, 1.22, 0.6, 5.4, 6.66, 3, 'x');
+  addVictorianBrickChimneyStack('roof.chimneyStack.westWingNorth', -19.95, 2.18, 1.22, 0.6, 5.4, 6.66, 3, 'x');
   // 4. North-South Ridge Middle Stack (above Bedroom 3 / Sitting Room fireplace at X = -19.80m, Z = +7.98m — 3 pots along X)
-  addVictorianBrickChimneyStack(-19.8, 7.98, 1.22, 0.6, 5.4, 6.66, 3, 'x');
+  addVictorianBrickChimneyStack('roof.chimneyStack.westWingMiddle', -19.8, 7.98, 1.22, 0.6, 5.4, 6.66, 3, 'x');
   // 5. South Gable Apex Stack (above Bedroom 4 / Study South gable at X = -19.79m, Z = +11.29m — flush inside the house, Issue #8!)
-  addVictorianBrickChimneyStack(-19.79, 11.29, 0.96, 0.52, 5.43, 6.6, 2, 'x');
+  addVictorianBrickChimneyStack('roof.chimneyStack.southGable', -19.79, 11.29, 0.96, 0.52, 5.43, 6.6, 2, 'x');
 }

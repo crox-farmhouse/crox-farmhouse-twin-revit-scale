@@ -10,6 +10,44 @@ import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
 
+function ensureNamedAddedChildren(
+  parent: THREE.Object3D,
+  startIdx: number,
+  prefix: string,
+  tagSmallDetails = false
+): void {
+  let meshCount = 0;
+  let groupCount = 0;
+  for (let i = startIdx; i < parent.children.length; i++) {
+    const child = parent.children[i]!;
+    child.traverse((node) => {
+      if (node instanceof THREE.Mesh) {
+        if (!node.name) {
+          meshCount += 1;
+          node.name = `${prefix}.mesh_${meshCount}`;
+        }
+        const geo = node.geometry as THREE.BufferGeometry | undefined;
+        if (geo && !geo.boundingSphere) {
+          geo.computeBoundingSphere();
+        }
+        if (
+          tagSmallDetails &&
+          !node.userData?.isArchitecturalShell &&
+          !node.userData?.isCutawayWall &&
+          geo?.boundingSphere &&
+          geo.boundingSphere.radius < 0.08
+        ) {
+          node.userData.lodTier = 'high';
+          node.userData.lodMaxDistance = 12;
+        }
+      } else if (node instanceof THREE.Group && !node.name) {
+        groupCount += 1;
+        node.name = groupCount === 1 && node === child ? prefix : `${prefix}.group_${groupCount}`;
+      }
+    });
+  }
+}
+
 /**
  * Bedroom 2 (`bedroom2`) above the Front Room (`livingRoom`).
  */
@@ -44,7 +82,7 @@ export function buildBedroom2(
   // 4. BEDROOM 2 (Non-square polygon directly above the Front Room, with SE hallway cut-out)
   //    X = -22.19m..-16.876m/-18.92m, Z = -3.18m/-2.469m..+1.905m/+2.34m
   // =========================================================================
-  buildPolygonalFloorSlab(
+  const bed2FloorSlab = buildPolygonalFloorSlab(
     scene,
     [
       [-22.19, -3.18],
@@ -59,11 +97,15 @@ export function buildBedroom2(
     oakFloorMat,
     0.5
   );
+  bed2FloorSlab.name = 'bedroom2.floorSlab';
+  bed2FloorSlab.userData.isArchitecturalShell = true;
+  bed2FloorSlab.geometry.computeBoundingSphere();
 
   // North Exterior Brick Gable Wall of Bedroom 2 (angled [-22.47, -3.359] -> [-16.858, -2.608])
   // 100% collinear with Upper Landing, Family Bathroom & Main Bedroom North exterior brick wall!
   // Note: for start=[-22.47, -3.359] -> end=[-16.858, -2.608], +normal (front) points SOUTH into Bedroom 2,
   // and -normal (back) points NORTH (exterior brick)!
+  const northWallStartIdx = scene.children.length;
   const bed2NorthWallFrame = buildAngledWallSegment(scene, interactions, {
     start: [-22.47, -3.359],
     end: [-16.858, -2.608],
@@ -78,6 +120,7 @@ export function buildBedroom2(
     addFrontSkirting: false, // Issue #1: Continuous 45°-mitred skirting `bedroom2.northEastAndCutoutMitredSkirting` joins North wall & East wardrobes seamlessly
     addBackSkirting: false,
   });
+  ensureNamedAddedChildren(scene, northWallStartIdx, 'bedroom2.northExteriorWall');
 
   // Issue #3: Single one-piece full-height vaulted interior plaster wall (`Y = 2.08m..5.02m`, `z_local = +0.14m..+0.154m`)
   // + exterior brick gable (`Y = 4.16m..5.02m`, `z_local = -0.14m..+0.14m`) so Bedroom 2's North wall is 100% seamless with zero split at Y = 4.16m!
@@ -125,6 +168,7 @@ export function buildBedroom2(
       }
       northBrickUv.needsUpdate = true;
     }
+    northBrickGableGeo.computeBoundingSphere();
     const northBrickGable = new THREE.Mesh(northBrickGableGeo, exteriorBrickMat);
     northBrickGable.name = 'bedroom2.northWallBrickGable';
     northBrickGable.userData.isArchitecturalShell = true;
@@ -148,6 +192,7 @@ export function buildBedroom2(
       bevelEnabled: false,
     });
     northPlasterGeo.translate(0, 0, 0.14);
+    northPlasterGeo.computeBoundingSphere();
     const northUpperGable = new THREE.Mesh(northPlasterGeo, warmRoomPlasterMat);
     northUpperGable.name = 'bedroom2.northWallUpperGable';
     northUpperGable.userData.isArchitecturalShell = true;
@@ -206,6 +251,7 @@ export function buildBedroom2(
     });
     carcassGeo.rotateY(Math.PI / 2);
     carcassGeo.translate(uStart, 0, 0);
+    carcassGeo.computeBoundingSphere();
     const carcass = new THREE.Mesh(carcassGeo, wardrobeMat);
     carcass.name = 'bedroom2.eastWardrobes.carcass';
     carcass.userData.isArchitecturalShell = true;
@@ -226,19 +272,20 @@ export function buildBedroom2(
     });
     corniceGeo.rotateY(Math.PI / 2);
     corniceGeo.translate(uStart, 0, 0);
+    corniceGeo.computeBoundingSphere();
     const cornice = new THREE.Mesh(corniceGeo, wardrobeMat);
     cornice.name = 'bedroom2.eastWardrobes.cornice';
     cornice.castShadow = true;
     cornice.receiveShadow = true;
     wardGroup.add(cornice);
 
-    // 2 vertical dividing stiles separating the 3 double-door wardrobe bays right up to the ceiling cornice
+    // 2 vertical dividing stiles separating the 3 double-door wardrobe bays right up to the ceiling cornice (shared BufferGeometry)
+    const dividerStileGeo = new THREE.BoxGeometry(0.04, wardFrontTopH - 0.048, 0.028);
+    dividerStileGeo.computeBoundingSphere();
     for (const bayIdx of [1, 2] as const) {
       const stileU = uStart + (baySpan * bayIdx) / 3;
-      const divider = new THREE.Mesh(
-        new THREE.BoxGeometry(0.04, wardFrontTopH - 0.048, 0.028),
-        wardrobeMat
-      );
+      const divider = new THREE.Mesh(dividerStileGeo, wardrobeMat);
+      divider.name = `bedroom2.eastWardrobes.dividerStile_${bayIdx}`;
       divider.position.set(stileU, (wardFrontTopH - 0.048) / 2, frontLocalZ + 0.004);
       wardGroup.add(divider);
     }
@@ -251,6 +298,7 @@ export function buildBedroom2(
     const doorLeafH = wardFrontTopH - 0.15 - 0.048; // 2.320m (top of doors at world Y = 4.550m, right below the cornice!)
     for (let i = 0; i < numDoors; i++) {
       const doorU = uStart + doorInset + doorStep * (i + 0.5);
+      const dIdx = wardGroup.children.length;
       addShakerWardrobeDoor(wardGroup, {
         x: doorU,
         y: 0.15 + doorLeafH / 2,
@@ -262,6 +310,12 @@ export function buildBedroom2(
         handleSide: i % 2 === 0 ? 'right' : 'left',
         namePrefix: `bedroom2.eastWardrobes.door_${i + 1}`,
       });
+      ensureNamedAddedChildren(
+        wardGroup,
+        dIdx,
+        `bedroom2.eastWardrobes.door_${i + 1}`,
+        true
+      );
     }
 
     scene.add(wardGroup);
@@ -277,17 +331,19 @@ export function buildBedroom2(
     // turning seamlessly at the NE corner (`[neCornerX, neCornerZ]`), running South along the 6-door East Wardrobe
     // plinth to `[seCornerX, seCornerZ]`, turning West along the North cut-out hallway wall (`Z = 0.975m`),
     // and turning South along `X = -18.995m` up to the North architrave of `bedroom2Door`!
+    const northEastAndCutoutSkirtGeo = buildMitredWallSkirtingGeometry(
+      [
+        [-22.19, -3.165],
+        [neCornerX, neCornerZ],
+        [seCornerX, seCornerZ],
+        [-18.995, 0.975],
+        [-18.995, 1.233],
+      ],
+      floorTopY
+    );
+    northEastAndCutoutSkirtGeo.computeBoundingSphere();
     const northEastAndCutoutSkirt = new THREE.Mesh(
-      buildMitredWallSkirtingGeometry(
-        [
-          [-22.19, -3.165],
-          [neCornerX, neCornerZ],
-          [seCornerX, seCornerZ],
-          [-18.995, 0.975],
-          [-18.995, 1.233],
-        ],
-        floorTopY
-      ),
+      northEastAndCutoutSkirtGeo,
       antiqueOakSkirtingMat
     );
     northEastAndCutoutSkirt.name = 'bedroom2.northEastAndCutoutMitredSkirting';
@@ -300,25 +356,30 @@ export function buildBedroom2(
   // West Front Exterior Brick Wall of Bedroom 2 (X = -22.47m..-22.19m, Z = -3.18m..+1.905m)
   // With 2-pane Georgian casement window centered at Z = -0.26m (directly above the Front Room bay window — Photo 2!)
   // Issue #5: Extend skirtingMin to -3.165m so the West wall skirting meets the North wall mitred skirting in the NW corner!
-  addUpperBrickWallAlongZWithWindow(
-    -22.47,
-    -22.19,
-    -3.18,
-    1.905,
-    -0.26,
-    1.35,
-    2.92,
-    3.94,
-    'east',
-    2,
-    { skirtingMin: -3.165, skirtingMax: 1.766 }
-  );
+  {
+    const idx = scene.children.length;
+    addUpperBrickWallAlongZWithWindow(
+      -22.47,
+      -22.19,
+      -3.18,
+      1.905,
+      -0.26,
+      1.35,
+      2.92,
+      3.94,
+      'east',
+      2,
+      { skirtingMin: -3.165, skirtingMax: 1.766 }
+    );
+    ensureNamedAddedChildren(scene, idx, 'bedroom2.westExteriorWall');
+  }
 
   // Straight Angled South Wall of Bedroom 2 (`[-22.19, 1.905] -> [-18.92, 2.34]`, 0.28m thick)
   // Terminates at the T-junction pier (`X = -18.92m, Z = 2.34m`) between `bedroom2Door` and `showerRoomDoor`!
   // Includes:
   //   1. En-suite connecting door to Shower Room near West window (`uCenter = 0.48m, width = 0.72m`)
   //   2. Bedroom 2 South Chimney Breast (`uCenter = 1.82m, width = 1.12m`), leaving clear wall East of the chimney breast!
+  const southWallStartIdx = scene.children.length;
   const bed2SouthWallFrame = buildAngledWallSegment(scene, interactions, {
     start: [-22.19, 1.905],
     end: [-18.92, 2.34],
@@ -354,18 +415,21 @@ export function buildBedroom2(
       },
     ],
   });
+  ensureNamedAddedChildren(scene, southWallStartIdx, 'bedroom2.southWall');
 
   // Continuous 45°-mitred antique oak skirting on the South-East pier between `bedroom2Door` and `bed2SouthWallFrame`
   {
+    const southPierSkirtGeo = buildMitredWallSkirtingGeometry(
+      [
+        [-18.995, 2.117],
+        [-18.995, 2.193],
+        [-19.901, 2.072],
+      ],
+      floorTopY
+    );
+    southPierSkirtGeo.computeBoundingSphere();
     const southPierSkirt = new THREE.Mesh(
-      buildMitredWallSkirtingGeometry(
-        [
-          [-18.995, 2.117],
-          [-18.995, 2.193],
-          [-19.901, 2.072],
-        ],
-        floorTopY
-      ),
+      southPierSkirtGeo,
       antiqueOakSkirtingMat
     );
     southPierSkirt.name = 'bedroom2.southPierMitredSkirting';
@@ -392,6 +456,7 @@ export function buildBedroom2(
       bevelEnabled: false,
     });
     southGableGeo.translate(0, 0, -0.14);
+    southGableGeo.computeBoundingSphere();
     const southUpperGable = new THREE.Mesh(southGableGeo, warmRoomPlasterMat);
     southUpperGable.name = 'bedroom2.southWallUpperGable';
     southUpperGable.userData.isArchitecturalShell = true;
@@ -403,10 +468,13 @@ export function buildBedroom2(
 
     // Upper gable strip (`Y = 4.16m..5.02m`) along the X = -18.92m cut-out wall (`Z = 0.975m..2.34m`) under the East edge of the 5.02m collar ceiling
     const cutoutWestSpanZ = 2.34 - 0.975;
-    const cutoutWestGable = new THREE.Mesh(
-      new THREE.BoxGeometry(0.15, collarCeilingY - upperWallTopY, cutoutWestSpanZ),
-      warmRoomPlasterMat
+    const cutoutWestGeo = new THREE.BoxGeometry(
+      0.15,
+      collarCeilingY - upperWallTopY,
+      cutoutWestSpanZ
     );
+    cutoutWestGeo.computeBoundingSphere();
+    const cutoutWestGable = new THREE.Mesh(cutoutWestGeo, warmRoomPlasterMat);
     cutoutWestGable.name = 'bedroom2.cutoutWestWallUpperGable';
     cutoutWestGable.userData.isArchitecturalShell = true;
     cutoutWestGable.position.set(
@@ -431,6 +499,7 @@ export function buildBedroom2(
       bevelEnabled: false,
     });
     cutoutNorthGeo.translate(0, 0, -0.075);
+    cutoutNorthGeo.computeBoundingSphere();
     const cutoutNorthGable = new THREE.Mesh(cutoutNorthGeo, warmRoomPlasterMat);
     cutoutNorthGable.name = 'bedroom2.cutoutNorthWallUpperGable';
     cutoutNorthGable.userData.isArchitecturalShell = true;
@@ -450,6 +519,7 @@ export function buildBedroom2(
     -0.36
   );
   bed2ChimneyGroup.userData.isArchitecturalShell = true;
+  const chimneyChildStart = bed2ChimneyGroup.children.length;
   addUpperBedroomChimneyBreastWithFireplace(bed2ChimneyGroup, {
     namePrefix: 'bedroom2.southChimneyBreast',
     zone: 'bedroom2',
@@ -460,6 +530,11 @@ export function buildBedroom2(
     floorY: floorTopY,
     topY: collarCeilingY,
   });
+  ensureNamedAddedChildren(
+    bed2ChimneyGroup,
+    chimneyChildStart,
+    'bedroom2.southChimneyBreast'
+  );
 
   // Issue #2 & #7: 45°-mitred antique oak skirting boards wrapping Bedroom 2 South Chimney Breast and terminating cleanly against the ±0.28m black fireplace jambs
   for (const [skirtName, path] of [
@@ -480,10 +555,9 @@ export function buildBedroom2(
       ] as const,
     ],
   ] as const) {
-    const skirtMesh = new THREE.Mesh(
-      buildMitredWallSkirtingGeometry(path, floorTopY),
-      antiqueOakSkirtingMat
-    );
+    const skirtGeo = buildMitredWallSkirtingGeometry(path, floorTopY);
+    skirtGeo.computeBoundingSphere();
+    const skirtMesh = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
     skirtMesh.name = skirtName;
     skirtMesh.userData.isArchitecturalShell = true;
     skirtMesh.castShadow = true;

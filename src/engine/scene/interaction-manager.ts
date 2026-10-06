@@ -1247,6 +1247,13 @@ export class SceneInteractionManager {
         const smooth = easeInOutCubic(door.progress);
         const currentAngle = startAngle + (effectiveOpen - startAngle) * smooth;
         door.pivot.rotation[door.axis] = currentAngle;
+        if (door.isFoldingFloorMat) {
+          door.pivot.traverse((child) => {
+            if (child.userData?.isVelcroHingeFlapPivot) {
+              child.rotation.z = -smooth * Math.PI * 0.88;
+            }
+          });
+        }
         if (door.overheadTrackZ !== undefined && door.closedPosZ !== undefined) {
           door.pivot.position.z =
             door.closedPosZ + door.overheadTrackZ * Math.sin(Math.abs(currentAngle));

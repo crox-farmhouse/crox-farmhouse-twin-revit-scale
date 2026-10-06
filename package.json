@@ -11,6 +11,8 @@
     "usd:build": "node tools/usd/run.mjs"
   },
   "dependencies": {
+    "@preact/signals": "^2.11.3",
+    "preact": "^11.0.0",
     "three": "^0.180.0"
   },
   "devDependencies": {

@@ -191,23 +191,12 @@ export class RoomLodController {
       return;
     }
 
-    const explicitTier = obj.userData?.lodTier as RoomLodTier | undefined;
-    let explicitZone = (obj.userData?.zoneId ?? obj.userData?.zone) as
+    const rawTier = obj.userData?.lodTier;
+    const explicitTier: RoomLodTier | undefined =
+      typeof rawTier === 'number' ? (rawTier as RoomLodTier) : undefined;
+    const explicitZone = (obj.userData?.zoneId ?? obj.userData?.zone) as
       | RoomZoneId
       | undefined;
-    if (!explicitZone && typeof obj.name === 'string' && obj.name.length > 0) {
-      const dotIdx = obj.name.indexOf('.');
-      if (dotIdx > 0) {
-        const prefix = obj.name.slice(0, dotIdx);
-        if (prefix === 'diningRoom') {
-          explicitZone = 'familyRoom';
-        } else if (prefix === 'westBayWindow') {
-          explicitZone = 'livingRoom';
-        } else if (this.rooms.has(prefix as RoomZoneId)) {
-          explicitZone = prefix as RoomZoneId;
-        }
-      }
-    }
 
     if (explicitTier !== undefined && explicitZone !== undefined) {
       if (explicitTier === 1 || explicitTier === 2) {
@@ -226,7 +215,7 @@ export class RoomLodController {
     const maxDim = Math.max(size.x, size.y, size.z);
     const minHorizontalDim = Math.min(size.x, size.z);
 
-    // Explicitly room-tagged or room-prefixed furniture, curtains, and equipment assemblies
+    // Explicitly room-tagged furniture, curtains, and equipment assemblies
     if (explicitZone && explicitZone !== 'courtyard' && maxDim < 6.0) {
       const room = this.rooms.get(explicitZone);
       if (room) {

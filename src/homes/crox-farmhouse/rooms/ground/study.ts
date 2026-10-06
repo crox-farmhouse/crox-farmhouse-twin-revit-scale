@@ -9,6 +9,17 @@ import type { createGroundFloorMaterials } from '../../structure/ground-floor-ma
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
 import type { defineTier2Levels } from '../../structure/tier2-levels.ts';
 
+function createSharedGeo<T extends THREE.BufferGeometry>(geo: T): T {
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+function tagHighLod<T extends THREE.Object3D>(obj: T, maxDistance = 12): T {
+  obj.userData.lodTier = 'high';
+  obj.userData.lodMaxDistance = maxDistance;
+  return obj;
+}
+
 /**
  * Study (`study`) and Plant Room shell: floor, walls, lobby and courtyard door.
  *
@@ -146,7 +157,7 @@ export function buildStudy(
     });
   })();
 
-  buildPolygonalFloorSlab(
+  const studyPineFloorSlab = buildPolygonalFloorSlab(
     scene,
     [
       [-22.19, 8.39],
@@ -159,6 +170,8 @@ export function buildStudy(
     plainUnvarnishedPineFloorMat,
     [1 / 2.2, 1 / 1.2]
   );
+  studyPineFloorSlab.name = 'study.pineFloorSlab';
+  studyPineFloorSlab.geometry.computeBoundingSphere();
 
   // West Exterior Brick Wall of Study / Office (0.28m thick, X = -22.19m..-22.47m, Z = +8.39m..+11.49m)
   // Stops at Z = +11.49m so the South Gable Wall (Z = +11.49m..+11.77m) owns the SW corner with zero coplanar overlap/dithering (Issue #4)!
@@ -239,6 +252,7 @@ export function buildStudy(
       }
       uv.needsUpdate = true;
     }
+    seCornerGeo.computeBoundingSphere();
 
     const seCornerDesc = {
       axis: 'z' as const,
@@ -320,8 +334,9 @@ export function buildStudy(
         ] as const,
       ],
     ] as const) {
+      const skirtGeo = createSharedGeo(buildMitredWallSkirtingGeometry(path, tier2FloorY));
       const skirtMesh = new THREE.Mesh(
-        buildMitredWallSkirtingGeometry(path, tier2FloorY),
+        skirtGeo,
         antiqueOakSkirtingMat
       );
       skirtMesh.name = skirtName;
@@ -377,7 +392,7 @@ export function buildStudy(
 
     // 1. Interior square bevelled wall fascia frame (0.265m W x 0.265m H x 0.042m D, protruding -Z into room)
     const outerFascia = new THREE.Mesh(
-      new THREE.BoxGeometry(0.265, 0.265, 0.024),
+      createSharedGeo(new THREE.BoxGeometry(0.265, 0.265, 0.024)),
       fanHousingWhiteMat
     );
     outerFascia.name = 'study.southWallExtractorFan.fascia';
@@ -387,37 +402,45 @@ export function buildStudy(
     fanGroup.add(outerFascia);
 
     const steppedBezel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.236, 0.236, 0.022),
+      createSharedGeo(new THREE.BoxGeometry(0.236, 0.236, 0.022)),
       fanHousingWhiteMat
     );
+    steppedBezel.name = 'study.southWallExtractorFan.steppedBezel';
     steppedBezel.position.set(0, 0, -0.028);
     steppedBezel.castShadow = true;
     fanGroup.add(steppedBezel);
 
     // 2. Dark circular Ø165mm acoustic fan throat & recessed impeller cavity
-    const throatCavity = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.084, 0.084, 0.036, 20),
-      fanDuctThroatMat
+    const throatCavity = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.CylinderGeometry(0.084, 0.084, 0.036, 20)),
+        fanDuctThroatMat
+      )
     );
+    throatCavity.name = 'study.southWallExtractorFan.throatCavity';
     throatCavity.rotation.x = Math.PI / 2;
     throatCavity.position.set(0, 0.006, -0.022);
     fanGroup.add(throatCavity);
 
     // Central axial motor hub & 7 angled impeller blades visible inside the throat
-    const motorHub = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.026, 0.026, 0.024, 14),
-      fanImpellerMat
+    const motorHub = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.CylinderGeometry(0.026, 0.026, 0.024, 14)),
+        fanImpellerMat
+      )
     );
+    motorHub.name = 'study.southWallExtractorFan.motorHub';
     motorHub.rotation.x = Math.PI / 2;
     motorHub.position.set(0, 0.006, -0.026);
     fanGroup.add(motorHub);
 
+    const bladeGeo = createSharedGeo(new THREE.BoxGeometry(0.052, 0.018, 0.004));
     for (let b = 0; b < 7; b++) {
       const angle = (b / 7) * Math.PI * 2;
-      const blade = new THREE.Mesh(
-        new THREE.BoxGeometry(0.052, 0.018, 0.004),
-        fanImpellerMat
+      const blade = tagHighLod(
+        new THREE.Mesh(bladeGeo, fanImpellerMat)
       );
+      blade.name = `study.southWallExtractorFan.impellerBlade.${b + 1}`;
       blade.position.set(
         Math.cos(angle) * 0.05,
         0.006 + Math.sin(angle) * 0.05,
@@ -429,10 +452,11 @@ export function buildStudy(
     }
 
     // 3. 6 horizontal angled automatic shutter louvre vanes across the front grille aperture
+    const vaneGeo = createSharedGeo(new THREE.BoxGeometry(0.188, 0.021, 0.005));
     for (let v = 0; v < 6; v++) {
       const vy = -0.068 + v * 0.029;
       const vane = new THREE.Mesh(
-        new THREE.BoxGeometry(0.188, 0.021, 0.005),
+        vaneGeo,
         fanLouverBladeMat
       );
       vane.name = `study.southWallExtractorFan.louver.${v + 1}`;
@@ -443,9 +467,11 @@ export function buildStudy(
     }
 
     // Lower control strip with Vent-Axia style thermostat/overrun LED indicator & branding badge
-    const ledIndicator = new THREE.Mesh(
-      new THREE.BoxGeometry(0.014, 0.006, 0.004),
-      statusLedGreenMat
+    const ledIndicator = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.014, 0.006, 0.004)),
+        statusLedGreenMat
+      )
     );
     ledIndicator.name = 'study.southWallExtractorFan.statusLed';
     ledIndicator.position.set(0.084, -0.102, -0.04);
@@ -453,7 +479,7 @@ export function buildStudy(
 
     // Adjacent 3A Fused Spur Fan Isolator Switch on the right (X = +0.21m -> world X = -19.60m)
     const isolatorBox = new THREE.Mesh(
-      new THREE.BoxGeometry(0.086, 0.086, 0.026),
+      createSharedGeo(new THREE.BoxGeometry(0.086, 0.086, 0.026)),
       fanHousingWhiteMat
     );
     isolatorBox.name = 'study.southWallExtractorFan.isolatorSwitch';
@@ -461,32 +487,41 @@ export function buildStudy(
     isolatorBox.castShadow = true;
     fanGroup.add(isolatorBox);
 
-    const isolatorRocker = new THREE.Mesh(
-      new THREE.BoxGeometry(0.024, 0.032, 0.006),
-      fanLouverBladeMat
+    const isolatorRocker = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.024, 0.032, 0.006)),
+        fanLouverBladeMat
+      )
     );
+    isolatorRocker.name = 'study.southWallExtractorFan.isolatorSwitch.rocker';
     isolatorRocker.position.set(0.194, 0, -0.028);
     fanGroup.add(isolatorRocker);
 
-    const fuseCarrier = new THREE.Mesh(
-      new THREE.BoxGeometry(0.022, 0.028, 0.005),
-      fanLouverBladeMat
+    const fuseCarrier = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.022, 0.028, 0.005)),
+        fanLouverBladeMat
+      )
     );
+    fuseCarrier.name = 'study.southWallExtractorFan.isolatorSwitch.fuseCarrier';
     fuseCarrier.position.set(0.226, 0, -0.028);
     fanGroup.add(fuseCarrier);
 
     // Horizontal surface conduit linking isolator switch to extractor fan
-    const conduitLink = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.008, 0.008, 0.042, 8),
-      fanHousingWhiteMat
+    const conduitLink = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.CylinderGeometry(0.008, 0.008, 0.042, 8)),
+        fanHousingWhiteMat
+      )
     );
+    conduitLink.name = 'study.southWallExtractorFan.conduitLink';
     conduitLink.rotation.z = Math.PI / 2;
     conduitLink.position.set(0.15, 0, -0.01);
     fanGroup.add(conduitLink);
 
     // 4. Exterior Weathered Cast-Aluminium Fixed-Blade Cowl Grille on South Brick Facade (Z = +11.77m -> local Z = +0.28m)
     const extGrilleFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(0.25, 0.25, 0.022),
+      createSharedGeo(new THREE.BoxGeometry(0.25, 0.25, 0.022)),
       externalGrilleMat
     );
     extGrilleFrame.name = 'study.southWallExtractorFan.exteriorWeatherGrille';
@@ -494,12 +529,13 @@ export function buildStudy(
     extGrilleFrame.castShadow = true;
     fanGroup.add(extGrilleFrame);
 
+    const extLouverGeo = createSharedGeo(new THREE.BoxGeometry(0.21, 0.024, 0.018));
     for (let ev = 0; ev < 6; ev++) {
       const evy = -0.08 + ev * 0.032;
-      const extLouver = new THREE.Mesh(
-        new THREE.BoxGeometry(0.21, 0.024, 0.018),
-        externalGrilleMat
+      const extLouver = tagHighLod(
+        new THREE.Mesh(extLouverGeo, externalGrilleMat)
       );
+      extLouver.name = `study.southWallExtractorFan.exteriorWeatherGrille.louver.${ev + 1}`;
       extLouver.position.set(0, evy, 0.28 + 0.022);
       extLouver.rotation.x = -0.45; // Sloped downward outside to shed rain
       fanGroup.add(extLouver);
@@ -516,7 +552,7 @@ export function buildStudy(
   }
 
   // Plasterboard ceiling backing over Study & Plant Room (bottom at wallH - 0.026m above the linear LED light bars at wallH - 0.03m)
-  buildPolygonalFloorSlab(
+  const studyCeilingSlab = buildPolygonalFloorSlab(
     groundFloorCeilingGroup,
     [
       [-22.36, 8.27],
@@ -528,5 +564,7 @@ export function buildStudy(
     0.038,
     warmRoomPlasterMat,
     0.5
-  ).name = 'study.ceilingBacking';
+  );
+  studyCeilingSlab.name = 'study.ceilingBacking';
+  studyCeilingSlab.geometry.computeBoundingSphere();
 }

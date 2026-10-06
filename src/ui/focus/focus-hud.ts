@@ -3,6 +3,7 @@ import type { PropertyScene } from '../../engine/scene/property-scene.ts';
 import type { KNXPropertyBusController } from '../../knx/emulator.ts';
 import type { CircuitConfig, CircuitId } from '../../types/knx.ts';
 import type { FloorId } from '../../types/topology.ts';
+import { twinStore } from '../../state/twin-store.ts';
 import type { HomeHudModel, HudFloor, HudRoom, HudRoomScene } from './hud-model.ts';
 
 type ElChild = HTMLElement | string;
@@ -148,12 +149,38 @@ export class FocusHudController {
 
   private render(): void {
     const state = this.opts.focus.getState();
+    this.syncTwinFocusStore(state);
     this.renderCrumbs(state);
     this.pinBtn.textContent = state.pinned ? 'Pinned' : 'Auto';
     this.pinBtn.classList.toggle('active', state.pinned);
     this.applySectionScopes(state);
     this.applyCircuitRowScope(state);
     this.renderPanel();
+  }
+
+  private syncTwinFocusStore(state: FocusState): void {
+    if (state.level === 'room' && state.zoneId) {
+      const room = this.opts.model.getRoom(state.zoneId);
+      twinStore.syncFocusState({
+        focusedApplianceId: state.zoneId,
+        focusedApplianceLabel: room?.name ?? state.zoneId,
+        focusModalOpen: state.pinned,
+        activeRoomId: state.zoneId,
+      });
+    } else if (state.level === 'floor') {
+      const floor = this.opts.model.floors.find((f) => f.floorId === state.floorId);
+      twinStore.syncFocusState({
+        focusedApplianceId: state.floorId,
+        focusedApplianceLabel: floor?.name ?? state.floorId,
+        focusModalOpen: state.pinned,
+      });
+    } else {
+      twinStore.syncFocusState({
+        focusedApplianceId: null,
+        focusedApplianceLabel: this.opts.model.homeName,
+        focusModalOpen: state.pinned,
+      });
+    }
   }
 
   private renderCrumbs(state: FocusState): void {

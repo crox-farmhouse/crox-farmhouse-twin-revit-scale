@@ -8,6 +8,8 @@ import {
   type UsdViewportDiagnosticMode,
 } from '../engine/usd/stage-runtime.ts';
 import { CROX_FARMHOUSE_USD_OVERRIDE_LAYER } from '../homes/crox-farmhouse/usd/layout-overrides.ts';
+import { twinStore } from '../state/twin-store.ts';
+import { mountUsdQuickStats } from './components/UsdQuickStats.tsx';
 
 function requireEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -136,6 +138,7 @@ export class UsdStageHudController {
       this.renderPrimInspector();
     });
 
+    mountUsdQuickStats(this.statsGridEl);
     this.render();
     void this.loadInitialIncrementalUsdaZones();
   }
@@ -162,7 +165,8 @@ export class UsdStageHudController {
   private bindDraggableWindow(): void {
     this.collapseBtn.addEventListener('click', (e: MouseEvent) => {
       e.stopPropagation();
-      this.panelEl.classList.toggle('is-collapsed');
+      const collapsed = this.panelEl.classList.toggle('is-collapsed');
+      twinStore.syncUsdStageState({ usdPanelOpen: !collapsed });
     });
 
     this.titlebarEl.addEventListener('pointerdown', (e: PointerEvent) => {
@@ -343,21 +347,11 @@ over "CroxFarmhouse"
     const stats = this.runtime.getStageStats();
     this.primCountBadgeEl.textContent = `${stats.usdaZoneCount}/${stats.sublayerCount} .usda · ${stats.totalPrims.toLocaleString()} prims`;
 
-    const parametricTotal =
-      stats.cubeCount + stats.cylinderCount + stats.sphereCount + stats.coneCount;
-    const parametricPct =
-      stats.totalPrims > 0 ? Math.round((parametricTotal / stats.totalPrims) * 100) : 0;
-
-    this.statsGridEl.innerHTML = `
-      <div class="usd-stat-cell">
-        <span class="usd-stat-label">PARAMETRIC PRIMS (${parametricPct}%)</span>
-        <span class="usd-stat-val">${stats.cubeCount.toLocaleString()} Cube · ${stats.cylinderCount.toLocaleString()} Cyl · ${stats.sphereCount} Sph</span>
-      </div>
-      <div class="usd-stat-cell">
-        <span class="usd-stat-label">RUNTIME .USDA SOURCE OF TRUTH</span>
-        <span class="usd-stat-val" style="color:#34d399">${stats.usdaZoneCount} / ${stats.sublayerCount} Zones Loaded from .usda</span>
-      </div>
-    `;
+    twinStore.syncUsdStageState({
+      usdPanelOpen: !this.panelEl.classList.contains('is-collapsed'),
+      usdStageStats: stats,
+      selectedUsdPrimPath: this.selectedPrim?.primPath ?? null,
+    });
 
     // Diagnostic mode buttons & legend
     const mode = stats.diagnosticMode;
@@ -415,6 +409,9 @@ over "CroxFarmhouse"
 
   private renderPrimInspector(): void {
     const p = this.selectedPrim;
+    twinStore.syncUsdStageState({
+      selectedUsdPrimPath: p?.primPath ?? null,
+    });
     if (!p) {
       this.primPathEl.textContent = 'Click any 3D object in the scene to inspect its USD Prim';
       this.primBadgesEl.innerHTML = '';

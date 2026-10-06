@@ -7,6 +7,17 @@ import type { defineTier2Levels } from '../../structure/tier2-levels.ts';
 import type { buildHallStaircase } from './hall-staircase.ts';
 import type { buildLivingRoom } from './living-room.ts';
 
+function createSharedGeo<T extends THREE.BufferGeometry>(geo: T): T {
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+function tagHighLod<T extends THREE.Object3D>(obj: T, maxDistance = 12): T {
+  obj.userData.lodTier = 'high';
+  obj.userData.lodMaxDistance = maxDistance;
+  return obj;
+}
+
 /**
  * Front Room (`livingRoom`) north-wall home cinema joinery, screen and in-wall speakers.
  */
@@ -438,7 +449,7 @@ export function buildLivingRoomCinemaWall(
   const lg83D = 0.026;
 
   const lg83Frame = new THREE.Mesh(
-    new THREE.BoxGeometry(lg83W, lg83H, lg83D),
+    createSharedGeo(new THREE.BoxGeometry(lg83W, lg83H, lg83D)),
     galleryFrameMat
   );
   lg83Frame.name = 'livingRoom.lg83GalleryOled.frame';
@@ -446,7 +457,7 @@ export function buildLivingRoomCinemaWall(
   lg83Group.add(lg83Frame);
 
   const lg83Bezel = new THREE.Mesh(
-    new THREE.BoxGeometry(lg83W - 0.012, lg83H - 0.012, 0.004),
+    createSharedGeo(new THREE.BoxGeometry(lg83W - 0.012, lg83H - 0.012, 0.004)),
     galleryBezelMat
   );
   lg83Bezel.name = 'livingRoom.lg83GalleryOled.bezel';
@@ -454,7 +465,7 @@ export function buildLivingRoomCinemaWall(
   lg83Group.add(lg83Bezel);
 
   const lg83Screen = new THREE.Mesh(
-    new THREE.BoxGeometry(lg83W - 0.026, lg83H - 0.026, 0.002),
+    createSharedGeo(new THREE.BoxGeometry(lg83W - 0.026, lg83H - 0.026, 0.002)),
     galleryScreenMat
   );
   lg83Screen.name = 'livingRoom.lg83GalleryOled.screen';
@@ -481,6 +492,13 @@ export function buildLivingRoomCinemaWall(
     metalness: 0.18,
   });
 
+  const wooferRingGeo = createSharedGeo(new THREE.TorusGeometry(0.068, 0.004, 8, 20));
+  const tweeterRingGeo = createSharedGeo(new THREE.TorusGeometry(0.028, 0.004, 8, 20));
+  const wooferConeGeo = createSharedGeo(new THREE.CylinderGeometry(0.068 - 0.003, 0.068 * 0.42, 0.008, 16));
+  const tweeterConeGeo = createSharedGeo(new THREE.CylinderGeometry(0.028 - 0.003, 0.028 * 0.42, 0.008, 16));
+  const lrSpeakerBezelGeo = createSharedGeo(new THREE.BoxGeometry(0.22, 0.56, 0.014));
+  const lrSpeakerBaffleGeo = createSharedGeo(new THREE.BoxGeometry(0.22 - 0.024, 0.56 - 0.024, 0.016));
+
   const buildArchitecturalInWallSpeaker = (
     spkName: string,
     uWall: number,
@@ -495,14 +513,14 @@ export function buildLivingRoomCinemaWall(
     spkGroup.userData.cutawayWall = frNorthCutawayDescriptor;
 
     const bezel = new THREE.Mesh(
-      new THREE.BoxGeometry(w, h, 0.014),
+      isHorizontalCenter ? createSharedGeo(new THREE.BoxGeometry(w, h, 0.014)) : lrSpeakerBezelGeo,
       inWallBezelMat
     );
     bezel.name = `${spkName}.bezel`;
     spkGroup.add(bezel);
 
     const baffle = new THREE.Mesh(
-      new THREE.BoxGeometry(w - 0.024, h - 0.024, 0.016),
+      isHorizontalCenter ? createSharedGeo(new THREE.BoxGeometry(w - 0.024, h - 0.024, 0.016)) : lrSpeakerBaffleGeo,
       inWallGrilleMat
     );
     baffle.name = `${spkName}.grille`;
@@ -523,17 +541,22 @@ export function buildLivingRoomCinemaWall(
         ];
 
     for (const [dx, dy, r] of driverOffsets) {
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(r, 0.004, 8, 20),
-        spkTrimRingMat
+      const isWoofer = r > 0.04;
+      const ring = tagHighLod(
+        new THREE.Mesh(
+          isWoofer ? wooferRingGeo : tweeterRingGeo,
+          spkTrimRingMat
+        )
       );
       ring.name = `${spkName}.driverRing`;
       ring.position.set(dx, dy, 0.011);
       spkGroup.add(ring);
 
-      const cone = new THREE.Mesh(
-        new THREE.CylinderGeometry(r - 0.003, r * 0.42, 0.008, 16),
-        spkConeMat
+      const cone = tagHighLod(
+        new THREE.Mesh(
+          isWoofer ? wooferConeGeo : tweeterConeGeo,
+          spkConeMat
+        )
       );
       cone.name = `${spkName}.driver`;
       cone.rotation.x = Math.PI / 2;
@@ -721,10 +744,23 @@ export function buildLivingRoomCinemaWall(
       }
       pos.needsUpdate = true;
       geo.computeVertexNormals();
+      geo.computeBoundingSphere();
+      return geo;
+    };
+
+    const pillowGeoCache = new Map<string, THREE.BufferGeometry>();
+    const getCuddlemuffinPillowGeo = (w: number, h: number, d: number): THREE.BufferGeometry => {
+      const key = `${w.toFixed(4)}_${h.toFixed(4)}_${d.toFixed(4)}`;
+      let geo = pillowGeoCache.get(key);
+      if (!geo) {
+        geo = createCuddlemuffinPillowGeo(w, h, d);
+        pillowGeoCache.set(key, geo);
+      }
       return geo;
     };
 
     // 1. Hidden Low Glides (Y = 0.00..0.016m)
+    const glideGeo = createSharedGeo(new THREE.CylinderGeometry(0.032, 0.028, 0.016, 10));
     for (const [gx, gz] of [
       [-1.18, -1.16],
       [-0.48, -1.16],
@@ -734,9 +770,8 @@ export function buildLivingRoomCinemaWall(
       [1.18, -0.44],
       [1.18, 0.38],
     ] as const) {
-      const glide = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.032, 0.028, 0.016, 10),
-        hiddenGlideMat
+      const glide = tagHighLod(
+        new THREE.Mesh(glideGeo, hiddenGlideMat)
       );
       glide.name = 'livingRoom.chaiseSofa.glide';
       glide.position.set(gx, 0.008, gz);
@@ -747,7 +782,7 @@ export function buildLivingRoomCinemaWall(
     //    Separated by visible vertical modular seams at X = -0.415m and X = +0.415m (matching Cuddlemuffin photo!)
     const moduleWidth = 0.82;
     const westChaiseBase = new THREE.Mesh(
-      createSculptedCushionGeometry(moduleWidth, 0.21, 1.54, 18, 10, 20, 0.34, 'standard'),
+      createSharedGeo(createSculptedCushionGeometry(moduleWidth, 0.21, 1.54, 18, 10, 20, 0.34, 'standard')),
       treacleVelvetMat
     );
     westChaiseBase.name = 'livingRoom.chaiseSofa.chaiseDeck';
@@ -756,12 +791,16 @@ export function buildLivingRoomCinemaWall(
     westChaiseBase.receiveShadow = true;
     chaiseSofaGroup.add(westChaiseBase);
 
+    const modBaseGeo = createSharedGeo(
+      createSculptedCushionGeometry(moduleWidth, 0.21, 0.92, 16, 10, 14, 0.34, 'standard')
+    );
+    const seamCordGeo = createSharedGeo(new THREE.CylinderGeometry(0.005, 0.005, 0.19, 8));
     for (const [mIdx, mx, mName] of [
       [1, 0.0, 'livingRoom.chaiseSofa.mainDeck'],
       [2, 0.83, 'livingRoom.chaiseSofa.eastDeck'],
     ] as const) {
       const modBase = new THREE.Mesh(
-        createSculptedCushionGeometry(moduleWidth, 0.21, 0.92, 16, 10, 14, 0.34, 'standard'),
+        modBaseGeo,
         treacleVelvetMat
       );
       modBase.name = mName;
@@ -772,10 +811,10 @@ export function buildLivingRoomCinemaWall(
 
       // Subtle vertical shadow-channel welt between adjacent modular base sections
       const seamX = mIdx === 1 ? -0.415 : 0.415;
-      const seamCord = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.005, 0.005, 0.19, 8),
-        treacleWeltMat
+      const seamCord = tagHighLod(
+        new THREE.Mesh(seamCordGeo, treacleWeltMat)
       );
+      seamCord.name = `livingRoom.chaiseSofa.seamWelt.${mIdx}`;
       seamCord.position.set(seamX, 0.119, -0.47);
       chaiseSofaGroup.add(seamCord);
     }
@@ -783,7 +822,7 @@ export function buildLivingRoomCinemaWall(
     // 3. 3 Ultra-Thick, Squidgy, Crowned Feather-Wrapped Seat Cushions (Y = 0.21..0.46m, thickness 0.25m)
     //    West Module = Extended Chaise Lounge Cushion; Center & East Modules = Deep Cinema Seat Cushions
     const chaiseCushion = new THREE.Mesh(
-      createSculptedCushionGeometry(0.83, 0.25, 1.48, 22, 12, 24, 0.56, 'standard'),
+      createSharedGeo(createSculptedCushionGeometry(0.83, 0.25, 1.48, 22, 12, 24, 0.56, 'standard')),
       treacleVelvetMat
     );
     chaiseCushion.name = 'livingRoom.chaiseSofa.chaiseCushion';
@@ -792,12 +831,15 @@ export function buildLivingRoomCinemaWall(
     chaiseCushion.receiveShadow = true;
     chaiseSofaGroup.add(chaiseCushion);
 
+    const seatCushionGeo = createSharedGeo(
+      createSculptedCushionGeometry(0.83, 0.25, 0.84, 20, 12, 18, 0.56, 'standard')
+    );
     for (const [cIdx, cx] of [
       [1, 0.0],
       [2, 0.83],
     ] as const) {
       const seatCushion = new THREE.Mesh(
-        createSculptedCushionGeometry(0.83, 0.25, 0.84, 20, 12, 18, 0.56, 'standard'),
+        seatCushionGeo,
         treacleVelvetMat
       );
       seatCushion.name = `livingRoom.chaiseSofa.seatCushion.${cIdx}`;
@@ -809,12 +851,18 @@ export function buildLivingRoomCinemaWall(
 
     // 4. Low, Wide, Pillow-Top Bolster Arms on West (X = -1.35m) and East (X = +1.35m)
     //    Each arm has a full-to-floor upholstered lower block + a super-rounded pillow-top bolster cap curving over the top!
+    const armLowerGeo = createSharedGeo(
+      createSculptedCushionGeometry(0.24, 0.44, 0.94, 14, 12, 16, 0.42, 'standard')
+    );
+    const armBolsterTopGeo = createSharedGeo(
+      createSculptedCushionGeometry(0.28, 0.16, 0.96, 16, 12, 16, 0.62, 'standard')
+    );
     for (const [armSide, armX, armName] of [
       [-1, -1.35, 'livingRoom.chaiseSofa.westArm'],
       [1, 1.35, 'livingRoom.chaiseSofa.eastArm'],
     ] as const) {
       const armLower = new THREE.Mesh(
-        createSculptedCushionGeometry(0.24, 0.44, 0.94, 14, 12, 16, 0.42, 'standard'),
+        armLowerGeo,
         treacleVelvetMat
       );
       armLower.name = armName;
@@ -825,7 +873,7 @@ export function buildLivingRoomCinemaWall(
 
       // Squidgy pillow-top bolster arm cushion curving over the top of the arm (characteristic of Loaf Cuddlemuffin!)
       const armBolsterTop = new THREE.Mesh(
-        createSculptedCushionGeometry(0.28, 0.16, 0.96, 16, 12, 16, 0.62, 'standard'),
+        armBolsterTopGeo,
         treacleVelvetMat
       );
       armBolsterTop.name = `${armName}.bolsterTop`;
@@ -838,7 +886,7 @@ export function buildLivingRoomCinemaWall(
 
     // 5. Full-Width Low-Slung Upholstered Backrest Shell (width 2.94m, height 0.68m, Y = 0.014..0.694m, Z = +0.39m)
     const backrestShell = new THREE.Mesh(
-      createSculptedCushionGeometry(2.94, 0.68, 0.22, 24, 12, 10, 0.38, 'standard'),
+      createSharedGeo(createSculptedCushionGeometry(2.94, 0.68, 0.22, 24, 12, 10, 0.38, 'standard')),
       treacleVelvetMat
     );
     backrestShell.name = 'livingRoom.chaiseSofa.backrestShell';
@@ -849,13 +897,14 @@ export function buildLivingRoomCinemaWall(
     chaiseSofaGroup.add(backrestShell);
 
     // 6. 3 Large Squidgy Pinched-Flange Feather Back Cushions in Matching Treacle Tart Yellow Clever Velvet
+    const backPillowGeo = getCuddlemuffinPillowGeo(0.82, 0.46, 0.22);
     for (const [bIdx, bx] of [
       [1, -0.83],
       [2, 0.0],
       [3, 0.83],
     ] as const) {
       const backPillow = new THREE.Mesh(
-        createCuddlemuffinPillowGeo(0.82, 0.46, 0.22),
+        backPillowGeo,
         treacleVelvetMat
       );
       backPillow.name = `livingRoom.chaiseSofa.backPillow.${bIdx}`;
@@ -874,7 +923,7 @@ export function buildLivingRoomCinemaWall(
       [3, 1.05, 0.57, 0.04, -0.2, -0.36, 0.1, 0.48, 0.42, 0.17],
     ] as const) {
       const scatter = new THREE.Mesh(
-        createCuddlemuffinPillowGeo(w, h, d),
+        getCuddlemuffinPillowGeo(w, h, d),
         treacleVelvetMat
       );
       scatter.name = `livingRoom.chaiseSofa.scatterPillow.${sIdx}`;
@@ -907,7 +956,7 @@ export function buildLivingRoomCinemaWall(
 
     // Thick 64mm planked solid dark-wood tabletop (1.18m x 0.064m x 0.66m, top at Y = 0.42m)
     const ctTop = new THREE.Mesh(
-      new THREE.BoxGeometry(1.18, 0.064, 0.66),
+      createSharedGeo(new THREE.BoxGeometry(1.18, 0.064, 0.66)),
       darkWalnutCoffeeTableMat
     );
     ctTop.name = 'livingRoom.coffeeTable.top';
@@ -918,14 +967,16 @@ export function buildLivingRoomCinemaWall(
 
     // Recessed under-top apron frame (1.08m x 0.048m x 0.56m)
     const ctApron = new THREE.Mesh(
-      new THREE.BoxGeometry(1.08, 0.048, 0.56),
+      createSharedGeo(new THREE.BoxGeometry(1.08, 0.048, 0.56)),
       darkWalnutEndGrainMat
     );
+    ctApron.name = 'livingRoom.coffeeTable.apron';
     ctApron.position.set(0, 0.334, 0);
     ctApron.castShadow = true;
     coffeeTableGroup.add(ctApron);
 
     // 4 Substantial 92mm x 92mm square corner timber posts
+    const ctPostGeo = createSharedGeo(new THREE.BoxGeometry(0.092, 0.36, 0.092));
     for (const [lx, lz] of [
       [-0.49, -0.23],
       [0.49, -0.23],
@@ -933,7 +984,7 @@ export function buildLivingRoomCinemaWall(
       [0.49, 0.23],
     ] as const) {
       const ctPost = new THREE.Mesh(
-        new THREE.BoxGeometry(0.092, 0.36, 0.092),
+        ctPostGeo,
         darkWalnutCoffeeTableMat
       );
       ctPost.name = 'livingRoom.coffeeTable.leg';
@@ -945,7 +996,7 @@ export function buildLivingRoomCinemaWall(
 
     // Substantial lower solid dark-wood undertier shelf (1.06m x 0.036m x 0.52m at Y = 0.11m)
     const ctShelf = new THREE.Mesh(
-      new THREE.BoxGeometry(1.06, 0.036, 0.52),
+      createSharedGeo(new THREE.BoxGeometry(1.06, 0.036, 0.52)),
       darkWalnutCoffeeTableMat
     );
     ctShelf.name = 'livingRoom.coffeeTable.lowerShelf';
@@ -1125,21 +1176,24 @@ export function buildLivingRoomCinemaWall(
 
       const boardThick = 0.0036;
       const pageH = Math.max(0.01, heightY - boardThick * 2);
+      const boardGeo = createSharedGeo(new THREE.BoxGeometry(widthX, boardThick, depthZ));
 
       // Bottom hardcover board
-      const bottomBoard = new THREE.Mesh(
-        new THREE.BoxGeometry(widthX, boardThick, depthZ),
-        clothMat
+      const bottomBoard = tagHighLod(
+        new THREE.Mesh(boardGeo, clothMat)
       );
+      bottomBoard.name = `livingRoom.coffeeTable.book.${id}.bottomBoard`;
       bottomBoard.position.set(0, boardThick * 0.5, 0);
       bottomBoard.castShadow = true;
       bottomBoard.receiveShadow = true;
       bookGroup.add(bottomBoard);
 
       // Recessed cream paper page block
-      const pages = new THREE.Mesh(
-        new THREE.BoxGeometry(widthX - 0.008, pageH, depthZ - 0.006),
-        pageBlockMat
+      const pages = tagHighLod(
+        new THREE.Mesh(
+          createSharedGeo(new THREE.BoxGeometry(widthX - 0.008, pageH, depthZ - 0.006)),
+          pageBlockMat
+        )
       );
       pages.name = `livingRoom.coffeeTable.book.${id}.pages`;
       pages.position.set(0, boardThick + pageH * 0.5, -0.002);
@@ -1149,7 +1203,7 @@ export function buildLivingRoomCinemaWall(
 
       // Top hardcover board with illustrated jacket texture on its +Y face
       const topBoard = new THREE.Mesh(
-        new THREE.BoxGeometry(widthX, boardThick, depthZ),
+        boardGeo,
         [
           clothMat,
           clothMat,
@@ -1177,7 +1231,11 @@ export function buildLivingRoomCinemaWall(
         Math.PI
       );
       spineGeo.rotateZ(Math.PI / 2);
-      const spineMesh = new THREE.Mesh(spineGeo, clothMat);
+      spineGeo.computeBoundingSphere();
+      const spineMesh = tagHighLod(
+        new THREE.Mesh(spineGeo, clothMat)
+      );
+      spineMesh.name = `livingRoom.coffeeTable.book.${id}.spine`;
       spineMesh.position.set(0, heightY * 0.5, depthZ * 0.5);
       spineMesh.castShadow = true;
       bookGroup.add(spineMesh);

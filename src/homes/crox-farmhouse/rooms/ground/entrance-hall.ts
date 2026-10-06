@@ -13,13 +13,48 @@ import type { defineTier2Levels } from '../../structure/tier2-levels.ts';
 import type { buildDiningRoom } from './dining-room.ts';
 import type { buildLivingRoom } from './living-room.ts';
 
+function createSharedGeo<T extends THREE.BufferGeometry>(geo: T): T {
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+function tagHighLod<T extends THREE.Object3D>(obj: T, maxDistance = 12): T {
+  obj.userData.lodTier = 'high';
+  obj.userData.lodMaxDistance = maxDistance;
+  return obj;
+}
+
 /**
  * Front Entrance Hallway (`entranceHall`), staggered portals, front door and hallway pictures.
  */
 export function buildEntranceHall(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'castIronMat' | 'ceramicWhiteMat' | 'doorH' | 'engineeredOakFloorMat' | 'exteriorBrickMat' | 'farrowAndBallCordMat' | 'frontDoorMat' | 'frontWallH' | 'oakMat' | 'stoneSillMat' | 'timberDoorMat' | 'vitoriaChequerTileMat' | 'vitoriaChequerUvScale' | 'wallCapMat' | 'wallH' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
-    Pick<ReturnType<typeof createGroundFloorShellKit>, 'addExteriorBrickWall' | 'applyWorldSpaceBrickUVs'> &
+  kit: Pick<
+    ReturnType<typeof createGroundFloorMaterials>,
+    | 'antiqueOakSkirtingMat'
+    | 'brassMat'
+    | 'castIronMat'
+    | 'ceramicWhiteMat'
+    | 'doorH'
+    | 'engineeredOakFloorMat'
+    | 'exteriorBrickMat'
+    | 'farrowAndBallCordMat'
+    | 'frontDoorMat'
+    | 'frontWallH'
+    | 'oakMat'
+    | 'stoneSillMat'
+    | 'timberDoorMat'
+    | 'vitoriaChequerTileMat'
+    | 'vitoriaChequerUvScale'
+    | 'wallCapMat'
+    | 'wallH'
+    | 'warmRoomPlasterMat'
+    | 'windowGlassMat'
+  > &
+    Pick<
+      ReturnType<typeof createGroundFloorShellKit>,
+      'addExteriorBrickWall' | 'applyWorldSpaceBrickUVs'
+    > &
     Pick<ReturnType<typeof buildDiningRoom>, 'lowerFloorY'> &
     Pick<ReturnType<typeof defineTier2Levels>, 'tier2FloorY'> &
     Pick<ReturnType<typeof buildLivingRoom>, 'entranceHallNorthWallFrame'>
@@ -128,6 +163,7 @@ export function buildEntranceHall(
   // Kept permanently visible (`isArchitecturalShell = true`, NOT cutaway) so the Front Door is always visible from outside!
   const frontDoorHeadY = tier2FloorY + 2.08; // 1.48m (fits cleanly beneath frontWallH = 1.625m — Issue #1)
   const addPermanentFrontEntranceBrickPiece = (
+    pieceName: string,
     minZ: number,
     maxZ: number,
     yBottom: number,
@@ -144,15 +180,17 @@ export function buildEntranceHall(
 
     const geo = new THREE.BoxGeometry(w, h, d);
     applyWorldSpaceBrickUVs(geo, cx, cy, cz);
+    createSharedGeo(geo);
     const mats: THREE.Material[] = [
       warmRoomPlasterMat, // +X (East interior face)
-      exteriorBrickMat,   // -X (West exterior face)
+      exteriorBrickMat, // -X (West exterior face)
       exteriorBrickMat,
       exteriorBrickMat,
       exteriorBrickMat,
       exteriorBrickMat,
     ];
     const mesh = new THREE.Mesh(geo, mats);
+    mesh.name = `entranceHall.westFrontWall.${pieceName}`;
     mesh.position.set(cx, cy, cz);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -161,9 +199,12 @@ export function buildEntranceHall(
 
     if (Math.abs(yTop - frontWallH) < 0.05) {
       const cap = new THREE.Mesh(
-        new THREE.BoxGeometry(Math.max(0.02, w - 0.016), 0.016, Math.max(0.02, d - 0.012)),
+        createSharedGeo(
+          new THREE.BoxGeometry(Math.max(0.02, w - 0.016), 0.016, Math.max(0.02, d - 0.012))
+        ),
         wallCapMat
       );
+      cap.name = `entranceHall.westFrontWall.${pieceName}.cap`;
       cap.position.set(cx, frontWallH - 0.006, cz);
       cap.userData.isArchitecturalShell = true;
       scene.add(cap);
@@ -174,30 +215,34 @@ export function buildEntranceHall(
       const skirtZMax = Math.min(maxZ, maxZ < 2.5 ? 2.23 : 3.68);
       if (skirtZMax - skirtZMin > 0.02) {
         const skirt = new THREE.Mesh(
-          buildMitredWallSkirtingGeometry(
-            [
-              [-22.19, skirtZMax],
-              [-22.19, skirtZMin],
-            ],
-            tier2FloorY
+          createSharedGeo(
+            buildMitredWallSkirtingGeometry(
+              [
+                [-22.19, skirtZMax],
+                [-22.19, skirtZMin],
+              ],
+              tier2FloorY
+            )
           ),
           antiqueOakSkirtingMat
         );
+        skirt.name = `entranceHall.westFrontWall.${pieceName}.skirting`;
         skirt.receiveShadow = true;
         skirt.userData.isArchitecturalShell = true;
         scene.add(skirt);
       }
     }
   };
-  addPermanentFrontEntranceBrickPiece(1.905, 2.3, 0, frontWallH, true);
-  addPermanentFrontEntranceBrickPiece(3.37, 3.7, 0, frontWallH, true);
-  addPermanentFrontEntranceBrickPiece(2.3, 3.37, frontDoorHeadY, frontWallH, false);
+  addPermanentFrontEntranceBrickPiece('northPier', 1.905, 2.3, 0, frontWallH, true);
+  addPermanentFrontEntranceBrickPiece('southPier', 3.37, 3.7, 0, frontWallH, true);
+  addPermanentFrontEntranceBrickPiece('lintel', 2.3, 3.37, frontDoorHeadY, frontWallH, false);
 
   // Stone front entrance steps (IN) outside the West Front Door (X = -22.47m..-23.15m, Z = +2.10m..+3.57m, seated at Y = -0.60m)
   const frontStepSlab = new THREE.Mesh(
-    new THREE.BoxGeometry(0.68, 0.12, 1.56),
+    createSharedGeo(new THREE.BoxGeometry(0.68, 0.12, 1.56)),
     stoneSillMat
   );
+  frontStepSlab.name = 'entranceHall.frontStepSlab';
   frontStepSlab.position.set(-22.81, tier2FloorY + 0.02, 2.835);
   frontStepSlab.receiveShadow = true;
   frontStepSlab.userData.isArchitecturalShell = true;
@@ -211,11 +256,9 @@ export function buildEntranceHall(
   });
 
   // Exterior pilasters & cornice hood on West facade
+  const pilasterGeo = createSharedGeo(new THREE.BoxGeometry(0.11, 2.14, 0.14));
   for (const pz of [2.22, 3.45]) {
-    const pilaster = new THREE.Mesh(
-      new THREE.BoxGeometry(0.11, 2.14, 0.14),
-      frontDoorOakFrameMat
-    );
+    const pilaster = new THREE.Mesh(pilasterGeo, frontDoorOakFrameMat);
     pilaster.name = 'entranceHall.frontDoorArchitrave.exteriorPilaster';
     pilaster.position.set(-22.51, tier2FloorY + 1.07, pz);
     pilaster.castShadow = true;
@@ -224,11 +267,10 @@ export function buildEntranceHall(
   }
 
   // Solid oak reveal jambs (spanning wall depth) + refined, slightly less substantial interior oak architrave
+  const frameJambGeo = createSharedGeo(new THREE.BoxGeometry(0.3, 2.1, 0.068));
+  const plinthBlockGeo = createSharedGeo(new THREE.BoxGeometry(0.038, 0.2, 0.125));
   for (const sideZ of [-1, 1] as const) {
-    const frameJamb = new THREE.Mesh(
-      new THREE.BoxGeometry(0.3, 2.1, 0.068),
-      frontDoorOakFrameMat
-    );
+    const frameJamb = new THREE.Mesh(frameJambGeo, frontDoorOakFrameMat);
     frameJamb.name = 'entranceHall.frontDoorArchitrave.jamb';
     frameJamb.position.set(-22.33, tier2FloorY + 1.05, 2.835 + sideZ * 0.505);
     frameJamb.castShadow = true;
@@ -237,11 +279,7 @@ export function buildEntranceHall(
     scene.add(frameJamb);
 
     // Issue #5: Plinth block at base of interior front door architrave
-
-    const interiorPlinthBlock = new THREE.Mesh(
-      new THREE.BoxGeometry(0.038, 0.2, 0.125),
-      frontDoorOakFrameMat
-    );
+    const interiorPlinthBlock = new THREE.Mesh(plinthBlockGeo, frontDoorOakFrameMat);
     interiorPlinthBlock.name = 'entranceHall.frontDoorArchitrave.plinthBlock';
     interiorPlinthBlock.position.set(
       -22.171,
@@ -255,7 +293,7 @@ export function buildEntranceHall(
 
   // Solid oak frame head & refined, slightly less substantial interior oak lintel header + cornice cap
   const frameHead = new THREE.Mesh(
-    new THREE.BoxGeometry(0.3, 0.072, 1.12),
+    createSharedGeo(new THREE.BoxGeometry(0.3, 0.072, 1.12)),
     frontDoorOakFrameMat
   );
   frameHead.name = 'entranceHall.frontDoorArchitrave.head';
@@ -282,7 +320,7 @@ export function buildEntranceHall(
 
   // Solid oak transom bar separating door leaf and fanlight
   const transomBar = new THREE.Mesh(
-    new THREE.BoxGeometry(0.3, 0.064, 1.04),
+    createSharedGeo(new THREE.BoxGeometry(0.3, 0.064, 1.04)),
     frontDoorOakFrameMat
   );
   transomBar.name = 'entranceHall.frontDoorArchitrave.transomBar';
@@ -292,9 +330,10 @@ export function buildEntranceHall(
   scene.add(transomBar);
 
   const doorCorniceHood = new THREE.Mesh(
-    new THREE.BoxGeometry(0.24, 0.11, 1.44),
+    createSharedGeo(new THREE.BoxGeometry(0.24, 0.11, 1.44)),
     frontDoorOakFrameMat
   );
+  doorCorniceHood.name = 'entranceHall.frontDoorArchitrave.corniceHood';
   doorCorniceHood.position.set(-22.56, tier2FloorY + 2.14, 2.835);
   doorCorniceHood.castShadow = true;
   doorCorniceHood.userData.isArchitecturalShell = true;
@@ -302,18 +341,18 @@ export function buildEntranceHall(
 
   // Fanlight transom glass + solid oak vertical glazing bars above the Front Entrance Door (Y = tier2FloorY + 1.90m..2.05m)
   const fanlightGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(0.02, 0.15, 0.96),
+    createSharedGeo(new THREE.BoxGeometry(0.02, 0.15, 0.96)),
     windowGlassMat
   );
+  fanlightGlass.name = 'entranceHall.frontDoorArchitrave.fanlightGlass';
   fanlightGlass.position.set(-22.33, tier2FloorY + 1.975, 2.835);
   fanlightGlass.userData.isArchitecturalShell = true;
   scene.add(fanlightGlass);
 
-  for (const fz of [2.59, 2.835, 3.08]) {
-    const fanBar = new THREE.Mesh(
-      new THREE.BoxGeometry(0.048, 0.15, 0.032),
-      frontDoorOakFrameMat
-    );
+  const fanBarGeo = createSharedGeo(new THREE.BoxGeometry(0.048, 0.15, 0.032));
+  for (const [bIdx, fz] of ([2.59, 2.835, 3.08] as const).entries()) {
+    const fanBar = tagHighLod(new THREE.Mesh(fanBarGeo, frontDoorOakFrameMat));
+    fanBar.name = `entranceHall.frontDoorArchitrave.fanlightBar.${bIdx + 1}`;
     fanBar.position.set(-22.33, tier2FloorY + 1.975, fz);
     fanBar.userData.isArchitecturalShell = true;
     scene.add(fanBar);
@@ -338,7 +377,7 @@ export function buildEntranceHall(
     });
 
     const matBacking = new THREE.Mesh(
-      new THREE.BoxGeometry(0.62, 0.014, 0.96),
+      createSharedGeo(new THREE.BoxGeometry(0.62, 0.014, 0.96)),
       coirBorderMat
     );
     matBacking.name = 'entranceHall.doormat.border';
@@ -347,7 +386,7 @@ export function buildEntranceHall(
     doormatGroup.add(matBacking);
 
     const matCoirCore = new THREE.Mesh(
-      new THREE.BoxGeometry(0.56, 0.018, 0.9),
+      createSharedGeo(new THREE.BoxGeometry(0.56, 0.018, 0.9)),
       coirFiberMat
     );
     matCoirCore.name = 'entranceHall.doormat.coir';
@@ -366,34 +405,46 @@ export function buildEntranceHall(
     metalness: 0.08,
   });
   const frontDoorObj = new THREE.Group();
+  frontDoorObj.name = 'entranceHall.frontDoor';
   frontDoorObj.position.set(-22.33, tier2FloorY + 0.93, 2.835);
   const frontDoorLeaf = new THREE.Mesh(
-    new THREE.BoxGeometry(0.058, 1.85, 0.98),
+    createSharedGeo(new THREE.BoxGeometry(0.058, 1.85, 0.98)),
     frontDoorMat
   );
+  frontDoorLeaf.name = 'entranceHall.frontDoor.leaf';
   frontDoorLeaf.castShadow = true;
   frontDoorLeaf.receiveShadow = true;
   frontDoorObj.add(frontDoorLeaf);
 
-  // 6-Panel Georgians/Victorian raised fielder panels on both exterior (-X) and interior (+X) faces
+  // 6-Panel Georgian/Victorian raised fielder panels on both exterior (-X) and interior (+X) faces
+  const panelSpecs = [
+    [0.6, 0.34, 'top'],
+    [0.08, 0.5, 'middle'],
+    [-0.52, 0.46, 'bottom'],
+  ] as const;
+  const panelBorderGeos = panelSpecs.map(([, ph]) =>
+    createSharedGeo(new THREE.BoxGeometry(0.012, ph, 0.31))
+  );
+  const raisedFieldGeos = panelSpecs.map(([, ph]) =>
+    createSharedGeo(new THREE.BoxGeometry(0.018, ph - 0.07, 0.24))
+  );
+
   for (const xFace of [-0.03, 0.03] as const) {
+    const faceTag = xFace < 0 ? 'exterior' : 'interior';
     for (const pz of [-0.22, 0.22] as const) {
-      for (const [py, ph] of [
-        [0.6, 0.34],
-        [0.08, 0.5],
-        [-0.52, 0.46],
-      ] as const) {
-        const panelBorder = new THREE.Mesh(
-          new THREE.BoxGeometry(0.012, ph, 0.31),
-          frontDoorPanelMat
+      const colTag = pz < 0 ? 'north' : 'south';
+      for (const [rIdx, [py, , rowTag]] of panelSpecs.entries()) {
+        const panelBorder = tagHighLod(
+          new THREE.Mesh(panelBorderGeos[rIdx]!, frontDoorPanelMat)
         );
+        panelBorder.name = `entranceHall.frontDoor.panelBorder.${faceTag}.${colTag}.${rowTag}`;
         panelBorder.position.set(xFace, py, pz);
         frontDoorObj.add(panelBorder);
 
-        const raisedField = new THREE.Mesh(
-          new THREE.BoxGeometry(0.018, ph - 0.07, 0.24),
-          frontDoorMat
+        const raisedField = tagHighLod(
+          new THREE.Mesh(raisedFieldGeos[rIdx]!, frontDoorMat)
         );
+        raisedField.name = `entranceHall.frontDoor.raisedField.${faceTag}.${colTag}.${rowTag}`;
         raisedField.position.set(xFace, py, pz);
         frontDoorObj.add(raisedField);
       }
@@ -401,26 +452,25 @@ export function buildEntranceHall(
   }
 
   // Brass ring knocker, horizontal brass letterplate & turned brass latch knobs on both faces
-  const brassKnocker = new THREE.Mesh(
-    new THREE.TorusGeometry(0.042, 0.009, 8, 16),
-    brassMat
+  const brassKnocker = tagHighLod(
+    new THREE.Mesh(createSharedGeo(new THREE.TorusGeometry(0.042, 0.009, 8, 16)), brassMat)
   );
+  brassKnocker.name = 'entranceHall.frontDoor.knocker';
   brassKnocker.rotation.y = Math.PI / 2;
   brassKnocker.position.set(-0.036, 0.34, 0);
   frontDoorObj.add(brassKnocker);
 
-  const brassLetterplate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.014, 0.075, 0.24),
-    brassMat
+  const brassLetterplate = tagHighLod(
+    new THREE.Mesh(createSharedGeo(new THREE.BoxGeometry(0.014, 0.075, 0.24)), brassMat)
   );
+  brassLetterplate.name = 'entranceHall.frontDoor.letterplate';
   brassLetterplate.position.set(-0.034, -0.04, 0);
   frontDoorObj.add(brassLetterplate);
 
+  const doorKnobGeo = createSharedGeo(new THREE.SphereGeometry(0.022, 12, 12));
   for (const xSide of [-0.044, 0.044] as const) {
-    const doorKnob = new THREE.Mesh(
-      new THREE.SphereGeometry(0.022, 12, 12),
-      brassMat
-    );
+    const doorKnob = tagHighLod(new THREE.Mesh(doorKnobGeo, brassMat));
+    doorKnob.name = `entranceHall.frontDoor.knob.${xSide < 0 ? 'exterior' : 'interior'}`;
     doorKnob.position.set(xSide, -0.04, 0.38);
     frontDoorObj.add(doorKnob);
   }
@@ -467,7 +517,9 @@ export function buildEntranceHall(
     const spandrelTopY = 2.0;
     const upperSpandrelGeo = new THREE.BoxGeometry(0.24, spandrelTopY - frontWallH, 1.02);
     applyWorldSpaceBrickUVs(upperSpandrelGeo, -16.82, (frontWallH + spandrelTopY) / 2, 3.32);
+    createSharedGeo(upperSpandrelGeo);
     const upperSpandrelMesh = new THREE.Mesh(upperSpandrelGeo, exteriorBrickMat);
+    upperSpandrelMesh.name = 'entranceHall.eastJutOutRoof.upperSpandrel';
     upperSpandrelMesh.position.set(-16.82, (frontWallH + spandrelTopY) / 2, 3.32);
     upperSpandrelMesh.castShadow = true;
     upperSpandrelMesh.receiveShadow = true;
@@ -491,7 +543,9 @@ export function buildEntranceHall(
       cheekGeo.userData.isSheared = true;
     }
     applyWorldSpaceBrickUVs(cheekGeo, -16.49, frontWallH + 0.015 + cheekH / 2, 3.33);
+    createSharedGeo(cheekGeo);
     const cheekMesh = new THREE.Mesh(cheekGeo, exteriorBrickMat);
+    cheekMesh.name = 'entranceHall.eastJutOutRoof.gableCheek';
     cheekMesh.position.set(-16.49, frontWallH + 0.015 + cheekH / 2, 3.33);
     cheekMesh.castShadow = true;
     cheekMesh.receiveShadow = true;
@@ -505,9 +559,10 @@ export function buildEntranceHall(
     const jutRoofCenterZ = 3.3625;
     const jutRoofSpanZ = 1.065;
     const slateSlopeMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(slopeLen, 0.055, jutRoofSpanZ),
+      createSharedGeo(new THREE.BoxGeometry(slopeLen, 0.055, jutRoofSpanZ)),
       jutSlateMat
     );
+    slateSlopeMesh.name = 'entranceHall.eastJutOutRoof.slateSlope';
     slateSlopeMesh.position.set(-16.475, frontWallH + 0.215, jutRoofCenterZ);
     slateSlopeMesh.rotation.z = -pitchAngle;
     slateSlopeMesh.castShadow = true;
@@ -516,32 +571,36 @@ export function buildEntranceHall(
 
     // Lead abutment flashing against the First Floor brickwork & North Hall brick wall
     const topFlashing = new THREE.Mesh(
-      new THREE.BoxGeometry(0.05, 0.09, jutRoofSpanZ),
+      createSharedGeo(new THREE.BoxGeometry(0.05, 0.09, jutRoofSpanZ)),
       leadFlashingMat
     );
+    topFlashing.name = 'entranceHall.eastJutOutRoof.topFlashing';
     topFlashing.position.set(-16.79, frontWallH + 0.4, jutRoofCenterZ);
     jutRoofGroup.add(topFlashing);
 
     const northAbutmentFlashing = new THREE.Mesh(
-      new THREE.BoxGeometry(slopeLen - 0.02, 0.075, 0.036),
+      createSharedGeo(new THREE.BoxGeometry(slopeLen - 0.02, 0.075, 0.036)),
       leadFlashingMat
     );
+    northAbutmentFlashing.name = 'entranceHall.eastJutOutRoof.northFlashing';
     northAbutmentFlashing.position.set(-16.5, frontWallH + 0.32, 2.835);
     northAbutmentFlashing.rotation.z = -pitchAngle;
     jutRoofGroup.add(northAbutmentFlashing);
 
     // Painted cream timber fascia & soffit along the East & South eaves of the jut-out
     const eastFascia = new THREE.Mesh(
-      new THREE.BoxGeometry(0.028, 0.11, jutRoofSpanZ),
+      createSharedGeo(new THREE.BoxGeometry(0.028, 0.11, jutRoofSpanZ)),
       ceramicWhiteMat
     );
+    eastFascia.name = 'entranceHall.eastJutOutRoof.eastFascia';
     eastFascia.position.set(-16.13, frontWallH + 0.02, jutRoofCenterZ);
     jutRoofGroup.add(eastFascia);
 
     const southBargeBoard = new THREE.Mesh(
-      new THREE.BoxGeometry(slopeLen + 0.02, 0.085, 0.028),
+      createSharedGeo(new THREE.BoxGeometry(slopeLen + 0.02, 0.085, 0.028)),
       ceramicWhiteMat
     );
+    southBargeBoard.name = 'entranceHall.eastJutOutRoof.southBargeBoard';
     southBargeBoard.position.set(-16.5, frontWallH + 0.28, 3.88);
     southBargeBoard.rotation.z = -pitchAngle;
     jutRoofGroup.add(southBargeBoard);
@@ -563,15 +622,17 @@ export function buildEntranceHall(
     const jutGutterX = -16.082;
     const jutGutterY = frontWallH + 0.04;
     const jutGutter = new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        jutGutterR,
-        jutGutterR,
-        jutRoofSpanZ + 0.02,
-        14,
-        1,
-        true,
-        Math.PI,
-        Math.PI
+      createSharedGeo(
+        new THREE.CylinderGeometry(
+          jutGutterR,
+          jutGutterR,
+          jutRoofSpanZ + 0.02,
+          14,
+          1,
+          true,
+          Math.PI,
+          Math.PI
+        )
       ),
       jutGutterMat
     );
@@ -581,14 +642,17 @@ export function buildEntranceHall(
     jutGutter.castShadow = true;
     jutRoofGroup.add(jutGutter);
 
-    for (const endZ of [
-      jutRoofCenterZ - (jutRoofSpanZ + 0.02) * 0.5,
-      jutRoofCenterZ + (jutRoofSpanZ + 0.02) * 0.5,
-    ]) {
-      const stopEnd = new THREE.Mesh(
-        new THREE.CircleGeometry(jutGutterR, 14, Math.PI, Math.PI),
-        jutGutterMat
-      );
+    const stopEndGeo = createSharedGeo(
+      new THREE.CircleGeometry(jutGutterR, 14, Math.PI, Math.PI)
+    );
+    for (const [sIdx, endZ] of (
+      [
+        jutRoofCenterZ - (jutRoofSpanZ + 0.02) * 0.5,
+        jutRoofCenterZ + (jutRoofSpanZ + 0.02) * 0.5,
+      ] as const
+    ).entries()) {
+      const stopEnd = tagHighLod(new THREE.Mesh(stopEndGeo, jutGutterMat));
+      stopEnd.name = `entranceHall.eastJutOutRoof.gutterStopEnd.${sIdx + 1}`;
       stopEnd.position.set(jutGutterX, jutGutterY, endZ);
       jutRoofGroup.add(stopEnd);
     }
@@ -603,10 +667,13 @@ export function buildEntranceHall(
     const jutDpGroup = new THREE.Group();
     jutDpGroup.name = 'entranceHall.eastJutOutRoof.downpipe';
 
-    const dpOutlet = new THREE.Mesh(
-      new THREE.CylinderGeometry(dpPipeR + 0.005, dpPipeR, 0.04, 14),
-      jutDownpipeMat
+    const dpOutlet = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.CylinderGeometry(dpPipeR + 0.005, dpPipeR, 0.04, 14)),
+        jutDownpipeMat
+      )
     );
+    dpOutlet.name = 'entranceHall.eastJutOutRoof.downpipe.outlet';
     dpOutlet.position.set(jutGutterX, jutGutterY - jutGutterR - 0.01, dpZ);
     jutDpGroup.add(dpOutlet);
 
@@ -617,34 +684,38 @@ export function buildEntranceHall(
       new THREE.Vector3(dpWallX, dpTopShaftY + 0.02, dpZ),
       new THREE.Vector3(dpWallX, dpTopShaftY - 0.01, dpZ),
     ]);
-    const dpSwanMesh = new THREE.Mesh(
-      new THREE.TubeGeometry(dpSwanCurve, 14, dpPipeR, 14, false),
-      jutDownpipeMat
+    const dpSwanMesh = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.TubeGeometry(dpSwanCurve, 14, dpPipeR, 14, false)),
+        jutDownpipeMat
+      )
     );
+    dpSwanMesh.name = 'entranceHall.eastJutOutRoof.downpipe.swanNeck';
     dpSwanMesh.castShadow = true;
     jutDpGroup.add(dpSwanMesh);
 
     const dpShaftMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(dpPipeR, dpPipeR, dpShaftH, 14),
+      createSharedGeo(new THREE.CylinderGeometry(dpPipeR, dpPipeR, dpShaftH, 14)),
       jutDownpipeMat
     );
+    dpShaftMesh.name = 'entranceHall.eastJutOutRoof.downpipe.shaft';
     dpShaftMesh.position.set(dpWallX, dpGroundY + 0.08 + dpShaftH * 0.5, dpZ);
     dpShaftMesh.castShadow = true;
     dpShaftMesh.receiveShadow = true;
     jutDpGroup.add(dpShaftMesh);
 
-    for (const clipY of [dpGroundY + 0.45, dpGroundY + 1.35]) {
-      const collar = new THREE.Mesh(
-        new THREE.CylinderGeometry(dpPipeR + 0.006, dpPipeR + 0.006, 0.026, 14),
-        jutDownpipeMat
-      );
+    const collarGeo = createSharedGeo(
+      new THREE.CylinderGeometry(dpPipeR + 0.006, dpPipeR + 0.006, 0.026, 14)
+    );
+    const bracketGeo = createSharedGeo(new THREE.BoxGeometry(0.024, 0.024, 0.095));
+    for (const [cIdx, clipY] of ([dpGroundY + 0.45, dpGroundY + 1.35] as const).entries()) {
+      const collar = tagHighLod(new THREE.Mesh(collarGeo, jutDownpipeMat));
+      collar.name = `entranceHall.eastJutOutRoof.downpipe.collar.${cIdx + 1}`;
       collar.position.set(dpWallX, clipY, dpZ);
       jutDpGroup.add(collar);
 
-      const bracket = new THREE.Mesh(
-        new THREE.BoxGeometry(0.024, 0.024, 0.095),
-        jutDownpipeMat
-      );
+      const bracket = tagHighLod(new THREE.Mesh(bracketGeo, jutDownpipeMat));
+      bracket.name = `entranceHall.eastJutOutRoof.downpipe.bracket.${cIdx + 1}`;
       bracket.position.set(dpWallX - 0.014, clipY, dpZ);
       jutDpGroup.add(bracket);
     }
@@ -654,10 +725,13 @@ export function buildEntranceHall(
       new THREE.Vector3(dpWallX + 0.01, dpGroundY + 0.045, dpZ),
       new THREE.Vector3(dpWallX + 0.042, dpGroundY + 0.018, dpZ),
     ]);
-    const dpShoeMesh = new THREE.Mesh(
-      new THREE.TubeGeometry(dpShoeCurve, 8, dpPipeR, 14, false),
-      jutDownpipeMat
+    const dpShoeMesh = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.TubeGeometry(dpShoeCurve, 8, dpPipeR, 14, false)),
+        jutDownpipeMat
+      )
     );
+    dpShoeMesh.name = 'entranceHall.eastJutOutRoof.downpipe.shoe';
     dpShoeMesh.castShadow = true;
     jutDpGroup.add(dpShoeMesh);
 
@@ -732,7 +806,7 @@ export function buildEntranceHall(
     thickness: 0.15,
     topY: frontWallH,
     frontFloorY: tier2FloorY, // +normal = South (Living Room at Y = -0.60m)
-    backFloorY: tier2FloorY,  // -normal = North (Front Entrance Hallway at Y = -0.60m)
+    backFloorY: tier2FloorY, // -normal = North (Front Entrance Hallway at Y = -0.60m)
     wallMaterial: warmRoomPlasterMat,
     frontFaceMaterial: farrowAndBallCordMat,
     backFaceMaterial: warmRoomPlasterMat,
@@ -939,7 +1013,7 @@ export function buildEntranceHall(
       picGroup.rotation.y = pic.rotY;
 
       const outerFrame = new THREE.Mesh(
-        new THREE.BoxGeometry(pic.w, pic.h, 0.024),
+        createSharedGeo(new THREE.BoxGeometry(pic.w, pic.h, 0.024)),
         pic.frameMat
       );
       outerFrame.name = `${pic.name}.frame`;
@@ -948,7 +1022,7 @@ export function buildEntranceHall(
       picGroup.add(outerFrame);
 
       const mountBoard = new THREE.Mesh(
-        new THREE.BoxGeometry(pic.w - 0.048, pic.h - 0.048, 0.027),
+        createSharedGeo(new THREE.BoxGeometry(pic.w - 0.048, pic.h - 0.048, 0.027)),
         ceramicWhiteMat
       );
       mountBoard.name = `${pic.name}.mount`;
@@ -960,7 +1034,7 @@ export function buildEntranceHall(
         metalness: 0.04,
       });
       const artCanvas = new THREE.Mesh(
-        new THREE.BoxGeometry(pic.w - 0.14, pic.h - 0.14, 0.03),
+        createSharedGeo(new THREE.BoxGeometry(pic.w - 0.14, pic.h - 0.14, 0.03)),
         artMat
       );
       artCanvas.name = `${pic.name}.art`;

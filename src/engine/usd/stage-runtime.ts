@@ -643,9 +643,41 @@ export class UsdStageRuntimeController {
       .map((entry) => entry.branch)
       .filter(isExportableUsdNode);
 
-    const pairCount = Math.min(exportableTsBranches.length, usdTopObjects.length);
-    for (let i = 0; i < pairCount; i++) {
-      syncTsNodeToUsdNode(exportableTsBranches[i], usdTopObjects[i]);
+    const usedUsdIndices = new Set<number>();
+    const usdByName = new Map<string, number[]>();
+    for (let j = 0; j < usdTopObjects.length; j++) {
+      const n = usdTopObjects[j].name;
+      if (n) {
+        let list = usdByName.get(n);
+        if (!list) {
+          list = [];
+          usdByName.set(n, list);
+        }
+        list.push(j);
+      }
+    }
+
+    for (let i = 0; i < exportableTsBranches.length; i++) {
+      const tsBranch = exportableTsBranches[i];
+      let matchedIdx = -1;
+      if (tsBranch.name) {
+        const candidates = usdByName.get(tsBranch.name);
+        if (candidates) {
+          for (const idx of candidates) {
+            if (!usedUsdIndices.has(idx)) {
+              matchedIdx = idx;
+              break;
+            }
+          }
+        }
+      }
+      if (matchedIdx < 0 && i < usdTopObjects.length && !usedUsdIndices.has(i)) {
+        matchedIdx = i;
+      }
+      if (matchedIdx >= 0) {
+        usedUsdIndices.add(matchedIdx);
+        syncTsNodeToUsdNode(tsBranch, usdTopObjects[matchedIdx]);
+      }
     }
 
     for (const { parent, branch } of tsBranches) {

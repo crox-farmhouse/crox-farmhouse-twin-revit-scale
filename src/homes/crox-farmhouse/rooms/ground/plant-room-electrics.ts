@@ -3,6 +3,17 @@ import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../typ
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { defineTier2Levels } from '../../structure/tier2-levels.ts';
 
+function createSharedGeo<T extends THREE.BufferGeometry>(geo: T): T {
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+function tagHighLod<T extends THREE.Object3D>(obj: T, maxDistance = 12): T {
+  obj.userData.lodTier = 'high';
+  obj.userData.lodMaxDistance = maxDistance;
+  return obj;
+}
+
 /**
  * Plant Room east wall: KNX automation and 3-phase distribution boards.
  *
@@ -74,7 +85,7 @@ export function buildPlantRoomElectrics(
 
     // Overhead horizontal 150x100mm galvanized steel cable trunking header above both boards (Y = tier2FloorY + 2.38m, Z = 9.80m..11.44m)
     const headerTrunking = new THREE.Mesh(
-      new THREE.BoxGeometry(0.14, 0.14, 1.64),
+      createSharedGeo(new THREE.BoxGeometry(0.14, 0.14, 1.64)),
       trunkingGalvMat
     );
     headerTrunking.name = 'plantRoom.electricalDistribution.headerTrunking';
@@ -86,7 +97,7 @@ export function buildPlantRoomElectrics(
     const knxBoardZ = 10.18;
     const knxBoardY = tier2FloorY + 1.56;
     const knxCabinet = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 1.14, 0.64),
+      createSharedGeo(new THREE.BoxGeometry(0.18, 1.14, 0.64)),
       enclosureGreyMat
     );
     knxCabinet.name = 'plantRoom.electricalDistribution.knxBoard';
@@ -97,16 +108,19 @@ export function buildPlantRoomElectrics(
 
     // Dark recessed DIN-rail interior window + 5 rows of KNX actuators, DALI gateways & bus power supplies
     const knxWindowBack = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, 0.96, 0.50),
+      createSharedGeo(new THREE.BoxGeometry(0.016, 0.96, 0.50)),
       enclosureTrimMat
     );
+    knxWindowBack.name = 'plantRoom.electricalDistribution.knxBoard.windowBack';
     knxWindowBack.position.set(-17.39 - 0.176, knxBoardY, knxBoardZ);
     elecGroup.add(knxWindowBack);
 
+    const dinRailGeo = createSharedGeo(new THREE.BoxGeometry(0.022, 0.068, 0.44));
+    const statusLedGeo = createSharedGeo(new THREE.BoxGeometry(0.006, 0.012, 0.016));
     for (let row = 0; row < 5; row++) {
       const ry = knxBoardY + 0.36 - row * 0.18;
       const dinRail = new THREE.Mesh(
-        new THREE.BoxGeometry(0.022, 0.068, 0.44),
+        dinRailGeo,
         dinModuleWhiteMat
       );
       dinRail.name = `plantRoom.electricalDistribution.knxDinRow.${row + 1}`;
@@ -115,10 +129,10 @@ export function buildPlantRoomElectrics(
 
       // Green KNX bus & channel status LEDs along each DIN row
       for (let led = 0; led < 4; led++) {
-        const statusLed = new THREE.Mesh(
-          new THREE.BoxGeometry(0.006, 0.012, 0.016),
-          knxGreenLedMat
+        const statusLed = tagHighLod(
+          new THREE.Mesh(statusLedGeo, knxGreenLedMat)
         );
+        statusLed.name = `plantRoom.electricalDistribution.knxDinRow.${row + 1}.statusLed.${led + 1}`;
         statusLed.position.set(
           -17.39 - 0.194,
           ry + 0.015,
@@ -130,16 +144,20 @@ export function buildPlantRoomElectrics(
 
     // Smoked glass inspection door & vertical swing-handle lock on the KNX enclosure
     const knxGlassDoor = new THREE.Mesh(
-      new THREE.BoxGeometry(0.008, 1.02, 0.54),
+      createSharedGeo(new THREE.BoxGeometry(0.008, 1.02, 0.54)),
       windowGlassMat
     );
+    knxGlassDoor.name = 'plantRoom.electricalDistribution.knxBoard.glassDoor';
     knxGlassDoor.position.set(-17.39 - 0.196, knxBoardY, knxBoardZ);
     elecGroup.add(knxGlassDoor);
 
-    const knxDoorHandle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.02, 0.14, 0.028),
-      enclosureTrimMat
+    const knxDoorHandle = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.02, 0.14, 0.028)),
+        enclosureTrimMat
+      )
     );
+    knxDoorHandle.name = 'plantRoom.electricalDistribution.knxBoard.doorHandle';
     knxDoorHandle.position.set(-17.39 - 0.195, knxBoardY, knxBoardZ - 0.285);
     elecGroup.add(knxDoorHandle);
 
@@ -147,7 +165,7 @@ export function buildPlantRoomElectrics(
     const tpBoardZ = 10.98;
     const tpBoardY = tier2FloorY + 1.66;
     const tpCabinet = new THREE.Mesh(
-      new THREE.BoxGeometry(0.20, 0.94, 0.56),
+      createSharedGeo(new THREE.BoxGeometry(0.20, 0.94, 0.56)),
       enclosureGreyMat
     );
     tpCabinet.name = 'plantRoom.electricalDistribution.threePhaseBoard';
@@ -158,7 +176,7 @@ export function buildPlantRoomElectrics(
 
     // Lower 125A 3-Phase Incomer & Rotary Isolator Switch Box (Y = tier2FloorY + 0.92m)
     const incomerBox = new THREE.Mesh(
-      new THREE.BoxGeometry(0.20, 0.38, 0.56),
+      createSharedGeo(new THREE.BoxGeometry(0.20, 0.38, 0.56)),
       enclosureGreyMat
     );
     incomerBox.name = 'plantRoom.electricalDistribution.threePhaseIncomer';
@@ -167,31 +185,41 @@ export function buildPlantRoomElectrics(
     elecGroup.add(incomerBox);
 
     // Yellow & Red Interlocking 3-Phase Rotary Main Isolator Handle on Incomer Box
-    const isolatorPad = new THREE.Mesh(
-      new THREE.BoxGeometry(0.014, 0.088, 0.088),
-      dangerYellowMat
+    const isolatorPad = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.014, 0.088, 0.088)),
+        dangerYellowMat
+      )
     );
+    isolatorPad.name = 'plantRoom.electricalDistribution.threePhaseIncomer.isolatorPad';
     isolatorPad.position.set(-17.39 - 0.204, tier2FloorY + 0.94, tpBoardZ + 0.12);
     elecGroup.add(isolatorPad);
 
-    const isolatorKnob = new THREE.Mesh(
-      new THREE.BoxGeometry(0.032, 0.024, 0.068),
-      isolatorRedMat
+    const isolatorKnob = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.032, 0.024, 0.068)),
+        isolatorRedMat
+      )
     );
+    isolatorKnob.name = 'plantRoom.electricalDistribution.threePhaseIncomer.isolatorKnob';
     isolatorKnob.position.set(-17.39 - 0.218, tier2FloorY + 0.94, tpBoardZ + 0.12);
     elecGroup.add(isolatorKnob);
 
     // L1 / L2 / L3 3-Phase Neon Indicator Lamps (Red, Amber, Blue) & Digital Multi-Function Meter on TPN Board
     const phaseColors = [0xff2b2b, 0xffb81c, 0x2277ff] as const;
+    const phaseLampGeo = createSharedGeo(new THREE.CylinderGeometry(0.011, 0.011, 0.012, 10));
     for (let p = 0; p < 3; p++) {
-      const pLamp = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.011, 0.011, 0.012, 10),
-        new THREE.MeshStandardMaterial({
-          color: phaseColors[p],
-          emissive: phaseColors[p],
-          emissiveIntensity: 0.85,
-        })
+      const pLamp = tagHighLod(
+        new THREE.Mesh(
+          phaseLampGeo,
+          new THREE.MeshStandardMaterial({
+            color: phaseColors[p],
+            emissive: phaseColors[p],
+            emissiveIntensity: 0.85,
+          })
+        )
       );
+      pLamp.name = `plantRoom.electricalDistribution.threePhaseBoard.phaseLamp.L${p + 1}`;
       pLamp.rotation.z = Math.PI / 2;
       pLamp.position.set(
         -17.39 - 0.204,
@@ -202,21 +230,24 @@ export function buildPlantRoomElectrics(
     }
 
     // Yellow 400V 3-Phase Warning Plaques on both metal boards
-    for (const wz of [knxBoardZ, tpBoardZ] as const) {
-      const warningPlaque = new THREE.Mesh(
-        new THREE.BoxGeometry(0.006, 0.065, 0.095),
-        dangerYellowMat
+    const warningPlaqueGeo = createSharedGeo(new THREE.BoxGeometry(0.006, 0.065, 0.095));
+    for (const [wIdx, wz] of ([knxBoardZ, tpBoardZ] as const).entries()) {
+      const warningPlaque = tagHighLod(
+        new THREE.Mesh(warningPlaqueGeo, dangerYellowMat)
       );
+      warningPlaque.name = `plantRoom.electricalDistribution.warningPlaque.${wIdx + 1}`;
       warningPlaque.position.set(-17.39 - 0.202, tier2FloorY + 1.88, wz);
       elecGroup.add(warningPlaque);
     }
 
     // Vertical galvanized steel cable risers connecting both boards to the overhead trunking & floor conduit
-    for (const rz of [knxBoardZ - 0.14, knxBoardZ + 0.14, tpBoardZ - 0.12, tpBoardZ + 0.12] as const) {
+    const riserGeo = createSharedGeo(new THREE.BoxGeometry(0.08, 0.32, 0.08));
+    for (const [rIdx, rz] of ([knxBoardZ - 0.14, knxBoardZ + 0.14, tpBoardZ - 0.12, tpBoardZ + 0.12] as const).entries()) {
       const riser = new THREE.Mesh(
-        new THREE.BoxGeometry(0.08, 0.32, 0.08),
+        riserGeo,
         trunkingGalvMat
       );
+      riser.name = `plantRoom.electricalDistribution.cableRiser.${rIdx + 1}`;
       riser.position.set(-17.39 - 0.06, tier2FloorY + 2.22, rz);
       elecGroup.add(riser);
     }
@@ -271,7 +302,7 @@ export function buildPlantRoomElectrics(
 
     // Floor-levelling anthracite aluminum base plinth (Y = 0..0.075m)
     const stackPlinth = new THREE.Mesh(
-      new THREE.BoxGeometry(stackW, basePlinthH, stackD),
+      createSharedGeo(new THREE.BoxGeometry(stackW, basePlinthH, stackD)),
       batteryAnthraciteChassisMat
     );
     stackPlinth.name = 'plantRoom.homeBatterySystem.plinth';
@@ -283,14 +314,17 @@ export function buildPlantRoomElectrics(
     // 4 x 8 kWh Modular LFP Battery Packs (32 kWh total, stacked Y = 0.08m..1.20m)
     const modH = 0.265;
     const modGap = 0.015;
+    const modChassisGeo = createSharedGeo(new THREE.BoxGeometry(stackW - 0.02, modH + modGap, stackD - 0.03));
+    const modFasciaGeo = createSharedGeo(new THREE.BoxGeometry(stackW, modH, 0.036));
     for (let m = 0; m < 4; m++) {
       const modCenterY = basePlinthH + m * (modH + modGap) + modH * 0.5 + 0.008;
 
       // Rear dark anthracite finned aluminum heat-sink core
       const modChassis = new THREE.Mesh(
-        new THREE.BoxGeometry(stackW - 0.02, modH + modGap, stackD - 0.03),
+        modChassisGeo,
         batteryAnthraciteChassisMat
       );
+      modChassis.name = `plantRoom.homeBatterySystem.batteryModule.${m + 1}.chassis`;
       modChassis.position.set(0, modCenterY, 0.01);
       modChassis.castShadow = true;
       modChassis.receiveShadow = true;
@@ -298,7 +332,7 @@ export function buildPlantRoomElectrics(
 
       // Front chamfered pearl-white aluminum battery module cover
       const modFascia = new THREE.Mesh(
-        new THREE.BoxGeometry(stackW, modH, 0.036),
+        modFasciaGeo,
         batteryPearlWhiteMat
       );
       modFascia.name = `plantRoom.homeBatterySystem.batteryModule.${m + 1}`;
@@ -313,15 +347,16 @@ export function buildPlantRoomElectrics(
     const invCenterY = basePlinthH + 4 * (modH + modGap) + invH * 0.5 + 0.01;
 
     const invChassis = new THREE.Mesh(
-      new THREE.BoxGeometry(stackW - 0.016, invH, stackD - 0.02),
+      createSharedGeo(new THREE.BoxGeometry(stackW - 0.016, invH, stackD - 0.02)),
       batteryAnthraciteChassisMat
     );
+    invChassis.name = 'plantRoom.homeBatterySystem.hybridInverter3Phase.chassis';
     invChassis.position.set(0, invCenterY, 0.008);
     invChassis.castShadow = true;
     stackGroup.add(invChassis);
 
     const invFascia = new THREE.Mesh(
-      new THREE.BoxGeometry(stackW, invH - 0.01, 0.038),
+      createSharedGeo(new THREE.BoxGeometry(stackW, invH - 0.01, 0.038)),
       batteryPearlWhiteMat
     );
     invFascia.name = 'plantRoom.homeBatterySystem.hybridInverter3Phase';
@@ -332,16 +367,17 @@ export function buildPlantRoomElectrics(
 
     // Top anthracite weather/dust cap crown
     const stackTopCap = new THREE.Mesh(
-      new THREE.BoxGeometry(stackW + 0.006, 0.022, stackD + 0.006),
+      createSharedGeo(new THREE.BoxGeometry(stackW + 0.006, 0.022, stackD + 0.006)),
       batteryAnthraciteChassisMat
     );
+    stackTopCap.name = 'plantRoom.homeBatterySystem.sigenStorStack.topCap';
     stackTopCap.position.set(0, invCenterY + invH * 0.5 + 0.008, 0);
     stackGroup.add(stackTopCap);
 
     // Glowing State-of-Charge (SoC) Vertical LED Light Bar & Circular Halo Ring on the Front Fascia (-Z face)
     const frontFaceZ = -stackD * 0.5 - 0.002;
     const socHaloRing = new THREE.Mesh(
-      new THREE.RingGeometry(0.044, 0.056, 28),
+      createSharedGeo(new THREE.RingGeometry(0.044, 0.056, 28)),
       batteryCyanHaloMat
     );
     socHaloRing.name = 'plantRoom.homeBatterySystem.socHaloRing';
@@ -350,7 +386,7 @@ export function buildPlantRoomElectrics(
     stackGroup.add(socHaloRing);
 
     const socVerticalBar = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, 1.18, 0.006),
+      createSharedGeo(new THREE.BoxGeometry(0.012, 1.18, 0.006)),
       batteryCyanHaloMat
     );
     socVerticalBar.name = 'plantRoom.homeBatterySystem.socLightBar';
@@ -358,10 +394,13 @@ export function buildPlantRoomElectrics(
     stackGroup.add(socVerticalBar);
 
     // Side-mounted DC Rotary Isolator Switch on the Inverter Head Unit
-    const dcIsolator = new THREE.Mesh(
-      new THREE.BoxGeometry(0.024, 0.068, 0.068),
-      isolatorRedMat
+    const dcIsolator = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.024, 0.068, 0.068)),
+        isolatorRedMat
+      )
     );
+    dcIsolator.name = 'plantRoom.homeBatterySystem.hybridInverter3Phase.dcIsolator';
     dcIsolator.position.set(stackW * 0.5 + 0.01, invCenterY - 0.04, -0.02);
     stackGroup.add(dcIsolator);
 
@@ -378,7 +417,7 @@ export function buildPlantRoomElectrics(
     const gwD = 0.18;
 
     const gatewayBox = new THREE.Mesh(
-      new THREE.BoxGeometry(gwW, gwH, gwD),
+      createSharedGeo(new THREE.BoxGeometry(gwW, gwH, gwD)),
       batteryPearlWhiteMat
     );
     gatewayBox.name = 'plantRoom.homeBatterySystem.backupGateway.enclosure';
@@ -388,34 +427,45 @@ export function buildPlantRoomElectrics(
 
     // Dark recessed smoked-glass status window on the Backup Gateway
     const gatewayWindow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.16, 0.24, 0.008),
+      createSharedGeo(new THREE.BoxGeometry(0.16, 0.24, 0.008)),
       enclosureTrimMat
     );
+    gatewayWindow.name = 'plantRoom.homeBatterySystem.backupGateway.statusWindow';
     gatewayWindow.position.set(-0.06, 0.04, -gwD * 0.5 - 0.002);
     gatewayGroup.add(gatewayWindow);
 
     // 3-Phase Grid / Battery / Home Status LEDs (Green On-Grid + Cyan Battery Ready + KNX Load-Shed Link)
+    const gatewayLedGeo = createSharedGeo(new THREE.BoxGeometry(0.018, 0.01, 0.006));
     for (let gLed = 0; gLed < 3; gLed++) {
-      const ledDot = new THREE.Mesh(
-        new THREE.BoxGeometry(0.018, 0.01, 0.006),
-        gLed === 1 ? batteryCyanHaloMat : knxGreenLedMat
+      const ledDot = tagHighLod(
+        new THREE.Mesh(
+          gatewayLedGeo,
+          gLed === 1 ? batteryCyanHaloMat : knxGreenLedMat
+        )
       );
+      ledDot.name = `plantRoom.homeBatterySystem.backupGateway.statusLed.${gLed + 1}`;
       ledDot.position.set(-0.06, 0.11 - gLed * 0.045, -gwD * 0.5 - 0.006);
       gatewayGroup.add(ledDot);
     }
 
     // Manual Grid/Backup Rotary Bypass Interlock Switch & Dual Voltage Warning Label on Gateway
-    const bypassPad = new THREE.Mesh(
-      new THREE.BoxGeometry(0.072, 0.072, 0.012),
-      dangerYellowMat
+    const bypassPad = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.072, 0.072, 0.012)),
+        dangerYellowMat
+      )
     );
+    bypassPad.name = 'plantRoom.homeBatterySystem.backupGateway.bypassPad';
     bypassPad.position.set(0.1, -0.06, -gwD * 0.5 - 0.004);
     gatewayGroup.add(bypassPad);
 
-    const bypassKnob = new THREE.Mesh(
-      new THREE.BoxGeometry(0.022, 0.054, 0.026),
-      isolatorRedMat
+    const bypassKnob = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.022, 0.054, 0.026)),
+        isolatorRedMat
+      )
     );
+    bypassKnob.name = 'plantRoom.homeBatterySystem.backupGateway.bypassKnob';
     bypassKnob.position.set(0.1, -0.06, -gwD * 0.5 - 0.016);
     gatewayGroup.add(bypassKnob);
 
@@ -423,7 +473,7 @@ export function buildPlantRoomElectrics(
 
     // 3. Galvanized Steel Cable Trunking & Conduits linking SigenStor Stack -> Backup Gateway -> 3-Phase TPN Board
     const southHeaderTrunking = new THREE.Mesh(
-      new THREE.BoxGeometry(1.36, 0.14, 0.14),
+      createSharedGeo(new THREE.BoxGeometry(1.36, 0.14, 0.14)),
       trunkingGalvMat
     );
     southHeaderTrunking.name = 'plantRoom.homeBatterySystem.southTrunking';
@@ -432,13 +482,17 @@ export function buildPlantRoomElectrics(
     batterySystemGroup.add(southHeaderTrunking);
 
     // Vertical armored risers from the Inverter & Backup Gateway up to the South galvanized trunking header
-    for (const rx of [-18.32, -17.86, -17.70] as const) {
-      const rH = rx === -18.32 ? 0.80 : 0.74;
+    const batRiserLongGeo = createSharedGeo(new THREE.BoxGeometry(0.068, 0.80, 0.068));
+    const batRiserShortGeo = createSharedGeo(new THREE.BoxGeometry(0.068, 0.74, 0.068));
+    for (const [rIdx, rx] of ([-18.32, -17.86, -17.70] as const).entries()) {
+      const isLong = rx === -18.32;
+      const rH = isLong ? 0.80 : 0.74;
       const rMidY = tier2FloorY + 2.31 - rH * 0.5;
       const batRiser = new THREE.Mesh(
-        new THREE.BoxGeometry(0.068, rH, 0.068),
+        isLong ? batRiserLongGeo : batRiserShortGeo,
         trunkingGalvMat
       );
+      batRiser.name = `plantRoom.homeBatterySystem.cableRiser.${rIdx + 1}`;
       batRiser.position.set(rx, rMidY, 11.41);
       batterySystemGroup.add(batRiser);
     }

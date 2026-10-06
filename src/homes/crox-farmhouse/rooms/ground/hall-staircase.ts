@@ -1,5 +1,8 @@
 import * as THREE from 'three';
-import { buildSweptMouldingGeometry, createSkirtingCapProfile } from '../../../../engine/geometry/swept-moulding.ts';
+import {
+  buildSweptMouldingGeometry,
+  createSkirtingCapProfile,
+} from '../../../../engine/geometry/swept-moulding.ts';
 import { createWovenWoolCarpetTextures } from '../../../../engine/textures/procedural-textures.ts';
 import { buildUnderstairsHeatingManifold } from '../../../../objects/fixtures/hydronic-manifold.ts';
 import type { SceneBuilderContext } from '../../../../types/scene.ts';
@@ -7,6 +10,17 @@ import type { createGroundFloorMaterials } from '../../structure/ground-floor-ma
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
 import type { buildDiningRoom } from './dining-room.ts';
 import type { buildHall } from './hall.ts';
+
+function createSharedGeo<T extends THREE.BufferGeometry>(geo: T): T {
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+function tagHighLod<T extends THREE.Object3D>(obj: T, maxDistance = 12): T {
+  obj.userData.lodTier = 'high';
+  obj.userData.lodMaxDistance = maxDistance;
+  return obj;
+}
 
 /**
  * Quarter-turn oak staircase, balustrades and hanging newel in the Stair Hall.
@@ -16,7 +30,18 @@ import type { buildHall } from './hall.ts';
  */
 export function buildHallStaircase(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'castIronMat' | 'exteriorBrickMat' | 'oakMat' | 'skirtingMat' | 'tagCutawayWall' | 'wallH' | 'warmRoomPlasterMat'> &
+  kit: Pick<
+    ReturnType<typeof createGroundFloorMaterials>,
+    | 'antiqueOakSkirtingMat'
+    | 'brassMat'
+    | 'castIronMat'
+    | 'exteriorBrickMat'
+    | 'oakMat'
+    | 'skirtingMat'
+    | 'tagCutawayWall'
+    | 'wallH'
+    | 'warmRoomPlasterMat'
+  > &
     Pick<ReturnType<typeof createGroundFloorShellKit>, 'applyWorldSpaceBrickUVs'> &
     Pick<ReturnType<typeof buildDiningRoom>, 'lowerFloorY'> &
     Pick<ReturnType<typeof buildHall>, 'hallFrontRoomCrossWallFrame'>
@@ -69,6 +94,11 @@ export function buildHallStaircase(
   });
   stepLightLensMat.userData.baseEmissiveIntensity = 1.5;
   lightGroups.hallPendant.emissives.push(stepLightLensMat);
+
+  const stepLightBezelGeo = createSharedGeo(new THREE.BoxGeometry(0.058, 0.042, 0.008));
+  const stepLightHoodGeo = createSharedGeo(new THREE.BoxGeometry(0.052, 0.014, 0.014));
+  const stepLightLensGeo = createSharedGeo(new THREE.BoxGeometry(0.044, 0.022, 0.006));
+
   const buildStepLightUnit = (
     name: string,
     x: number,
@@ -81,18 +111,20 @@ export function buildHallStaircase(
     unit.position.set(x, y, z);
 
     // Aged-brass rectangular micro-louver step light bezel (58mm wide x 42mm high)
-    const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.042, 0.008), brassMat);
+    const bezel = tagHighLod(new THREE.Mesh(stepLightBezelGeo, brassMat));
+    bezel.name = `${name}.bezel`;
     bezel.castShadow = true;
     unit.add(bezel);
 
     // Angled brass eyelid hood shielding upward glare and directing warm light across the tread
-    const hood = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.014, 0.014), brassMat);
+    const hood = tagHighLod(new THREE.Mesh(stepLightHoodGeo, brassMat));
+    hood.name = `${name}.hood`;
     hood.position.set(0, 0.01, outSign * 0.005);
     hood.rotation.x = -outSign * 0.28;
     unit.add(hood);
 
     // Warm LED diffuser window
-    const lens = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.022, 0.006), stepLightLensMat);
+    const lens = tagHighLod(new THREE.Mesh(stepLightLensGeo, stepLightLensMat));
     lens.name = `${name}.lens`;
     lens.position.set(0, -0.004, outSign * 0.003);
     unit.add(lens);
@@ -138,6 +170,7 @@ export function buildHallStaircase(
       }
       uv.needsUpdate = true;
     }
+    geo.computeBoundingSphere();
     return geo;
   };
   const stairRunnerBorderMat = new THREE.MeshStandardMaterial({
@@ -151,21 +184,32 @@ export function buildHallStaircase(
   const runnerBorderW = 0.024;
   const lowerRunnerCenterX = -17.08;
 
+  // Shared geometries across lower/upper stair risers, borders, stair rods, and spindles
+  const lowerBorderRiserGeo = createSharedGeo(
+    new THREE.BoxGeometry(runnerBorderW, lowerRiserH, 0.009)
+  );
+  const stairRodGeo = createSharedGeo(
+    new THREE.CylinderGeometry(0.0055, 0.0055, runnerW + runnerBorderW * 2 + 0.05, 12)
+  );
+  const spindleGeo = createSharedGeo(new THREE.BoxGeometry(0.03, 0.71, 0.03));
+
   // 1A. Step 1: Wide Bullnose / Curtail Bottom Step in front of the Bottom Newel Post (Z = -0.36m..-0.58m, Y = -0.30m..-0.11m)
   const step1TopY = lowerFloorY + lowerRiserH; // -0.11m
   const step1Carriage = new THREE.Mesh(
-    new THREE.BoxGeometry(0.99, lowerRiserH - 0.026, 0.22),
+    createSharedGeo(new THREE.BoxGeometry(0.99, lowerRiserH - 0.026, 0.22)),
     skirtingMat
   );
+  step1Carriage.name = 'hall.stairs.step1.carriage';
   step1Carriage.position.set(-17.105, lowerFloorY + (lowerRiserH - 0.026) * 0.5, -0.47);
   step1Carriage.castShadow = true;
   step1Carriage.receiveShadow = true;
   stairGroup.add(step1Carriage);
 
   const step1Tread = new THREE.Mesh(
-    new THREE.BoxGeometry(1.0, 0.028, 0.24),
+    createSharedGeo(new THREE.BoxGeometry(1.0, 0.028, 0.24)),
     antiqueOakSkirtingMat
   );
+  step1Tread.name = 'hall.stairs.step1.tread';
   step1Tread.position.set(-17.1, step1TopY - 0.014, -0.46);
   step1Tread.castShadow = true;
   step1Tread.receiveShadow = true;
@@ -173,18 +217,20 @@ export function buildHallStaircase(
 
   // Curved Bullnose Right End on Step 1 wrapping around the East side of the Bottom Newel Post (X = -16.61m, Z = -0.47m)
   const bullnoseRiser = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.11, 0.11, lowerRiserH - 0.026, 20),
+    createSharedGeo(new THREE.CylinderGeometry(0.11, 0.11, lowerRiserH - 0.026, 20)),
     skirtingMat
   );
+  bullnoseRiser.name = 'hall.stairs.step1.bullnoseRiser';
   bullnoseRiser.position.set(-16.61, lowerFloorY + (lowerRiserH - 0.026) * 0.5, -0.47);
   bullnoseRiser.castShadow = true;
   bullnoseRiser.receiveShadow = true;
   stairGroup.add(bullnoseRiser);
 
   const bullnoseTreadCap = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.122, 0.122, 0.028, 20),
+    createSharedGeo(new THREE.CylinderGeometry(0.122, 0.122, 0.028, 20)),
     antiqueOakSkirtingMat
   );
+  bullnoseTreadCap.name = 'hall.stairs.step1.bullnoseTreadCap';
   bullnoseTreadCap.position.set(-16.61, step1TopY - 0.014, -0.46);
   bullnoseTreadCap.castShadow = true;
   bullnoseTreadCap.receiveShadow = true;
@@ -219,37 +265,45 @@ export function buildHallStaircase(
   step1RunnerRiser.receiveShadow = true;
   stairGroup.add(step1RunnerRiser);
 
+  const step1BorderTreadGeo = createSharedGeo(new THREE.BoxGeometry(runnerBorderW, 0.009, 0.246));
   for (const side of [-1, 1] as const) {
+    const sideTag = side < 0 ? 'west' : 'east';
     const borderX = lowerRunnerCenterX + side * (runnerW * 0.5 + runnerBorderW * 0.5);
-    const borderTread = new THREE.Mesh(
-      new THREE.BoxGeometry(runnerBorderW, 0.009, 0.246),
-      stairRunnerBorderMat
-    );
+    const borderTread = new THREE.Mesh(step1BorderTreadGeo, stairRunnerBorderMat);
+    borderTread.name = `hall.stairs.runner.step1BorderTread.${sideTag}`;
     borderTread.position.set(borderX, step1TopY + 0.0045, -0.46);
     stairGroup.add(borderTread);
 
-    const borderRiser = new THREE.Mesh(
-      new THREE.BoxGeometry(runnerBorderW, lowerRiserH, 0.009),
-      stairRunnerBorderMat
-    );
+    const borderRiser = new THREE.Mesh(lowerBorderRiserGeo, stairRunnerBorderMat);
+    borderRiser.name = `hall.stairs.runner.step1BorderRiser.${sideTag}`;
     borderRiser.position.set(borderX, lowerFloorY + lowerRiserH * 0.5, -0.355);
     stairGroup.add(borderRiser);
   }
 
   // 1B. Steps 2..5: 4 Straight Oak-Treaded Risers with Central Runner Carpet climbing North (-Z) from Z = -0.58m to Z = -1.62m
   const lowerFlightTreadDepth = 0.26; // 4 * 0.26m = 1.04m (from Z = -0.58m to Z = -1.62m)
+  const stepW = 0.93; // X = -17.60m..-16.67m (tucked cleanly into West cross-wall behind 22mm stringer)
+  const stepCenterX = -17.6 + stepW * 0.5; // -17.135m
+  const lowerOakTreadGeo = createSharedGeo(
+    new THREE.BoxGeometry(stepW, 0.028, lowerFlightTreadDepth + 0.02)
+  );
+  const lowerBorderTreadGeo = createSharedGeo(
+    new THREE.BoxGeometry(runnerBorderW, 0.009, lowerFlightTreadDepth + 0.024)
+  );
+
   for (let s = 1; s < 5; s++) {
     const stepTopY = lowerFloorY + (s + 1) * lowerRiserH;
     const stepBotY = lowerFloorY + s * lowerRiserH;
     const stepCenterZ = -0.58 - (s - 0.5) * lowerFlightTreadDepth;
     const riserFaceZ = -0.58 - (s - 1) * lowerFlightTreadDepth;
-    const stepW = 0.93; // X = -17.60m..-16.67m (tucked cleanly into West cross-wall behind 22mm stringer)
-    const stepCenterX = -17.6 + stepW * 0.5; // -17.135m
 
     const riserCarriage = new THREE.Mesh(
-      new THREE.BoxGeometry(stepW, stepTopY - lowerFloorY - 0.026, lowerFlightTreadDepth),
+      createSharedGeo(
+        new THREE.BoxGeometry(stepW, stepTopY - lowerFloorY - 0.026, lowerFlightTreadDepth)
+      ),
       skirtingMat
     );
+    riserCarriage.name = `hall.stairs.step${s + 1}.carriage`;
     riserCarriage.position.set(
       stepCenterX,
       (lowerFloorY + stepTopY - 0.026) * 0.5,
@@ -259,10 +313,8 @@ export function buildHallStaircase(
     riserCarriage.receiveShadow = true;
     stairGroup.add(riserCarriage);
 
-    const oakTread = new THREE.Mesh(
-      new THREE.BoxGeometry(stepW, 0.028, lowerFlightTreadDepth + 0.02),
-      antiqueOakSkirtingMat
-    );
+    const oakTread = new THREE.Mesh(lowerOakTreadGeo, antiqueOakSkirtingMat);
+    oakTread.name = `hall.stairs.step${s + 1}.tread`;
     oakTread.position.set(stepCenterX, stepTopY - 0.014, stepCenterZ + 0.008);
     oakTread.castShadow = true;
     oakTread.receiveShadow = true;
@@ -298,27 +350,21 @@ export function buildHallStaircase(
     stairGroup.add(runnerTread);
 
     for (const side of [-1, 1] as const) {
+      const sideTag = side < 0 ? 'west' : 'east';
       const borderX = lowerRunnerCenterX + side * (runnerW * 0.5 + runnerBorderW * 0.5);
-      const borderRiser = new THREE.Mesh(
-        new THREE.BoxGeometry(runnerBorderW, lowerRiserH, 0.009),
-        stairRunnerBorderMat
-      );
+      const borderRiser = new THREE.Mesh(lowerBorderRiserGeo, stairRunnerBorderMat);
+      borderRiser.name = `hall.stairs.runner.step${s + 1}BorderRiser.${sideTag}`;
       borderRiser.position.set(borderX, stepBotY + lowerRiserH * 0.5, riserFaceZ + 0.0045);
       stairGroup.add(borderRiser);
 
-      const borderTread = new THREE.Mesh(
-        new THREE.BoxGeometry(runnerBorderW, 0.009, lowerFlightTreadDepth + 0.024),
-        stairRunnerBorderMat
-      );
+      const borderTread = new THREE.Mesh(lowerBorderTreadGeo, stairRunnerBorderMat);
+      borderTread.name = `hall.stairs.runner.step${s + 1}BorderTread.${sideTag}`;
       borderTread.position.set(borderX, stepTopY + 0.0045, stepCenterZ + 0.008);
       stairGroup.add(borderTread);
     }
 
     // Antique Brass Stair Rod in the riser crease
-    const stairRod = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0055, 0.0055, runnerW + runnerBorderW * 2 + 0.05, 12),
-      brassMat
-    );
+    const stairRod = tagHighLod(new THREE.Mesh(stairRodGeo, brassMat));
     stairRod.name = `hall.stairs.stairRod.${s}`;
     stairRod.rotation.z = Math.PI * 0.5;
     stairRod.position.set(lowerRunnerCenterX, stepBotY + 0.012, riserFaceZ + 0.012);
@@ -335,24 +381,28 @@ export function buildHallStaircase(
   });
   const carriageFullH = quarterLandingY - lowerFloorY - 0.026;
   const carriageSoffit = new THREE.Mesh(
-    new THREE.BoxGeometry(0.89, 0.06, 0.88),
+    createSharedGeo(new THREE.BoxGeometry(0.89, 0.06, 0.88)),
     ceilingWhiteMat
   );
+  carriageSoffit.name = 'hall.stairs.quarterLanding.soffit';
   carriageSoffit.position.set(-17.105, quarterLandingY - 0.056, -2.06);
   carriageSoffit.castShadow = true;
   carriageSoffit.receiveShadow = true;
   stairGroup.add(carriageSoffit);
 
   // South, North, and West interior plaster walls of the Understairs Cupboard
-  for (const [wx, wz, ww, wd] of [
-    [-17.105, -1.635, 0.89, 0.03], // South partition wall under Step 6 riser
-    [-17.105, -2.485, 0.89, 0.03], // North back wall lining
-    [-17.515, -2.06, 0.06, 0.88],  // West wall lining (mounting surface for hall.understairsManifold)
-  ] as const) {
+  for (const [wIdx, [wx, wz, ww, wd]] of (
+    [
+      [-17.105, -1.635, 0.89, 0.03], // South partition wall under Step 6 riser
+      [-17.105, -2.485, 0.89, 0.03], // North back wall lining
+      [-17.515, -2.06, 0.06, 0.88], // West wall lining (mounting surface for hall.understairsManifold)
+    ] as const
+  ).entries()) {
     const cupWall = new THREE.Mesh(
-      new THREE.BoxGeometry(ww, carriageFullH, wd),
+      createSharedGeo(new THREE.BoxGeometry(ww, carriageFullH, wd)),
       warmRoomPlasterMat
     );
+    cupWall.name = `hall.stairs.understairsCupboard.wall.${wIdx + 1}`;
     cupWall.position.set(wx, (lowerFloorY + quarterLandingY - 0.026) * 0.5, wz);
     cupWall.castShadow = true;
     cupWall.receiveShadow = true;
@@ -364,9 +414,10 @@ export function buildHallStaircase(
 
   // Solid Antique Oak Quarter-Landing Deck with Step 6 Riser Runner & L-Turn Runner Pad (Issue #16)
   const quarterLandingOakDeck = new THREE.Mesh(
-    new THREE.BoxGeometry(0.9, 0.028, 0.88),
+    createSharedGeo(new THREE.BoxGeometry(0.9, 0.028, 0.88)),
     antiqueOakSkirtingMat
   );
+  quarterLandingOakDeck.name = 'hall.stairs.quarterLanding.oakDeck';
   quarterLandingOakDeck.position.set(-17.1, quarterLandingY - 0.014, -2.06);
   quarterLandingOakDeck.receiveShadow = true;
   stairGroup.add(quarterLandingOakDeck);
@@ -381,6 +432,7 @@ export function buildHallStaircase(
     ),
     stairCarpetMat
   );
+  step6RunnerRiser.name = 'hall.stairs.runner.step6Riser';
   step6RunnerRiser.position.set(
     lowerRunnerCenterX,
     quarterLandingY - lowerRiserH * 0.5,
@@ -389,19 +441,15 @@ export function buildHallStaircase(
   stairGroup.add(step6RunnerRiser);
 
   for (const side of [-1, 1] as const) {
+    const sideTag = side < 0 ? 'west' : 'east';
     const borderX = lowerRunnerCenterX + side * (runnerW * 0.5 + runnerBorderW * 0.5);
-    const borderRiser = new THREE.Mesh(
-      new THREE.BoxGeometry(runnerBorderW, lowerRiserH, 0.009),
-      stairRunnerBorderMat
-    );
+    const borderRiser = new THREE.Mesh(lowerBorderRiserGeo, stairRunnerBorderMat);
+    borderRiser.name = `hall.stairs.runner.step6BorderRiser.${sideTag}`;
     borderRiser.position.set(borderX, quarterLandingY - lowerRiserH * 0.5, -1.615);
     stairGroup.add(borderRiser);
   }
 
-  const step6StairRod = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.0055, 0.0055, runnerW + runnerBorderW * 2 + 0.05, 12),
-    brassMat
-  );
+  const step6StairRod = tagHighLod(new THREE.Mesh(stairRodGeo, brassMat));
   step6StairRod.name = 'hall.stairs.stairRod.5';
   step6StairRod.rotation.z = Math.PI * 0.5;
   step6StairRod.position.set(
@@ -435,15 +483,17 @@ export function buildHallStaircase(
     ),
     stairCarpetMat
   );
+  landingRunnerWE.name = 'hall.stairs.runner.quarterLandingEast';
   landingRunnerWE.position.set(-16.87, quarterLandingY + 0.004, -2.075);
   landingRunnerWE.receiveShadow = true;
   stairGroup.add(landingRunnerWE);
 
   // Border binding on Quarter-Landing L-Turn Runner
   const landingBorderWest = new THREE.Mesh(
-    new THREE.BoxGeometry(runnerBorderW, 0.009, 0.72),
+    createSharedGeo(new THREE.BoxGeometry(runnerBorderW, 0.009, 0.72)),
     stairRunnerBorderMat
   );
+  landingBorderWest.name = 'hall.stairs.runner.quarterLandingBorderWest';
   landingBorderWest.position.set(
     lowerRunnerCenterX - (runnerW * 0.5 + runnerBorderW * 0.5),
     quarterLandingY + 0.0045,
@@ -452,9 +502,10 @@ export function buildHallStaircase(
   stairGroup.add(landingBorderWest);
 
   const landingBorderNorth = new THREE.Mesh(
-    new THREE.BoxGeometry(0.72, 0.009, runnerBorderW),
+    createSharedGeo(new THREE.BoxGeometry(0.72, 0.009, runnerBorderW)),
     stairRunnerBorderMat
   );
+  landingBorderNorth.name = 'hall.stairs.runner.quarterLandingBorderNorth';
   landingBorderNorth.position.set(
     -17.0,
     quarterLandingY + 0.0045,
@@ -480,9 +531,10 @@ export function buildHallStaircase(
     const botY = inDoorSpan ? doorTopY : doorBottomY;
     const plankH = Math.max(0.02, plankTopY - botY);
     const plank = new THREE.Mesh(
-      new THREE.BoxGeometry(0.048, plankH, Math.abs(spandrelStepZ) - 0.005),
+      createSharedGeo(new THREE.BoxGeometry(0.048, plankH, Math.abs(spandrelStepZ) - 0.005)),
       skirtingMat
     );
+    plank.name = `hall.stairs.spandrelPlank.${p + 1}`;
     plank.position.set(-16.64, botY + plankH * 0.5, pz);
     plank.castShadow = true;
     plank.receiveShadow = true;
@@ -490,9 +542,10 @@ export function buildHallStaircase(
   }
 
   const spandrelBaseRail = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, 0.095, 1.18),
+    createSharedGeo(new THREE.BoxGeometry(0.06, 0.095, 1.18)),
     skirtingMat
   );
+  spandrelBaseRail.name = 'hall.stairs.spandrelBaseRail';
   spandrelBaseRail.position.set(-16.64, lowerFloorY + 0.048, -1.13);
   stairGroup.add(spandrelBaseRail);
 
@@ -506,25 +559,25 @@ export function buildHallStaircase(
   cupboardDoorLeaf.name = 'hall.stairs.understairsCupboardDoor.leaf';
 
   const cupboardDoorFrame = new THREE.Mesh(
-    new THREE.BoxGeometry(0.022, 1.0, 0.64),
+    createSharedGeo(new THREE.BoxGeometry(0.022, 1.0, 0.64)),
     skirtingMat
   );
+  cupboardDoorFrame.name = 'hall.stairs.understairsCupboardDoor.panel';
   cupboardDoorFrame.castShadow = true;
   cupboardDoorFrame.receiveShadow = true;
   cupboardDoorLeaf.add(cupboardDoorFrame);
 
-  for (const hy of [-0.28, 0.28]) {
-    const cHinge = new THREE.Mesh(
-      new THREE.BoxGeometry(0.014, 0.022, 0.09),
-      castIronMat
-    );
+  const cupboardHingeGeo = createSharedGeo(new THREE.BoxGeometry(0.014, 0.022, 0.09));
+  for (const [hIdx, hy] of ([-0.28, 0.28] as const).entries()) {
+    const cHinge = tagHighLod(new THREE.Mesh(cupboardHingeGeo, castIronMat));
+    cHinge.name = `hall.stairs.understairsCupboardDoor.hinge.${hIdx + 1}`;
     cHinge.position.set(0.014, hy, -0.26);
     cupboardDoorLeaf.add(cHinge);
   }
-  const cupboardKnob = new THREE.Mesh(
-    new THREE.SphereGeometry(0.016, 10, 10),
-    castIronMat
+  const cupboardKnob = tagHighLod(
+    new THREE.Mesh(createSharedGeo(new THREE.SphereGeometry(0.016, 10, 10)), castIronMat)
   );
+  cupboardKnob.name = 'hall.stairs.understairsCupboardDoor.knob';
   cupboardKnob.position.set(0.017, 0.02, 0.26);
   cupboardDoorLeaf.add(cupboardKnob);
 
@@ -554,19 +607,7 @@ export function buildHallStaircase(
     centerX: number,
     mat: THREE.Material
   ): THREE.Mesh => {
-    const shape = new THREE.Shape();
-    shape.moveTo(zStart, yBotStart);
-    shape.lineTo(zStart, yTopStart);
-    shape.lineTo(zEnd, yTopEnd);
-    shape.lineTo(zEnd, yBotEnd);
-    shape.closePath();
-    const geo = new THREE.ExtrudeGeometry(shape, {
-      depth: widthX,
-      bevelEnabled: false,
-    });
-    // Rotate +90° around Y so shape X (zStart..zEnd) maps to world -Z..+Z:
-    // After rotateY(Math.PI / 2): newX = oldZ, newY = oldY, newZ = -oldX.
-    // So pass (-zStart, -zEnd) in shape X!
+    // Rotate +90° around Y so shape X (-zStart..-zEnd) maps to world zStart..zEnd
     const zShape = new THREE.Shape();
     zShape.moveTo(-zStart, yBotStart);
     zShape.lineTo(-zStart, yTopStart);
@@ -579,8 +620,9 @@ export function buildHallStaircase(
     });
     beamGeo.rotateY(Math.PI / 2);
     beamGeo.translate(centerX - widthX * 0.5, 0, 0);
-    geo.dispose();
+    createSharedGeo(beamGeo);
     const mesh = new THREE.Mesh(beamGeo, mat);
+    mesh.name = 'hall.stairs.plumbBeam';
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     return mesh;
@@ -631,6 +673,7 @@ export function buildHallStaircase(
       bevelEnabled: false,
     });
     westStrGeo.translate(0, 0, -0.142);
+    createSharedGeo(westStrGeo);
     const westWallStringerMesh = new THREE.Mesh(westStrGeo, antiqueOakSkirtingMat);
     westWallStringerMesh.name = 'hall.stairs.westWallStringer.board';
     westWallStringerMesh.castShadow = true;
@@ -639,15 +682,17 @@ export function buildHallStaircase(
 
     // Stepped ogee/torus oak skirting cap swept continuously along the Quarter Landing, sloped West wall
     // stringer, and horizontal Hall West wall skirting, mitred at both kinks (`z = -0.12m - d`).
-    const westCapGeo = buildSweptMouldingGeometry(
-      createSkirtingCapProfile(),
-      [
-        [0, quarterLandingY + skirtBoardH],
-        [landingTurnU, quarterLandingY + skirtBoardH],
-        [bottomMitreU, lowerFloorY + skirtBoardH],
-        [westWallLen, lowerFloorY + skirtBoardH],
-      ],
-      (a, y, d) => new THREE.Vector3(a, y, -0.12 - d)
+    const westCapGeo = createSharedGeo(
+      buildSweptMouldingGeometry(
+        createSkirtingCapProfile(),
+        [
+          [0, quarterLandingY + skirtBoardH],
+          [landingTurnU, quarterLandingY + skirtBoardH],
+          [bottomMitreU, lowerFloorY + skirtBoardH],
+          [westWallLen, lowerFloorY + skirtBoardH],
+        ],
+        (a, y, d) => new THREE.Vector3(a, y, -0.12 - d)
+      )
     );
     const westWallStringerCap = new THREE.Mesh(westCapGeo, antiqueOakSkirtingMat);
     westWallStringerCap.name = 'hall.stairs.westWallStringer.cap';
@@ -681,7 +726,7 @@ export function buildHallStaircase(
   // Square White Bottom Newel Post standing cleanly on Step 1 (X = -16.64m, Z = -0.54m, Y = -0.11m..+0.93m — Issue #3, PH-47 & PH-48)
   const bottomNewelH = 1.04;
   const bottomNewel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.104, bottomNewelH, 0.104),
+    createSharedGeo(new THREE.BoxGeometry(0.104, bottomNewelH, 0.104)),
     skirtingMat
   );
   bottomNewel.name = 'hall.stairs.bottomNewel';
@@ -690,9 +735,10 @@ export function buildHallStaircase(
   stairGroup.add(bottomNewel);
 
   const bottomNewelCap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.128, 0.036, 0.128),
+    createSharedGeo(new THREE.BoxGeometry(0.128, 0.036, 0.128)),
     skirtingMat
   );
+  bottomNewelCap.name = 'hall.stairs.bottomNewel.cap';
   bottomNewelCap.position.set(-16.64, step1TopY + bottomNewelH + 0.018, -0.54);
   stairGroup.add(bottomNewelCap);
 
@@ -718,11 +764,7 @@ export function buildHallStaircase(
     const tZ = (-0.54 - bz) / lowerStringerDz;
     const strY = 0.13 + tZ * lowerStringerDy;
     const railY = 0.84 + tZ * lowerStringerDy;
-    const bH = railY - strY;
-    const baluster = new THREE.Mesh(
-      new THREE.BoxGeometry(0.03, bH, 0.03),
-      skirtingMat
-    );
+    const baluster = new THREE.Mesh(spindleGeo, skirtingMat);
     baluster.name = `hall.stairs.lowerSpindle.${b + 1}`;
     baluster.position.set(-16.64, (strY + railY) * 0.5, bz);
     baluster.castShadow = true;
@@ -737,7 +779,7 @@ export function buildHallStaircase(
   const cornerNewelTopY = 1.76;
   const cornerNewelH = cornerNewelTopY - cornerNewelBottomY;
   const cornerNewel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.106, cornerNewelH, 0.112),
+    createSharedGeo(new THREE.BoxGeometry(0.106, cornerNewelH, 0.112)),
     skirtingMat
   );
   cornerNewel.name = 'hall.stairs.cornerNewel';
@@ -746,16 +788,18 @@ export function buildHallStaircase(
   stairGroup.add(cornerNewel);
 
   const cornerNewelCap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.132, 0.036, 0.136),
+    createSharedGeo(new THREE.BoxGeometry(0.132, 0.036, 0.136)),
     skirtingMat
   );
+  cornerNewelCap.name = 'hall.stairs.cornerNewel.cap';
   cornerNewelCap.position.set(-16.64, cornerNewelTopY + 0.018, -1.63);
   stairGroup.add(cornerNewelCap);
 
   const cornerNewelDropCap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.124, 0.028, 0.128),
+    createSharedGeo(new THREE.BoxGeometry(0.124, 0.028, 0.128)),
     skirtingMat
   );
+  cornerNewelDropCap.name = 'hall.stairs.cornerNewel.dropCap';
   cornerNewelDropCap.position.set(-16.64, cornerNewelBottomY - 0.014, -1.63);
   stairGroup.add(cornerNewelDropCap);
 
@@ -792,6 +836,7 @@ export function buildHallStaircase(
     bevelEnabled: false,
   });
   upperCarriageGeo.translate(0, 0, -2.486);
+  createSharedGeo(upperCarriageGeo);
   // Solid Antique Oak upper stair treads & risers flanking the central runner carpet (Issue #16)
   const upperCarriageMesh = new THREE.Mesh(upperCarriageGeo, antiqueOakSkirtingMat);
   upperCarriageMesh.name = 'hall.stairs.upperCarriage';
@@ -841,17 +886,16 @@ export function buildHallStaircase(
     const borderZ =
       -2.075 + side * (runnerW * 0.5 + runnerBorderW * 0.5) - runnerBorderW * 0.5;
     borderGeo.translate(0, 0, borderZ);
+    createSharedGeo(borderGeo);
     const borderMesh = new THREE.Mesh(borderGeo, stairRunnerBorderMat);
+    borderMesh.name = `hall.stairs.runner.upperFlightBorder.${side < 0 ? 'north' : 'south'}`;
     stairGroup.add(borderMesh);
   }
 
   for (let i = 0; i < upperOpenSteps; i++) {
     const rodX = -16.64 + i * upperStepRun - 0.01;
     const rodY = quarterLandingY + i * upperStepRise + 0.012;
-    const upperRod = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0055, 0.0055, runnerW + runnerBorderW * 2 + 0.05, 12),
-      brassMat
-    );
+    const upperRod = tagHighLod(new THREE.Mesh(stairRodGeo, brassMat));
     upperRod.name = `hall.stairs.upperStairRod.${i + 1}`;
     upperRod.rotation.x = Math.PI * 0.5;
     upperRod.position.set(rodX, rodY, -2.075);
@@ -873,6 +917,7 @@ export function buildHallStaircase(
     bevelEnabled: false,
   });
   soffitGeo.translate(0, 0, -2.488);
+  createSharedGeo(soffitGeo);
   const openSlopedSoffit = new THREE.Mesh(soffitGeo, ceilingWhiteMat);
   openSlopedSoffit.name = 'hall.stairs.upperSoffit';
   openSlopedSoffit.receiveShadow = true;
@@ -893,6 +938,7 @@ export function buildHallStaircase(
     bevelEnabled: false,
   });
   upperStrGeo.translate(0, 0, -1.668);
+  createSharedGeo(upperStrGeo);
   const upperStringer = new THREE.Mesh(upperStrGeo, skirtingMat);
   upperStringer.name = 'hall.stairs.upperStringer';
   upperStringer.castShadow = true;
@@ -911,6 +957,7 @@ export function buildHallStaircase(
     bevelEnabled: false,
   });
   upperRailGeo.translate(0, 0, -1.674);
+  createSharedGeo(upperRailGeo);
   const upperHandrail = new THREE.Mesh(upperRailGeo, skirtingMat);
   upperHandrail.name = 'hall.stairs.upperHandrail';
   upperHandrail.castShadow = true;
@@ -922,11 +969,7 @@ export function buildHallStaircase(
     const bx = -16.59 + ut * (upperBalustradeJoinX - -16.59);
     const bBottomY = 0.96 + ut * upperSpanDeltaY;
     const bTopY = 1.67 + ut * upperSpanDeltaY;
-    const bH = bTopY - bBottomY;
-    const baluster = new THREE.Mesh(
-      new THREE.BoxGeometry(0.03, bH, 0.03),
-      skirtingMat
-    );
+    const baluster = new THREE.Mesh(spindleGeo, skirtingMat);
     baluster.name = `hall.stairs.upperSpindle.${ub + 1}`;
     baluster.position.set(bx, (bBottomY + bTopY) * 0.5, -1.64);
     baluster.castShadow = true;
@@ -939,7 +982,7 @@ export function buildHallStaircase(
   const hangingPostTopY = topStepY + 0.96;
   const hangingPostH = hangingPostTopY - hangingPostBottomY;
   const hangingPostPendant = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, hangingPostH, 0.1),
+    createSharedGeo(new THREE.BoxGeometry(0.1, hangingPostH, 0.1)),
     skirtingMat
   );
   hangingPostPendant.name = 'hall.stairs.hangingNewelPost';
@@ -952,9 +995,10 @@ export function buildHallStaircase(
   stairGroup.add(hangingPostPendant);
 
   const hangingPostCap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.122, 0.028, 0.122),
+    createSharedGeo(new THREE.BoxGeometry(0.122, 0.028, 0.122)),
     skirtingMat
   );
+  hangingPostCap.name = 'hall.stairs.hangingNewelPost.cap';
   hangingPostCap.position.set(-15.38, hangingPostBottomY - 0.014, -1.64);
   stairGroup.add(hangingPostCap);
 
@@ -963,7 +1007,7 @@ export function buildHallStaircase(
   const trimmerTopY = topStepY - 0.002;
   const trimmerH = trimmerTopY - 1.92;
   const stairwellEastTrimmer = new THREE.Mesh(
-    new THREE.BoxGeometry(0.052, trimmerH, 1.07),
+    createSharedGeo(new THREE.BoxGeometry(0.052, trimmerH, 1.07)),
     ceilingWhiteMat
   );
   stairwellEastTrimmer.name = 'hall.stairs.eastTrimmer';
@@ -997,6 +1041,7 @@ export function buildHallStaircase(
       bevelEnabled: false,
     });
     northStrGeo.translate(0, 0, -2.5);
+    createSharedGeo(northStrGeo);
     const northWallStringer = new THREE.Mesh(northStrGeo, antiqueOakSkirtingMat);
     northWallStringer.name = 'hall.stairs.northWallStringer.board';
     northWallStringer.castShadow = true;
@@ -1005,15 +1050,17 @@ export function buildHallStaircase(
 
     // Stepped ogee/torus oak skirting cap swept along the North Quarter-Landing, Upper-Flight Stringer, and First Floor Landing top edge,
     // mitred where the landing run turns up the second flight and where it levels out across the First Floor landing.
-    const northCapGeo = buildSweptMouldingGeometry(
-      createSkirtingCapProfile(),
-      [
-        [-17.43, quarterLandingY + skirtBoardH],
-        [northTurnX, quarterLandingY + skirtBoardH],
-        [upperBalustradeEndX, topStepY + skirtBoardH],
-        [landingNorthEndX, topStepY + skirtBoardH],
-      ],
-      (a, y, d) => new THREE.Vector3(a, y, -2.5 + d)
+    const northCapGeo = createSharedGeo(
+      buildSweptMouldingGeometry(
+        createSkirtingCapProfile(),
+        [
+          [-17.43, quarterLandingY + skirtBoardH],
+          [northTurnX, quarterLandingY + skirtBoardH],
+          [upperBalustradeEndX, topStepY + skirtBoardH],
+          [landingNorthEndX, topStepY + skirtBoardH],
+        ],
+        (a, y, d) => new THREE.Vector3(a, y, -2.5 + d)
+      )
     );
     const northWallStringerCap = new THREE.Mesh(northCapGeo, antiqueOakSkirtingMat);
     northWallStringerCap.name = 'hall.stairs.northWallStringer.cap';
@@ -1034,7 +1081,14 @@ export function buildHallStaircase(
         1
       )
     );
-    ctx.addGlowPool('hallPendant', landingLightX, quarterLandingY + 0.004, northBoardFaceZ + 0.2, 0.17, 0.34);
+    ctx.addGlowPool(
+      'hallPendant',
+      landingLightX,
+      quarterLandingY + 0.004,
+      northBoardFaceZ + 0.2,
+      0.17,
+      0.34
+    );
     for (let i = 0; i < upperOpenSteps; i++) {
       const treadCenterX = -16.64 + (i + 0.5) * upperStepRun;
       const treadTopY = quarterLandingY + (i + 1) * upperStepRise;
@@ -1047,7 +1101,14 @@ export function buildHallStaircase(
           1
         )
       );
-      ctx.addGlowPool('hallPendant', treadCenterX, treadTopY + 0.004, northBoardFaceZ + 0.2, 0.15, 0.34);
+      ctx.addGlowPool(
+        'hallPendant',
+        treadCenterX,
+        treadTopY + 0.004,
+        northBoardFaceZ + 0.2,
+        0.15,
+        0.34
+      );
     }
   }
 
@@ -1065,7 +1126,9 @@ export function buildHallStaircase(
   });
   stairExposedBrickNorthGeo.translate(0, 0, -2.502);
   applyWorldSpaceBrickUVs(stairExposedBrickNorthGeo, 0, 0, 0);
+  createSharedGeo(stairExposedBrickNorthGeo);
   const stairExposedBrickNorth = new THREE.Mesh(stairExposedBrickNorthGeo, exteriorBrickMat);
+  stairExposedBrickNorth.name = 'hall.stairs.northExposedBrick';
   stairExposedBrickNorth.receiveShadow = true;
   tagCutawayWall(stairExposedBrickNorth, {
     axis: 'z',
@@ -1081,7 +1144,7 @@ export function buildHallStaircase(
   // Exposed Natural Oak Timber Ceiling Spine Beam & Joists in Entrance Hall (Issue #7: aligned with shifted hallSpinePost at Z = +0.46m)
   // Spans X = -17.68m..-13.00m, bearing into the angled West Cross-Wall and East Cross-Wall / hallSpinePost!
   const hallSpineBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(4.68, 0.18, 0.19),
+    createSharedGeo(new THREE.BoxGeometry(4.68, 0.18, 0.19)),
     oakMat
   );
   hallSpineBeam.name = 'hall.spineBeam';
@@ -1094,7 +1157,7 @@ export function buildHallStaircase(
   // Spans continuously from the North exterior brick wall (Z = -2.50m) over `hangingNewelPost` (Z = -1.64m)
   // right into `hallSpineBeam` (Z = +0.46m), supporting both the upper landing arrival edge and the stairwell void!
   const hallStairTrimmerBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16, 0.16, 2.98),
+    createSharedGeo(new THREE.BoxGeometry(0.16, 0.16, 2.98)),
     oakMat
   );
   hallStairTrimmerBeam.name = 'hall.stairTrimmerBeam';
@@ -1104,7 +1167,7 @@ export function buildHallStaircase(
 
   // Painted-white plasterboard ceiling backing above the Main Hall oak joists (Issue #3, wrapping around the open stairwell void)
   const hallSouthCeilingBacking = new THREE.Mesh(
-    new THREE.BoxGeometry(4.84, 0.036, 3.12),
+    createSharedGeo(new THREE.BoxGeometry(4.84, 0.036, 3.12)),
     ceilingWhiteMat
   );
   hallSouthCeilingBacking.name = 'hall.ceilingBacking.south';
@@ -1113,7 +1176,7 @@ export function buildHallStaircase(
   groundFloorCeilingGroup.add(hallSouthCeilingBacking);
 
   const hallNorthEastCeilingBacking = new THREE.Mesh(
-    new THREE.BoxGeometry(2.3, 0.036, 2.1),
+    createSharedGeo(new THREE.BoxGeometry(2.3, 0.036, 2.1)),
     ceilingWhiteMat
   );
   hallNorthEastCeilingBacking.name = 'hall.ceilingBacking.northEast';
@@ -1122,22 +1185,18 @@ export function buildHallStaircase(
   groundFloorCeilingGroup.add(hallNorthEastCeilingBacking);
 
   // Exposed Natural Oak North-South Ceiling Joists South of the Spine Beam (Z = +0.46m..+2.42m, bearing into `hallSpineBeam` and the Z = +2.40m South exterior brick wall!)
+  const southJoistGeo = createSharedGeo(new THREE.BoxGeometry(0.095, 0.11, 1.96));
   for (let jx = -17.35; jx <= -13.25; jx += 0.44) {
-    const joist = new THREE.Mesh(
-      new THREE.BoxGeometry(0.095, 0.11, 1.96),
-      oakMat
-    );
+    const joist = new THREE.Mesh(southJoistGeo, oakMat);
     joist.name = 'hall.ceilingJoist.south';
     joist.position.set(jx, wallH - 0.07, 1.44);
     joist.castShadow = true;
     groundFloorCeilingGroup.add(joist);
   }
   // Exposed Natural Oak Ceiling Joists North of the Spine Beam (Z = -2.50m..+0.46m, X = -14.98m..-13.66m between `hallStairTrimmerBeam` and the Hall Inglenook Chimney Breast!)
+  const northJoistGeo = createSharedGeo(new THREE.BoxGeometry(0.095, 0.11, 2.96));
   for (let jx = -14.98; jx <= -13.65; jx += 0.44) {
-    const northJoist = new THREE.Mesh(
-      new THREE.BoxGeometry(0.095, 0.11, 2.96),
-      oakMat
-    );
+    const northJoist = new THREE.Mesh(northJoistGeo, oakMat);
     northJoist.name = 'hall.ceilingJoist.north';
     northJoist.position.set(jx, wallH - 0.07, -1.02);
     northJoist.castShadow = true;
@@ -1166,6 +1225,19 @@ export function buildHallStaircase(
     metalness: 0.72,
   });
 
+  const spkW = 0.138;
+  const spkH = 0.218;
+  const spkD = 0.198;
+  const spkFootGeo = createSharedGeo(new THREE.CylinderGeometry(0.01, 0.01, 0.005, 10));
+  const spkCabBodyGeo = createSharedGeo(new THREE.BoxGeometry(spkW, spkH - 0.014, spkD - 0.012));
+  const spkCabWrapGeo = createSharedGeo(new THREE.BoxGeometry(spkW - 0.014, spkH, spkD - 0.012));
+  const spkBaffleGeo = createSharedGeo(new THREE.BoxGeometry(spkW - 0.01, spkH - 0.01, 0.014));
+  const spkWooferRingGeo = createSharedGeo(new THREE.TorusGeometry(0.046, 0.0038, 10, 24));
+  const spkWooferConeGeo = createSharedGeo(new THREE.CylinderGeometry(0.043, 0.018, 0.013, 20));
+  const spkTweeterRingGeo = createSharedGeo(new THREE.TorusGeometry(0.02, 0.003, 10, 20));
+  const spkTweeterDomeGeo = createSharedGeo(new THREE.SphereGeometry(0.0115, 12, 10));
+  const spkBadgeGeo = createSharedGeo(new THREE.BoxGeometry(0.02, 0.007, 0.002));
+
   const buildQAcousticsSpeaker = (
     parentGroup: THREE.Group,
     spkName: string,
@@ -1179,48 +1251,36 @@ export function buildHallStaircase(
     spkGroup.position.set(spkX, spkY, spkZ);
     spkGroup.rotation.y = toeInYaw;
 
-    const spkW = 0.138;
-    const spkH = 0.218;
-    const spkD = 0.198;
-
     // 4 low-profile acoustic isolation rubber feet (5mm tall)
-    for (const [fx, fz] of [
-      [-0.048, -0.075],
-      [0.048, -0.075],
-      [-0.048, 0.075],
-      [0.048, 0.075],
-    ] as const) {
-      const foot = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.01, 0.01, 0.005, 10),
-        spkBaffleMat
-      );
+    for (const [fIdx, [fx, fz]] of (
+      [
+        [-0.048, -0.075],
+        [0.048, -0.075],
+        [-0.048, 0.075],
+        [0.048, 0.075],
+      ] as const
+    ).entries()) {
+      const foot = tagHighLod(new THREE.Mesh(spkFootGeo, spkBaffleMat));
+      foot.name = `${spkName}.foot.${fIdx + 1}`;
       foot.position.set(fx, 0.0025, fz);
       spkGroup.add(foot);
     }
 
     // Rounded-edge cabinet body (main core + chamfered top/bottom/side wrap)
-    const cabBody = new THREE.Mesh(
-      new THREE.BoxGeometry(spkW, spkH - 0.014, spkD - 0.012),
-      spkWalnutCabinetMat
-    );
+    const cabBody = new THREE.Mesh(spkCabBodyGeo, spkWalnutCabinetMat);
     cabBody.name = `${spkName}.cabinet`;
     cabBody.position.set(0, 0.005 + spkH * 0.5, 0.006);
     cabBody.castShadow = true;
     cabBody.receiveShadow = true;
     spkGroup.add(cabBody);
 
-    const cabTopBot = new THREE.Mesh(
-      new THREE.BoxGeometry(spkW - 0.014, spkH, spkD - 0.012),
-      spkWalnutCabinetMat
-    );
+    const cabTopBot = new THREE.Mesh(spkCabWrapGeo, spkWalnutCabinetMat);
+    cabTopBot.name = `${spkName}.cabinetWrap`;
     cabTopBot.position.set(0, 0.005 + spkH * 0.5, 0.006);
     spkGroup.add(cabTopBot);
 
     // Satin dark front baffle plate facing local -Z
-    const frontBaffle = new THREE.Mesh(
-      new THREE.BoxGeometry(spkW - 0.01, spkH - 0.01, 0.014),
-      spkBaffleMat
-    );
+    const frontBaffle = new THREE.Mesh(spkBaffleGeo, spkBaffleMat);
     frontBaffle.name = `${spkName}.baffle`;
     frontBaffle.position.set(0, 0.005 + spkH * 0.5, -spkD * 0.5 + 0.007);
     frontBaffle.castShadow = true;
@@ -1229,42 +1289,32 @@ export function buildHallStaircase(
     const baffleFrontZ = -spkD * 0.5 - 0.001;
 
     // 100mm Mid/Bass Driver (lower center of baffle) + brushed metal trim ring
-    const wooferRing = new THREE.Mesh(
-      new THREE.TorusGeometry(0.046, 0.0038, 10, 24),
-      spkTrimRingMat
-    );
+    const wooferRing = tagHighLod(new THREE.Mesh(spkWooferRingGeo, spkTrimRingMat));
+    wooferRing.name = `${spkName}.wooferRing`;
     wooferRing.position.set(0, 0.092, baffleFrontZ);
     spkGroup.add(wooferRing);
 
-    const wooferCone = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.043, 0.018, 0.013, 20),
-      spkConeMat
-    );
+    const wooferCone = tagHighLod(new THREE.Mesh(spkWooferConeGeo, spkConeMat));
+    wooferCone.name = `${spkName}.wooferCone`;
     wooferCone.rotation.x = Math.PI / 2;
     wooferCone.position.set(0, 0.092, baffleFrontZ + 0.004);
     spkGroup.add(wooferCone);
 
     // 22mm Decoupled High-Frequency Dome Tweeter (upper baffle) + trim ring
-    const tweeterRing = new THREE.Mesh(
-      new THREE.TorusGeometry(0.02, 0.003, 10, 20),
-      spkTrimRingMat
-    );
+    const tweeterRing = tagHighLod(new THREE.Mesh(spkTweeterRingGeo, spkTrimRingMat));
+    tweeterRing.name = `${spkName}.tweeterRing`;
     tweeterRing.position.set(0, 0.174, baffleFrontZ);
     spkGroup.add(tweeterRing);
 
-    const tweeterDome = new THREE.Mesh(
-      new THREE.SphereGeometry(0.0115, 12, 10),
-      spkConeMat
-    );
+    const tweeterDome = tagHighLod(new THREE.Mesh(spkTweeterDomeGeo, spkConeMat));
+    tweeterDome.name = `${spkName}.tweeterDome`;
     tweeterDome.scale.set(1, 1, 0.45);
     tweeterDome.position.set(0, 0.174, baffleFrontZ - 0.002);
     spkGroup.add(tweeterDome);
 
     // Signature small silver Q Acoustics logo badge at bottom center of front baffle
-    const qBadge = new THREE.Mesh(
-      new THREE.BoxGeometry(0.02, 0.007, 0.002),
-      spkTrimRingMat
-    );
+    const qBadge = tagHighLod(new THREE.Mesh(spkBadgeGeo, spkTrimRingMat));
+    qBadge.name = `${spkName}.badge`;
     qBadge.position.set(0, 0.022, baffleFrontZ - 0.001);
     spkGroup.add(qBadge);
 

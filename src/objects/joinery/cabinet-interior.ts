@@ -173,6 +173,7 @@ export function buildHollowCabinetCarcass(
       new THREE.BoxGeometry(w, plinthH, d),
       exteriorMat
     );
+    if (!plinthMesh.name) plinthMesh.name = 'joinery.cabinetInterior.plinth';
     plinthMesh.position.set(0, -h * 0.5 + plinthH * 0.5, 0);
     plinthMesh.castShadow = true;
     plinthMesh.receiveShadow = true;
@@ -209,6 +210,7 @@ export function buildHollowCabinetCarcass(
       ? new THREE.BoxGeometry(sizeU, sizeY, sizeV)
       : new THREE.BoxGeometry(sizeV, sizeY, sizeU);
     const mesh = new THREE.Mesh(geo, mat);
+    if (!mesh.name) mesh.name = 'joinery.cabinetInterior.mesh';
     if (isZOpen) {
       mesh.position.set(u, y, openSign * v);
     } else {
@@ -499,6 +501,7 @@ export function attachDrawerBoxBehindFront(
       ? new THREE.BoxGeometry(su, sy, sv)
       : new THREE.BoxGeometry(sv, sy, su);
     const mesh = new THREE.Mesh(geo, mat);
+    if (!mesh.name) mesh.name = 'joinery.cabinetInterior.mesh';
     if (isZ) {
       mesh.position.set(u, y, v);
     } else {

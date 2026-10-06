@@ -5,6 +5,44 @@ import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
 
+function ensureNamedAddedChildren(
+  parent: THREE.Object3D,
+  startIdx: number,
+  prefix: string,
+  tagSmallDetails = false
+): void {
+  let meshCount = 0;
+  let groupCount = 0;
+  for (let i = startIdx; i < parent.children.length; i++) {
+    const child = parent.children[i]!;
+    child.traverse((node) => {
+      if (node instanceof THREE.Mesh) {
+        if (!node.name) {
+          meshCount += 1;
+          node.name = `${prefix}.mesh_${meshCount}`;
+        }
+        const geo = node.geometry as THREE.BufferGeometry | undefined;
+        if (geo && !geo.boundingSphere) {
+          geo.computeBoundingSphere();
+        }
+        if (
+          tagSmallDetails &&
+          !node.userData?.isArchitecturalShell &&
+          !node.userData?.isCutawayWall &&
+          geo?.boundingSphere &&
+          geo.boundingSphere.radius < 0.08
+        ) {
+          node.userData.lodTier = 'high';
+          node.userData.lodMaxDistance = 12;
+        }
+      } else if (node instanceof THREE.Group && !node.name) {
+        groupCount += 1;
+        node.name = groupCount === 1 && node === child ? prefix : `${prefix}.group_${groupCount}`;
+      }
+    });
+  }
+}
+
 /**
  * Bedroom 4 (`bedroom4`).
  */
@@ -37,30 +75,42 @@ export function buildBedroom4(
   // 7. BEDROOM 4 (4.95m x 3.20m / 16'3" x 10'6")
   //    Directly above Study & Study Lobby: X = -17.25m..-22.19m, Z = +8.39m..+11.49m
   // =========================================================================
-  addFirstFloorSlab(-22.33, -17.15, 8.27, 11.63, oakFloorMat);
+  {
+    const idx = scene.children.length;
+    addFirstFloorSlab(-22.33, -17.15, 8.27, 11.63, oakFloorMat);
+    ensureNamedAddedChildren(scene, idx, 'bedroom4.floorSlab');
+  }
 
   // West Front Exterior Brick Wall of Bedroom 4 (X = -22.47m..-22.19m, Z = +8.39m..+11.49m, Y = 2.06m..4.16m)
   // Stops at Z = +11.49m so the South Gable Wall (Z = +11.49m..+11.77m) owns the SW corner with zero coplanar overlap/dithering (Issue #4)!
-  addUpperBrickWallAlongZWithWindow(
-    -22.47,
-    -22.19,
-    8.39,
-    11.49,
-    9.94,
-    1.35,
-    2.92,
-    3.94,
-    'east',
-    3,
-    { skipSkirting: true }
-  );
+  {
+    const idx = scene.children.length;
+    addUpperBrickWallAlongZWithWindow(
+      -22.47,
+      -22.19,
+      8.39,
+      11.49,
+      9.94,
+      1.35,
+      2.92,
+      3.94,
+      'east',
+      3,
+      { skipSkirting: true }
+    );
+    ensureNamedAddedChildren(scene, idx, 'bedroom4.westExteriorWall');
+  }
 
   // South Exterior Brick Gable Wall of Bedroom 4 (Z = +11.49m..+11.77m, X = -22.47m..-17.377m, Y = 2.06m..4.16m)
   // Starts at Y = 2.06m (exact top of Ground Floor Study South wall) and stops at X = -17.377m where the rounded bullnose SE corner begins (Issues #4 & #5)!
-  addUpperExteriorBrickWall(-22.47, -17.377, 11.49, 11.77, 2.06, upperWallTopY, 'north', {
-    skipSkirting: true,
-    skipCap: true,
-  });
+  {
+    const idx = scene.children.length;
+    addUpperExteriorBrickWall(-22.47, -17.377, 11.49, 11.77, 2.06, upperWallTopY, 'north', {
+      skipSkirting: true,
+      skipCap: true,
+    });
+    ensureNamedAddedChildren(scene, idx, 'bedroom4.southExteriorWall');
+  }
 
   // Issue #6, #7 & #8: Single one-piece full-height vaulted interior plaster wall (`Y = 2.08m..5.02m`, `Z = 11.476m..11.49m`)
   // + full-thickness exterior brick gable (`bedroom4.southWallBrickGable`, `Y = 4.16m..5.02m`, `Z = 11.49m..11.77m`, `collarEastX = -18.62m`)
@@ -89,6 +139,7 @@ export function buildBedroom4(
       bevelEnabled: false,
     });
     southInteriorPlasterGeo.translate(0, 0, 11.476);
+    southInteriorPlasterGeo.computeBoundingSphere();
     const southUpperGable = new THREE.Mesh(southInteriorPlasterGeo, warmRoomPlasterMat);
     southUpperGable.name = 'bedroom4.southWallUpperGable';
     southUpperGable.userData.isArchitecturalShell = true;
@@ -110,6 +161,7 @@ export function buildBedroom4(
     });
     southBrickGableGeo.translate(0, 0, 11.49);
     applyWorldSpaceBrickUVs(southBrickGableGeo, 0, 0, 0);
+    southBrickGableGeo.computeBoundingSphere();
     const southBrickGable = new THREE.Mesh(southBrickGableGeo, exteriorBrickMat);
     southBrickGable.name = 'bedroom4.southWallBrickGable';
     southBrickGable.userData.isArchitecturalShell = true;
@@ -120,22 +172,30 @@ export function buildBedroom4(
   }
 
   // Issue #2 & #8: Bedroom 4 South Chimney Breast rising cleanly to the 5.02m collar ceiling (`Z = 11.09m..11.476m` flush against `southWallUpperGable` with zero overlap)
-  addUpperBedroomChimneyBreastWithFireplace(scene, {
-    namePrefix: 'bedroom4.southChimneyBreast',
-    zone: 'bedroom4',
-    x: -19.85,
-    z: 11.283,
-    width: 1.2,
-    depth: 0.386,
-    floorY: floorTopY,
-    topY: collarCeilingY,
-  });
+  {
+    const idx = scene.children.length;
+    addUpperBedroomChimneyBreastWithFireplace(scene, {
+      namePrefix: 'bedroom4.southChimneyBreast',
+      zone: 'bedroom4',
+      x: -19.85,
+      z: 11.283,
+      width: 1.2,
+      depth: 0.386,
+      floorY: floorTopY,
+      topY: collarCeilingY,
+    });
+    ensureNamedAddedChildren(scene, idx, 'bedroom4.southChimneyBreast');
+  }
 
   // East Courtyard Exterior Brick Wall of Bedroom 4 (X = -17.39m..-17.11m, Z = +8.15m..+11.49m, Y = 2.06m..4.16m)
   // Stops at Z = +11.49m (`X = -17.377m..-17.097m`) where it joins the rounded bullnose SE exterior brick corner with zero overlap (Issue #5)!
-  addUpperExteriorBrickWall(-17.39, -17.11, 8.15, 11.49, 2.06, upperWallTopY, 'west', {
-    skipSkirting: true,
-  });
+  {
+    const idx = scene.children.length;
+    addUpperExteriorBrickWall(-17.39, -17.11, 8.15, 11.49, 2.06, upperWallTopY, 'west', {
+      skipSkirting: true,
+    });
+    ensureNamedAddedChildren(scene, idx, 'bedroom4.eastExteriorWall');
+  }
 
   // Issue #5: Rounded Bullnose South-East Exterior Brick Corner on First Floor (`r = 0.28m`, centered at `X = -17.377m, Z = +11.49m`, `Y = 2.06m..4.16m`)
   {
@@ -180,6 +240,7 @@ export function buildBedroom4(
       }
       uv.needsUpdate = true;
     }
+    seCornerGeo.computeBoundingSphere();
 
     const seCornerDesc = {
       axis: 'z' as const,
@@ -230,6 +291,7 @@ export function buildBedroom4(
       bevelEnabled: false,
     });
     carcassGeo.translate(0, 0, 10.85);
+    carcassGeo.computeBoundingSphere();
     const carcass = new THREE.Mesh(carcassGeo, wardrobeMat);
     carcass.name = 'bedroom4.southEastCupboards.carcass';
     carcass.castShadow = true;
@@ -252,6 +314,7 @@ export function buildBedroom4(
       bevelEnabled: false,
     });
     corniceGeo.translate(0, 0, 10.825);
+    corniceGeo.computeBoundingSphere();
     const corniceSeg = new THREE.Mesh(corniceGeo, wardrobeMat);
     corniceSeg.name = 'bedroom4.southEastCupboards.cornice';
     corniceSeg.castShadow = true;
@@ -275,6 +338,7 @@ export function buildBedroom4(
       const hRight = getVaultCeilingYAtX(xRight) - corniceClearance - doorBaseY;
       const maxDoorH = Math.max(hLeft, hRight);
 
+      const dIdx = cupGroup.children.length;
       addShakerWardrobeDoor(cupGroup, {
         x: doorCenterX,
         y: doorBaseY + maxDoorH / 2,
@@ -288,6 +352,12 @@ export function buildBedroom4(
         handleSide: handleSides[i],
         namePrefix: `bedroom4.southEastCupboards.door_${i + 1}`,
       });
+      ensureNamedAddedChildren(
+        cupGroup,
+        dIdx,
+        `bedroom4.southEastCupboards.door_${i + 1}`,
+        true
+      );
     }
 
     scene.add(cupGroup);
@@ -324,10 +394,9 @@ export function buildBedroom4(
         ] as const,
       ],
     ] as const) {
-      const skirtMesh = new THREE.Mesh(
-        buildMitredWallSkirtingGeometry(path, floorTopY),
-        antiqueOakSkirtingMat
-      );
+      const skirtGeo = buildMitredWallSkirtingGeometry(path, floorTopY);
+      skirtGeo.computeBoundingSphere();
+      const skirtMesh = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
       skirtMesh.name = skirtName;
       skirtMesh.userData.isArchitecturalShell = true;
       skirtMesh.castShadow = true;

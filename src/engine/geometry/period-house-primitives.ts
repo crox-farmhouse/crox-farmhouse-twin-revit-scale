@@ -271,6 +271,7 @@ export function buildPolygonalFloorSlab(
   geo.computeVertexNormals();
 
   const mesh = new THREE.Mesh(geo, material);
+  if (!mesh.name) mesh.name = 'architecture.primitive.mesh';
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
@@ -364,6 +365,7 @@ export function buildAngledWallSegment(
         new THREE.BoxGeometry(segW, 0.125, 0.022),
         config.skirtingMaterial
       );
+      if (!skirt.name) skirt.name = 'architecture.primitive.skirt';
       skirt.position.set(
         segMid,
         floorY + 0.0625,
@@ -377,6 +379,7 @@ export function buildAngledWallSegment(
         new THREE.BoxGeometry(segW, 0.022, 0.016),
         config.skirtingMaterial
       );
+      if (!skirtCap.name) skirtCap.name = 'architecture.primitive.skirtCap';
       skirtCap.position.set(
         segMid,
         floorY + 0.136,
@@ -417,6 +420,7 @@ export function buildAngledWallSegment(
         ),
         config.capMaterial
       );
+      if (!cap.name) cap.name = 'architecture.primitive.cap';
       cap.position.set(segMid, config.topY - 0.006, 0);
       group.add(cap);
     }
@@ -464,6 +468,7 @@ export function buildAngledWallSegment(
         applyLocalWallBrickUVs(pierGeo, uMid, fullWallMidY),
         config.wallMaterial
       );
+      if (!pier.name) pier.name = 'architecture.primitive.pier';
       pier.position.set(uMid, fullWallMidY, 0);
       pier.castShadow = true;
       pier.receiveShadow = true;
@@ -479,6 +484,7 @@ export function buildAngledWallSegment(
         applyLocalWallBrickUVs(new THREE.BoxGeometry(segW, backH, 0.014), uMid, backMidY),
         config.backFaceMaterial
       );
+      if (!backClad.name) backClad.name = 'architecture.primitive.backClad';
       backClad.position.set(
         uMid,
         backMidY,
@@ -499,6 +505,7 @@ export function buildAngledWallSegment(
           applyLocalWallBrickUVs(new THREE.BoxGeometry(cladW, frontH, 0.014), cladMidU, frontMidY),
           config.frontFaceMaterial
         );
+        if (!frontClad.name) frontClad.name = 'architecture.primitive.frontClad';
         frontClad.position.set(
           cladMidU,
           frontMidY,
@@ -556,6 +563,7 @@ export function buildAngledWallSegment(
         ),
         config.wallMaterial
       );
+      if (!lintel.name) lintel.name = 'architecture.primitive.lintel';
       lintel.position.set(op.uCenter, lintelMidY, 0);
       lintel.castShadow = true;
       lintel.receiveShadow = true;
@@ -572,6 +580,7 @@ export function buildAngledWallSegment(
           ),
           config.backFaceMaterial
         );
+        if (!backLintelClad.name) backLintelClad.name = 'architecture.primitive.backLintelClad';
         backLintelClad.position.set(
           op.uCenter,
           lintelMidY,
@@ -590,6 +599,7 @@ export function buildAngledWallSegment(
           ),
           config.frontFaceMaterial
         );
+        if (!frontLintelClad.name) frontLintelClad.name = 'architecture.primitive.frontLintelClad';
         frontLintelClad.position.set(
           op.uCenter,
           lintelMidY,
@@ -728,6 +738,7 @@ export function buildAngledWallSegment(
         new THREE.BoxGeometry(0.008, 0.24, 0.042),
         op.hardwareMaterial
       );
+      if (!handleBackplate.name) handleBackplate.name = 'architecture.primitive.handleBackplate';
       handleBackplate.position.set(revealX, highFloorY + 1.02, -0.01);
       group.add(handleBackplate);
 
@@ -735,6 +746,7 @@ export function buildAngledWallSegment(
         new THREE.BoxGeometry(0.034, 0.15, 0.014),
         op.hardwareMaterial
       );
+      if (!handleGrip.name) handleGrip.name = 'architecture.primitive.handleGrip';
       handleGrip.position.set(revealX - sideSign * 0.018, highFloorY + 1.02, -0.01);
       group.add(handleGrip);
     }
@@ -753,6 +765,7 @@ export function buildAngledWallSegment(
         new THREE.BoxGeometry(leafW, leafH, 0.028),
         op.doorLeafMaterial
       );
+      if (!leafCore.name) leafCore.name = 'architecture.primitive.leafCore';
       leafCore.castShadow = true;
       leafCore.receiveShadow = true;
       doorObj.add(leafCore);
@@ -770,6 +783,7 @@ export function buildAngledWallSegment(
           new THREE.BoxGeometry(stileW, leafH, 0.046),
           op.doorLeafMaterial
         );
+        if (!stile.name) stile.name = 'architecture.primitive.stile';
         stile.position.set(side * (leafW / 2 - stileW / 2), 0, 0);
         stile.castShadow = true;
         stile.receiveShadow = true;
@@ -786,6 +800,7 @@ export function buildAngledWallSegment(
           new THREE.BoxGeometry(innerW, railH, 0.046),
           op.doorLeafMaterial
         );
+        if (!rail.name) rail.name = 'architecture.primitive.rail';
         rail.position.set(0, railY, 0);
         rail.castShadow = true;
         rail.receiveShadow = true;
@@ -807,6 +822,7 @@ export function buildAngledWallSegment(
           new THREE.BoxGeometry(muntinW, pH + 0.004, 0.046),
           op.doorLeafMaterial
         );
+        if (!muntin.name) muntin.name = 'architecture.primitive.muntin';
         muntin.position.set(0, pMidY, 0);
         doorObj.add(muntin);
 
@@ -819,6 +835,7 @@ export function buildAngledWallSegment(
             new THREE.BoxGeometry(raisedW, raisedH, 0.038),
             op.doorLeafMaterial
           );
+          if (!raisedPanel.name) raisedPanel.name = 'architecture.primitive.raisedPanel';
           raisedPanel.position.set(col * (muntinW / 2 + panelClearW / 2), pMidY, 0);
           doorObj.add(raisedPanel);
         }
@@ -834,6 +851,7 @@ export function buildAngledWallSegment(
             new THREE.CylinderGeometry(0.026, 0.026, 0.008, 12),
             op.hardwareMaterial
           );
+          if (!rose.name) rose.name = 'architecture.primitive.rose';
           rose.rotation.x = Math.PI / 2;
           rose.position.set(handleOffsetU, lockRailY, zSide * 0.026);
           doorObj.add(rose);
@@ -842,6 +860,7 @@ export function buildAngledWallSegment(
             new THREE.SphereGeometry(0.023, 10, 10),
             op.hardwareMaterial
           );
+          if (!knob.name) knob.name = 'architecture.primitive.knob';
           knob.scale.set(1, 1, 0.78);
           knob.position.set(handleOffsetU, lockRailY, zSide * 0.048);
           doorObj.add(knob);
@@ -991,6 +1010,7 @@ export function buildMiteredPolylineStrip(
       innerGeo.setIndex([0, 1, 2, 0, 2, 3]);
       innerGeo.computeVertexNormals();
       const innerMesh = new THREE.Mesh(innerGeo, materials[0]);
+      if (!innerMesh.name) innerMesh.name = 'architecture.primitive.inner';
       innerMesh.castShadow = castShadow;
       innerMesh.receiveShadow = receiveShadow;
       stripGroup.add(innerMesh);
@@ -1062,6 +1082,7 @@ export function buildMiteredPolylineStrip(
       outerGeo.setIndex(outerIndices);
       outerGeo.computeVertexNormals();
       const outerMesh = new THREE.Mesh(outerGeo, materials[1]);
+      if (!outerMesh.name) outerMesh.name = 'architecture.primitive.outer';
       outerMesh.castShadow = castShadow;
       outerMesh.receiveShadow = receiveShadow;
       stripGroup.add(outerMesh);
@@ -1153,6 +1174,7 @@ export function buildMiteredPolylineStrip(
 
     const singleMat = Array.isArray(materials) ? materials[0] : (materials as THREE.Material);
     const mesh = new THREE.Mesh(geo, singleMat);
+    if (!mesh.name) mesh.name = 'architecture.primitive.mesh';
     mesh.castShadow = castShadow;
     mesh.receiveShadow = receiveShadow;
     stripGroup.add(mesh);

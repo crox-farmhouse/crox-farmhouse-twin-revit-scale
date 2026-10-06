@@ -167,6 +167,7 @@ export function buildGroundFloorPendantsAndSwitches(
         new THREE.CylinderGeometry(0.022, 0.032, 0.018, 16),
         southSconceBrassMat
       );
+      if (!roseBoss.name) roseBoss.name = 'groundFloor.fixture.roseBoss';
       roseBoss.rotation.x = Math.PI / 2;
       roseBoss.position.set(0, armY, dirZ * 0.02);
       sconceGroup.add(roseBoss);
@@ -185,6 +186,7 @@ export function buildGroundFloorPendantsAndSwitches(
         new THREE.SphereGeometry(0.012, 12, 10),
         southSconceBrassMat
       );
+      if (!knuckleJoint.name) knuckleJoint.name = 'groundFloor.fixture.knuckleJoint';
       knuckleJoint.position.set(0, armY, dropZ);
       sconceGroup.add(knuckleJoint);
 
@@ -192,6 +194,7 @@ export function buildGroundFloorPendantsAndSwitches(
         new THREE.CylinderGeometry(0.014, 0.018, 0.026, 14),
         southSconceBrassMat
       );
+      if (!upperCollar.name) upperCollar.name = 'groundFloor.fixture.upperCollar';
       upperCollar.position.set(0, armY - 0.02, dropZ);
       sconceGroup.add(upperCollar);
 
@@ -222,6 +225,7 @@ export function buildGroundFloorPendantsAndSwitches(
         new THREE.TorusGeometry(shadeTopR, 0.003, 8, 24),
         southSconceTrimMat
       );
+      if (!topBindingRing.name) topBindingRing.name = 'groundFloor.fixture.topBindingRing';
       topBindingRing.rotation.x = Math.PI / 2;
       topBindingRing.position.set(0, shadeCenterY + shadeH * 0.5, dropZ);
       sconceGroup.add(topBindingRing);
@@ -230,6 +234,7 @@ export function buildGroundFloorPendantsAndSwitches(
         new THREE.TorusGeometry(shadeBotR, 0.003, 8, 24),
         southSconceTrimMat
       );
+      if (!botBindingRing.name) botBindingRing.name = 'groundFloor.fixture.botBindingRing';
       botBindingRing.rotation.x = Math.PI / 2;
       botBindingRing.position.set(0, shadeCenterY - shadeH * 0.5, dropZ);
       sconceGroup.add(botBindingRing);
@@ -560,6 +565,7 @@ export function buildGroundFloorPendantsAndSwitches(
       new THREE.CylinderGeometry(0.022, 0.032, 0.018, 16),
       sconceBrassMat
     );
+    if (!roseBoss.name) roseBoss.name = 'groundFloor.fixture.roseBoss';
     roseBoss.rotation.x = Math.PI / 2;
     roseBoss.position.set(0, armY, 0.02);
     sconceGroup.add(roseBoss);
@@ -580,6 +586,7 @@ export function buildGroundFloorPendantsAndSwitches(
       new THREE.SphereGeometry(0.012, 12, 10),
       sconceBrassMat
     );
+    if (!knuckleJoint.name) knuckleJoint.name = 'groundFloor.fixture.knuckleJoint';
     knuckleJoint.position.set(0, armY, dropZ);
     sconceGroup.add(knuckleJoint);
 
@@ -587,6 +594,7 @@ export function buildGroundFloorPendantsAndSwitches(
       new THREE.CylinderGeometry(0.014, 0.018, 0.026, 14),
       sconceBrassMat
     );
+    if (!upperCollar.name) upperCollar.name = 'groundFloor.fixture.upperCollar';
     upperCollar.position.set(0, armY - 0.02, dropZ);
     sconceGroup.add(upperCollar);
 
@@ -619,6 +627,7 @@ export function buildGroundFloorPendantsAndSwitches(
       new THREE.TorusGeometry(shadeTopR, 0.003, 8, 24),
       sconceShadeTrimMat
     );
+    if (!topBindingRing.name) topBindingRing.name = 'groundFloor.fixture.topBindingRing';
     topBindingRing.rotation.x = Math.PI / 2;
     topBindingRing.position.set(0, shadeCenterY + shadeH * 0.5, dropZ);
     sconceGroup.add(topBindingRing);
@@ -627,6 +636,7 @@ export function buildGroundFloorPendantsAndSwitches(
       new THREE.TorusGeometry(shadeBotR, 0.003, 8, 24),
       sconceShadeTrimMat
     );
+    if (!botBindingRing.name) botBindingRing.name = 'groundFloor.fixture.botBindingRing';
     botBindingRing.rotation.x = Math.PI / 2;
     botBindingRing.position.set(0, shadeCenterY - shadeH * 0.5, dropZ);
     sconceGroup.add(botBindingRing);

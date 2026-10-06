@@ -40,16 +40,19 @@ export function buildFlutedBrassPictureLight(
   wallLightGroup.add(backplate);
 
   const beadedRim = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.004, 10, 28), mats.darkBrass);
+  if (!beadedRim.name) beadedRim.name = 'fixture.pictureLight.beadedRim';
   beadedRim.position.set(0, 0, 0.012);
   wallLightGroup.add(beadedRim);
 
   const centerBoss = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.022, 0.016, 16), mats.brass);
+  if (!centerBoss.name) centerBoss.name = 'fixture.pictureLight.centerBoss';
   centerBoss.rotation.x = Math.PI / 2;
   centerBoss.position.set(0, 0, 0.018);
   wallLightGroup.add(centerBoss);
 
   // 2. Curved Swan-Neck Antique-Brass Arm arching outward (+Z) and slightly down to hold the horizontal shade
   const swanArmRise = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0075, 0.095, 12), mats.brass);
+  if (!swanArmRise.name) swanArmRise.name = 'fixture.pictureLight.swanArmRise';
   swanArmRise.rotation.x = Math.PI * 0.38;
   swanArmRise.position.set(0, 0.022, 0.062);
   swanArmRise.castShadow = true;
@@ -59,6 +62,7 @@ export function buildFlutedBrassPictureLight(
     new THREE.TorusGeometry(0.032, 0.0065, 10, 18, Math.PI * 0.85),
     mats.brass
   );
+  if (!swanArch.name) swanArch.name = 'fixture.pictureLight.swanArch';
   swanArch.rotation.y = Math.PI / 2;
   swanArch.rotation.z = Math.PI * 0.12;
   swanArch.position.set(0, 0.014, 0.105);
@@ -68,10 +72,12 @@ export function buildFlutedBrassPictureLight(
   const shadeZ = 0.132;
   const shadeY = -0.014;
   const knuckle = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.024, 14), mats.darkBrass);
+  if (!knuckle.name) knuckle.name = 'fixture.pictureLight.knuckle';
   knuckle.position.set(0, shadeY + 0.026, shadeZ);
   wallLightGroup.add(knuckle);
 
   const centerStrap = new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.004, 10, 20), mats.darkBrass);
+  if (!centerStrap.name) centerStrap.name = 'fixture.pictureLight.centerStrap';
   centerStrap.rotation.y = Math.PI / 2;
   centerStrap.position.set(0, shadeY, shadeZ);
   wallLightGroup.add(centerStrap);
@@ -92,6 +98,7 @@ export function buildFlutedBrassPictureLight(
     const ry = shadeY + Math.sin(angle) * (shadeR + 0.0018);
     const rz = shadeZ + Math.cos(angle) * (shadeR + 0.0018);
     const reed = new THREE.Mesh(new THREE.CylinderGeometry(0.0032, 0.0032, shadeW - 0.016, 8), mats.brass);
+    if (!reed.name) reed.name = 'fixture.pictureLight.reed';
     reed.rotation.z = Math.PI / 2;
     reed.position.set(0, ry, rz);
     wallLightGroup.add(reed);
@@ -103,11 +110,13 @@ export function buildFlutedBrassPictureLight(
       new THREE.CylinderGeometry(shadeR + 0.004, shadeR + 0.002, 0.018, 18),
       mats.darkBrass
     );
+    if (!endCap.name) endCap.name = 'fixture.pictureLight.endCap';
     endCap.rotation.z = Math.PI / 2;
     endCap.position.set(endSign * (shadeW * 0.5 + 0.006), shadeY, shadeZ);
     wallLightGroup.add(endCap);
 
     const finial = new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 10), mats.brass);
+    if (!finial.name) finial.name = 'fixture.pictureLight.finial';
     finial.scale.set(1.3, 0.85, 0.85);
     finial.position.set(endSign * (shadeW * 0.5 + 0.018), shadeY, shadeZ);
     wallLightGroup.add(finial);

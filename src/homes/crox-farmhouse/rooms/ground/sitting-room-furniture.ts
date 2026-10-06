@@ -5,6 +5,17 @@ import type { SceneBuilderContext } from '../../../../types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { defineTier2Levels } from '../../structure/tier2-levels.ts';
 
+function createSharedGeo<T extends THREE.BufferGeometry>(geo: T): T {
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+function tagHighLod<T extends THREE.Object3D>(obj: T, maxDistance = 12): T {
+  obj.userData.lodTier = 'high';
+  obj.userData.lodMaxDistance = maxDistance;
+  return obj;
+}
+
 /**
  * Sitting Room (`sittingRoom`) sofas, coffee table and accessories.
  *
@@ -13,16 +24,14 @@ import type { defineTier2Levels } from '../../structure/tier2-levels.ts';
  */
 export function buildSittingRoomFurniture(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'frontWallH' | 'oakMat' | 'warmRoomPlasterMat'> &
+  kit: Pick<
+    ReturnType<typeof createGroundFloorMaterials>,
+    'frontWallH' | 'oakMat' | 'warmRoomPlasterMat'
+  > &
     Pick<ReturnType<typeof defineTier2Levels>, 'tier2FloorY'>
 ): void {
   const { groundFloorCeilingGroup, scene } = ctx;
-  const {
-    frontWallH,
-    oakMat,
-    tier2FloorY,
-    warmRoomPlasterMat,
-  } = kit;
+  const { frontWallH, oakMat, tier2FloorY, warmRoomPlasterMat } = kit;
   // =========================================================================
   // SITTING ROOM SOFAS (Issues #14, #15 & #7 — high-LOD sculpted upholstery meshes):
   // =========================================================================
@@ -132,6 +141,7 @@ export function buildSittingRoomFurniture(
         }
       }
       uv.needsUpdate = true;
+      geo.computeBoundingSphere();
       return geo;
     };
 
@@ -192,44 +202,48 @@ export function buildSittingRoomFurniture(
     // 3. Rounded Lower Bullnose Perimeter Edge on the Cantilevered Upper Block (Y = 0.145m..0.185m)
     const bullnoseR = 0.04;
     const bullnoseCore = new THREE.Mesh(
-      new THREE.BoxGeometry(ctW - bullnoseR * 2, bullnoseR, ctL - bullnoseR * 2),
+      createSharedGeo(new THREE.BoxGeometry(ctW - bullnoseR * 2, bullnoseR, ctL - bullnoseR * 2)),
       darkGroutUnderMat
     );
+    bullnoseCore.name = 'sittingRoom.coffeeTable.bullnoseCore';
     bullnoseCore.position.set(0, plinthH + bullnoseR * 0.5, 0);
     coffeeTableGroup.add(bullnoseCore);
 
+    const longBullnoseGeo = createSharedGeo(
+      new THREE.CylinderGeometry(bullnoseR, bullnoseR, ctL - bullnoseR * 2, 16)
+    );
     for (const sideX of [-1, 1] as const) {
-      const longBullnose = new THREE.Mesh(
-        new THREE.CylinderGeometry(bullnoseR, bullnoseR, ctL - bullnoseR * 2, 16),
-        brownCeramicTileMat
-      );
+      const longBullnose = new THREE.Mesh(longBullnoseGeo, brownCeramicTileMat);
       longBullnose.name = 'sittingRoom.coffeeTable.bullnoseEdge';
       longBullnose.rotation.x = Math.PI / 2;
       longBullnose.position.set(sideX * (ctW * 0.5 - bullnoseR), plinthH + bullnoseR, 0);
       longBullnose.castShadow = true;
       coffeeTableGroup.add(longBullnose);
     }
+
+    const shortBullnoseGeo = createSharedGeo(
+      new THREE.CylinderGeometry(bullnoseR, bullnoseR, ctW - bullnoseR * 2, 16)
+    );
     for (const sideZ of [-1, 1] as const) {
-      const shortBullnose = new THREE.Mesh(
-        new THREE.CylinderGeometry(bullnoseR, bullnoseR, ctW - bullnoseR * 2, 16),
-        brownCeramicTileMat
-      );
+      const shortBullnose = new THREE.Mesh(shortBullnoseGeo, brownCeramicTileMat);
       shortBullnose.name = 'sittingRoom.coffeeTable.bullnoseEdge';
       shortBullnose.rotation.z = Math.PI / 2;
       shortBullnose.position.set(0, plinthH + bullnoseR, sideZ * (ctL * 0.5 - bullnoseR));
       shortBullnose.castShadow = true;
       coffeeTableGroup.add(shortBullnose);
     }
-    for (const [cx, cz] of [
-      [-ctW * 0.5 + bullnoseR, -ctL * 0.5 + bullnoseR],
-      [ctW * 0.5 - bullnoseR, -ctL * 0.5 + bullnoseR],
-      [-ctW * 0.5 + bullnoseR, ctL * 0.5 - bullnoseR],
-      [ctW * 0.5 - bullnoseR, ctL * 0.5 - bullnoseR],
-    ] as const) {
-      const cornerSphere = new THREE.Mesh(
-        new THREE.SphereGeometry(bullnoseR, 14, 12),
-        brownCeramicTileMat
-      );
+
+    const cornerSphereGeo = createSharedGeo(new THREE.SphereGeometry(bullnoseR, 14, 12));
+    for (const [cIdx, [cx, cz]] of (
+      [
+        [-ctW * 0.5 + bullnoseR, -ctL * 0.5 + bullnoseR],
+        [ctW * 0.5 - bullnoseR, -ctL * 0.5 + bullnoseR],
+        [-ctW * 0.5 + bullnoseR, ctL * 0.5 - bullnoseR],
+        [ctW * 0.5 - bullnoseR, ctL * 0.5 - bullnoseR],
+      ] as const
+    ).entries()) {
+      const cornerSphere = tagHighLod(new THREE.Mesh(cornerSphereGeo, brownCeramicTileMat));
+      cornerSphere.name = `sittingRoom.coffeeTable.bullnoseCorner.${cIdx + 1}`;
       cornerSphere.position.set(cx, plinthH + bullnoseR, cz);
       coffeeTableGroup.add(cornerSphere);
     }
@@ -254,22 +268,24 @@ export function buildSittingRoomFurniture(
     const vaseH = 0.21;
     const vaseR = 0.058;
     const vaseCore = new THREE.Mesh(
-      new THREE.CylinderGeometry(vaseR, vaseR * 0.96, vaseH, 24),
+      createSharedGeo(new THREE.CylinderGeometry(vaseR, vaseR * 0.96, vaseH, 24)),
       flutedVaseMat
     );
+    vaseCore.name = 'sittingRoom.coffeeTable.flutedVase.body';
     vaseCore.position.set(0, vaseH * 0.5, 0);
     vaseCore.castShadow = true;
     vaseCore.receiveShadow = true;
     vaseGroup.add(vaseCore);
 
-    // 20 vertical fluted stoneware ribs around the cylinder
+    // 20 vertical fluted stoneware ribs around the cylinder sharing 1 BufferGeometry
     const fluteCount = 20;
+    const fluteRibGeo = createSharedGeo(
+      new THREE.CylinderGeometry(0.0055, 0.0055, vaseH - 0.006, 8)
+    );
     for (let f = 0; f < fluteCount; f++) {
       const a = (f / fluteCount) * Math.PI * 2;
-      const rib = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.0055, 0.0055, vaseH - 0.006, 8),
-        flutedVaseMat
-      );
+      const rib = tagHighLod(new THREE.Mesh(fluteRibGeo, flutedVaseMat));
+      rib.name = `sittingRoom.coffeeTable.flutedVase.rib.${f + 1}`;
       rib.position.set(Math.cos(a) * vaseR, vaseH * 0.5, Math.sin(a) * vaseR);
       vaseGroup.add(rib);
     }
@@ -298,9 +314,11 @@ export function buildSittingRoomFurniture(
     for (const pts of branchPaths) {
       const curvePts = pts.map(([bx, by, bz]) => new THREE.Vector3(bx, by, bz));
       const branchCurve = new THREE.CatmullRomCurve3(curvePts);
-      const branchTube = new THREE.Mesh(
-        new THREE.TubeGeometry(branchCurve, 14, 0.0045, 7, false),
-        darkBranchMat
+      const branchTube = tagHighLod(
+        new THREE.Mesh(
+          createSharedGeo(new THREE.TubeGeometry(branchCurve, 14, 0.0045, 7, false)),
+          darkBranchMat
+        )
       );
       branchTube.name = 'sittingRoom.coffeeTable.sculpturalBranch';
       branchTube.castShadow = true;
@@ -318,7 +336,7 @@ export function buildSittingRoomFurniture(
       roughness: 0.58,
     });
     const artBookBottom = new THREE.Mesh(
-      new THREE.BoxGeometry(0.27, 0.032, 0.33),
+      createSharedGeo(new THREE.BoxGeometry(0.27, 0.032, 0.33)),
       bookBottomMat
     );
     artBookBottom.name = 'sittingRoom.coffeeTable.artBook.bottom';
@@ -329,7 +347,7 @@ export function buildSittingRoomFurniture(
     coffeeTableGroup.add(artBookBottom);
 
     const artBookTop = new THREE.Mesh(
-      new THREE.BoxGeometry(0.24, 0.026, 0.3),
+      createSharedGeo(new THREE.BoxGeometry(0.24, 0.026, 0.3)),
       bookTopMat
     );
     artBookTop.name = 'sittingRoom.coffeeTable.artBook.top';
@@ -360,7 +378,7 @@ export function buildSittingRoomFurniture(
   // Exposed Natural Oak North-South Spine Beam & East-West Ceiling Joists in Sitting Room (Issue #1: lowered for frontWallH = 1.625m)
   // `livingSpineBeam` bears into the North partition wall (Z = 3.66m) and the North brick face of the Inglenook Chimney Breast (Z = 7.70m)!
   const livingSpineBeam = new THREE.Mesh(
-    new THREE.BoxGeometry(0.2, 0.19, 4.04),
+    createSharedGeo(new THREE.BoxGeometry(0.2, 0.19, 4.04)),
     oakMat
   );
   livingSpineBeam.name = 'sittingRoom.spineBeam';
@@ -376,7 +394,7 @@ export function buildSittingRoomFurniture(
       -16.82 + ((-17.25 - -16.82) / (11.77 - 2.4)) * (ljz - 2.4) - 0.12;
     const joistSpanX = xEast - xWest;
     const livingJoist = new THREE.Mesh(
-      new THREE.BoxGeometry(joistSpanX, 0.11, 0.095),
+      createSharedGeo(new THREE.BoxGeometry(joistSpanX, 0.11, 0.095)),
       oakMat
     );
     livingJoist.name = 'sittingRoom.ceilingJoist';

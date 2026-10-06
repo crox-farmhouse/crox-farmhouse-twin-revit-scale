@@ -218,6 +218,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.BoxGeometry(cabinetW - 0.036, cabinetH - 0.036, 0.006),
     cabinetRecessInteriorMat
   );
+  cabinetInnerPan.name = 'plantRoom.heatingManifold.cabinetInnerPan';
   cabinetInnerPan.position.set(cabinetCenterX, cabinetCenterY, wallZ + 0.011);
   manifoldGroup.add(cabinetInnerPan);
 
@@ -240,6 +241,7 @@ export function buildPlantRoomHeatingManifold(
       new THREE.BoxGeometry(0.018, cabinetH, flangeDepth),
       cabinetWhiteSteelMat
     );
+    sideCheek.name = `plantRoom.heatingManifold.cabinetSideCheek.${sideSign < 0 ? 'left' : 'right'}`;
     sideCheek.position.set(
       cabinetCenterX + sideSign * (cabinetW * 0.5 - 0.009),
       cabinetCenterY,
@@ -278,6 +280,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.BoxGeometry(0.48, 0.022, 0.004),
     epdmRubberMat
   );
+  wiringWindow.name = 'plantRoom.heatingManifold.knxWiringCenter.statusWindow';
   wiringWindow.position.set(-18.02, wiringCenterY + 0.006, wallZ + 0.057);
   manifoldGroup.add(wiringWindow);
 
@@ -286,6 +289,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.BoxGeometry(0.012, 0.007, 0.004),
       zLed % 3 === 0 ? actuatorWarmLedMat : actuatorActiveLedMat
     );
+    ledMesh.name = `plantRoom.heatingManifold.knxWiringCenter.led.${zLed + 1}`;
+    ledMesh.userData.lodTier = 'high';
+    ledMesh.userData.lodMaxDistance = 12;
     ledMesh.position.set(-18.23 + zLed * 0.046, wiringCenterY + 0.006, wallZ + 0.059);
     manifoldGroup.add(ledMesh);
   }
@@ -316,6 +322,9 @@ export function buildPlantRoomHeatingManifold(
         new THREE.BoxGeometry(0.026, 0.028, saddleStandOffD),
         galvSteelMat
       );
+      standOffArm.name = isReturn
+        ? `plantRoom.heatingManifold.bracketStandOff.return.${bIdx + 1}`
+        : `plantRoom.heatingManifold.bracketStandOff.flow.${bIdx + 1}`;
       standOffArm.position.set(bx, hy, wallZ + 0.025 + saddleStandOffD * 0.5);
       manifoldGroup.add(standOffArm);
 
@@ -350,15 +359,16 @@ export function buildPlantRoomHeatingManifold(
 
   // 1. Through-wall stubs emerging from the Study North Wall headers at X = -18.84m (Y = tier2FloorY + 0.78m & 0.66m)
   //    into vertical risers at X = -18.78m (Flow) and X = -18.70m (Return)
-  for (const [stubEndX, stubY, stubZ] of [
-    [flowRiserX, studyFlowHeaderY, flowHeaderZ],
-    [returnRiserX, studyReturnHeaderY, returnHeaderZ],
+  for (const [sTag, stubEndX, stubY, stubZ] of [
+    ['flow', flowRiserX, studyFlowHeaderY, flowHeaderZ],
+    ['return', returnRiserX, studyReturnHeaderY, returnHeaderZ],
   ] as const) {
     const stubLen = stubEndX - wallStartX;
     const wallStub = new THREE.Mesh(
       new THREE.CylinderGeometry(pipeRadius28mm, pipeRadius28mm, stubLen, 16),
       copperPipeMat
     );
+    wallStub.name = `plantRoom.heatingManifold.wallStub.${sTag}`;
     wallStub.rotation.z = Math.PI / 2;
     wallStub.position.set(wallStartX + stubLen * 0.5, stubY, stubZ);
     wallStub.castShadow = true;
@@ -368,6 +378,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.026, 0.026, 0.01, 16),
       brassMat
     );
+    wallRosette.name = `plantRoom.heatingManifold.wallRosette.${sTag}`;
+    wallRosette.userData.lodTier = 'high';
+    wallRosette.userData.lodMaxDistance = 12;
     wallRosette.rotation.z = Math.PI / 2;
     wallRosette.position.set(wallStartX + 0.005, stubY, stubZ);
     manifoldGroup.add(wallRosette);
@@ -388,11 +401,14 @@ export function buildPlantRoomHeatingManifold(
     wallRiser.castShadow = true;
     manifoldGroup.add(wallRiser);
 
-    for (const clipY of [tier2FloorY + 0.98, tier2FloorY + 1.42] as const) {
+    for (const [cIdx, clipY] of ([tier2FloorY + 0.98, tier2FloorY + 1.42] as const).entries()) {
       const munsenRing = new THREE.Mesh(
         new THREE.CylinderGeometry(0.018, 0.018, 0.016, 14),
         brassMat
       );
+      munsenRing.name = `${riserName}.munsenRing.${cIdx + 1}`;
+      munsenRing.userData.lodTier = 'high';
+      munsenRing.userData.lodMaxDistance = 12;
       munsenRing.position.set(riserX, clipY, rz);
       manifoldGroup.add(munsenRing);
 
@@ -400,6 +416,9 @@ export function buildPlantRoomHeatingManifold(
         new THREE.CylinderGeometry(0.005, 0.005, rz - wallZ, 10),
         galvSteelMat
       );
+      munsenStem.name = `${riserName}.munsenStem.${cIdx + 1}`;
+      munsenStem.userData.lodTier = 'high';
+      munsenStem.userData.lodMaxDistance = 12;
       munsenStem.rotation.x = Math.PI / 2;
       munsenStem.position.set(riserX, clipY, wallZ + (rz - wallZ) * 0.5);
       manifoldGroup.add(munsenStem);
@@ -439,14 +458,17 @@ export function buildPlantRoomHeatingManifold(
   manifoldGroup.add(primaryReturnHoriz);
 
   // Heavy-duty Munsen wall pipe clips on the horizontal high-level copper runs
-  for (const [py, pz, clipX] of [
-    [highFlowY, flowHeaderZ, -18.58],
-    [highReturnY, returnHeaderZ, -18.58],
+  for (const [cTag, py, pz, clipX] of [
+    ['flow', highFlowY, flowHeaderZ, -18.58],
+    ['return', highReturnY, returnHeaderZ, -18.58],
   ] as const) {
     const munsenRing = new THREE.Mesh(
       new THREE.CylinderGeometry(0.018, 0.018, 0.016, 14),
       brassMat
     );
+    munsenRing.name = `plantRoom.heatingManifold.horizMunsenRing.${cTag}`;
+    munsenRing.userData.lodTier = 'high';
+    munsenRing.userData.lodMaxDistance = 12;
     munsenRing.rotation.z = Math.PI / 2;
     munsenRing.position.set(clipX, py, pz);
     manifoldGroup.add(munsenRing);
@@ -455,24 +477,30 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.005, 0.005, pz - wallZ, 10),
       galvSteelMat
     );
+    munsenStem.name = `plantRoom.heatingManifold.horizMunsenStem.${cTag}`;
+    munsenStem.userData.lodTier = 'high';
+    munsenStem.userData.lodMaxDistance = 12;
     munsenStem.rotation.x = Math.PI / 2;
     munsenStem.position.set(clipX, py, wallZ + (pz - wallZ) * 0.5);
     manifoldGroup.add(munsenStem);
   }
 
   // Brass 90° soldered elbows at bottom & top of wall risers and at the manifold drops
-  for (const [ex, ey, ez] of [
-    [flowRiserX, studyFlowHeaderY, flowHeaderZ],
-    [flowRiserX, highFlowY, flowHeaderZ],
-    [flowDropX, highFlowY, flowHeaderZ],
-    [returnRiserX, studyReturnHeaderY, returnHeaderZ],
-    [returnRiserX, highReturnY, returnHeaderZ],
-    [returnDropX, highReturnY, returnHeaderZ],
-  ] as const) {
+  for (const [eIdx, [ex, ey, ez]] of (
+    [
+      [flowRiserX, studyFlowHeaderY, flowHeaderZ],
+      [flowRiserX, highFlowY, flowHeaderZ],
+      [flowDropX, highFlowY, flowHeaderZ],
+      [returnRiserX, studyReturnHeaderY, returnHeaderZ],
+      [returnRiserX, highReturnY, returnHeaderZ],
+      [returnDropX, highReturnY, returnHeaderZ],
+    ] as const
+  ).entries()) {
     const elbowSphere = new THREE.Mesh(
       new THREE.SphereGeometry(pipeRadius28mm * 1.28, 14, 14),
       brassMat
     );
+    elbowSphere.name = `plantRoom.heatingManifold.primaryCopperElbow.${eIdx + 1}`;
     elbowSphere.position.set(ex, ey, ez);
     manifoldGroup.add(elbowSphere);
   }
@@ -484,6 +512,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.CylinderGeometry(pipeRadius28mm, pipeRadius28mm, flowDropLen, 16),
     copperPipeMat
   );
+  primaryFlowVert.name = 'plantRoom.heatingManifold.primaryFlowDropPipe';
   primaryFlowVert.position.set(flowDropX, (highFlowY + flowHeaderY) * 0.5, flowHeaderZ);
   primaryFlowVert.castShadow = true;
   manifoldGroup.add(primaryFlowVert);
@@ -495,6 +524,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.CylinderGeometry(pipeRadius28mm, pipeRadius28mm, returnDropLen, 16),
     copperPipeMat
   );
+  primaryReturnVert.name = 'plantRoom.heatingManifold.primaryReturnDropPipe';
   primaryReturnVert.position.set(
     returnDropX,
     (highReturnY + returnHeaderY) * 0.5,
@@ -520,14 +550,18 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.021, 0.021, 0.054, 16),
       brassMat
     );
+    body.name = `${name}.body`;
     body.castShadow = true;
     valveGroup.add(body);
 
-    for (const ny of [-0.032, 0.032] as const) {
+    for (const [nTag, ny] of [['lower', -0.032], ['upper', 0.032]] as const) {
       const hexNut = new THREE.Mesh(
         new THREE.CylinderGeometry(0.024, 0.024, 0.014, 6),
         brassMat
       );
+      hexNut.name = `${name}.hexNut.${nTag}`;
+      hexNut.userData.lodTier = 'high';
+      hexNut.userData.lodMaxDistance = 12;
       hexNut.position.set(0, ny, 0);
       valveGroup.add(hexNut);
     }
@@ -537,6 +571,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.009, 0.009, 0.026, 12),
       brassMat
     );
+    spindle.name = `${name}.spindle`;
+    spindle.userData.lodTier = 'high';
+    spindle.userData.lodMaxDistance = 12;
     spindle.rotation.x = Math.PI / 2;
     spindle.position.set(0, 0, 0.022);
     valveGroup.add(spindle);
@@ -546,6 +583,7 @@ export function buildPlantRoomHeatingManifold(
       new THREE.BoxGeometry(0.016, 0.088, 0.008),
       leverMat
     );
+    leverHandle.name = `${name}.leverHandle`;
     leverHandle.position.set(0, -0.034, 0.036);
     leverHandle.castShadow = true;
     valveGroup.add(leverHandle);
@@ -584,6 +622,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.CylinderGeometry(0.024, 0.024, 0.068, 16),
     brassMat
   );
+  mixingBody.name = 'plantRoom.heatingManifold.thermostaticMixingValve.body';
   mixingBody.castShadow = true;
   mixingValveGroup.add(mixingBody);
 
@@ -592,6 +631,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.CylinderGeometry(0.013, 0.013, flowDropX - returnDropX, 12),
     brassMat
   );
+  mixingBypassBridge.name = 'plantRoom.heatingManifold.thermostaticMixingValve.bypassBridge';
   mixingBypassBridge.rotation.z = Math.PI / 2;
   mixingBypassBridge.position.set(-(flowDropX - returnDropX) * 0.5, 0, 0.01);
   mixingValveGroup.add(mixingBypassBridge);
@@ -601,6 +641,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.CylinderGeometry(0.022, 0.025, 0.048, 20),
     pumpCompositeBlackMat
   );
+  thermostaticHead.name = 'plantRoom.heatingManifold.thermostaticMixingValve.handwheelHead';
   thermostaticHead.rotation.x = Math.PI / 2;
   thermostaticHead.position.set(0, 0, 0.036);
   thermostaticHead.castShadow = true;
@@ -610,6 +651,9 @@ export function buildPlantRoomHeatingManifold(
     new THREE.CylinderGeometry(0.0235, 0.0235, 0.012, 20),
     brushedStainlessMat
   );
+  thermostaticScaleRing.name = 'plantRoom.heatingManifold.thermostaticMixingValve.scaleRing';
+  thermostaticScaleRing.userData.lodTier = 'high';
+  thermostaticScaleRing.userData.lodMaxDistance = 12;
   thermostaticScaleRing.rotation.x = Math.PI / 2;
   thermostaticScaleRing.position.set(0, 0, 0.026);
   mixingValveGroup.add(thermostaticScaleRing);
@@ -621,6 +665,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.CylinderGeometry(0.022, 0.022, 0.095, 16),
     brassMat
   );
+  returnPumpElbow.name = 'plantRoom.heatingManifold.returnPumpElbow';
   returnPumpElbow.rotation.z = Math.PI / 2;
   returnPumpElbow.position.set((returnDropX + pumpAxisX) * 0.5, returnHeaderY, returnHeaderZ);
   manifoldGroup.add(returnPumpElbow);
@@ -650,6 +695,10 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.019, 0.019, 0.055, 14),
       brassMat
     );
+    unionTail.name =
+      unionY > 0
+        ? 'plantRoom.heatingManifold.circulationPump.upperUnionTail'
+        : 'plantRoom.heatingManifold.circulationPump.lowerUnionTail';
     unionTail.position.set(0, unionY * 1.32, 0);
     pumpGroup.add(unionTail);
   }
@@ -659,6 +708,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.CylinderGeometry(0.044, 0.044, 0.13, 20),
     castIronMat
   );
+  pumpVolute.name = 'plantRoom.heatingManifold.circulationPump.volute';
   pumpVolute.position.set(0, 0, 0);
   pumpVolute.castShadow = true;
   pumpGroup.add(pumpVolute);
@@ -668,6 +718,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.CylinderGeometry(0.038, 0.038, 0.045, 20),
     brushedStainlessMat
   );
+  pumpRotorCan.name = 'plantRoom.heatingManifold.circulationPump.rotorCan';
   pumpRotorCan.rotation.x = Math.PI / 2;
   pumpRotorCan.position.set(0, 0, 0.024);
   pumpGroup.add(pumpRotorCan);
@@ -687,6 +738,9 @@ export function buildPlantRoomHeatingManifold(
     new THREE.BoxGeometry(0.072, 0.008, 0.004),
     flowRedMat
   );
+  pumpRedStripe.name = 'plantRoom.heatingManifold.circulationPump.accentStripe';
+  pumpRedStripe.userData.lodTier = 'high';
+  pumpRedStripe.userData.lodMaxDistance = 12;
   pumpRedStripe.position.set(0, 0.038, 0.066);
   pumpGroup.add(pumpRedStripe);
 
@@ -697,6 +751,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.BoxGeometry(0.008, 0.014, 0.005),
       seg === 0 ? actuatorWarmLedMat : actuatorActiveLedMat
     );
+    segMesh.name = `plantRoom.heatingManifold.circulationPump.ledBar.segment.${seg + 1}`;
+    segMesh.userData.lodTier = 'high';
+    segMesh.userData.lodMaxDistance = 12;
     segMesh.position.set(-0.024 + seg * 0.012, 0.012, 0.066);
     ledBarGroup.add(segMesh);
   }
@@ -728,6 +785,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.CylinderGeometry(0.025, 0.025, 0.06, 8),
     brassMat
   );
+  flowHeaderLeftUnion.name = 'plantRoom.heatingManifold.flowHeaderLeftUnion';
   flowHeaderLeftUnion.rotation.z = Math.PI / 2;
   flowHeaderLeftUnion.position.set(-18.33, flowHeaderY, flowHeaderZ);
   manifoldGroup.add(flowHeaderLeftUnion);
@@ -750,6 +808,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.008, 0.008, 0.024, 12),
       brassMat
     );
+    pocketStem.name = `${name}.stem`;
+    pocketStem.userData.lodTier = 'high';
+    pocketStem.userData.lodMaxDistance = 12;
     pocketStem.rotation.x = Math.PI / 2;
     pocketStem.position.set(0, 0, 0.012);
     gaugeGroup.add(pocketStem);
@@ -759,6 +820,7 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.026, 0.026, 0.016, 24),
       caseMat
     );
+    bezel.name = `${name}.bezel`;
     bezel.rotation.x = Math.PI / 2;
     bezel.position.set(0, 0, 0.028);
     bezel.castShadow = true;
@@ -769,6 +831,7 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CircleGeometry(0.022, 24),
       dialMat
     );
+    dialFace.name = `${name}.dialFace`;
     dialFace.position.set(0, 0, 0.0365);
     gaugeGroup.add(dialFace);
 
@@ -804,6 +867,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.CylinderGeometry(0.025, 0.025, 0.06, 8),
     brassMat
   );
+  returnHeaderLeftUnion.name = 'plantRoom.heatingManifold.returnHeaderLeftUnion';
   returnHeaderLeftUnion.rotation.z = Math.PI / 2;
   returnHeaderLeftUnion.position.set(-18.33, returnHeaderY, returnHeaderZ);
   manifoldGroup.add(returnHeaderLeftUnion);
@@ -849,6 +913,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.011, 0.011, 0.012, 6),
       brassMat
     );
+    fmBrassBase.name = `plantRoom.heatingManifold.flowmeter.${circuitNum}.brassBase`;
+    fmBrassBase.userData.lodTier = 'high';
+    fmBrassBase.userData.lodMaxDistance = 12;
     fmBrassBase.position.set(0, 0.006, 0);
     flowmeterGroup.add(fmBrassBase);
 
@@ -857,6 +924,7 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.0085, 0.0085, 0.046, 14),
       sightGlassClearMat
     );
+    fmGlassTube.name = `plantRoom.heatingManifold.flowmeter.${circuitNum}.sightGlassTube`;
     fmGlassTube.position.set(0, 0.035, 0);
     flowmeterGroup.add(fmGlassTube);
 
@@ -867,6 +935,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.0062, 0.0062, 0.007, 12),
       flowRedMat
     );
+    fmRedFloat.name = `plantRoom.heatingManifold.flowmeter.${circuitNum}.floatIndicator`;
+    fmRedFloat.userData.lodTier = 'high';
+    fmRedFloat.userData.lodMaxDistance = 12;
     fmRedFloat.position.set(0, floatY, 0);
     flowmeterGroup.add(fmRedFloat);
 
@@ -875,6 +946,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.0105, 0.0105, 0.01, 14),
       pumpCompositeBlackMat
     );
+    fmLockCollar.name = `plantRoom.heatingManifold.flowmeter.${circuitNum}.lockCollar`;
+    fmLockCollar.userData.lodTier = 'high';
+    fmLockCollar.userData.lodMaxDistance = 12;
     fmLockCollar.position.set(0, 0.056, 0);
     flowmeterGroup.add(fmLockCollar);
 
@@ -882,6 +956,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.009, 0.009, 0.005, 14),
       flowRedMat
     );
+    fmRedCapRing.name = `plantRoom.heatingManifold.flowmeter.${circuitNum}.capRing`;
+    fmRedCapRing.userData.lodTier = 'high';
+    fmRedCapRing.userData.lodMaxDistance = 12;
     fmRedCapRing.position.set(0, 0.062, 0);
     flowmeterGroup.add(fmRedCapRing);
 
@@ -901,6 +978,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.012, 0.012, 0.012, 12),
       brassMat
     );
+    actAdapterRing.name = `plantRoom.heatingManifold.zoneActuator.${circuitNum}.adapterRing`;
+    actAdapterRing.userData.lodTier = 'high';
+    actAdapterRing.userData.lodMaxDistance = 12;
     actAdapterRing.position.set(0, 0.006, 0);
     actuatorGroup.add(actAdapterRing);
 
@@ -909,6 +989,7 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.0155, 0.014, 0.048, 18),
       actuatorWhiteMat
     );
+    actBody.name = `plantRoom.heatingManifold.zoneActuator.${circuitNum}.body`;
     actBody.position.set(0, 0.036, 0);
     actBody.castShadow = true;
     actuatorGroup.add(actBody);
@@ -948,6 +1029,11 @@ export function buildPlantRoomHeatingManifold(
         new THREE.CylinderGeometry(0.0095, 0.0095, 0.006, 12),
         isReturnPipe ? returnBlueMat : flowRedMat
       );
+      idCollar.name = isReturnPipe
+        ? `plantRoom.heatingManifold.returnIdCollar.${circuitNum}`
+        : `plantRoom.heatingManifold.flowIdCollar.${circuitNum}`;
+      idCollar.userData.lodTier = 'high';
+      idCollar.userData.lodMaxDistance = 12;
       idCollar.position.set(portX, euroconeTopY - 0.024, pipeZ);
       manifoldGroup.add(idCollar);
 
@@ -989,6 +1075,7 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.018, 0.018, 0.052, 12),
       brassMat
     );
+    brassEndTee.name = `${endGroup.name}.endTee`;
     brassEndTee.rotation.z = Math.PI / 2;
     brassEndTee.castShadow = true;
     endGroup.add(brassEndTee);
@@ -1003,6 +1090,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.009, 0.009, 0.018, 10),
       brassMat
     );
+    aavStem.name = `${aavGroup.name}.stem`;
+    aavStem.userData.lodTier = 'high';
+    aavStem.userData.lodMaxDistance = 12;
     aavStem.position.set(0.008, 0.022, 0);
     aavGroup.add(aavStem);
 
@@ -1010,6 +1100,7 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.016, 0.016, 0.044, 16),
       brassMat
     );
+    aavChamber.name = `${aavGroup.name}.chamber`;
     aavChamber.position.set(0.008, 0.052, 0);
     aavChamber.castShadow = true;
     aavGroup.add(aavChamber);
@@ -1018,6 +1109,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.006, 0.007, 0.012, 12),
       flowRedMat
     );
+    aavBleedCap.name = `${aavGroup.name}.bleedCap`;
+    aavBleedCap.userData.lodTier = 'high';
+    aavBleedCap.userData.lodMaxDistance = 12;
     aavBleedCap.position.set(0.008, 0.079, 0);
     aavGroup.add(aavBleedCap);
 
@@ -1033,6 +1127,7 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.011, 0.011, 0.036, 12),
       brassMat
     );
+    drainBody.name = `${drainGroup.name}.body`;
     drainBody.position.set(0.008, -0.028, 0);
     drainGroup.add(drainBody);
 
@@ -1041,6 +1136,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.CylinderGeometry(0.008, 0.009, 0.032, 12),
       brassMat
     );
+    hoseSpout.name = `${drainGroup.name}.hoseSpout`;
+    hoseSpout.userData.lodTier = 'high';
+    hoseSpout.userData.lodMaxDistance = 12;
     hoseSpout.rotation.z = -Math.PI / 4;
     hoseSpout.position.set(0.024, -0.048, 0);
     drainGroup.add(hoseSpout);
@@ -1050,6 +1148,9 @@ export function buildPlantRoomHeatingManifold(
       new THREE.BoxGeometry(0.034, 0.012, 0.012),
       isReturnEnd ? returnBlueMat : flowRedMat
     );
+    drainWingHandle.name = `${drainGroup.name}.wingHandle`;
+    drainWingHandle.userData.lodTier = 'high';
+    drainWingHandle.userData.lodMaxDistance = 12;
     drainWingHandle.position.set(0.008, -0.028, 0.016);
     drainGroup.add(drainWingHandle);
 
@@ -1088,6 +1189,9 @@ export function buildPlantRoomHeatingManifold(
         new THREE.BoxGeometry(0.02, 0.022, 0.088),
         epdmRubberMat
       );
+      pipeClip.name = `plantRoom.heatingManifold.pipeClipRail.${rIdx + 1}.clip.${i + 1}`;
+      pipeClip.userData.lodTier = 'high';
+      pipeClip.userData.lodMaxDistance = 12;
       pipeClip.position.set(px, railY, wallZ + 0.056);
       manifoldGroup.add(pipeClip);
     }
@@ -1116,6 +1220,7 @@ export function buildPlantRoomHeatingManifold(
     new THREE.BoxGeometry(shroudW + 0.008, 0.014, shroudD + 0.008),
     epdmRubberMat
   );
+  shroudTopGrommet.name = 'plantRoom.heatingManifold.floorPipeShroud.topGrommet';
   shroudTopGrommet.position.set(
     clipRailCenterX,
     tier2FloorY + shroudH + 0.005,
@@ -1251,6 +1356,7 @@ function buildSecondaryHydronicManifoldStation(
     new THREE.BoxGeometry(cabinetW - 0.03, cabinetH - 0.03, 0.006),
     cabinetRecessInteriorMat
   );
+  innerPan.name = `${prefix}.cabinetInnerPan`;
   innerPan.position.set(0, cabinetCenterY, 0.01);
   manifoldGroup.add(innerPan);
 
@@ -1259,6 +1365,7 @@ function buildSecondaryHydronicManifoldStation(
     new THREE.BoxGeometry(cabinetW, 0.016, flangeDepth),
     cabinetWhiteSteelMat
   );
+  topHood.name = `${prefix}.cabinetTopHood`;
   topHood.position.set(0, cabinetCenterY + cabinetH * 0.5 - 0.008, flangeDepth * 0.5);
   manifoldGroup.add(topHood);
 
@@ -1267,6 +1374,7 @@ function buildSecondaryHydronicManifoldStation(
       new THREE.BoxGeometry(0.016, cabinetH, flangeDepth),
       cabinetWhiteSteelMat
     );
+    sideCheek.name = `${prefix}.cabinetSideCheek.${sideSign < 0 ? 'left' : 'right'}`;
     sideCheek.position.set(sideSign * (cabinetW * 0.5 - 0.008), cabinetCenterY, flangeDepth * 0.5);
     manifoldGroup.add(sideCheek);
   }
@@ -1285,6 +1393,7 @@ function buildSecondaryHydronicManifoldStation(
     new THREE.BoxGeometry(0.32, 0.018, 0.004),
     epdmRubberMat
   );
+  wiringWin.name = `${prefix}.knxWiringCenter.statusWindow`;
   wiringWin.position.set(0.03, wiringCenterY + 0.005, 0.049);
   manifoldGroup.add(wiringWin);
 
@@ -1294,6 +1403,8 @@ function buildSecondaryHydronicManifoldStation(
       actuatorWarmLedMat
     );
     ledMesh.name = `${prefix}.wiringLed.${zLed + 1}`;
+    ledMesh.userData.lodTier = 'high';
+    ledMesh.userData.lodMaxDistance = 12;
     ledMesh.position.set(-0.07 + zLed * 0.058, wiringCenterY + 0.005, 0.051);
     manifoldGroup.add(ledMesh);
   }
@@ -1323,11 +1434,12 @@ function buildSecondaryHydronicManifoldStation(
   returnHeaderBar.position.set(headerCenterX, returnHeaderY, returnHeaderZ);
   manifoldGroup.add(returnHeaderBar);
 
-  for (const bx of [-0.09, 0.16] as const) {
+  for (const [bIdx, bx] of ([-0.09, 0.16] as const).entries()) {
     const bracket = new THREE.Mesh(
       new THREE.BoxGeometry(0.024, 0.34, 0.016),
       galvSteelMat
     );
+    bracket.name = `${prefix}.mountingBracket.${bIdx + 1}`;
     bracket.position.set(bx, (flowHeaderY + returnHeaderY) * 0.5, 0.018);
     manifoldGroup.add(bracket);
   }
@@ -1345,6 +1457,7 @@ function buildSecondaryHydronicManifoldStation(
       new THREE.CylinderGeometry(0.013, 0.013, topY, 12),
       copperPipeMat
     );
+    riser.name = `${valveName}.riserPipe`;
     riser.position.set(rx, topY * 0.5, rz);
     manifoldGroup.add(riser);
 
@@ -1360,6 +1473,7 @@ function buildSecondaryHydronicManifoldStation(
       new THREE.BoxGeometry(0.014, 0.075, 0.007),
       leverMat
     );
+    lever.name = `${valveName}.leverHandle`;
     lever.position.set(rx, 0.21, rz + 0.028);
     manifoldGroup.add(lever);
   }
@@ -1376,6 +1490,7 @@ function buildSecondaryHydronicManifoldStation(
     new THREE.CylinderGeometry(0.019, 0.022, 0.042, 16),
     pumpCompositeBlackMat
   );
+  mixHead.name = `${prefix}.thermostaticMixingValve.handwheelHead`;
   mixHead.rotation.x = Math.PI / 2;
   mixHead.position.set(pumpAxisX, flowHeaderY, flowHeaderZ + 0.032);
   manifoldGroup.add(mixHead);
@@ -1394,6 +1509,7 @@ function buildSecondaryHydronicManifoldStation(
     new THREE.BoxGeometry(0.074, 0.092, 0.036),
     pumpCompositeBlackMat
   );
+  pumpBox.name = `${prefix}.circulationPump.controlBox`;
   pumpBox.position.set(pumpAxisX, pumpCenterY, pumpCenterZ + 0.04);
   manifoldGroup.add(pumpBox);
 
@@ -1401,6 +1517,9 @@ function buildSecondaryHydronicManifoldStation(
     new THREE.BoxGeometry(0.064, 0.007, 0.004),
     flowRedMat
   );
+  pumpStripe.name = `${prefix}.circulationPump.accentStripe`;
+  pumpStripe.userData.lodTier = 'high';
+  pumpStripe.userData.lodMaxDistance = 12;
   pumpStripe.position.set(pumpAxisX, pumpCenterY + 0.032, pumpCenterZ + 0.059);
   manifoldGroup.add(pumpStripe);
 
@@ -1418,6 +1537,7 @@ function buildSecondaryHydronicManifoldStation(
     manifoldGroup.add(bezel);
 
     const dial = new THREE.Mesh(new THREE.CircleGeometry(0.0185, 18), dialMat);
+    dial.name = `${gName}.dialFace`;
     dial.position.set(-0.115, gy, gz + 0.0195);
     manifoldGroup.add(dial);
   }
@@ -1442,6 +1562,9 @@ function buildSecondaryHydronicManifoldStation(
       new THREE.CylinderGeometry(0.0055, 0.0055, 0.006, 10),
       flowRedMat
     );
+    fmFloat.name = `${prefix}.flowmeter.${circuitNum}.floatIndicator`;
+    fmFloat.userData.lodTier = 'high';
+    fmFloat.userData.lodMaxDistance = 12;
     fmFloat.position.set(portX, flowHeaderY + headerCrossSection * 0.5 + 0.026, flowHeaderZ);
     manifoldGroup.add(fmFloat);
 
@@ -1470,6 +1593,9 @@ function buildSecondaryHydronicManifoldStation(
         new THREE.CylinderGeometry(0.011, 0.011, 0.018, 6),
         brassMat
       );
+      nut.name = isReturnPipe
+        ? `${prefix}.returnEurocone.${circuitNum}`
+        : `${prefix}.flowEurocone.${circuitNum}`;
       nut.position.set(portX, euroconeTopY - 0.009, pZ);
       manifoldGroup.add(nut);
 
@@ -1480,6 +1606,8 @@ function buildSecondaryHydronicManifoldStation(
       collar.name = isReturnPipe
         ? `${prefix}.returnCollar.${circuitNum}`
         : `${prefix}.flowCollar.${circuitNum}`;
+      collar.userData.lodTier = 'high';
+      collar.userData.lodMaxDistance = 12;
       collar.position.set(portX, euroconeTopY - 0.02, pZ);
       manifoldGroup.add(collar);
 
@@ -1516,6 +1644,9 @@ function buildSecondaryHydronicManifoldStation(
       new THREE.CylinderGeometry(0.0055, 0.0065, 0.01, 10),
       flowRedMat
     );
+    aavCap.name = `${aavBody.name}.bleedCap`;
+    aavCap.userData.lodTier = 'high';
+    aavCap.userData.lodMaxDistance = 12;
     aavCap.position.set(rightEndX, hY + 0.06, hZ);
     manifoldGroup.add(aavCap);
   }
@@ -1664,6 +1795,7 @@ export function buildBootRoomHeatingManifold(
     new THREE.BoxGeometry(cupDepthX - 0.07, carcassH - 0.22, 0.006),
     joineryRecessMat
   );
+  southCheekRecess.name = 'familyRoom.bootRoomManifoldCupboard.southCheek.recessPanel';
   southCheekRecess.position.set(cupCenterX, floorY + 0.495, cupMaxZ + 0.002);
   cupboardGroup.add(southCheekRecess);
 
@@ -1757,6 +1889,7 @@ export function buildBootRoomHeatingManifold(
     new THREE.SphereGeometry(topR, 16, 12),
     counterOakMat
   );
+  cornerBullnose.name = 'familyRoom.bootRoomManifoldCupboard.oakCountertop.cornerBullnose';
   cornerBullnose.position.set(topMinX + topR, topY, topMaxZ - topR);
   cornerBullnose.castShadow = true;
   cupboardGroup.add(cornerBullnose);
@@ -1803,24 +1936,33 @@ export function buildBootRoomHeatingManifold(
   }
 
   // Routed ventilation louvre slots across the upper Shaker panels so the manifold station is ventilated
-  for (const bayZ of [-doorW * 0.24, doorW * 0.24] as const) {
+  for (const [bayTag, bayZ] of [
+    ['northBay', -doorW * 0.24],
+    ['southBay', doorW * 0.24],
+  ] as const) {
     for (let v = 0; v < 5; v++) {
       const vy = 0.14 + v * 0.028;
       const slot = new THREE.Mesh(
         new THREE.BoxGeometry(0.016, 0.008, 0.19),
         darkVentSlotMat
       );
+      slot.name = `familyRoom.bootRoomManifoldCupboard.door.${bayTag}.ventSlot.${v + 1}`;
+      slot.userData.lodTier = 'high';
+      slot.userData.lodMaxDistance = 12;
       slot.position.set(-0.001, vy, bayZ);
       doorLeaf.add(slot);
     }
   }
 
   // Two aged-brass butt hinges on the North stile (`z = -doorW / 2`)
-  for (const hy of [-0.24, 0.24] as const) {
+  for (const [hTag, hy] of [['bottom', -0.24], ['top', 0.24]] as const) {
     const hinge = new THREE.Mesh(
       new THREE.BoxGeometry(0.008, 0.048, 0.014),
       brassMat
     );
+    hinge.name = `familyRoom.bootRoomManifoldCupboard.door.hinge.${hTag}`;
+    hinge.userData.lodTier = 'high';
+    hinge.userData.lodMaxDistance = 12;
     hinge.position.set(-0.01, hy, -doorW * 0.5 + 0.004);
     doorLeaf.add(hinge);
   }
@@ -1830,6 +1972,9 @@ export function buildBootRoomHeatingManifold(
     new THREE.CylinderGeometry(0.014, 0.014, 0.005, 14),
     brassMat
   );
+  knobRose.name = 'familyRoom.bootRoomManifoldCupboard.door.knobRose';
+  knobRose.userData.lodTier = 'high';
+  knobRose.userData.lodMaxDistance = 12;
   knobRose.rotation.z = Math.PI / 2;
   knobRose.position.set(-0.013, 0.02, doorW * 0.5 - dStileW * 0.5);
   doorLeaf.add(knobRose);
@@ -1838,6 +1983,9 @@ export function buildBootRoomHeatingManifold(
     new THREE.CylinderGeometry(0.005, 0.007, 0.016, 12),
     brassMat
   );
+  knobStem.name = 'familyRoom.bootRoomManifoldCupboard.door.knobStem';
+  knobStem.userData.lodTier = 'high';
+  knobStem.userData.lodMaxDistance = 12;
   knobStem.rotation.z = Math.PI / 2;
   knobStem.position.set(-0.022, 0.02, doorW * 0.5 - dStileW * 0.5);
   doorLeaf.add(knobStem);
@@ -1846,6 +1994,7 @@ export function buildBootRoomHeatingManifold(
     new THREE.SphereGeometry(0.013, 14, 12),
     brassMat
   );
+  knobHead.name = 'familyRoom.bootRoomManifoldCupboard.door.knobHead';
   knobHead.scale.set(0.72, 1, 1);
   knobHead.position.set(-0.032, 0.02, doorW * 0.5 - dStileW * 0.5);
   knobHead.castShadow = true;
