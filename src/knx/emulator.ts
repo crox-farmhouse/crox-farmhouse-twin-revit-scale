@@ -16,6 +16,7 @@ import type {
 import type { RoomZoneId } from '../types/topology.ts';
 import { compileEEPROMBytes } from './addressing.ts';
 import { CIRCUITS, DEFAULT_SCENES, ROOM_AUTOMATION_CONFIG, SCENE_CIRCUIT_IDS } from './constants.ts';
+import { CROX_ZONE_SCENES } from '../homes/crox-farmhouse/hud-model.ts';
 import { RoomAutomation, type RoomMotionSensorConfig } from './room-automation.ts';
 import {
   buildTP1FrameHex,
@@ -89,6 +90,7 @@ export class KNXPropertyBusController {
   }));
 
   private activeSceneIndex = 0;
+  private readonly zoneSceneIndex = new Map<RoomZoneId, number>();
   private lastActiveSceneIndex = 0;
   private utilitySwitchOn = true;
   private lastUtilityLevel = 100;
@@ -131,6 +133,18 @@ export class KNXPropertyBusController {
     entranceHallUplights: 60,
     courtyardFestoons: 85,
     reclaimedLampPost: 90,
+    gymSpotsAndBattens: 85,
+    gymWallAndCoveLights: 80,
+    garageHighBayLights: 85,
+    garageBenchAndShower: 80,
+    barnTrussAndSimHalo: 85,
+    barnBarsAndLamps5A: 80,
+    mezzanineSconcesAndAmbient: 75,
+    mezzanineLamps5A: 85,
+    stableOfficeSpotlights: 85,
+    stableOfficeWallsAndLamps5A: 80,
+    stableSuiteDownlights: 75,
+    stableSuiteLamps5A: 85,
   };
   private readonly liveLevels: CircuitLevels = {
     ...this.scenes[0]!.levels,
@@ -156,6 +170,18 @@ export class KNXPropertyBusController {
     entranceHallUplights: 60,
     courtyardFestoons: 85,
     reclaimedLampPost: 90,
+    gymSpotsAndBattens: 85,
+    gymWallAndCoveLights: 80,
+    garageHighBayLights: 85,
+    garageBenchAndShower: 80,
+    barnTrussAndSimHalo: 85,
+    barnBarsAndLamps5A: 80,
+    mezzanineSconcesAndAmbient: 75,
+    mezzanineLamps5A: 85,
+    stableOfficeSpotlights: 85,
+    stableOfficeWallsAndLamps5A: 80,
+    stableSuiteDownlights: 75,
+    stableSuiteLamps5A: 85,
   };
 
   /** Night-walk dim and PIR-driven circuits for rooms other than the kitchen / utility. */
@@ -990,6 +1016,130 @@ export class KNXPropertyBusController {
   }
 
   /**
+   * Universal Single-Toggle KNX Zone Switch — Short Press (`< 600ms`):
+   * - Cycles through the zone's 3 programmed scenes (`S1` -> `S2` -> `S3` -> `S1` on `▲` Up,
+   *   or `S3` -> `S2` -> `S1` -> `S3` on `▼` Down).
+   * - If all lights in the zone are currently OFF (`0%`), wakes the zone into `S1` (or `S3` on `▼`).
+   */
+  public handleZoneSwitchShortPress(
+    zoneId: RoomZoneId,
+    direction: 'up' | 'down' = 'up',
+    sourcePa = '2.1.10',
+    switchLocation?: string
+  ): void {
+    if (zoneId === 'kitchen') {
+      this.handleSwitchShortPress(direction, switchLocation);
+      return;
+    }
+    if (zoneId === 'utility') {
+      this.handleUtilitySwitchToggle(sourcePa);
+      return;
+    }
+    if (zoneId === 'courtyard') {
+      this.handleCourtyardSwitchShortPress(direction, sourcePa);
+      return;
+    }
+
+    const scenes = CROX_ZONE_SCENES[zoneId];
+    const zoneCircuits = CIRCUITS.filter((c) => c.zoneId === zoneId);
+    if (!scenes || scenes.length === 0 || zoneCircuits.length === 0) return;
+
+    const anyOn = zoneCircuits.some((c) => (this.targetLevels[c.id] ?? 0) > 0);
+    let nextIdx = 0;
+    if (!anyOn) {
+      nextIdx = direction === 'down' ? scenes.length - 1 : 0;
+    } else {
+      const curIdx = this.zoneSceneIndex.get(zoneId) ?? 0;
+      nextIdx =
+        direction === 'up'
+          ? (curIdx + 1) % scenes.length
+          : (curIdx - 1 + scenes.length) % scenes.length;
+    }
+
+    this.zoneSceneIndex.set(zoneId, nextIdx);
+    const chosenScene = scenes[nextIdx]!;
+    for (const [cid, val] of Object.entries(chosenScene.levels)) {
+      if (typeof val === 'number') {
+        this.targetLevels[cid as CircuitId] = Math.max(0, Math.min(100, Math.round(val)));
+      }
+    }
+
+    const locPrefix = switchLocation
+      ? `Corston (${switchLocation} ${direction === 'up' ? '▲' : '▼'}) → `
+      : `Zone Switch (${zoneId} ${direction === 'up' ? '▲' : '▼'}) → `;
+    const dstGa = zoneId.startsWith('outbuilding') ? '3/0/1' : '1/0/1';
+
+    this.emitTelegram({
+      src: sourcePa,
+      dst: dstGa,
+      isGroup: true,
+      apci: 'A_GroupValue_Write',
+      dpt: '17.001',
+      summary: `${locPrefix}Recall ${chosenScene.label}`,
+      payloadBytes: encodeDpt17Scene(nextIdx),
+    });
+
+    this.notify({ type: 'stateChange', reason: 'sceneRecall' });
+  }
+
+  /**
+   * Universal Single-Toggle KNX Zone Switch — Long Press Hold (`>= 600ms`):
+   * - Holding UP (`▲`) or Holding DOWN (`▼`) switches all lighting circuits in the zone OFF (`0%`).
+   */
+  public handleZoneSwitchLongPressHold(
+    zoneId: RoomZoneId,
+    direction: 'up' | 'down' = 'down',
+    sourcePa = '2.1.10',
+    switchLocation?: string
+  ): void {
+    if (zoneId === 'kitchen') {
+      this.handleSwitchLongPressHoldDown(switchLocation, sourcePa);
+      return;
+    }
+    if (zoneId === 'utility') {
+      if (this.utilitySwitchOn) {
+        this.handleUtilitySwitchToggle(sourcePa);
+      }
+      return;
+    }
+    if (zoneId === 'courtyard') {
+      this.handleCourtyardSwitchLongPressHoldDown(sourcePa);
+      return;
+    }
+
+    const zoneCircuits = CIRCUITS.filter((c) => c.zoneId === zoneId);
+    for (const c of zoneCircuits) {
+      this.targetLevels[c.id] = 0;
+      const nightRule = this.roomAutomation.getNightWalkRule(c.id);
+      if (nightRule) {
+        this.roomAutomation.noteManualLevel(c.id, 0);
+        this.targetLevels[c.id] = this.roomAutomation.offStateLevel(
+          nightRule,
+          this.isBelowLuxThreshold()
+        );
+      }
+    }
+
+    const locPrefix = switchLocation
+      ? `Corston (${switchLocation} ${direction === 'up' ? '▲' : '▼'} Hold ≥600ms)`
+      : `Zone Switch (${zoneId} ${direction === 'up' ? '▲' : '▼'} Hold ≥600ms)`;
+    const dstGa = zoneId.startsWith('outbuilding') ? '3/0/0' : '1/0/0';
+
+    this.emitTelegram({
+      src: sourcePa,
+      dst: dstGa,
+      isGroup: true,
+      apci: 'A_GroupValue_Write',
+      dpt: '1.001',
+      summary: `${locPrefix} → All Zone Lights OFF (0%)`,
+      payloadBytes: encodeDpt1(false),
+    });
+
+    this.notify({ type: 'stateChange', reason: 'masterOff' });
+  }
+
+
+  /**
    * Bifold Pier 2-Gang Switch — Gang 2 (PA 1.1.14) controls the Cobbled Courtyard
    * Festoon Lighting (Ch 7, GA 1/2/7) and Reclaimed Lamp Post (Ch 8, GA 1/2/8).
    */
@@ -1425,6 +1575,18 @@ export class KNXPropertyBusController {
       wineCellarLeds: '1.1.25',
       cloakroomWcLights: '1.1.26',
       entranceHallUplights: '1.1.19',
+      gymSpotsAndBattens: '2.1.10',
+      gymWallAndCoveLights: '2.1.10',
+      garageHighBayLights: '2.1.11',
+      garageBenchAndShower: '2.1.11',
+      barnTrussAndSimHalo: '2.1.12',
+      barnBarsAndLamps5A: '2.1.12',
+      mezzanineSconcesAndAmbient: '2.1.13',
+      mezzanineLamps5A: '2.1.13',
+      stableOfficeSpotlights: '2.1.14',
+      stableOfficeWallsAndLamps5A: '2.1.14',
+      stableSuiteDownlights: '2.1.15',
+      stableSuiteLamps5A: '2.1.15',
     };
 
     const resolvedPa = sourcePa ?? defaultSwitchPaMap[circuitId] ?? '1.1.10';

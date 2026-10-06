@@ -13,6 +13,7 @@ import {
   buildOutbuildingTrussesAndSoffits,
 } from './outbuilding-shell/outbuilding-trusses-and-roofs.ts';
 import { buildMezzanineAndStableUpperShell } from './outbuilding-shell/mezzanine-and-stable-upper-shell.ts';
+import { buildOutbuildingMepAndKnx } from './outbuilding-shell/outbuilding-mep-and-knx.ts';
 
 export {
   OUTBUILDING_ORIGIN_X,
@@ -31,4 +32,5 @@ export function buildOutbuildingsAndBarns(
   buildOutbuildingTrussesAndSoffits(shellCtx);
   buildMezzanineAndStableUpperShell(shellCtx);
   buildEastRangePitchedRoofs(shellCtx);
+  buildOutbuildingMepAndKnx(shellCtx);
 }

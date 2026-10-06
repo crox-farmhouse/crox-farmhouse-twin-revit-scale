@@ -129,6 +129,9 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   private lastDoorShadowUpdateMs = 0;
   private doorsWereAnimating = false;
   private onSurfaceDoubleClick: ((point: THREE.Vector3) => void) | null = null;
+  private onObjectHoldInteraction: ((data: InteractiveUserData) => void) | null = null;
+  private holdTimerId: number | null = null;
+  private holdTriggered = false;
   private onUsdPrimPick: ((info: UsdIndexedPrimInfo) => void) | null = null;
 
   public constructor(
@@ -874,6 +877,10 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     this.onSurfaceDoubleClick = cb;
   }
 
+  public setOnObjectHoldInteraction(cb: ((data: InteractiveUserData) => void) | null): void {
+    this.onObjectHoldInteraction = cb;
+  }
+
   private pickVisibleSurfacePoint(clientX: number, clientY: number): THREE.Vector3 | null {
     const raycaster = this.setRayFromClient(clientX, clientY);
     const hits = raycaster.intersectObjects(this.scene.children, true);
@@ -1063,13 +1070,53 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     this.needsRender = true;
   }
 
+  private clearHoldTimer(): void {
+    if (this.holdTimerId !== null) {
+      window.clearTimeout(this.holdTimerId);
+      this.holdTimerId = null;
+    }
+  }
+
   private setupInteractionEvents(): void {
     this.canvas.addEventListener('pointerdown', (e: PointerEvent) => {
       this.pointerDownPos = { x: e.clientX, y: e.clientY };
+      this.holdTriggered = false;
+      this.clearHoldTimer();
+      if (e.button !== 0 || this.annotations.isAnnotationMode() || e.shiftKey) return;
+
+      const raycaster = this.setRayFromClient(e.clientX, e.clientY);
+      const hits = raycaster.intersectObjects(this.content.interactiveMeshes, false);
+      const firstHit = hits.find((hit) => isObjectVisibleInHierarchy(hit.object));
+      if (!firstHit) return;
+      const data = firstHit.object.userData as InteractiveUserData;
+      if (
+        data.isKNXSwitch ||
+        data.zoneSceneSwitchZoneId ||
+        data.isCourtyardSwitch ||
+        data.isUtilitySwitch
+      ) {
+        this.holdTimerId = window.setTimeout(() => {
+          this.holdTimerId = null;
+          this.holdTriggered = true;
+          if (this.onObjectHoldInteraction) {
+            this.onObjectHoldInteraction(data);
+            this.needsRender = true;
+          }
+        }, 600);
+      }
     });
 
     let lastHoverRaycastMs = 0;
     this.canvas.addEventListener('pointermove', (e: PointerEvent) => {
+      if (this.holdTimerId !== null) {
+        const moveDist = Math.hypot(
+          e.clientX - this.pointerDownPos.x,
+          e.clientY - this.pointerDownPos.y
+        );
+        if (moveDist > 6) {
+          this.clearHoldTimer();
+        }
+      }
       if (this.walkthrough.isActive() || this.annotations.isGizmoDragging()) return;
 
       // Live 3D measurement rubber-band line preview when waiting for Point B
@@ -1102,6 +1149,11 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     });
 
     this.canvas.addEventListener('pointerup', (e: PointerEvent) => {
+      this.clearHoldTimer();
+      if (this.holdTriggered) {
+        this.holdTriggered = false;
+        return;
+      }
       if (e.button !== 0) return;
       if (this.annotations.isGizmoBusy()) return;
 

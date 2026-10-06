@@ -33,7 +33,13 @@ export type RoomZoneId =
   | 'snug'
   | 'masterBedroom'
   | 'annexLiving'
-  | 'annexBedroom';
+  | 'annexBedroom'
+  | 'outbuildingGym'
+  | 'outbuildingGarage'
+  | 'outbuildingBarn'
+  | 'outbuildingMezzanine'
+  | 'outbuildingStableOffice'
+  | 'outbuildingStableSuite';
 
 export interface RoomBoundingBox {
   readonly minX: number;

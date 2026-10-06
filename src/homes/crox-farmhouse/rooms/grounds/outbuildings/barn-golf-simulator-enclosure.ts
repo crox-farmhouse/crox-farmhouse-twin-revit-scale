@@ -1649,36 +1649,86 @@ export function buildBarnGolfSimulatorEnclosure(
     foldingMatGroup.add(ball);
   }
 
-  // 4. 4K Short-Throw Laser Projector & TrackMan iO Launch Monitor
+  // 4. Real-Spec BenQ LK936ST 4K UHD Laser Golf Projector & Rear-Zone Overhead Launch Monitor
+  //    Positioned BEHIND the golfer/tee (`hittingX = +1.12m`) so neither device can ever be struck by a golf ball:
+  //    - Impact Screen (`screenMesh`) is at `x = -2.02m` (`2.77m` active height).
+  //    - Teed Ball (`teedBall`) is at `x = +1.12m` (`3.14m` / 10'3.6" ball-to-screen distance).
+  //    - Overhead Launch Monitor Sensor (`trackmanIO`) is mounted at `x = +1.52m, y = 2.98m`
+  //      (`0.40m` / 16" BEHIND the teed ball, tilted forward `-x` toward the hitting strip, and `0.18m` above
+  //       the projector's optical beam so it never casts a shadow on the screen).
+  //    - BenQ LK936ST 4K Laser Projector (`5,100 ANSI Lumens`, `0.81–0.89:1` short-throw zoom lens,
+  //      `351mm D × 166mm H × 416mm W` chassis) is mounted at `x = +2.03m, y = 2.80m`
+  //      (`0.91m` / 3'0" BEHIND the teed ball, giving an exact `4.05m` / 13'3.5" throw distance to the `-2.02m` screen,
+  //       matching `TR = 0.822:1` on the native 16:9 DMD array to fill the full `2.77m` screen height!).
+  const barnCeilEaveWorldY = 2.92;
+  const barnCeilRidgeWorldY = 2.92 + 2.575 * ((4.84 - 3.24) / 3.055); // 4.2686m
+  const roofSlopeTan = (barnCeilRidgeWorldY - barnCeilEaveWorldY) / 2.575;
+  const roofSlopeAngle = Math.atan(roofSlopeTan);
+  const vaultedCeilWorldY =
+    barnCeilRidgeWorldY - Math.abs(simCenterV - 2.855) * roofSlopeTan;
+  const vaultedCeilLocalY = vaultedCeilWorldY - barnWestFloorY;
+
+  const projectorY = 2.8;
+  const projectorDropH = Math.max(0.24, vaultedCeilLocalY - projectorY);
+
   const projectorGroup = new THREE.Group();
   projectorGroup.name = 'outbuildings.barn.golfSimulator.projector';
-  projectorGroup.position.set(-1.04, 2.58, 0);
+  projectorGroup.position.set(2.03, projectorY, 0);
   simCeilingGroup.add(projectorGroup);
 
   const dropPole = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.022, 0.022, 0.24, 12),
+    new THREE.CylinderGeometry(0.024, 0.024, projectorDropH, 14),
     projectorBodyMat
   );
   dropPole.name = 'outbuildings.barn.golfSimulator.projector.dropPole';
-  dropPole.position.set(0, 0.12, 0);
+  dropPole.position.set(0, projectorDropH * 0.5, 0);
+  dropPole.castShadow = true;
   projectorGroup.add(dropPole);
 
+  const projectorPoleCollar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.032, 0.032, 0.048, 14),
+    hingeSteelMat
+  );
+  projectorPoleCollar.name = 'outbuildings.barn.golfSimulator.projector.poleCollar';
+  projectorPoleCollar.userData = { lodTier: 'high', lodMaxDistance: 14 };
+  projectorPoleCollar.position.set(0, projectorDropH * 0.45, 0);
+  projectorGroup.add(projectorPoleCollar);
+
   const projectorMountFlange = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.068, 0.068, 0.014, 16),
+    new THREE.CylinderGeometry(0.078, 0.078, 0.016, 18),
     projectorBodyMat
   );
   projectorMountFlange.name = 'outbuildings.barn.golfSimulator.projector.mountFlange';
-  projectorMountFlange.position.set(0, 0.233, 0);
+  projectorMountFlange.position.set(0, projectorDropH - 0.008, 0);
+  projectorMountFlange.rotation.x = simCenterV >= 2.855 ? roofSlopeAngle : -roofSlopeAngle;
   projectorGroup.add(projectorMountFlange);
 
+  // BenQ LK936ST Chassis (`351mm D × 166mm H × 416mm W`, subtle downward pitch + vertical lens shift toward screen)
+  const projTiltZ = 0.08;
   const projectorChassis = new THREE.Mesh(
-    new THREE.BoxGeometry(0.38, 0.14, 0.44),
+    new THREE.BoxGeometry(0.351, 0.166, 0.416),
     projectorBodyMat
   );
   projectorChassis.name = 'outbuildings.barn.golfSimulator.projector.chassis';
-  projectorChassis.rotation.z = 0.18;
+  projectorChassis.rotation.z = projTiltZ;
   projectorChassis.castShadow = true;
   projectorGroup.add(projectorChassis);
+
+  // BenQ LK936ST signature metallic gold-anodized motorized zoom lens ring & recessed barrel
+  const benqGoldRingMat = new THREE.MeshStandardMaterial({
+    color: 0xc89d54,
+    roughness: 0.28,
+    metalness: 0.84,
+  });
+  const projectorGoldRing = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.052, 0.052, 0.038, 20),
+    benqGoldRingMat
+  );
+  projectorGoldRing.name = 'outbuildings.barn.golfSimulator.projector.lensGoldRing';
+  projectorGoldRing.userData = { lodTier: 'high', lodMaxDistance: 16 };
+  projectorGoldRing.rotation.z = Math.PI / 2 + projTiltZ;
+  projectorGoldRing.position.set(-0.178, -0.014, 0.035);
+  projectorGroup.add(projectorGoldRing);
 
   const lensMat = new THREE.MeshStandardMaterial({
     color: 0xe0f7fa,
@@ -1687,41 +1737,49 @@ export function buildBarnGolfSimulatorEnclosure(
     roughness: 0.12,
   });
   const projectorLens = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.044, 0.044, 0.03, 16),
+    new THREE.CylinderGeometry(0.044, 0.044, 0.042, 20),
     lensMat
   );
   projectorLens.name = 'outbuildings.barn.golfSimulator.projector.lens';
-  projectorLens.rotation.z = Math.PI / 2 + 0.18;
-  projectorLens.position.set(-0.195, -0.025, 0);
+  projectorLens.rotation.z = Math.PI / 2 + projTiltZ;
+  projectorLens.position.set(-0.184, -0.015, 0.035);
   projectorGroup.add(projectorLens);
+
+  // Rear-Zone Overhead Launch Monitor (`trackmanIO`) at `x = +1.52m, y = 2.98m` (`0.40m` behind the teed ball!)
+  const tmY = 2.98;
+  const tmDropH = Math.max(0.2, vaultedCeilLocalY - tmY);
 
   const tmGroup = new THREE.Group();
   tmGroup.name = 'outbuildings.barn.golfSimulator.trackmanIO';
-  tmGroup.position.set(-0.52, 2.62, 0);
+  tmGroup.position.set(1.52, tmY, 0);
   simCeilingGroup.add(tmGroup);
 
   const tmDropTube = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.02, 0.02, 0.20, 12),
+    new THREE.CylinderGeometry(0.02, 0.02, tmDropH, 12),
     projectorBodyMat
   );
   tmDropTube.name = 'outbuildings.barn.golfSimulator.trackmanIO.dropTube';
-  tmDropTube.position.set(0, 0.10, 0);
+  tmDropTube.position.set(0, tmDropH * 0.5, 0);
+  tmDropTube.castShadow = true;
   tmGroup.add(tmDropTube);
 
   const tmMountFlange = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.062, 0.062, 0.014, 16),
+    new THREE.CylinderGeometry(0.068, 0.068, 0.014, 16),
     projectorBodyMat
   );
   tmMountFlange.name = 'outbuildings.barn.golfSimulator.trackmanIO.mountFlange';
-  tmMountFlange.position.set(0, 0.193, 0);
+  tmMountFlange.position.set(0, tmDropH - 0.007, 0);
+  tmMountFlange.rotation.x = simCenterV >= 2.855 ? roofSlopeAngle : -roofSlopeAngle;
   tmGroup.add(tmMountFlange);
 
+  // Tilted forward (`+0.26 rad` around Z so `-x,-y` bottom/front cameras look forward at the hitting strip `x = +1.12m`)
+  const tmTiltZ = 0.26;
   const tmCore = new THREE.Mesh(
     new THREE.BoxGeometry(0.26, 0.072, 0.34),
     projectorBodyMat
   );
   tmCore.name = 'outbuildings.barn.golfSimulator.trackmanIO.core';
-  tmCore.rotation.z = -0.18;
+  tmCore.rotation.z = tmTiltZ;
   tmCore.castShadow = true;
   tmGroup.add(tmCore);
 
@@ -1732,9 +1790,9 @@ export function buildBarnGolfSimulatorEnclosure(
       projectorBodyMat
     );
     tmWing.name = `outbuildings.barn.golfSimulator.trackmanIO.wing.${sideLabel}`;
-    tmWing.position.set(0.01, -0.004, sideZ * 0.22);
-    tmWing.rotation.z = -0.18;
-    tmWing.rotation.y = -sideZ * 0.16;
+    tmWing.position.set(-0.01, -0.004, sideZ * 0.22);
+    tmWing.rotation.z = tmTiltZ;
+    tmWing.rotation.y = sideZ * 0.16;
     tmWing.castShadow = true;
     tmGroup.add(tmWing);
 
@@ -1743,7 +1801,8 @@ export function buildBarnGolfSimulatorEnclosure(
       velvetFrameMat
     );
     camGlass.name = `outbuildings.barn.golfSimulator.trackmanIO.cameraLens.${sideLabel}`;
-    camGlass.position.set(0.02, -0.036, sideZ * 0.2);
+    camGlass.rotation.z = tmTiltZ;
+    camGlass.position.set(-0.02, -0.036, sideZ * 0.2);
     tmGroup.add(camGlass);
   }
 
@@ -1753,7 +1812,7 @@ export function buildBarnGolfSimulatorEnclosure(
   );
   tmOrangeAccent.name = 'outbuildings.barn.golfSimulator.trackmanIO.orangeAccent';
   tmOrangeAccent.position.set(0, 0.028, 0);
-  tmOrangeAccent.rotation.z = -0.18;
+  tmOrangeAccent.rotation.z = tmTiltZ;
   tmGroup.add(tmOrangeAccent);
 
   // 5. Illuminated "GOLF SIM" Status Sign & Red Indicator Lights

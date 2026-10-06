@@ -2,7 +2,7 @@ import type { FocusController, FocusState } from '../../engine/focus/focus-contr
 import type { PropertyScene } from '../../engine/scene/property-scene.ts';
 import type { KNXPropertyBusController } from '../../knx/emulator.ts';
 import type { CircuitConfig, CircuitId } from '../../types/knx.ts';
-import type { FloorId } from '../../types/topology.ts';
+import type { FloorId, RoomZoneId } from '../../types/topology.ts';
 import { twinStore } from '../../state/twin-store.ts';
 import type { HomeHudModel, HudFloor, HudRoom, HudRoomScene } from './hud-model.ts';
 
@@ -286,6 +286,28 @@ export class FocusHudController {
     ];
     if (room.scenes && room.scenes.length > 0) {
       children.push(this.buildRoomScenesRow(room, room.scenes));
+      children.push(
+        el('div', 'hud-seg-row hud-focus-actions', [
+          button(
+            'hud-seg-btn',
+            '▲ Tap (Scene +)',
+            () => this.opts.knx.handleZoneSwitchShortPress(room.zoneId, 'up', room.circuits[0]?.actuatorPa === '2.1.20' ? '2.1.10' : '1.1.10', `${room.shortName} Toggle`),
+            `Short-press UP on ${room.shortName} Corston toggle switch: cycle forward through scenes`
+          ),
+          button(
+            'hud-seg-btn',
+            '▼ Tap (Scene -)',
+            () => this.opts.knx.handleZoneSwitchShortPress(room.zoneId, 'down', room.circuits[0]?.actuatorPa === '2.1.20' ? '2.1.10' : '1.1.10', `${room.shortName} Toggle`),
+            `Short-press DOWN on ${room.shortName} Corston toggle switch: cycle backward through scenes`
+          ),
+          button(
+            'hud-seg-btn',
+            'Hold ▲/▼ (All Off)',
+            () => this.opts.knx.handleZoneSwitchLongPressHold(room.zoneId, 'down', room.circuits[0]?.actuatorPa === '2.1.20' ? '2.1.10' : '1.1.10', `${room.shortName} Toggle`),
+            `Long-press hold (≥600ms) on ${room.shortName} Corston toggle switch: switch all zone lights OFF`
+          ),
+        ])
+      );
     }
     if (room.circuits.length > 0) {
       children.push(this.buildLightingActions(room.circuits, room.shortName));
@@ -447,6 +469,29 @@ export class FocusHudController {
         );
       }
     }
+
+    const outbuildingAcUnits: Partial<Record<RoomZoneId, { readonly name: string; readonly model: string; readonly coolTargetC: number }>> = {
+      outbuildingGym: { name: 'Gym High-Wall VRF Fan-Coil', model: 'Daikin Emura FTXJ25A (2.5 kW)', coolTargetC: 18.0 },
+      outbuildingBarn: { name: 'Barn & Golf Sim VRF Fan-Coil', model: 'Daikin Emura FTXJ50A (5.0 kW)', coolTargetC: 19.5 },
+      outbuildingMezzanine: { name: 'Barn Vault Shared VRF Cooling', model: 'Daikin Emura FTXJ50A + Velux Vent', coolTargetC: 20.0 },
+      outbuildingStableOffice: { name: 'Office High-Wall VRF Fan-Coil', model: 'Daikin Emura FTXJ35A (3.5 kW)', coolTargetC: 20.0 },
+      outbuildingStableSuite: { name: 'Guest Suite High-Wall VRF Fan-Coil', model: 'Daikin Emura FTXJ25A (2.5 kW)', coolTargetC: 19.5 },
+    };
+    const acInfo = outbuildingAcUnits[room.zoneId];
+    if (acInfo) {
+      const ufhHeatingActive = Boolean(ufhZone?.heatingOn);
+      rows.push(
+        el('div', 'hud-focus-device', [
+          el('span', `hud-rocker-dot ${ufhHeatingActive ? 'off-state' : 'ufh-blue-dot'}`),
+          el('span', 'hud-focus-device-name', [`${acInfo.name} · KNX 2.1.30`]),
+          el('span', 'hud-focus-device-state', [
+            ufhHeatingActive
+              ? `Standby (UFH Interlock Active)`
+              : `Air-to-Air Cool · ${acInfo.coolTargetC}°C (${acInfo.model})`,
+          ]),
+        ])
+      );
+    }
     return rows;
   }
 
@@ -554,7 +599,7 @@ export class FocusHudController {
   private applyCircuitRowScope(state: FocusState): void {
     const inScope = (c: CircuitConfig): boolean => {
       if (state.level === 'room') return c.zoneId === state.zoneId;
-      if (state.level === 'floor') return c.buildingId === 'mainHouse' && c.floorId === state.floorId;
+      if (state.level === 'floor') return (c.buildingId === 'mainHouse' || c.buildingId === 'annex') && c.floorId === state.floorId;
       return true;
     };
     let visibleCount = 0;

@@ -53,6 +53,7 @@ export interface InteractiveUserData {
   readonly switchPa?: string;
   readonly sensorGa?: string;
   readonly zoneId?: RoomZoneId;
+  readonly zoneSceneSwitchZoneId?: RoomZoneId;
   readonly circuitId?: CircuitId;
   readonly ufhZoneId?: 'ufhZone1' | 'ufhZone2' | 'ufhZone3' | 'ufhZone4';
   readonly isKnxTempSensor?: boolean;

@@ -35,6 +35,20 @@ export type MotionCircuitId = 'wineCellarLeds' | 'cloakroomWcLights';
 /** Room PIR presence sensors handled by the generic room automation. */
 export type RoomMotionSensorId = 'wineCellar' | 'cloakroomWc';
 
+export type OutbuildingCircuitId =
+  | 'gymSpotsAndBattens'
+  | 'gymWallAndCoveLights'
+  | 'garageHighBayLights'
+  | 'garageBenchAndShower'
+  | 'barnTrussAndSimHalo'
+  | 'barnBarsAndLamps5A'
+  | 'mezzanineSconcesAndAmbient'
+  | 'mezzanineLamps5A'
+  | 'stableOfficeSpotlights'
+  | 'stableOfficeWallsAndLamps5A'
+  | 'stableSuiteDownlights'
+  | 'stableSuiteLamps5A';
+
 export type CircuitId =
   | KitchenSceneCircuitId
   | 'utilitySpotlights'
@@ -44,7 +58,8 @@ export type CircuitId =
   | RoomPendantCircuitId
   | MotionCircuitId
   | 'entranceHallUplights'
-  | OutdoorCircuitId;
+  | OutdoorCircuitId
+  | OutbuildingCircuitId;
 
 export type SceneCircuitLevels = Record<KitchenSceneCircuitId, number>;
 export type OutdoorCircuitLevels = Record<OutdoorCircuitId, number>;

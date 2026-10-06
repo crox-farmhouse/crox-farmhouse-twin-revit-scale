@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { CircuitId } from '../../../../../types/knx.ts';
+import { CIRCUITS } from '../../../../../knx/constants.ts';
+import type { RoomZoneId } from '../../../../../types/topology.ts';
 import type {
   CutawayWallDescriptor,
   InteractiveUserData,
@@ -519,6 +521,8 @@ export function buildKitchenAndUtilityMotionSensors(
 
 export interface RoomCorstonToggleSwitchOptions {
   readonly circuitId: CircuitId;
+  readonly zoneSceneSwitchZoneId?: RoomZoneId;
+  readonly customUnitName?: string;
   readonly switchPa: string;
   readonly switchLocation?: string;
   readonly location?: string;
@@ -543,6 +547,8 @@ export function buildRoomCorstonToggleSwitch(
 ): THREE.Group {
   const {
     circuitId,
+    zoneSceneSwitchZoneId,
+    customUnitName,
     switchPa,
     switchLocation,
     location,
@@ -574,7 +580,7 @@ export function buildRoomCorstonToggleSwitch(
   ctx.registerSwitchLedMaterial?.(circuitId, ledMat);
 
   const domainPrefix = circuitId === 'utilitySpotlights' ? 'utility' : 'kitchen';
-  const unitName = `${domainPrefix}.knx.corstonSwitch.${circuitId}_${roomSwitchCounter++}`;
+  const unitName = customUnitName ?? `${domainPrefix}.knx.corstonSwitch.${circuitId}_${roomSwitchCounter++}`;
 
   const unit = buildCorstonSingleToggleUnit(
     unitName,
@@ -587,6 +593,8 @@ export function buildRoomCorstonToggleSwitch(
     ledMat,
     {
       circuitId,
+      zoneSceneSwitchZoneId:
+        zoneSceneSwitchZoneId ?? CIRCUITS.find((c) => c.id === circuitId)?.zoneId,
       switchPa,
       switchLocation: resolvedLocation,
     },

@@ -50,7 +50,14 @@ const hub = new SmartHomeHub(knx);
 const annotationStore = new SceneAnnotationStore();
 
 const property3D = new CroxPropertyScene(canvasEl, (userData) => {
-  if (userData.isKNXSwitch) {
+  if (userData.zoneSceneSwitchZoneId) {
+    knx.handleZoneSwitchShortPress(
+      userData.zoneSceneSwitchZoneId,
+      userData.switchDirection ?? 'up',
+      userData.switchPa ?? '2.1.10',
+      userData.switchLocation
+    );
+  } else if (userData.isKNXSwitch) {
     knx.handleSwitchShortPress(userData.switchDirection ?? 'up', userData.switchLocation);
   } else if (userData.isCourtyardSwitch) {
     knx.handleCourtyardSwitchShortPress(
@@ -90,6 +97,24 @@ const property3D = new CroxPropertyScene(canvasEl, (userData) => {
       userData.switchLocation,
       userData.switchDirection
     );
+  }
+});
+
+
+property3D.setOnObjectHoldInteraction((userData) => {
+  if (userData.zoneSceneSwitchZoneId) {
+    knx.handleZoneSwitchLongPressHold(
+      userData.zoneSceneSwitchZoneId,
+      userData.switchDirection ?? 'down',
+      userData.switchPa ?? '2.1.10',
+      userData.switchLocation
+    );
+  } else if (userData.isKNXSwitch) {
+    knx.handleSwitchLongPressHoldDown(userData.switchLocation, userData.switchPa ?? '1.1.10');
+  } else if (userData.isCourtyardSwitch) {
+    knx.handleCourtyardSwitchLongPressHoldDown(userData.switchPa ?? '1.1.14');
+  } else if (userData.isUtilitySwitch) {
+    knx.handleZoneSwitchLongPressHold('utility', 'down', userData.switchPa ?? '1.1.11', userData.switchLocation);
   }
 });
 

@@ -44,6 +44,18 @@ export const CROX_FARMHOUSE_CIRCUIT_MAX_INTENSITY: Readonly<Record<CircuitId, nu
   diningPendant: 11.5,
   diningPictureLight: 4.5,
   diningFairyLights: 2.5,
+  gymSpotsAndBattens: 8.5,
+  gymWallAndCoveLights: 5.5,
+  garageHighBayLights: 8.5,
+  garageBenchAndShower: 6.5,
+  barnTrussAndSimHalo: 8.0,
+  barnBarsAndLamps5A: 6.5,
+  mezzanineSconcesAndAmbient: 7.0,
+  mezzanineLamps5A: 6.0,
+  stableOfficeSpotlights: 8.0,
+  stableOfficeWallsAndLamps5A: 6.0,
+  stableSuiteDownlights: 7.5,
+  stableSuiteLamps5A: 5.5,
 };
 
 /** Scene profile binding the home-agnostic engine to Crox Farmhouse data. */
