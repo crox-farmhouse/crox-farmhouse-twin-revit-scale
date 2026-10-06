@@ -807,7 +807,7 @@ export function buildBarnGolfSimulatorEnclosure(
   _plasterMat: THREE.Material,
   groundCeilingGroup?: THREE.Group
 ): BarnGolfSimulatorEnclosureHandles {
-  const simCenterV = 3.33; // Centered on v = 1.33m..5.33m (clearW = 4.00m, leaving a 0.96m North corridor v = 0.28..1.24m & clean 98mm South column pier v = 5.33..5.428m!)
+  const simCenterV = 3.379; // Centered on v = 1.330m..5.428m (clearW = 4.098m, spanning 100% of the bay width from the North corridor wall to the South exterior brick wall!)
   const simGroup = new THREE.Group();
   simGroup.name = 'outbuildings.barn.golfSimulator';
   simGroup.position.set(uWallMax, barnWestFloorY, simCenterV);
@@ -818,9 +818,10 @@ export function buildBarnGolfSimulatorEnclosure(
   simCeilingGroup.position.set(uWallMax, barnWestFloorY, simCenterV);
   (groundCeilingGroup ?? groundGroup).add(simCeilingGroup);
 
-  const clearW = 4.00; // 13'1.5" Widescreen enclosure width (v = 1.33m..5.33m)
+  const clearW = 4.098; // Full 4.098m Widescreen enclosure width (v = 1.330m..5.428m right up to the South brick wall!)
   const clearH = 2.85; // 9'4" (2.85m) official TrackMan iO minimum enclosure ceiling height
   const recessDepthU = 2.16;
+  const portalFrameDepthU = 0.20; // u = 15.00m..15.20m occupied by the Matte-Anthracite Steel Portal Frame (`steelPortalFrame`)
 
   // Procedural Upholstered Acoustic Impact Foam micro-suede texture & bevelled cushion bump map
   const foamCanvas = document.createElement('canvas');
@@ -929,56 +930,62 @@ export function buildBarnGolfSimulatorEnclosure(
   });
 
   const wallBoxH = clearH + 0.01;
+  const acousticSpanX = recessDepthU - portalFrameDepthU; // 1.96m (`u = 13.04m .. 15.00m`, stopping flush against the West face of the Steel Portal Frame!)
+  const acousticMidX = -portalFrameDepthU - acousticSpanX * 0.5; // -1.18m
 
-  // Continuous Matte-Obsidian Acoustic Backing Substrate across the Ceiling and Both Side Walls
-  // so ZERO white plaster ever bleeds through the shadow seams between the padded foam cushions!
+  // Continuous Matte-Obsidian Acoustic Backing Substrate across the Ceiling and Both Side Walls (`u = 13.04m .. 15.00m`)
+  // Stopping cleanly at `x = -portalFrameDepthU = -0.20m` so it never collides with `steelPortalFrame` (`u = 15.00..15.20m`)!
   const ceilingFoamSubstrate = new THREE.Mesh(
-    new THREE.BoxGeometry(recessDepthU, 0.018, clearW),
+    new THREE.BoxGeometry(acousticSpanX, 0.018, clearW - 0.004),
     velvetFrameMat
   );
   ceilingFoamSubstrate.name = 'outbuildings.barn.golfSimulator.ceilingFoamSubstrate';
-  ceilingFoamSubstrate.position.set(-recessDepthU * 0.5, clearH - 0.009, 0);
+  ceilingFoamSubstrate.position.set(acousticMidX, clearH - 0.009, 0);
   ceilingFoamSubstrate.receiveShadow = true;
   simGroup.add(ceilingFoamSubstrate);
 
   for (const sideZ of [-1, 1] as const) {
     const sideLabel = sideZ < 0 ? 'north' : 'south';
     const sideFoamSubstrate = new THREE.Mesh(
-      new THREE.BoxGeometry(recessDepthU, clearH, 0.016),
+      new THREE.BoxGeometry(acousticSpanX, clearH - 0.036, 0.014),
       velvetFrameMat
     );
     sideFoamSubstrate.name = `outbuildings.barn.golfSimulator.sideFoamSubstrate.${sideLabel}`;
     sideFoamSubstrate.position.set(
-      -recessDepthU * 0.5,
-      clearH * 0.5,
-      sideZ * (clearW * 0.5 - 0.010)
+      acousticMidX,
+      0.036 + (clearH - 0.036) * 0.5,
+      sideZ * (clearW * 0.5 - 0.008)
     );
     simGroup.add(sideFoamSubstrate);
   }
 
   // 6 Columns × 3 Rows of Bevelled Padded Acoustic Foam Side Panels + 6×4 Grid of Padded Foam Ceiling Panels
-  // Attached directly to `simGroup` so the padded foam ceiling & walls remain a cohesive 3D bay in all views!
+  // Spanning `x = -2.02m` (screen plane) to `x = -0.202m` (flush against the West face of `steelPortalFrame`!)
   const numBaffleCols = 6;
   const numSideRows = 3;
   const numCeilColsZ = 4;
-  const foamDepthX = recessDepthU - 0.14; // Spans x = -2.02m (screen plane) to x = 0.00m (portal)
+  const foamStartX = -recessDepthU + 0.14; // -2.02m
+  const foamEndX = -portalFrameDepthU - 0.002; // -0.202m (2mm shadow gap behind the 200mm steel portal frame!)
+  const foamDepthX = foamEndX - foamStartX; // 1.818m
+  const foamCenterX = (foamStartX + foamEndX) * 0.5;
   const baffleColW = foamDepthX / numBaffleCols;
-  const sideRowH = (clearH - 0.08) / numSideRows;
+  const sideBaffleBotY = 0.056; // Starts above the 53mm raised sliding mat top so the full-width mat glides underneath!
+  const sideRowH = (clearH - sideBaffleBotY - 0.044) / numSideRows;
   const ceilTileW = (clearW - 0.10) / numCeilColsZ;
 
   for (let c = 0; c < numBaffleCols; c++) {
-    const bx = -recessDepthU + 0.14 + (c + 0.5) * baffleColW;
+    const bx = foamStartX + (c + 0.5) * baffleColW;
 
     for (const sideZ of [-1, 1] as const) {
       const sideLabel = sideZ < 0 ? 'north' : 'south';
       for (let r = 0; r < numSideRows; r++) {
-        const by = 0.04 + (r + 0.5) * sideRowH;
+        const by = sideBaffleBotY + (r + 0.5) * sideRowH;
         const sideBaffle = new THREE.Mesh(
-          new THREE.BoxGeometry(baffleColW - 0.01, sideRowH - 0.01, 0.052),
+          new THREE.BoxGeometry(baffleColW - 0.01, sideRowH - 0.01, 0.050),
           acousticBaffleMat
         );
         sideBaffle.name = `outbuildings.barn.golfSimulator.sideBaffle.${sideLabel}.${c + 1}.${r + 1}`;
-        sideBaffle.position.set(bx, by, sideZ * (clearW * 0.5 - 0.032));
+        sideBaffle.position.set(bx, by, sideZ * (clearW * 0.5 - 0.033));
         sideBaffle.castShadow = true;
         sideBaffle.receiveShadow = true;
         simGroup.add(sideBaffle);
@@ -999,65 +1006,67 @@ export function buildBarnGolfSimulatorEnclosure(
     }
   }
 
-  // Upholstered Corner Foam Bolsters along Top-North, Top-South, Bottom-North & Bottom-South junctions
+  // Upholstered Corner Foam Bolsters along Top-North, Top-South, Bottom-North & Bottom-South junctions (`x = -2.02m .. -0.202m`)
   for (const sideZ of [-1, 1] as const) {
     const sideLabel = sideZ < 0 ? 'north' : 'south';
     const topBolster = new THREE.Mesh(
-      new THREE.BoxGeometry(foamDepthX, 0.058, 0.058),
+      new THREE.BoxGeometry(foamDepthX, 0.056, 0.056),
       velvetFrameMat
     );
     topBolster.name = `outbuildings.barn.golfSimulator.cornerBolster.top.${sideLabel}`;
     topBolster.position.set(
-      -recessDepthU + 0.14 + foamDepthX * 0.5,
-      clearH - 0.029,
-      sideZ * (clearW * 0.5 - 0.029)
+      foamCenterX,
+      clearH - 0.028,
+      sideZ * (clearW * 0.5 - 0.030)
     );
     simGroup.add(topBolster);
 
     const bottomBolster = new THREE.Mesh(
-      new THREE.BoxGeometry(foamDepthX, 0.040, 0.056),
+      new THREE.BoxGeometry(foamDepthX, 0.022, 0.054),
       velvetFrameMat
     );
     bottomBolster.name = `outbuildings.barn.golfSimulator.cornerBolster.bottom.${sideLabel}`;
     bottomBolster.position.set(
-      -recessDepthU + 0.14 + foamDepthX * 0.5,
-      0.054,
+      foamCenterX,
+      0.045,
       sideZ * (clearW * 0.5 - 0.029)
     );
     simGroup.add(bottomBolster);
   }
 
-  const frameTrimW = 0.058;
-  const portalTrimBottomY = 0.036;
+  // Recessed Black Velvet Shadow-Gap Liner (`portalTrim`) neatly tucked at `x = -0.201m` (`u = 14.999m`)
+  // between the acoustic foam baffles and the Matte-Anthracite Steel Portal Frame (`u = 15.00..15.20m`) — zero collision!
+  const frameTrimW = 0.056;
+  const portalTrimBottomY = 0.054;
   const portalTrimH = clearH - portalTrimBottomY;
   for (const sideZ of [-1, 1] as const) {
     const sideTrim = new THREE.Mesh(
-      new THREE.BoxGeometry(0.068, portalTrimH, frameTrimW),
+      new THREE.BoxGeometry(0.016, portalTrimH, frameTrimW),
       velvetFrameMat
     );
     sideTrim.name = `outbuildings.barn.golfSimulator.portalTrim.${sideZ < 0 ? 'north' : 'south'}`;
     sideTrim.position.set(
-      -0.044,
+      -portalFrameDepthU - 0.008,
       portalTrimBottomY + portalTrimH * 0.5,
-      sideZ * (clearW * 0.5 - frameTrimW * 0.5)
+      sideZ * (clearW * 0.5 - frameTrimW * 0.5 - 0.002)
     );
     simGroup.add(sideTrim);
   }
   const topTrim = new THREE.Mesh(
-    new THREE.BoxGeometry(0.068, frameTrimW, clearW),
+    new THREE.BoxGeometry(0.016, frameTrimW, clearW - 0.008),
     velvetFrameMat
   );
   topTrim.name = 'outbuildings.barn.golfSimulator.portalTrim.top';
-  topTrim.position.set(-0.044, clearH - frameTrimW * 0.5, 0);
+  topTrim.position.set(-portalFrameDepthU - 0.008, clearH - frameTrimW * 0.5, 0);
   simGroup.add(topTrim);
 
   // Issue #1 ("add an LED ring around the inside" at `[-8.083, 0.197, 16.157]`, `sideBaffle.north.4.1`):
   // Recessed Architectural Warm-White (3000K) LED Halo Rings (`outbuildings.barn.golfSimulator.ledRing`)
   // framing the interior perimeter of the simulator bay:
-  //   1. Mid-Bay Recessed Perimeter LED Ring (`x = -1.01m`, recessed into the central acoustic baffle channel
-  //      right at `sideBaffle.*.4.*`, running up the North wall, across the ceiling, and down the South wall + flush floor edge),
-  //   2. Inner Portal Perimeter LED Ring (`x = -0.072m`, framing the inside of the front portal opening),
-  //   3. Upper Corner Cove LED Strips (`x = -1.96m .. -0.072m`) along the North & South top bolster shadow gaps.
+  //   1. Mid-Bay Recessed Perimeter LED Ring (`x = foamCenterX`, recessed into the central acoustic baffle channel
+  //      between col 3 & col 4, running up the North wall, across the ceiling, and down the South wall),
+  //   2. Inner Portal Perimeter LED Ring (`x = -0.208m`, framing the inside of the steel portal opening),
+  //   3. Upper Corner Cove LED Strips (`x = -2.00m .. -0.208m`) along the North & South top bolster shadow gaps.
   const ledRingGroup = new THREE.Group();
   ledRingGroup.name = 'outbuildings.barn.golfSimulator.ledRing';
   simGroup.add(ledRingGroup);
@@ -1084,17 +1093,17 @@ export function buildBarnGolfSimulatorEnclosure(
   }> = [
     {
       id: 'midBay',
-      ringX: -recessDepthU + 0.14 + foamDepthX * 0.5, // -0.94m (exact central baffle seam between col 3 & col 4!)
+      ringX: foamCenterX,
       wallZ: clearW * 0.5 - 0.056,
       topY: clearH - 0.060,
-      botY: 0.040,
+      botY: 0.056,
     },
     {
       id: 'portalInner',
-      ringX: -0.070,
-      wallZ: clearW * 0.5 - 0.064,
-      topY: clearH - 0.068,
-      botY: 0.040,
+      ringX: -portalFrameDepthU - 0.010,
+      wallZ: clearW * 0.5 - 0.060,
+      topY: clearH - 0.062,
+      botY: 0.056,
     },
   ];
 
@@ -1142,10 +1151,10 @@ export function buildBarnGolfSimulatorEnclosure(
 
   }
 
-  // Longitudinal Upper Ceiling Cove LED Strips connecting the Screen frame (`x = -1.98m`) to the Portal (`x = -0.07m`)
+  // Longitudinal Upper Ceiling Cove LED Strips connecting the Screen frame (`x = -2.00m`) to the Portal (`x = -0.21m`)
   // (No floor-level LED strips per user request!)
-  const coveSpanX = (-0.070) - (-recessDepthU + 0.16);
-  const coveMidX = ((-0.070) + (-recessDepthU + 0.16)) * 0.5;
+  const coveSpanX = (-portalFrameDepthU - 0.010) - (-recessDepthU + 0.16);
+  const coveMidX = ((-portalFrameDepthU - 0.010) + (-recessDepthU + 0.16)) * 0.5;
   for (const sideZ of [-1, 1] as const) {
     const sideLabel = sideZ < 0 ? 'north' : 'south';
     const upperCove = new THREE.Mesh(
@@ -1157,10 +1166,10 @@ export function buildBarnGolfSimulatorEnclosure(
     ledRingGroup.add(upperCove);
   }
 
-  // True 16:10 Widescreen Active Impact Screen (`3.95m W × 2.47m H = 1.599:1 = 16:10`)
+  // True 16:10 Widescreen Active Impact Screen (`3.998m W × 2.47m H`)
   // with a 300mm Padded Acoustic Foam Upper Pelmet (`y = 2.55m..2.85m`) & Bottom Velvet Bolster (`y = 0..0.04m`)!
-  const screenW = clearW - 0.1; // 3.95m (12'11.5")
-  const screenH = 2.47; // 2.47m (8'1.2" -> 3.95 / 2.47 = 1.60:1 = 16:10 Widescreen!)
+  const screenW = clearW - 0.1; // 3.998m
+  const screenH = 2.47; // 2.47m
   const screenBottomY = 0.04;
   const screenCenterY = screenBottomY + screenH * 0.5; // 1.275m
   const screenTopY = screenBottomY + screenH; // 2.51m
@@ -1220,16 +1229,15 @@ export function buildBarnGolfSimulatorEnclosure(
   }
 
   // ===========================================================================
-  // Issue #1: Slim 25mm x 15mm x 3mm Low-Profile Aluminium Channel Tracks (`z = ±1.05m`),
-  //           Underside Polyurethane Rollers & Small Subtle Cam-Lift Lever Behind the Hitting Area
-  // ===========================================================================
   // Issue #1 ("Mat isn't using the full width of the bay" at `[-8.042, -0.653, 20.21]`):
-  // - Fixed Inside Mat (`rearSurround*` & `rearFairway*`) spans the FULL wall-to-wall width of the bay (`rearFullW = clearW - 0.024 = 3.976m`)
-  //   right up to the North & South side foam substrates (`z = ±1.988m`), leaving ZERO bare floor gap!
-  // - Sliding Front Stance Mat (`frontSurroundBase` & `frontFairwayTurf`) spans `deckOuterW = clearW - 0.118 = 3.882m`
-  //   (`fullSlidingTurfW = 3.868m`), filling 100% of the clear width between the 58mm side acoustic baffles (`z = ±1.942m`)!
-  const deckOuterW = clearW - 0.118; // 3.882m full clear width between the North & South side acoustic baffles!
-  const rearFullW = clearW - 0.024;  // 3.976m wall-to-wall inside bay width under the side bolsters
+  // - The Golf Simulator bay now spans the FULL 4.098m width (`v = 1.330m .. 5.428m`) right up to the South brick wall!
+  // - Fixed Inside Mat (`rearSurround*` & `rearFairway*`) spans `rearFullW = clearW - 0.008 = 4.090m` (`v = 1.334m .. 5.424m`),
+  //   running wall-to-wall underneath the 58mm side acoustic baffles & steel portal jamb columns with ZERO floor gap!
+  // - Sliding Front Stance Mat (`frontSurroundBase` & `frontFairwayTurf`) spans `deckOuterW = clearW - 0.020 = 4.078m`
+  //   (`fullSlidingTurfW = 4.074m`, `v = 1.342m .. 5.416m`), filling 100% of the bay width!
+  // ===========================================================================
+  const deckOuterW = clearW - 0.020; // 4.078m full bay width (slides cleanly under the y >= 0.056m side baffles!)
+  const rearFullW = clearW - 0.008;  // 4.090m wall-to-wall inside bay width (`v = 1.334m .. 5.424m`)
   const trackZPositions = [-1.05, 1.05] as const; // North (`z = -1.05m`) & South (`z = +1.05m`) slim 25mm channels
   const channelOuterW = 0.025; // 25.4mm (1") slim off-the-shelf Aluminium Channel width
   const channelOuterH = 0.015; // 15.9mm (5/8") low-profile channel height
@@ -1248,8 +1256,8 @@ export function buildBarnGolfSimulatorEnclosure(
   const outsideTrackEndX = turfEndX; // +1.962m (ends flush with the rear edge of the sliding mat!)
 
   const centerStripW = (Math.abs(trackZPositions[0]) - trackSlotW * 0.5) * 2; // 2.073m (`z = -1.0365..+1.0365m`)
-  const outerWingW = rearFullW * 0.5 - (Math.abs(trackZPositions[1]) + trackSlotW * 0.5); // 0.9245m (reaches `z = ±1.988m` wall-to-wall!)
-  const outerWingCenterZ = Math.abs(trackZPositions[1]) + trackSlotW * 0.5 + outerWingW * 0.5; // 1.5258m
+  const outerWingW = rearFullW * 0.5 - (Math.abs(trackZPositions[1]) + trackSlotW * 0.5); // 0.9815m (reaches `z = ±2.045m` wall-to-wall!)
+  const outerWingCenterZ = Math.abs(trackZPositions[1]) + trackSlotW * 0.5 + outerWingW * 0.5; // 1.5543m
 
   // 1. Fixed Inside Putting Mat (`rearFairwayTurf`, `x = -2.00m .. -0.002m`, `yTop = 0.034m`)
   //    Split around two slim 27mm slots at `z = ±1.05m` so the 2 Inside Tracks run subtly THROUGH the inside mat!
@@ -1263,7 +1271,7 @@ export function buildBarnGolfSimulatorEnclosure(
   simGroup.add(rearSurroundCenter);
 
   const rearFairwayTurf = new THREE.Mesh(
-    new THREE.BoxGeometry(rearLenX - 0.016, 0.034, centerStripW),
+    new THREE.BoxGeometry(rearLenX - 0.008, 0.034, centerStripW),
     fairwayTurfMat
   );
   rearFairwayTurf.name = 'outbuildings.barn.golfSimulator.turfMat.rearFixed';
@@ -1274,7 +1282,7 @@ export function buildBarnGolfSimulatorEnclosure(
   for (const sideSign of [-1, 1] as const) {
     const sideTag = sideSign < 0 ? 'northWing' : 'southWing';
     const rearWingSurround = new THREE.Mesh(
-      new THREE.BoxGeometry(rearLenX, 0.028, outerWingW + 0.014),
+      new THREE.BoxGeometry(rearLenX, 0.028, outerWingW + 0.002),
       stanceSurroundMat
     );
     rearWingSurround.name = `outbuildings.barn.golfSimulator.turfMat.rearSurround.${sideTag}`;
@@ -1283,7 +1291,7 @@ export function buildBarnGolfSimulatorEnclosure(
     simGroup.add(rearWingSurround);
 
     const rearWingTurf = new THREE.Mesh(
-      new THREE.BoxGeometry(rearLenX - 0.016, 0.034, outerWingW),
+      new THREE.BoxGeometry(rearLenX - 0.008, 0.034, outerWingW),
       fairwayTurfMat
     );
     rearWingTurf.name = `outbuildings.barn.golfSimulator.turfMat.rearFixed.${sideTag}`;
@@ -1523,7 +1531,7 @@ export function buildBarnGolfSimulatorEnclosure(
   foldingMatGroup.position.set(frontCenterX, 0.017, 0);
   simGroup.add(foldingMatGroup);
 
-  const fullSlidingTurfW = deckOuterW - 0.014; // 3.868m full clear width between side baffles
+  const fullSlidingTurfW = deckOuterW - 0.004; // 4.074m full wall-to-wall bay width
 
   const frontSurroundBase = new THREE.Mesh(
     new THREE.BoxGeometry(frontLenX, 0.028, deckOuterW),

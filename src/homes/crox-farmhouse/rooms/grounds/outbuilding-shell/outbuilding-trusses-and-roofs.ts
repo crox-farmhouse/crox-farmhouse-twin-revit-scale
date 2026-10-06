@@ -287,13 +287,13 @@ export function buildOutbuildingTrussesAndSoffits(shellCtx: OutbuildingShellCont
       ceilEaveY: westRangeCeilEaveY,
       ceilRidgeY: westRangeCeilRidgeY,
     },
-    // Bay 3: Store / Barn Knock-Through Line (`u = 15.08m` — Issue #1 Structural Engineer Pass:
+    // Bay 3: Store / Barn Knock-Through Line (`u = 15.10m` — Issue #1 & #3 Structural Engineer Pass:
     // Principal Weathered-Oak King-Post Roof Truss seated directly on the full-span `203×203×46 UC`
     // Structural Steel Goalpost Portal Frame at `y = 2.72m`, carrying the Store & Barn ridge beams and purlins
-    // with lightweight plasterboard stud infill and zero high-level brickwork!)
+    // under a continuous vaulted plasterboard ceiling with zero clipping!)
     {
       id: 'storeBarn',
-      uCenter: uBarnStart + 0.13,
+      uCenter: uBarnStart + 0.14,
       baseY: barnLowerFloorY,
       tieBottomY: barnUpperTopY - 0.2,
       ceilEaveY: barnCeilEaveY,
@@ -524,7 +524,7 @@ export function buildOutbuildingTrussesAndSoffits(shellCtx: OutbuildingShellCont
     //    2 Architectural Uplight Spotlights per truss (`sz = -1.18m` and `+1.18m`, one on each side of the king-post),
     //    seated ON TOP of the oak tie-beam (`y = tieTopY`) and angled upward into the rafters / vaulted ceiling!
     const spotZPositions = [-1.18, 1.18] as const;
-    const spotOffsetX = bay.id === 'storeBarn' ? 0.065 : 0; // On storeBarn truss, place uplights on the Barn (+x) side of the stud infill wall
+    const spotOffsetX = 0;
     for (let sIdx = 0; sIdx < spotZPositions.length; sIdx++) {
       const sz = spotZPositions[sIdx];
       const aimSignZ = sz < 0 ? -1 : 1;
@@ -600,8 +600,8 @@ export function buildOutbuildingTrussesAndSoffits(shellCtx: OutbuildingShellCont
   for (const [u0, u1, tieBottomY, ceilRidgeY] of [
     [wallT, uGymEnd, northWestWallTopY, westRangeCeilRidgeY],
     [uGymEnd + partT, uGarageEnd, northWestWallTopY, westRangeCeilRidgeY],
-    [uStoreStart + 0.24, uBarnStart + 0.03, barnUpperTopY - 0.2, barnCeilRidgeY],
-    [uBarnStart + 0.21, uBarnEnd - partT, barnUpperTopY - 0.2, barnCeilRidgeY],
+    [uStoreStart + 0.24, uBarnStart + 0.05, barnUpperTopY - 0.2, barnCeilRidgeY],
+    [uBarnStart + 0.23, uBarnEnd - partT, barnUpperTopY - 0.2, barnCeilRidgeY],
   ] as const) {
     const spanU = u1 - u0;
     const midU = (u0 + u1) * 0.5;
@@ -697,7 +697,6 @@ export function buildEastRangePitchedRoofs(shellCtx: OutbuildingShellContext): v
     addPitchedOutbuildingRoofSection,
     northWestWallTopY,
     uStoreStart,
-    uBarnStart,
     uBarnEnd,
     uStableStart,
     uStableEnd,
@@ -731,8 +730,7 @@ export function buildEastRangePitchedRoofs(shellCtx: OutbuildingShellContext): v
     0.06,
     0.02,
     [
-      [uStoreStart + 0.24, uBarnStart],
-      [uBarnStart + 0.24, uBarnEnd - partT + 0.02],
+      [uStoreStart + 0.24, uBarnEnd - partT + 0.02],
     ],
     [
       { id: 'storeNorth', uCenter: 13.65, vCenter: 1.12, widthU: 0.84, lengthS: 1.18 },

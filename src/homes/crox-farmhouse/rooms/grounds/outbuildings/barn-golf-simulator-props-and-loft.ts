@@ -255,10 +255,10 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     foldingMatGroup,
   } = enclosure;
 
-  const loftLenU = 2.65; // u = 12.31m .. 14.96m
+  const loftLenU = 2.69; // u = 12.31m .. 15.00m (butts flush against the West face of the 200mm steel header beam at u = 15.00m!)
   const loftSpanV = 4.188; // v = 1.24m .. 5.428m (0.96m North corridor v = 0.28m..1.24m)
-  const localLoftX = 13.635 - uWallMax; // -1.565m
-  const localLoftZ = 3.334 - simCenterV; // -0.021m
+  const localLoftX = 13.655 - uWallMax; // -1.545m
+  const localLoftZ = 3.334 - simCenterV; // -0.045m
   const loftSubfloorH = 0.072; // y = 2.52m .. 2.592m
   const loftOakDeckH = 0.018; // y = 2.592m .. 2.610m (exact top surface y = 2.61m!)
 
