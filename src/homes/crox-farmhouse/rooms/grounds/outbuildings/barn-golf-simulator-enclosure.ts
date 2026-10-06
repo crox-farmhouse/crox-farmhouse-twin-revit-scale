@@ -1465,9 +1465,9 @@ export function buildBarnGolfSimulatorEnclosure(
   }
 
   // Sub-Floor Concealed 16mm Synchronizing Torque Shaft (`y = -0.018m`, recessed in a steel sleeve beneath the limestone tiles
-  // so ZERO crossmember bar is visible across the floor even when the mat rolls into the bay!)
-  const leverX = 1.985; // Behind the hitting area (`x = +1.12m`), right at the rear end of the South Outside Track!
-  const leverZ = Math.abs(trackZPositions[1]) + 0.075; // z = +1.125m (tucked right beside the South Outside Track)
+  // extending to the Barn South Wall so the lever sits right beside the wall and ZERO crossmember bar is visible!)
+  const leverX = 1.94; // Behind the hitting area (`x = +1.12m`), at the rear South-East corner of the mat
+  const leverZ = 5.43 - simCenterV - 0.065; // Tucked 65mm from the Barn South Wall (`v = 5.43m`), completely out of the floor!
   const syncTorqueShaft = new THREE.Mesh(
     new THREE.CylinderGeometry(0.008, 0.008, Math.abs(trackZPositions[0]) + leverZ, 12),
     hingeSteelMat
@@ -1515,7 +1515,7 @@ export function buildBarnGolfSimulatorEnclosure(
   }
 
   // 2D. Ergonomic 245mm (9.6") Over-Centre Cam-Lift Lever (`outbuildings.barn.golfSimulator.trackSystem.liftLever`)
-  //     Positioned BEHIND the hitting area at `(x = +1.985m, z = +1.125m)` right next to the rear tip of the South Outside Track,
+  //     Tucked right against the Barn South Wall (`65mm` off the wall at `x = +1.94m`, behind the hitting area),
   //     driving the concealed sub-floor torque shaft with a 7.5:1 mechanical advantage (~5.5kg effort)!
   const leverBaseGroup = new THREE.Group();
   leverBaseGroup.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.base';
@@ -1537,7 +1537,7 @@ export function buildBarnGolfSimulatorEnclosure(
   );
   quadrantPlate.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.quadrant';
   quadrantPlate.rotation.x = Math.PI / 2;
-  quadrantPlate.position.set(0, 0.012, -0.012);
+  quadrantPlate.position.set(0, 0.012, 0.012);
   leverBaseGroup.add(quadrantPlate);
 
   const leverPivot = new THREE.Group();
@@ -1569,14 +1569,14 @@ export function buildBarnGolfSimulatorEnclosure(
   leverArm.castShadow = true;
   leverPivot.add(leverArm);
 
-  // 76mm-wide x Ø18mm matte-charcoal ergonomic cylindrical T-grip at `y = +0.245m`
+  // 76mm-wide x Ø18mm matte-charcoal ergonomic cylindrical T-grip pointing inward (`-z`) away from the South wall
   const leverGrip = new THREE.Mesh(
     new THREE.CylinderGeometry(0.009, 0.009, 0.076, 14),
     neoprenePadMat
   );
   leverGrip.name = 'outbuildings.barn.golfSimulator.trackSystem.liftLever.handle';
   leverGrip.rotation.x = Math.PI / 2;
-  leverGrip.position.set(0, 0.245, 0.012);
+  leverGrip.position.set(0, 0.245, -0.014);
   leverGrip.castShadow = true;
   leverPivot.add(leverGrip);
 
