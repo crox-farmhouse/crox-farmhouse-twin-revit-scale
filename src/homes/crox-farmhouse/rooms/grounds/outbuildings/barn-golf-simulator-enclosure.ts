@@ -807,7 +807,7 @@ export function buildBarnGolfSimulatorEnclosure(
   _plasterMat: THREE.Material,
   groundCeilingGroup?: THREE.Group
 ): BarnGolfSimulatorEnclosureHandles {
-  const simCenterV = 3.355; // Centered on v = 1.33m..5.38m (clearW = 4.05m, leaving a 0.96m Part M/B North corridor v = 0.28m..1.24m!)
+  const simCenterV = 3.33; // Centered on v = 1.33m..5.33m (clearW = 4.00m, leaving a 0.96m North corridor v = 0.28..1.24m & clean 98mm South column pier v = 5.33..5.428m!)
   const simGroup = new THREE.Group();
   simGroup.name = 'outbuildings.barn.golfSimulator';
   simGroup.position.set(uWallMax, barnWestFloorY, simCenterV);
@@ -818,7 +818,7 @@ export function buildBarnGolfSimulatorEnclosure(
   simCeilingGroup.position.set(uWallMax, barnWestFloorY, simCenterV);
   (groundCeilingGroup ?? groundGroup).add(simCeilingGroup);
 
-  const clearW = 4.05; // 13'3.5" Widescreen enclosure width (v = 1.33m..5.38m, reclaiming the 26cm South dead void!)
+  const clearW = 4.00; // 13'1.5" Widescreen enclosure width (v = 1.33m..5.33m)
   const clearH = 2.85; // 9'4" (2.85m) official TrackMan iO minimum enclosure ceiling height
   const recessDepthU = 2.16;
 
@@ -1015,20 +1015,20 @@ export function buildBarnGolfSimulatorEnclosure(
     simGroup.add(topBolster);
 
     const bottomBolster = new THREE.Mesh(
-      new THREE.BoxGeometry(foamDepthX, 0.044, 0.058),
+      new THREE.BoxGeometry(foamDepthX, 0.040, 0.056),
       velvetFrameMat
     );
     bottomBolster.name = `outbuildings.barn.golfSimulator.cornerBolster.bottom.${sideLabel}`;
     bottomBolster.position.set(
       -recessDepthU + 0.14 + foamDepthX * 0.5,
-      0.022,
+      0.054,
       sideZ * (clearW * 0.5 - 0.029)
     );
     simGroup.add(bottomBolster);
   }
 
-  const frameTrimW = 0.075;
-  const portalTrimBottomY = 0.038;
+  const frameTrimW = 0.058;
+  const portalTrimBottomY = 0.036;
   const portalTrimH = clearH - portalTrimBottomY;
   for (const sideZ of [-1, 1] as const) {
     const sideTrim = new THREE.Mesh(
@@ -1037,7 +1037,7 @@ export function buildBarnGolfSimulatorEnclosure(
     );
     sideTrim.name = `outbuildings.barn.golfSimulator.portalTrim.${sideZ < 0 ? 'north' : 'south'}`;
     sideTrim.position.set(
-      -0.032,
+      -0.044,
       portalTrimBottomY + portalTrimH * 0.5,
       sideZ * (clearW * 0.5 - frameTrimW * 0.5)
     );
@@ -1048,7 +1048,7 @@ export function buildBarnGolfSimulatorEnclosure(
     velvetFrameMat
   );
   topTrim.name = 'outbuildings.barn.golfSimulator.portalTrim.top';
-  topTrim.position.set(-0.032, clearH - frameTrimW * 0.5, 0);
+  topTrim.position.set(-0.044, clearH - frameTrimW * 0.5, 0);
   simGroup.add(topTrim);
 
   // Issue #1 ("add an LED ring around the inside" at `[-8.083, 0.197, 16.157]`, `sideBaffle.north.4.1`):
@@ -1223,7 +1223,13 @@ export function buildBarnGolfSimulatorEnclosure(
   // Issue #1: Slim 25mm x 15mm x 3mm Low-Profile Aluminium Channel Tracks (`z = ±1.05m`),
   //           Underside Polyurethane Rollers & Small Subtle Cam-Lift Lever Behind the Hitting Area
   // ===========================================================================
-  const deckOuterW = clearW - 0.22; // 3.83m in building-regs fork (`3.83 - 0.028 = 3.802m` turf width)
+  // Issue #1 ("Mat isn't using the full width of the bay" at `[-8.042, -0.653, 20.21]`):
+  // - Fixed Inside Mat (`rearSurround*` & `rearFairway*`) spans the FULL wall-to-wall width of the bay (`rearFullW = clearW - 0.024 = 3.976m`)
+  //   right up to the North & South side foam substrates (`z = ±1.988m`), leaving ZERO bare floor gap!
+  // - Sliding Front Stance Mat (`frontSurroundBase` & `frontFairwayTurf`) spans `deckOuterW = clearW - 0.118 = 3.882m`
+  //   (`fullSlidingTurfW = 3.868m`), filling 100% of the clear width between the 58mm side acoustic baffles (`z = ±1.942m`)!
+  const deckOuterW = clearW - 0.118; // 3.882m full clear width between the North & South side acoustic baffles!
+  const rearFullW = clearW - 0.024;  // 3.976m wall-to-wall inside bay width under the side bolsters
   const trackZPositions = [-1.05, 1.05] as const; // North (`z = -1.05m`) & South (`z = +1.05m`) slim 25mm channels
   const channelOuterW = 0.025; // 25.4mm (1") slim off-the-shelf Aluminium Channel width
   const channelOuterH = 0.015; // 15.9mm (5/8") low-profile channel height
@@ -1242,8 +1248,8 @@ export function buildBarnGolfSimulatorEnclosure(
   const outsideTrackEndX = turfEndX; // +1.962m (ends flush with the rear edge of the sliding mat!)
 
   const centerStripW = (Math.abs(trackZPositions[0]) - trackSlotW * 0.5) * 2; // 2.073m (`z = -1.0365..+1.0365m`)
-  const outerWingW = (deckOuterW - 0.028) * 0.5 - (Math.abs(trackZPositions[1]) + trackSlotW * 0.5); // 0.8375m
-  const outerWingCenterZ = Math.abs(trackZPositions[1]) + trackSlotW * 0.5 + outerWingW * 0.5; // 1.482m
+  const outerWingW = rearFullW * 0.5 - (Math.abs(trackZPositions[1]) + trackSlotW * 0.5); // 0.9245m (reaches `z = ±1.988m` wall-to-wall!)
+  const outerWingCenterZ = Math.abs(trackZPositions[1]) + trackSlotW * 0.5 + outerWingW * 0.5; // 1.5258m
 
   // 1. Fixed Inside Putting Mat (`rearFairwayTurf`, `x = -2.00m .. -0.002m`, `yTop = 0.034m`)
   //    Split around two slim 27mm slots at `z = ±1.05m` so the 2 Inside Tracks run subtly THROUGH the inside mat!
@@ -1517,7 +1523,7 @@ export function buildBarnGolfSimulatorEnclosure(
   foldingMatGroup.position.set(frontCenterX, 0.017, 0);
   simGroup.add(foldingMatGroup);
 
-  const fullSlidingTurfW = deckOuterW - 0.028; // 3.802m continuous unbroken width
+  const fullSlidingTurfW = deckOuterW - 0.014; // 3.868m full clear width between side baffles
 
   const frontSurroundBase = new THREE.Mesh(
     new THREE.BoxGeometry(frontLenX, 0.028, deckOuterW),

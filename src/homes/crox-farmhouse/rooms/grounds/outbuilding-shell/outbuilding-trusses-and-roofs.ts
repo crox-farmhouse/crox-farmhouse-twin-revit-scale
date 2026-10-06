@@ -264,6 +264,8 @@ export function buildOutbuildingTrussesAndSoffits(shellCtx: OutbuildingShellCont
     readonly tieBottomY: number;
     readonly ceilEaveY: number;
     readonly ceilRidgeY: number;
+    readonly skipPilastersAndKneeBraces?: boolean;
+    readonly attachToGroundGroup?: boolean;
   }
 
   const barnTrussBays: ReadonlyArray<BarnTrussBaySpec> = [
@@ -285,7 +287,21 @@ export function buildOutbuildingTrussesAndSoffits(shellCtx: OutbuildingShellCont
       ceilEaveY: westRangeCeilEaveY,
       ceilRidgeY: westRangeCeilRidgeY,
     },
-    // Bay 3: Barn (`u = 18.68m` at the front edge of the mezzanine — Store truss at `u = 13.65m` removed per Issue #12!)
+    // Bay 3: Store / Barn Knock-Through Line (`u = 15.08m` — Issue #1 Structural Engineer Pass:
+    // Principal Weathered-Oak King-Post Roof Truss seated directly on the full-span `203×203×46 UC`
+    // Structural Steel Goalpost Portal Frame at `y = 2.72m`, carrying the Store & Barn ridge beams and purlins
+    // with lightweight plasterboard stud infill and zero high-level brickwork!)
+    {
+      id: 'storeBarn',
+      uCenter: uBarnStart + 0.13,
+      baseY: barnLowerFloorY,
+      tieBottomY: barnUpperTopY - 0.2,
+      ceilEaveY: barnCeilEaveY,
+      ceilRidgeY: barnCeilRidgeY,
+      skipPilastersAndKneeBraces: true,
+      attachToGroundGroup: true,
+    },
+    // Bay 4: Barn (`u = 18.68m` at the front edge of the mezzanine)
     {
       id: 'barn',
       uCenter: uMezzanineFront,
@@ -300,50 +316,52 @@ export function buildOutbuildingTrussesAndSoffits(shellCtx: OutbuildingShellCont
     const padstoneH = 0.085;
     const pilasterTopY = bay.tieBottomY - padstoneH;
 
-    // 1. Opposing North & South Internal Brick Pilasters (`0.30m` wide x `0.16m` deep) stopping cleanly below the Yorkstone padstone
-    const pilasterPlasterMat = bay.id === 'barn' ? settingPlasterMat : warmRoomPlasterMat;
-    addOutbuildingBrickWall(
-      groundGroup,
-      bay.uCenter - pilasterW * 0.5,
-      bay.uCenter + pilasterW * 0.5,
-      bay.baseY - 0.08,
-      pilasterTopY,
-      vInnerNorth,
-      vInnerNorth + pilasterD,
-      ['+x', '-x', '+z'],
-      pilasterPlasterMat,
-      pilasterPlasterMat
-    );
-    addOutbuildingBrickWall(
-      groundGroup,
-      bay.uCenter - pilasterW * 0.5,
-      bay.uCenter + pilasterW * 0.5,
-      bay.baseY - 0.08,
-      pilasterTopY,
-      vInnerSouth - pilasterD,
-      vInnerSouth,
-      bay.id === 'gym' ? [] : ['+x', '-x', '-z'],
-      pilasterPlasterMat,
-      pilasterPlasterMat
-    );
-
-    for (const vPad of [vInnerNorth + pilasterD * 0.5, vInnerSouth - pilasterD * 0.5]) {
-      const padstone = new THREE.Mesh(
-        new THREE.BoxGeometry(pilasterW + 0.04, padstoneH, pilasterD + 0.03),
-        stoneSillMat
+    if (!bay.skipPilastersAndKneeBraces) {
+      // 1. Opposing North & South Internal Brick Pilasters (`0.30m` wide x `0.16m` deep) stopping cleanly below the Yorkstone padstone
+      const pilasterPlasterMat = bay.id === 'barn' ? settingPlasterMat : warmRoomPlasterMat;
+      addOutbuildingBrickWall(
+        groundGroup,
+        bay.uCenter - pilasterW * 0.5,
+        bay.uCenter + pilasterW * 0.5,
+        bay.baseY - 0.08,
+        pilasterTopY,
+        vInnerNorth,
+        vInnerNorth + pilasterD,
+        ['+x', '-x', '+z'],
+        pilasterPlasterMat,
+        pilasterPlasterMat
       );
-      padstone.name = `outbuildings.pilasterPadstone.${bay.id}`;
-      padstone.position.set(bay.uCenter, bay.tieBottomY - padstoneH * 0.5, vPad);
-      padstone.castShadow = true;
-      padstone.receiveShadow = true;
-      groundGroup.add(padstone);
+      addOutbuildingBrickWall(
+        groundGroup,
+        bay.uCenter - pilasterW * 0.5,
+        bay.uCenter + pilasterW * 0.5,
+        bay.baseY - 0.08,
+        pilasterTopY,
+        vInnerSouth - pilasterD,
+        vInnerSouth,
+        bay.id === 'gym' ? [] : ['+x', '-x', '-z'],
+        pilasterPlasterMat,
+        pilasterPlasterMat
+      );
+
+      for (const vPad of [vInnerNorth + pilasterD * 0.5, vInnerSouth - pilasterD * 0.5]) {
+        const padstone = new THREE.Mesh(
+          new THREE.BoxGeometry(pilasterW + 0.04, padstoneH, pilasterD + 0.03),
+          stoneSillMat
+        );
+        padstone.name = `outbuildings.pilasterPadstone.${bay.id}`;
+        padstone.position.set(bay.uCenter, bay.tieBottomY - padstoneH * 0.5, vPad);
+        padstone.castShadow = true;
+        padstone.receiveShadow = true;
+        groundGroup.add(padstone);
+      }
     }
 
     // 2. Precision-Mitered Weathered-Oak King-Post Roof Truss (`outbuildings.roofTruss.<id>`)
     const trussGroup = new THREE.Group();
     trussGroup.name = `outbuildings.roofTruss.${bay.id}`;
     trussGroup.position.set(bay.uCenter, 0, vMidCenter());
-    trussesGroup.add(trussGroup);
+    (bay.attachToGroundGroup ? groundGroup : trussesGroup).add(trussGroup);
 
     const tieH = 0.2;
     const tieW = 0.2;
@@ -416,29 +434,31 @@ export function buildOutbuildingTrussesAndSoffits(shellCtx: OutbuildingShellCont
       strut.castShadow = true;
       trussGroup.add(strut);
 
-      // C. Mitered Oak Knee Brace: vertical edge flush against inner face of brick pilaster (`|z| = halfSpan - pilasterD = 2.415m`)
-      //    and horizontal top edge flush against underside of tie-beam (`y = tieBottomY`) — zero protruding box corners!
-      const braceW = 0.14;
-      const zPilasterFace = halfSpan - pilasterD; // 2.415m
-      const zBraceTieInner = 1.88;
-      const zBraceTieOuter = 2.06;
-      const yBracePilasterTop = tieBottomY - 0.34;
-      const yBracePilasterBot = tieBottomY - 0.52;
-      const kneeBraceGeo = createExtrudedVYPolygon(
-        [
-          [sideV * zBraceTieInner, tieBottomY],
-          [sideV * zBraceTieOuter, tieBottomY],
-          [sideV * zPilasterFace, yBracePilasterTop],
-          [sideV * zPilasterFace, yBracePilasterBot],
-        ],
-        braceW
-      );
-      applyBarnBeamUVs(kneeBraceGeo);
-      const kneeBrace = new THREE.Mesh(kneeBraceGeo, trussOakMat);
-      kneeBrace.name = `outbuildings.roofTruss.${bay.id}.kneeBrace`;
-      kneeBrace.position.set(-braceW * 0.5, 0, 0);
-      kneeBrace.castShadow = true;
-      trussGroup.add(kneeBrace);
+      if (!bay.skipPilastersAndKneeBraces) {
+        // C. Mitered Oak Knee Brace: vertical edge flush against inner face of brick pilaster (`|z| = halfSpan - pilasterD = 2.415m`)
+        //    and horizontal top edge flush against underside of tie-beam (`y = tieBottomY`) — zero protruding box corners!
+        const braceW = 0.14;
+        const zPilasterFace = halfSpan - pilasterD; // 2.415m
+        const zBraceTieInner = 1.88;
+        const zBraceTieOuter = 2.06;
+        const yBracePilasterTop = tieBottomY - 0.34;
+        const yBracePilasterBot = tieBottomY - 0.52;
+        const kneeBraceGeo = createExtrudedVYPolygon(
+          [
+            [sideV * zBraceTieInner, tieBottomY],
+            [sideV * zBraceTieOuter, tieBottomY],
+            [sideV * zPilasterFace, yBracePilasterTop],
+            [sideV * zPilasterFace, yBracePilasterBot],
+          ],
+          braceW
+        );
+        applyBarnBeamUVs(kneeBraceGeo);
+        const kneeBrace = new THREE.Mesh(kneeBraceGeo, trussOakMat);
+        kneeBrace.name = `outbuildings.roofTruss.${bay.id}.kneeBrace`;
+        kneeBrace.position.set(-braceW * 0.5, 0, 0);
+        kneeBrace.castShadow = true;
+        trussGroup.add(kneeBrace);
+      }
 
       // Wrought-iron heel strap at the tie-beam / principal rafter foot junction
       const heelStrap = new THREE.Mesh(
@@ -504,13 +524,14 @@ export function buildOutbuildingTrussesAndSoffits(shellCtx: OutbuildingShellCont
     //    2 Architectural Uplight Spotlights per truss (`sz = -1.18m` and `+1.18m`, one on each side of the king-post),
     //    seated ON TOP of the oak tie-beam (`y = tieTopY`) and angled upward into the rafters / vaulted ceiling!
     const spotZPositions = [-1.18, 1.18] as const;
+    const spotOffsetX = bay.id === 'storeBarn' ? 0.065 : 0; // On storeBarn truss, place uplights on the Barn (+x) side of the stud infill wall
     for (let sIdx = 0; sIdx < spotZPositions.length; sIdx++) {
       const sz = spotZPositions[sIdx];
       const aimSignZ = sz < 0 ? -1 : 1;
 
       const spotGroup = new THREE.Group();
       spotGroup.name = `outbuildings.roofTruss.${bay.id}.spotlight.${sIdx + 1}`;
-      spotGroup.position.set(0, tieTopY, sz);
+      spotGroup.position.set(spotOffsetX, tieTopY, sz);
       trussGroup.add(spotGroup);
 
       // Brushed-brass circular mounting base plate fixed to the TOP surface of the oak tie-beam
@@ -579,8 +600,8 @@ export function buildOutbuildingTrussesAndSoffits(shellCtx: OutbuildingShellCont
   for (const [u0, u1, tieBottomY, ceilRidgeY] of [
     [wallT, uGymEnd, northWestWallTopY, westRangeCeilRidgeY],
     [uGymEnd + partT, uGarageEnd, northWestWallTopY, westRangeCeilRidgeY],
-    [uStoreStart + 0.24, uBarnStart, barnUpperTopY - 0.2, barnCeilRidgeY],
-    [uBarnStart + 0.24, uBarnEnd - partT, barnUpperTopY - 0.2, barnCeilRidgeY],
+    [uStoreStart + 0.24, uBarnStart + 0.03, barnUpperTopY - 0.2, barnCeilRidgeY],
+    [uBarnStart + 0.21, uBarnEnd - partT, barnUpperTopY - 0.2, barnCeilRidgeY],
   ] as const) {
     const spanU = u1 - u0;
     const midU = (u0 + u1) * 0.5;

@@ -581,6 +581,23 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   storeFloor.receiveShadow = true;
   groundGroup.add(storeFloor);
 
+  // Full-width Golf Simulator Bay Subfloor Slab (`u = 13.04..15.20m, v = 1.24..5.428m, yTop = -0.34m`)
+  // so no `-0.69m` void is ever visible at the edges of the Golf Simulator bay (Issue #1)!
+  const simBaySubfloorSpanU = (uBarnStart + 0.24) - 13.04; // 2.16m
+  const simBaySubfloorSpanV = (vEastRangeSouth - wallT - 0.002) - 1.24; // 4.188m
+  const simBaySubfloor = new THREE.Mesh(
+    new THREE.BoxGeometry(simBaySubfloorSpanU, 0.38, simBaySubfloorSpanV),
+    barnLimestoneFloorMat
+  );
+  simBaySubfloor.name = 'outbuildings.store.golfBaySubfloor';
+  simBaySubfloor.position.set(
+    13.04 + simBaySubfloorSpanU * 0.5,
+    barnWestFloorY - 0.19,
+    1.24 + simBaySubfloorSpanV * 0.5
+  );
+  simBaySubfloor.receiveShadow = true;
+  groundGroup.add(simBaySubfloor);
+
   // Issue #8 ("Make the lower section a little larger, move the steps forward slightly (maybe 50cm).
   // On this side have a bar with some stools so people can watch the golf and wait their turn" at `[-3.975, -0.34, 18.437]`):
   // Move the 2-step floor drop `50cm` forward (West) from `uMezzanineFront = 18.68m` to `uBarnStepDropStart = 18.18m`,
@@ -867,14 +884,14 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // Flush 48mm South backing liner against the insulated South brick wall (v = 5.38m..5.428m — reclaiming +260mm of dead void!)
+  // Flush 98mm South backing liner against the insulated South brick wall (v = 5.33m..5.428m, matching the 98mm South steel column pier!)
   addOutbuildingBrickWall(
     groundGroup,
     13.04,
-    uBarnStart,
+    uBarnStart + 0.03,
     garageFloorTopY,
     storeLoftSlabBotY,
-    5.38,
+    5.33,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
@@ -1054,27 +1071,10 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   // The Store/Barn cross-wall (`u = 14.96..15.20m`) framing the Golf Simulator (North pier, South pier, upper lintel,
   // and Barn-side upper gable `outbuildings.storeBarnPartitionGable`) uses exposed red/multi-stock brickwork (`exteriorBrickMat`)
   // on the Barn face (`+x`) and portal reveals (`+z`, `-z`), keeping only the Store back face (`-x`) plastered!
-  const simCutoutVMin = 1.33; // 4.05m Widescreen bay (v = 1.33m..5.38m -> 3.95m × 2.47m 16:10 Widescreen screen!)
-  const simCutoutVMax = 5.38;
+  const simCutoutVMin = 1.33; // 4.00m Widescreen bay (v = 1.33m..5.33m)
+  const simCutoutVMax = 5.33; // Leaves a clean 98mm (`v = 5.330..5.428m`) architectural steel column pier inside the South wall!
   const simCutoutTopY = barnWestFloorY + 2.85; // 2.51m (9'4" TrackMan iO minimum height)
   const corridorSouthV = 1.24; // Full 0.958m clear North corridor width (`v = 0.282m .. 1.240m`)
-  // Structural Engineering Pass (Issue #1 at `[-7.107, 2.74, 17.247]`, `outbuildings.groundShell.brickWall.40`)
-  // & Corridor Entry Refinement (Issue #1 at `[-7.271, 2.281, 15.568]`):
-  //   "Maybe remove this door lining and just have an opening into this corridor with the door at the end?"
-  // Solution:
-  //   1. Demolish 100% of the brickwork on the `u = 14.96..15.20m` cross-wall line (zero bricks below or above!).
-  //   2. Leave the North Corridor entrance at `u = 15.08m` (`v = 0.282m .. 1.240m`, `y = -0.34m .. 2.515m`)
-  //      completely open and unobstructed up to the underside of the continuous `203×203×46 UC` steel header beam
-  //      (no door lining, no North wall nib column, and no dropped spandrel at the Barn end — the sole door is
-  //      the self-closing FD30S oak door `outbuildings.garage.golfPassThroughDoor` at the far West end `u = 12.19m`!).
-  //   3. Support the full-width `203×203×46 UC` steel header beam (`y = 2.515..2.720m, v = 0.282..5.428m`) on:
-  //      - A structural padstone pocketed into the North exterior masonry wall (`v = 0.282m`),
-  //      - The vertical `90×200mm` RHS structural steel mullion post (`centerMullionColumn` at `v = 1.240..1.330m`),
-  //        whose North face (`v = 1.240m`) sits 100% flush with the plastered corridor South wall (`outbuildings.store.corridorSouthWall`),
-  //      - The South wall structural steel column (`southWallColumn` at `v = 5.380..5.428m`).
-  //   4. Seat the Principal Weathered-Oak King-Post Roof Truss (`outbuildings.roofTruss.storeBarn`, `y = 2.72..4.269m`)
-  //      directly on top of the `203×203×46 UC` steel header beam, with recessed plasterboard infill (`outbuildings.storeBarnStudPartition`)
-  //      inside the upper truss triangles (`y = 2.92..4.21m`).
   {
     const structuralSteelMat = new THREE.MeshStandardMaterial({
       color: 0x22262c,
@@ -1094,44 +1094,41 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     groundGroup.add(portalFrameGroup);
 
     const colBotY = barnWestFloorY; // -0.34m
-    const beamBotY = simCutoutTopY + 0.005; // 2.515m (clear of 2.51m Golf Sim opening & full-height North corridor!)
+    const beamBotY = simCutoutTopY + 0.005; // 2.515m
     const beamTopY = 2.72; // Directly supports the Principal Oak Truss tie-beam (`y = 2.72..2.92m`)!
     const beamH = beamTopY - beamBotY; // 0.205m (203×203×46 UC Universal Beam)
     const beamMidY = (beamBotY + beamTopY) * 0.5; // 2.6175m
     const colH = beamBotY - colBotY; // 2.855m
     const colMidY = colBotY + colH * 0.5;
-    const frameCenterU = uBarnStart + 0.12; // 15.08m
+
+    // Unified 200mm-deep architectural plane (`u = 14.99m .. 15.19m`, centered at `15.09m`)
+    // shared identically by `southWallColumn`, `headerBeam`, `portalTrim`, and `outbuildings.roofTruss.storeBarn`!
+    const frameCenterU = uBarnStart + 0.13; // 15.09m
+    const beamCenterU = frameCenterU;       // 15.09m
+    const beamDepthU = 0.20;                // u = 14.99m .. 15.19m
     const vFrameMin = vEastRangeNorth + wallT + 0.002; // 0.282m (inner plaster face of North wall)
     const vFrameMax = vEastRangeSouth - wallT - 0.002; // 5.428m (inner plaster face of South wall)
+    const fullBeamSpanV = vFrameMax - vFrameMin;       // 5.146m (stays 100% inside the room envelope in cutaway view!)
+    const fullBeamMidV = (vFrameMin + vFrameMax) * 0.5;
 
-    // Statutory Part A / BS EN 1996-1-1 Masonry End Bearing (`150mm` pocketed into both the 280mm North & South brick walls!):
-    // - Beam extends from `v = 0.132m` (`150mm` inside the North wall inner leaf) to `v = 5.578m` (`150mm` inside the South wall inner leaf),
-    //   leaving `132mm` of outer face brickwork untouched on the building exterior!
-    const endBearingDepthV = 0.15; // 150mm statutory structural end bearing on C40 precast concrete padstones
-    const vBeamStart = vFrameMin - endBearingDepthV; // 0.132m
-    const vBeamEnd = vFrameMax + endBearingDepthV;   // 5.578m
-    const fullBeamSpanV = vBeamEnd - vBeamStart;     // 5.446m total steel beam length (5.146m clear + 2 × 150mm bearings)
-    const fullBeamMidV = (vBeamStart + vBeamEnd) * 0.5; // 2.855m
-
-    // 1. Vertical Structural Steel Columns:
-    //    - `centerMullionColumn`: 160×70×8 RHS post inside the 90mm corridor partition (`v = 1.250..1.318m`) with a 150mm-wide bolted spreader cap plate
-    //    - `southWallColumn`: Full 100×200×10 RHS column (`v = 5.380..5.480m`, pocketed 52mm into the inner masonry leaf of the South wall for a full 100mm column section + 150mm masonry padstone bearing above!)
+    // 1. Vertical Structural Steel Columns (`centerMullionColumn` at v = 1.254..1.316m & `southWallColumn` at v = 5.330..5.428m):
+    //    - `southWallColumn` is a clean, full-bearing `98mm × 200mm` Matte-Anthracite RHS column (`v = 5.330..5.428m`)
+    //      sitting 100% inside the room against the South wall (`v = 5.428m`) and 100% flush with the 200mm-deep `headerBeam` above (`Issue #2`)!
     const columnSpecs: ReadonlyArray<{
       id: string;
       uDepth: number;
       v0: number;
       v1: number;
-      capSpanV: number;
     }> = [
-      { id: 'centerMullionColumn', uDepth: 0.16, v0: corridorSouthV + 0.012, v1: simCutoutVMin - 0.012, capSpanV: 0.15 },
-      { id: 'southWallColumn', uDepth: 0.20, v0: simCutoutVMax, v1: simCutoutVMax + 0.10, capSpanV: 0.16 },
+      { id: 'centerMullionColumn', uDepth: 0.15, v0: corridorSouthV + 0.014, v1: simCutoutVMin - 0.014 },
+      { id: 'southWallColumn', uDepth: beamDepthU, v0: simCutoutVMax, v1: vFrameMax },
     ];
 
     for (const col of columnSpecs) {
       const colSpanV = col.v1 - col.v0;
       const colMidV = (col.v0 + col.v1) * 0.5;
       const colMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(col.uDepth, colH - 0.02, colSpanV),
+        new THREE.BoxGeometry(col.uDepth, colH, colSpanV),
         structuralSteelMat
       );
       colMesh.name = `outbuildings.barn.golfSimulator.steelPortalFrame.${col.id}`;
@@ -1140,58 +1137,20 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       colMesh.castShadow = true;
       colMesh.receiveShadow = true;
       portalFrameGroup.add(colMesh);
-
-      const plateU = col.id === 'centerMullionColumn' ? col.uDepth : 0.224;
-      const basePlate = new THREE.Mesh(
-        new THREE.BoxGeometry(plateU, 0.016, col.capSpanV),
-        structuralSteelMat
-      );
-      basePlate.name = `outbuildings.barn.golfSimulator.steelPortalFrame.${col.id}.basePlate`;
-      basePlate.userData.isArchitecturalShell = true;
-      basePlate.position.set(frameCenterU, colBotY + 0.012, colMidV);
-      portalFrameGroup.add(basePlate);
-
-      const capPlate = new THREE.Mesh(
-        new THREE.BoxGeometry(plateU, 0.016, col.capSpanV),
-        structuralSteelMat
-      );
-      capPlate.name = `outbuildings.barn.golfSimulator.steelPortalFrame.${col.id}.capPlate`;
-      capPlate.userData.isArchitecturalShell = true;
-      capPlate.position.set(frameCenterU, beamBotY - 0.008, colMidV);
-      portalFrameGroup.add(capPlate);
     }
 
-    // Statutory C40 High-Strength Precast Concrete Padstones (`440mm × 215mm × 165mm`) & 16mm Steel Spreader Bearing Plates
-    // Pocketed 150mm into the North (`v = 0.125..0.290m`) and South (`v = 5.420..5.585m`) brick walls directly beneath the UC beam ends!
-    for (const [endSide, padMidV] of [
-      ['north', vFrameMin - endBearingDepthV * 0.5 + 0.005],
-      ['south', vFrameMax + endBearingDepthV * 0.5 - 0.005],
-    ] as const) {
-      const padstone = new THREE.Mesh(
-        new THREE.BoxGeometry(0.44, 0.215, endBearingDepthV + 0.016),
-        stoneSillMat
-      );
-      padstone.name = `outbuildings.barn.golfSimulator.steelPortalFrame.${endSide}Padstone`;
-      padstone.userData.isArchitecturalShell = true;
-      padstone.position.set(frameCenterU, beamBotY - 0.016 - 0.1075, padMidV);
-      padstone.castShadow = true;
-      padstone.receiveShadow = true;
-      portalFrameGroup.add(padstone);
+    // Flush North Wall Pocketed Bearing Plate (`v = 0.150..0.300m`, 150mm bearing inside the 280mm North wall, `0.20m` deep in `u`)
+    const northBearingPlate = new THREE.Mesh(
+      new THREE.BoxGeometry(beamDepthU, 0.016, 0.15),
+      structuralSteelMat
+    );
+    northBearingPlate.name = 'outbuildings.barn.golfSimulator.steelPortalFrame.northWallBearingPlate';
+    northBearingPlate.userData.isArchitecturalShell = true;
+    northBearingPlate.position.set(frameCenterU, beamBotY - 0.008, vFrameMin - 0.045);
+    portalFrameGroup.add(northBearingPlate);
 
-      const bearingPlate = new THREE.Mesh(
-        new THREE.BoxGeometry(0.24, 0.016, endBearingDepthV + 0.024),
-        structuralSteelMat
-      );
-      bearingPlate.name = `outbuildings.barn.golfSimulator.steelPortalFrame.${endSide}WallBearingPlate`;
-      bearingPlate.userData.isArchitecturalShell = true;
-      bearingPlate.position.set(frameCenterU, beamBotY - 0.008, padMidV);
-      portalFrameGroup.add(bearingPlate);
-    }
-
-    // 2. Full-Width 203×203×46 UC Structural Steel Universal Beam Header (`y = 2.515m .. 2.720m`, `v = 0.132m .. 5.578m` with 150mm masonry end bearings!)
+    // 2. Full-Width 203×203×46 UC Structural Steel Universal Beam Header (`y = 2.515m .. 2.720m`, `u = 14.99m .. 15.19m`)
     const flangeT = 0.014;
-    const beamDepthU = 0.21; // u = 14.985m .. 15.195m
-    const beamCenterU = uBarnStart + 0.13; // 15.09m (flush/proud on the Barn +x face, lined with plasterboard on the Store Loft -x face)
 
     const bottomFlange = new THREE.Mesh(
       new THREE.BoxGeometry(beamDepthU, flangeT, fullBeamSpanV),
@@ -1287,9 +1246,9 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     const corridorWallT = corridorWallSouthFaceV - corridorSouthV; // 0.086m (`v = 1.240m .. 1.326m`)
     const corridorWallMidV = (corridorSouthV + corridorWallSouthFaceV) * 0.5; // 1.283m
 
-    // Extend `corridorSouthWall` to `u = 15.18m` (East face of `centerMullionColumn`) and paint in
+    // Extend `corridorSouthWall` to `u = 15.19m` (flush with `headerBeam` & `southWallColumn`) and paint in
     // Farrow & Ball Setting Plaster (`settingPlasterMat`) so the corridor matches the Barn walls all the way down!
-    const corridorSouthFullU1 = frameCenterU + 0.10; // 15.18m
+    const corridorSouthFullU1 = frameCenterU + 0.10; // 15.19m
     const corridorSouthFullLenU = corridorSouthFullU1 - corridorWallU0;
     const corridorSouthFullMidU = (corridorWallU0 + corridorSouthFullU1) * 0.5;
     const corridorSouthWall = new THREE.Mesh(
@@ -1345,30 +1304,31 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     );
     studPartitionGroup.add(westEndHeader);
 
-    // Upper Stud & Plasterboard Truss-Infill Gable (`y = 2.92..4.21m`, recessed at `u = 15.025..15.135m`)
-    // Store-Loft side (`-x` warm cream plasterboard `u = 15.025..15.080m`)
+    // Issue #3 (Pin at `[-7.088, 3.983, 17.819]` on `outbuildings.roofTruss.storeBarn.principalRafter`):
+    // Size the recessed Truss-Infill Gable (`u = 15.055..15.125m`, 70mm thick centered at `u = 15.09m`) strictly inside the
+    // UNDERSIDE of the oak Principal Rafters (`v = 0.65..5.06m, y = 2.92m` at eaves up to `y = 4.065m` below the apex)
+    // so the plaster infill NEVER clips through the top or sides of the oak principal rafters, struts, or king-post!
     addInteriorPlasterGableWall(
       studPartitionGroup,
-      uBarnStart + 0.065,
-      uBarnStart + 0.12,
-      vFrameMin,
-      vFrameMax,
+      frameCenterU - 0.035,
+      frameCenterU,
+      vFrameMin + 0.36,
+      vFrameMax - 0.36,
       barnUpperTopY,
       barnCeilEaveY,
-      barnCeilRidgeY - 0.04,
+      barnCeilRidgeY - 0.20,
       'outbuildings.storeBarnStudPartition.upperTrussInfill.storePlaster',
       warmRoomPlasterMat
     );
-    // Barn side (`+x` Farrow & Ball Setting Plaster plasterboard `u = 15.080..15.135m`)
     addInteriorPlasterGableWall(
       studPartitionGroup,
-      uBarnStart + 0.12,
-      uBarnStart + 0.175,
-      vFrameMin,
-      vFrameMax,
+      frameCenterU,
+      frameCenterU + 0.035,
+      vFrameMin + 0.36,
+      vFrameMax - 0.36,
       barnUpperTopY,
       barnCeilEaveY,
-      barnCeilRidgeY - 0.04,
+      barnCeilRidgeY - 0.20,
       'outbuildings.storeBarnStudPartition.upperTrussInfill.barnPlaster',
       settingPlasterMat
     );
