@@ -209,7 +209,8 @@ export function syncWalkthroughCameraPose(
   jumpOffsetY: number,
   bobOffsetY: number,
   yawRad: number,
-  pitchRad: number
+  pitchRad: number,
+  rollRad = 0
 ): void {
   const cam = rig.perspCamera;
   const eyeY = footPos.y + currentEyeHeight + jumpOffsetY + bobOffsetY;
@@ -227,7 +228,11 @@ export function syncWalkthroughCameraPose(
     cam.position.y + lookDirY * lookDistance,
     cam.position.z + lookDirZ * lookDistance
   );
+  cam.up.set(0, 1, 0);
   cam.lookAt(rig.controls.target);
+  if (Math.abs(rollRad) > 1e-5) {
+    cam.rotateZ(rollRad);
+  }
   cam.updateMatrixWorld();
 }
 

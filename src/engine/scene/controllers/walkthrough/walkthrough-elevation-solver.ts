@@ -1,10 +1,15 @@
 import * as THREE from 'three';
 import type { SceneCameraPoseSnapshot } from '../../../../types/scene.ts';
-import { DEFAULT_WALKTHROUGH_SPAWNS, worldToEastWingLocal } from './walkthrough-spawns.ts';
+import {
+  CROUCH_EYE_HEIGHT,
+  DEFAULT_WALKTHROUGH_SPAWNS,
+  STANDING_EYE_HEIGHT,
+  worldToEastWingLocal,
+} from './walkthrough-spawns.ts';
 
-const OB_ROT = Math.atan2(2.49, 28.98);
-const OB_COS = Math.cos(OB_ROT);
-const OB_SIN = Math.sin(OB_ROT);
+export const OB_ROT = Math.atan2(2.49, 28.98);
+export const OB_COS = Math.cos(OB_ROT);
+export const OB_SIN = Math.sin(OB_ROT);
 
 export function worldToOutbuildingLocal(
   x: number,
@@ -16,6 +21,38 @@ export function worldToOutbuildingLocal(
     obU: obDx * OB_COS - obDz * OB_SIN,
     obV: obDx * OB_SIN + obDz * OB_COS,
   };
+}
+
+export function outbuildingLocalToWorld(
+  obU: number,
+  obV: number
+): { readonly wx: number; readonly wz: number } {
+  return {
+    wx: -22.47 + obU * OB_COS + obV * OB_SIN,
+    wz: 16.0 - obU * OB_SIN + obV * OB_COS,
+  };
+}
+
+/**
+ * Computes the target standing/crouched eye height at world `(x, footY, z)`, automatically
+ * ducking under the Store Loft pitched roof slopes (`2.92m` eaves -> `4.269m` central ridge)
+ * so the player's camera never clips through the roof rafters or linear LED battens.
+ */
+export function getWalkthroughTargetEyeHeight(
+  x: number,
+  footY: number,
+  z: number,
+  crouched: boolean
+): number {
+  if (footY >= 2.1) {
+    const { obU, obV } = worldToOutbuildingLocal(x, z);
+    if (obU >= 12.25 && obU <= 15.05 && obV >= 1.1 && obV <= 5.45) {
+      const roofSoffitY = 4.269 - Math.abs(obV - 2.855) * ((4.269 - 2.92) / 2.575);
+      const maxClearEyeH = THREE.MathUtils.clamp(roofSoffitY - 2.61 - 0.24, 0.72, 1.24);
+      return crouched ? Math.min(0.72, maxClearEyeH) : maxClearEyeH;
+    }
+  }
+  return crouched ? CROUCH_EYE_HEIGHT : STANDING_EYE_HEIGHT;
 }
 
 export function isInsideSpiralStaircaseCutout(x: number, z: number): boolean {
@@ -108,6 +145,17 @@ export function sampleFloorElevation(x: number, refFootY: number, z: number): nu
       }
     }
 
+    // Store Loft Storage Area (`u = 12.31..14.96m, v = 1.24..5.43m, loftFloorY = +2.61m`)
+    if (
+      refFootY >= 1.85 &&
+      obU >= 12.31 &&
+      obU <= 14.98 &&
+      obV >= 1.18 &&
+      obV <= 5.43
+    ) {
+      return 2.61;
+    }
+
     if (refFootY >= 1.15 && obU >= 18.65 && !inSpiralStairwellCutout) {
       if (obU >= 23.22) return 2.08;
       if (obU >= 22.35 && obV >= 2.35 && obV <= 3.35) {
@@ -118,7 +166,6 @@ export function sampleFloorElevation(x: number, refFootY: number, z: number): nu
     }
     if (obU < 5.87) return -0.588;
     if (obU < 12.19) return -0.5;
-    if (obU < 15.08) return -0.4;
     if (obU < 18.18) return -0.34;
     if (obU < 18.46) {
       const tDrop = THREE.MathUtils.clamp((obU - 18.18) / 0.28, 0, 1);
@@ -232,9 +279,36 @@ export function evaluateArchitecturalWalkwayBounds(
     return 'clear';
   }
 
-  // 2a-ii. Outbuilding Barn Mezzanine Balustrades, Spiral Staircase, and 3-Step `UP` Stair
+  // 2a-ii. Outbuilding Store Loft (`+2.61m`), Barn Mezzanine Balustrades, Spiral Staircase, and 3-Step `UP` Stair
   const { obU: curObU, obV: curObV } = worldToOutbuildingLocal(fromFoot.x, fromFoot.z);
   const { obU: nextObU, obV: nextObV } = worldToOutbuildingLocal(nextX, nextZ);
+
+  // Store Loft Storage Area perimeter, guardrails, and storage tote boxes (`y = 2.61m`)
+  if (
+    fromFoot.y >= 2.15 &&
+    curObU >= 12.25 &&
+    curObU <= 15.05 &&
+    curObV >= 1.15 &&
+    curObV <= 5.45
+  ) {
+    if (nextObU < 12.52 && nextObU < curObU) return 'blocked';
+    if (nextObU > 14.74 && nextObU > curObU) return 'blocked';
+    // East storage box stacks (`Boxes 1..5` along `u = 14.32..14.88m, v = 1.85..3.82m`)
+    if (nextObU > 14.16 && nextObV >= 1.78 && nextObV <= 3.88 && nextObU > curObU) {
+      return 'blocked';
+    }
+    // South storage box row & low South eave (`Boxes 6..9` along `v >= 4.40m`)
+    if (nextObV > 4.26 && nextObV > curObV) return 'blocked';
+    // North loft guardrail (`v = 1.24m`) with ladder opening gap at `u = 13.92..14.50m`
+    const inLadderOpeningU = nextObU >= 13.92 && nextObU <= 14.50;
+    if (!inLadderOpeningU && nextObV < 1.46 && nextObV < curObV) {
+      return 'blocked';
+    }
+    if (inLadderOpeningU && nextObV < 1.18 && nextObV < curObV) {
+      return 'blocked';
+    }
+    return 'clear';
+  }
 
   if (fromFoot.y >= 1.15 && curObU >= 18.68 && curObU <= 23.02 && nextObU < 18.92) {
     return 'blocked';

@@ -1165,6 +1165,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
   }
 
   if (interactions) {
+    interactions.registerClickableObject(ladderGroup, { isClimbableLadder: true });
     const { matDoorId } = interactions.registerFoldingGolfMat(
       simGroup,
       foldingMatGroup,

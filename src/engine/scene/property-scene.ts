@@ -1057,6 +1057,11 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       }
     }
     const data = mesh.userData as InteractiveUserData;
+    if (data.isClimbableLadder && this.walkthrough.isActive()) {
+      this.walkthrough.interactWithClimbableLadder();
+      this.needsRender = true;
+      return;
+    }
     if (data.interactableId) {
       this.handleInteractableClick(data.interactableId);
     }

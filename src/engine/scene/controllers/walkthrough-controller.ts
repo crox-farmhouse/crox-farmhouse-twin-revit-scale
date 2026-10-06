@@ -7,7 +7,12 @@ import {
   type WalkthroughDoorBargeHandler,
   type WalkthroughProximityDoorBargeHandler,
 } from './walkthrough/walkthrough-door-barge.ts';
-import { resolveWalkthroughEntryPose, sampleFloorElevation } from './walkthrough/walkthrough-elevation-solver.ts';
+import {
+  getWalkthroughTargetEyeHeight,
+  resolveWalkthroughEntryPose,
+  sampleFloorElevation,
+} from './walkthrough/walkthrough-elevation-solver.ts';
+import { WalkthroughLadderClimbController } from './walkthrough/walkthrough-ladder-climb.ts';
 import {
   CROUCH_EYE_HEIGHT,
   CROUCH_SPEED_MPS,
@@ -56,6 +61,7 @@ export class WalkthroughController {
   private readonly onStateChanged: (active: boolean) => void;
   private readonly onPoseUpdated: () => void;
   private readonly collisionAndBarge: WalkthroughDoorBargeAndCollisionSolver;
+  private readonly ladderClimb = new WalkthroughLadderClimbController();
 
   private active = false;
   private crouched = false;
@@ -195,9 +201,30 @@ export class WalkthroughController {
     }
   }
 
+  public interactWithClimbableLadder(): boolean {
+    if (!this.active) return false;
+    const triggered = this.ladderClimb.tryTriggerInteraction(
+      this.footPos,
+      this.yawRad,
+      this.pitchRad,
+      this.currentEyeHeight,
+      this.targetedMesh
+    );
+    if (triggered) {
+      this.glideTargetFoot = null;
+      this.verticalVelocity = 0;
+      this.jumpOffsetY = 0;
+      this.refreshTargetedInteractable(true);
+    }
+    return triggered;
+  }
+
   public triggerTargetedInteraction(): boolean {
     if (!this.active) return false;
     this.refreshTargetedInteractable(true);
+    if (this.interactWithClimbableLadder()) {
+      return true;
+    }
     if (!this.targetedMesh) return false;
     this.onInteractWithMesh(this.targetedMesh);
     this.refreshTargetedInteractable(true);
@@ -267,6 +294,7 @@ export class WalkthroughController {
     this.glideTargetFoot = null;
     this.lookDirty = false;
     this.keysDown.clear();
+    this.ladderClimb.reset();
 
     this.rig.useCamera(false);
     this.rig.controls.enabled = false;
@@ -300,6 +328,7 @@ export class WalkthroughController {
     this.active = false;
     this.keysDown.clear();
     this.glideTargetFoot = null;
+    this.ladderClimb.reset();
     this.isDraggingLook = false;
     this.lookDirty = false;
     this.targetedMesh = null;
@@ -328,6 +357,7 @@ export class WalkthroughController {
     if (!sp) return false;
     this.blurActiveControlIfNeeded();
     this.glideTargetFoot = null;
+    this.ladderClimb.reset();
     this.verticalVelocity = 0;
     this.jumpOffsetY = 0;
     this.footPos.set(sp.position[0], sp.position[1], sp.position[2]);
@@ -373,7 +403,9 @@ export class WalkthroughController {
     );
 
     const nextMesh = firstHit?.object ?? null;
-    const nextPrompt = nextMesh ? this.describeInteractable(nextMesh) : null;
+    const ladderPrompt = this.ladderClimb.getProximityLadderPrompt(this.footPos, nextMesh);
+    const nextPrompt =
+      ladderPrompt ?? (nextMesh ? this.describeInteractable(nextMesh) : null);
     if (nextMesh !== this.targetedMesh || nextPrompt !== this.targetedPrompt) {
       this.targetedMesh = nextMesh;
       this.targetedPrompt = nextPrompt;
@@ -381,7 +413,7 @@ export class WalkthroughController {
     }
   }
 
-  private syncCameraFromFootAndAngles(bobOffsetY: number): void {
+  private syncCameraFromFootAndAngles(bobOffsetY: number, rollRad = 0): void {
     syncWalkthroughCameraPose(
       this.rig,
       this.footPos,
@@ -389,7 +421,8 @@ export class WalkthroughController {
       this.jumpOffsetY,
       bobOffsetY,
       this.yawRad,
-      this.pitchRad
+      this.pitchRad,
+      rollRad
     );
   }
 
@@ -399,9 +432,59 @@ export class WalkthroughController {
     }
     if (!this.active) return false;
 
+    let turnInput = 0;
+    if (this.keysDown.has('KeyQ')) turnInput += 1;
+    if (this.keysDown.has('KeyE')) turnInput -= 1;
+    if (turnInput !== 0) {
+      this.targetYawRad += turnInput * KEY_TURN_SPEED_RAD * dtSeconds;
+    }
+
+    if (this.ladderClimb.isActive()) {
+      this.lookDirty = false;
+      this.glideTargetFoot = null;
+      this.jumpOffsetY = 0;
+      this.verticalVelocity = 0;
+      const ladderStep = this.ladderClimb.step(
+        dtSeconds,
+        this.footPos,
+        this.yawRad,
+        this.pitchRad,
+        this.targetYawRad,
+        this.targetPitchRad,
+        this.currentEyeHeight,
+        this.crouched,
+        this.keysDown
+      );
+      this.yawRad = ladderStep.yawRad;
+      this.pitchRad = ladderStep.pitchRad;
+      this.targetYawRad = ladderStep.targetYawRad;
+      this.targetPitchRad = ladderStep.targetPitchRad;
+      this.currentEyeHeight = ladderStep.currentEyeHeight;
+
+      const desiredLadderFov = this.baseFov + ladderStep.fovBoost;
+      if (Math.abs(this.currentFov - desiredLadderFov) > 0.02) {
+        this.currentFov = THREE.MathUtils.lerp(
+          this.currentFov,
+          desiredLadderFov,
+          1 - Math.exp(-12 * dtSeconds)
+        );
+        this.rig.perspCamera.fov = this.currentFov;
+        this.rig.perspCamera.updateProjectionMatrix();
+      }
+
+      this.syncCameraFromFootAndAngles(ladderStep.bobOffsetY, ladderStep.rollRad);
+      this.refreshTargetedInteractable();
+      this.onPoseUpdated();
+      this.saveSessionState(false);
+      return true;
+    }
+
     let movedOrRotated = false;
     if (this.lookDirty) {
       this.lookDirty = false;
+      movedOrRotated = true;
+    }
+    if (turnInput !== 0) {
       movedOrRotated = true;
     }
 
@@ -414,7 +497,12 @@ export class WalkthroughController {
       movedOrRotated = true;
     }
 
-    const targetEyeH = this.crouched ? CROUCH_EYE_HEIGHT : STANDING_EYE_HEIGHT;
+    const targetEyeH = getWalkthroughTargetEyeHeight(
+      this.footPos.x,
+      this.footPos.y,
+      this.footPos.z,
+      this.crouched
+    );
     if (Math.abs(this.currentEyeHeight - targetEyeH) > 1e-3) {
       this.currentEyeHeight = THREE.MathUtils.lerp(this.currentEyeHeight, targetEyeH, 1 - Math.exp(-14 * dtSeconds));
       movedOrRotated = true;
@@ -430,13 +518,7 @@ export class WalkthroughController {
       movedOrRotated = true;
     }
 
-    let turnInput = 0;
-    if (this.keysDown.has('KeyQ')) turnInput += 1;
-    if (this.keysDown.has('KeyE')) turnInput -= 1;
-    if (turnInput !== 0) {
-      this.targetYawRad += turnInput * KEY_TURN_SPEED_RAD * dtSeconds;
-      movedOrRotated = true;
-    }
+
 
     let forwardInput = 0;
     let strafeInput = 0;
@@ -472,18 +554,34 @@ export class WalkthroughController {
       );
       if (moveVec.lengthSq() > 1e-5) {
         moveVec.normalize();
-        this.targetYawRad = this.collisionAndBarge.stepHorizontalMovement(
-          this.footPos,
-          moveVec,
-          forwardInput,
-          this.targetYawRad,
-          speed * dtSeconds,
-          this.currentEyeHeight,
-          this.isCurrentlySprinting,
-          dtSeconds
-        );
-        this.bobPhase += dtSeconds * (isSprinting ? 13.0 : 9.0);
-        movedOrRotated = true;
+        if (
+          this.ladderClimb.checkAutoMountOnMovement(
+            this.footPos,
+            moveVec,
+            forwardInput,
+            this.yawRad,
+            this.pitchRad,
+            this.currentEyeHeight,
+            this.keysDown
+          )
+        ) {
+          this.jumpOffsetY = 0;
+          this.verticalVelocity = 0;
+          movedOrRotated = true;
+        } else {
+          this.targetYawRad = this.collisionAndBarge.stepHorizontalMovement(
+            this.footPos,
+            moveVec,
+            forwardInput,
+            this.targetYawRad,
+            speed * dtSeconds,
+            this.currentEyeHeight,
+            this.isCurrentlySprinting,
+            dtSeconds
+          );
+          this.bobPhase += dtSeconds * (isSprinting ? 13.0 : 9.0);
+          movedOrRotated = true;
+        }
       }
     } else if (this.glideTargetFoot) {
       const glideStep = this.collisionAndBarge.stepGlideToTarget(
@@ -590,6 +688,16 @@ export class WalkthroughController {
       }
       if (e.code === 'Space' && !e.repeat) {
         e.preventDefault();
+        const ladderJump = this.ladderClimb.tryHandleSpaceJump(
+          this.footPos,
+          this.yawRad,
+          this.pitchRad,
+          this.currentEyeHeight
+        );
+        if (ladderJump.handled) {
+          this.verticalVelocity = ladderJump.kickBackVelocityY;
+          return;
+        }
         if (this.crouched) {
           this.setCrouched(false);
         } else if (this.jumpOffsetY <= 0.01) {

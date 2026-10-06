@@ -57,6 +57,7 @@ export interface InteractiveUserData {
   readonly circuitId?: CircuitId;
   readonly ufhZoneId?: 'ufhZone1' | 'ufhZone2' | 'ufhZone3' | 'ufhZone4';
   readonly isKnxTempSensor?: boolean;
+  readonly isClimbableLadder?: boolean;
 }
 
 export interface GlowPoolEntry {

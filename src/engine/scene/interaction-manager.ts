@@ -1150,6 +1150,9 @@ export class SceneInteractionManager {
     if (data.isBifoldDoor) {
       return `${isBifoldsOpen ? 'Close' : 'Open'} Bifold Patio Doors`;
     }
+    if (data.isClimbableLadder) {
+      return 'Climb Loft Ladder';
+    }
     if (data.isCarGate) {
       return `${this.isCarGatesOpen() ? 'Close' : 'Open'} Courtyard Gates`;
     }
@@ -1246,6 +1249,7 @@ export class SceneInteractionManager {
             u.circuitId ||
             u.isBifoldDoor ||
             u.isCarGate ||
+            u.isClimbableLadder ||
             u.isKNXSwitch ||
             u.isUtilitySwitch ||
             u.isCourtyardSwitch ||

@@ -148,7 +148,7 @@ export class WalkthroughDoorBargeAndCollisionSolver {
   }
 
   public depenetrateFootPosition(footPos: THREE.Vector3, currentEyeHeight: number): void {
-    if (isInsideSpiralStaircaseCutout(footPos.x, footPos.z)) return;
+    if (isInsideSpiralStaircaseCutout(footPos.x, footPos.z) || footPos.y >= 2.2) return;
     this.getObstacleCache();
     const furnMinY = footPos.y + 0.25;
     const furnMaxY = footPos.y + Math.max(currentEyeHeight, STANDING_EYE_HEIGHT) + 0.15;
@@ -246,6 +246,7 @@ export class WalkthroughDoorBargeAndCollisionSolver {
         typeof obj.name === 'string' &&
         (obj.name.startsWith('hall.stairs') ||
           obj.name.startsWith('outbuildings.barn.mezzanineLadder') ||
+          obj.name.startsWith('outbuildings.store.loftLadder') ||
           obj.name.startsWith('outbuildings.barn.spiralStaircase') ||
           obj.name.startsWith('outbuildings.barn.mezzanineStairwell') ||
           obj.name.startsWith('outbuildings.firstFloor.stairwellFascia') ||
@@ -280,6 +281,7 @@ export class WalkthroughDoorBargeAndCollisionSolver {
             cur.name.endsWith('.roof') ||
             cur.name === 'outbuildings.roofTrusses' ||
             cur.name === 'outbuildings.barn.mezzanineLadder' ||
+            cur.name === 'outbuildings.store.loftLadder' ||
             cur.name.startsWith('outbuildings.barn.spiralStaircase') ||
             cur.name.startsWith('outbuildings.barn.mezzanineStairwell') ||
             cur.name.startsWith('hall.stairs') ||
