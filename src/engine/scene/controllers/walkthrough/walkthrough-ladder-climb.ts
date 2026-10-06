@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {
+  getStoreBarnRoofSoffitY,
   getWalkthroughTargetEyeHeight,
   OB_COS,
   OB_SIN,
@@ -17,15 +18,17 @@ export type LadderClimbPhase =
   | 'dismounting_bottom';
 
 const LADDER_CENTER_U = 14.21;
-const LADDER_CLIMB_STAND_V = 0.85;
+const LADDER_CLIMB_STAND_V = 0.94;
 const LADDER_DISMOUNT_BOTTOM_V = 0.76;
-const LADDER_LOFT_LANDING_V = 1.76;
+const LADDER_LOFT_LANDING_V = 1.98;
 const LADDER_BOTTOM_FOOT_Y = -0.34;
 const LADDER_FIRST_RUNG_FOOT_Y = -0.18;
-const LADDER_MANTLE_START_FOOT_Y = 1.96;
-const LADDER_TOP_MOUNT_END_FOOT_Y = 1.88;
+// At footY = 1.44m (Rung 6/7) with eyeH = 1.38m, cameraY = 2.82m (21cm above the 2.61m loft deck and 45cm below the 3.27m ceiling soffit!)
+const LADDER_MANTLE_START_FOOT_Y = 1.44;
+const LADDER_TOP_MOUNT_END_FOOT_Y = 1.36;
 const LADDER_TOP_LOFT_FOOT_Y = 2.61;
 const LADDER_RUNG_SPACING = 0.272;
+const ROOF_CAMERA_CLEARANCE_MARGIN = 0.38;
 
 // Facing South (+obV) toward the ladder wall at v = 1.24m
 const LADDER_FACE_SOUTH_YAW = Math.atan2(-OB_SIN, -OB_COS);
@@ -99,7 +102,7 @@ export class WalkthroughLadderClimbController {
    */
   public getProximityLadderPrompt(footPos: THREE.Vector3, targetedMesh: THREE.Object3D | null): string | null {
     if (this.phase === 'climbing') {
-      return footPos.y >= 1.45
+      return footPos.y >= 1.05
         ? 'Mantle onto Storage Loft [W / Space / F]'
         : 'Climb Ladder [W Up · S Down · Space Jump Off]';
     }
@@ -115,7 +118,7 @@ export class WalkthroughLadderClimbController {
     const { obU, obV } = worldToOutbuildingLocal(footPos.x, footPos.z);
 
     if (footPos.y >= 2.15) {
-      if (isTargetingLadder || (obU >= 13.72 && obU <= 14.70 && obV >= 1.15 && obV <= 1.82)) {
+      if (isTargetingLadder || (obU >= 13.72 && obU <= 14.70 && obV >= 1.15 && obV <= 2.10)) {
         return 'Descend Loft Ladder';
       }
       return null;
@@ -139,7 +142,7 @@ export class WalkthroughLadderClimbController {
     targetedMesh: THREE.Object3D | null
   ): boolean {
     if (this.phase === 'climbing') {
-      if (footPos.y >= 1.35) {
+      if (footPos.y >= 1.0) {
         this.beginTopMantle(footPos, yawRad, pitchRad, currentEyeHeight);
       } else {
         this.autoClimbDir = this.autoClimbDir === 1 ? -1 : 1;
@@ -158,7 +161,7 @@ export class WalkthroughLadderClimbController {
     const { obU, obV } = worldToOutbuildingLocal(footPos.x, footPos.z);
 
     if (footPos.y >= 2.0) {
-      if (isTargetingLadder || (obU >= 13.55 && obU <= 14.85 && obV >= 1.12 && obV <= 2.15)) {
+      if (isTargetingLadder || (obU >= 13.55 && obU <= 14.85 && obV >= 1.12 && obV <= 2.25)) {
         this.beginTopMount(footPos, yawRad, pitchRad, currentEyeHeight, -1, false);
         return true;
       }
@@ -189,7 +192,7 @@ export class WalkthroughLadderClimbController {
       return { handled: false, kickBackVelocityY: 0 };
     }
     if (this.phase === 'climbing') {
-      if (footPos.y >= 1.45) {
+      if (footPos.y >= 1.05) {
         this.beginTopMantle(footPos, yawRad, pitchRad, currentEyeHeight);
         return { handled: true, kickBackVelocityY: 0 };
       }
@@ -241,12 +244,12 @@ export class WalkthroughLadderClimbController {
       }
     }
 
-    // 2. Top Store Loft Auto-Mount (`obU = 13.90..14.52m, obV <= 1.48m, footY >= 2.15m`)
+    // 2. Top Store Loft Auto-Mount (`obU = 13.90..14.52m, obV <= 1.56m, footY >= 2.15m`)
     if (
       footPos.y >= 2.15 &&
       obU >= 13.90 &&
       obU <= 14.52 &&
-      obV <= 1.48 &&
+      obV <= 1.56 &&
       moveV < -0.34
     ) {
       const forwardHeld = keysDown.has('KeyW') || keysDown.has('ArrowUp');
@@ -389,9 +392,9 @@ export class WalkthroughLadderClimbController {
       footPos.y = THREE.MathUtils.lerp(this.startFootY, LADDER_FIRST_RUNG_FOOT_Y, ease);
 
       const nextYaw = lerpAngle(this.startYawRad, LADDER_FACE_SOUTH_YAW, ease);
-      const desiredPitch = THREE.MathUtils.clamp(this.startPitchRad, -0.05, 0.32) + 0.14 * Math.sin(t * Math.PI);
+      const desiredPitch = THREE.MathUtils.clamp(this.startPitchRad, -0.05, 0.28) + 0.12 * Math.sin(t * Math.PI);
       const nextPitch = THREE.MathUtils.lerp(this.startPitchRad, desiredPitch, ease);
-      const nextEyeH = THREE.MathUtils.lerp(this.startEyeHeight, 1.56, ease);
+      const nextEyeH = THREE.MathUtils.lerp(this.startEyeHeight, 1.52, ease);
 
       // Crisp hand-grab roll & vertical compression impulse
       const grabImpulse = Math.sin(t * Math.PI);
@@ -417,10 +420,12 @@ export class WalkthroughLadderClimbController {
     }
 
     // -------------------------------------------------------------------------
-    // Phase 2: Reverse Top-Mount from Store Loft onto Ladder (`0.64s` CoD Vault-On)
+    // Phase 2: Reverse Top-Mount from Store Loft onto Ladder (`0.66s` CoD Vault-On)
+    //          Directly interpolates & roof-clamps world camera Y so the camera
+    //          NEVER clips through the low North roof eave slope!
     // -------------------------------------------------------------------------
     if (this.phase === 'mounting_top') {
-      const duration = 0.64;
+      const duration = 0.66;
       const t = THREE.MathUtils.clamp(this.phaseElapsed / duration, 0, 1);
       const ease = smoothstep(0, 1, t);
 
@@ -429,27 +434,36 @@ export class WalkthroughLadderClimbController {
       }
 
       // Swing laterally around the grab hoops and step backward across the v = 1.24m loft nosing
-      const swingArcU = Math.sin(t * Math.PI) * 0.036;
+      const swingArcU = Math.sin(t * Math.PI) * 0.034;
       const obU = THREE.MathUtils.lerp(this.startObU, LADDER_CENTER_U, ease) + swingArcU;
       const obV = THREE.MathUtils.lerp(this.startObV, LADDER_CLIMB_STAND_V, ease);
       const { wx, wz } = outbuildingLocalToWorld(obU, obV);
       footPos.x = wx;
       footPos.z = wz;
 
-      const dropT = smoothstep(0.22, 1.0, t);
+      const dropT = smoothstep(0.18, 1.0, t);
       footPos.y = THREE.MathUtils.lerp(this.startFootY, LADDER_TOP_MOUNT_END_FOOT_Y, dropT);
 
+      const startCameraY = Math.min(
+        this.startFootY + this.startEyeHeight,
+        getStoreBarnRoofSoffitY(this.startObV) - ROOF_CAMERA_CLEARANCE_MARGIN
+      );
+      const endCameraY = LADDER_TOP_MOUNT_END_FOOT_Y + 1.38; // 2.74m (53cm below the 3.27m ceiling at v = 0.94m!)
+      const rawCameraY = THREE.MathUtils.lerp(startCameraY, endCameraY, ease);
+      const bobOffsetY = -0.028 * Math.sin(t * Math.PI);
+      const maxSafeCameraY = getStoreBarnRoofSoffitY(obV) - ROOF_CAMERA_CLEARANCE_MARGIN;
+      const clampedCameraY = Math.min(rawCameraY + bobOffsetY, maxSafeCameraY);
+      const nextEyeH = Math.max(0.35, clampedCameraY - footPos.y - bobOffsetY);
+
       const nextYaw = lerpAngle(this.startYawRad, LADDER_FACE_SOUTH_YAW, smoothstep(0, 0.82, t));
-      const lookDownArc = -0.26 * Math.sin(t * Math.PI);
-      const nextPitch = THREE.MathUtils.lerp(this.startPitchRad, -0.14, ease) + lookDownArc;
-      const nextEyeH = THREE.MathUtils.lerp(this.startEyeHeight, 1.34, dropT);
+      const lookDownArc = -0.22 * Math.sin(t * Math.PI);
+      const nextPitch = THREE.MathUtils.lerp(this.startPitchRad, -0.12, ease) + lookDownArc;
 
       // Two-hand grab-rail hoop roll & weight transfer
       this.currentRollRad =
         t < 0.5
-          ? -0.052 * Math.sin((t / 0.5) * Math.PI)
-          : 0.032 * Math.sin(((t - 0.5) / 0.5) * Math.PI);
-      const bobOffsetY = -0.032 * Math.sin(t * Math.PI);
+          ? -0.048 * Math.sin((t / 0.5) * Math.PI)
+          : 0.030 * Math.sin(((t - 0.5) / 0.5) * Math.PI);
 
       if (t >= 1) {
         this.phase = 'climbing';
@@ -465,7 +479,7 @@ export class WalkthroughLadderClimbController {
         currentEyeHeight: nextEyeH,
         bobOffsetY,
         rollRad: this.currentRollRad,
-        fovBoost: 1.5 * Math.sin(t * Math.PI),
+        fovBoost: 1.4 * Math.sin(t * Math.PI),
       };
     }
 
@@ -515,18 +529,18 @@ export class WalkthroughLadderClimbController {
       const basePitchTarget =
         this.autoClimbDir !== 0
           ? this.autoClimbDir > 0
-            ? 0.18
-            : -0.24
-          : THREE.MathUtils.clamp(targetPitchRad, -1.25, 1.15);
+            ? 0.14
+            : -0.22
+          : THREE.MathUtils.clamp(targetPitchRad, -1.25, 0.85);
 
       const baseSpeed =
         climbInput > 0
           ? shiftHeld
-            ? 1.98
-            : 1.54
+            ? 1.92
+            : 1.48
           : shiftHeld
-            ? 2.18
-            : 1.70;
+            ? 2.12
+            : 1.65;
 
       // Rung phase synchronized to the 10 solid European oak rungs (`0.272m` pitch)
       const prevRungIndex = (footPos.y - LADDER_BOTTOM_FOOT_Y) / LADDER_RUNG_SPACING;
@@ -535,7 +549,10 @@ export class WalkthroughLadderClimbController {
       // Non-uniform Call-of-Duty hand-over-hand haul velocity pulse per rung
       const haulPulse = 1.0 + 0.30 * Math.sin(prevRungPhase * 2 - Math.PI * 0.25);
       if (climbInput !== 0) {
-        footPos.y += climbInput * baseSpeed * haulPulse * dtSeconds;
+        footPos.y = Math.min(
+          LADDER_MANTLE_START_FOOT_Y,
+          footPos.y + climbInput * baseSpeed * haulPulse * dtSeconds
+        );
       }
 
       const rungIndex = (footPos.y - LADDER_BOTTOM_FOOT_Y) / LADDER_RUNG_SPACING;
@@ -550,35 +567,34 @@ export class WalkthroughLadderClimbController {
         1 - Math.exp(-22 * dtSeconds)
       );
 
-      const swayU = -Math.sin(rungPhase) * 0.022 * activeMotionWeight;
+      const swayU = -Math.sin(rungPhase) * 0.020 * activeMotionWeight;
       const pullV = Math.abs(Math.sin(rungPhase)) * 0.018 * activeMotionWeight;
-      const { wx, wz } = outbuildingLocalToWorld(
-        LADDER_CENTER_U + swayU,
-        LADDER_CLIMB_STAND_V + pullV
-      );
+      const curObV = LADDER_CLIMB_STAND_V + pullV;
+      const { wx, wz } = outbuildingLocalToWorld(LADDER_CENTER_U + swayU, curObV);
       footPos.x = wx;
       footPos.z = wz;
 
-      const pitchNod = climbInput !== 0 ? Math.sin(rungPhase * 2) * 0.018 : 0;
+      const pitchNod = climbInput !== 0 ? Math.sin(rungPhase * 2) * 0.016 : 0;
       const nextPitch =
         THREE.MathUtils.lerp(pitchRad, basePitchTarget, lookAlpha) + pitchNod;
-      const bobOffsetY = climbInput !== 0 ? Math.sin(rungPhase * 2) * 0.014 : 0;
+      const bobOffsetY = climbInput !== 0 ? Math.sin(rungPhase * 2) * 0.012 : 0;
 
-      // Scale eye height smoothly from 1.56m at bottom to 1.32m at top of ladder so head stays below roof eaves
+      // Scale eye height from 1.52m at bottom to 1.38m at mantle start (`cameraY <= 2.82m`, 45cm below the 3.27m ceiling!)
       const climbFrac = THREE.MathUtils.clamp(
         (footPos.y - LADDER_BOTTOM_FOOT_Y) / (LADDER_MANTLE_START_FOOT_Y - LADDER_BOTTOM_FOOT_Y),
         0,
         1
       );
-      const desiredEyeH = THREE.MathUtils.lerp(1.56, 1.32, climbFrac);
-      const nextEyeH = THREE.MathUtils.lerp(
-        currentEyeHeight,
-        desiredEyeH,
-        1 - Math.exp(-18 * dtSeconds)
+      const desiredEyeH = THREE.MathUtils.lerp(1.52, 1.38, climbFrac);
+      const maxSafeEyeH =
+        getStoreBarnRoofSoffitY(curObV) - ROOF_CAMERA_CLEARANCE_MARGIN - footPos.y - bobOffsetY;
+      const nextEyeH = Math.min(
+        maxSafeEyeH,
+        THREE.MathUtils.lerp(currentEyeHeight, desiredEyeH, 1 - Math.exp(-18 * dtSeconds))
       );
 
-      // Check top mantle trigger (`footPos.y >= 1.96m` while climbing up)
-      if (climbInput > 0 && footPos.y >= LADDER_MANTLE_START_FOOT_Y) {
+      // Trigger top mantle as soon as feet reach Rung 6/7 (`footPos.y >= 1.44m`, where eyes are at `y = 2.82m` looking across the 2.61m loft deck!)
+      if (climbInput > 0 && footPos.y >= LADDER_MANTLE_START_FOOT_Y - 1e-3) {
         this.beginTopMantle(footPos, nextYaw, nextPitch, nextEyeH);
       } else if (climbInput < 0 && footPos.y <= LADDER_BOTTOM_FOOT_Y + 0.08) {
         this.beginBottomDismount(footPos, nextYaw, nextPitch, nextEyeH);
@@ -593,70 +609,80 @@ export class WalkthroughLadderClimbController {
         currentEyeHeight: nextEyeH,
         bobOffsetY,
         rollRad: this.currentRollRad,
-        fovBoost: climbInput !== 0 ? (shiftHeld ? 2.6 : 1.2) : 0,
+        fovBoost: climbInput !== 0 ? (shiftHeld ? 2.4 : 1.1) : 0,
       };
     }
 
     // -------------------------------------------------------------------------
-    // Phase 4: Call-of-Duty Top-of-Ladder Vault & Mantle Onto Store Loft (`0.72s`)
+    // Phase 4: Call-of-Duty Top-of-Ladder Vault & Mantle Onto Store Loft (`0.76s`)
+    //          Moves forward (+obV: 0.94m -> 1.98m) simultaneously with the haul
+    //          and clamps camera world Y >= 38cm below the pitched roof soffit!
     // -------------------------------------------------------------------------
     if (this.phase === 'mantling_top') {
-      const duration = 0.72;
+      const duration = 0.76;
       const t = THREE.MathUtils.clamp(this.phaseElapsed / duration, 0, 1);
 
-      // Stage 1 (t = 0..0.60): Haul body vertically over the loft nosing (y: 1.96m -> 2.61m)
-      const tHaul = THREE.MathUtils.clamp(t / 0.60, 0, 1);
-      const easeHaul = 1 - Math.pow(1 - tHaul, 2.4);
-      footPos.y = THREE.MathUtils.lerp(this.startFootY, LADDER_TOP_LOFT_FOOT_Y, easeHaul);
-
-      // Stage 2 (t = 0.16..0.92): Vault forward across the v = 1.24m threshold onto the pine deck (v -> 1.76m)
-      const tVault = smoothstep(0.16, 0.92, t);
-      const hipShiftU = -0.040 * Math.sin(t * Math.PI);
+      // Simultaneous forward vault across the v = 1.24m threshold into the higher-ceiling loft bay (v -> 1.98m)
+      const tVault = smoothstep(0.0, 0.96, t);
+      const hipShiftU = -0.036 * Math.sin(t * Math.PI);
       const obU = THREE.MathUtils.lerp(this.startObU, LADDER_CENTER_U - 0.02, tVault) + hipShiftU;
       const obV = THREE.MathUtils.lerp(this.startObV, LADDER_LOFT_LANDING_V, tVault);
       const { wx, wz } = outbuildingLocalToWorld(obU, obV);
       footPos.x = wx;
       footPos.z = wz;
 
-      // Smoothly transition eye height to the Store Loft roof-safe height so camera never clips the roof
+      // Smooth foot rise onto the 2.61m pine loft floor
+      const tFootRise = smoothstep(0.08, 0.86, t);
+      footPos.y = THREE.MathUtils.lerp(this.startFootY, LADDER_TOP_LOFT_FOOT_Y, tFootRise);
+
+      // Direct roof-hugging camera world Y trajectory (`2.82m` -> `3.45m`), strictly clamped below `getStoreBarnRoofSoffitY(obV) - 0.38m`
+      const startCameraY = Math.min(
+        this.startFootY + this.startEyeHeight,
+        getStoreBarnRoofSoffitY(this.startObV) - ROOF_CAMERA_CLEARANCE_MARGIN
+      );
+      const { wx: endWx, wz: endWz } = outbuildingLocalToWorld(
+        LADDER_CENTER_U - 0.02,
+        LADDER_LOFT_LANDING_V
+      );
       const finalLoftEyeH = getWalkthroughTargetEyeHeight(
-        wx,
+        endWx,
         LADDER_TOP_LOFT_FOOT_Y,
-        wz,
+        endWz,
         crouched
       );
-      const nextEyeH = THREE.MathUtils.lerp(
-        this.startEyeHeight,
-        finalLoftEyeH,
-        smoothstep(0.05, 0.85, t)
-      );
+      const endCameraY = LADDER_TOP_LOFT_FOOT_Y + finalLoftEyeH;
+      const rawCameraY = THREE.MathUtils.lerp(startCameraY, endCameraY, smoothstep(0.0, 0.94, t));
+
+      // Knee-dip landing settle when planting boots on the pine loft deck (`t = 0.60..1.00`)
+      const bobOffsetY =
+        t >= 0.60
+          ? -0.036 * Math.sin(((t - 0.60) / 0.40) * Math.PI)
+          : 0.012 * Math.sin((t / 0.60) * Math.PI);
+
+      const maxSafeCameraY = getStoreBarnRoofSoffitY(obV) - ROOF_CAMERA_CLEARANCE_MARGIN;
+      const clampedCameraY = Math.min(rawCameraY + bobOffsetY, maxSafeCameraY);
+      const nextEyeH = Math.max(0.38, clampedCameraY - footPos.y - bobOffsetY);
 
       // Camera Yaw: face South (+obV) into the Store Loft storage area
       const nextYaw = lerpAngle(this.startYawRad, LADDER_FACE_SOUTH_YAW, smoothstep(0, 0.65, t));
 
-      // Camera Pitch: look down at the grab hoops & oak nosing during haul, then lift gaze across the loft
+      // Camera Pitch: look down at the grab hoops & oak nosing during haul, then lift gaze level across the loft
       const haulPitchDip =
         t < 0.45
-          ? -0.24 * Math.sin((t / 0.45) * (Math.PI * 0.5))
-          : -0.24 * Math.cos(((t - 0.45) / 0.55) * (Math.PI * 0.5));
+          ? -0.22 * Math.sin((t / 0.45) * (Math.PI * 0.5))
+          : -0.22 * Math.cos(((t - 0.45) / 0.55) * (Math.PI * 0.5));
       const basePitch = THREE.MathUtils.lerp(this.startPitchRad, -0.05, smoothstep(0, 1, t));
-      const nextPitch = THREE.MathUtils.clamp(basePitch + haulPitchDip, -MAX_PITCH_RAD, MAX_PITCH_RAD);
+      const nextPitch = THREE.MathUtils.clamp(basePitch + haulPitchDip, -MAX_PITCH_RAD, 0.35);
 
       // Call-of-Duty 2-Stage Mantle Dutch Roll:
-      // +3.3° right roll on grab-hoop haul -> -2.6° left counter-roll on leg swing & boot plant -> 0° settle
+      // +3.0° right roll on grab-hoop haul -> -2.4° left counter-roll on leg swing & boot plant -> 0° settle
       if (t < 0.46) {
-        this.currentRollRad = 0.058 * Math.sin((t / 0.46) * Math.PI);
+        this.currentRollRad = 0.052 * Math.sin((t / 0.46) * Math.PI);
       } else if (t < 0.88) {
-        this.currentRollRad = -0.046 * Math.sin(((t - 0.46) / 0.42) * Math.PI);
+        this.currentRollRad = -0.042 * Math.sin(((t - 0.46) / 0.42) * Math.PI);
       } else {
         this.currentRollRad = THREE.MathUtils.lerp(this.currentRollRad, 0, (t - 0.88) / 0.12);
       }
-
-      // Visceral knee-dip landing thud when planting boots on the pine loft deck (`t = 0.62..1.00`)
-      const bobOffsetY =
-        t >= 0.62
-          ? -0.044 * Math.sin(((t - 0.62) / 0.38) * Math.PI)
-          : 0.018 * Math.sin((t / 0.62) * Math.PI);
 
       if (t >= 1) {
         footPos.y = LADDER_TOP_LOFT_FOOT_Y;
@@ -672,7 +698,7 @@ export class WalkthroughLadderClimbController {
         currentEyeHeight: nextEyeH,
         bobOffsetY,
         rollRad: this.currentRollRad,
-        fovBoost: 2.5 * Math.sin(t * Math.PI),
+        fovBoost: 2.2 * Math.sin(t * Math.PI),
       };
     }
 

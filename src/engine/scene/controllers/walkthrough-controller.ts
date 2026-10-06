@@ -503,7 +503,10 @@ export class WalkthroughController {
       this.footPos.z,
       this.crouched
     );
-    if (Math.abs(this.currentEyeHeight - targetEyeH) > 1e-3) {
+    if (this.footPos.y >= 1.5 && this.currentEyeHeight > targetEyeH) {
+      this.currentEyeHeight = targetEyeH;
+      movedOrRotated = true;
+    } else if (Math.abs(this.currentEyeHeight - targetEyeH) > 1e-3) {
       this.currentEyeHeight = THREE.MathUtils.lerp(this.currentEyeHeight, targetEyeH, 1 - Math.exp(-14 * dtSeconds));
       movedOrRotated = true;
     }
@@ -511,7 +514,10 @@ export class WalkthroughController {
     if (this.jumpOffsetY > 0 || this.verticalVelocity !== 0) {
       this.jumpOffsetY += this.verticalVelocity * dtSeconds;
       this.verticalVelocity -= GRAVITY_MPS2 * dtSeconds;
-      if (this.jumpOffsetY <= 0) {
+      if (this.footPos.y >= 1.8 && targetEyeH < STANDING_EYE_HEIGHT - 0.1) {
+        this.jumpOffsetY = 0;
+        this.verticalVelocity = 0;
+      } else if (this.jumpOffsetY <= 0) {
         this.jumpOffsetY = 0;
         this.verticalVelocity = 0;
       }

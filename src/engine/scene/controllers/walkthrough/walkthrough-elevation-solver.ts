@@ -34,9 +34,17 @@ export function outbuildingLocalToWorld(
 }
 
 /**
+ * Returns the exact vaulted plasterboard ceiling soffit world Y (`y = 2.92m` at eaves `v = 0.28m / 5.43m`
+ * rising to `y = 4.269m` at the central ridge `v = 2.855m`) in the Store & Barn range.
+ */
+export function getStoreBarnRoofSoffitY(obV: number): number {
+  return 4.269 - Math.abs(obV - 2.855) * ((4.269 - 2.92) / 2.575);
+}
+
+/**
  * Computes the target standing/crouched eye height at world `(x, footY, z)`, automatically
  * ducking under the Store Loft pitched roof slopes (`2.92m` eaves -> `4.269m` central ridge)
- * so the player's camera never clips through the roof rafters or linear LED battens.
+ * so the player's camera never clips through the roof rafters, purlins, or linear LED battens.
  */
 export function getWalkthroughTargetEyeHeight(
   x: number,
@@ -44,12 +52,13 @@ export function getWalkthroughTargetEyeHeight(
   z: number,
   crouched: boolean
 ): number {
-  if (footY >= 2.1) {
+  if (footY >= 1.2) {
     const { obU, obV } = worldToOutbuildingLocal(x, z);
-    if (obU >= 12.25 && obU <= 15.05 && obV >= 1.1 && obV <= 5.45) {
-      const roofSoffitY = 4.269 - Math.abs(obV - 2.855) * ((4.269 - 2.92) / 2.575);
-      const maxClearEyeH = THREE.MathUtils.clamp(roofSoffitY - 2.61 - 0.24, 0.72, 1.24);
-      return crouched ? Math.min(0.72, maxClearEyeH) : maxClearEyeH;
+    if (obU >= 12.15 && obU <= 15.15 && obV >= 0.3 && obV <= 5.45) {
+      const roofSoffitY = getStoreBarnRoofSoffitY(obV);
+      const maxSafeCameraY = roofSoffitY - 0.38;
+      const maxClearEyeH = THREE.MathUtils.clamp(maxSafeCameraY - footY, 0.42, 1.24);
+      return crouched ? Math.min(0.68, maxClearEyeH) : maxClearEyeH;
     }
   }
   return crouched ? CROUCH_EYE_HEIGHT : STANDING_EYE_HEIGHT;
