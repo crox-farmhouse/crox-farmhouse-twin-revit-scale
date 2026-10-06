@@ -26,12 +26,14 @@ interface HingedDoorState {
   overheadTrackZ?: number;
   closedPosZ?: number;
   isFoldingFloorMat?: boolean;
+  basePivotPos?: THREE.Vector3;
   linkedDrawerId?: string;
   onStateChange?: (isOpen: boolean) => void;
   bargeSwingSign?: -1 | 1;
   fromAngle?: number;
   closedGeometry?: ClosedDoorwayGeometry;
 }
+
 
 interface BifoldCupboardState {
   readonly id: string;
@@ -330,9 +332,21 @@ export class SceneInteractionManager {
   }
 
   /**
-   * Registers the hinged folding Golf Simulator front stance mat (`axis = 'z'`) and links it
-   * with the Callaway Tour Golf Bag (`bagGroup`) so clicking either folds/unfolds the front mat
-   * ~177 degrees over its threshold piano hinge while sliding the golf bag out of the way.
+   * Registers the track-mounted sliding Golf Simulator front stance mat and links it
+   * with the Callaway Tour Golf Bag (`bagGroup`).
+   *
+   * 2-Stage Cam-Lift & Roller-Track Kinematics:
+   * - Stage 1 (`progress = 0.00 .. 0.25`): The small side lever (`isGolfTrackLiftLeverPivot`) lifts up,
+   *   rotating the 8 eccentric cam linkages (`isGolfTrackCamLink`) so the 2 Outside Tracks
+   *   (`isGolfOutsideTrackLiftGroup`) and the Sliding Mat rise `+36 mm` (`y = 0 -> +0.036 m`)
+   *   to match the height of the 2 Inside Tracks that run through the inside mat.
+   * - Stage 2 (`progress = 0.25 .. 1.00`): The Sliding Mat rolls straight back (`dx = -1.98 m`)
+   *   on its 16 flanged track rollers (`isGolfMatTrackRoller`) from the lifted Outside Tracks
+   *   into the Inside Tracks over the top of the inside mat.
+   * - Rolling back out (`progress: 1.00 -> 0.00`) reverses the sequence: the mat rolls all the way
+   *   out onto the lifted Outside Tracks (`1.00 -> 0.25`), and once fully out (`0.25 -> 0.00`),
+   *   the small lever lowers the Outside Tracks back down onto the limestone tiles so both mats
+   *   sit 100% flush (`yTop = 0.034 m`) with one another!
    */
   public registerFoldingGolfMat(
     parent: THREE.Object3D,
@@ -368,8 +382,9 @@ export class SceneInteractionManager {
       openAngle,
       isOpen: false,
       progress: 0,
-      speed: 1.55,
+      speed: 0.95,
       isFoldingFloorMat: true,
+      basePivotPos: matPivot.position.clone(),
       linkedDrawerId: bagDrawerId,
       onStateChange,
     });
@@ -392,6 +407,59 @@ export class SceneInteractionManager {
     });
 
     return { matPivot, matDoorId, bagDrawerId };
+  }
+
+  /**
+   * Applies the 2-phase Cam-Lift Lever + Roller-Track kinematics to the Barn Golf Simulator
+   * sliding mat, its 16 flanged track rollers, the 2 movable outside tracks, the 8 cam-lift
+   * linkages, and the small cam-lift lever.
+   */
+  private applySlidingGolfMatKinematics(door: HingedDoorState): void {
+    if (!door.basePivotPos) {
+      door.basePivotPos = door.pivot.position.clone();
+    }
+    const liftFraction = 0.25;
+    const rawLift = Math.min(1, Math.max(0, door.progress / liftFraction));
+    const rawSlide = Math.min(
+      1,
+      Math.max(0, (door.progress - liftFraction) / (1 - liftFraction))
+    );
+    const liftSmooth = easeInOutCubic(rawLift);
+    const slideSmooth = easeInOutCubic(rawSlide);
+    const liftHeightY = 0.036;
+    const slideDistanceX = 1.98;
+
+    door.pivot.rotation.set(0, 0, 0);
+    door.pivot.position.set(
+      door.basePivotPos.x - slideSmooth * slideDistanceX,
+      door.basePivotPos.y + liftSmooth * liftHeightY,
+      door.basePivotPos.z
+    );
+
+    const rollerAngleZ = (slideSmooth * slideDistanceX) / 0.013;
+    door.pivot.traverse((child) => {
+      if (child.userData?.isGolfMatTrackRoller) {
+        child.rotation.z = rollerAngleZ;
+      }
+    });
+
+    const simRoot = door.pivot.parent;
+    if (simRoot) {
+      simRoot.traverse((child) => {
+        const u = child.userData;
+        if (!u) return;
+        if (u.isGolfOutsideTrackLiftGroup) {
+          child.position.y = liftSmooth * liftHeightY;
+          child.updateMatrixWorld(true);
+        } else if (u.isGolfTrackCamLink) {
+          child.rotation.z = liftSmooth * 0.78;
+          child.updateMatrixWorld(true);
+        } else if (u.isGolfTrackLiftLeverPivot) {
+          child.rotation.z = -0.42 + liftSmooth * (0.72 - -0.42);
+          child.updateMatrixWorld(true);
+        }
+      });
+    }
   }
 
   /**
@@ -629,7 +697,7 @@ export class SceneInteractionManager {
       door.fromAngle = undefined;
       door.isOpen = !door.isOpen;
       door.speed =
-        door.overheadTrackZ !== undefined || door.isFoldingFloorMat ? 1.55 : 2.8;
+        door.overheadTrackZ !== undefined ? 1.55 : door.isFoldingFloorMat ? 0.95 : 2.8;
       if (door.linkedDrawerId) {
         const linkedDrawer = this.slidingDrawers.get(door.linkedDrawerId);
         if (linkedDrawer) {
@@ -662,7 +730,7 @@ export class SceneInteractionManager {
         if (linkedDoor) {
           linkedDoor.fromAngle = undefined;
           linkedDoor.isOpen = drawer.isOpen;
-          linkedDoor.speed = 1.55;
+          linkedDoor.speed = linkedDoor.isFoldingFloorMat ? 0.95 : 1.55;
           linkedDoor.onStateChange?.(linkedDoor.isOpen);
         }
       }
@@ -1065,7 +1133,7 @@ export class SceneInteractionManager {
           return `${verb} AGA Oven Door`;
         }
         if (door.isFoldingFloorMat || chainNames.includes('turfmat')) {
-          return `${door.isOpen ? 'Unfold' : 'Fold'} Golf Simulator Mat`;
+          return `${door.isOpen ? 'Roll Out & Lower Flush' : 'Lift Track & Roll In'} Golf Simulator Mat`;
         }
         if (door.overheadTrackZ !== undefined) {
           return `${verb} Garage Door`;
@@ -1092,7 +1160,7 @@ export class SceneInteractionManager {
       const drawer = this.slidingDrawers.get(id);
       if (drawer) {
         if (drawer.linkedDoorId) {
-          return `${drawer.isOpen ? 'Unfold' : 'Fold'} Golf Simulator Mat`;
+          return `${drawer.isOpen ? 'Roll Out & Lower Flush' : 'Lift Track & Roll In'} Golf Simulator Mat`;
         }
         return `${drawer.isOpen ? 'Close' : 'Open'} Drawer`;
       }
@@ -1239,24 +1307,22 @@ export class SceneInteractionManager {
         door.closedAngle = newPivot.rotation[door.axis];
         door.openAngle = door.closedAngle + angleDelta;
         door.closedGeometry = undefined;
-        if (door.overheadTrackZ !== undefined && door.closedPosZ === undefined) {
-          door.closedPosZ = newPivot.position.z;
-        }
-        const effectiveOpen = this.getEffectiveDoorOpenAngle(door);
-        const startAngle = door.fromAngle ?? door.closedAngle;
-        const smooth = easeInOutCubic(door.progress);
-        const currentAngle = startAngle + (effectiveOpen - startAngle) * smooth;
-        door.pivot.rotation[door.axis] = currentAngle;
         if (door.isFoldingFloorMat) {
-          door.pivot.traverse((child) => {
-            if (child.userData?.isVelcroHingeFlapPivot) {
-              child.rotation.z = -smooth * Math.PI * 0.88;
-            }
-          });
-        }
-        if (door.overheadTrackZ !== undefined && door.closedPosZ !== undefined) {
-          door.pivot.position.z =
-            door.closedPosZ + door.overheadTrackZ * Math.sin(Math.abs(currentAngle));
+          door.basePivotPos = newPivot.position.clone();
+          this.applySlidingGolfMatKinematics(door);
+        } else {
+          if (door.overheadTrackZ !== undefined && door.closedPosZ === undefined) {
+            door.closedPosZ = newPivot.position.z;
+          }
+          const effectiveOpen = this.getEffectiveDoorOpenAngle(door);
+          const startAngle = door.fromAngle ?? door.closedAngle;
+          const smooth = easeInOutCubic(door.progress);
+          const currentAngle = startAngle + (effectiveOpen - startAngle) * smooth;
+          door.pivot.rotation[door.axis] = currentAngle;
+          if (door.overheadTrackZ !== undefined && door.closedPosZ !== undefined) {
+            door.pivot.position.z =
+              door.closedPosZ + door.overheadTrackZ * Math.sin(Math.abs(currentAngle));
+          }
         }
         door.pivot.updateMatrixWorld(true);
       }
@@ -1328,6 +1394,18 @@ export class SceneInteractionManager {
     }
     for (const door of this.hingedDoors.values()) {
       door.pivot.traverse((c) => outSet.add(c));
+      if (door.isFoldingFloorMat && door.pivot.parent) {
+        door.pivot.parent.traverse((c) => {
+          if (
+            c.userData?.isGolfOutsideTrackLiftGroup ||
+            c.userData?.isGolfTrackCamLink ||
+            c.userData?.isGolfTrackLiftLeverPivot ||
+            c.name.includes('trackSystem')
+          ) {
+            c.traverse((sub) => outSet.add(sub));
+          }
+        });
+      }
     }
     for (const bf of this.bifoldCupboards.values()) {
       bf.outerPivot.traverse((c) => outSet.add(c));
@@ -1384,14 +1462,18 @@ export class SceneInteractionManager {
           door.progress < target
             ? Math.min(1, door.progress + step)
             : Math.max(0, door.progress - step);
-        const smooth = easeInOutCubic(door.progress);
-        const effectiveOpen = this.getEffectiveDoorOpenAngle(door);
-        const startAngle = door.fromAngle ?? door.closedAngle;
-        const currentAngle = startAngle + (effectiveOpen - startAngle) * smooth;
-        door.pivot.rotation[door.axis] = currentAngle;
-        if (door.overheadTrackZ !== undefined && door.closedPosZ !== undefined) {
-          door.pivot.position.z =
-            door.closedPosZ + door.overheadTrackZ * Math.sin(Math.abs(currentAngle));
+        if (door.isFoldingFloorMat) {
+          this.applySlidingGolfMatKinematics(door);
+        } else {
+          const smooth = easeInOutCubic(door.progress);
+          const effectiveOpen = this.getEffectiveDoorOpenAngle(door);
+          const startAngle = door.fromAngle ?? door.closedAngle;
+          const currentAngle = startAngle + (effectiveOpen - startAngle) * smooth;
+          door.pivot.rotation[door.axis] = currentAngle;
+          if (door.overheadTrackZ !== undefined && door.closedPosZ !== undefined) {
+            door.pivot.position.z =
+              door.closedPosZ + door.overheadTrackZ * Math.sin(Math.abs(currentAngle));
+          }
         }
         if (door.progress === 0) {
           door.bargeSwingSign = undefined;

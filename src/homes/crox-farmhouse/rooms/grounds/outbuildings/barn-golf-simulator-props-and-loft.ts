@@ -1189,6 +1189,11 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     );
     interactions.registerClickableObject(rearFairwayTurf, { interactableId: matDoorId });
     interactions.registerClickableObject(screenMesh, { interactableId: matDoorId });
+    for (const child of simGroup.children) {
+      if (child.name.startsWith('outbuildings.barn.golfSimulator.turfMat.rearFixed')) {
+        interactions.registerClickableObject(child, { interactableId: matDoorId });
+      }
+    }
     for (const child of hingeAssy.children) {
       interactions.registerClickableObject(child, { interactableId: matDoorId });
     }
