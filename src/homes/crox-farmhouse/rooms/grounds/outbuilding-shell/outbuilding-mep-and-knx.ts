@@ -257,14 +257,17 @@ function buildOutdoorVrfCondenserBank(groundGroup: THREE.Group): void {
 
 /**
  * Builds the Outbuilding Sub-Main Distribution Board & KNX Line 2.1 DIN-Rail Enclosure
- * (`PA 2.1.1 / 2.1.20 / 2.1.30`) on the Garage East Partition Wall (`u = 11.98m, v = 0.92m`).
+ * (`PA 2.1.1 / 2.1.20 / 2.1.30`) on the solid Store Corridor South Partition Wall (`u = 13.65m, v = 1.168m`),
+ * facing North (`-v`) into the Store service corridor (`u = 12.31..14.96m, v = 0.28..1.18m`),
+ * completely clear of the `v = 0.38..1.18m` Garage-to-Store pass-through doorway.
  */
 function buildGarageSubDistributionAndKnxBoard(groundGroup: THREE.Group): void {
   const boardGroup = new THREE.Group();
   boardGroup.name = 'outbuildings.garage.mepSubBoard';
   boardGroup.userData = { zone: 'outbuildingGarage' };
-  boardGroup.position.set(11.98, 1.35, 0.92);
-  boardGroup.rotation.y = -Math.PI / 2; // Facing West (-u) into the Garage bay
+  boardGroup.position.set(13.65, 0.92, 1.168);
+  boardGroup.rotation.y = Math.PI; // Facing North (-v) into the Store service corridor
+
 
   const steelEnclosureMat = new THREE.MeshStandardMaterial({
     color: 0xd0d5dc,
@@ -595,8 +598,10 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
 }
 
 /**
- * Places all 19 Single-Gang Corston Antique Brass Toggle Switches (`buildRoomCorstonToggleSwitch`)
- * at logical doorway/bedside locations across the 6 Outbuilding zones (`PA 2.1.10` .. `2.1.15`).
+ * Places all 25 Single-Gang Corston Antique Brass Toggle Switches (`buildRoomCorstonToggleSwitch`)
+ * at ergonomic Part M heights (`1.15m` AFFL at doorways, `0.72m` AFFL over bedside tables) on the
+ * latch/handle side of every entrance, pass-through, staircase landing, and bedside across all
+ * 6 Outbuilding zones (`PA 2.1.10` .. `2.1.15`).
  *
  * Each switch follows the universal Kitchen switch principle:
  * - Short press (`▲` / `▼`): cycles through the zone's 3 KNX scenes (`S1` / `S2` / `S3`)
@@ -617,110 +622,203 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
     readonly facing: 'north' | 'south' | 'east' | 'west';
     readonly isFirstFloor?: boolean;
   }> = [
-    // 1. Outbuilding Gym (PA 2.1.10 · S1 Peak Workout / S2 Stretch & Recovery / S3 Warm Cove)
+    // =========================================================================
+    // 1. Outbuilding Gym (FFL = -0.588m -> 1.15m AFFL = y: 0.562m)
+    //    PA 2.1.10 · S1 Peak Workout / S2 Stretch & Recovery / S3 Warm Cove
+    // =========================================================================
+    // 1A. Courtyard Glazed Coach Screen (`u = 3.05..5.45m`) — West pier (`u = 2.55m`, clear of `2.71..3.01m` pilaster)
     {
       customUnitName: 'outbuildings.gym.knxSwitch.courtyardEntry',
       zoneId: 'outbuildingGym',
       circuitId: 'gymSpotsAndBattens',
       switchPa: '2.1.10',
-      switchLocation: 'Gym Courtyard Entry',
-      u: 1.98,
-      y: 0.87,
+      switchLocation: 'Gym Courtyard Entry (West)',
+      u: 2.55,
+      y: 0.562,
       v: 0.292,
       facing: 'south',
     },
+    // 1B. Courtyard Glazed Coach Screen — East pier (`u = 5.61m`, between `5.45m` screen & `5.77m` East wall)
     {
-      customUnitName: 'outbuildings.gym.knxSwitch.showerDoor',
+      customUnitName: 'outbuildings.gym.knxSwitch.courtyardEastPier',
       zoneId: 'outbuildingGym',
       circuitId: 'gymSpotsAndBattens',
       switchPa: '2.1.10',
-      switchLocation: 'Gym Shower Door',
+      switchLocation: 'Gym Courtyard Entry (East)',
+      u: 5.61,
+      y: 0.562,
+      v: 0.292,
+      facing: 'south',
+    },
+    // 1C. Gym East Partition Pier (`v = 3.52..4.18m`) — Beside Gym-to-Garage Double Glass Doors (`v = 0.88..3.52m`)
+    {
+      customUnitName: 'outbuildings.gym.knxSwitch.garageGlassDoors',
+      zoneId: 'outbuildingGym',
+      circuitId: 'gymSpotsAndBattens',
+      switchPa: '2.1.10',
+      switchLocation: 'Gym-to-Garage Glass Doors',
       u: 5.758,
-      y: 0.87,
-      v: 3.98,
+      y: 0.562,
+      v: 3.72,
+      facing: 'west',
+    },
+    // 1D. Gym East Partition Pier (`v = 3.52..4.18m`) — North (latch side) of Gym-to-Shower Oak Door (`v = 4.18..4.94m`)
+    {
+      customUnitName: 'outbuildings.gym.knxSwitch.showerDoor',
+      zoneId: 'outbuildingGym',
+      circuitId: 'gymWallAndCoveLights',
+      switchPa: '2.1.10',
+      switchLocation: 'Gym Shower Room Door',
+      u: 5.758,
+      y: 0.562,
+      v: 4.02,
       facing: 'west',
     },
 
-    // 2. Outbuilding Garage, Workshop, Shower & Store (PA 2.1.11 · S1 Workshop Bright / S2 Showroom / S3 Night Security)
+    // =========================================================================
+    // 2. Outbuilding Garage, Workshop, Shower Room & Store
+    //    (Garage FFL = -0.50m -> 1.15m AFFL = y: 0.65m; Store FFL = -0.34m -> y: 0.81m)
+    //    PA 2.1.11 · S1 Workshop Bright / S2 Showroom / S3 Night Security
+    // =========================================================================
+    // 2A. Garage West Double Doors (`u = 6.24..8.88m`) — West brick pier (`u = 5.97..6.24m`)
     {
       customUnitName: 'outbuildings.garage.knxSwitch.courtyardWestPier',
       zoneId: 'outbuildingGarage',
       circuitId: 'garageHighBayLights',
       switchPa: '2.1.11',
       switchLocation: 'Garage West Bay Entry',
-      u: 6.32,
-      y: 0.86,
+      u: 6.11,
+      y: 0.65,
       v: 0.292,
       facing: 'south',
     },
+    // 2B. Central Brick Pier (`u = 8.88..9.12m`) between West & East Double Garage Doors
+    {
+      customUnitName: 'outbuildings.garage.knxSwitch.centralCourtyardPier',
+      zoneId: 'outbuildingGarage',
+      circuitId: 'garageHighBayLights',
+      switchPa: '2.1.11',
+      switchLocation: 'Garage Central Bay Pier',
+      u: 9.0,
+      y: 0.65,
+      v: 0.292,
+      facing: 'south',
+    },
+    // 2C. Garage East Pier (`u = 11.76..12.07m`) — Serves East Double Garage Door & Store Pass-Through (`v = 0.38..1.18m`)
     {
       customUnitName: 'outbuildings.garage.knxSwitch.workbenchEntry',
       zoneId: 'outbuildingGarage',
       circuitId: 'garageHighBayLights',
       switchPa: '2.1.11',
-      switchLocation: 'Garage Workbench Entry',
-      u: 11.78,
-      y: 0.86,
+      switchLocation: 'Garage East Bay & Pass-Through',
+      u: 11.91,
+      y: 0.65,
       v: 0.292,
       facing: 'south',
     },
+    // 2D. Garage West Wall (`u = 5.982m`) — Immediately South of Gym-to-Garage Double Glass Doors (`v = 0.88..3.52m`)
+    {
+      customUnitName: 'outbuildings.garage.knxSwitch.gymGlassDoors',
+      zoneId: 'outbuildingGarage',
+      circuitId: 'garageHighBayLights',
+      switchPa: '2.1.11',
+      switchLocation: 'Garage-to-Gym Glass Doors',
+      u: 5.982,
+      y: 0.65,
+      v: 3.68,
+      facing: 'east',
+    },
+    // 2E. Inside Shower Room SW Entry Pier (`v = 4.94..5.43m`, immediately inside the `v = 4.18..4.94m` Shower Room Door)
     {
       customUnitName: 'outbuildings.garage.knxSwitch.showerEntry',
       zoneId: 'outbuildingGarage',
       circuitId: 'garageBenchAndShower',
       switchPa: '2.1.11',
-      switchLocation: 'Garage Shower Entry',
-      u: 7.42,
-      y: 0.86,
-      v: 3.928,
-      facing: 'north',
+      switchLocation: 'Shower & WC Room Entry',
+      u: 5.982,
+      y: 0.65,
+      v: 5.14,
+      facing: 'east',
     },
+    // 2F. Garden Store Courtyard Door (`u = 12.85..13.75m`) — West latch jamb (`u = 12.64m`)
     {
       customUnitName: 'outbuildings.garage.knxSwitch.storeEntry',
       zoneId: 'outbuildingGarage',
       circuitId: 'garageHighBayLights',
       switchPa: '2.1.11',
-      switchLocation: 'Garden Store Entry',
-      u: 12.68,
-      y: 0.86,
+      switchLocation: 'Garden Store Courtyard Door',
+      u: 12.64,
+      y: 0.81,
       v: 0.292,
       facing: 'south',
     },
+    // 2G. Garden Store Corridor East End (`u = 14.78m, v = 1.168m`) — Before stepping through the Barn Portal (`u = 15.20m`)
+    {
+      customUnitName: 'outbuildings.garage.knxSwitch.storeBarnPortal',
+      zoneId: 'outbuildingGarage',
+      circuitId: 'garageHighBayLights',
+      switchPa: '2.1.11',
+      switchLocation: 'Store-to-Barn Corridor Portal',
+      u: 14.78,
+      y: 0.81,
+      v: 1.168,
+      facing: 'north',
+    },
 
-    // 3. Main Barn — Golf Simulator, Pool & Bars (PA 2.1.12 · S1 Sim & Social / S2 Club Night / S3 After-Hours Bar)
+    // =========================================================================
+    // 3. Main Barn — Golf Simulator, Pool & Bars
+    //    (Upper Sim FFL = -0.34m -> y: 0.81m; Sunken Lounge FFL = -0.675m -> y: 0.475m)
+    //    PA 2.1.12 · S1 Sim & Social / S2 Club Night / S3 After-Hours Bar
+    // =========================================================================
+    // 3A. Barn West Walkthrough Portal from Store Corridor (`u = 15.20m, v = 0.38..1.18m`)
+    {
+      customUnitName: 'outbuildings.barn.knxSwitch.storeCorridorEntry',
+      zoneId: 'outbuildingBarn',
+      circuitId: 'barnTrussAndSimHalo',
+      switchPa: '2.1.12',
+      switchLocation: 'Barn West Corridor Entry',
+      u: 15.48,
+      y: 0.81,
+      v: 0.292,
+      facing: 'south',
+    },
+    // 3B. Barn North Courtyard Door (`u = 15.85..16.85m`) — East latch jamb (`u = 17.04m`, clear of door swing)
     {
       customUnitName: 'outbuildings.barn.knxSwitch.northCourtyardDoor',
       zoneId: 'outbuildingBarn',
       circuitId: 'barnTrussAndSimHalo',
       switchPa: '2.1.12',
-      switchLocation: 'Barn Courtyard Door',
-      u: 17.02,
-      y: 0.86,
+      switchLocation: 'Barn North Courtyard Door',
+      u: 17.04,
+      y: 0.81,
       v: 0.292,
       facing: 'south',
     },
+    // 3C. Barn Golf Simulator Control Console & Viewing Bar Steps (`u = 18.02m, v = 5.418m` on South Wall)
     {
       customUnitName: 'outbuildings.barn.knxSwitch.golfSimConsole',
       zoneId: 'outbuildingBarn',
       circuitId: 'barnTrussAndSimHalo',
       switchPa: '2.1.12',
-      switchLocation: 'Barn Golf Sim Console',
-      u: 16.42,
-      y: 0.86,
+      switchLocation: 'Barn Golf Sim & Viewing Bar',
+      u: 18.02,
+      y: 0.81,
       v: 5.418,
       facing: 'north',
     },
+    // 3D. Barn Sunken Pool Lounge North Wall (`u = 19.12m`, cleanly East of `u = 18.53..18.83m` brick pilaster)
     {
       customUnitName: 'outbuildings.barn.knxSwitch.sunkenSteps',
       zoneId: 'outbuildingBarn',
       circuitId: 'barnBarsAndLamps5A',
       switchPa: '2.1.12',
-      switchLocation: 'Barn Sunken Steps',
-      u: 18.82,
-      y: 0.525,
+      switchLocation: 'Barn Sunken Steps (North)',
+      u: 19.12,
+      y: 0.475,
       v: 0.292,
       facing: 'south',
     },
+    // 3E. Barn Spiral Staircase Base (`u = 20.92m, v = 5.418m`, right beside bottom tread of spiral stair)
     {
       customUnitName: 'outbuildings.barn.knxSwitch.spiralStairBase',
       zoneId: 'outbuildingBarn',
@@ -728,49 +826,60 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
       switchPa: '2.1.12',
       switchLocation: 'Barn Spiral Stair Base',
       u: 20.92,
-      y: 0.525,
+      y: 0.475,
       v: 5.418,
       facing: 'north',
     },
+    // 3F. Barn-to-Office Glass Door (`v = 1.52..2.84m`) — South latch/handle side (`u = 23.008m, v = 3.02m`, clear of Corner Bar)
     {
       customUnitName: 'outbuildings.barn.knxSwitch.stableDoorway',
       zoneId: 'outbuildingBarn',
       circuitId: 'barnBarsAndLamps5A',
       switchPa: '2.1.12',
-      switchLocation: 'Barn-to-Office Door',
+      switchLocation: 'Barn-to-Office Glass Door',
       u: 23.008,
-      y: 0.525,
-      v: 1.62,
+      y: 0.475,
+      v: 3.02,
       facing: 'west',
     },
 
-    // 4. Barn Mezzanine Retro Lounge (PA 2.1.13 · S1 Retro Lounge / S2 CRT Movie & Game / S3 Reading Lamps)
+    // =========================================================================
+    // 4. Barn Mezzanine Retro Lounge (FFL = 1.54m -> 1.15m AFFL = y: 2.69m)
+    //    PA 2.1.13 · S1 Retro Lounge / S2 CRT Movie & Game / S3 Reading Lamps
+    // =========================================================================
+    // 4A. East Partition Wall (`u = 23.008m, v = 2.32m`) — Immediately North of the `v = 2.554..3.554m` 3-step flight
+    //     and directly reachable when stepping off the Spiral Staircase top landing (`u = 21.55m, v = 3.60m`)
     {
-      customUnitName: 'outbuildings.mezzanine.knxSwitch.spiralLanding',
+      customUnitName: 'outbuildings.mezzanine.knxSwitch.stableUpperDoor',
       zoneId: 'outbuildingMezzanine',
       circuitId: 'mezzanineSconcesAndAmbient',
       switchPa: '2.1.13',
-      switchLocation: 'Mezzanine Spiral Landing',
-      u: 20.92,
-      y: 2.74,
+      switchLocation: 'Mezzanine Stair Landing & Suite Steps',
+      u: 23.008,
+      y: 2.69,
+      v: 2.32,
+      facing: 'west',
+      isFirstFloor: true,
+    },
+    // 4B. Mezzanine Retro Lounge South Wall (`u = 20.65m, v = 5.418m`) — Beside the L-shaped corduroy sofa
+    {
+      customUnitName: 'outbuildings.mezzanine.knxSwitch.spiralLanding',
+      zoneId: 'outbuildingMezzanine',
+      circuitId: 'mezzanineLamps5A',
+      switchPa: '2.1.13',
+      switchLocation: 'Mezzanine Retro Sofa Wall',
+      u: 20.65,
+      y: 2.69,
       v: 5.418,
       facing: 'north',
       isFirstFloor: true,
     },
-    {
-      customUnitName: 'outbuildings.mezzanine.knxSwitch.stableUpperDoor',
-      zoneId: 'outbuildingMezzanine',
-      circuitId: 'mezzanineLamps5A',
-      switchPa: '2.1.13',
-      switchLocation: 'Mezzanine-to-Suite Steps',
-      u: 23.008,
-      y: 2.74,
-      v: 3.12,
-      facing: 'west',
-      isFirstFloor: true,
-    },
 
-    // 5. Stable Ground — Empty Office Space & Cloakroom WC (PA 2.1.14 · S1 Bright Workday / S2 Warm Studio / S3 Evening Wall & 5V Lamps)
+    // =========================================================================
+    // 5. Stable Ground — Empty Office Space & Cloakroom WC (FFL = -0.44m -> 1.15m AFFL = y: 0.71m)
+    //    PA 2.1.14 · S1 Bright Workday / S2 Warm Studio / S3 Evening Wall & 5V Lamps
+    // =========================================================================
+    // 5A. Office West Glass Door from Barn (`v = 1.52..2.84m`) — South latch/handle side (`u = 23.232m, v = 3.02m`)
     {
       customUnitName: 'outbuildings.stable.office.knxSwitch.barnConnectingDoor',
       zoneId: 'outbuildingStableOffice',
@@ -778,71 +887,119 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
       switchPa: '2.1.14',
       switchLocation: 'Office West Door (Barn)',
       u: 23.232,
-      y: 0.76,
-      v: 1.62,
+      y: 0.71,
+      v: 3.02,
       facing: 'east',
     },
+    // 5B. Office North Courtyard Door (`u = 23.80..24.70m`) — East latch jamb (`u = 24.92m, v = 0.292m`)
     {
       customUnitName: 'outbuildings.stable.office.knxSwitch.northCourtyardDoor',
       zoneId: 'outbuildingStableOffice',
       circuitId: 'stableOfficeSpotlights',
       switchPa: '2.1.14',
-      switchLocation: 'Office Courtyard Door',
-      u: 27.68,
-      y: 0.76,
+      switchLocation: 'Office North Courtyard Door',
+      u: 24.92,
+      y: 0.71,
       v: 0.292,
       facing: 'south',
     },
+    // 5C. Office Cloakroom WC Door (`u = 23.62..24.38m`, hinged West) — East latch/handle side (`u = 24.54m, v = 3.928m`)
     {
       customUnitName: 'outbuildings.stable.office.knxSwitch.cloakroomDoor',
       zoneId: 'outbuildingStableOffice',
       circuitId: 'stableOfficeWallsAndLamps5A',
       switchPa: '2.1.14',
       switchLocation: 'Office Cloakroom WC Door',
-      u: 23.46,
-      y: 0.76,
+      u: 24.54,
+      y: 0.71,
       v: 3.928,
       facing: 'north',
     },
+    // 5D. Office East Glazed Double Patio Doors (`u = 31.57m, v = 1.15..3.85m`) — North pier (`u = 31.558m, v = 0.92m`)
+    {
+      customUnitName: 'outbuildings.stable.office.knxSwitch.eastPatioDoors',
+      zoneId: 'outbuildingStableOffice',
+      circuitId: 'stableOfficeSpotlights',
+      switchPa: '2.1.14',
+      switchLocation: 'Office East Patio Doors',
+      u: 31.558,
+      y: 0.71,
+      v: 0.92,
+      facing: 'west',
+    },
 
-    // 6. Stable Upper Guest Bedroom, Ensuite & Balcony (PA 2.1.15 · S1 Suite Bright / S2 Evening Relax / S3 Bedtime 5V Lamps)
+    // =========================================================================
+    // 6. Stable Upper Guest Bedroom, Ensuite & Balcony
+    //    (FFL = 2.08m -> Doorways 1.15m AFFL = y: 3.23m; Bedside 0.72m AFFL = y: 2.80m)
+    //    PA 2.1.15 · S1 Suite Bright / S2 Evening Relax / S3 Bedtime 5V Lamps
+    // =========================================================================
+    // 6A. Suite West Entry Portal from Mezzanine (`v = 2.554..3.554m`) — North pier (`u = 23.232m, v = 2.32m`)
     {
       customUnitName: 'outbuildings.stable.upper.knxSwitch.entryDoor',
       zoneId: 'outbuildingStableSuite',
       circuitId: 'stableSuiteDownlights',
       switchPa: '2.1.15',
-      switchLocation: 'Guest Suite Entry Door',
+      switchLocation: 'Guest Suite Entry Portal',
       u: 23.232,
-      y: 3.28,
-      v: 3.12,
+      y: 3.23,
+      v: 2.32,
       facing: 'east',
       isFirstFloor: true,
     },
+    // 6B. Suite Ensuite Bathroom Door (`u = 24.62..25.38m, v = 3.62m`, hinged West) — East handle side (`u = 25.54m, v = 3.608m`)
+    {
+      customUnitName: 'outbuildings.stable.upper.knxSwitch.ensuiteDoor',
+      zoneId: 'outbuildingStableSuite',
+      circuitId: 'stableSuiteDownlights',
+      switchPa: '2.1.15',
+      switchLocation: 'Guest Suite Ensuite Door',
+      u: 25.54,
+      y: 3.23,
+      v: 3.608,
+      facing: 'north',
+      isFirstFloor: true,
+    },
+    // 6C. Super-King Bed West Nightstand Master Toggle (`u = 26.24m, y = 2.80m, v = 5.418m`, clear of `26.09m` Ensuite wall)
     {
       customUnitName: 'outbuildings.stable.upper.knxSwitch.bedsideMaster',
       zoneId: 'outbuildingStableSuite',
       circuitId: 'stableSuiteLamps5A',
       switchPa: '2.1.15',
-      switchLocation: 'Guest Suite Bedside Master',
-      u: 26.22,
-      y: 2.86,
+      switchLocation: 'Guest Suite Bedside (West)',
+      u: 26.24,
+      y: 2.8,
       v: 5.418,
       facing: 'north',
       isFirstFloor: true,
     },
+    // 6D. Super-King Bed East Nightstand Companion Toggle (`u = 28.58m, y = 2.80m, v = 5.418m`)
+    {
+      customUnitName: 'outbuildings.stable.upper.knxSwitch.bedsideEast',
+      zoneId: 'outbuildingStableSuite',
+      circuitId: 'stableSuiteLamps5A',
+      switchPa: '2.1.15',
+      switchLocation: 'Guest Suite Bedside (East)',
+      u: 28.58,
+      y: 2.8,
+      v: 5.418,
+      facing: 'north',
+      isFirstFloor: true,
+    },
+    // 6E. East Gable Sliding Balcony Doors (`u = 28.77m, v = 0.68..5.03m`) — Interior North corner pier (`u = 28.758m, v = 0.48m`)
     {
       customUnitName: 'outbuildings.stable.upper.knxSwitch.balconyBifolds',
       zoneId: 'outbuildingStableSuite',
       circuitId: 'stableSuiteDownlights',
       switchPa: '2.1.15',
       switchLocation: 'Guest Suite Balcony Doors',
-      u: 29.708,
-      y: 3.28,
-      v: 1.05,
+      u: 28.758,
+      y: 3.23,
+      v: 0.48,
       facing: 'west',
       isFirstFloor: true,
     },
   ];
+
 
   for (const sw of switchPlacements) {
     const unit = buildRoomCorstonToggleSwitch(ctx, {
@@ -1286,8 +1443,8 @@ function bindExistingOutbuildingLightsToKnxCircuits(s: OutbuildingShellContext):
 }
 
 /**
- * Master builder for Outbuilding M&E (Air-to-Air VRF AC Cooling, Garage Sub-Main & KNX Line 2.1 DB),
- * Empty Office Space spotlights & wall sconces, 19 Corston Single-Toggle Zone Scene Switches,
+ * Master builder for Outbuilding M&E (Air-to-Air VRF AC Cooling, Store Sub-Main & KNX Line 2.1 DB),
+ * Empty Office Space spotlights & wall sconces, 25 Corston Single-Toggle Zone Scene Switches,
  * and 11 Corston 5V/5A Round-Pin Lamp Sockets with continuous 3D braided lamp cords.
  */
 export function buildOutbuildingMepAndKnx(s: OutbuildingShellContext): void {
@@ -1296,32 +1453,42 @@ export function buildOutbuildingMepAndKnx(s: OutbuildingShellContext): void {
   // 1. Empty Office Space Spotlights + Wall Sconces + 5V Floor Lamp & Barn Bar 5V Lamp
   buildEmptyOfficeAndBarnCounterLighting(s);
 
-  // 2. 19 Single-Gang Corston Toggle Switches across all 6 Outbuilding Zones
+  // 2. 25 Single-Gang Corston Toggle Switches across all 6 Outbuilding Zones
   buildOutbuildingCorstonZoneSwitches(s);
 
   // 3. 11 Corston 5V/5A Round-Pin Lamp Sockets & 3D Braided Cords to all Outbuilding Lamps
   buildOutbuilding5VLampSocketsAndCords(s);
 
-  // 4. Air-to-Air VRF Multi-Split AC Cooling (Concealed Outdoor Condenser + 4 Indoor Wall Units)
+  // 4. Air-to-Air VRF Multi-Split AC Cooling (Concealed Outdoor Condenser + 5 Indoor Wall Units)
   buildOutdoorVrfCondenserBank(groundGroup);
   groundGroup.add(
     buildIndoorAirToAirAcUnit(
       'outbuildings.gym.acUnit',
-      3.0,
-      1.98,
-      5.41,
-      Math.PI,
+      5.75,
+      1.92,
+      2.2,
+      -Math.PI / 2,
       'outbuildingGym'
     )
   );
   groundGroup.add(
     buildIndoorAirToAirAcUnit(
       'outbuildings.barn.acUnit',
-      19.6,
-      2.52,
+      17.65,
+      2.28,
       5.41,
       Math.PI,
       'outbuildingBarn'
+    )
+  );
+  firstFloorGroup.add(
+    buildIndoorAirToAirAcUnit(
+      'outbuildings.mezzanine.acUnit',
+      20.2,
+      2.58,
+      5.41,
+      Math.PI,
+      'outbuildingMezzanine'
     )
   );
   groundGroup.add(
@@ -1345,9 +1512,10 @@ export function buildOutbuildingMepAndKnx(s: OutbuildingShellContext): void {
     )
   );
 
-  // 5. Garage Sub-Main Consumer Unit & KNX Line 2.1 DIN Enclosure (PA 2.1.1 / 2.1.20 / 2.1.30)
+  // 5. Outbuilding Sub-Main Consumer Unit & KNX Line 2.1 DIN Enclosure (PA 2.1.1 / 2.1.20 / 2.1.30)
   buildGarageSubDistributionAndKnxBoard(groundGroup);
 
   // 6. Bind all existing Outbuilding PointLights & Emissive Fixtures to KNX Circuit Light Groups
   bindExistingOutbuildingLightsToKnxCircuits(s);
 }
+
