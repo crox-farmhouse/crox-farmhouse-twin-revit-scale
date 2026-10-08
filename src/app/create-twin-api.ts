@@ -15,9 +15,8 @@ import {
   getRoomManifest,
   ROOM_NAV_TREE,
 } from '../homes/crox-farmhouse/room-manifest.ts';
-import { CIRCUITS } from '../integrations/knx/constants.ts';
 import type { KNXPropertyBusController } from '../integrations/knx/emulator.ts';
-import { ROOM_ZONES } from '../integrations/knx/topology.ts';
+import { ROOM_ZONES } from '../homes/crox-farmhouse/knx/rooms.ts';
 import type { CircuitId, CircuitLevels } from '../core/types/knx.ts';
 import type { FloorViewMode, TimeOfDay, Vec3Tuple } from '../core/types/scene.ts';
 import type { RoomBoundingBox, RoomZoneId } from '../core/types/topology.ts';
@@ -95,8 +94,6 @@ export function luxToTimeOfDay(lux: number): TimeOfDay {
   return lux >= 200 ? 'day' : lux >= 20 ? 'dusk' : 'night';
 }
 
-const ZONE_SWITCH_PA_GROUND = '1.1.10';
-const ZONE_SWITCH_PA_OUTBUILDINGS = '2.1.10';
 
 function toTuple(v: { readonly x: number; readonly y: number; readonly z: number }): Vec3Tuple {
   return [v.x, v.y, v.z];
@@ -113,7 +110,7 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
   const kitchenScenePa = opts.kitchenScenePa ?? '1.1.10';
   const courtyardSwitchPa = opts.courtyardSwitchPa ?? '1.1.14';
 
-  const knownCircuits = new Set<string>(CIRCUITS.map((c) => c.id));
+  const knownCircuits = new Set<string>(knx.getCircuits().map((c) => c.id));
   const isKnownCircuit = (id: string): id is CircuitId => knownCircuits.has(id);
   const levelListeners = new Set<(levels: Readonly<CircuitLevels>) => void>();
   const deviceListeners = new Set<() => void>();
@@ -203,7 +200,7 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
   };
 
   const applyLevels = (levels: Readonly<Partial<Record<CircuitId, number>>>): void => {
-    for (const c of CIRCUITS) {
+    for (const c of knx.getCircuits()) {
       const level = levels[c.id];
       if (level !== undefined) knx.setCircuitLevel(c.id, clampPct(level));
     }
@@ -262,7 +259,7 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
     },
 
     lighting: {
-      circuits: () => CIRCUITS,
+      circuits: () => knx.getCircuits(),
       isKnownCircuit,
       getLiveLevels: () => knx.getLiveLevels(),
       getTargetLevels: () => knx.getTargetLevels(),
@@ -271,7 +268,7 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       applyLevels,
       allOff: () => {
         const live = knx.getLiveLevels();
-        for (const c of CIRCUITS) {
+        for (const c of knx.getCircuits()) {
           if ((live[c.id] ?? 0) > 0) knx.setCircuitLevel(c.id, 0);
         }
       },
@@ -301,9 +298,9 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       toggleRoomMotion: (id) => knx.toggleRoomMotion(id),
       isRoomNightDimActive: (id) => knx.isRoomNightDimActive(id),
       pressZoneSwitch: (zoneId, direction, longPress = false) => {
-        const firstCircuit = knx.getCircuitsForZone(zoneId)[0];
-        const pa =
-          firstCircuit?.actuatorPa === '2.1.20' ? ZONE_SWITCH_PA_OUTBUILDINGS : ZONE_SWITCH_PA_GROUND;
+        const pa = knx
+          .getPushButtons()
+          .find((b) => b.gangs.some((g) => g.zoneId === zoneId))?.pa;
         const location = `${roomLabel(zoneId)} switch`;
         if (longPress) knx.handleZoneSwitchLongPressHold(zoneId, direction, pa, location);
         else knx.handleZoneSwitchShortPress(zoneId, direction, pa, location);

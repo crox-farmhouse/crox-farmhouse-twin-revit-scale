@@ -1,6 +1,5 @@
 import { batch, computed, signal, type ReadonlySignal, type Signal } from '@preact/signals';
 import type { UsdStageStatsSummary } from '../../engine/usd/stage-runtime.ts';
-import { CIRCUITS } from '../../integrations/knx/constants.ts';
 import type { CircuitId, CircuitLevels, KNXTelegram } from '../../core/types/knx.ts';
 import type { FloorViewMode, TimeOfDay } from '../../core/types/scene.ts';
 
@@ -11,8 +10,8 @@ import type { FloorViewMode, TimeOfDay } from '../../core/types/scene.ts';
  */
 
 function createInitialDeviceStates(): Readonly<Record<CircuitId, number>> {
+  // Filled by the first syncKnxState() with every circuit the running KNX project drives.
   const initial: Partial<Record<CircuitId, number>> = {};
-  for (const circuit of CIRCUITS) initial[circuit.id] = 0;
   return initial as Record<CircuitId, number>;
 }
 
@@ -62,13 +61,15 @@ const formattedSunTime: ReadonlySignal<string> = computed(() => formatMinutesAsC
 const activeCircuitsCount: ReadonlySignal<number> = computed(() => {
   const levels = knxDeviceStates.value;
   let on = 0;
-  for (const circuit of CIRCUITS) {
-    if ((levels[circuit.id] ?? 0) > 0) on += 1;
+  for (const level of Object.values(levels)) {
+    if (level > 0) on += 1;
   }
   return on;
 });
 
-const totalCircuitsCount: ReadonlySignal<number> = computed(() => CIRCUITS.length);
+const totalCircuitsCount: ReadonlySignal<number> = computed(
+  () => Object.keys(knxDeviceStates.value).length
+);
 
 export interface UsdParametricSummary {
   readonly totalPrims: number;

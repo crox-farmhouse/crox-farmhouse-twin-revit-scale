@@ -1,4 +1,6 @@
-import { CIRCUITS, DEFAULT_SCENES } from '../../integrations/knx/constants.ts';
+import { CROX_CENTRAL_SCENES } from './knx/central-scenes.ts';
+import { CROX_CIRCUITS } from './knx/circuits.ts';
+import { CROX_LIGHTING_ZONES } from './knx/zones.ts';
 import type { CircuitId, ScenePreset } from '../../core/types/knx.ts';
 import type { RoomZoneId } from '../../core/types/topology.ts';
 import type {
@@ -11,7 +13,8 @@ import type {
 /**
  * Declarative room manifest for the Crox Farmhouse room context panel.
  *
- * Joins the KNX circuit map (`CIRCUITS`), the KNX scene table (`DEFAULT_SCENES`), the
+ * Joins the KNX lighting zones (`CROX_LIGHTING_ZONES`), the central scene table
+ * (`CROX_CENTRAL_SCENES`), the
  * interactable ids registered by the room builders and the UFH zone map
  * (`ROOM_THERMAL_PROFILES`) by `RoomZoneId`, so the panel can show "what can I control in
  * the room I'm looking at" without knowing anything about the underlying systems.
@@ -145,9 +148,13 @@ const CIRCUIT_PRESENTATION: Readonly<
   stableBalconyLights: { label: 'Balcony wall lights', dimmable: true },
 };
 
-/** Lights for a zone, in KNX channel order, straight from the circuit map. */
+/** Lights for a zone in the zone's layer order (falls back to the circuits' own zone). */
 function lightsFor(zoneId: CanonicalRoomZoneId): readonly RoomLightControl[] {
-  return CIRCUITS.filter((c) => c.zoneId === zoneId).map((c) => ({
+  const zone = CROX_LIGHTING_ZONES.find((z) => z.id === zoneId);
+  const circuits = zone
+    ? zone.circuits.flatMap((id) => CROX_CIRCUITS.filter((c) => c.id === id))
+    : CROX_CIRCUITS.filter((c) => c.zoneId === zoneId);
+  return circuits.map((c) => ({
     circuitId: c.id,
     label: CIRCUIT_PRESENTATION[c.id].label,
     dimmable: CIRCUIT_PRESENTATION[c.id].dimmable,
@@ -156,7 +163,7 @@ function lightsFor(zoneId: CanonicalRoomZoneId): readonly RoomLightControl[] {
 
 /**
  * KNX scenes (group 1/0/1, DPT 17.001). `sceneNumber` is the 0-based scene value that
- * `KNXPropertyBusController.recallScene(sceneNumber, pa)` expects (it indexes `DEFAULT_SCENES`
+ * `KNXPropertyBusController.recallScene(sceneNumber, pa)` expects (it indexes `CROX_CENTRAL_SCENES`
  * and is written to the bus as-is). Switch scenes come from the Corston switch (1.1.10);
  * extended scenes from the AI/UI gateway (1.1.2) — same convention as `hud-knx-controls.ts`.
  */
@@ -170,10 +177,10 @@ function toSceneControl(scene: ScenePreset): RoomSceneControl {
 }
 
 /** All KNX scenes drive the kitchen + sitting area scene circuits. */
-const KITCHEN_SCENES: readonly RoomSceneControl[] = DEFAULT_SCENES.map(toSceneControl);
+const KITCHEN_SCENES: readonly RoomSceneControl[] = CROX_CENTRAL_SCENES.map(toSceneControl);
 
 /** Scenes that also set the courtyard festoons / lamp post (`outdoorLevels` with lights on). */
-const COURTYARD_SCENES: readonly RoomSceneControl[] = DEFAULT_SCENES.filter(
+const COURTYARD_SCENES: readonly RoomSceneControl[] = CROX_CENTRAL_SCENES.filter(
   (s) =>
     s.outdoorLevels !== undefined &&
     (s.outdoorLevels.courtyardFestoons > 0 || s.outdoorLevels.reclaimedLampPost > 0)

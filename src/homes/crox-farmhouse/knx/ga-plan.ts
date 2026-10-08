@@ -10,10 +10,13 @@ import type { KnxZoneGroupAddresses } from '../../../integrations/knx/project.ts
  * Middle groups (function, identical under every main group):
  *   0 central objects · 1 channel switch (1.001) · 2 channel brightness (5.001)
  *   3 channel brightness status (5.001) · 4 sensors (presence 1.018, lux 9.004, media)
- *   5 gates · 6 zone scene (17.001 / 18.001) · 7 zone scene status (17.001)
- *   8 zone night object (1.001) · 9 zone full-on (1.001) · 10 zone on/off status (1.001)
- *   11 zone relative dimming (3.007)
- * Sub group: channel number (middle 1–3) or zone ordinal within its main group (6–11).
+ *   5 gates & media · 6 zone control · 7 zone feedback
+ * 3-level addressing only allows middle groups 0–7, so each zone owns a block of sub groups:
+ *   middle 6, sub 4·n+0 scene (17.001/18.001) · 4·n+1 night object (1.001)
+ *             · 4·n+2 full-on (1.001) · 4·n+3 relative dimming (3.007)
+ *   middle 7, sub 2·n+0 scene status (17.001) · 2·n+1 zone on/off status (1.001)
+ * where n is the zone ordinal within its main group (1-based).
+ * Sub group for middle 1–3: actuator channel number.
  */
 export const GA_MAIN_NAMES: Readonly<Record<number, string>> = {
   0: 'Central',
@@ -31,12 +34,8 @@ export const GA_MIDDLE_NAMES: Readonly<Record<number, string>> = {
   3: 'Brightness status',
   4: 'Sensors',
   5: 'Gates & media',
-  6: 'Zone scene',
-  7: 'Zone scene status',
-  8: 'Zone night object',
-  9: 'Zone full on',
-  10: 'Zone status',
-  11: 'Zone relative dimming',
+  6: 'Zone control (scene / night / full / dim)',
+  7: 'Zone feedback (scene status / on-off status)',
 };
 
 /** Zone → [main group, zone ordinal] in GA-plan order. */
@@ -72,14 +71,14 @@ export function zoneGroupAddresses(zoneId: RoomZoneId): KnxZoneGroupAddresses {
   if (!slot) {
     throw new Error(`No GA slot for zone ${zoneId}`);
   }
-  const [main, sub] = slot;
+  const [main, n] = slot;
   return {
-    scene: `${main}/6/${sub}`,
-    sceneStatus: `${main}/7/${sub}`,
-    night: `${main}/8/${sub}`,
-    full: `${main}/9/${sub}`,
-    status: `${main}/10/${sub}`,
-    dim: `${main}/11/${sub}`,
+    scene: `${main}/6/${4 * n}`,
+    night: `${main}/6/${4 * n + 1}`,
+    full: `${main}/6/${4 * n + 2}`,
+    dim: `${main}/6/${4 * n + 3}`,
+    sceneStatus: `${main}/7/${2 * n}`,
+    status: `${main}/7/${2 * n + 1}`,
   };
 }
 

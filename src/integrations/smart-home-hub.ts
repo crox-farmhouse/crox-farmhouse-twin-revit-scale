@@ -1,4 +1,4 @@
-import { CIRCUITS, KNXPropertyBusController } from './knx/index.ts';
+import { KNXPropertyBusController } from './knx/index.ts';
 import { UniFiAccessController } from './unifi/access/adapter.ts';
 import { UniFiProtectController } from './unifi/protect/adapter.ts';
 import type {
@@ -183,7 +183,7 @@ export class SmartHomeHub {
   public getAllEntities(): readonly SmartHomeEntity[] {
     const targetLevels = this.knx.getTargetLevels();
 
-    const lightEntities: LightEntityState[] = CIRCUITS.map((c) => {
+    const lightEntities: LightEntityState[] = this.knx.getCircuits().map((c) => {
       const pct = Math.round(targetLevels[c.id] ?? 0);
       return {
         entityId: `light.knx_${c.id}`,

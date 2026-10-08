@@ -254,6 +254,7 @@ const ZONE_SPECS: readonly ZoneSpec[] = [
     scenes: [
       scene('bright', 'Bright', { storeLoftLeds: 100 }),
       scene('low', 'Low', { storeLoftLeds: 40 }),
+      scene('glow', 'Glow', { storeLoftLeds: 15 }),
     ],
     nightLevels: { storeLoftLeds: 5 },
   },

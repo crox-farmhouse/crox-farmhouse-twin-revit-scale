@@ -191,10 +191,13 @@ function obPir(
   rect: readonly [number, number, number, number],
   feet: readonly [number, number],
   mountY: number,
-  gaOrdinal: number
+  gaOrdinal: number,
+  /** Builder-frame (u, v) mount point when the rectangle centre sits under an obstruction. */
+  mountUv?: readonly [number, number]
 ): KnxPresenceDetectorDevice {
   const polygon = outbuildingRectToWorldPolygon(rect[0], rect[1], rect[2], rect[3]);
-  const [mx, mz] = outbuildingToWorldXZ((rect[0] + rect[1]) / 2, (rect[2] + rect[3]) / 2);
+  const [mu, mv] = mountUv ?? [(rect[0] + rect[1]) / 2, (rect[2] + rect[3]) / 2];
+  const [mx, mz] = outbuildingToWorldXZ(mu, mv);
   return detector({ pa, name, zoneId, polygon, feet, mount: [mx, mountY, mz], gaOrdinal });
 }
 
@@ -209,20 +212,20 @@ export const CROX_PRESENCE_DETECTORS: readonly KnxPresenceDetectorDevice[] = [
   detector({ pa: '1.1.25', name: 'Wine cellar PIR', zoneId: 'bootLobby', polygon: eastWingRectToWorldPolygon(-11.2, -9.6, -2.0, -0.5), feet: GROUND_FEET, mount: ewMount(-10.45, 2.24, -1.25), gaOrdinal: 0, legacy: { kind: 'room', sensorId: 'wineCellar' }, holdTimeSec: 30 }),
   detector({ pa: '1.1.26', name: 'Cloakroom WC PIR', zoneId: 'bootLobby', polygon: eastWingRectToWorldPolygon(-12.95, -11.3, -2.0, -0.6), feet: GROUND_FEET, mount: ewMount(-12.14, 2.24, -1.35), gaOrdinal: 0, legacy: { kind: 'room', sensorId: 'cloakroomWc' }, holdTimeSec: 30 }),
   detector({ pa: '1.1.24', name: 'Plant room PIR (wall)', zoneId: 'study', polygon: roomPolygon('study'), feet: [-1.1, 1.4], mount: [-17.5, 1.27, 9.92], gaOrdinal: 10 }),
-  roomPir('1.1.61', 'Sitting area PIR', 'sitting', GROUND_FEET, 2.98, 2),
-  roomPir('1.1.62', 'Dining room PIR', 'familyRoom', GROUND_FEET, 2.24, 4, [0.6, 0.6]),
-  roomPir('1.1.63', 'Boot lobby PIR', 'bootLobby', GROUND_FEET, 2.24, 5, [0, 1.2]),
-  roomPir('1.1.64', 'Staircase hall PIR', 'hall', GROUND_FEET, 2.24, 6, [0.8, 0.8]),
-  roomPir('1.1.65', 'Living room PIR', 'livingRoom', [-1.1, 1.4], 2.24, 7, [0.7, 0.7]),
-  roomPir('1.1.66', 'Entrance hall PIR', 'entranceHall', [-1.1, 1.4], 2.24, 8, [1.2, 0]),
-  roomPir('1.1.67', 'Sitting room PIR', 'sittingRoom', [-1.1, 1.4], 2.24, 9, [0.7, 0.7]),
+  roomPir('1.1.61', 'Sitting area PIR', 'sitting', GROUND_FEET, 3.0, 2),
+  roomPir('1.1.62', 'Dining room PIR', 'familyRoom', GROUND_FEET, 2.03, 4, [0.6, 0.6]),
+  roomPir('1.1.63', 'Boot lobby PIR', 'bootLobby', GROUND_FEET, 2.044, 5, [0, 1.2]),
+  roomPir('1.1.64', 'Staircase hall PIR', 'hall', GROUND_FEET, 2.037, 6, [0.8, 0.8]),
+  roomPir('1.1.65', 'Living room PIR', 'livingRoom', [-1.1, 1.4], 1.601, 7, [0.7, 0.7]),
+  roomPir('1.1.66', 'Entrance hall PIR', 'entranceHall', [-1.1, 1.4], 1.599, 8, [1.2, 0]),
+  roomPir('1.1.67', 'Sitting room PIR', 'sittingRoom', [-1.1, 1.4], 1.601, 9, [0.7, 0.7]),
   // ---- First floor ----
-  roomPir('1.2.60', 'Main bedroom PIR', 'mainBedroom', FIRST_FEET, 4.6, 1, [0, 1.2]),
-  roomPir('1.2.61', 'Family bathroom PIR', 'familyBathroom', FIRST_FEET, 4.4, 2, [0, 0.6]),
-  roomPir('1.2.62', 'Landing PIR', 'upperLanding', FIRST_FEET, 4.4, 3, [0, -2.0]),
-  roomPir('1.2.63', 'Bedroom 2 PIR', 'bedroom2', FIRST_FEET, 4.6, 4, [0.6, 0.6]),
-  roomPir('1.2.64', 'Bedroom 3 PIR', 'bedroom3', FIRST_FEET, 4.6, 5, [0.6, 0.6]),
-  roomPir('1.2.65', 'Bedroom 4 PIR', 'bedroom4', FIRST_FEET, 4.6, 6, [0.6, 0.6]),
+  roomPir('1.2.60', 'Main bedroom PIR', 'mainBedroom', FIRST_FEET, 4.677, 1, [0, 1.2]),
+  roomPir('1.2.61', 'Family bathroom PIR', 'familyBathroom', FIRST_FEET, 4.52, 2, [0, 0.2]),
+  roomPir('1.2.62', 'Landing PIR', 'upperLanding', FIRST_FEET, 4.52, 3, [0, -2.0]),
+  roomPir('1.2.63', 'Bedroom 2 PIR', 'bedroom2', FIRST_FEET, 5.02, 4, [0.6, 0.6]),
+  roomPir('1.2.64', 'Bedroom 3 PIR', 'bedroom3', FIRST_FEET, 5.02, 5, [0.6, 0.6]),
+  roomPir('1.2.65', 'Bedroom 4 PIR', 'bedroom4', FIRST_FEET, 5.02, 6, [0.6, 0.6]),
   // ---- Courtyard (wall-mounted external PIR on the bifold pier) ----
   detector({
     pa: '1.1.68',
@@ -235,11 +238,11 @@ export const CROX_PRESENCE_DETECTORS: readonly KnxPresenceDetectorDevice[] = [
   }),
   // ---- Outbuildings (u/v builder frame rectangles; floors: gym -0.59, garage -0.5, store -0.34,
   //      barn -0.68/-0.34, mezzanine 1.54, office -0.44, suite 2.08) ----
-  obPir('2.1.80', 'Gym PIR', 'outbuildingGym', [0.3, 5.75, 0.3, 5.4], [-1.0, 1.2], 2.4, 1),
-  obPir('2.1.81', 'Garage PIR', 'outbuildingGarage', [6.0, 12.05, 0.3, 5.4], [-1.0, 1.2], 2.4, 2),
-  obPir('2.1.82', 'Store PIR', 'outbuildingStore', [12.1, 15.2, 0.3, 5.4], [-0.8, 1.2], 2.6, 3),
-  obPir('2.1.83', 'Barn PIR (golf & bar)', 'outbuildingBarn', [15.2, 23.0, 0.3, 5.4], [-1.1, 1.1], 1.45, 4),
-  obPir('2.1.84', 'Mezzanine PIR', 'outbuildingMezzanine', [18.8, 23.0, 0.3, 5.4], [1.2, 3.6], 3.9, 5),
-  obPir('2.1.85', 'Office PIR', 'outbuildingStableOffice', [23.25, 31.55, 0.3, 5.4], [-0.9, 1.5], 1.98, 6),
-  obPir('2.1.86', 'Guest suite PIR', 'outbuildingStableSuite', [23.4, 28.75, 0.3, 5.4], [1.7, 4.2], 4.4, 7),
+  obPir('2.1.80', 'Gym PIR', 'outbuildingGym', [0.3, 5.75, 0.3, 5.4], [-1.0, 1.2], 3.044, 1),
+  obPir('2.1.81', 'Garage PIR', 'outbuildingGarage', [6.0, 12.05, 0.3, 5.4], [-1.0, 1.2], 3.044, 2),
+  obPir('2.1.82', 'Store PIR', 'outbuildingStore', [12.1, 15.2, 0.3, 5.4], [-0.8, 1.2], 3.297, 3, [14.2, 1.0]),
+  obPir('2.1.83', 'Barn PIR (golf & bar)', 'outbuildingBarn', [15.2, 23.0, 0.3, 5.4], [-1.1, 1.1], 1.395, 4),
+  obPir('2.1.84', 'Mezzanine PIR', 'outbuildingMezzanine', [18.8, 23.0, 0.3, 5.4], [1.2, 3.6], 4.109, 5),
+  obPir('2.1.85', 'Office PIR', 'outbuildingStableOffice', [23.25, 31.55, 0.3, 5.4], [-0.9, 1.5], 1.96, 6),
+  obPir('2.1.86', 'Guest suite PIR', 'outbuildingStableSuite', [23.4, 28.75, 0.3, 5.4], [1.7, 4.2], 4.666, 7),
 ];
