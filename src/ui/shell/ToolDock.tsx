@@ -17,13 +17,12 @@ const TOOLS: readonly DockTool[] = [
   { id: 'note', label: 'Note', icon: 'pin', key: 'N', hint: 'Click any surface to pin a note' },
 ];
 
-export function ToolDock(): JSX.Element {
+export function ToolDock(): JSX.Element | null {
   const ctl = useShell();
   const tool = activeTool.value;
-  const walking = viewMode.value === 'walk';
-  const activeHint = walking
-    ? 'WASD to move · mouse to look · V or Esc to leave'
-    : TOOLS.find((t) => t.id === tool)?.hint ?? '';
+  // Walk mode has its own overlay (crosshair, key hints, room chip).
+  if (viewMode.value === 'walk') return null;
+  const activeHint = TOOLS.find((t) => t.id === tool)?.hint ?? '';
 
   return (
     <div class="shell-dock-wrap">
@@ -35,8 +34,8 @@ export function ToolDock(): JSX.Element {
           <button
             key={t.id}
             type="button"
-            class={`shell-dock-btn${tool === t.id && !walking ? ' is-active' : ''}`}
-            aria-pressed={tool === t.id && !walking}
+            class={`shell-dock-btn${tool === t.id ? ' is-active' : ''}`}
+            aria-pressed={tool === t.id}
             title={`${t.label} (${t.key})`}
             onClick={() => (t.id === 'orbit' ? ctl.setTool('orbit') : ctl.toggleTool(t.id))}
           >
@@ -59,7 +58,6 @@ export function ToolDock(): JSX.Element {
           type="button"
           class="shell-dock-btn"
           title="Recenter on the current room (F)"
-          disabled={walking}
           onClick={() => ctl.recenter()}
         >
           <Icon name="target" size={18} />

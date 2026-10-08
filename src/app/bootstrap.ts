@@ -4,10 +4,12 @@ import type { TwinApi } from './twin-api.ts';
 import {
   KNXPropertyBusController,
   LoopbackSimulationTransport,
+  MotionPresenceBridge,
   WebSocketKNXGatewayTransport,
 } from '../integrations/knx/index.ts';
 import { SceneAnnotationStore } from '../engine/annotation/annotation-system.ts';
 import { CroxPropertyScene } from '../homes/crox-farmhouse/crox-property-scene.ts';
+import { CROX_DEMO_PRESENCE_HOLD_TIME_SEC } from '../homes/crox-farmhouse/knx/devices.ts';
 import { CROX_KNX_PROJECT } from '../homes/crox-farmhouse/knx/project.ts';
 import { CROX_FARMHOUSE_USD_OVERRIDE_LAYER } from '../homes/crox-farmhouse/usd/layout-overrides.ts';
 import type { InboundKNXFrame } from '../core/types/knx.ts';
@@ -65,6 +67,10 @@ export async function bootstrap(): Promise<void> {
     CROX_KNX_PROJECT,
     liveGatewayUrl ? new WebSocketKNXGatewayTransport(liveGatewayUrl) : new LoopbackSimulationTransport()
   );
+  // Demo: short PIR hold time so night → off after vacancy is visible within a walkthrough.
+  knx.setPresenceHoldTimeOverride(CROX_DEMO_PRESENCE_HOLD_TIME_SEC);
+  // Walkthrough feet position → ceiling PIR coverage → emulator presence telegrams.
+  const presenceBridge = new MotionPresenceBridge(knx, knx.getPresenceDetectors());
   const hub = new SmartHomeHub(knx);
   const annotations = new SceneAnnotationStore();
 
@@ -130,6 +136,9 @@ export async function bootstrap(): Promise<void> {
     gatePa: GATE_PA,
     kitchenScenePa: KITCHEN_SWITCH_PA,
     courtyardSwitchPa: COURTYARD_SWITCH_PA,
+    onWalkthroughPresence: (pos) => {
+      presenceBridge.update(pos);
+    },
   });
   const { api } = runtime;
 

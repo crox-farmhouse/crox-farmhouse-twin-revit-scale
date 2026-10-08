@@ -133,6 +133,12 @@ export const currentRoomId: Signal<RoomZoneId | null> = signal<RoomZoneId | null
 export const tradeView: Signal<TradeView> = signal<TradeView>('owner');
 export const floorMode: Signal<FloorViewMode> = signal<FloorViewMode>('ground');
 export const viewMode: Signal<ShellViewMode> = signal<ShellViewMode>('3d');
+
+/** Bumped to re-show the walk-mode key hints (they auto-hide; `?` re-shows them). */
+export const walkHintNonce: Signal<number> = signal(0);
+export function showWalkHints(): void {
+  walkHintNonce.value += 1;
+}
 export const activeTool: Signal<ShellTool> = signal<ShellTool>('orbit');
 export const sectionCut: Signal<boolean> = signal(true);
 export const timeOfDay: Signal<TimeOfDay> = signal<TimeOfDay>('dusk');

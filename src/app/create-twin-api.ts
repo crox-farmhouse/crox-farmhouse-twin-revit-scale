@@ -28,8 +28,10 @@ import type {
   TwinRoomNavGroup,
   TwinUfhZone,
   TwinViewState,
+  TwinWalkthroughState,
   Unsubscribe,
 } from './twin-api.ts';
+import { createZoneLightingApi } from './zone-lighting.ts';
 
 /** Home-specific room data the adapter serves through `api.rooms`. */
 export interface TwinHomeData {
@@ -206,6 +208,26 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
     }
   };
 
+  const zones = createZoneLightingApi(knx, {
+    circuits: knx.getCircuits(),
+    manifest: home.manifest,
+    getManifest: (zoneId) => home.getManifest(zoneId),
+    getLevelScenes: (zoneId) => home.getLevelScenes(zoneId),
+    roomLabel,
+    uiSourcePa: kitchenScenePa,
+  });
+
+  const walkState = (): TwinWalkthroughState => {
+    const wt = scene.getWalkthrough();
+    return {
+      active: wt.isActive(),
+      prompt: wt.getTargetedPrompt(),
+      crouched: wt.isCrouched(),
+      pointerLocked: wt.isPointerLocked(),
+      fovDeg: wt.getBaseFov(),
+    };
+  };
+
   const api: TwinApi = {
     camera: {
       flyToPreset: (preset) => scene.flyToPreset(preset),
@@ -259,6 +281,7 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
     },
 
     lighting: {
+      zones,
       circuits: () => knx.getCircuits(),
       isKnownCircuit,
       getLiveLevels: () => knx.getLiveLevels(),
@@ -357,6 +380,11 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
 
     walkthrough: {
       isActive: () => scene.isWalkthroughMode(),
+      getState: walkState,
+      onStateChanged: (listener) => scene.getWalkthrough().subscribe(() => listener(walkState())),
+      interact: () => scene.getWalkthrough().triggerTargetedInteraction(),
+      toggleCrouch: () => scene.getWalkthrough().toggleCrouched(),
+      requestMouseLook: () => scene.getWalkthrough().requestMouseLock(),
       enter: (spawnId) => {
         scene.setWalkthroughMode(true, spawnId);
       },

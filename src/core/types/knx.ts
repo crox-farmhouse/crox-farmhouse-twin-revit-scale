@@ -1,4 +1,5 @@
 import type { BuildingId, FloorId, RoomZoneId } from './topology.ts';
+import type { LightingLayerKind } from './knx-zones.ts';
 
 /**
  * Strict TypeScript domain models for the Crox Farmhouse KNX TP1 / cEMI Bus & Digital Twin.
@@ -97,22 +98,8 @@ export type OutdoorCircuitLevels = Record<OutdoorCircuitId, number>;
 export type CircuitLevels = Record<CircuitId, number>;
 
 /** Lighting fitting type carried by a single circuit. */
-export type CircuitKind =
-  | 'pendants'
-  | 'downlights'
-  | 'spots'
-  | 'battens'
-  | 'wall'
-  | 'picture'
-  | 'shelf'
-  | 'cove'
-  | 'strip'
-  | 'step'
-  | 'uplights'
-  | 'task'
-  | 'lamps'
-  | 'feature'
-  | 'exterior';
+/** Fitting type carried by one circuit — the same vocabulary the zone UI groups layers by. */
+export type CircuitKind = LightingLayerKind;
 
 export interface CircuitConfig {
   readonly id: CircuitId;

@@ -116,7 +116,7 @@ export const DEFAULT_CAMERA_PRESETS: readonly CameraPresetDefinition[] = [
   },
   {
     id: 'sittingRoom',
-    label: 'Sitting & Study',
+    label: 'Sitting Room',
     buildingId: 'mainHouse',
     zoneId: 'sittingRoom',
     floorViewMode: 'ground',
@@ -182,7 +182,7 @@ export const ArchitecturalShellAndUtilityZoneModule: SceneZoneModule = {
  */
 export const MainHouseGroundFloorRoomsZoneModule: SceneZoneModule = {
   id: 'mainHouse.ground.additionalRooms',
-  name: 'Main House Ground Floor Rooms (Dining, Hall, Living, Sitting, Study)',
+  name: 'Main House Ground Floor Rooms (Dining, Hall, Living, Sitting, Plant room)',
   buildingId: 'mainHouse',
   floorId: 'ground',
   zoneIds: [

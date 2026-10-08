@@ -1,15 +1,4 @@
 {
-  "comment": "Known layer violations tolerated until the knx-lighting branch makes src/integrations/knx a generic KNX stack (see board #21). Entries match by file + import specifier. Only remove entries; never add new ones without coordinator sign-off.",
-  "violations": [
-    {
-      "file": "src/integrations/knx/ai-assistant.ts",
-      "spec": "../../engine/viewer/property-scene.ts",
-      "reason": "integrations → engine"
-    },
-    {
-      "file": "src/integrations/knx/emulator.ts",
-      "spec": "../../homes/crox-farmhouse/hud-model.ts",
-      "reason": "integrations → homes"
-    }
-  ]
+  "comment": "Known layer violations tolerated by tools/check-boundaries. Empty since the knx-lighting merge made src/integrations/knx a generic KNX stack. Only remove entries; never add new ones without coordinator sign-off.",
+  "violations": []
 }

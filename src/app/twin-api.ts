@@ -38,6 +38,7 @@ import type {
 } from '../core/types/scene.ts';
 import type { FloorId, RoomBoundingBox, RoomZoneId } from '../core/types/topology.ts';
 import type { HudRoomScene } from '../core/types/home-hud.ts';
+import type { KnxZoneState, LightingLayerKind } from '../core/types/knx-zones.ts';
 import type {
   GraphicsMode,
   GraphicsTier,
@@ -150,7 +151,82 @@ export interface TwinRoomMotionSensor {
   readonly occupied: boolean;
 }
 
+/** One circuit (actuator channel) inside a lighting zone. */
+export interface TwinZoneCircuit {
+  readonly id: CircuitId;
+  readonly label: string;
+  readonly kind: LightingLayerKind;
+  readonly dimmable: boolean;
+}
+
+/** Circuits of one fitting type within a zone (Pendants, Downlights, Wall lights …). */
+export interface TwinLightingLayer {
+  readonly kind: LightingLayerKind;
+  readonly label: string;
+  readonly circuits: readonly TwinZoneCircuit[];
+}
+
+export interface TwinZoneScene {
+  /** Index for {@link TwinZoneLightingApi.recallScene} / `KnxZoneState.sceneIndex`. */
+  readonly index: number;
+  readonly id: string;
+  readonly label: string;
+}
+
+/** A lighting zone (one per room; `id` is the room's zone id). */
+export interface TwinLightingZone {
+  readonly id: RoomZoneId;
+  readonly name: string;
+  readonly circuitIds: readonly CircuitId[];
+  /** Non-empty layers in presentation order. */
+  readonly layers: readonly TwinLightingLayer[];
+  readonly scenes: readonly TwinZoneScene[];
+}
+
+export interface TwinPresenceDetector {
+  readonly pa: string;
+  readonly name: string;
+  readonly zoneId: RoomZoneId;
+  readonly detected: boolean;
+  readonly lastSeenSimSec: number | null;
+}
+
+export interface TwinZoneSwitchGang {
+  readonly gang: number;
+  readonly zoneId: RoomZoneId;
+  readonly label: string;
+  /** Status LED: lit while the gang's zone is not `off`. */
+  readonly ledOn: boolean;
+}
+
+export interface TwinZoneSwitch {
+  readonly pa: string;
+  readonly name: string;
+  readonly location: string;
+  readonly mountedInZoneId: RoomZoneId;
+  readonly gangs: readonly TwinZoneSwitchGang[];
+}
+
+export interface TwinZoneLightingApi {
+  /** `knx` when the controller models zones natively; `derived` = per-room fallback. */
+  source(): 'knx' | 'derived';
+  list(): readonly TwinLightingZone[];
+  get(zoneId: RoomZoneId): TwinLightingZone | undefined;
+  getState(zoneId: RoomZoneId): KnxZoneState;
+  recallScene(zoneId: RoomZoneId, sceneIndex: number): void;
+  setFull(zoneId: RoomZoneId): void;
+  setNight(zoneId: RoomZoneId): void;
+  setOff(zoneId: RoomZoneId): void;
+  /** Fires after any KNX state change (any zone's state / presence may have changed). */
+  onStateChanged(listener: () => void): Unsubscribe;
+  presenceDetectors(zoneId?: RoomZoneId): readonly TwinPresenceDetector[];
+  /** Wall push-buttons (all, or those mounted in a room) with live LED feedback. */
+  switches(mountedInZoneId?: RoomZoneId): readonly TwinZoneSwitch[];
+}
+
 export interface TwinLightingApi {
+  /** Per-room lighting zones (layers, zone scenes, Full / Night / Off, presence). */
+  readonly zones: TwinZoneLightingApi;
   circuits(): readonly CircuitConfig[];
   isKnownCircuit(circuitId: string): circuitId is CircuitId;
   getLiveLevels(): Readonly<CircuitLevels>;
@@ -274,8 +350,26 @@ export interface TwinWalkthroughSpawn {
   readonly zoneId: RoomZoneId;
 }
 
+/** Snapshot of the first-person walker for overlays (plain data). */
+export interface TwinWalkthroughState {
+  readonly active: boolean;
+  /** Interaction prompt for the object under the crosshair (e.g. "Open Door"), if any. */
+  readonly prompt: string | null;
+  readonly crouched: boolean;
+  readonly pointerLocked: boolean;
+  readonly fovDeg: number;
+}
+
 export interface TwinWalkthroughApi {
   isActive(): boolean;
+  getState(): TwinWalkthroughState;
+  /** Fires on enter/exit and whenever the prompt, crouch, pointer lock or FOV changes. */
+  onStateChanged(listener: (state: TwinWalkthroughState) => void): Unsubscribe;
+  /** Uses the object under the crosshair (same as the F key). */
+  interact(): boolean;
+  toggleCrouch(): boolean;
+  /** Requests pointer lock for free mouse look (must be called from a user gesture). */
+  requestMouseLook(): void;
   enter(spawnId?: string): void;
   exit(): void;
   toggle(spawnId?: string): boolean;

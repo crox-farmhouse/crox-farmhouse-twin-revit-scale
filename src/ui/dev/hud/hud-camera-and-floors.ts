@@ -84,30 +84,15 @@ export function syncGraphicsUI(scene: PropertyScene): void {
     if (gfx.bloomEnabled) features.push('BLOOM');
     gfxReadout.textContent = features.join(' · ');
   }
-
-  const wtBlurBtn = document.getElementById('walkthrough-blur-btn');
-  if (wtBlurBtn) {
-    wtBlurBtn.classList.toggle('is-active', gfx.motionBlurEnabled);
-    wtBlurBtn.textContent = gfx.motionBlurEnabled ? 'Blur: ON (B)' : 'Blur: OFF (B)';
-  }
-
-  const wtGfxBtn = document.getElementById('walkthrough-gfx-btn');
-  if (wtGfxBtn) {
-    wtGfxBtn.textContent = `GFX: ${presetLabel}`;
-  }
 }
 
 export function syncWalkthroughReadout(scene: PropertyScene): void {
-  const posReadout = document.getElementById('walkthrough-pos-readout');
   const wt = scene.getWalkthrough();
   const foot = wt.getFootPosition();
   const roomName = scene.getFocusedRoomShortName().toUpperCase();
   const sign = foot.y >= 0 ? '+' : '';
   const fps = wt.getSmoothedFps();
   const label = `${roomName} · ${sign}${foot.y.toFixed(2)}m · ${fps} FPS`;
-  if (posReadout) {
-    posReadout.textContent = label;
-  }
   devStore.syncViewportState({
     walkthroughFloorLabel: label,
     fpsCount: fps,
@@ -118,14 +103,6 @@ export function syncWalkthroughReadout(scene: PropertyScene): void {
 export function syncWalkthroughUI(scene: PropertyScene): void {
   const wt = scene.getWalkthrough();
   const active = wt.isActive();
-  const crouched = wt.isCrouched();
-  const pointerLocked = wt.isPointerLocked();
-  const targetPrompt = wt.getTargetedPrompt();
-
-  const floatingEnterBtn = document.getElementById('walkthrough-floating-enter-btn');
-  if (floatingEnterBtn) {
-    floatingEnterBtn.hidden = active;
-  }
 
   const toggleBtn = document.getElementById('toggle-walkthrough-btn');
   const dot = document.getElementById('walkthrough-dot');
@@ -142,45 +119,6 @@ export function syncWalkthroughUI(scene: PropertyScene): void {
     stateLabel.textContent = active
       ? '1st-Person Walkthrough: Active (WASD · F Interact · V Exit)'
       : '1st-Person Walkthrough: Off (Press V or F)';
-  }
-
-  const hudBanner = document.getElementById('walkthrough-hud');
-  if (hudBanner) {
-    hudBanner.hidden = !active;
-  }
-
-  const reticle = document.getElementById('walkthrough-reticle');
-  if (reticle) {
-    reticle.hidden = !active;
-    reticle.classList.toggle('is-target-locked', Boolean(active && targetPrompt));
-  }
-
-  const interactPromptEl = document.getElementById('walkthrough-interact-prompt');
-  const interactLabelEl = document.getElementById('walkthrough-interact-label');
-  if (interactPromptEl && interactLabelEl) {
-    if (active && targetPrompt) {
-      interactLabelEl.textContent = `to ${targetPrompt}`;
-      interactPromptEl.hidden = false;
-    } else {
-      interactPromptEl.hidden = true;
-    }
-  }
-
-  const fovBtn = document.getElementById('walkthrough-fov-btn');
-  if (fovBtn) {
-    fovBtn.textContent = `FOV: ${wt.getBaseFov()}°`;
-  }
-
-  const crouchBtn = document.getElementById('walkthrough-crouch-btn');
-  if (crouchBtn) {
-    crouchBtn.classList.toggle('is-active', crouched);
-    crouchBtn.textContent = crouched ? 'Crouched (C)' : 'Stand (C)';
-  }
-
-  const mouseLookBtn = document.getElementById('walkthrough-mouselook-btn');
-  if (mouseLookBtn) {
-    mouseLookBtn.classList.toggle('is-active', pointerLocked);
-    mouseLookBtn.textContent = pointerLocked ? 'Mouse Locked (Esc)' : 'Mouse Look';
   }
 
   devStore.syncViewportState({
@@ -256,65 +194,6 @@ export function bindCameraAndFloorEvents(scene: PropertyScene): void {
     syncFloorModeUI(scene);
   });
 
-  const floatingEnterBtn = document.getElementById('walkthrough-floating-enter-btn');
-  floatingEnterBtn?.addEventListener('click', () => {
-    scene.setWalkthroughMode(true);
-    syncWalkthroughUI(scene);
-    syncFloorModeUI(scene);
-  });
-
-  const exitBtn = document.getElementById('walkthrough-exit-btn');
-  exitBtn?.addEventListener('click', () => {
-    scene.setWalkthroughMode(false);
-    syncWalkthroughUI(scene);
-    syncFloorModeUI(scene);
-  });
-
-  const fovBtn = document.getElementById('walkthrough-fov-btn');
-  fovBtn?.addEventListener('click', () => {
-    scene.getWalkthrough().cycleBaseFov();
-    syncWalkthroughUI(scene);
-  });
-
-  const blurBtn = document.getElementById('walkthrough-blur-btn');
-  blurBtn?.addEventListener('click', () => {
-    scene.toggleMotionBlur();
-    syncGraphicsUI(scene);
-  });
-
-  const gfxBtn = document.getElementById('walkthrough-gfx-btn');
-  gfxBtn?.addEventListener('click', () => {
-    scene.cycleGraphicsQualityPreset();
-    syncGraphicsUI(scene);
-  });
-
-  const crouchBtn = document.getElementById('walkthrough-crouch-btn');
-  crouchBtn?.addEventListener('click', () => {
-    scene.getWalkthrough().toggleCrouched();
-    syncWalkthroughUI(scene);
-  });
-
-  const mouseLookBtn = document.getElementById('walkthrough-mouselook-btn');
-  mouseLookBtn?.addEventListener('click', () => {
-    scene.getWalkthrough().requestMouseLock();
-  });
-
-  document.querySelectorAll<HTMLButtonElement>('.walkthrough-spawn-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const spawnId = btn.dataset.spawn;
-      if (!spawnId) return;
-      if (!scene.isWalkthroughMode()) {
-        scene.setWalkthroughMode(true, spawnId);
-      } else {
-        scene.getWalkthrough().teleportToSpawn(spawnId);
-      }
-      document
-        .querySelectorAll<HTMLButtonElement>('.walkthrough-spawn-btn')
-        .forEach((b) => b.classList.toggle('active', b === btn));
-      syncWalkthroughUI(scene);
-    });
-  });
-
   window.addEventListener('keydown', (e: KeyboardEvent) => {
     const activeEl = document.activeElement;
     const tag = activeEl?.tagName ?? '';
@@ -336,15 +215,6 @@ export function bindCameraAndFloorEvents(scene: PropertyScene): void {
         (activeEl as HTMLElement).blur();
       }
       scene.toggleWalkthroughMode();
-      syncWalkthroughUI(scene);
-      syncFloorModeUI(scene);
-    } else if (
-      e.code === 'Escape' &&
-      scene.isWalkthroughMode() &&
-      !scene.getWalkthrough().isPointerLocked()
-    ) {
-      e.preventDefault();
-      scene.setWalkthroughMode(false);
       syncWalkthroughUI(scene);
       syncFloorModeUI(scene);
     }

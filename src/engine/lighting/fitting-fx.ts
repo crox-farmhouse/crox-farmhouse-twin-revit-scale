@@ -1,0 +1,498 @@
+import * as THREE from 'three';
+import type { CircuitId } from '../../core/types/knx.ts';
+import type { LightGroupMap } from '../viewer/scene-types.ts';
+import { ALWAYS_HOIST_LIGHT_FLAG, SHADOW_PASS_HOOK_FLAG } from '../rendering/scene-batch-optimizer.ts';
+
+/**
+ * Runtime "looks ON" effects for KNX light fittings. Everything here is created once at runtime
+ * from the built scene (never by room builders, so the content snapshot is unaffected) and is a
+ * pure function of KNX level × time of day — never of the camera.
+ *
+ * - Emissive classification: every circuit emissive material is classified as an LED line source
+ *   (strip / bar / batten / cove / plinth diffuser), a lamp core (bulb / filament / globe / lens /
+ *   puck), a shade (translucent shade or glass lit from inside) or other. Cores and LEDs get a
+ *   high HDR emissive gain and a whitened warm tint so they saturate to near-white and bloom.
+ * - Halos: one additive soft-sprite point per lamp core (drawn as one `THREE.Points` per fitting
+ *   parent and circuit) so fittings read ON even on the low tier without bloom.
+ * - LED washes: one additive gradient decal per LED line source on the surface it lights
+ *   (found by a short raycast away from its mounting surface) — a cheap line-source light pool.
+ * - Fill lights: circuits with fittings but no real PointLight get one synthetic PointLight at
+ *   their fittings' centroid so switching them on lights the room (managed by the light budget).
+ */
+
+export type FittingKind = 'led' | 'core' | 'shade' | 'other';
+
+/** userData flag on every runtime fitting-effect object (halos, washes, fill lights). */
+export const FITTING_FX_FLAG = 'isFittingFx';
+
+const LED_NAME_RE = /led|strip|batten|cove|plinth|lightbar|diffuser|tape/i;
+const INDICATOR_NAME_RE = /statusLed|indicator|wiringLed|fuelGauge|pip\b/i;
+const CORE_NAME_RE = /bulb|filament|globe|lens|puck|mantle|emitter|candle|spot(?!light\b)|lamp$/i;
+const SHADE_NAME_RE = /shade|cage|lantern|glass|diffuser|drum|bell|dome|cone|lining|innerGlow/i;
+const UPWARD_NAME_RE = /above|cove|uplight|top|ceiling|pelmet/i;
+
+/**
+ * Single tuning knob for how hot lamp cores (bulbs, filaments, globes, lenses) look when ON:
+ * scales both their emissive gain and their halo sprites. 1 = full "blown-out" look.
+ */
+export const BULB_GLOW_STRENGTH = 0.62;
+
+/** Emissive gain applied on top of the builder/appearance max, per fitting kind. */
+const KIND_EMISSIVE_GAIN: Readonly<Record<FittingKind, number>> = {
+  led: 3.4,
+  core: Math.max(1, 5.5 * BULB_GLOW_STRENGTH),
+  shade: 1.35,
+  other: 1,
+};
+
+/** How far each kind's emissive colour is pulled toward a warm white (hot core look). */
+const KIND_WHITEN: Readonly<Record<FittingKind, number>> = {
+  led: 0.6,
+  core: 0.55,
+  shade: 0.18,
+  other: 0,
+};
+
+const WARM_WHITE = new THREE.Color(0xfff0d8);
+/** Halo brightness multiplier (HDR) at 100 % level. */
+const HALO_STRENGTH = 2.4 * BULB_GLOW_STRENGTH;
+/** LED wash brightness multiplier (HDR) at 100 % level. */
+const WASH_STRENGTH = 1.25;
+/** Furthest a wash surface may be from its LED source. */
+const WASH_MAX_DISTANCE = 2.8;
+
+interface ClassifiedMesh {
+  readonly mesh: THREE.Mesh;
+  readonly mat: THREE.MeshStandardMaterial;
+  readonly circuitId: CircuitId;
+  readonly kind: FittingKind;
+  readonly box: THREE.Box3;
+}
+
+interface HaloBatch {
+  readonly circuitId: CircuitId;
+  readonly material: THREE.ShaderMaterial;
+}
+
+interface WashDecal {
+  readonly circuitId: CircuitId;
+  readonly material: THREE.MeshBasicMaterial;
+  readonly baseColor: THREE.Color;
+}
+
+export interface FittingEffectsOptions {
+  readonly lightGroups: LightGroupMap;
+  /** Scene (or content root) to search for fitting meshes; defaults to the lights' root. */
+  readonly sceneRoot?: THREE.Object3D;
+}
+
+const HALO_VERTEX_SHADER = /* glsl */ `
+  attribute float aSize;
+  attribute vec3 aColor;
+  uniform float uViewportHeight;
+  varying vec3 vColor;
+  void main() {
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    gl_Position = projectionMatrix * mvPosition;
+    float projScale = projectionMatrix[1][1] * 0.5 * uViewportHeight;
+    bool isOrtho = projectionMatrix[2][3] == 0.0;
+    float size = isOrtho ? aSize * projScale : aSize * projScale / max(0.05, -mvPosition.z);
+    gl_PointSize = clamp(size, 0.0, 1024.0);
+    vColor = aColor;
+  }
+`;
+
+const HALO_FRAGMENT_SHADER = /* glsl */ `
+  uniform float uIntensity;
+  varying vec3 vColor;
+  void main() {
+    vec2 p = gl_PointCoord * 2.0 - 1.0;
+    float d2 = dot(p, p);
+    if (d2 >= 1.0) discard;
+    float core = exp(-d2 * 26.0);
+    float glow = exp(-d2 * 5.5) * (1.0 - d2);
+    gl_FragColor = vec4(vColor * uIntensity * (core * 1.6 + glow * 0.45), 1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+let sharedWashTexture: THREE.DataTexture | null = null;
+
+/** Soft elongated falloff (u = along the LED, v = away from it), stored as luminance in RGB. */
+function getWashTexture(): THREE.DataTexture {
+  if (sharedWashTexture) return sharedWashTexture;
+  const w = 64;
+  const h = 32;
+  const data = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    const v = (y + 0.5) / h;
+    const across = Math.exp(-Math.pow((v - 0.5) * 2, 2) * 3.2) * (1 - Math.pow(Math.abs(v - 0.5) * 2, 4));
+    for (let x = 0; x < w; x++) {
+      const u = (x + 0.5) / w;
+      const edge = Math.min(u, 1 - u) * 2;
+      const along = THREE.MathUtils.smoothstep(edge, 0, 0.35);
+      const value = Math.round(255 * Math.max(0, across * along));
+      const i = (y * w + x) * 4;
+      data[i] = value;
+      data[i + 1] = value;
+      data[i + 2] = value;
+      data[i + 3] = 255;
+    }
+  }
+  const tex = new THREE.DataTexture(data, w, h, THREE.RGBAFormat);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  sharedWashTexture = tex;
+  return tex;
+}
+
+function noRaycast(): void {
+  // Runtime effects are never pickable or collidable.
+}
+
+function markFx(obj: THREE.Object3D): void {
+  obj.userData[FITTING_FX_FLAG] = true;
+  obj.userData[SHADOW_PASS_HOOK_FLAG] = true;
+  obj.castShadow = false;
+  obj.receiveShadow = false;
+  obj.raycast = noRaycast;
+}
+
+function findRoot(groups: LightGroupMap): THREE.Object3D | null {
+  for (const group of Object.values(groups)) {
+    for (const light of group.lights) {
+      let cur: THREE.Object3D = light;
+      while (cur.parent) cur = cur.parent;
+      if (cur !== light) return cur;
+    }
+  }
+  return null;
+}
+
+function classify(mesh: THREE.Mesh, box: THREE.Box3): FittingKind {
+  const name = mesh.name;
+  if (INDICATOR_NAME_RE.test(name)) return 'other';
+  const size = box.getSize(new THREE.Vector3());
+  const dims = [size.x, size.y, size.z].sort((a, b) => b - a);
+  const longest = dims[0] ?? 0;
+  const second = Math.max(1e-4, dims[1] ?? 0);
+  const elongated = longest >= 0.25 && longest / second >= 4;
+  if (elongated && LED_NAME_RE.test(name)) return 'led';
+  if (CORE_NAME_RE.test(name)) return 'core';
+  if (SHADE_NAME_RE.test(name)) return 'shade';
+  if (longest > 0 && longest <= 0.14) return 'core';
+  return 'other';
+}
+
+function kindPriority(kind: FittingKind): number {
+  return kind === 'led' ? 3 : kind === 'core' ? 2 : kind === 'shade' ? 1 : 0;
+}
+
+/** Moves a world-space transform under `parent` (handles parent rotation and scale). */
+function attachWithWorldTransform(
+  obj: THREE.Object3D,
+  parent: THREE.Object3D,
+  worldPos: THREE.Vector3,
+  worldQuat: THREE.Quaternion,
+  worldScale: THREE.Vector3
+): void {
+  parent.updateWorldMatrix(true, false);
+  const world = new THREE.Matrix4().compose(worldPos, worldQuat, worldScale);
+  const local = new THREE.Matrix4().copy(parent.matrixWorld).invert().multiply(world);
+  local.decompose(obj.position, obj.quaternion, obj.scale);
+  parent.add(obj);
+  obj.updateMatrixWorld(true);
+}
+
+export class FittingEffects {
+  private readonly kindByMaterial = new Map<THREE.Material, FittingKind>();
+  private readonly halos: HaloBatch[] = [];
+  private readonly washes: WashDecal[] = [];
+  private readonly fillLights: THREE.PointLight[] = [];
+
+  public constructor(options: FittingEffectsOptions) {
+    const root = options.sceneRoot ?? findRoot(options.lightGroups);
+    if (!root) return;
+    root.updateMatrixWorld(true);
+
+    const circuitByMaterial = new Map<THREE.Material, CircuitId>();
+    for (const [circuitId, group] of Object.entries(options.lightGroups) as Array<
+      [CircuitId, LightGroupMap[CircuitId]]
+    >) {
+      for (const mat of group.emissives) {
+        if (!circuitByMaterial.has(mat)) circuitByMaterial.set(mat, circuitId);
+      }
+    }
+    if (circuitByMaterial.size === 0) return;
+
+    const classified: ClassifiedMesh[] = [];
+    const surfaceCandidates: Array<{ readonly mesh: THREE.Mesh; readonly box: THREE.Box3 }> = [];
+    root.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh) || obj.userData[FITTING_FX_FLAG]) return;
+      const box = new THREE.Box3().setFromObject(obj);
+      if (box.isEmpty()) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      let fitting = false;
+      for (const m of mats) {
+        const circuitId = circuitByMaterial.get(m);
+        if (!circuitId || !(m instanceof THREE.MeshStandardMaterial)) continue;
+        classified.push({ mesh: obj, mat: m, circuitId, kind: classify(obj, box), box });
+        fitting = true;
+      }
+      if (!fitting && obj.visible) {
+        const m0 = mats[0];
+        if (m0 && !m0.transparent) surfaceCandidates.push({ mesh: obj, box });
+      }
+    });
+
+    // Material kind = highest-priority kind among the meshes that use it.
+    for (const c of classified) {
+      const prev = this.kindByMaterial.get(c.mat);
+      if (!prev || kindPriority(c.kind) > kindPriority(prev)) this.kindByMaterial.set(c.mat, c.kind);
+    }
+    for (const [mat, kind] of this.kindByMaterial) {
+      const m = mat as THREE.MeshStandardMaterial;
+      const whiten = KIND_WHITEN[kind];
+      if (whiten > 0) m.emissive.lerp(WARM_WHITE, whiten);
+    }
+
+    this.buildHalos(classified);
+    this.buildWashes(classified, surfaceCandidates);
+    this.buildFillLights(options.lightGroups, classified);
+  }
+
+  /** Emissive multiplier for a circuit material (1 for unclassified materials). */
+  public getEmissiveGain(mat: THREE.Material): number {
+    const kind = this.kindByMaterial.get(mat);
+    return kind ? KIND_EMISSIVE_GAIN[kind] : 1;
+  }
+
+  public getKind(mat: THREE.Material): FittingKind | undefined {
+    return this.kindByMaterial.get(mat);
+  }
+
+  public getFillLights(): readonly THREE.PointLight[] {
+    return this.fillLights;
+  }
+
+  /** Applies one circuit's level (0..1) × time-of-day emissive scale to its halos and washes. */
+  public applyLevels(levelFor: (circuitId: CircuitId) => number, emissiveScale: number): void {
+    for (const halo of this.halos) {
+      const k = levelFor(halo.circuitId) * emissiveScale;
+      halo.material.uniforms.uIntensity!.value = HALO_STRENGTH * k;
+      halo.material.visible = k > 0.002;
+    }
+    for (const wash of this.washes) {
+      const k = levelFor(wash.circuitId) * emissiveScale;
+      wash.material.color.copy(wash.baseColor).multiplyScalar(WASH_STRENGTH * k);
+      wash.material.visible = k > 0.002;
+    }
+  }
+
+  private buildHalos(classified: readonly ClassifiedMesh[]): void {
+    const byKey = new Map<string, { parent: THREE.Object3D; circuitId: CircuitId; items: ClassifiedMesh[] }>();
+    for (const c of classified) {
+      if (c.kind !== 'core' || !c.mesh.parent) continue;
+      const key = `${c.mesh.parent.uuid}|${c.circuitId}`;
+      let entry = byKey.get(key);
+      if (!entry) {
+        entry = { parent: c.mesh.parent, circuitId: c.circuitId, items: [] };
+        byKey.set(key, entry);
+      }
+      entry.items.push(c);
+    }
+    const centre = new THREE.Vector3();
+    const size = new THREE.Vector3();
+    for (const { parent, circuitId, items } of byKey.values()) {
+      parent.updateWorldMatrix(true, false);
+      const inv = new THREE.Matrix4().copy(parent.matrixWorld).invert();
+      const positions: number[] = [];
+      const sizes: number[] = [];
+      const colors: number[] = [];
+      for (const c of items) {
+        c.box.getCenter(centre);
+        c.box.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        centre.applyMatrix4(inv);
+        positions.push(centre.x, centre.y, centre.z);
+        sizes.push(THREE.MathUtils.clamp(maxDim * 4, 0.14, 0.55));
+        colors.push(c.mat.emissive.r, c.mat.emissive.g, c.mat.emissive.b);
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('aSize', new THREE.Float32BufferAttribute(sizes, 1));
+      geometry.setAttribute('aColor', new THREE.Float32BufferAttribute(colors, 3));
+      const material = new THREE.ShaderMaterial({
+        vertexShader: HALO_VERTEX_SHADER,
+        fragmentShader: HALO_FRAGMENT_SHADER,
+        uniforms: { uIntensity: { value: 0 }, uViewportHeight: { value: 800 } },
+        transparent: true,
+        depthWrite: false,
+        depthTest: true,
+        blending: THREE.AdditiveBlending,
+        toneMapped: true,
+      });
+      material.visible = false;
+      const points = new THREE.Points(geometry, material);
+      points.name = `fx.halo.${circuitId}`;
+      points.frustumCulled = false;
+      points.renderOrder = 10;
+      const viewport = new THREE.Vector4();
+      points.onBeforeRender = (renderer) => {
+        renderer.getCurrentViewport(viewport);
+        material.uniforms.uViewportHeight!.value = viewport.w;
+      };
+      markFx(points);
+      parent.add(points);
+      this.halos.push({ circuitId, material });
+    }
+  }
+
+  private buildWashes(
+    classified: readonly ClassifiedMesh[],
+    candidates: ReadonlyArray<{ readonly mesh: THREE.Mesh; readonly box: THREE.Box3 }>
+  ): void {
+    const raycaster = new THREE.Raycaster();
+    const ray = new THREE.Ray();
+    const centre = new THREE.Vector3();
+    const size = new THREE.Vector3();
+    const reach = new THREE.Box3();
+
+    const castFrom = (
+      origin: THREE.Vector3,
+      dir: THREE.Vector3,
+      self: THREE.Mesh
+    ): THREE.Intersection | null => {
+      ray.set(origin, dir);
+      reach.makeEmpty().expandByPoint(origin).expandByPoint(origin.clone().addScaledVector(dir, WASH_MAX_DISTANCE));
+      const near: THREE.Mesh[] = [];
+      for (const c of candidates) {
+        if (c.mesh === self || !c.box.intersectsBox(reach)) continue;
+        if (ray.intersectsBox(c.box)) near.push(c.mesh);
+      }
+      if (near.length === 0) return null;
+      raycaster.set(origin, dir);
+      raycaster.near = 0;
+      raycaster.far = WASH_MAX_DISTANCE;
+      const hits = raycaster.intersectObjects(near, false);
+      return hits[0] ?? null;
+    };
+
+    for (const c of classified) {
+      if (c.kind !== 'led' || !c.mesh.parent) continue;
+      c.box.getCenter(centre);
+      c.box.getSize(size);
+      const axes = [
+        { axis: new THREE.Vector3(1, 0, 0), len: size.x },
+        { axis: new THREE.Vector3(0, 1, 0), len: size.y },
+        { axis: new THREE.Vector3(0, 0, 1), len: size.z },
+      ].sort((a, b) => a.len - b.len);
+      const thin = axes[0]!;
+      const long = axes[2]!;
+      const half = thin.len * 0.5;
+      const plus = castFrom(centre, thin.axis.clone(), c.mesh);
+      const minus = castFrom(centre, thin.axis.clone().negate(), c.mesh);
+      const mountGap = half + 0.035;
+      const plusMount = plus !== null && plus.distance <= mountGap;
+      const minusMount = minus !== null && minus.distance <= mountGap;
+      let hit: THREE.Intersection | null = null;
+      if (plusMount && !minusMount) hit = minus;
+      else if (minusMount && !plusMount) hit = plus;
+      else if (!plusMount && !minusMount) {
+        const preferPlus = thin.axis.y === 1 ? UPWARD_NAME_RE.test(c.mesh.name) : (plus?.distance ?? 99) < (minus?.distance ?? 99);
+        hit = preferPlus ? (plus ?? minus) : (minus ?? plus);
+      }
+      if (!hit || !hit.face) continue;
+      // The wash is a flat decal, so only keep it when the lit surface is flat and continuous
+      // along the LED (worktop, floor, wall, ceiling) — not a curved hob lid or a small object.
+      const castDir = hit.point.clone().sub(centre).normalize();
+      let consistent = 0;
+      const samples = 5;
+      for (let k = 0; k < samples; k++) {
+        const u = (k / (samples - 1) - 0.5) * long.len * 0.9;
+        const origin = centre.clone().addScaledVector(long.axis, u);
+        const sampleHit = castFrom(origin, castDir, c.mesh);
+        if (sampleHit && Math.abs(sampleHit.distance - hit.distance) < 0.04) consistent++;
+      }
+      if (consistent < samples - 1) continue;
+
+      const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).normalize();
+      const toSource = centre.clone().sub(hit.point);
+      if (normal.dot(toSource) < 0) normal.negate();
+      const distance = hit.distance;
+      const xAxis = long.axis.clone().addScaledVector(normal, -long.axis.dot(normal));
+      if (xAxis.lengthSq() < 1e-6) continue;
+      xAxis.normalize();
+      const yAxis = new THREE.Vector3().crossVectors(normal, xAxis).normalize();
+      const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, normal);
+      const quat = new THREE.Quaternion().setFromRotationMatrix(basis);
+      const spread = THREE.MathUtils.clamp(0.22 + distance * 0.9, 0.22, 1.3);
+      const length = long.len + spread * 0.7;
+      const pos = hit.point.clone().addScaledVector(normal, 0.006);
+
+      const baseColor = c.mat.emissive.clone();
+      const material = new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        map: getWashTexture(),
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+        fog: false,
+      });
+      material.visible = false;
+      const decal = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+      decal.name = `fx.ledWash.${c.mesh.name}`;
+      decal.renderOrder = 9;
+      markFx(decal);
+      attachWithWorldTransform(decal, c.mesh.parent, pos, quat, new THREE.Vector3(length, spread, 1));
+      this.washes.push({ circuitId: c.circuitId, material, baseColor });
+    }
+  }
+
+  private buildFillLights(groups: LightGroupMap, classified: readonly ClassifiedMesh[]): void {
+    const byCircuit = new Map<CircuitId, ClassifiedMesh[]>();
+    for (const c of classified) {
+      const list = byCircuit.get(c.circuitId) ?? [];
+      list.push(c);
+      byCircuit.set(c.circuitId, list);
+    }
+    const centre = new THREE.Vector3();
+    for (const [circuitId, items] of byCircuit) {
+      const group = groups[circuitId];
+      if (!group || group.lights.length > 0) continue;
+      const lamps = items.filter((c) => c.kind === 'core' || c.kind === 'shade');
+      const sources = lamps.length > 0 ? lamps : items.filter((c) => c.kind === 'led');
+      const anchor = sources[0]?.mesh.parent;
+      if (!anchor) continue;
+      const sum = new THREE.Vector3();
+      let minY = Infinity;
+      for (const s of sources) {
+        s.box.getCenter(centre);
+        sum.add(centre);
+        minY = Math.min(minY, s.box.min.y);
+      }
+      sum.divideScalar(sources.length);
+      // Just below the fittings so pendants light the room below rather than the ceiling.
+      sum.y = Math.min(sum.y, minY) - 0.2;
+      const light = new THREE.PointLight(
+        sources[0]!.mat.emissive.clone().lerp(WARM_WHITE, 0.3),
+        0,
+        THREE.MathUtils.clamp(2.6 + group.maxIntensity * 0.32, 3, 7),
+        1.6
+      );
+      light.name = `fx.fillLight.${circuitId}`;
+      light.castShadow = false;
+      light.userData[FITTING_FX_FLAG] = true;
+      light.userData[ALWAYS_HOIST_LIGHT_FLAG] = true;
+      light.userData.baseIntensity = group.maxIntensity * 0.8;
+      attachWithWorldTransform(light, anchor, sum, new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
+      group.lights.push(light);
+      this.fillLights.push(light);
+    }
+  }
+}

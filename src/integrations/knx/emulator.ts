@@ -44,6 +44,7 @@ import {
   type KNXBusTransport,
 } from './transport.ts';
 import { ZoneLightingController, type SwitchDirection, type ZoneLevels } from './zone-lighting.ts';
+import type { KnxZoneBus } from '../../core/types/knx-zones.ts';
 
 /**
  * Legacy kitchen / utility night-object levels (kept as exports for HUD copy). The live
@@ -106,7 +107,7 @@ type ZoneObject = 'scene' | 'night' | 'full' | 'dim';
  * Runs either against the in-browser loopback (`LoopbackSimulationTransport`) or a live
  * KNXnet/IP gateway (`WebSocketKNXGatewayTransport`).
  */
-export class KNXPropertyBusController {
+export class KNXPropertyBusController implements KnxZoneBus {
   public static readonly TV_ART_CYCLE_INTERVAL_SEC = 8.0;
   public static readonly CAR_GATE_TRAVEL_SEC = 10.0;
 

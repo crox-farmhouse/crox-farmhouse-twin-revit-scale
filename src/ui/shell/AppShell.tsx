@@ -7,6 +7,7 @@ import { SettingsModal } from './SettingsModal.tsx';
 import { ShellContext } from './shell-context.ts';
 import type { ShellController } from './shell-controller.ts';
 import { ToolDock } from './ToolDock.tsx';
+import { WalkOverlay } from './WalkOverlay.tsx';
 import { TopBar } from './TopBar.tsx';
 
 function Toast(): JSX.Element | null {
@@ -46,6 +47,7 @@ export function AppShell({ ctl, devDrawer: DevDrawer }: AppShellProps): JSX.Elem
       <RoomNavigator />
       <RoomPanel />
       <ToolDock />
+      <WalkOverlay />
       {DevDrawer && <DevDrawer />}
       <Toast />
       <SettingsModal />
