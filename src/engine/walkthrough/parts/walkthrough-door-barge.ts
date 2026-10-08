@@ -268,7 +268,18 @@ export class WalkthroughDoorBargeAndCollisionSolver {
           obj.name.includes('hittingStrip') ||
           obj.name.includes('ballTray') ||
           obj.name.includes('ballFlightTracer') ||
-          obj.name.includes('cobblePath'))
+          obj.name.includes('cobblePath') ||
+          obj.name === 'courtyard.vegetableGarden.endGlass' ||
+          obj.name === 'courtyard.vegetableGarden.roofGlass' ||
+          obj.name === 'courtyard.vegetableGarden.roofBar' ||
+          obj.name === 'courtyard.vegetableGarden.stoneCourse' ||
+          obj.name === 'courtyard.vegetableGarden.copingStone' ||
+          obj.name === 'courtyard.grapeVinePergola.stoneCourse' ||
+          obj.name === 'courtyard.grapeVinePergola.copingStone' ||
+          obj.name === 'courtyard.grapeVinePergola.dwarfCoping' ||
+          obj.name === 'courtyard.grapeVinePergola.westNorthStep' ||
+          obj.name === 'courtyard.grapeVinePergola.westSouthStep' ||
+          obj.name === 'courtyard.grapeVinePergola.eastGardenStep')
       ) {
         return;
       }
@@ -319,11 +330,13 @@ export class WalkthroughDoorBargeAndCollisionSolver {
           if (
             cur.name.includes('porsche992TurboS') ||
             cur.name.includes('landRoverDefender') ||
-            cur.name.includes('grapeVine') ||
+            cur.name.includes('grapeVineCanopy') ||
+            cur.name.includes('dryStoneRelief') ||
             cur.name.includes('climbingIvy') ||
             cur.name.includes('wisteria') ||
             cur.name.includes('oliveTree') ||
-            cur.name.includes('fiddleLeaf')
+            cur.name.includes('fiddleLeaf') ||
+            cur.name.includes('botanicalShrub')
           ) {
             isHighPolyPropOrFoliage = true;
           }
@@ -404,8 +417,20 @@ export class WalkthroughDoorBargeAndCollisionSolver {
           obj.name.includes('.doorFrame') ||
           obj.name.includes('.sill'));
 
+      const isGardenOrPergolaWalkableOrFoliage =
+        typeof obj.name === 'string' &&
+        (obj.name.startsWith('courtyard.grapeVinePergola.') ||
+          obj.name.startsWith('courtyard.vegetableGarden.') ||
+          obj.name.startsWith('courtyard.patioBorderPlant') ||
+          obj.name.includes('.botanical') ||
+          obj.name.includes('trailingSpray') ||
+          obj.name.includes('cropMound') ||
+          obj.name.includes('vineClimber'));
+
       if (
         rebuildFurniture &&
+        !isHighPolyPropOrFoliage &&
+        !isGardenOrPergolaWalkableOrFoliage &&
         !hasDynamicAncestor &&
         !isDoorFrameOrJamb &&
         Math.max(sizeX, sizeZ) <= 5.5

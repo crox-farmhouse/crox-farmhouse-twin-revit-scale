@@ -58,9 +58,19 @@ export function HelpOverlay(): JSX.Element | null {
             <li key={t}>{t}</li>
           ))}
         </ul>
-        <div class="shell-help-dots" aria-hidden="true">
+        <div class="shell-help-dots" role="tablist" aria-label="Tutorial steps">
           {STEPS.map((x, i) => (
-            <span key={x.title} class={`shell-help-dot${i === step ? ' is-active' : ''}`} />
+            <button
+              key={x.title}
+              type="button"
+              role="tab"
+              aria-selected={i === step}
+              aria-label={`Step ${i + 1}: ${x.title}`}
+              class={`shell-help-dot${i === step ? ' is-active' : ''}`}
+              onClick={() => {
+                helpStep.value = i;
+              }}
+            />
           ))}
         </div>
         <div class="shell-help-actions">

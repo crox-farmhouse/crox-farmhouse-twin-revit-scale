@@ -376,6 +376,36 @@ export function sampleFloorElevation(x: number, refFootY: number, z: number): nu
     return -0.6;
   }
 
+  // 5a. Raised Flagstone Patio, Grape-Vine Pergola (+0.32m), and Walled Vegetable Garden (0.00m)
+  if (ewX >= -4.45 && ewX <= 17.75 && ewZ >= -1.05 && ewZ <= 7.35 && refFootY <= 1.35) {
+    // Walled Vegetable Garden & Greenhouse (ewX = 11.85..17.75, ewZ = -0.95..7.20)
+    if (ewX > 11.85) {
+      // Smooth 2-step transition down East Garden Steps (ewX = 11.85..12.48, ewZ = 1.75..3.45)
+      if (ewX <= 12.48 && ewZ >= 1.75 && ewZ <= 3.45) {
+        const tStep = THREE.MathUtils.clamp((ewX - 11.85) / 0.63, 0, 1);
+        return THREE.MathUtils.lerp(0.32, 0.0, tStep);
+      }
+      return 0.0;
+    }
+    // Raised Walled Grape-Vine Pergola Dining Court (ewX = 6.82..11.85, ewZ = -0.95..7.20)
+    if (ewX >= 6.82 && ewZ >= -0.95 && ewZ <= 7.20) {
+      return 0.32;
+    }
+    // West Pergola Entrance Steps (ewX = 6.38..6.82)
+    if (ewX >= 6.38 && ewX < 6.82 && ewZ >= -0.95 && ewZ <= 7.20) {
+      const tStep = THREE.MathUtils.clamp((ewX - 6.38) / 0.44, 0, 1);
+      return THREE.MathUtils.lerp(0.0, 0.32, tStep);
+    }
+    // Courtyard gravel/sett transition aisle between Flagstone Patio and Pergola (ewX = 4.25..6.38)
+    if (ewX > 4.25 && ewZ >= -0.95 && ewZ <= 7.20) {
+      return 0.0;
+    }
+    // Raised Flagstone Patio South of Kitchen (ewX = -4.45..4.25, ewZ = 2.62..7.10)
+    if (ewX >= -4.45 && ewX <= 4.25 && ewZ >= 2.62 && ewZ <= 7.10) {
+      return 0.09;
+    }
+  }
+
   // 5. Outdoor Courtyard, Raised Limestone Terrace & Grounds (continuous graded courtyard elevation)
   const northZ = 2.61 - (x - -16.92) * (0.705 / 5.27) - 0.05;
   const tx = Math.max(0, Math.min(1, (-4.52 - x) / 11.43));
@@ -438,25 +468,29 @@ export function evaluateArchitecturalWalkwayBounds(
   const onLowerFlight =
     fromFoot.y <= 1.35 &&
     curEw.ewX >= -17.55 &&
-    curEw.ewX <= -16.58 &&
+    curEw.ewX <= -16.52 &&
     curEw.ewZ >= -1.65 &&
-    curEw.ewZ <= -0.15;
+    curEw.ewZ <= 0.05;
 
   if (onUpperFlightOrMouth || onQuarterLanding || onLowerFlight) {
-    if (nextEw.ewZ < -2.22 || nextEw.ewX < -17.28) return 'blocked';
+    // Directional outer wall bounds so the player can never get wedged at the stair base or landing
+    if (nextEw.ewZ < -2.26 && nextEw.ewZ < curEw.ewZ) return 'blocked';
+    if (nextEw.ewX < -17.34 && nextEw.ewX < curEw.ewX) return 'blocked';
     if (
       fromFoot.y >= 0.72 &&
       nextEw.ewX > -16.58 &&
       nextEw.ewX < -15.36 &&
-      nextEw.ewZ > -1.69
+      nextEw.ewZ > -1.69 &&
+      nextEw.ewZ > curEw.ewZ
     ) {
       return 'blocked';
     }
     if (
       fromFoot.y <= 1.35 &&
       nextEw.ewZ > -1.58 &&
-      nextEw.ewZ < -0.35 &&
-      nextEw.ewX > -16.68
+      nextEw.ewZ < -0.52 &&
+      nextEw.ewX > -16.64 &&
+      nextEw.ewX > curEw.ewX
     ) {
       return 'blocked';
     }

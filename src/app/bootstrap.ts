@@ -16,6 +16,7 @@ import type { InboundKNXFrame } from '../core/types/knx.ts';
 import type { InteractiveUserData } from '../core/types/scene.ts';
 import { mountDevTools, DevDrawer } from '../ui/dev/mount-dev-tools.ts';
 import { getLoadingScreen } from '../ui/shell/loading.ts';
+import { hasSeenHelp, openHelp } from '../state/shell-store.ts';
 import { mountAppShell } from '../ui/shell/mount-shell.tsx';
 
 /** `window.croxTwin` — console / automation handle (kept stable across refactors). */
@@ -148,6 +149,8 @@ export async function bootstrap(): Promise<void> {
   mountAppShell({ api, devDrawer: DevDrawer }, shellRoot);
 
   knx.recallScene(0, KITCHEN_SWITCH_PA);
+  knx.stepDimming(10);
+  scene.applyKNXLightLevels(knx.getLiveLevels());
 
   window.croxTwin = {
     hub,
@@ -160,19 +163,21 @@ export async function bootstrap(): Promise<void> {
     injectTelegram: (frameOrHex: string | InboundKNXFrame) => knx.ingestExternalFrame(frameOrHex),
   };
 
+  // Warm up one render frame (shader compile + GPU upload) while loading screen is still visible
+  runtime.tick(0.016);
+  await loading.setProgress('Ready', 1);
+  loading.finish();
+  if (!hasSeenHelp()) {
+    window.requestAnimationFrame(() => openHelp(0));
+  }
+
   let lastFrameTime = performance.now();
-  let firstFrame = true;
   const animate = (now: number): void => {
     requestAnimationFrame(animate);
     const dt = Math.min(0.1, (now - lastFrameTime) / 1000);
     lastFrameTime = now;
     runtime.tick(dt);
-    if (firstFrame) {
-      firstFrame = false;
-      loading.finish();
-    }
   };
 
-  await loading.setProgress('Ready', 1);
   requestAnimationFrame(animate);
 }

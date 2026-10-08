@@ -5,10 +5,8 @@ import { annotatorActive, selectedAnnotationId } from '../../state/notes-store.t
 import {
   devMode,
   guestMode,
-  hasSeenHelp,
   isMobile,
   navigatorOpen,
-  openHelp,
   roomPanelOpen,
   setDevMode,
 } from '../../state/shell-store.ts';
@@ -78,8 +76,5 @@ export function mountAppShell(options: MountShellOptions, root: HTMLElement): Sh
   render(<AppShell ctl={ctl} devDrawer={options.devDrawer} />, root);
 
   if (share) ctl.applyShareState(share);
-  if (!hasSeenHelp()) {
-    window.setTimeout(() => openHelp(0), 600);
-  }
   return ctl;
 }

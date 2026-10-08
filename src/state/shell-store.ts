@@ -292,3 +292,67 @@ export function pruneNoteMeta(liveIds: readonly number[]): void {
   noteMeta.value = next;
   writeLocal(LS_NOTE_META, JSON.stringify(next));
 }
+
+// ---------------------------------------------------------------------------
+// Progressive Web App (PWA) install & service worker state
+// ---------------------------------------------------------------------------
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  readonly userChoice: Promise<{ readonly outcome: 'accepted' | 'dismissed'; readonly platform: string }>;
+}
+
+let deferredPwaPrompt: BeforeInstallPromptEvent | null = null;
+
+function detectStandaloneMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  const nav = window.navigator as Navigator & { standalone?: boolean };
+  return (
+    window.matchMedia?.('(display-mode: standalone)').matches === true ||
+    window.matchMedia?.('(display-mode: window-controls-overlay)').matches === true ||
+    nav.standalone === true
+  );
+}
+
+export const pwaCanInstall: Signal<boolean> = signal(false);
+export const pwaInstalled: Signal<boolean> = signal(detectStandaloneMode());
+
+export async function promptPwaInstall(): Promise<boolean> {
+  if (!deferredPwaPrompt) return false;
+  const promptEvent = deferredPwaPrompt;
+  deferredPwaPrompt = null;
+  pwaCanInstall.value = false;
+  try {
+    await promptEvent.prompt();
+    const choice = await promptEvent.userChoice;
+    if (choice.outcome === 'accepted') {
+      pwaInstalled.value = true;
+      showToast('Crox Farmhouse installed as an app');
+      return true;
+    }
+  } catch {
+    // Ignore user cancellation
+  }
+  return false;
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e: Event) => {
+    e.preventDefault();
+    deferredPwaPrompt = e as BeforeInstallPromptEvent;
+    pwaCanInstall.value = true;
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredPwaPrompt = null;
+    pwaCanInstall.value = false;
+    pwaInstalled.value = true;
+  });
+
+  if ('serviceWorker' in navigator && import.meta.env?.PROD) {
+    window.addEventListener('load', () => {
+      const swUrl = `${import.meta.env.BASE_URL ?? './'}sw.js`;
+      void navigator.serviceWorker.register(swUrl).catch(() => undefined);
+    });
+  }
+}

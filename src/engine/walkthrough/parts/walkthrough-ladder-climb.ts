@@ -508,11 +508,12 @@ export class WalkthroughLadderClimbController {
       }
     }
 
-    // 2. Top Store Loft Ladder Auto-Mount (`obU = 13.90..14.52m, obV <= 1.56m, footY >= 2.15m`)
+    // 2. Top Store Loft Ladder Auto-Mount (`obU = 13.90..14.52m, obV = 1.12..1.56m, footY >= 2.45m`)
     if (
-      footPos.y >= 2.15 &&
+      footPos.y >= 2.45 &&
       obU >= 13.90 &&
       obU <= 14.52 &&
+      obV >= 1.12 &&
       obV <= 1.56 &&
       moveV < -0.34
     ) {

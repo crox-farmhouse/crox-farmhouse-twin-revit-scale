@@ -1323,10 +1323,19 @@ kbd {
 }
 
 .shell-help-dot {
-  width: 7px;
-  height: 7px;
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.shell-help-dot:hover {
+  transform: scale(1.25);
+  background: rgba(255, 255, 255, 0.45);
 }
 
 .shell-help-dot.is-active {

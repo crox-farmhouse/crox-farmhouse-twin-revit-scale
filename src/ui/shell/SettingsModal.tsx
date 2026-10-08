@@ -6,6 +6,10 @@ import {
   graphicsMode,
   graphicsTierLabel,
   guestMode,
+  openHelp,
+  promptPwaInstall,
+  pwaCanInstall,
+  pwaInstalled,
   setDevMode,
   setUnits,
   settingsOpen,
@@ -130,6 +134,49 @@ export function SettingsModal(): JSX.Element | null {
                 </div>
               ))}
             </dl>
+          </section>
+
+          <section class="shell-settings-section">
+            <h3>App &amp; tutorial</h3>
+            <div class="shell-toggle-row" style={{ marginBottom: '10px' }}>
+              <span class="shell-radio-text">
+                <span>Crox Farmhouse Web App (PWA)</span>
+                <span class="shell-muted">
+                  {pwaInstalled.value
+                    ? 'Installed — running as a standalone app with offline caching'
+                    : pwaCanInstall.value
+                      ? 'Install to your home screen or desktop dock for full-screen access'
+                      : 'Add to Home Screen / Install from your browser menu for full-screen app mode'}
+                </span>
+              </span>
+              {pwaCanInstall.value && !pwaInstalled.value && (
+                <button
+                  type="button"
+                  class="shell-btn shell-btn-primary"
+                  onClick={() => {
+                    void promptPwaInstall();
+                  }}
+                >
+                  Install app
+                </button>
+              )}
+            </div>
+            <div class="shell-toggle-row">
+              <span class="shell-radio-text">
+                <span>Interactive walkthrough guide</span>
+                <span class="shell-muted">Reopen the 3-step introduction to navigation, rooms &amp; notes</span>
+              </span>
+              <button
+                type="button"
+                class="shell-btn"
+                onClick={() => {
+                  settingsOpen.value = false;
+                  openHelp(0);
+                }}
+              >
+                Open tutorial
+              </button>
+            </div>
           </section>
 
           <section class="shell-settings-section">

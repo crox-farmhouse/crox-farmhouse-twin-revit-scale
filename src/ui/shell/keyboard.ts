@@ -2,6 +2,7 @@ import {
   activeTool,
   closeTopOverlay,
   helpOpen,
+  helpStep,
   openHelp,
   settingsOpen,
   showWalkHints,
@@ -55,6 +56,26 @@ export function bindShellKeyboard(ctl: ShellController): void {
       }
       if (helpOpen.value) closeTopOverlay();
       else openHelp(0);
+      return;
+    }
+
+    if (helpOpen.value && !e.repeat) {
+      if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        e.preventDefault();
+        if (helpStep.value < 2) {
+          helpStep.value += 1;
+        } else {
+          closeTopOverlay();
+        }
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (helpStep.value > 0) {
+          helpStep.value -= 1;
+        }
+        return;
+      }
       return;
     }
 

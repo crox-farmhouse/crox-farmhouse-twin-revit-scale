@@ -293,6 +293,7 @@ export class UsdStageRuntimeController {
   private diagnosticMode: UsdViewportDiagnosticMode = 'pbr';
   private uniqueMaterialPaths = new Set<string>();
   private readonly listeners = new Set<() => void>();
+  private hasIndexedStage = false;
 
   public constructor(options: {
     readonly scene: THREE.Scene;
@@ -337,7 +338,13 @@ export class UsdStageRuntimeController {
     this.authoredOverrideGroup.name = 'usd.liveAuthoredPrims';
     options.scene.add(this.authoredOverrideGroup);
 
-    this.indexStage();
+    // Stage indexing is deferred until ensureIndexed() is called by Dev/USD tools.
+  }
+
+  private ensureIndexed(): void {
+    if (!this.hasIndexedStage) {
+      this.indexStage();
+    }
   }
 
   public subscribe(listener: () => void): () => void {
@@ -686,6 +693,7 @@ export class UsdStageRuntimeController {
   }
 
   public indexStage(): void {
+    this.hasIndexedStage = true;
     this.meshByUuid.clear();
     this.primByUuid.clear();
     this.primByPath.clear();
@@ -873,6 +881,7 @@ export class UsdStageRuntimeController {
   }
 
   public getStageStats(): UsdStageStatsSummary {
+    this.ensureIndexed();
     let cubeCount = 0;
     let cylinderCount = 0;
     let sphereCount = 0;
@@ -908,6 +917,7 @@ export class UsdStageRuntimeController {
   }
 
   public getZoneSublayers(): readonly UsdZoneSublayerSummary[] {
+    this.ensureIndexed();
     return CROX_USD_ZONE_LAYERS.map((layer) => {
       const meshes = this.meshesByZone.get(layer.zoneId) ?? [];
       let cubeCount = 0;
@@ -956,6 +966,7 @@ export class UsdStageRuntimeController {
   }
 
   public setZoneMuted(zoneId: string, muted: boolean): void {
+    this.ensureIndexed();
     if (muted) {
       this.onSyncBatchState?.(false);
       this.mutedZones.add(zoneId);
@@ -970,6 +981,7 @@ export class UsdStageRuntimeController {
   }
 
   public setAllZonesMuted(muted: boolean): void {
+    this.ensureIndexed();
     if (muted) {
       this.onSyncBatchState?.(false);
     }
@@ -989,6 +1001,7 @@ export class UsdStageRuntimeController {
   }
 
   public soloZone(zoneId: string): void {
+    this.ensureIndexed();
     const allOthersMuted =
       !this.mutedZones.has(zoneId) &&
       this.mutedZones.size === CROX_USD_ZONE_LAYERS.length - 1;
@@ -1039,6 +1052,7 @@ export class UsdStageRuntimeController {
   }
 
   public setLodVariant(variant: UsdLodVariant): void {
+    this.ensureIndexed();
     if (this.lodVariant === variant) return;
     if (variant !== 'hero') {
       this.onSyncBatchState?.(false);
@@ -1069,6 +1083,7 @@ export class UsdStageRuntimeController {
   }
 
   public setDiagnosticMode(mode: UsdViewportDiagnosticMode): void {
+    this.ensureIndexed();
     if (this.diagnosticMode === mode) return;
     if (mode !== 'pbr') {
       this.onSyncBatchState?.(false);
@@ -1142,6 +1157,7 @@ export class UsdStageRuntimeController {
   }
 
   public getPrimInfoByMesh(mesh: THREE.Object3D): UsdIndexedPrimInfo | null {
+    this.ensureIndexed();
     let cur: THREE.Object3D | null = mesh;
     while (cur) {
       const info = this.primByUuid.get(cur.uuid);
@@ -1155,10 +1171,12 @@ export class UsdStageRuntimeController {
   }
 
   public getPrimInfoByPath(primPath: string): UsdIndexedPrimInfo | null {
+    this.ensureIndexed();
     return this.primByPath.get(primPath) ?? null;
   }
 
   public searchPrims(query: string, limit = 40): readonly UsdIndexedPrimInfo[] {
+    this.ensureIndexed();
     const q = query.trim().toLowerCase();
     const results: UsdIndexedPrimInfo[] = [];
     for (const info of this.primByUuid.values()) {

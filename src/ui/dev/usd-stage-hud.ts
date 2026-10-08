@@ -1,3 +1,5 @@
+import { effect } from '@preact/signals';
+import { devMode } from '../../state/shell-store.ts';
 import type { PropertyScene } from '../../engine/viewer/property-scene.ts';
 import {
   INITIAL_INCREMENTAL_USDA_ZONES,
@@ -143,16 +145,11 @@ export class UsdStageHudController {
 
     this.overrideTextareaEl.value = defaultOverrideLayer.trim();
 
-    // Select a default kitchen island or sofa prim so the inspector is populated immediately
-    const initialCandidates = this.runtime.searchPrims('kitchen', 5);
-    if (initialCandidates.length > 0) {
-      this.selectedPrim = initialCandidates[0];
-    }
-
     this.bindSectionHeader();
     this.bindEvents();
 
     this.runtime.subscribe(() => {
+      if (!devMode.value) return;
       if (this.selectedPrim) {
         const updated = this.runtime.getPrimInfoByPath(this.selectedPrim.primPath);
         if (updated) {
@@ -168,26 +165,38 @@ export class UsdStageHudController {
     });
 
     mountUsdQuickStats(this.statsGridEl);
-    this.render();
+    let initializedDevHud = false;
+    effect(() => {
+      if (!devMode.value) return;
+      if (!initializedDevHud) {
+        initializedDevHud = true;
+        const initialCandidates = this.runtime.searchPrims('kitchen', 5);
+        if (initialCandidates.length > 0) {
+          this.selectedPrim = initialCandidates[0];
+        }
+      }
+      this.render();
+    });
     void this.loadInitialIncrementalUsdaZones();
   }
 
   private async loadInitialIncrementalUsdaZones(): Promise<void> {
     const params = new URLSearchParams(window.location.search);
     const usdZonesParam = params.get('usdZones');
+    if (!usdZonesParam || usdZonesParam === 'none') {
+      return;
+    }
     if (usdZonesParam === 'all') {
       await this.runtime.loadAllZonesFromUsdaFiles();
       return;
     }
-    if (usdZonesParam === 'none') {
-      return;
-    }
-    const zonesToLoad = usdZonesParam
-      ? usdZonesParam
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : INITIAL_INCREMENTAL_USDA_ZONES;
+    const zonesToLoad =
+      usdZonesParam === 'default'
+        ? INITIAL_INCREMENTAL_USDA_ZONES
+        : usdZonesParam
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
     await this.runtime.loadZonesFromUsdaFiles(zonesToLoad);
   }
 
