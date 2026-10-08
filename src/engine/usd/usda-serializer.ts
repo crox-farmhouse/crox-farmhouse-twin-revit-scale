@@ -17,6 +17,16 @@ import type {
   UsdXformOps,
 } from './schema.ts';
 
+/**
+ * Appends `items` to `target` without spreading into call arguments: zone layers can produce
+ * hundreds of thousands of lines, which overflows the call stack with `push(...items)`.
+ */
+function appendAll(target: string[], items: readonly string[]): void {
+  for (let i = 0; i < items.length; i += 1) {
+    target.push(items[i]!);
+  }
+}
+
 function fmtNum(n: number): string {
   const rounded = Math.round(n * 1e5) / 1e5;
   const val = Object.is(rounded, -0) ? 0 : rounded;
@@ -236,7 +246,7 @@ function serializeMeshBody(mesh: UsdMeshData, indent: string): string[] {
   if (mesh.subsets && mesh.subsets.length > 0) {
     for (const subset of mesh.subsets) {
       lines.push('');
-      lines.push(...serializeGeomSubset(subset, indent));
+      appendAll(lines, serializeGeomSubset(subset, indent));
     }
   }
 
@@ -559,7 +569,7 @@ function serializeMaterialBody(
     );
   }
 
-  lines.push(...serializeMaterialXNodes(matPath, mat, indent));
+  appendAll(lines, serializeMaterialXNodes(matPath, mat, indent));
 
   return lines;
 }
@@ -682,11 +692,11 @@ function serializeVariantSetBlock(
   for (const [optName, opt] of Object.entries(options)) {
     lines.push(`${optIndent}"${escapeUsdString(optName)}" {`);
     if (opt.customAttributes) {
-      lines.push(...serializeCustomAttributes(opt.customAttributes, bodyIndent));
+      appendAll(lines, serializeCustomAttributes(opt.customAttributes, bodyIndent));
     }
     if (opt.children) {
       for (const child of opt.children) {
-        lines.push(...serializePrim(child, primPath, depth + 2));
+        appendAll(lines, serializePrim(child, primPath, depth + 2));
       }
     }
     lines.push(`${optIndent}}`);
@@ -758,14 +768,14 @@ function serializePrim(prim: UsdPrim, parentPath: string, depth: number): string
       metaLines.push(`${bodyIndent}}`);
     }
     if (prim.metadata.customData) {
-      metaLines.push(...formatCustomDataDict(prim.metadata.customData, bodyIndent));
+      appendAll(metaLines, formatCustomDataDict(prim.metadata.customData, bodyIndent));
     }
   }
 
   const lines: string[] = [];
   if (metaLines.length > 0) {
     lines.push(`${headerPrefix} (`);
-    lines.push(...metaLines);
+    appendAll(lines, metaLines);
     lines.push(`${indent})`);
   } else {
     lines.push(headerPrefix);
@@ -786,37 +796,37 @@ function serializePrim(prim: UsdPrim, parentPath: string, depth: number): string
     lines.push(`${bodyIndent}rel material:binding = <${prim.materialBindingPath}>`);
   }
   if (prim.xform) {
-    lines.push(...serializeXformOps(prim.xform, bodyIndent));
+    appendAll(lines, serializeXformOps(prim.xform, bodyIndent));
   }
   if (prim.customAttributes) {
-    lines.push(...serializeCustomAttributes(prim.customAttributes, bodyIndent));
+    appendAll(lines, serializeCustomAttributes(prim.customAttributes, bodyIndent));
   }
   if (prim.cube) {
-    lines.push(...serializeCubeBody(prim.cube, bodyIndent));
+    appendAll(lines, serializeCubeBody(prim.cube, bodyIndent));
   }
   if (prim.cylinder) {
-    lines.push(...serializeCylinderBody(prim.cylinder, bodyIndent));
+    appendAll(lines, serializeCylinderBody(prim.cylinder, bodyIndent));
   }
   if (prim.sphere) {
-    lines.push(...serializeSphereBody(prim.sphere, bodyIndent));
+    appendAll(lines, serializeSphereBody(prim.sphere, bodyIndent));
   }
   if (prim.cone) {
-    lines.push(...serializeConeBody(prim.cone, bodyIndent));
+    appendAll(lines, serializeConeBody(prim.cone, bodyIndent));
   }
   if (prim.basisCurves) {
-    lines.push(...serializeBasisCurvesBody(prim.basisCurves, bodyIndent));
+    appendAll(lines, serializeBasisCurvesBody(prim.basisCurves, bodyIndent));
   }
   if (prim.mesh) {
-    lines.push(...serializeMeshBody(prim.mesh, bodyIndent));
+    appendAll(lines, serializeMeshBody(prim.mesh, bodyIndent));
   }
   if (prim.material) {
-    lines.push(...serializeMaterialBody(primPath, prim.material, bodyIndent));
+    appendAll(lines, serializeMaterialBody(primPath, prim.material, bodyIndent));
   }
   if (prim.light) {
-    lines.push(...serializeLightBody(prim.light, bodyIndent));
+    appendAll(lines, serializeLightBody(prim.light, bodyIndent));
   }
   if (prim.camera) {
-    lines.push(...serializeCameraBody(prim.camera, bodyIndent));
+    appendAll(lines, serializeCameraBody(prim.camera, bodyIndent));
   }
 
   if (prim.children && prim.children.length > 0) {
@@ -824,14 +834,14 @@ function serializePrim(prim: UsdPrim, parentPath: string, depth: number): string
       if (i > 0 || lines.length > (metaLines.length > 0 ? metaLines.length + 3 : 2)) {
         lines.push('');
       }
-      lines.push(...serializePrim(prim.children[i], primPath, depth + 1));
+      appendAll(lines, serializePrim(prim.children[i], primPath, depth + 1));
     }
   }
 
   if (prim.variantSets) {
     for (const [setName, options] of Object.entries(prim.variantSets)) {
       lines.push('');
-      lines.push(...serializeVariantSetBlock(setName, options, primPath, depth + 1));
+      appendAll(lines, serializeVariantSetBlock(setName, options, primPath, depth + 1));
     }
   }
 
@@ -881,7 +891,7 @@ export function serializeUsdaStage(stage: UsdStageDocument): string {
 
   for (let i = 0; i < stage.prims.length; i++) {
     if (i > 0) lines.push('');
-    lines.push(...serializePrim(stage.prims[i], '', 0));
+    appendAll(lines, serializePrim(stage.prims[i], '', 0));
   }
 
   lines.push('');

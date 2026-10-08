@@ -1,0 +1,138 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+  # GitHub Pages project-site sub-path.
+  PAGES_BASE: /crox-farmhouse-twin/
+
+jobs:
+  verify:
+    name: Verify & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Layer boundaries
+        run: npm run check:boundaries
+      - name: Unit tests
+        run: npm test
+      - name: Scene snapshot
+        run: npm run snapshot:check
+      - name: Lighting consistency
+        run: npm run lighting:check
+      - name: Export OpenUSD (.usda layers)
+        run: npm run usd:export
+      - name: Build (Pages sub-path)
+        env:
+          VITE_BASE: ${{ env.PAGES_BASE }}
+          # Copies usd/zones + usd/materials into dist/usd/ for the "load zone from USDA" dev feature.
+          CROX_BUNDLE_USD: '1'
+        run: npx vite build
+      - name: Upload .usda layers for the USD job
+        uses: actions/upload-artifact@v4
+        with:
+          name: crox-usda
+          path: |
+            usd/*.usda
+            usd/zones/
+            usd/materials/
+            usd/lighting/
+            usd/overrides/
+            usd/textures/
+          retention-days: 1
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Binary .usdc / .usdz compilation needs Pixar's pxr SDK (pip `usd-core`). Kept separate so a
+  # pxr failure never blocks the Pages deploy.
+  usd:
+    name: Compile OpenUSD stage (.usdc / .usdz)
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: crox-usda
+          path: usd
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install usd-core
+      - name: Compile stage
+        run: python3 tools/usd/compile_stage.py usd
+      - name: Package .usda layers
+        run: |
+          cd usd
+          zip -r ../crox_farmhouse_usda_layers.zip ./*.usda zones materials lighting overrides textures README.md
+      - name: Upload USD artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crox-usd
+          path: |
+            usd/*.usda
+            usd/*.usdc
+            usd/*.usdz
+            usd/zones/
+            usd/materials/
+            usd/lighting/
+            crox_farmhouse_usda_layers.zip
+          retention-days: 30
+
+  release:
+    name: Attach USD to GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: usd
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: crox-usd
+          path: crox-usd
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            crox-usd/usd/crox_farmhouse.usdz
+            crox-usd/usd/crox_farmhouse.usdc
+            crox-usd/crox_farmhouse_usda_layers.zip
+          fail_on_unmatched_files: true

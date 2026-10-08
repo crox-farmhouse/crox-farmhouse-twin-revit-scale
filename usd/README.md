@@ -1,5 +1,13 @@
 # Crox Farmhouse — OpenUSD Stage (`#usda 1.0` / `.usdc` / `.usdz`)
 
+> [!IMPORTANT]
+> Everything in this directory except `overrides/layout.usda`, `textures/**` and this README is a **generated build artifact**: git-ignored, never committed.
+> - `npm run usd:export` writes the ASCII layers (`crox_farmhouse*.usda`, `zones/`, `materials/`, `lighting/`). Needs Node only.
+> - `npm run usd:compile` writes `crox_farmhouse.usdc` / `.usdz`. Needs Pixar `pxr` (`pip install usd-core`).
+> - `npm run usd:build` runs both steps.
+> - CI uploads the compiled stage as the `crox-usd` workflow artifact on `main`, and attaches it to GitHub Releases on `v*` tags:
+>   `gh release download -R crox-farmhouse/crox-farmhouse-twin -p '*.usdz'`
+
 This directory contains the composed **OpenUSD (`26.8`)** stage for **Crox Farmhouse**, serving both **High-LOD ArchViz** (**Blender EEVEE & Cycles**, **Unreal Engine 5**) and the **KNX Smart Home Digital Twin**.
 
 ## Stage Hierarchy & Layer Architecture

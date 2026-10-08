@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { CameraTweenState } from '../../core/types/scene.ts';
+import type { CameraTweenState } from '../viewer/scene-types.ts';
 import { GrabPanController, type SurfacePicker } from './navigation/grab-pan-controller.ts';
 import {
   clampPivot as computeClampedPivot,

@@ -1,9 +1,6 @@
 import { batch } from '@preact/signals';
-import type { SceneAnnotationStore } from '../../engine/annotation/annotation-system.ts';
-import type { FocusController } from '../../engine/rooms/focus-controller.ts';
-import type { PropertyScene } from '../../engine/viewer/property-scene.ts';
-import type { KNXPropertyBusController } from '../../integrations/knx/index.ts';
-import { CIRCUITS } from '../../integrations/knx/constants.ts';
+import type { TwinApi, TwinGraphicsStats, TwinUfhZone } from '../../app/twin-api.ts';
+import { annotationTool, annotatorActive } from '../../state/notes-store.ts';
 import {
   activeTool,
   currentRoomId,
@@ -21,155 +18,157 @@ import {
   roomPanelOpen,
   sectionCut,
   showToast,
-  storeGraphicsMode,
   timeOfDay,
   tradeView,
   viewMode,
   type ShellTool,
   type ShellViewMode,
 } from '../../state/shell-store.ts';
-import { twinStore } from '../../state/twin-store.ts';
 import { buildShareUrl, isRoomZoneId } from '../../state/url-state.ts';
-import type { CircuitId } from '../../core/types/knx.ts';
-import type { FloorViewMode, SceneAnnotationRecord, TimeOfDay } from '../../core/types/scene.ts';
+import type { HudRoomScene } from '../../core/types/home-hud.ts';
+import type { CircuitId, CircuitLevels } from '../../core/types/knx.ts';
+import type {
+  AnnotationToolMode,
+  FloorViewMode,
+  SceneAnnotationRecord,
+  TimeOfDay,
+} from '../../core/types/scene.ts';
 import type { RoomZoneId } from '../../core/types/topology.ts';
 import type {
   GraphicsMode,
+  GraphicsTier,
   RoomSceneControl,
   ShareViewState,
   TradeView,
 } from '../../core/types/twin-ux.ts';
 import { TRADE_VIEW_LABELS } from '../../core/types/twin-ux.ts';
-import type { AnnotatorHudController } from '../annotator/annotator-hud.ts';
 import {
   copyTextWithFallback,
   downloadBlobFile,
-  exportAnnotationsAsJsonFile,
-  exportAnnotationsAsUsdaFile,
-  formatAnnotationsMarkdownReport,
-} from '../annotator/annotator-export.ts';
-import { TOD_LUX_MAP, syncEnvironmentButtonsUI } from '../hud/hud-sun-and-weather.ts';
-import {
-  floorModeForRoom,
-  getRoomBounds,
-  getRoomLabel,
-  getRoomLevelScenes,
-  getRoomManifest,
-} from './room-data.ts';
+  downloadNotesJson,
+  downloadNotesUsda,
+} from '../notes/notes-export.ts';
+import { PROPERTY_NAME } from './room-data.ts';
 
-/** Hooks back into the legacy (developer-mode) HUD so its readouts stay in sync. */
-export interface LegacyHudSync {
-  syncFloorModeUI(): void;
-  syncWalkthroughUI(): void;
+/** The notes inspector actions the shell drives (implemented by `AnnotatorController`). */
+export interface ShellNotesTools {
+  activateTool(tool: AnnotationToolMode | null): void;
+  focusRecord(id: number): void;
+  removeRecord(id: number): void;
 }
 
 export interface ShellDeps {
-  readonly scene: PropertyScene;
-  readonly knx: KNXPropertyBusController;
-  readonly annotations: SceneAnnotationStore;
-  readonly annotator: AnnotatorHudController;
-  readonly focus: FocusController;
-  readonly legacy: LegacyHudSync;
-  /** Physical address used for gate commands. */
-  readonly gatePa: string;
-  /** Physical address of the kitchen Corston switch (whole-house scene recall). */
-  readonly kitchenScenePa: string;
+  readonly api: TwinApi;
+  readonly notes: ShellNotesTools;
 }
 
 const LEVEL_PUSH_INTERVAL_MS = 120;
 
-function readOptionalNumber(source: object, key: string): number | null {
-  const v: unknown = Reflect.get(source, key);
-  return typeof v === 'number' && Number.isFinite(v) ? v : null;
-}
+const TIER_LABELS: Readonly<Record<GraphicsTier, string>> = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  ultra: 'Ultra',
+};
 
-function readOptionalString(source: object, key: string): string | null {
-  const v: unknown = Reflect.get(source, key);
-  return typeof v === 'string' && v.length > 0 ? v : null;
-}
-
-function luxToTimeOfDay(lux: number): TimeOfDay {
-  return lux >= 200 ? 'day' : lux >= 20 ? 'dusk' : 'night';
+function formatTier(stats: TwinGraphicsStats): string {
+  return TIER_LABELS[stats.tier] ?? stats.tier;
 }
 
 /**
- * Imperative glue between the Preact shell and the engine/KNX controllers.
- * Components read shell-store signals and call these actions; nothing in the
- * components talks to the scene directly.
+ * Imperative glue between the Preact shell and the twin. Components read
+ * shell-store signals and call these actions; only this class talks to
+ * `TwinApi`, and only through subscriptions (no polling, no engine imports).
  */
 export class ShellController {
-  public readonly deps: ShellDeps;
+  public readonly api: TwinApi;
+  private readonly notesTools: ShellNotesTools;
   private levelPushTimer: ReturnType<typeof setTimeout> | null = null;
   private lastLevelPush = 0;
+  private pendingLevels: Readonly<CircuitLevels> | null = null;
 
   public constructor(deps: ShellDeps) {
-    this.deps = deps;
+    this.api = deps.api;
+    this.notesTools = deps.notes;
   }
 
-  /** Subscribes to engine/KNX events and seeds the shell signals. */
+  /** Subscribes to twin events and seeds the shell signals. */
   public init(): void {
-    const { scene, knx, annotations } = this.deps;
+    const { api } = this;
 
     batch(() => {
-      currentRoomId.value = scene.getCurrentRoomId();
-      tradeView.value = scene.getTradeView();
-      floorMode.value = scene.getFloorViewMode();
-      sectionCut.value = scene.isCeilingCutaway();
-      graphicsMode.value = scene.getGraphicsMode();
-      liveLevels.value = { ...knx.getLiveLevels() };
-      timeOfDay.value = luxToTimeOfDay(knx.getAmbientLux());
-      viewMode.value = scene.isWalkthroughMode() ? 'walk' : '3d';
+      currentRoomId.value = api.rooms.getCurrent();
+      tradeView.value = api.trades.getView();
+      floorMode.value = api.floors.getMode();
+      sectionCut.value = api.floors.isCeilingCutaway();
+      graphicsMode.value = api.graphics.getMode();
+      liveLevels.value = { ...api.lighting.getLiveLevels() };
+      timeOfDay.value = api.lighting.getTimeOfDay();
+      viewMode.value = api.walkthrough.isActive() ? 'walk' : '3d';
     });
     this.refreshGraphicsReadout();
 
-    scene.onCurrentRoomChanged((zoneId) => {
+    api.rooms.onChanged((zoneId) => {
       currentRoomId.value = zoneId;
     });
-    scene.onTradeViewChanged((view) => {
+    api.trades.onChanged((view) => {
       tradeView.value = view;
     });
-    scene.onViewChanged((view) => {
+    api.camera.onViewChanged((view) => {
       if (floorMode.value !== view.floorViewMode) floorMode.value = view.floorViewMode;
-      const cut = scene.isCeilingCutaway();
+      const cut = api.floors.isCeilingCutaway();
       if (sectionCut.value !== cut) sectionCut.value = cut;
     });
-    scene.getWalkthrough().subscribe(() => {
-      const walking = scene.isWalkthroughMode();
+    api.walkthrough.onChanged((walking) => {
       if (walking && viewMode.value !== 'walk') viewMode.value = 'walk';
       else if (!walking && viewMode.value === 'walk') viewMode.value = '3d';
     });
-
-    knx.subscribe((event) => {
-      if (event.type === 'stateChange') {
-        this.pushLiveLevels();
-        deviceRevision.value += 1;
-        const tod = luxToTimeOfDay(knx.getAmbientLux());
-        if (tod !== timeOfDay.value) timeOfDay.value = tod;
-      }
+    api.lighting.onLevelsChanged((levels) => this.pushLiveLevels(levels));
+    api.lighting.subscribe((event) => {
+      if (event.type !== 'stateChange') return;
+      deviceRevision.value += 1;
+      const tod = api.lighting.getTimeOfDay();
+      if (tod !== timeOfDay.value) timeOfDay.value = tod;
     });
-    scene.getUfhSystem()?.subscribe(() => {
+    api.devices.onChanged(() => {
       deviceRevision.value += 1;
     });
+    api.graphics.onToast((message) => showToast(message, 3200));
 
-    annotations.subscribe((records) => {
+    api.notes.subscribe((records) => {
       pruneNoteMeta(records.map((r) => r.id));
     });
 
-    // Tool state follows the annotator (which owns the scene annotation callbacks).
+    // Tool state follows the notes inspector (which owns the annotation tools).
     const syncTool = (): void => {
-      const active = twinStore.annotatorActive.value;
-      const tool = twinStore.annotationTool.value;
-      const next: ShellTool = !active ? 'orbit' : tool === 'measure' ? 'measure' : 'note';
+      const tool = annotationTool.value;
+      const next: ShellTool = !annotatorActive.value ? 'orbit' : tool === 'measure' ? 'measure' : 'note';
       if (activeTool.value !== next) activeTool.value = next;
     };
-    twinStore.annotatorActive.subscribe(syncTool);
-    twinStore.annotationTool.subscribe(syncTool);
+    annotatorActive.subscribe(syncTool);
+    annotationTool.subscribe(syncTool);
 
     // Double-click a surface to jump into that room.
-    scene.setOnSurfaceDoubleClick((p) => {
-      const room = this.deps.focus.findRoomAt(p.x, p.y, p.z);
+    api.camera.onSurfaceDoubleClick((point) => {
+      const room = api.rooms.findAt(point);
       if (room) this.selectRoom(room.zoneId);
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Rooms
+  // ---------------------------------------------------------------------------
+
+  public roomLabel(zoneId: RoomZoneId | null): string {
+    return zoneId ? this.api.rooms.getLabel(zoneId) : PROPERTY_NAME;
+  }
+
+  public roomLevelScenes(zoneId: RoomZoneId): readonly HudRoomScene[] {
+    return this.api.rooms.getLevelScenes(zoneId);
+  }
+
+  public highlightRoom(zoneId: RoomZoneId | null): void {
+    this.api.rooms.highlight(zoneId);
   }
 
   // ---------------------------------------------------------------------------
@@ -177,67 +176,60 @@ export class ShellController {
   // ---------------------------------------------------------------------------
 
   public selectRoom(zoneId: RoomZoneId, fly = true): void {
-    const { scene } = this.deps;
-    scene.selectRoom(zoneId);
-    // Mirror immediately in case the engine defers the change notification.
-    currentRoomId.value = scene.getCurrentRoomId() ?? zoneId;
+    const { api } = this;
     if (fly) {
-      const entry = getRoomManifest(zoneId);
-      const bounds = getRoomBounds(entry?.zoneId ?? zoneId);
-      if (bounds) {
-        scene.flyToRoomBounds(bounds, entry ? floorModeForRoom(entry) : 'ground');
-        if (viewMode.value === 'plan') viewMode.value = '3d';
-      }
-      this.deps.legacy.syncFloorModeUI();
+      api.camera.flyToRoom(zoneId);
+      if (viewMode.value === 'plan') viewMode.value = '3d';
+    } else {
+      api.rooms.select(zoneId);
     }
-    if (isMobile.value) navigatorOpen.value = false;
-    if (isMobile.value) roomPanelOpen.value = true;
+    // Mirror immediately in case the engine defers the change notification.
+    currentRoomId.value = api.rooms.getCurrent() ?? zoneId;
+    if (isMobile.value) {
+      navigatorOpen.value = false;
+      roomPanelOpen.value = true;
+    }
   }
 
   public setFloor(mode: FloorViewMode): void {
-    this.deps.scene.setFloorViewMode(mode);
+    this.api.floors.setMode(mode);
     floorMode.value = mode;
-    this.deps.legacy.syncFloorModeUI();
   }
 
   public setViewMode(mode: ShellViewMode): void {
-    const { scene } = this.deps;
+    const { api } = this;
     if (mode === 'walk') {
       this.setTool('orbit');
-      scene.setWalkthroughMode(true);
+      api.walkthrough.enter();
     } else {
-      if (scene.isWalkthroughMode()) scene.setWalkthroughMode(false);
-      const keepFloor = scene.getFloorViewMode();
+      if (api.walkthrough.isActive()) api.walkthrough.exit();
+      const keepFloor = api.floors.getMode();
       if (mode === 'plan') {
-        scene.flyToPreset('top');
+        api.camera.flyToPreset('top');
       } else if (viewMode.value === 'plan') {
         const room = currentRoomId.value;
-        const bounds = room ? getRoomBounds(room) : null;
-        if (bounds) scene.flyToRoomBounds(bounds, keepFloor);
-        else scene.flyToPreset('overview');
+        const bounds = room ? api.rooms.getBounds(room) : null;
+        if (bounds) api.camera.flyToBounds(bounds, keepFloor);
+        else api.camera.flyToPreset('overview');
       }
-      if (scene.getFloorViewMode() !== keepFloor) scene.setFloorViewMode(keepFloor);
+      if (api.floors.getMode() !== keepFloor) api.floors.setMode(keepFloor);
     }
-    viewMode.value = scene.isWalkthroughMode() ? 'walk' : mode === 'walk' ? '3d' : mode;
-    floorMode.value = scene.getFloorViewMode();
-    this.deps.legacy.syncWalkthroughUI();
-    this.deps.legacy.syncFloorModeUI();
+    viewMode.value = api.walkthrough.isActive() ? 'walk' : mode === 'walk' ? '3d' : mode;
+    floorMode.value = api.floors.getMode();
   }
 
   public recenter(): void {
-    const { scene } = this.deps;
-    if (scene.isWalkthroughMode()) return;
-    scene.recenterView();
-    this.deps.legacy.syncFloorModeUI();
+    if (this.api.walkthrough.isActive()) return;
+    this.api.camera.recenter();
+  }
+
+  public isWalking(): boolean {
+    return this.api.walkthrough.isActive();
   }
 
   public setTool(tool: ShellTool): void {
-    const { annotator, scene } = this.deps;
-    if (tool !== 'orbit' && scene.isWalkthroughMode()) {
-      scene.setWalkthroughMode(false);
-      this.deps.legacy.syncWalkthroughUI();
-    }
-    annotator.activateTool(tool === 'orbit' ? null : tool === 'measure' ? 'measure' : 'pin');
+    if (tool !== 'orbit' && this.api.walkthrough.isActive()) this.api.walkthrough.exit();
+    this.notesTools.activateTool(tool === 'orbit' ? null : tool === 'measure' ? 'measure' : 'pin');
     activeTool.value = tool;
   }
 
@@ -245,133 +237,130 @@ export class ShellController {
     this.setTool(activeTool.value === tool ? 'orbit' : tool);
   }
 
+  /** Developer object tools (move / rotate furniture). */
+  public activateObjectTool(tool: 'move' | 'rotate'): void {
+    this.notesTools.activateTool(tool);
+  }
+
   public toggleSection(): void {
-    sectionCut.value = this.deps.scene.toggleCeilingCutaway();
-    this.deps.legacy.syncFloorModeUI();
+    sectionCut.value = this.api.floors.toggleCeilingCutaway();
   }
 
   public setTradeView(view: TradeView): void {
-    this.deps.scene.setTradeView(view);
-    tradeView.value = this.deps.scene.getTradeView();
+    this.api.trades.setView(view);
+    tradeView.value = this.api.trades.getView();
   }
 
   // ---------------------------------------------------------------------------
   // Graphics
   // ---------------------------------------------------------------------------
 
+  /** The engine persists the chosen mode; the shell only mirrors it. */
   public setGraphicsMode(mode: GraphicsMode): void {
-    this.deps.scene.setGraphicsMode(mode);
-    graphicsMode.value = this.deps.scene.getGraphicsMode();
-    storeGraphicsMode(mode);
+    this.api.graphics.setMode(mode);
+    graphicsMode.value = this.api.graphics.getMode();
     this.refreshGraphicsReadout();
   }
 
-  /** Reads tier/FPS from graphics settings when the engine exposes them. */
   public refreshGraphicsReadout(): void {
-    const settings = this.deps.scene.getGraphicsSettings();
-    const tier = readOptionalString(settings, 'tier');
-    const qualityLabel =
-      settings.quality === 'ultra' ? 'Ultra' : settings.quality === 'balanced' ? 'Balanced' : 'Performance';
-    graphicsTierLabel.value = tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : qualityLabel;
-    graphicsFps.value = readOptionalNumber(settings, 'fps');
+    const stats = this.api.graphics.getStats();
+    graphicsTierLabel.value = formatTier(stats);
+    graphicsFps.value = Number.isFinite(stats.fps) && stats.fps > 0 ? stats.fps : null;
   }
 
   // ---------------------------------------------------------------------------
   // Lights & devices
   // ---------------------------------------------------------------------------
 
-  /** Throttled mirror of KNX live levels into the panel (called from the frame loop too). */
-  public pushLiveLevels(): void {
+  /** Throttled mirror of KNX live levels into the panel. */
+  private pushLiveLevels(levels: Readonly<CircuitLevels>): void {
+    this.pendingLevels = levels;
     const now = performance.now();
     const elapsed = now - this.lastLevelPush;
     if (elapsed >= LEVEL_PUSH_INTERVAL_MS) {
-      this.lastLevelPush = now;
-      liveLevels.value = { ...this.deps.knx.getLiveLevels() };
+      this.flushLevels(now);
       return;
     }
     if (this.levelPushTimer) return;
     this.levelPushTimer = setTimeout(() => {
       this.levelPushTimer = null;
-      this.lastLevelPush = performance.now();
-      liveLevels.value = { ...this.deps.knx.getLiveLevels() };
+      this.flushLevels(performance.now());
     }, LEVEL_PUSH_INTERVAL_MS - elapsed);
   }
 
-  public isKnownCircuit(circuitId: string): circuitId is CircuitId {
-    return CIRCUITS.some((c) => c.id === circuitId);
+  private flushLevels(now: number): void {
+    this.lastLevelPush = now;
+    const levels = this.pendingLevels ?? this.api.lighting.getLiveLevels();
+    this.pendingLevels = null;
+    liveLevels.value = { ...levels };
   }
 
   public toggleLight(circuitId: string): void {
-    if (!this.isKnownCircuit(circuitId)) return;
-    this.deps.knx.toggleCircuit(circuitId);
+    if (!this.api.lighting.isKnownCircuit(circuitId)) return;
+    this.api.lighting.toggleCircuit(circuitId);
   }
 
   public setLightLevel(circuitId: string, pct: number): void {
-    if (!this.isKnownCircuit(circuitId)) return;
-    this.deps.knx.setCircuitLevel(circuitId, Math.round(Math.max(0, Math.min(100, pct))));
+    if (!this.api.lighting.isKnownCircuit(circuitId)) return;
+    this.api.lighting.setCircuitLevel(circuitId, Math.round(Math.max(0, Math.min(100, pct))));
   }
 
   public recallScene(sceneCtl: RoomSceneControl): void {
-    this.deps.knx.recallScene(sceneCtl.sceneNumber, sceneCtl.pa);
+    this.api.lighting.recallScene(sceneCtl.sceneNumber, sceneCtl.pa);
     showToast(`${sceneCtl.label} scene`);
   }
 
   public applyLevels(levels: Readonly<Partial<Record<CircuitId, number>>>, label?: string): void {
-    for (const c of CIRCUITS) {
-      const level = levels[c.id];
-      if (level !== undefined) this.deps.knx.setCircuitLevel(c.id, level);
-    }
-    if (label) showToast(`${label}`);
+    this.api.lighting.applyLevels(levels);
+    if (label) showToast(label);
   }
 
   public allLightsOff(): void {
-    const live = this.deps.knx.getLiveLevels();
-    for (const c of CIRCUITS) {
-      if ((live[c.id] ?? 0) > 0) this.deps.knx.setCircuitLevel(c.id, 0);
-    }
+    this.api.lighting.allOff();
     showToast('All lights off');
   }
 
   /** Whole-house evening mood: kitchen "Lounge" scene + each room's middle preset. */
   public eveningScene(): void {
-    this.deps.knx.recallScene(2, this.deps.kitchenScenePa);
+    const { lighting, rooms } = this.api;
+    lighting.recallScene(2);
     const zones = new Set<RoomZoneId>();
-    for (const c of CIRCUITS) zones.add(c.zoneId);
+    for (const c of lighting.circuits()) zones.add(c.zoneId);
     for (const zoneId of zones) {
-      const presets = getRoomLevelScenes(zoneId);
+      const presets = rooms.getLevelScenes(zoneId);
       const preset = presets[1] ?? presets[0];
-      if (preset) this.applyLevels(preset.levels);
+      if (preset) lighting.applyLevels(preset.levels);
     }
     showToast('Evening scene');
   }
 
   public toggleGates(): void {
-    const opening = this.deps.knx.toggleCarGates(this.deps.gatePa);
+    const opening = this.api.devices.toggleGates();
     showToast(opening ? 'Gates opening' : 'Gates closing');
   }
 
   public isGateOpenOrOpening(): boolean {
-    return this.deps.knx.isCarGatesOpen();
+    return this.api.devices.isGatesOpen();
   }
 
   public setTimeOfDay(tod: TimeOfDay): void {
-    const { scene, knx } = this.deps;
-    scene.setTimeOfDay(tod);
-    knx.setAmbientLux(TOD_LUX_MAP[tod], true);
+    this.api.lighting.setTimeOfDay(tod);
     timeOfDay.value = tod;
-    syncEnvironmentButtonsUI(knx, scene);
+  }
+
+  public ufhZoneForRoom(zoneId: RoomZoneId): TwinUfhZone | undefined {
+    return this.api.devices.hasUfh() ? this.api.devices.ufhZoneForRoom(zoneId) : undefined;
   }
 
   public toggleUfhZoneForRoom(zoneId: RoomZoneId): void {
-    const ufh = this.deps.scene.getUfhSystem();
-    const zone = ufh?.getZoneForRoom(zoneId);
+    const zone = this.ufhZoneForRoom(zoneId);
     if (!zone) return;
-    this.deps.scene.toggleUfhZone(zone.id);
+    this.api.devices.toggleUfhZone(zone.id);
     deviceRevision.value += 1;
   }
 
   public activateDevice(interactableId: string, label: string): void {
-    const handled = this.deps.scene.handleInteractableClick(interactableId);
+    const handled = this.api.devices.handleInteractable(interactableId);
     if (!handled) showToast(`${label} isn't available right now`);
   }
 
@@ -380,15 +369,15 @@ export class ShellController {
   // ---------------------------------------------------------------------------
 
   public focusNote(id: number): void {
-    this.deps.annotator.focusRecord(id);
+    this.notesTools.focusRecord(id);
   }
 
   public deleteNote(id: number): void {
-    this.deps.annotator.removeRecord(id);
+    this.notesTools.removeRecord(id);
   }
 
   public updateNoteText(id: number, text: string): void {
-    this.deps.annotations.updateNote(id, text);
+    this.api.notes.updateNote(id, text);
   }
 
   private formatTradeAppendix(records: readonly SceneAnnotationRecord[]): string {
@@ -404,8 +393,8 @@ export class ShellController {
   }
 
   public buildNotesMarkdown(): string {
-    const { annotations } = this.deps;
-    return formatAnnotationsMarkdownReport(annotations) + this.formatTradeAppendix(annotations.getRecords());
+    const { notes } = this.api;
+    return notes.formatForAgent() + this.formatTradeAppendix(notes.getRecords());
   }
 
   public async copyNotesMarkdown(): Promise<void> {
@@ -418,11 +407,11 @@ export class ShellController {
   }
 
   public downloadNotesJson(): void {
-    exportAnnotationsAsJsonFile(this.deps.annotations);
+    downloadNotesJson(this.api.notes);
   }
 
   public downloadNotesUsda(): void {
-    exportAnnotationsAsUsdaFile(this.deps.annotations);
+    downloadNotesUsda(this.api.notes);
   }
 
   // ---------------------------------------------------------------------------
@@ -430,16 +419,16 @@ export class ShellController {
   // ---------------------------------------------------------------------------
 
   public captureShareState(guest = true): ShareViewState {
-    const { scene } = this.deps;
-    const pose = scene.getCurrentCameraPoseSnapshot();
-    const room = scene.getCurrentRoomId() ?? currentRoomId.value;
+    const { api } = this;
+    const pose = api.camera.getPose();
+    const room = api.rooms.getCurrent() ?? currentRoomId.value;
     return {
       cam: pose.position,
       target: pose.target,
-      floor: scene.getFloorViewMode(),
+      floor: api.floors.getMode(),
       ortho: pose.isOrthographic,
       ...(room ? { room } : {}),
-      view: scene.getTradeView(),
+      view: api.trades.getView(),
       guest,
     };
   }
@@ -447,7 +436,7 @@ export class ShellController {
   public async share(): Promise<void> {
     const url = buildShareUrl(this.captureShareState(true));
     const ok = await copyTextWithFallback(url);
-    const viewLabel = TRADE_VIEW_LABELS[this.deps.scene.getTradeView()];
+    const viewLabel = TRADE_VIEW_LABELS[this.api.trades.getView()];
     showToast(
       ok
         ? `Link copied · opens this view (${viewLabel}) read-only`
@@ -458,25 +447,25 @@ export class ShellController {
 
   /** Applies a decoded `?v=` share state (called once after the scene is ready). */
   public applyShareState(s: ShareViewState): void {
-    const { scene } = this.deps;
+    const { api } = this;
     guestMode.value = s.guest;
-    scene.setTradeView(s.view);
-    tradeView.value = scene.getTradeView();
-    if (s.room && isRoomZoneId(s.room)) {
-      scene.selectRoom(s.room);
-      currentRoomId.value = scene.getCurrentRoomId() ?? s.room;
+    api.trades.setView(s.view);
+    tradeView.value = api.trades.getView();
+    const room = s.room && isRoomZoneId(s.room) ? s.room : null;
+    if (room) {
+      api.rooms.select(room);
+      currentRoomId.value = api.rooms.getCurrent() ?? room;
     }
-    scene.flyToCameraPose({
+    api.camera.flyToCameraPose({
       position: s.cam,
       target: s.target,
       floorViewMode: s.floor,
-      ceilingCutaway: scene.isCeilingCutaway(),
+      ceilingCutaway: api.floors.isCeilingCutaway(),
       isOrthographic: s.ortho,
     });
     floorMode.value = s.floor;
-    this.deps.legacy.syncFloorModeUI();
     showToast(
-      `Shared view${s.room ? ` · ${getRoomLabel(s.room)}` : ''} · ${TRADE_VIEW_LABELS[s.view]}`,
+      `Shared view${room ? ` · ${this.roomLabel(room)}` : ''} · ${TRADE_VIEW_LABELS[s.view]}`,
       3200
     );
   }

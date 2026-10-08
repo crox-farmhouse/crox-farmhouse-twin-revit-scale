@@ -1,4 +1,4 @@
-import type { BifoldPanelRef } from '../../core/types/scene.ts';
+import type { BifoldPanelRef } from '../viewer/scene-types.ts';
 import type { BifoldTrackConfig } from '../viewer/property-scene-profile.ts';
 
 /**

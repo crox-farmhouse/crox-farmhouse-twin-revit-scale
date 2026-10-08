@@ -1,15 +1,16 @@
 import * as THREE from 'three';
+import { setRoomZoneRegistrations } from '../rooms/room-zone-registry.ts';
 import type { RoomLodController } from '../lod/lod-manager.ts';
 import type { CircuitId } from '../../core/types/knx.ts';
+import type { Vec3Tuple } from '../../core/types/scene.ts';
 import type {
   BifoldPanelRef,
   CutawayWallGroups,
   LightCircuitGroup,
   LightGroupMap,
   SceneBuilderContext,
-  Vec3Tuple,
   ZoneIndicatorMaterials,
-} from '../../core/types/scene.ts';
+} from './scene-types.ts';
 import {
   createRadialGlowTexture,
   createTVArtGalleryTextures,
@@ -199,6 +200,7 @@ export function buildPropertySceneContent<TSecurity extends SecurityOverlay3D>(
   layers: PropertySceneLayers,
   options: BuildPropertySceneContentOptions<TSecurity>
 ): PropertySceneContent<TSecurity> {
+  setRoomZoneRegistrations(options.profile.lodRegistrations);
   const { scene, firstFloorMeshGroup } = layers;
 
   const radialGlowTex = createRadialGlowTexture();
@@ -208,6 +210,7 @@ export function buildPropertySceneContent<TSecurity extends SecurityOverlay3D>(
   const bifoldPanels: BifoldPanelRef[] = [];
   const interactiveMeshes: THREE.Object3D[] = [];
   const interactions = new SceneInteractionManager(interactiveMeshes);
+  if (options.profile.doorPolicy) interactions.setDoorPolicy(options.profile.doorPolicy);
   const roomSwitchLedMats: RoomSwitchLedBinding[] = [];
 
   const ctx: SceneBuilderContext = {

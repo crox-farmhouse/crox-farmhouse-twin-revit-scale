@@ -1,0 +1,115 @@
+import * as THREE from 'three';
+import { easeInOutCubic, stepProgress } from '../interaction-math.ts';
+
+/** Sliding pan/warming drawer, or a fade-out prop (golf bag) linked to a door. */
+export interface SlidingDrawerState {
+  readonly id: string;
+  group: THREE.Group;
+  readonly closedPos: THREE.Vector3;
+  readonly openPos: THREE.Vector3;
+  isOpen: boolean;
+  progress: number;
+  readonly speed: number;
+  linkedDoorId?: string;
+  fadeOutWhenOpen?: boolean;
+  fadeMaterials?: THREE.Material[];
+}
+
+export function createSlidingDrawerState(
+  id: string,
+  drawerGroup: THREE.Group,
+  slideDelta: THREE.Vector3
+): SlidingDrawerState {
+  const closedPos = drawerGroup.position.clone();
+  const openPos = closedPos.clone().add(slideDelta);
+  return {
+    id,
+    group: drawerGroup,
+    closedPos,
+    openPos,
+    isOpen: false,
+    progress: 0,
+    speed: 2.8,
+  };
+}
+
+/** Clones every material under `root` (once per source) so the group can fade independently. */
+export function prepareFadeMaterialsForGroup(root: THREE.Object3D): THREE.Material[] {
+  const clonedBySource = new Map<THREE.Material, THREE.Material>();
+  const result: THREE.Material[] = [];
+  const cloneOnce = (m: THREE.Material): THREE.Material => {
+    let cloned = clonedBySource.get(m);
+    if (!cloned) {
+      cloned = m.clone();
+      cloned.userData = { ...cloned.userData, isDynamicGolfBagMaterial: true };
+      clonedBySource.set(m, cloned);
+      result.push(cloned);
+    }
+    return cloned;
+  };
+  root.traverse((obj) => {
+    if (!(obj instanceof THREE.Mesh)) return;
+    if (Array.isArray(obj.material)) {
+      obj.material = obj.material.map((m: THREE.Material) => cloneOnce(m));
+    } else if (obj.material) {
+      obj.material = cloneOnce(obj.material as THREE.Material);
+    }
+  });
+  return result;
+}
+
+export function applyGroupFadeAlpha(
+  group: THREE.Object3D,
+  materials: readonly THREE.Material[] | undefined,
+  alpha: number
+): void {
+  const clamped = Math.max(0, Math.min(1, alpha));
+  group.visible = clamped > 0.005;
+  if (materials) {
+    for (const mat of materials) {
+      mat.transparent = clamped < 0.999;
+      mat.opacity = clamped;
+      mat.depthWrite = clamped > 0.25;
+      mat.needsUpdate = true;
+    }
+  }
+  group.traverse((obj) => {
+    if (obj instanceof THREE.Mesh) {
+      obj.castShadow = clamped > 0.35;
+    }
+  });
+}
+
+function applyDrawerPose(dr: SlidingDrawerState): void {
+  const smooth = easeInOutCubic(dr.progress);
+  if (dr.fadeOutWhenOpen) {
+    applyGroupFadeAlpha(dr.group, dr.fadeMaterials, 1 - smooth);
+  } else {
+    dr.group.position.lerpVectors(dr.closedPos, dr.openPos, smooth);
+  }
+}
+
+/** Steps a drawer animation. Returns true if it moved. */
+export function stepSlidingDrawer(dr: SlidingDrawerState, dtSeconds: number): boolean {
+  const target = dr.isOpen ? 1 : 0;
+  if (dr.progress === target) return false;
+  dr.progress = stepProgress(dr.progress, target, dtSeconds, dr.speed);
+  applyDrawerPose(dr);
+  dr.group.updateMatrixWorld(true);
+  return true;
+}
+
+/** Rebinds a drawer to a replacement group (e.g. after a USD zone reload). */
+export function rebindSlidingDrawer(dr: SlidingDrawerState, newGroup: THREE.Group): void {
+  const slideDelta = dr.openPos.clone().sub(dr.closedPos);
+  const quatDelta = newGroup.quaternion.clone().multiply(dr.group.quaternion.clone().invert());
+  slideDelta.applyQuaternion(quatDelta);
+  dr.closedPos.copy(newGroup.position);
+  dr.openPos.copy(newGroup.position).add(slideDelta);
+  dr.group = newGroup;
+  if (dr.fadeOutWhenOpen) {
+    dr.fadeMaterials = prepareFadeMaterialsForGroup(newGroup);
+  }
+  applyDrawerPose(dr);
+  dr.group.updateMatrixWorld(true);
+}

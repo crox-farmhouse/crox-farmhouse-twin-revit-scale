@@ -3,7 +3,7 @@ import type {
   SceneBuilderContext,
   SceneZoneModule,
   ZoneIndicatorMaterials,
-} from '../../core/types/scene.ts';
+} from './scene-types.ts';
 import type { RoomBoundingBox } from '../../core/types/topology.ts';
 
 /**

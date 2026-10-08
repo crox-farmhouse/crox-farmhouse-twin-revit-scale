@@ -9,14 +9,13 @@ import {
   updateNoteMeta,
   type NoteTrade,
 } from '../../state/shell-store.ts';
-import { twinStore } from '../../state/twin-store.ts';
+import { annotationsList, selectedAnnotationId } from '../../state/notes-store.ts';
 import { isRoomZoneId } from '../../state/url-state.ts';
 import type { SceneAnnotationRecord } from '../../core/types/scene.ts';
 import type { RoomZoneId } from '../../core/types/topology.ts';
 import { TRADE_VIEW_LABELS } from '../../core/types/twin-ux.ts';
 import { formatLength } from './format.ts';
 import { Icon, type IconName } from './icons.tsx';
-import { getRoomManifest } from './room-data.ts';
 import { useShell } from './shell-context.ts';
 
 type TradeFilter = 'all' | 'unassigned' | NoteTrade;
@@ -31,16 +30,18 @@ function kindIcon(r: SceneAnnotationRecord): IconName {
   return 'pin';
 }
 
-function canonicalRoom(zoneId: string): string | undefined {
-  return isRoomZoneId(zoneId) ? getRoomManifest(zoneId)?.zoneId ?? zoneId : undefined;
+type ManifestLookup = (zoneId: RoomZoneId) => { readonly zoneId: RoomZoneId } | undefined;
+
+function canonicalRoom(zoneId: string, lookup: ManifestLookup): string | undefined {
+  return isRoomZoneId(zoneId) ? lookup(zoneId)?.zoneId ?? zoneId : undefined;
 }
 
-function sameRoom(r: SceneAnnotationRecord, zoneId: RoomZoneId | null): boolean {
+function sameRoom(r: SceneAnnotationRecord, zoneId: RoomZoneId | null, lookup: ManifestLookup): boolean {
   if (!zoneId) return true;
   if (r.roomZoneId === zoneId) return true;
   // Notes may carry legacy zone ids; compare via the manifest's canonical room.
-  const a = canonicalRoom(zoneId);
-  return a !== undefined && a === canonicalRoom(r.roomZoneId);
+  const a = canonicalRoom(zoneId, lookup);
+  return a !== undefined && a === canonicalRoom(r.roomZoneId, lookup);
 }
 
 export interface NotesSectionProps {
@@ -49,8 +50,8 @@ export interface NotesSectionProps {
 
 export function NotesSection({ roomId }: NotesSectionProps): JSX.Element {
   const ctl = useShell();
-  const records = twinStore.annotationsList.value;
-  const selectedId = twinStore.selectedAnnotationId.value;
+  const records = annotationsList.value;
+  const selectedId = selectedAnnotationId.value;
   const meta = noteMeta.value;
   const trade = tradeView.value;
   const [scope, setScope] = useState<'room' | 'all'>('room');
@@ -60,7 +61,7 @@ export function NotesSection({ roomId }: NotesSectionProps): JSX.Element {
   // In a trade view, default the filter to that trade until the user picks one.
   const tradeFilter: TradeFilter = tradeFilterState ?? (trade !== 'owner' && isNoteTrade(trade) ? trade : 'all');
 
-  const inScope = records.filter((r) => scope === 'all' || sameRoom(r, roomId));
+  const inScope = records.filter((r) => scope === 'all' || sameRoom(r, roomId, (z) => ctl.api.rooms.getManifest(z)));
   const visible = inScope.filter((r) => {
     const t = meta[String(r.id)]?.trade;
     if (tradeFilter === 'all') return true;

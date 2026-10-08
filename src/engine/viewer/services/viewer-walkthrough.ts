@@ -1,0 +1,57 @@
+import type * as THREE from 'three';
+import type { CameraRig } from '../../camera/camera-rig.ts';
+import type { SceneInteractionManager } from '../../interaction/interaction-manager.ts';
+import { WalkthroughController } from '../../walkthrough/walkthrough-controller.ts';
+import type { RenderInvalidator } from './viewer-types.ts';
+
+export interface ViewerWalkthroughHost {
+  readonly canvas: HTMLCanvasElement;
+  readonly scene: THREE.Scene;
+  readonly rig: CameraRig;
+  readonly invalidator: RenderInvalidator;
+  getRoomMinYAt(x: number, y: number, z: number): number | null;
+  /** Resolved lazily: content is built after the walkthrough controller. */
+  getInteractiveMeshes(): readonly THREE.Object3D[];
+  getInteractions(): SceneInteractionManager;
+  isBifoldsOpen(): boolean;
+  onInteractWithMesh(mesh: THREE.Object3D): void;
+  /** Walkthrough entered / exited. */
+  onStateChanged(): void;
+  /** Eye pose moved. */
+  onPoseUpdated(): void;
+}
+
+/** Builds the first-person walkthrough wired to the viewer's interactables. */
+export function createViewerWalkthrough(host: ViewerWalkthroughHost): WalkthroughController {
+  const rendered = (changed: boolean): boolean => {
+    if (changed) host.invalidator.requestRender();
+    return changed;
+  };
+  return new WalkthroughController({
+    canvas: host.canvas,
+    scene: host.scene,
+    rig: host.rig,
+    getRoomMinYAt: (x, y, z) => host.getRoomMinYAt(x, y, z),
+    getInteractiveMeshes: () => host.getInteractiveMeshes(),
+    describeInteractable: (mesh) =>
+      host.getInteractions().describeInteractable(mesh, host.isBifoldsOpen()),
+    onInteractWithMesh: (mesh) => host.onInteractWithMesh(mesh),
+    onTriggerGolfSimulatorShot: () => rendered(host.getInteractions().triggerGolfSimulatorShot()),
+    getGolfSimulatorShotElapsedSec: () => host.getInteractions().getGolfSimulatorShotElapsedSec(),
+    getGolfSimulatorPrompt: () => host.getInteractions().getGolfSimulatorPromptLabel(),
+    onBargeWalkthroughDoor: (interactableId, isSprinting, footX, footY, footZ, moveDirX, moveDirZ) =>
+      rendered(
+        host
+          .getInteractions()
+          .bargeOpenWalkthroughDoor(interactableId, isSprinting, footX, footY, footZ, moveDirX, moveDirZ)
+      ),
+    onProximityBargeDoors: (footX, footY, footZ, moveDirX, moveDirZ, isSprinting) =>
+      rendered(
+        host
+          .getInteractions()
+          .bargeNearbyWalkthroughDoors(footX, footY, footZ, moveDirX, moveDirZ, isSprinting)
+      ),
+    onStateChanged: () => host.onStateChanged(),
+    onPoseUpdated: () => host.onPoseUpdated(),
+  });
+}

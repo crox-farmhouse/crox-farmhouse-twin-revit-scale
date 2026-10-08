@@ -2,8 +2,20 @@ node_modules/
 dist/
 shots/
 codemod/
-.snapshots/snapshot-cli.mjs
-.snapshots/usd-export-cli.mjs
+*.actual
+
+# Build outputs of the esbuild-bundled CLIs and local snapshot artifacts
+# (the committed golden is .snapshots/scene.snap).
+.snapshots/*.mjs
 .snapshots/*.actual
 .snapshots/scene.golden.snap
-.snapshots/lighting-consistency-cli.mjs
+
+# Generated OpenUSD stage (rebuilt by `npm run usd:export` / `npm run usd:compile`,
+# published as CI artifacts + GitHub Release assets). Hand-authored sources stay tracked:
+# usd/overrides/layout.usda, usd/README.md, usd/textures/**.
+usd/*.usda
+usd/*.usdc
+usd/*.usdz
+usd/zones/
+usd/materials/
+usd/lighting/

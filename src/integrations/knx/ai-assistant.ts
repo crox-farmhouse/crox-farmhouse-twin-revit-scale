@@ -477,7 +477,7 @@ export class KNXAIAssistant {
         },
       };
 
-      const resp = await fetch('/api/knx-ai', {
+      const resp = await fetch(`${import.meta.env?.BASE_URL ?? '/'}api/knx-ai`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

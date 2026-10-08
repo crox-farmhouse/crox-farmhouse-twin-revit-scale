@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buildRoomCeilingPendant, buildRoomCorstonToggleSwitch } from '../ground/kitchen-knx-lighting.ts';
-import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../core/types/scene.ts';
+import type { CutawayWallDescriptor } from '../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
 

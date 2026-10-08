@@ -12,7 +12,7 @@ import {
   MAIN_EAST_WING_OFFSET,
   MAIN_EAST_WING_ROTATION_Y,
 } from '../structure/ground-floor-materials.ts';
-import type { SceneBuilderContext } from '../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../engine/viewer/scene-types.ts';
 import type { RoomZoneId } from '../../../core/types/topology.ts';
 import {
   ROOM_THERMAL_PROFILES,

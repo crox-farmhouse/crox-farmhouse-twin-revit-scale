@@ -2,11 +2,8 @@ import * as THREE from 'three';
 import type { CircuitId } from '../../../../../core/types/knx.ts';
 import { CIRCUITS } from '../../../../../integrations/knx/constants.ts';
 import type { RoomZoneId } from '../../../../../core/types/topology.ts';
-import type {
-  CutawayWallDescriptor,
-  InteractiveUserData,
-  SceneBuilderContext,
-} from '../../../../../core/types/scene.ts';
+import type { CutawayWallDescriptor, InteractiveUserData } from '../../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../../engine/viewer/scene-types.ts';
 import { buildRoomKnxTempSensor } from '../../../../../objects/fixtures/knx-temp-sensor.ts';
 import {
   buildRoomCeilingPendant,

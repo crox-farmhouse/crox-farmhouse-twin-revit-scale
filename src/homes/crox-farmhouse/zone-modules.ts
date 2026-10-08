@@ -5,7 +5,7 @@ import type {
   SceneBuilderContext,
   SceneZoneModule,
   ZoneIndicatorMaterials,
-} from '../../core/types/scene.ts';
+} from '../../engine/viewer/scene-types.ts';
 import { createScopedBuilderContext } from '../../engine/viewer/scene-content.ts';
 import { SceneZoneRegistry } from '../../engine/viewer/scene-zone-registry.ts';
 import {

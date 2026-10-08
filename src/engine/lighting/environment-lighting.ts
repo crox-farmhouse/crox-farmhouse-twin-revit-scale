@@ -29,7 +29,7 @@ interface EnvPresetConfig {
 
 const ENV_PRESETS: Readonly<Record<TimeOfDay, EnvPresetConfig>> = {
   day: {
-    hdrUrl: '/textures/hdr/english_countryside_day_2k.hdr',
+    hdrUrl: `${import.meta.env?.BASE_URL ?? '/'}textures/hdr/english_countryside_day_2k.hdr`,
     skyZenith: 0x3b73b8,
     skyHorizon: 0xcbe0f2,
     horizonGlow: 0xf6efe2,
@@ -56,7 +56,7 @@ const ENV_PRESETS: Readonly<Record<TimeOfDay, EnvPresetConfig>> = {
     fogDensity: 0.0032,
   },
   dusk: {
-    hdrUrl: '/textures/hdr/english_countryside_dusk_2k.hdr',
+    hdrUrl: `${import.meta.env?.BASE_URL ?? '/'}textures/hdr/english_countryside_dusk_2k.hdr`,
     skyZenith: 0x121b2e,
     skyHorizon: 0x7a4834,
     horizonGlow: 0xd97842,
@@ -81,7 +81,7 @@ const ENV_PRESETS: Readonly<Record<TimeOfDay, EnvPresetConfig>> = {
     fogDensity: 0.0055,
   },
   night: {
-    hdrUrl: '/textures/hdr/english_countryside_night_2k.hdr',
+    hdrUrl: `${import.meta.env?.BASE_URL ?? '/'}textures/hdr/english_countryside_night_2k.hdr`,
     skyZenith: 0x070c18,
     skyHorizon: 0x152238,
     horizonGlow: 0x243654,

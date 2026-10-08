@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { buildMitredArchitraveSegments } from '../../../../../engine/geometry/index.ts';
-import type { SceneBuilderContext } from '../../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../../engine/viewer/scene-types.ts';
 import {
   createWelshSlateRoofTextures,
   createWovenWoolCarpetTextures,

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CROX_FARMHOUSE_LOD_REGISTRATIONS } from '../../homes/crox-farmhouse/manifest.ts';
+import { getRoomZoneRegistrations } from '../rooms/room-zone-registry.ts';
 import type { Vec3Tuple } from '../../core/types/scene.ts';
 import { convertThreeMaterialToUsdSpec } from './procedural-materials.ts';
 import {
@@ -184,7 +184,7 @@ function resolveZoneForWorldBox(
     if (matchingLayer) return matchingLayer.zoneId;
   }
   if (!box.isEmpty()) {
-    for (const reg of CROX_FARMHOUSE_LOD_REGISTRATIONS) {
+    for (const reg of getRoomZoneRegistrations()) {
       const b = reg.bounds;
       if (
         center.x >= b.minX - 0.35 &&
@@ -359,7 +359,7 @@ export class UsdStageRuntimeController {
 
   private async ensureUsdaMaterialLibrary(): Promise<Map<string, THREE.Material>> {
     if (!this.usdaMaterialLibraryPromise) {
-      this.usdaMaterialLibraryPromise = fetch('/usd/materials/materials.usda')
+      this.usdaMaterialLibraryPromise = fetch(`${import.meta.env?.BASE_URL ?? '/'}usd/materials/materials.usda`)
         .then((res) => {
           if (!res.ok) {
             throw new Error(`HTTP ${res.status} fetching /usd/materials/materials.usda`);
@@ -398,7 +398,7 @@ export class UsdStageRuntimeController {
         Promise.all(
           pendingZoneIds.map(async (zoneId) => {
             try {
-              const res = await fetch(`/usd/zones/${zoneId}.usda`);
+              const res = await fetch(`${import.meta.env?.BASE_URL ?? '/'}usd/zones/${zoneId}.usda`);
               if (!res.ok) return null;
               return { zoneId, text: await res.text() };
             } catch {

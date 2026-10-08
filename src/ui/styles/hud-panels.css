@@ -2,6 +2,10 @@
    Legacy HUD sections (rendered inside the developer drawer)
    ============================================================================ */
 
+.hud-body [hidden] {
+  display: none !important;
+}
+
 .hud-titlebar {
   display: flex;
   align-items: center;

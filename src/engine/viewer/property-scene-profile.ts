@@ -5,8 +5,9 @@ import type {
   RoomZoneLodRegistration,
 } from '../../core/entities.ts';
 import type { CircuitId } from '../../core/types/knx.ts';
-import type { SceneBuilderContext, ZoneIndicatorMaterials } from '../../core/types/scene.ts';
+import type { SceneBuilderContext, ZoneIndicatorMaterials } from './scene-types.ts';
 import type { RoomZoneId } from '../../core/types/topology.ts';
+import type { DoorPolicy } from '../interaction/handlers/door-policy.ts';
 import type { UsdTransformOverride } from '../usd/usda-override-layer.ts';
 import type { SceneZoneRegistry } from './scene-zone-registry.ts';
 
@@ -145,6 +146,8 @@ export interface PropertySceneProfile<TSecurity extends SecurityOverlay3D = Secu
   readonly bifoldTrack: BifoldTrackConfig;
   /** Optional non-destructive OpenUSD (`over`) layout overrides applied after building zones. */
   readonly usdOverrides?: readonly UsdTransformOverride[];
+  /** Door conflict / open-angle / split-leaf rules keyed by stable door ids. */
+  readonly doorPolicy?: DoorPolicy;
   buildSecurityOverlay(ctx: SceneBuilderContext): TSecurity;
   buildUfhOverlay?: (ctx: SceneBuilderContext) => UfhSystemOverlay3D;
 }

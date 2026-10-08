@@ -28,8 +28,7 @@ export function bindShellKeyboard(ctl: ShellController): void {
       }
       return;
     }
-    const { scene } = ctl.deps;
-    const walking = scene.isWalkthroughMode();
+    const walking = ctl.isWalking();
 
     if (e.key === 'Escape') {
       if (closeTopOverlay()) {

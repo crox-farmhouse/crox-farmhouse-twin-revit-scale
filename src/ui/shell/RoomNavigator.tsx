@@ -4,7 +4,6 @@ import { currentRoomId, isMobile, liveLevels, navigatorOpen } from '../../state/
 import type { CircuitLevels } from '../../core/types/knx.ts';
 import type { RoomManifestEntry } from '../../core/types/twin-ux.ts';
 import { Icon } from './icons.tsx';
-import { getRoomManifest, getRoomNavTree } from './room-data.ts';
 import { useShell } from './shell-context.ts';
 
 function countLightsOn(entry: RoomManifestEntry, levels: Readonly<CircuitLevels> | null): number {
@@ -19,11 +18,11 @@ function countLightsOn(entry: RoomManifestEntry, levels: Readonly<CircuitLevels>
 
 export function RoomNavigator(): JSX.Element {
   const ctl = useShell();
-  const tree = getRoomNavTree();
+  const tree = ctl.api.rooms.navTree();
   const [collapsed, setCollapsed] = useState<Readonly<Record<string, boolean>>>({});
   const [query, setQuery] = useState('');
   const current = currentRoomId.value;
-  const currentEntry = current ? getRoomManifest(current) : undefined;
+  const currentEntry = current ? ctl.api.rooms.getManifest(current) : undefined;
   const levels = liveLevels.value;
   const open = navigatorOpen.value;
   const q = query.trim().toLowerCase();
@@ -88,6 +87,10 @@ export function RoomNavigator(): JSX.Element {
                           aria-current={isCurrent ? 'location' : undefined}
                           title={`Go to ${room.label}`}
                           onClick={() => ctl.selectRoom(room.zoneId)}
+                          onPointerEnter={() => ctl.highlightRoom(room.zoneId)}
+                          onPointerLeave={() => ctl.highlightRoom(null)}
+                          onFocus={() => ctl.highlightRoom(room.zoneId)}
+                          onBlur={() => ctl.highlightRoom(null)}
                         >
                           <span class="shell-nav-room-label">{room.label}</span>
                           {lightsOn > 0 && (

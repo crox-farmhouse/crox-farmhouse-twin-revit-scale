@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { CircuitId, CircuitLevels } from '../../core/types/knx.ts';
-import type { LightGroupMap, TimeOfDay, ZoneIndicatorMaterials } from '../../core/types/scene.ts';
+import type { TimeOfDay } from '../../core/types/scene.ts';
+import type { LightGroupMap, ZoneIndicatorMaterials } from '../viewer/scene-types.ts';
 
 const TOD_INDOOR_LIGHT_SCALE: Readonly<
   Record<

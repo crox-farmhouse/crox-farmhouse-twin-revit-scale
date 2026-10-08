@@ -24,7 +24,7 @@ import {
 } from '../../structure/ground-floor-materials.ts';
 import { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
 import { defineTier2Levels } from '../../structure/tier2-levels.ts';
-import type { SceneBuilderContext } from '../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 
 /**
  * Builds the Ground Floor rooms of the Main House at Crox Farm House, Tur Langton.

@@ -1,14 +1,27 @@
 {
-  "name": "crox-farmhouse-knx-kitchen-twin",
+  "name": "crox-farmhouse-twin",
   "version": "1.0.0",
+  "private": true,
+  "description": "Crox Farmhouse KNX smart-home digital twin (Vite + TypeScript + three.js + Preact)",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 5173",
-    "typecheck": "tsc --noEmit",
+    "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check:boundaries": "node tools/check-boundaries.mjs",
     "snapshot:check": "node tools/snapshot/run.mjs check",
     "snapshot:update": "node tools/snapshot/run.mjs update",
-    "usd:build": "node tools/usd/run.mjs"
+    "lighting:check": "node tools/lighting/run.mjs",
+    "usd:export": "node tools/usd/export.mjs",
+    "usd:compile": "python3 tools/usd/compile_stage.py usd",
+    "usd:build": "node tools/usd/run.mjs",
+    "verify": "npm run typecheck && npm run check:boundaries && npm test && npm run snapshot:check && npm run lighting:check && vite build"
   },
   "dependencies": {
     "@preact/signals": "^2.11.3",
@@ -16,8 +29,11 @@
     "three": "^0.180.0"
   },
   "devDependencies": {
+    "@types/node": "^20.19.43",
     "@types/three": "^0.180.0",
+    "esbuild": "^0.25.0",
     "typescript": "^5.8.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "vitest": "^3.2.7"
   }
 }

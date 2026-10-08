@@ -21,7 +21,6 @@ export const NOTE_TRADES: readonly NoteTrade[] = ['architect', 'builder', 'elect
 const LS_DEV_MODE = 'crox.ui.devMode';
 const LS_UNITS = 'crox.ui.units';
 const LS_HELP_SEEN = 'crox.ui.helpSeen.v1';
-const LS_GRAPHICS_MODE = 'crox.ui.graphicsMode';
 const LS_NOTE_META = 'crox.ui.noteMeta.v1';
 
 export const MOBILE_BREAKPOINT_PX = 900;
@@ -65,15 +64,6 @@ export const units: Signal<DisplayUnits> = signal(readLocal(LS_UNITS) === 'ftin'
 export function setUnits(next: DisplayUnits): void {
   units.value = next;
   writeLocal(LS_UNITS, next);
-}
-
-const GRAPHICS_MODES: readonly GraphicsMode[] = ['auto', 'low', 'medium', 'high', 'ultra'];
-export function readStoredGraphicsMode(): GraphicsMode | null {
-  const raw = readLocal(LS_GRAPHICS_MODE);
-  return GRAPHICS_MODES.find((m) => m === raw) ?? null;
-}
-export function storeGraphicsMode(mode: GraphicsMode): void {
-  writeLocal(LS_GRAPHICS_MODE, mode);
 }
 
 export function hasSeenHelp(): boolean {

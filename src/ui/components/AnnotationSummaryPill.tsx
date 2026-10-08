@@ -1,11 +1,16 @@
 import { render, type JSX } from 'preact';
-import { twinStore } from '../../state/twin-store.ts';
+import {
+  annotationCountsByKind,
+  annotationTool,
+  annotatorActive,
+  selectedAnnotationId,
+} from '../../state/notes-store.ts';
 
 export function AnnotationSummaryPill(): JSX.Element {
-  const isActive = twinStore.annotatorActive.value;
-  const tool = twinStore.annotationTool.value;
-  const counts = twinStore.annotationCountsByKind.value;
-  const selectedId = twinStore.selectedAnnotationId.value;
+  const isActive = annotatorActive.value;
+  const tool = annotationTool.value;
+  const counts = annotationCountsByKind.value;
+  const selectedId = selectedAnnotationId.value;
 
   return (
     <div

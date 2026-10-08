@@ -1,0 +1,257 @@
+import * as THREE from 'three';
+import { easeInOutCubic } from '../interaction-math.ts';
+
+/** World-space closed doorway threshold geometry, cached per door. */
+export interface ClosedDoorwayGeometry {
+  readonly centerX: number;
+  readonly centerZ: number;
+  readonly minY: number;
+  readonly maxY: number;
+  readonly tangentX: number;
+  readonly tangentZ: number;
+  readonly normalX: number;
+  readonly normalZ: number;
+  readonly halfWidth: number;
+}
+
+/**
+ * Animation state of a hinged leaf: room/cupboard/appliance doors, the overhead garage doors
+ * (`overheadTrackZ`) and the golf simulator sliding mat (`isFoldingFloorMat`).
+ */
+export interface HingedDoorState {
+  readonly id: string;
+  pivot: THREE.Group;
+  readonly axis: 'x' | 'y' | 'z';
+  closedAngle: number;
+  openAngle: number;
+  isOpen: boolean;
+  progress: number;
+  speed: number;
+  overheadTrackZ?: number;
+  closedPosZ?: number;
+  isFoldingFloorMat?: boolean;
+  closedPivotPos?: THREE.Vector3;
+  stowedPivotOffset?: THREE.Vector3;
+  linkedDrawerId?: string;
+  partnerDoorId?: string;
+  onStateChange?: (isOpen: boolean) => void;
+  bargeSwingSign?: -1 | 1;
+  fromAngle?: number;
+  closedGeometry?: ClosedDoorwayGeometry;
+}
+
+export function createHingedDoorState(
+  id: string,
+  pivot: THREE.Group,
+  axis: 'x' | 'y' | 'z',
+  initialAngle: number,
+  openAngle: number
+): HingedDoorState {
+  return {
+    id,
+    pivot,
+    axis,
+    closedAngle: initialAngle,
+    openAngle,
+    isOpen: false,
+    progress: 0,
+    speed: 2.6,
+  };
+}
+
+/** Click-toggle speed for a door (mat and overhead doors travel more slowly). */
+export function getClickToggleSpeed(door: HingedDoorState): number {
+  return door.isFoldingFloorMat ? 0.95 : door.overheadTrackZ !== undefined ? 1.55 : 2.8;
+}
+
+/** Applies the overhead-track rearward glide of an up-and-over garage door for `angle`. */
+export function applyOverheadTrackOffset(door: HingedDoorState, angle: number): void {
+  if (door.overheadTrackZ !== undefined && door.closedPosZ !== undefined) {
+    door.pivot.position.z = door.closedPosZ + door.overheadTrackZ * Math.sin(Math.abs(angle));
+  }
+}
+
+/** Poses a (non-mat) hinged door for its current `progress` towards `effectiveOpen`. */
+export function applyHingedDoorPose(door: HingedDoorState, effectiveOpen: number): void {
+  const smooth = easeInOutCubic(door.progress);
+  const startAngle = door.fromAngle ?? door.closedAngle;
+  const currentAngle = startAngle + (effectiveOpen - startAngle) * smooth;
+  door.pivot.rotation[door.axis] = currentAngle;
+  applyOverheadTrackOffset(door, currentAngle);
+}
+
+/**
+ * Computes the default collision-free open angle for a hinged door when clicked:
+ * - `overrideAngle` (from the home's door policy) wins when present
+ * - Provides a ~86° swing for doors whose initial registration specified `openAngle = 0`
+ * - Clamps over-rotated (> 83°) cupboard/corner doors so adjacent doors never cross past 90°
+ *   or intersect walls/furniture
+ */
+export function getDefaultDoorOpenAngle(
+  door: HingedDoorState,
+  overrideAngle: number | undefined
+): number {
+  if (overrideAngle !== undefined) return overrideAngle;
+
+  if (door.overheadTrackZ !== undefined || door.isFoldingFloorMat) {
+    return door.openAngle;
+  }
+
+  const rawDelta = door.openAngle - door.closedAngle;
+  if (Math.abs(rawDelta) < 0.05) {
+    const swingSign = door.pivot.position.z > 1.5 ? 1 : -1;
+    return door.closedAngle + swingSign * Math.PI * 0.48;
+  }
+
+  const maxSwing = 1.45;
+  if (Math.abs(rawDelta) > maxSwing) {
+    return door.closedAngle + Math.sign(rawDelta) * maxSwing;
+  }
+  return door.openAngle;
+}
+
+/** Applies a walkthrough barge swing direction (if any) to the default open angle. */
+export function getEffectiveDoorOpenAngle(door: HingedDoorState, defaultOpen: number): number {
+  if (door.bargeSwingSign !== undefined && door.axis === 'y') {
+    const mag = Math.abs(defaultOpen - door.closedAngle);
+    return door.closedAngle + door.bargeSwingSign * mag;
+  }
+  return defaultOpen;
+}
+
+const tmpDoorBounds = new THREE.Box3();
+
+/**
+ * Computes and caches the world-space closed doorway threshold geometry for `door`:
+ * - `(centerX, centerZ)` is the world XZ midpoint of the closed door leaf
+ * - `(tangentX, tangentZ)` points along the closed door plane from the hinge jamb to the latch jamb
+ * - `(normalX, normalZ) = (tangentZ, -tangentX)` is perpendicular to the closed doorway plane AND
+ *   points in the exact world XZ direction that increasing `pivot.rotation.y` (`deltaAngle > 0`) swings the door leaf!
+ */
+export function getClosedDoorwayGeometry(
+  door: HingedDoorState,
+  tmpHingeWorld: THREE.Vector3
+): ClosedDoorwayGeometry {
+  if (door.closedGeometry) return door.closedGeometry;
+
+  const savedRot = door.pivot.rotation[door.axis];
+  if (savedRot !== door.closedAngle) {
+    door.pivot.rotation[door.axis] = door.closedAngle;
+    door.pivot.updateMatrixWorld(true);
+  } else {
+    door.pivot.updateMatrixWorld(true);
+  }
+
+  tmpDoorBounds.setFromObject(door.pivot);
+  door.pivot.getWorldPosition(tmpHingeWorld);
+
+  if (savedRot !== door.closedAngle) {
+    door.pivot.rotation[door.axis] = savedRot;
+    door.pivot.updateMatrixWorld(true);
+  }
+
+  const centerX = (tmpDoorBounds.min.x + tmpDoorBounds.max.x) * 0.5;
+  const centerZ = (tmpDoorBounds.min.z + tmpDoorBounds.max.z) * 0.5;
+  const dx = centerX - tmpHingeWorld.x;
+  const dz = centerZ - tmpHingeWorld.z;
+  const distFromHinge = Math.hypot(dx, dz);
+  const boxSpan = Math.max(
+    tmpDoorBounds.max.x - tmpDoorBounds.min.x,
+    tmpDoorBounds.max.z - tmpDoorBounds.min.z
+  );
+  const halfWidth = distFromHinge >= 0.18 ? distFromHinge : Math.max(0.35, boxSpan * 0.5);
+  const tangentX = distFromHinge >= 1e-4 ? dx / distFromHinge : 1;
+  const tangentZ = distFromHinge >= 1e-4 ? dz / distFromHinge : 0;
+  const normalX = tangentZ;
+  const normalZ = -tangentX;
+
+  const geom: ClosedDoorwayGeometry = {
+    centerX,
+    centerZ,
+    minY: tmpDoorBounds.min.y,
+    maxY: tmpDoorBounds.max.y,
+    tangentX,
+    tangentZ,
+    normalX,
+    normalZ,
+    halfWidth,
+  };
+  door.closedGeometry = geom;
+  return geom;
+}
+
+/**
+ * Returns true if `door` is a walk-through room, exterior, courtyard, or stable door
+ * (rather than a cupboard, larder, or appliance door).
+ */
+export function isWalkthroughDoorState(
+  door: HingedDoorState,
+  tmpHingeWorld: THREE.Vector3
+): boolean {
+  if (door.axis !== 'y') return false;
+  const pivotName = (door.pivot.name + ' ' + (door.pivot.children[0]?.name ?? '')).toLowerCase();
+  if (
+    pivotName.includes('understairs') ||
+    pivotName.includes('cupboard') ||
+    pivotName.includes('larder') ||
+    pivotName.includes('fridge') ||
+    pivotName.includes('freezer') ||
+    pivotName.includes('winecooler')
+  ) {
+    return false;
+  }
+  const geom = getClosedDoorwayGeometry(door, tmpHingeWorld);
+  const h = geom.maxY - geom.minY;
+  const w = geom.halfWidth * 2;
+  return h >= 0.92 && h <= 2.15 && w >= 0.45;
+}
+
+/**
+ * Returns a concise action prompt for a looked-at mesh belonging to `door`
+ * (e.g. "Open Door", "Close Cupboard", "Open AGA Lid"). `isWalkthroughDoor` is evaluated lazily.
+ */
+export function describeHingedDoor(
+  door: HingedDoorState,
+  mesh: THREE.Object3D,
+  isWalkthroughDoor: () => boolean
+): string {
+  const verb = door.isOpen ? 'Close' : 'Open';
+  const chainNames = [
+    mesh.name,
+    mesh.parent?.name ?? '',
+    door.pivot.name,
+    door.pivot.children[0]?.name ?? '',
+  ]
+    .join(' ')
+    .toLowerCase();
+  if (chainNames.includes('lid')) return `${verb} AGA Simmering/Boiling Lid`;
+  if (
+    chainNames.includes('aga') ||
+    chainNames.includes('roasting') ||
+    chainNames.includes('baking') ||
+    chainNames.includes('simmering') ||
+    chainNames.includes('warming')
+  ) {
+    return `${verb} AGA Oven Door`;
+  }
+  if (door.isFoldingFloorMat || chainNames.includes('turfmat')) {
+    return `${door.isOpen ? 'Roll Out Flush' : 'Lift & Roll In'} Golf Simulator Mat`;
+  }
+  if (door.overheadTrackZ !== undefined) {
+    return `${verb} Garage Door`;
+  }
+  if (
+    door.axis !== 'y' ||
+    chainNames.includes('fridge') ||
+    chainNames.includes('freezer') ||
+    (chainNames.includes('wine') && !chainNames.includes('cellar')) ||
+    chainNames.includes('dishwasher') ||
+    chainNames.includes('miele')
+  ) {
+    return `${verb} Appliance Door`;
+  }
+  if (isWalkthroughDoor()) {
+    return `${verb} Door`;
+  }
+  return `${verb} Cupboard`;
+}

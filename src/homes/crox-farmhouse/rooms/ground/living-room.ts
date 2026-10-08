@@ -7,7 +7,8 @@ import {
   type WallLocalFrame,
 } from '../../../../engine/geometry/index.ts';
 import { buildFlutedBrassPictureLight } from '../../../../objects/fixtures/fluted-brass-picture-light.ts';
-import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../core/types/scene.ts';
+import type { CutawayWallDescriptor } from '../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
 import type { defineTier2Levels } from '../../structure/tier2-levels.ts';

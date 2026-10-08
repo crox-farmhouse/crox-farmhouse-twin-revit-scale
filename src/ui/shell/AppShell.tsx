@@ -1,6 +1,5 @@
-import type { JSX } from 'preact';
+import type { ComponentType, JSX } from 'preact';
 import { isMobile, navigatorOpen, roomPanelOpen, toast } from '../../state/shell-store.ts';
-import { DevDrawer } from './DevDrawer.tsx';
 import { HelpOverlay } from './HelpOverlay.tsx';
 import { RoomNavigator } from './RoomNavigator.tsx';
 import { RoomPanel } from './RoomPanel.tsx';
@@ -33,7 +32,13 @@ function MobileScrim(): JSX.Element | null {
   );
 }
 
-export function AppShell({ ctl }: { readonly ctl: ShellController }): JSX.Element {
+export interface AppShellProps {
+  readonly ctl: ShellController;
+  /** Developer drawer, injected by the composition root (keeps src/ui/dev out of the shell). */
+  readonly devDrawer?: ComponentType;
+}
+
+export function AppShell({ ctl, devDrawer: DevDrawer }: AppShellProps): JSX.Element {
   return (
     <ShellContext.Provider value={ctl}>
       <TopBar />
@@ -41,7 +46,7 @@ export function AppShell({ ctl }: { readonly ctl: ShellController }): JSX.Elemen
       <RoomNavigator />
       <RoomPanel />
       <ToolDock />
-      <DevDrawer />
+      {DevDrawer && <DevDrawer />}
       <Toast />
       <SettingsModal />
       <HelpOverlay />

@@ -1,4 +1,3 @@
-import { ROOM_ZONES } from '../integrations/knx/topology.ts';
 import type { RoomZoneId } from '../core/types/topology.ts';
 import type { ShareViewState, TradeView } from '../core/types/twin-ux.ts';
 
@@ -50,8 +49,41 @@ function fromBase64Url(param: string): string | null {
   }
 }
 
+/** Exhaustive (compile-checked) set of zone ids accepted from share links. */
+const ROOM_ZONE_IDS: Readonly<Record<RoomZoneId, true>> = {
+  kitchen: true,
+  sitting: true,
+  utility: true,
+  familyRoom: true,
+  bootLobby: true,
+  hall: true,
+  livingRoom: true,
+  entranceHall: true,
+  sittingRoom: true,
+  study: true,
+  mainBedroom: true,
+  familyBathroom: true,
+  upperLanding: true,
+  bedroom2: true,
+  bedroom3: true,
+  bedroom4: true,
+  courtyard: true,
+  hallway: true,
+  diningRoom: true,
+  snug: true,
+  masterBedroom: true,
+  annexLiving: true,
+  annexBedroom: true,
+  outbuildingGym: true,
+  outbuildingGarage: true,
+  outbuildingBarn: true,
+  outbuildingMezzanine: true,
+  outbuildingStableOffice: true,
+  outbuildingStableSuite: true,
+};
+
 export function isRoomZoneId(value: string): value is RoomZoneId {
-  return Object.prototype.hasOwnProperty.call(ROOM_ZONES, value);
+  return Object.prototype.hasOwnProperty.call(ROOM_ZONE_IDS, value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

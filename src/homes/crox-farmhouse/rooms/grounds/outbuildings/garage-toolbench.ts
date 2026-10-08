@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { SceneBuilderContext } from '../../../../../core/types/scene';
+import type { SceneBuilderContext } from '../../../../../engine/viewer/scene-types.ts';
 import {
   createButcherBlockTexture,
   createPiwisMonitorScreenTexture,

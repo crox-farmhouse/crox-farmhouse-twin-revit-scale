@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { MotionCircuitId, RoomMotionSensorId } from '../../../../core/types/knx.ts';
-import type { InteractiveUserData, SceneBuilderContext } from '../../../../core/types/scene.ts';
+import type { InteractiveUserData } from '../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { RoomZoneId } from '../../../../core/types/topology.ts';
 
 export interface RoomCeilingPirSensorOptions {

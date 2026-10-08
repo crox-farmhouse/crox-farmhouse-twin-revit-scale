@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CROX_FARMHOUSE_LOD_REGISTRATIONS } from '../../homes/crox-farmhouse/manifest.ts';
+import { getRoomZoneRegistrations } from '../rooms/room-zone-registry.ts';
 import {
   getUsdPrimPathForAnnotation,
   serializeAnnotationsToUsdaOverrideLayer,
@@ -48,7 +48,7 @@ export function resolveRoomForPoint(x: number, y: number, z: number): {
   readonly roomZoneId: string;
   readonly roomName: string;
 } {
-  for (const reg of CROX_FARMHOUSE_LOD_REGISTRATIONS) {
+  for (const reg of getRoomZoneRegistrations()) {
     const b = reg.bounds;
     if (
       x >= b.minX - 0.35 &&
@@ -65,7 +65,7 @@ export function resolveRoomForPoint(x: number, y: number, z: number): {
   let bestZoneId = 'exterior';
   let bestName = 'Exterior / Grounds';
   let bestDistSq = Number.POSITIVE_INFINITY;
-  for (const reg of CROX_FARMHOUSE_LOD_REGISTRATIONS) {
+  for (const reg of getRoomZoneRegistrations()) {
     const b = reg.bounds;
     const cx = (b.minX + b.maxX) * 0.5;
     const cy = (b.minY + b.maxY) * 0.5;

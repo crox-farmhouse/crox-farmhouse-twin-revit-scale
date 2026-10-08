@@ -5,7 +5,7 @@ import {
 } from '../../../../../engine/geometry/swept-moulding.ts';
 import { buildFlutedBrassPictureLight } from '../../../../../objects/fixtures/fluted-brass-picture-light.ts';
 import { buildDiningRoomWestWallSideboard } from '../../../../../objects/furniture/dining-sideboard-and-road-bikes.ts';
-import type { SceneBuilderContext } from '../../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../../engine/viewer/scene-types.ts';
 import type { DiningRoomKit } from '../dining-room.ts';
 import type { DiningRoomSharedMaterials } from './walk-in-cupboard-and-north-wall.ts';
 

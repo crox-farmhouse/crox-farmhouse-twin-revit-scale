@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { SceneBuilderContext } from '../../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../../engine/viewer/scene-types.ts';
 import { buildHollowCabinetCarcass } from '../../../../../objects/joinery/cabinet-interior.ts';
 import {
   type KitchenCabinetrySharedContext,

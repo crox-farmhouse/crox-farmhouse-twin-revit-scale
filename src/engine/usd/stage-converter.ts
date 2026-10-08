@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { CROX_FARMHOUSE_LOD_REGISTRATIONS } from '../../homes/crox-farmhouse/manifest.ts';
-import type { CameraPresetDefinition, LightGroupMap, Vec3Tuple } from '../../core/types/scene.ts';
+import { getRoomZoneRegistrations } from '../rooms/room-zone-registry.ts';
+import type { Vec3Tuple } from '../../core/types/scene.ts';
+import type { CameraPresetDefinition, LightGroupMap } from '../viewer/scene-types.ts';
 import { convertThreeMaterialToUsdSpec } from './procedural-materials.ts';
 import {
   CROX_USD_ZONE_LAYERS,
@@ -803,7 +804,7 @@ export function classifyBranchZoneLayer(
 
   const targetFloor = isFirstFloorLayer || center.y >= 2.15 ? 'first' : 'ground';
 
-  for (const reg of CROX_FARMHOUSE_LOD_REGISTRATIONS) {
+  for (const reg of getRoomZoneRegistrations()) {
     if (reg.floorId !== targetFloor) continue;
     const b = reg.bounds;
     if (
@@ -818,7 +819,7 @@ export function classifyBranchZoneLayer(
 
   let bestZoneId = targetFloor === 'first' ? 'upperLanding' : 'courtyard';
   let bestDistSq = Number.POSITIVE_INFINITY;
-  for (const reg of CROX_FARMHOUSE_LOD_REGISTRATIONS) {
+  for (const reg of getRoomZoneRegistrations()) {
     if (reg.floorId !== targetFloor) continue;
     const b = reg.bounds;
     const cx = (b.minX + b.maxX) * 0.5;

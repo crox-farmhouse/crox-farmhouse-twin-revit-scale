@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { addCasedArchitravePortal, buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/index.ts';
-import type { SceneBuilderContext } from '../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
 import { buildFamilyBathroomBathAndShower } from './bathroom/bathroom-bath-and-shower.ts';

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buildMitredWallSkirtingGeometry } from '../../../../../engine/geometry/swept-moulding.ts';
-import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../../core/types/scene.ts';
+import type { CutawayWallDescriptor } from '../../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../../engine/viewer/scene-types.ts';
 import type { createGroundFloorMaterials } from '../../../structure/ground-floor-materials.ts';
 import type { buildDiningRoom } from '../dining-room.ts';
 

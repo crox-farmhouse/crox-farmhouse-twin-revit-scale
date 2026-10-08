@@ -3,7 +3,6 @@ import type {
   SmartDetectionType,
   SmartHomeBusEvent,
 } from '../../../core/entities.ts';
-import { transformEastWingTuple } from '../../../homes/crox-farmhouse/structure/ground-floor-materials.ts';
 
 export type UniFiProtectListener = (
   cameras: readonly CctvCameraEntityState[],
@@ -12,6 +11,11 @@ export type UniFiProtectListener = (
 
 /**
  * Initial Crox Farmhouse UniFi Protect CCTV Camera Topology.
+ *
+ * Poses for the East-wing cameras are world-space values precomputed with the Crox
+ * `transformEastWingTuple(x_ew, y, z_ew)` (homes/crox-farmhouse/structure/ground-floor-materials.ts)
+ * so this integration does not import home geometry. Moving this home-specific topology into
+ * src/homes/crox-farmhouse/ (injected via the controller constructor) is the follow-up.
  */
 export const DEFAULT_UNIFI_PROTECT_CAMERAS: readonly CctvCameraEntityState[] = [
   {
@@ -55,8 +59,8 @@ export const DEFAULT_UNIFI_PROTECT_CAMERAS: readonly CctvCameraEntityState[] = [
     activeDetection: 'none',
     lastDetectionSummary: 'Clear · Courtyard & Bifolds Zone',
     pose3D: {
-      position: transformEastWingTuple(-4.55, 3.15, 2.72),
-      lookAt: transformEastWingTuple(1.2, 0.7, 7.8),
+      position: [-4.683090273190741, 3.15, 4.428609451729798] /* East-wing local (-4.55, 3.15, 2.72) */,
+      lookAt: [0.3425569994687252, 0.7, 10.226175276350546] /* East-wing local (1.2, 0.7, 7.8) */,
       horizontalFovDeg: 68,
       rangeMeters: 9.0,
     },
@@ -79,8 +83,8 @@ export const DEFAULT_UNIFI_PROTECT_CAMERAS: readonly CctvCameraEntityState[] = [
     activeDetection: 'none',
     lastDetectionSummary: 'Clear · East Stable Door Zone',
     pose3D: {
-      position: transformEastWingTuple(5.08, 3.15, -0.6),
-      lookAt: transformEastWingTuple(9.2, 0.8, 2.8),
+      position: [5.302094904761587, 3.15, 2.4148127981420684] /* East-wing local (5.08, 3.15, -0.6) */,
+      lookAt: [8.934893978539487, 0.8, 6.331082820696492] /* East-wing local (9.2, 0.8, 2.8) */,
       horizontalFovDeg: 64,
       rangeMeters: 7.5,
     },

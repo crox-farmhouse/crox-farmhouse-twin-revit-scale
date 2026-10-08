@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
 import { buildSittingRoomSofas } from '../../../../objects/furniture/sitting-room-sofas-and-art.ts';
-import type { SceneBuilderContext } from '../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { defineTier2Levels } from '../../structure/tier2-levels.ts';
 

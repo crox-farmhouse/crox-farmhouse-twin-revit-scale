@@ -8,6 +8,7 @@ import {
   buildCroxUniFiSecurityAndAccess3D,
   type CroxSecurity3DHandles,
 } from './security/unifi-security-zone.ts';
+import { CROX_DOOR_POLICY } from './interaction/door-policy.ts';
 import { CROX_FARMHOUSE_USD_OVERRIDES } from './usd/layout-overrides.ts';
 import { PropertySceneRegistry } from './zone-modules.ts';
 
@@ -86,6 +87,7 @@ export function createCroxFarmhouseSceneProfile(): PropertySceneProfile<CroxSecu
     // 4-leaf oak bifolds folding outward into the courtyard from the right oak post.
     bifoldTrack: { anchorRightX: 4.7, trackZ: 2.12, leafWidth: 3.02 / 4, maxFoldAngle: 1.4 },
     usdOverrides: CROX_FARMHOUSE_USD_OVERRIDES,
+    doorPolicy: CROX_DOOR_POLICY,
     buildSecurityOverlay: (ctx) => buildCroxUniFiSecurityAndAccess3D(ctx),
     buildUfhOverlay: (ctx) => buildCroxUnderfloorHeatingSystem(ctx),
   };

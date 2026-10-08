@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { RoomLodController } from '../lod/lod-manager.ts';
-import type { BifoldPanelRef, LightGroupMap, TimeOfDay, ZoneIndicatorMaterials } from '../../core/types/scene.ts';
+import type { TimeOfDay } from '../../core/types/scene.ts';
+import type { BifoldPanelRef, LightGroupMap, ZoneIndicatorMaterials } from '../viewer/scene-types.ts';
 import type { RoomZoneId } from '../../core/types/topology.ts';
 import type { PropertySceneLayers, RoomSwitchLedBinding } from '../viewer/scene-content.ts';
 

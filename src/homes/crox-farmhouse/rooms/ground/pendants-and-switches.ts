@@ -5,7 +5,7 @@ import { buildRoomKnxTempSensor } from '../../../../objects/fixtures/knx-temp-se
 import { buildRecessedFloorUplights } from './floor-uplights.ts';
 import { buildRoomCeilingPendant, buildRoomCorstonToggleSwitch } from './kitchen-knx-lighting.ts';
 import { buildRoomCeilingPirSensor } from './room-motion-sensors.ts';
-import type { SceneBuilderContext } from '../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import {
   MAIN_EAST_WING_OFFSET,
   MAIN_EAST_WING_ROTATION_Y,

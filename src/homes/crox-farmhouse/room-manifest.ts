@@ -154,11 +154,13 @@ interface RoomSpec {
 }
 
 /**
- * Interactable ids: only ids with a fixed value are used. `golf-simulator-shot` and
- * `pulley-maid` are hard-coded in `InteractionManager`; `door-1` (utility stable door),
- * `door-14` (dining courtyard door) and `door-28` (bedroom 2 door) are the allocation-order
- * ids already special-cased by `InteractionManager` (see `getDefaultDoorOpenAngle` and the
- * stable-door barge logic).
+ * Device interactable ids, all accepted by `scene.handleInteractableClick(id)`:
+ * - stable ids derived from scene-graph names by the interaction registry
+ *   (`door:<name>`, `toggle:<name>`, see `engine/interaction/device-ids.ts`); never use the
+ *   build-order `door-N` ids here, they shift whenever a zone adds or removes a door
+ * - fixed ids `pulley-maid`, `golf-simulator-shot` and the `garage-door` group
+ * - KNX-backed pseudo-devices `car-gates`, `kitchen-bifolds`, `frame-tv` (routed through the
+ *   same path as clicking the device, so the KNX bus state stays in sync)
  */
 const ROOM_SPECS: Readonly<Record<CanonicalRoomZoneId, RoomSpec>> = {
   // --- Main house · ground floor -------------------------------------------------------
@@ -166,6 +168,7 @@ const ROOM_SPECS: Readonly<Record<CanonicalRoomZoneId, RoomSpec>> = {
     label: 'Entrance hall',
     group: 'house-ground',
     floor: 'ground',
+    devices: [{ interactableId: 'door:entranceHall.frontDoor', label: 'Front door' }],
     ufhZoneId: 'ufhZone3',
   },
   sittingRoom: {
@@ -192,7 +195,16 @@ const ROOM_SPECS: Readonly<Record<CanonicalRoomZoneId, RoomSpec>> = {
     label: 'Dining room',
     group: 'house-ground',
     floor: 'ground',
-    devices: [{ interactableId: 'door-14', label: 'Courtyard door' }],
+    devices: [
+      {
+        interactableId: 'door:groundFloor.eastWing.cutaway.southWest@-9.3,3.6',
+        label: 'Courtyard door',
+      },
+      {
+        interactableId: 'toggle:familyRoom.neptuneWycombeDiningTable',
+        label: 'Extend / retract dining table',
+      },
+    ],
     ufhZoneId: 'ufhZone4',
   },
   kitchen: {
@@ -200,6 +212,7 @@ const ROOM_SPECS: Readonly<Record<CanonicalRoomZoneId, RoomSpec>> = {
     group: 'house-ground',
     floor: 'ground',
     scenes: KITCHEN_SCENES,
+    devices: [{ interactableId: 'frame-tv', label: 'Frame TV: next artwork' }],
     ufhZoneId: 'ufhZone4',
   },
   sitting: {
@@ -207,6 +220,7 @@ const ROOM_SPECS: Readonly<Record<CanonicalRoomZoneId, RoomSpec>> = {
     group: 'house-ground',
     floor: 'ground',
     scenes: KITCHEN_SCENES,
+    devices: [{ interactableId: 'kitchen-bifolds', label: 'Bifold doors' }],
     ufhZoneId: 'ufhZone4',
   },
   utility: {
@@ -215,32 +229,58 @@ const ROOM_SPECS: Readonly<Record<CanonicalRoomZoneId, RoomSpec>> = {
     floor: 'ground',
     devices: [
       { interactableId: 'pulley-maid', label: 'Pulley maid airer' },
-      { interactableId: 'door-1', label: 'Stable door' },
+      { interactableId: 'door:utility.stableDoor.lowerLeafGroup', label: 'Stable door' },
     ],
     ufhZoneId: 'ufhZone4',
   },
   // --- Main house · first floor --------------------------------------------------------
   upperLanding: { label: 'Landing', group: 'house-first', floor: 'first' },
-  mainBedroom: { label: 'Main bedroom', group: 'house-first', floor: 'first' },
-  familyBathroom: { label: 'Family bathroom', group: 'house-first', floor: 'first' },
+  mainBedroom: {
+    label: 'Main bedroom',
+    group: 'house-first',
+    floor: 'first',
+    devices: [{ interactableId: 'door:mainBedroom.entranceDoor', label: 'Bedroom door' }],
+  },
+  familyBathroom: {
+    label: 'Family bathroom',
+    group: 'house-first',
+    floor: 'first',
+    devices: [{ interactableId: 'door:familyBathroom.door', label: 'Bathroom door' }],
+  },
   bedroom2: {
     label: 'Bedroom 2',
     group: 'house-first',
     floor: 'first',
-    devices: [{ interactableId: 'door-28', label: 'Bedroom door' }],
+    devices: [{ interactableId: 'door:bedroom2.southWall@-22.1,1.9', label: 'Bedroom door' }],
   },
   bedroom3: { label: 'Bedroom 3 & shower room', group: 'house-first', floor: 'first' },
-  bedroom4: { label: 'Bedroom 4', group: 'house-first', floor: 'first' },
+  bedroom4: {
+    label: 'Bedroom 4',
+    group: 'house-first',
+    floor: 'first',
+    devices: [{ interactableId: 'door:bedroom4.entranceDoor', label: 'Bedroom door' }],
+  },
   // --- Barn & outbuildings -------------------------------------------------------------
   outbuildingBarn: {
     label: 'Barn & golf sim',
     group: 'outbuildings',
     floor: 'ground',
-    devices: [{ interactableId: 'golf-simulator-shot', label: 'Golf simulator: take a shot' }],
+    devices: [
+      { interactableId: 'golf-simulator-shot', label: 'Golf simulator: take a shot' },
+      {
+        interactableId: 'door:outbuildings.barn.golfSimulator.turfMat.foldingLeaf',
+        label: 'Golf simulator: stow / roll out mat',
+      },
+    ],
   },
   outbuildingMezzanine: { label: 'Barn mezzanine', group: 'outbuildings', floor: 'first' },
   outbuildingGym: { label: 'Gym', group: 'outbuildings', floor: 'ground' },
-  outbuildingGarage: { label: 'Garage & workshop', group: 'outbuildings', floor: 'ground' },
+  outbuildingGarage: {
+    label: 'Garage & workshop',
+    group: 'outbuildings',
+    floor: 'ground',
+    devices: [{ interactableId: 'garage-door', label: 'Garage doors' }],
+  },
   outbuildingStableOffice: { label: 'Stable office', group: 'outbuildings', floor: 'ground' },
   outbuildingStableSuite: { label: 'Stable guest suite', group: 'outbuildings', floor: 'first' },
   // --- Garden & courtyard --------------------------------------------------------------
@@ -249,6 +289,7 @@ const ROOM_SPECS: Readonly<Record<CanonicalRoomZoneId, RoomSpec>> = {
     group: 'grounds',
     floor: 'ground',
     scenes: COURTYARD_SCENES,
+    devices: [{ interactableId: 'car-gates', label: 'Car gates' }],
   },
 };
 

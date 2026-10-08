@@ -14,7 +14,7 @@ import {
   MAIN_EAST_WING_OFFSET,
   MAIN_EAST_WING_ROTATION_Y,
 } from '../../structure/ground-floor-materials.ts';
-import type { SceneBuilderContext } from '../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 
 /**
  * Builds the First Floor (Upstairs) of the Main House (`Y = 2.28m..4.38m`) and the

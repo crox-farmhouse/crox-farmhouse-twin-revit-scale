@@ -82,7 +82,7 @@ export const DEFAULT_WALKTHROUGH_SPAWNS: readonly WalkthroughSpawnPoint[] = [
   },
   {
     id: 'study',
-    label: 'Study',
+    label: 'Plant room',
     zoneId: 'study',
     position: [-19.6, -0.6, 9.8],
     yawDeg: 180,

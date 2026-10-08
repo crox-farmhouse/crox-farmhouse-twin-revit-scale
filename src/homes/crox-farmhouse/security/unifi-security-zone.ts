@@ -3,12 +3,12 @@ import {
   createUniFiProtectCamera3D,
   type UniFiAccessVisualHandle,
   type UniFiCameraVisualHandle,
-} from '../../../catalog/index.ts';
+} from '../../../objects/devices/unifi-devices.ts';
 import type {
   AccessPointEntityState,
   CctvCameraEntityState,
 } from '../../../core/entities.ts';
-import type { SceneBuilderContext } from '../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../engine/viewer/scene-types.ts';
 import {
   CROX_FARMHOUSE_UNIFI_ACCESS_POINTS,
   CROX_FARMHOUSE_UNIFI_CAMERAS,

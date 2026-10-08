@@ -5,7 +5,7 @@ import {
 } from '../../../../engine/geometry/swept-moulding.ts';
 import { createWovenWoolCarpetTextures } from '../../../../engine/textures/procedural-textures.ts';
 import { buildUnderstairsHeatingManifold } from '../../../../objects/fixtures/hydronic-manifold.ts';
-import type { SceneBuilderContext } from '../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
 import type { buildDiningRoom } from './dining-room.ts';

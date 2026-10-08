@@ -6,6 +6,5 @@
 @import "./ui/styles/base-and-tokens.css";
 @import "./ui/styles/hud-panels.css";
 @import "./ui/styles/controls-and-walkthrough.css";
-@import "./ui/styles/focus-and-modals.css";
 @import "./ui/styles/annotator-and-usd.css";
 @import "./ui/styles/shell.css";

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
 import { createSculptedCushionGeometry } from '../../../../objects/furniture/sitting-room-sofas-and-art.ts';
-import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../core/types/scene.ts';
+import type { CutawayWallDescriptor } from '../../../../core/types/scene.ts';
+import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { defineTier2Levels } from '../../structure/tier2-levels.ts';
 import type { buildHallStaircase } from './hall-staircase.ts';
@@ -607,7 +608,7 @@ export function buildLivingRoomCinemaWall(
     persianRugGroup.rotation.y = THREE.MathUtils.degToRad(-8.627);
 
     const vesperRugTex = new THREE.TextureLoader().load(
-      '/textures/vesper-olive-gold-rug.jpg'
+      `${import.meta.env?.BASE_URL ?? '/'}textures/vesper-olive-gold-rug.jpg`
     );
     vesperRugTex.colorSpace = THREE.SRGBColorSpace;
     vesperRugTex.anisotropy = 8;

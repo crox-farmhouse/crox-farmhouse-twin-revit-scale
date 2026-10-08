@@ -15,7 +15,6 @@ import type { RoomLightControl, RoomManifestEntry, TradeView } from '../../core/
 import { TRADE_VIEW_LABELS } from '../../core/types/twin-ux.ts';
 import { Icon, type IconName } from './icons.tsx';
 import { NotesSection } from './NotesSection.tsx';
-import { getRoomLabel, getRoomLevelScenes, getRoomManifest } from './room-data.ts';
 import { useShell } from './shell-context.ts';
 
 interface TradeSections {
@@ -98,9 +97,8 @@ function RoomSections({ entry, sections }: { readonly entry: RoomManifestEntry; 
   // Re-render on device/UFH changes.
   void deviceRevision.value;
 
-  const levelScenes = entry.scenes.length === 0 ? getRoomLevelScenes(entry.zoneId) : [];
-  const ufh = ctl.deps.scene.getUfhSystem();
-  const ufhZone = ufh?.getZoneForRoom(entry.zoneId);
+  const levelScenes = entry.scenes.length === 0 ? ctl.roomLevelScenes(entry.zoneId) : [];
+  const ufhZone = ctl.ufhZoneForRoom(entry.zoneId);
   const anyOn = entry.lights.some((l) => levelOf(levels, l.circuitId) > 0.5);
 
   return (
@@ -157,7 +155,7 @@ function RoomSections({ entry, sections }: { readonly entry: RoomManifestEntry; 
         </section>
       )}
 
-      {sections.heating && ufh && ufhZone && (
+      {sections.heating && ufhZone && (
         <section class="shell-card">
           <div class="shell-card-head">
             <span class="shell-card-title">
@@ -270,8 +268,9 @@ function WholeHouse({ sections }: { readonly sections: TradeSections }): JSX.Ele
 }
 
 export function RoomPanel(): JSX.Element {
+  const ctl = useShell();
   const roomId = currentRoomId.value;
-  const entry = roomId ? getRoomManifest(roomId) : undefined;
+  const entry = roomId ? ctl.api.rooms.getManifest(roomId) : undefined;
   const trade = tradeView.value;
   const sections = TRADE_SECTIONS[trade];
   const open = roomPanelOpen.value;
@@ -288,7 +287,7 @@ export function RoomPanel(): JSX.Element {
             {entry ? (entry.floor === 'first' ? 'First floor' : 'Ground floor') : 'Property'}
             {trade !== 'owner' && ` · ${TRADE_VIEW_LABELS[trade]} view`}
           </span>
-          <span class="shell-panel-title shell-panel-title-lg">{getRoomLabel(entry?.zoneId ?? roomId)}</span>
+          <span class="shell-panel-title shell-panel-title-lg">{ctl.roomLabel(entry?.zoneId ?? roomId)}</span>
         </div>
         <button
           type="button"
