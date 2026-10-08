@@ -8,6 +8,7 @@ import {
   getPlanWrapShiftX,
   lerp,
   type Porsche992Materials,
+  sampleLateralSurfaceZAtXY,
   sampleMonocoqueHalfProfile,
   smoothstep,
 } from './porsche-materials-and-body.ts';
@@ -18,71 +19,177 @@ function tagHighLodDetail(obj: THREE.Object3D): void {
 }
 
 /**
- * Builds the 992.2 facelift front fascia, plan-curved active vertical cooling louvres,
- * PAA front chin splitter, front UK registration plate, Stuttgart hood crest, and
- * conformal 4-point HD-Matrix LED headlights.
+ * Builds the 992.2 facelift front fascia matching the reference photo:
+ * - Twin sculpted outer cooling pods (`z = ±0.30..±0.72m`) with beveled dark-anthracite surrounds and
+ *   5 thick vertical airfoil active cooling louvres per side,
+ * - Body-colored diagonal aero struts separating the outer pods from the central lower radiator intake,
+ * - Central lower radiator duct with ADAS radar dome and active PAA front chin splitter,
+ * - Slim horizontal front fender side-marker light strips ahead of the front wheel arches,
+ * - Conformal 4-Point HD-Matrix LED headlights with silver/gunmetal bezel ring, central projector optic,
+ *   and 4-point + lower horizontal LED signature blades.
  */
 export function buildPorsche992FrontFasciaAndHeadlights(
   carGroup: THREE.Group,
   mats: Porsche992Materials
 ): void {
-  // Deployed PAA Front Chin Splitter (`outbuildings.garage.porsche992TurboS.frontSpoiler`)
-  // Follows the exact plan-view wrap curve `getPlanWrapShiftX` so it never sticks out at the corners!
+  // 1. Deployed PAA Front Chin Splitter (`outbuildings.garage.porsche992TurboS.frontSpoiler`)
   const splitterPts: THREE.Vector3[] = [];
-  for (let i = 0; i <= 28; i++) {
-    const u = (i / 28) * 2 - 1; // -1 .. +1
-    const z = u * 0.78;
-    const x = -2.245 + getPlanWrapShiftX(-2.24, z);
-    splitterPts.push(new THREE.Vector3(x, 0.132, z));
+  for (let i = 0; i <= 32; i++) {
+    const u = (i / 32) * 2 - 1;
+    const z = u * 0.81;
+    const x = -2.248 + getPlanWrapShiftX(-2.24, z);
+    const y = 0.130 + Math.abs(u) * 0.008;
+    splitterPts.push(new THREE.Vector3(x, y, z));
   }
   const splitterCurve = new THREE.CatmullRomCurve3(splitterPts);
-  const splitterGeo = new THREE.TubeGeometry(splitterCurve, 32, 0.018, 10, false);
+  const splitterGeo = new THREE.TubeGeometry(splitterCurve, 36, 0.019, 10, false);
   splitterGeo.computeBoundingSphere();
   const frontSplitter = new THREE.Mesh(splitterGeo, mats.satinBlackAeroMat);
-  frontSplitter.scale.set(1.3, 0.65, 1.0);
-  frontSplitter.position.set(2.245 * 0.3, 0.132 * 0.35, 0);
+  frontSplitter.scale.set(1.32, 0.62, 1.0);
+  frontSplitter.position.set(2.248 * 0.32, 0.130 * 0.38, 0);
   frontSplitter.name = 'outbuildings.garage.porsche992TurboS.frontSpoiler';
   carGroup.add(frontSplitter);
 
-  // 992.2 Front Bumper Intake Aperture & 5 Vertical Active Cooling Flaps per side (`outbuildings.garage.porsche992TurboS.frontActiveLouvres`)
-  // Curved along `getPlanWrapShiftX(-2.22, z)` so every intake pod and vertical flap sits flush inside the front bumper nose!
+  // 2. 992.2 Three-Part Front Bumper Intake Architecture (`outbuildings.garage.porsche992TurboS.frontActiveLouvres`)
   const frontIntakesGroup = new THREE.Group();
   frontIntakesGroup.name = 'outbuildings.garage.porsche992TurboS.frontActiveLouvres';
   carGroup.add(frontIntakesGroup);
 
-  const frontGrillePts: THREE.Vector3[] = [];
-  for (let i = 0; i <= 24; i++) {
-    const u = (i / 24) * 2 - 1;
-    const z = u * 0.68;
-    const x = -2.225 + getPlanWrapShiftX(-2.22, z);
-    frontGrillePts.push(new THREE.Vector3(x, 0.215, z));
+  // 2A. Central Lower Radiator Intake (`z = -0.25..+0.25m, y = 0.155..0.245m`) below the number plate beam
+  const centerIntakePts: THREE.Vector3[] = [];
+  for (let i = 0; i <= 14; i++) {
+    const u = (i / 14) * 2 - 1;
+    const z = u * 0.25;
+    const x = -2.228 + getPlanWrapShiftX(-2.22, z);
+    centerIntakePts.push(new THREE.Vector3(x, 0.198, z));
   }
-  const frontGrilleCurve = new THREE.CatmullRomCurve3(frontGrillePts);
-  const frontIntakeRecessGeo = new THREE.TubeGeometry(frontGrilleCurve, 28, 0.055, 10, false);
-  frontIntakeRecessGeo.computeBoundingSphere();
-  const frontIntakeRecess = new THREE.Mesh(frontIntakeRecessGeo, mats.glossBlackTrimMat);
-  frontIntakeRecess.name = 'outbuildings.garage.porsche992TurboS.frontActiveLouvres.intakeRecess';
-  frontIntakeRecess.scale.set(0.45, 1.0, 1.0);
-  frontIntakeRecess.position.set(-2.225 * 0.55, 0, 0);
-  frontIntakesGroup.add(frontIntakeRecess);
+  const centerIntakeGeo = new THREE.TubeGeometry(
+    new THREE.CatmullRomCurve3(centerIntakePts),
+    16,
+    0.044,
+    8,
+    false
+  );
+  centerIntakeGeo.computeBoundingSphere();
+  const centerIntakeMesh = new THREE.Mesh(centerIntakeGeo, mats.glossBlackTrimMat);
+  centerIntakeMesh.name = 'outbuildings.garage.porsche992TurboS.frontActiveLouvres.centerRadiatorDuct';
+  centerIntakeMesh.scale.set(0.42, 0.95, 1.0);
+  centerIntakeMesh.position.set(-2.228 * 0.58, 0, 0);
+  frontIntakesGroup.add(centerIntakeMesh);
 
+  // Central ADAS InnoDrive Radar Sensor Lens (`x = -2.238m, y = 0.198m, z = 0`)
+  const radarSensor = new THREE.Mesh(
+    new THREE.SphereGeometry(0.022, 16, 12),
+    mats.glossBlackTrimMat
+  );
+  radarSensor.name = 'outbuildings.garage.porsche992TurboS.frontActiveLouvres.radarSensor';
+  radarSensor.scale.set(0.45, 0.9, 1.0);
+  radarSensor.position.set(-2.238, 0.198, 0);
+  tagHighLodDetail(radarSensor);
+  frontIntakesGroup.add(radarSensor);
+
+  // 2B. Left & Right Sculpted Outer Cooling Pods (`z = ±0.30..±0.72m, y = 0.16..0.33m`) with 5 Vertical Active Louvres per side
   for (const sideZ of [-1, 1] as const) {
-    // 5 signature 992.2 vertical active aerodynamic cooling flaps per outer intake, following the curved bumper face
+    // Dark recessed cooling pod cavity
+    const podPts: THREE.Vector3[] = [];
+    for (let i = 0; i <= 14; i++) {
+      const t = i / 14;
+      const z = sideZ * lerp(0.30, 0.71, t);
+      const x = -2.222 + getPlanWrapShiftX(-2.22, z);
+      podPts.push(new THREE.Vector3(x, 0.238, z));
+    }
+    const podCurve = new THREE.CatmullRomCurve3(podPts);
+    const podCavityGeo = new THREE.TubeGeometry(podCurve, 16, 0.072, 10, false);
+    podCavityGeo.computeBoundingSphere();
+    const podCavity = new THREE.Mesh(podCavityGeo, mats.glossBlackTrimMat);
+    podCavity.name = 'outbuildings.garage.porsche992TurboS.frontActiveLouvres.intakeRecess';
+    podCavity.scale.set(0.38, 1.05, 1.0);
+    podCavity.position.set(-2.222 * 0.62, 0, 0);
+    frontIntakesGroup.add(podCavity);
+
+    // Sculpted satin-black outer bezel frame (top and bottom horizontal lip rails of the outer intake pod)
+    for (const [railTag, ry, rRad] of [
+      ['topLip', 0.308, 0.013],
+      ['bottomLip', 0.168, 0.013],
+    ] as const) {
+      const railPts: THREE.Vector3[] = [];
+      for (let i = 0; i <= 12; i++) {
+        const t = i / 12;
+        const z = sideZ * lerp(0.29, 0.72, t);
+        const x = -2.238 + getPlanWrapShiftX(-2.23, z);
+        railPts.push(new THREE.Vector3(x, ry, z));
+      }
+      const railGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(railPts), 14, rRad, 8, false);
+      railGeo.computeBoundingSphere();
+      const railMesh = new THREE.Mesh(railGeo, mats.satinBlackAeroMat);
+      railMesh.name = `outbuildings.garage.porsche992TurboS.frontActiveLouvres.${railTag}`;
+      frontIntakesGroup.add(railMesh);
+    }
+
+    // Body-colored diagonal aero divider strut (`z = ±0.285m`) between center radiator and outer louvre pod
+    const innerStrutZ = sideZ * 0.282;
+    const innerStrutX = -2.236 + getPlanWrapShiftX(-2.23, innerStrutZ);
+    const innerStrut = new THREE.Mesh(
+      new THREE.BoxGeometry(0.032, 0.155, 0.028),
+      mats.oceanBlueBodyMat
+    );
+    innerStrut.name = 'outbuildings.garage.porsche992TurboS.frontActiveLouvres.aeroDividerStrut';
+    innerStrut.position.set(innerStrutX, 0.238, innerStrutZ);
+    innerStrut.rotation.x = sideZ * 0.18;
+    innerStrut.rotation.y = -sideZ * 0.14;
+    frontIntakesGroup.add(innerStrut);
+
+    // 5 prominent 992.2 vertical active aerodynamic cooling louvres per side (clearly visible in the reference photo!)
     for (let f = 0; f < 5; f++) {
-      const fz = sideZ * (0.34 + f * 0.068);
-      const fx = -2.23 + getPlanWrapShiftX(-2.22, fz);
+      const fz = sideZ * (0.338 + f * 0.082);
+      const fx = -2.234 + getPlanWrapShiftX(-2.22, fz);
       const flap = new THREE.Mesh(
-        new THREE.BoxGeometry(0.024, 0.105, 0.01),
-        mats.turboniteMat
+        new THREE.BoxGeometry(0.038, 0.136, 0.016),
+        mats.satinBlackAeroMat
       );
       flap.name = 'outbuildings.garage.porsche992TurboS.frontActiveLouvres';
-      flap.position.set(fx, 0.215, fz);
-      flap.rotation.y = -sideZ * 0.26;
+      flap.position.set(fx, 0.238, fz);
+      flap.rotation.y = -sideZ * (0.18 + f * 0.045);
+      flap.rotation.x = -sideZ * 0.06;
       frontIntakesGroup.add(flap);
+
+      // Subtle leading-edge Turbonite highlight strip on each vertical active vane
+      const vaneEdge = new THREE.Mesh(
+        new THREE.BoxGeometry(0.008, 0.132, 0.014),
+        mats.turboniteMat
+      );
+      vaneEdge.name = 'outbuildings.garage.porsche992TurboS.frontActiveLouvres.vaneLeadingEdge';
+      vaneEdge.position.set(fx - 0.016, 0.238, fz);
+      vaneEdge.rotation.y = -sideZ * (0.18 + f * 0.045);
+      tagHighLodDetail(vaneEdge);
+      frontIntakesGroup.add(vaneEdge);
     }
+
+    // Slim horizontal front fender side-marker / indicator light bar ahead of the front wheel arch (`x = -1.63m, y = 0.545m`)
+    const markerZ = sideZ * 0.882;
+    const markerX = -1.63 + getPlanWrapShiftX(-1.63, markerZ);
+    const sideMarker = new THREE.Mesh(
+      new THREE.BoxGeometry(0.135, 0.014, 0.012),
+      mats.ledDrlMat
+    );
+    sideMarker.name = 'outbuildings.garage.porsche992TurboS.frontSideMarker';
+    sideMarker.position.set(markerX, 0.545, markerZ);
+    sideMarker.rotation.y = -sideZ * 0.16;
+    sideMarker.rotation.z = 0.08;
+    tagHighLodDetail(sideMarker);
+    carGroup.add(sideMarker);
   }
 
-  // Front UK Number Plate (`992 TBS` on white plate, flush on the front nose at `x = -2.242m, y = 0.305m`)
+  // 3. Front UK Number Plate (`992 TBS` on white plate, mounted on the central bumper beam at `x = -2.244m, y = 0.305m`)
+  const frontPlatePlinth = new THREE.Mesh(
+    new THREE.BoxGeometry(0.016, 0.090, 0.392),
+    mats.satinBlackAeroMat
+  );
+  frontPlatePlinth.name = 'outbuildings.garage.porsche992TurboS.frontNumberPlate.plinth';
+  frontPlatePlinth.position.set(-2.238, 0.305, 0);
+  tagHighLodDetail(frontPlatePlinth);
+  carGroup.add(frontPlatePlinth);
+
   const frontPlate = new THREE.Mesh(
     new THREE.BoxGeometry(0.01, 0.082, 0.38),
     new THREE.MeshStandardMaterial({
@@ -91,68 +198,94 @@ export function buildPorsche992FrontFasciaAndHeadlights(
     })
   );
   frontPlate.name = 'outbuildings.garage.porsche992TurboS.frontNumberPlate';
-  frontPlate.position.set(-2.242, 0.305, 0);
+  frontPlate.position.set(-2.245, 0.305, 0);
   tagHighLodDetail(frontPlate);
   carGroup.add(frontPlate);
 
-  // Stuttgart Porsche Crest on Front Hood Nose (`x = -2.02m, y = 0.548m, z = 0`)
+  // 4. Stuttgart Porsche Crest on Front Hood Nose (`x = -2.02m, y = 0.534m, z = 0`)
   const hoodCrest = new THREE.Mesh(
     new THREE.PlaneGeometry(0.05, 0.062),
     mats.crestMat
   );
   hoodCrest.name = 'outbuildings.garage.porsche992TurboS.hoodCrest';
-  hoodCrest.position.set(-2.02, 0.548, 0);
+  hoodCrest.position.set(-2.02, 0.534, 0);
   hoodCrest.rotation.y = -Math.PI / 2;
   hoodCrest.rotation.z = -1.28;
   tagHighLodDetail(hoodCrest);
   carGroup.add(hoodCrest);
 
-  // Iconic Oval 992.2 HD-Matrix 4-Point LED Headlights (`outbuildings.garage.porsche992TurboS.headlight`)
-  // Built with `createConformalEllipticalHeadlightPatch` directly on the front fender pontoon (`x = -1.88m, v = 0.49`)
-  // so they conform 100% flush to the 3D fender surface and NEVER stick out!
+  // 5. Iconic Oval 992.2 HD-Matrix 4-Point LED Headlights (`outbuildings.garage.porsche992TurboS.headlight`)
   for (const sideZ of [-1, 1] as const) {
     const hlGroup = new THREE.Group();
     hlGroup.name = 'outbuildings.garage.porsche992TurboS.headlight';
     carGroup.add(hlGroup);
 
-    // 1. Dark gunmetal conformal elliptical housing bezel
-    const bezelGeo = createConformalEllipticalHeadlightPatch(-1.88, 0.49, 0.185, 0.095, 0.0025, sideZ);
+    // 5A. Outer dark gunmetal conformal elliptical housing bezel
+    const bezelGeo = createConformalEllipticalHeadlightPatch(-1.87, 0.485, 0.192, 0.098, 0.0022, sideZ);
     const bezelMesh = new THREE.Mesh(bezelGeo, mats.glossBlackTrimMat);
     bezelMesh.name = 'outbuildings.garage.porsche992TurboS.headlight';
     hlGroup.add(bezelMesh);
 
-    // 2. Inner Turbonite reflector bowl patch
-    const innerGeo = createConformalEllipticalHeadlightPatch(-1.88, 0.49, 0.155, 0.078, 0.004, sideZ);
-    const innerReflectorMesh = new THREE.Mesh(innerGeo, mats.turboniteMat);
+    // 5B. Machined silver/Turbonite inner reflector ring (visible around the inside of the headlight in the photo)
+    const silverRingGeo = createConformalEllipticalHeadlightPatch(-1.87, 0.485, 0.172, 0.086, 0.0032, sideZ);
+    const silverRingMesh = new THREE.Mesh(silverRingGeo, mats.diamondCutAlloyMat);
+    silverRingMesh.name = 'outbuildings.garage.porsche992TurboS.headlight.chromeTrimRing';
+    hlGroup.add(silverRingMesh);
+
+    // 5C. Deep dark internal projector bowl patch
+    const innerGeo = createConformalEllipticalHeadlightPatch(-1.87, 0.485, 0.156, 0.078, 0.0040, sideZ);
+    const innerReflectorMesh = new THREE.Mesh(innerGeo, mats.glossBlackTrimMat);
     innerReflectorMesh.name = 'outbuildings.garage.porsche992TurboS.headlight.reflectorBowl';
     hlGroup.add(innerReflectorMesh);
 
-    // 3. 4 Signature Porsche 4-Point Horizontal LED DRL Light Blades positioned on the exact pontoon surface
-    const halfPtsMid = sampleMonocoqueHalfProfile(-1.88, 64);
-    const basePt = halfPtsMid[Math.round(0.49 * 64)]!;
+    // 5D. Central HD-Matrix Main Projector Pod + 4 Signature Porsche 4-Point Horizontal LED DRL Blades + Lower LED Bar
+    const halfPtsMid = sampleMonocoqueHalfProfile(-1.87, 64);
+    const basePt = halfPtsMid[Math.round(0.485 * 64)]!;
     const baseZ = sideZ * basePt[1];
-    const baseX = -1.88 + getPlanWrapShiftX(-1.88, baseZ);
+    const baseX = -1.87 + getPlanWrapShiftX(-1.87, baseZ);
     const baseY = basePt[0];
 
-    for (const [dx, dy, dz] of [
-      [-0.045, -0.016, -0.036],
-      [-0.045, -0.012, 0.036],
-      [0.048, 0.022, -0.034],
-      [0.048, 0.026, 0.034],
+    const mainProjectorPod = new THREE.Mesh(
+      new THREE.BoxGeometry(0.056, 0.032, 0.048),
+      mats.turboniteMat
+    );
+    mainProjectorPod.name = 'outbuildings.garage.porsche992TurboS.headlight.matrixProjector';
+    mainProjectorPod.position.set(baseX + 0.005, baseY + 0.006, baseZ + sideZ * 0.004);
+    mainProjectorPod.rotation.z = 0.44;
+    mainProjectorPod.rotation.y = -sideZ * 0.22;
+    tagHighLodDetail(mainProjectorPod);
+    hlGroup.add(mainProjectorPod);
+
+    const projectorLens = new THREE.Mesh(
+      new THREE.SphereGeometry(0.016, 14, 12),
+      mats.ledDrlMat
+    );
+    projectorLens.name = 'outbuildings.garage.porsche992TurboS.headlight.projectorLens';
+    projectorLens.scale.set(0.6, 0.85, 1.1);
+    projectorLens.position.set(baseX - 0.012, baseY + 0.005, baseZ + sideZ * 0.007);
+    tagHighLodDetail(projectorLens);
+    hlGroup.add(projectorLens);
+
+    for (const [dx, dy, dz, lenX] of [
+      [-0.048, -0.018, -0.038, 0.046],
+      [-0.048, -0.014, 0.038, 0.046],
+      [0.050, 0.024, -0.036, 0.046],
+      [0.050, 0.028, 0.036, 0.046],
+      [-0.015, -0.026, 0.004, 0.082], // Lower horizontal LED light strip visible in the 992.2 headlight photo
     ] as const) {
       const drlBar = new THREE.Mesh(
-        new THREE.BoxGeometry(0.044, 0.01, 0.014),
+        new THREE.BoxGeometry(lenX, 0.009, 0.014),
         mats.ledDrlMat
       );
       drlBar.name = 'outbuildings.garage.porsche992TurboS.headlight.drlBlade';
-      drlBar.position.set(baseX + dx, baseY + dy + 0.008, baseZ + sideZ * 0.008 + dz * sideZ);
-      drlBar.rotation.z = 0.42;
-      drlBar.rotation.y = -sideZ * 0.18;
+      drlBar.position.set(baseX + dx, baseY + dy + 0.008, baseZ + sideZ * 0.009 + dz * sideZ);
+      drlBar.rotation.z = 0.44;
+      drlBar.rotation.y = -sideZ * 0.20;
       hlGroup.add(drlBar);
     }
 
-    // 4. Flush conformal clear polycarbonate headlight lens cover
-    const lensGeo = createConformalEllipticalHeadlightPatch(-1.88, 0.49, 0.175, 0.088, 0.0065, sideZ);
+    // 5E. Flush conformal clear polycarbonate headlight lens cover
+    const lensGeo = createConformalEllipticalHeadlightPatch(-1.87, 0.485, 0.184, 0.093, 0.0072, sideZ);
     const lensMesh = new THREE.Mesh(lensGeo, mats.clearLensMat);
     lensMesh.name = 'outbuildings.garage.porsche992TurboS.headlight.clearLens';
     hlGroup.add(lensMesh);
@@ -160,75 +293,159 @@ export function buildPorsche992FrontFasciaAndHeadlights(
 }
 
 /**
- * Builds the sculpted side mirrors, flush pop-out door handles, and 992.2 Turbo S
- * rear quarter side intercooler intake scoops.
+ * Builds the sculpted side mirrors, flush pop-out door handles with recessed pockets,
+ * door shut-lines, and the signature swept C-shaped 992.2 Turbo S rear quarter side intercooler intake scoops.
  */
 export function buildPorsche992SideMirrorsHandlesAndIntakes(
   carGroup: THREE.Group,
   mats: Porsche992Materials
 ): void {
   for (const sideZ of [-1, 1] as const) {
-    // Aerodynamic door mirror (`x = -0.48m, y = 0.86m, z = ±0.86m`)
+    // 1. Sculpted 992.2 Aerodynamic Door Mirror (`x = -0.46m, y = 0.855m, z = ±0.855m`)
     const mirrorGroup = new THREE.Group();
     mirrorGroup.name = 'outbuildings.garage.porsche992TurboS.wingMirror';
-    mirrorGroup.position.set(-0.48, 0.855, sideZ * 0.855);
+    mirrorGroup.position.set(-0.46, 0.855, sideZ * 0.855);
     carGroup.add(mirrorGroup);
 
+    // Swept satin-black door pedestal stalk
     const mirrorStalk = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, 0.042, 0.07),
+      new THREE.BoxGeometry(0.088, 0.036, 0.078),
       mats.satinBlackAeroMat
     );
     mirrorStalk.name = 'outbuildings.garage.porsche992TurboS.wingMirror.stalk';
-    mirrorStalk.position.set(0, 0.014, sideZ * 0.028);
-    mirrorStalk.rotation.x = sideZ * 0.36;
+    mirrorStalk.position.set(0.005, 0.012, sideZ * 0.032);
+    mirrorStalk.rotation.x = sideZ * 0.38;
+    mirrorStalk.rotation.y = -sideZ * 0.24;
     mirrorGroup.add(mirrorStalk);
 
+    // Sculpted Ocean Blue upper aerodynamic mirror shell
     const mirrorCap = new THREE.Mesh(
-      new THREE.SphereGeometry(0.056, 18, 14),
+      new THREE.SphereGeometry(0.058, 20, 16),
       mats.oceanBlueBodyMat
     );
     mirrorCap.name = 'outbuildings.garage.porsche992TurboS.wingMirror.cap';
-    mirrorCap.scale.set(1.42, 0.68, 1.12);
-    mirrorCap.position.set(0.02, 0.036, sideZ * 0.072);
+    mirrorCap.scale.set(1.52, 0.62, 1.18);
+    mirrorCap.position.set(0.024, 0.038, sideZ * 0.076);
+    mirrorCap.rotation.y = -sideZ * 0.18;
     mirrorGroup.add(mirrorCap);
 
-    // Flush pop-out door handle (`x = +0.14m, y = 0.78m, z = ±0.868m`)
+    // Satin-black lower mirror bezel & LED indicator strip
+    const mirrorLowerCup = new THREE.Mesh(
+      new THREE.SphereGeometry(0.054, 16, 12),
+      mats.satinBlackAeroMat
+    );
+    mirrorLowerCup.name = 'outbuildings.garage.porsche992TurboS.wingMirror.lowerBezel';
+    mirrorLowerCup.scale.set(1.46, 0.45, 1.14);
+    mirrorLowerCup.position.set(0.026, 0.026, sideZ * 0.076);
+    mirrorLowerCup.rotation.y = -sideZ * 0.18;
+    tagHighLodDetail(mirrorLowerCup);
+    mirrorGroup.add(mirrorLowerCup);
+
+    const mirrorGlass = new THREE.Mesh(
+      new THREE.CircleGeometry(0.044, 16),
+      mats.diamondCutAlloyMat
+    );
+    mirrorGlass.name = 'outbuildings.garage.porsche992TurboS.wingMirror.glass';
+    mirrorGlass.scale.set(1.25, 0.72, 1.0);
+    mirrorGlass.position.set(0.068, 0.035, sideZ * 0.076);
+    mirrorGlass.rotation.y = Math.PI / 2 - sideZ * 0.16;
+    tagHighLodDetail(mirrorGlass);
+    mirrorGroup.add(mirrorGlass);
+
+    // 2. Recessed Door Handle Pocket & Flush Pop-Out Door Handle (`x = +0.16m, y = 0.782m`)
+    const handleZ = sampleLateralSurfaceZAtXY(0.16, 0.782);
+    const handlePocket = new THREE.Mesh(
+      new THREE.BoxGeometry(0.155, 0.042, 0.008),
+      mats.glossBlackTrimMat
+    );
+    handlePocket.name = 'outbuildings.garage.porsche992TurboS.doorHandle.recessPocket';
+    handlePocket.position.set(0.16, 0.782, sideZ * (handleZ - 0.001));
+    handlePocket.rotation.y = sideZ * 0.03;
+    tagHighLodDetail(handlePocket);
+    carGroup.add(handlePocket);
+
     const doorHandle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.145, 0.022, 0.014),
+      new THREE.BoxGeometry(0.148, 0.022, 0.012),
       mats.oceanBlueBodyMat
     );
     doorHandle.name = 'outbuildings.garage.porsche992TurboS.doorHandle';
-    doorHandle.position.set(0.14, 0.785, sideZ * 0.868);
+    doorHandle.position.set(0.16, 0.785, sideZ * (handleZ + 0.004));
+    doorHandle.rotation.y = sideZ * 0.03;
     carGroup.add(doorHandle);
 
-    // 992.2 Turbo S Side Intercooler Air Intake Scoop (`outbuildings.garage.porsche992TurboS.sideIntake`)
-    // Set flush into the leading flare of the widebody rear haunches (`x = +0.72m, y = 0.66m, z = ±0.905m`)
+    // 3. Sculpted Swept 992.2 Turbo S Side Intercooler Air Intake Scoop (`outbuildings.garage.porsche992TurboS.sideIntake`)
+    //    Matches the reference photo: tall, curved C-shaped gloss/satin black aero cowl scoop set into the
+    //    leading flare of the widebody rear haunch (`x = 0.62..0.90m, y = 0.54..0.81m`), tilted forward at the top!
     const sideIntakeGroup = new THREE.Group();
     sideIntakeGroup.name = 'outbuildings.garage.porsche992TurboS.sideIntake';
-    sideIntakeGroup.position.set(0.72, 0.665, sideZ * 0.905);
-    sideIntakeGroup.rotation.y = sideZ * 0.19;
     carGroup.add(sideIntakeGroup);
 
-    const intakePocket = new THREE.Mesh(
-      new THREE.BoxGeometry(0.28, 0.155, 0.042),
+    // 3A. Deep dark conformal intake throat patch (`x = 0.60..0.90m, v = 0.58..0.82`)
+    const throatPatchGeo = createConformalBodyPatchGeometry(
+      0.60,
+      0.90,
+      () => 0.58,
+      () => 0.80,
+      10,
+      8,
+      -0.012,
+      false
+    );
+    if (sideZ === 1) {
+      // Only add the symmetric throat once using mirrorBothSides=true below
+      throatPatchGeo.dispose();
+    }
+
+    // Curved C-shaped outer aerodynamic scoop cowling along the rear fender flare (`y = 0.545..0.815m`)
+    const cowlPts: THREE.Vector3[] = [];
+    const numCowlPts = 16;
+    for (let i = 0; i <= numCowlPts; i++) {
+      const t = i / numCowlPts; // 0 = bottom sill end, 0.5 = rear arc, 1.0 = upper shoulder tip
+      const py = lerp(0.545, 0.812, t);
+      // Sweeps rearward in the middle and forward at the top and bottom (matching the 992 Turbo S scoop in the photo!)
+      const px = lerp(0.76, 0.66, t) + Math.sin(t * Math.PI) * 0.115;
+      const zSurf = sampleLateralSurfaceZAtXY(px, py);
+      const pz = sideZ * (zSurf + 0.014);
+      cowlPts.push(new THREE.Vector3(px, py, pz));
+    }
+    const cowlCurve = new THREE.CatmullRomCurve3(cowlPts);
+    const cowlLipGeo = new THREE.TubeGeometry(cowlCurve, 20, 0.022, 10, false);
+    cowlLipGeo.computeBoundingSphere();
+    const cowlLipMesh = new THREE.Mesh(cowlLipGeo, mats.glossBlackTrimMat);
+    cowlLipMesh.name = 'outbuildings.garage.porsche992TurboS.sideIntake';
+    cowlLipMesh.scale.set(1.35, 1.0, 0.85);
+    cowlLipMesh.position.set(-0.74 * 0.35, 0, sideZ * 0.92 * 0.15);
+    sideIntakeGroup.add(cowlLipMesh);
+
+    // Leading edge satin-black intake ramp + internal horizontal splitter vane
+    const rampZ = sampleLateralSurfaceZAtXY(0.72, 0.678);
+    const intakeCavity = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.235, 0.048),
       mats.glossBlackTrimMat
     );
-    intakePocket.name = 'outbuildings.garage.porsche992TurboS.sideIntake';
-    sideIntakeGroup.add(intakePocket);
+    intakeCavity.name = 'outbuildings.garage.porsche992TurboS.sideIntake.throatCavity';
+    intakeCavity.position.set(0.735, 0.678, sideZ * (rampZ - 0.012));
+    intakeCavity.rotation.y = sideZ * 0.22;
+    intakeCavity.rotation.z = 0.34;
+    sideIntakeGroup.add(intakeCavity);
 
-    const intakeSplitterVane = new THREE.Mesh(
-      new THREE.BoxGeometry(0.26, 0.014, 0.05),
-      mats.oceanBlueBodyMat
-    );
-    intakeSplitterVane.name = 'outbuildings.garage.porsche992TurboS.sideIntake.splitterVane';
-    intakeSplitterVane.position.set(0.01, 0, sideZ * 0.006);
-    sideIntakeGroup.add(intakeSplitterVane);
+    for (const vaneOffY of [-0.038, 0.038] as const) {
+      const intakeSplitterVane = new THREE.Mesh(
+        new THREE.BoxGeometry(0.165, 0.010, 0.052),
+        mats.satinBlackAeroMat
+      );
+      intakeSplitterVane.name = 'outbuildings.garage.porsche992TurboS.sideIntake.splitterVane';
+      intakeSplitterVane.position.set(0.735 - vaneOffY * 0.28, 0.678 + vaneOffY, sideZ * (rampZ - 0.004));
+      intakeSplitterVane.rotation.y = sideZ * 0.22;
+      sideIntakeGroup.add(intakeSplitterVane);
+    }
   }
 }
 
 /**
  * Builds the conformal 992.2 rear engine decklid grille, sculpted active Turbo S rear wing
- * with side winglets, wrap-around recessed taillight visor, rear intercooler air-outlet vents,
+ * with upturned side winglets (clearly visible in the rear 3/4 view of the reference photo),
+ * wrap-around recessed taillight visor, rear intercooler air-outlet vents,
  * conformal rear valance/diffuser, rear UK number plate, and oval titanium exhaust tailpipes.
  */
 export function buildPorsche992RearAeroTaillightAndDiffuser(
@@ -254,7 +471,6 @@ export function buildPorsche992RearAeroTaillightAndDiffuser(
   decklidBaseMesh.name = 'outbuildings.garage.porsche992TurboS.rearDecklidGrille';
   decklidGrilleGroup.add(decklidBaseMesh);
 
-  // 9 longitudinal vertical intake slats + twin subtle central third-brake-light strips conformal to the decklid slope
   for (let s = -5; s <= 5; s++) {
     if (s === 0) continue;
     const isBrakeStrip = Math.abs(s) === 1;
@@ -275,38 +491,36 @@ export function buildPorsche992RearAeroTaillightAndDiffuser(
     decklidGrilleGroup.add(slat);
   }
 
-  // B. Authentic 992.2 Turbo S Active Rear Spoiler with Upturned Side Winglets (`outbuildings.garage.porsche992TurboS.rearWing`)
-  //    Built as a custom 3D swept aerofoil BufferGeometry that conforms to the plan-view curve and transverse camber of the 911 tail!
+  // B. Authentic 992.2 Turbo S Deployed Active Rear Wing with Upturned Side Winglets (`outbuildings.garage.porsche992TurboS.rearWing`)
+  //    Elevated slightly higher (`yBase = 0.875m`) with pronounced upturned outer side winglets so the wing profile
+  //    peeks cleanly above the rear haunch from the front-3/4 view just like in the reference photo!
   const rearWingGroup = new THREE.Group();
   rearWingGroup.name = 'outbuildings.garage.porsche992TurboS.rearWing';
   carGroup.add(rearWingGroup);
 
   {
-    const spanSegs = 36;
-    const chordSegs = 12;
-    const halfSpanZ = 0.66;
+    const spanSegs = 40;
+    const chordSegs = 14;
+    const halfSpanZ = 0.70;
     const wingPositions: number[] = [];
     const wingIndices: number[] = [];
 
-    // Airfoil cross-section `(uChord = 0..1` around upper and lower surfaces)
     for (let iz = 0; iz <= spanSegs; iz++) {
-      const tz = (iz / spanSegs) * 2 - 1; // -1 .. +1 across width
+      const tz = (iz / spanSegs) * 2 - 1;
       const z = tz * halfSpanZ;
       const absTz = Math.abs(tz);
 
-      // Plan-view sweep & chord taper
-      const chord = lerp(0.22, 0.165, absTz * absTz);
-      const xLead = 1.86 + getPlanWrapShiftX(2.02, z) + absTz * absTz * 0.04;
-      // Height follows the rear decklid camber (`0.848m` center, curving down at outer tips and kicking up at the outer 8% winglets!)
-      const wingletKick = smoothstep(0.86, 1.0, absTz) * 0.026;
-      const yBase = 0.848 - absTz * absTz * 0.028 + wingletKick;
+      const chord = lerp(0.23, 0.175, absTz * absTz);
+      const xLead = 1.84 + getPlanWrapShiftX(2.02, z) + absTz * absTz * 0.045;
+      const wingletKick = smoothstep(0.82, 1.0, absTz) * 0.038;
+      const yBase = 0.872 - absTz * absTz * 0.024 + wingletKick;
 
       for (let ic = 0; ic <= chordSegs; ic++) {
         const theta = (ic / chordSegs) * Math.PI * 2;
-        const cFrac = 0.5 - 0.5 * Math.cos(theta); // 0 at leading edge, 1 at trailing edge
+        const cFrac = 0.5 - 0.5 * Math.cos(theta);
         const isUpper = theta <= Math.PI;
-        const thickness = 0.022 * Math.sin(Math.pow(cFrac, 0.65) * Math.PI);
-        const camberPitch = -cFrac * 0.012 + Math.sin(cFrac * Math.PI) * 0.008;
+        const thickness = 0.024 * Math.sin(Math.pow(cFrac, 0.65) * Math.PI);
+        const camberPitch = -cFrac * 0.015 + Math.sin(cFrac * Math.PI) * 0.010;
 
         const px = xLead + cFrac * chord;
         const py = yBase + camberPitch + (isUpper ? thickness * 0.65 : -thickness * 0.35);
@@ -337,20 +551,18 @@ export function buildPorsche992RearAeroTaillightAndDiffuser(
     wingBladeMesh.receiveShadow = true;
     rearWingGroup.add(wingBladeMesh);
 
-    // Short twin inboard hydraulic rams (`z = ±0.34m`) connecting the active wing to the decklid
     for (const sideZ of [-1, 1] as const) {
       const ram = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.015, 0.018, 0.048, 12),
+        new THREE.CylinderGeometry(0.016, 0.020, 0.068, 12),
         mats.satinBlackAeroMat
       );
       ram.name = 'outbuildings.garage.porsche992TurboS.rearWing.hydraulicRam';
-      ram.position.set(1.95, 0.818, sideZ * 0.34);
+      ram.position.set(1.94, 0.832, sideZ * 0.36);
       rearWingGroup.add(ram);
     }
   }
 
   // C. Full-Width Wrap-Around Recessed 992.2 LED Taillight Visor & Lightbar (`outbuildings.garage.porsche992TurboS.taillightBar`)
-  //    Wraps around the rear quarter panels (`z = ±0.79m, x = 1.98m`) to the center tail (`x = 2.155m, y = 0.722m`)!
   const taillightGroup = new THREE.Group();
   taillightGroup.name = 'outbuildings.garage.porsche992TurboS.taillightBar';
   carGroup.add(taillightGroup);
@@ -365,7 +577,6 @@ export function buildPorsche992RearAeroTaillightAndDiffuser(
   }
   const tailCurve = new THREE.CatmullRomCurve3(tailCurvePts);
 
-  // Dark recessed visor channel surround
   const tailVisorSlotGeo = new THREE.TubeGeometry(tailCurve, 36, 0.028, 12, false);
   tailVisorSlotGeo.computeBoundingSphere();
   const tailVisorSlot = new THREE.Mesh(tailVisorSlotGeo, mats.glossBlackTrimMat);
@@ -373,7 +584,6 @@ export function buildPorsche992RearAeroTaillightAndDiffuser(
   tailVisorSlot.scale.set(1.0, 0.78, 1.0);
   taillightGroup.add(tailVisorSlot);
 
-  // Continuous glowing crimson-red 3D LED light strip
   const tailLedBladeGeo = new THREE.TubeGeometry(tailCurve, 40, 0.0095, 10, false);
   tailLedBladeGeo.computeBoundingSphere();
   const tailLedBlade = new THREE.Mesh(tailLedBladeGeo, mats.crimsonTaillightMat);
@@ -381,7 +591,6 @@ export function buildPorsche992RearAeroTaillightAndDiffuser(
   tailLedBlade.position.set(0.016, 0.004, 0);
   taillightGroup.add(tailLedBlade);
 
-  // Signature 992.2 outer 4-point LED rear brake light segments at left and right corners (`z = ±0.62..0.75m`)
   for (const sideZ of [-1, 1] as const) {
     for (const zOff of [0.63, 0.71] as const) {
       const bz = sideZ * zOff;
@@ -435,22 +644,20 @@ export function buildPorsche992RearAeroTaillightAndDiffuser(
     }
   }
 
-  // E. Conformal Lower Rear Valance / Venturi Diffuser, Recessed UK Number Plate & Quad/Oval Titanium Exhaust (`outbuildings.garage.porsche992TurboS.exhaust`)
+  // E. Conformal Lower Rear Valance / Venturi Diffuser, Recessed UK Number Plate & Oval Titanium Exhaust (`outbuildings.garage.porsche992TurboS.exhaust`)
   const exhaustGroup = new THREE.Group();
   exhaustGroup.name = 'outbuildings.garage.porsche992TurboS.exhaust';
   carGroup.add(exhaustGroup);
 
-  // Build the satin-black lower rear bumper diffuser insert as a conformal curved surface sheet (`y = 0.195..0.415m, z = -0.64..+0.64m`)
   {
     const dCols = 28;
     const dRows = 8;
     const dPos: number[] = [];
     const dIdx: number[] = [];
     for (let r = 0; r <= dRows; r++) {
-      const ty = r / dRows; // 0 at bottom (0.195m), 1 at top (0.415m)
+      const ty = r / dRows;
       const py = lerp(0.195, 0.415, ty);
       const baseX = lerp(2.195, 2.242, Math.sin(ty * Math.PI * 0.65));
-      // Taper width slightly toward top of valance trapezoid
       const halfW = lerp(0.65, 0.58, ty);
       for (let c = 0; c <= dCols; c++) {
         const tz = (c / dCols) * 2 - 1;
@@ -479,7 +686,6 @@ export function buildPorsche992RearAeroTaillightAndDiffuser(
     exhaustGroup.add(valanceMesh);
   }
 
-  // Rear UK Number Plate (`992 TBS` on yellow acrylic plate set cleanly into the central rear bumper recess at `y = 0.35m`)
   const rearPlate = new THREE.Mesh(
     new THREE.BoxGeometry(0.012, 0.086, 0.39),
     new THREE.MeshStandardMaterial({
@@ -492,7 +698,6 @@ export function buildPorsche992RearAeroTaillightAndDiffuser(
   tagHighLodDetail(rearPlate);
   carGroup.add(rearPlate);
 
-  // 4 Vertical aerodynamic diffuser strakes tucked cleanly under the center of the rear valance
   for (const sz of [-0.26, -0.09, 0.09, 0.26] as const) {
     const sx = 2.205 + getPlanWrapShiftX(2.22, sz);
     const strake = new THREE.Mesh(
@@ -504,7 +709,6 @@ export function buildPorsche992RearAeroTaillightAndDiffuser(
     exhaustGroup.add(strake);
   }
 
-  // Twin Large Oval Porsche Turbo S Titanium Sport Exhaust Tailpipes (`z = ±0.48m, y = 0.255m`)
   for (const sideZ of [-1, 1] as const) {
     const ez = sideZ * 0.48;
     const ex = 2.212 + getPlanWrapShiftX(2.22, ez);

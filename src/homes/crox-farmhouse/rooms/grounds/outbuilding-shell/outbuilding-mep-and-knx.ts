@@ -933,20 +933,20 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
     //    (FFL = 2.08m -> Doorways 1.15m AFFL = y: 3.23m; Bedside 0.72m AFFL = y: 2.80m)
     //    PA 2.1.15 · S1 Suite Bright / S2 Evening Relax / S3 Bedtime 5V Lamps
     // =========================================================================
-    // 6A. Suite West Entry Portal from Mezzanine (`v = 2.554..3.554m`) — North pier (`u = 23.232m, v = 2.32m`)
+    // 6A. Suite West Entry Portal from Mezzanine (`v = 2.405..3.305m`, centered at `v = 2.855m`) — mounted beside the entry steps (`u = 23.42m, v = 3.358m`)
     {
       customUnitName: 'outbuildings.stable.upper.knxSwitch.entryDoor',
       zoneId: 'outbuildingStableSuite',
       circuitId: 'stableSuiteDownlights',
       switchPa: '2.1.15',
       switchLocation: 'Guest Suite Entry Portal',
-      u: 23.232,
+      u: 23.42,
       y: 3.23,
-      v: 2.32,
-      facing: 'east',
+      v: 3.358,
+      facing: 'north',
       isFirstFloor: true,
     },
-    // 6B. Suite Ensuite Bathroom Door (`u = 24.62..25.38m, v = 3.62m`, hinged West) — East handle side (`u = 25.54m, v = 3.608m`)
+    // 6B. Suite Ensuite Bathroom Door (`u = 24.62..25.38m, v = 3.37m`, hinged West) — East handle side (`u = 25.54m, v = 3.358m`)
     {
       customUnitName: 'outbuildings.stable.upper.knxSwitch.ensuiteDoor',
       zoneId: 'outbuildingStableSuite',
@@ -955,7 +955,7 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
       switchLocation: 'Guest Suite Ensuite Door',
       u: 25.54,
       y: 3.23,
-      v: 3.608,
+      v: 3.358,
       facing: 'north',
       isFirstFloor: true,
     },

@@ -744,12 +744,17 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
   addFramedPoster(20.48, mezzanineFloorY + 0.84, 5.412, 0.40, 0.52, Math.PI, 'jurassicPark');
   addFramedPoster(23.005, mezzanineFloorY + 0.96, 4.28, 0.44, 0.58, -Math.PI / 2, 'bigLebowski');
 
-  // North wall (`v = 0.295m`, facing South `+z` into the Mezzanine, flanking the hayloft window `u = 19.46..20.24m`
-  // and clear of the North-wall bookcase at `u = 21.36..22.40m`!):
-  addFramedPoster(19.08, mezzanineFloorY + 0.98, 0.295, 0.40, 0.52, 0, 'oasis');
-  addFramedPoster(19.08, mezzanineFloorY + 0.38, 0.295, 0.40, 0.52, 0, 'pulpFiction');
-  addFramedPoster(20.76, mezzanineFloorY + 0.98, 0.295, 0.42, 0.54, 0, 'spiceGirls');
-  addFramedPoster(20.76, mezzanineFloorY + 0.38, 0.295, 0.42, 0.54, 0, 'trainspotting');
+  // Issues #7, #8 & #10:
+  // - Issue #7 ("this picture overlaps skirting" on `outbuildings.mezzanine.poster.pulpFiction`) &
+  //   Issue #8 ("move it to here" at `[0.292, 2.325, 19.494]` -> `local u = 22.38m, y = 2.325m, v = 5.412m`):
+  //   Moved `pulpFiction` from the lower North wall to `(22.38, 2.325, 5.412)` on the South Mezzanine wall (`rotY = Math.PI`).
+  // - Issue #10 ("get rid of this picture, center the spice girls better" on `outbuildings.mezzanine.poster.trainspotting`):
+  //   Removed `trainspotting` and centered `spiceGirls` at `(20.82, 2.325, 0.295)` (exact horizontal midpoint between the
+  //   hayloft window architrave `u = 20.28m` and bookcase `u = 21.36m`, and centered vertically at eye level `y = 2.325m`
+  //   well clear of the skirting board, matching `oasis` at `(19.07, 2.325, 0.295)`).
+  addFramedPoster(19.07, 2.325, 0.295, 0.40, 0.52, 0, 'oasis');
+  addFramedPoster(22.38, 2.325, 5.412, 0.40, 0.52, Math.PI, 'pulpFiction');
+  addFramedPoster(20.82, 2.325, 0.295, 0.42, 0.54, 0, 'spiceGirls');
 
   // =========================================================================
   // 9. 5-SHELF WOODEN RETRO BOOKCASE, BOARD GAMES, VHS/CD COLLECTION, LAVA LAMP
@@ -1156,10 +1161,10 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
   dlPointLight.position.set(0.14, 0.24, 0);
   deskLampGroup.add(dlPointLight);
 
-  // 6. 2 Warm Brass & Pleated-Linen Wall Sconces (`outbuildings.mezzanine.wallSconce.1` on East wall & `.2` on South wall)
+  // 6. Warm Brass & Pleated-Linen Wall Sconce (`outbuildings.mezzanine.wallSconce.1` on East wall;
+  //    removed `.2` on South wall per Issue #9: "remove this wall light" at `[-1.946, 2.731, 19.687]`)
   for (const [sIdx, su, sy, sv, sRotY] of [
     [1, 23.005, mezzanineFloorY + 1.22, 0.72, -Math.PI / 2],
-    [2, 20.08, mezzanineFloorY + 1.22, 5.41, Math.PI],
   ] as const) {
     const sconceGroup = new THREE.Group();
     sconceGroup.name = `outbuildings.mezzanine.wallSconce.${sIdx}`;

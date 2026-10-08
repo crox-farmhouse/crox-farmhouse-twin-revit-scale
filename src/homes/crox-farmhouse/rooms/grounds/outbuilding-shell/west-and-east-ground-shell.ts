@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildMitredArchitraveSegments } from '../../../../../engine/geometry/index.ts';
 import {
   buildBarnGolfSimulator,
   buildBarnSpiralStaircase,
@@ -604,8 +605,8 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   // Move the 2-step floor drop `50cm` forward (West) from `uMezzanineFront = 18.68m` to `uBarnStepDropStart = 18.18m`,
   // so `barnWestFloor` spans `u = 15.20..18.18m` (`2.98m` wide), the 2 bullnose oak steps span `u = 18.18..18.46m`,
   // and the carpeted lower lounge/pool/bar floor (`barnEastLowerFloor`) spans `u = 18.46..23.02m` (`4.56m` wide — 50cm larger!).
-  const uBarnStepDropStart = uMezzanineFront - 0.50; // 18.18m
-  const barnWestFloorSpanU = uBarnStepDropStart - (uBarnStart + 0.24); // 2.98m
+  const uBarnStepDropStart = 18.00; // 18.00m (Riser #1 = 18.00m, Riser #2 = 18.24m -> true stair nosing pitch line lands at u = 18.502m before North Pilaster at 18.53m!)
+  const barnWestFloorSpanU = uBarnStepDropStart - (uBarnStart + 0.24); // 2.96m
   const barnWestFloorCenterU = uBarnStart + 0.24 + barnWestFloorSpanU * 0.5;
   const barnFloorCenterV = vEastRangeNorth + wallT + eastRangeInternalV * 0.5;
   const barnWestFloorGeo = new THREE.BoxGeometry(barnWestFloorSpanU, 0.38, eastRangeInternalV);
@@ -623,17 +624,19 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   barnWestFloor.receiveShadow = true;
   groundGroup.add(barnWestFloor);
 
-  // 2 Bullnose Light-Oak Steps Down at `u = 18.18m..18.46m` dropping from `barnWestFloorY = -0.34m`
-  // down to the carpeted lower floor (`-0.675m`), spanning `v = 0.28m..3.62m` (`stepSpanV = 3.34m`) so the South end
-  // of the steps butts cleanly against the North edge (`v = 3.62m`) of the shifted Golf Viewing Bar (`u = 18.18..18.58m, v = 3.62..5.42m`)!
-  const stepDownDepthU = 0.28;
+  // 2 Bullnose Honed-Limestone Steps Down at `u = 18.16m..18.40m` dropping from `barnWestFloorY = -0.34m`
+  // down to the lower limestone floor (`-0.675m`), spanning `v = 0.302m..3.62m` so the North end houses cleanly
+  // against the 22mm Carpenter's Raked Stair-Stringer Skirting Board (`westNorthRight`) and the South end
+  // butts cleanly against the North edge (`v = 3.62m`) of the Golf Viewing Bar!
+  const stepDownDepthU = 0.24;
   const stepTreadT = 0.032;
   const stepBullnoseR = stepTreadT * 0.5; // 16mm half-round bullnose radius
   const stepOverhangU = 0.022;
   const step1TopY = (barnWestFloorY + barnCarpetTopY) * 0.5; // -0.5075m
   const vGolfBarNorthEdge = 3.62;
-  const stepSpanV = vGolfBarNorthEdge - (vEastRangeNorth + wallT); // 3.34m (0.28m..3.62m)
-  const stepCenterV = vEastRangeNorth + wallT + stepSpanV * 0.5;   // 1.95m
+  const vStepNorthStart = vEastRangeNorth + wallT + 0.022; // 0.302m (houses cleanly against the 22mm North wall raked stair-stringer skirting!)
+  const stepSpanV = vGolfBarNorthEdge - vStepNorthStart;   // 3.322m (0.298m..3.62m)
+  const stepCenterV = vStepNorthStart + stepSpanV * 0.5;   // 1.959m
 
   // Issue #2 ("Putt he limestone down here too and on the step no carpet" at `[-3.488, -0.675, 16.902]`, `outbuildings.barn.eastLowerFloor`):
   // Continuous large-format Honed Limestone (`barnLimestoneFloorMat`, `uvScale = 0.34`) across the top step, middle step, risers,
@@ -734,7 +737,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   const barnLowerFloorStartU = uBarnStepDropStart + stepDownDepthU; // 18.46m
   const barnLowerFloorSpanU = uBarnEnd - partT - barnLowerFloorStartU; // 4.56m
   const barnEastFloorCenterU = barnLowerFloorStartU + barnLowerFloorSpanU * 0.5;
-  const barnEastLowerFloorGeo = new THREE.BoxGeometry(barnLowerFloorSpanU, 0.145, eastRangeInternalV);
+  const barnEastLowerFloorGeo = new THREE.BoxGeometry(barnLowerFloorSpanU + 0.01, 0.145, eastRangeInternalV + 0.02);
   applyOutbuildingFloorUVs(barnEastLowerFloorGeo, barnEastFloorCenterU, barnCarpetTopY - 0.0725, barnFloorCenterV, 0.34);
   const barnEastLowerFloor = new THREE.Mesh(
     barnEastLowerFloorGeo,
@@ -942,29 +945,37 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     headJamb.position.set(0, passDoorH - jambT * 0.5, 0);
     passDoorGroup.add(headJamb);
 
-    for (const faceX of [-0.125, 0.125] as const) {
-      for (const sideZ of [-1, 1] as const) {
-        const legArch = new THREE.Mesh(
-          new THREE.BoxGeometry(0.018, passDoorH + 0.065, 0.068),
-          lightJoineryOakMat
-        );
-        legArch.name = 'outbuildings.garage.golfPassThroughDoor.architrave';
-        legArch.position.set(faceX, (passDoorH + 0.065) * 0.5, sideZ * (passDoorW * 0.5 + 0.018));
-        passDoorGroup.add(legArch);
-      }
-      const headArch = new THREE.Mesh(
-        new THREE.BoxGeometry(0.018, 0.068, passDoorW + 0.172),
-        lightJoineryOakMat
+    for (const [normalSign, faceWallX, archMat] of [
+      [-1 as const, -0.12, warmRoomPlasterMat],
+      [1 as const, 0.12, settingPlasterMat],
+    ] as const) {
+      const [leftLegGeo, headGeo, rightLegGeo] = buildMitredArchitraveSegments(
+        -(passDoorW * 0.5 - 0.016),
+        passDoorW * 0.5 - 0.016,
+        0,
+        0,
+        passDoorH - 0.002,
+        'z',
+        faceWallX,
+        normalSign,
+        0.068,
+        0.022
       );
-      headArch.name = 'outbuildings.garage.golfPassThroughDoor.architrave';
-      headArch.position.set(faceX, passDoorH + 0.032, 0);
-      passDoorGroup.add(headArch);
+      for (const segGeo of [leftLegGeo, rightLegGeo, headGeo] as const) {
+        const archMesh = new THREE.Mesh(segGeo, archMat);
+        archMesh.name = 'outbuildings.garage.golfPassThroughDoor.architrave';
+        archMesh.castShadow = true;
+        archMesh.receiveShadow = true;
+        passDoorGroup.add(archMesh);
+      }
     }
 
-    // Building Regulations Part B (Fire Safety — Garage to Habitable Building Separation):
-    // Self-Closing FD30S 4-Panel Solid European Oak Fire & Cold-Smoke Door (`outbuildings.garage.golfPassThroughDoor.fireDoor`)
-    // with intumescent/brush smoke perimeter seals, overhead brushed-brass scissor-arm door closer, and interactive swing.
-    const fireDoorClearW = passDoorW - jambT * 2 - 0.008; // 0.848m clear Part M compliant leaf width
+    // Building Regulations Part B (Fire Safety — Garage to Habitable Building Separation) +
+    // Issue #1 ("i want a window on this door" at `[-10.282, 0.919, 15.708]` on `outbuildings.garage.golfPassThroughDoor.fireDoor.leaf`):
+    // Self-Closing Half-Glazed FD30S Solid European Oak Fire & Cold-Smoke Door (`outbuildings.garage.golfPassThroughDoor.fireDoor`)
+    // featuring a clear fire-rated Pyroguard vision window in the upper half (`y = 0.96..1.845m`) with solid-oak glazing beads
+    // and glazing bar, framed solid-oak stiles/rails, recessed lower Shaker panel, intumescent seals, and overhead closer.
+    const fireDoorClearW = passDoorW - jambT * 2 - 0.008;
     const fireDoorClearH = passDoorH - 0.16 - jambT - 0.008; // 1.96m leaf height above the 160mm fuel-spill step
     const fireDoorT = 0.044; // 44mm statutory FD30S fire door thickness
     const fireLeafPivot = new THREE.Group();
@@ -972,15 +983,122 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     fireLeafPivot.position.set(0, 0.162, -fireDoorClearW * 0.5);
     passDoorGroup.add(fireLeafPivot);
 
-    const fireDoorPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(fireDoorT, fireDoorClearH, fireDoorClearW),
+    const stileW = 0.112;
+    const botRailH = 0.20;
+    const lockRailBotY = 0.82;
+    const lockRailTopY = 0.96;
+    const topRailH = 0.115;
+    const winBotY = lockRailTopY; // 0.96m
+    const winTopY = fireDoorClearH - topRailH; // 1.845m
+    const winH = winTopY - winBotY; // 0.885m
+    const innerSpanW = fireDoorClearW - stileW * 2;
+    const innerMidZ = fireDoorClearW * 0.5;
+
+    // 1. Hinge Stile (`z = 0..stileW`, keeps primary `.leaf` name for USD/annotation compatibility) & Leading Stile
+    const hingeStile = new THREE.Mesh(
+      new THREE.BoxGeometry(fireDoorT, fireDoorClearH, stileW),
       lightJoineryOakMat
     );
-    fireDoorPanel.name = 'outbuildings.garage.golfPassThroughDoor.fireDoor.leaf';
-    fireDoorPanel.position.set(0, fireDoorClearH * 0.5, fireDoorClearW * 0.5);
-    fireDoorPanel.castShadow = true;
-    fireDoorPanel.receiveShadow = true;
-    fireLeafPivot.add(fireDoorPanel);
+    hingeStile.name = 'outbuildings.garage.golfPassThroughDoor.fireDoor.leaf';
+    hingeStile.position.set(0, fireDoorClearH * 0.5, stileW * 0.5);
+    hingeStile.castShadow = true;
+    hingeStile.receiveShadow = true;
+    fireLeafPivot.add(hingeStile);
+
+    const leadingStile = new THREE.Mesh(
+      new THREE.BoxGeometry(fireDoorT, fireDoorClearH, stileW),
+      lightJoineryOakMat
+    );
+    leadingStile.name = 'outbuildings.garage.golfPassThroughDoor.fireDoor.stile.leading';
+    leadingStile.position.set(0, fireDoorClearH * 0.5, fireDoorClearW - stileW * 0.5);
+    leadingStile.castShadow = true;
+    leadingStile.receiveShadow = true;
+    fireLeafPivot.add(leadingStile);
+
+    // 2. Bottom Rail (`y = 0..0.20m`), Lock/Waist Rail (`y = 0.82..0.96m`), and Top Rail (`y = 1.845..1.96m`)
+    for (const [rTag, ry0, ry1] of [
+      ['bottom', 0, botRailH],
+      ['lock', lockRailBotY, lockRailTopY],
+      ['top', winTopY, fireDoorClearH],
+    ] as const) {
+      const rh = ry1 - ry0;
+      const railMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(fireDoorT, rh, innerSpanW),
+        lightJoineryOakMat
+      );
+      railMesh.name = `outbuildings.garage.golfPassThroughDoor.fireDoor.rail.${rTag}`;
+      railMesh.position.set(0, ry0 + rh * 0.5, innerMidZ);
+      railMesh.castShadow = true;
+      railMesh.receiveShadow = true;
+      fireLeafPivot.add(railMesh);
+    }
+
+    // 3. Recessed Solid-Oak Lower Shaker Panel (`y = 0.20..0.82m`) with perimeter chamfered bead mouldings
+    const lowerPanelH = lockRailBotY - botRailH;
+    const lowerPanel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.024, lowerPanelH, innerSpanW),
+      lightJoineryOakMat
+    );
+    lowerPanel.name = 'outbuildings.garage.golfPassThroughDoor.fireDoor.lowerPanel';
+    lowerPanel.position.set(0, botRailH + lowerPanelH * 0.5, innerMidZ);
+    lowerPanel.castShadow = true;
+    lowerPanel.receiveShadow = true;
+    fireLeafPivot.add(lowerPanel);
+
+    // 4. Upper Clear Fire-Rated Glass Window (`y = 0.96..1.845m`, `winH = 0.885m`)
+    const winMidY = winBotY + winH * 0.5;
+    const doorWindowGlass = new THREE.Mesh(
+      new THREE.BoxGeometry(0.014, winH - 0.012, innerSpanW - 0.012),
+      windowGlassMat
+    );
+    doorWindowGlass.name = 'outbuildings.garage.golfPassThroughDoor.fireDoor.windowGlass';
+    doorWindowGlass.position.set(0, winMidY, innerMidZ);
+    fireLeafPivot.add(doorWindowGlass);
+
+    // Solid-oak perimeter glazing beads around the window aperture on both faces + central horizontal glazing bar
+    const beadT = 0.014;
+    const beadD = 0.012;
+    for (const faceSign of [-1, 1] as const) {
+      const fTag = faceSign < 0 ? 'garage' : 'corridor';
+      const bx = faceSign * (fireDoorT * 0.5 - beadD * 0.5 + 0.002);
+
+      for (const [bSide, by] of [
+        ['bottom', winBotY + beadT * 0.5],
+        ['top', winTopY - beadT * 0.5],
+      ] as const) {
+        const hBead = new THREE.Mesh(
+          new THREE.BoxGeometry(beadD, beadT, innerSpanW),
+          lightJoineryOakPostMat
+        );
+        hBead.name = `outbuildings.garage.golfPassThroughDoor.fireDoor.glazingBead.${fTag}.${bSide}`;
+        hBead.userData.lodTier = 'high';
+        hBead.position.set(bx, by, innerMidZ);
+        fireLeafPivot.add(hBead);
+      }
+
+      for (const [bSide, bz] of [
+        ['hinge', stileW + beadT * 0.5],
+        ['leading', fireDoorClearW - stileW - beadT * 0.5],
+      ] as const) {
+        const vBead = new THREE.Mesh(
+          new THREE.BoxGeometry(beadD, winH - beadT * 2, beadT),
+          lightJoineryOakPostMat
+        );
+        vBead.name = `outbuildings.garage.golfPassThroughDoor.fireDoor.glazingBead.${fTag}.${bSide}`;
+        vBead.userData.lodTier = 'high';
+        vBead.position.set(bx, winMidY, bz);
+        fireLeafPivot.add(vBead);
+      }
+    }
+
+    // Horizontal solid-oak glazing bar dividing the window into 2 vertical lights
+    const winGlazingBar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.03, 0.022, innerSpanW - beadT * 2),
+      lightJoineryOakPostMat
+    );
+    winGlazingBar.name = 'outbuildings.garage.golfPassThroughDoor.fireDoor.windowGlazingBar';
+    winGlazingBar.position.set(0, winMidY, innerMidZ);
+    fireLeafPivot.add(winGlazingBar);
 
     // Intumescent & cold-smoke brush strip along the leading edge and top rail of the FD30S door
     const intumescentMat = new THREE.MeshStandardMaterial({
@@ -996,14 +1114,39 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     smokeSealLeading.position.set(0, fireDoorClearH * 0.5, fireDoorClearW + 0.001);
     fireLeafPivot.add(smokeSealLeading);
 
+    // 3 Brushed-brass fire-rated butt hinges along the hinge stile (`z = 0.003m`)
+    let hingeIdx = 0;
+    for (const hy of [0.24, 0.98, 1.72] as const) {
+      hingeIdx++;
+      const hingeKnuckle = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.007, 0.007, 0.1, 12),
+        spotlightBrassTrimMat
+      );
+      hingeKnuckle.name = `outbuildings.garage.golfPassThroughDoor.fireDoor.hinge.${hingeIdx}`;
+      hingeKnuckle.userData.lodTier = 'high';
+      hingeKnuckle.position.set(0.024, hy, 0.003);
+      fireLeafPivot.add(hingeKnuckle);
+    }
+
     // Brushed-brass FD30S fire-rated lever handles & circular roses on both faces + overhead scissor-arm closer
     for (const faceSign of [-1, 1] as const) {
+      const sideLabel = faceSign < 0 ? 'garage' : 'corridor';
+      const rose = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.026, 0.026, 0.008, 18),
+        spotlightBrassTrimMat
+      );
+      rose.name = `outbuildings.garage.golfPassThroughDoor.fireDoor.handleRose.${sideLabel}`;
+      rose.userData.lodTier = 'high';
+      rose.rotation.z = Math.PI / 2;
+      rose.position.set(faceSign * 0.026, 0.91, fireDoorClearW - stileW * 0.5);
+      fireLeafPivot.add(rose);
+
       const handleLever = new THREE.Mesh(
         new THREE.BoxGeometry(0.022, 0.018, 0.12),
         spotlightBrassTrimMat
       );
-      handleLever.name = `outbuildings.garage.golfPassThroughDoor.fireDoor.handle.${faceSign < 0 ? 'garage' : 'corridor'}`;
-      handleLever.position.set(faceSign * 0.036, 0.98, fireDoorClearW - 0.065);
+      handleLever.name = `outbuildings.garage.golfPassThroughDoor.fireDoor.handle.${sideLabel}`;
+      handleLever.position.set(faceSign * 0.038, 0.91, fireDoorClearW - stileW * 0.5 - 0.042);
       fireLeafPivot.add(handleLever);
     }
 
@@ -1110,7 +1253,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       v0: number;
       v1: number;
     }> = [
-      { id: 'centerMullionColumn', uDepth: beamDepthU, v0: corridorSouthV + 0.010, v1: simCutoutVMin + 0.058 },
+      { id: 'centerMullionColumn', uDepth: beamDepthU, v0: simCutoutVMin + 0.002, v1: simCutoutVMin + 0.058 },
       { id: 'southWallColumn', uDepth: beamDepthU, v0: simCutoutVMax - 0.058, v1: simCutoutVMax },
     ];
 
@@ -1118,7 +1261,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       const colSpanV = col.v1 - col.v0;
       const colMidV = (col.v0 + col.v1) * 0.5;
       const colMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(col.uDepth, colH, colSpanV),
+        new THREE.BoxGeometry(col.uDepth, colH - 0.024, colSpanV),
         structuralSteelMat
       );
       colMesh.name = `outbuildings.barn.golfSimulator.steelPortalFrame.${col.id}`;
@@ -1264,9 +1407,10 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     const corridorWallT = corridorWallSouthFaceV - corridorSouthV; // 0.090m (`v = 1.240m .. 1.330m`)
     const corridorWallMidV = (corridorSouthV + corridorWallSouthFaceV) * 0.5; // 1.285m
 
-    // Extend `corridorSouthWall` to `u = 15.20m` on the corridor side (`v = 1.240..1.330m`) in
-    // Farrow & Ball Setting Plaster (`settingPlasterMat`) so the corridor matches the Barn walls all the way down!
-    const corridorSouthFullU1 = frameCenterU + 0.10; // 15.20m
+    // Extend `corridorSouthWall` to `u = 15.18m` on the corridor side (`v = 1.240..1.330m`) in
+    // Farrow & Ball Setting Plaster (`settingPlasterMat`) so the 18mm `westPartitionCenter` skirting return (`u = 15.180..15.198m`)
+    // caps its East end flush at `u = 15.198m` with zero coplanar overlap against `centerMullionColumn` (`v = 1.332..1.388m`)!
+    const corridorSouthFullU1 = frameCenterU + 0.08; // 15.18m
     const corridorSouthFullLenU = corridorSouthFullU1 - corridorWallU0;
     const corridorSouthFullMidU = (corridorWallU0 + corridorSouthFullU1) * 0.5;
     const corridorSouthWall = new THREE.Mesh(
@@ -1462,27 +1606,36 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       jamb.position.set(0, (gDoorH - jambT) * 0.5, sideV * (gDoorW * 0.5 - jambT * 0.5));
       glassDoorGroup.add(jamb);
 
-      for (const sideX of [-1, 1] as const) {
-        const archLeg = new THREE.Mesh(
-          new THREE.BoxGeometry(0.016, gDoorH + 0.04, 0.054),
-          lightJoineryOakPostMat
-        );
-        archLeg.name = `outbuildings.barn.stableGlassDoor.architraveLeg.${sideX < 0 ? "west" : "east"}.${sideV < 0 ? "north" : "south"}`;
-        archLeg.position.set(
-          sideX * (partT * 0.5 + 0.008),
-          (gDoorH + 0.04) * 0.5,
-          sideV * (gDoorW * 0.5 + 0.016)
-        );
-        glassDoorGroup.add(archLeg);
-      }
     }
     for (const sideX of [-1, 1] as const) {
-      const archHead = new THREE.Mesh(
-        new THREE.BoxGeometry(0.016, 0.054, gDoorW + 0.086),
-        lightJoineryOakPostMat
+      const [northLegGeo, headGeo, southLegGeo] = buildMitredArchitraveSegments(
+        -(gDoorW * 0.5 - 0.011),
+        gDoorW * 0.5 - 0.011,
+        0,
+        0,
+        gDoorH - 0.009,
+        'z',
+        sideX * (partT * 0.5),
+        sideX,
+        0.058,
+        0.020
       );
+      const northLeg = new THREE.Mesh(northLegGeo, settingPlasterMat);
+      northLeg.name = `outbuildings.barn.stableGlassDoor.architraveLeg.${sideX < 0 ? "west" : "east"}.north`;
+      northLeg.castShadow = true;
+      northLeg.receiveShadow = true;
+      glassDoorGroup.add(northLeg);
+
+      const southLeg = new THREE.Mesh(southLegGeo, settingPlasterMat);
+      southLeg.name = `outbuildings.barn.stableGlassDoor.architraveLeg.${sideX < 0 ? "west" : "east"}.south`;
+      southLeg.castShadow = true;
+      southLeg.receiveShadow = true;
+      glassDoorGroup.add(southLeg);
+
+      const archHead = new THREE.Mesh(headGeo, settingPlasterMat);
       archHead.name = `outbuildings.barn.stableGlassDoor.architraveHead.${sideX < 0 ? "west" : "east"}`;
-      archHead.position.set(sideX * (partT * 0.5 + 0.008), gDoorH + 0.018, 0);
+      archHead.castShadow = true;
+      archHead.receiveShadow = true;
       glassDoorGroup.add(archHead);
     }
 
@@ -1564,28 +1717,71 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       Math.PI * 0.45
     );
 
-    // Solid Light-Oak Bullnose Threshold Step on the Barn side (`u = 22.74..23.02m, y = -0.675m..-0.555m`)
-    const stepH = (gDoorBotY - barnCarpetTopY) * 0.5; // 0.1175m
-    const stepD = 0.28;
-    const stepW = gDoorW + 0.10;
+    // Issue #3 ("Step should be a bit wider to be correct so so the architrave doesn't sit right on the edge of it"
+    // at `[0.472, -0.675, 15.933]`):
+    // Widened Solid Light-Oak Bullnose Threshold Step (`v = 1.81..3.01m`, `stepW = 1.20m`) extending 12.3cm past
+    // the outer edges of both the North (`v = 1.933m`) and South (`v = 2.887m`) doorway architraves, spanning the
+    // full `0.235m` rise from `barnCarpetTopY = -0.675m` to `gDoorBotY = -0.44m` with a 3-sided bullnose tread cap!
+    const fullStepH = gDoorBotY - barnCarpetTopY; // 0.235m
+    const treadT = 0.032;
+    const noseR = treadT * 0.5; // 0.016m
+    const riserH = fullStepH - treadT; // 0.203m
+    const stepD = 0.30;
+    const stepW = gDoorW + 0.34; // 1.20m (`z = -0.60..+0.60m`, `v = 1.81..3.01m`)
+    const stepRiserBlock = new THREE.Mesh(
+      new THREE.BoxGeometry(stepD, riserH, stepW),
+      lightJoineryOakMat
+    );
+    stepRiserBlock.name = 'outbuildings.barn.stableDoorStep.riserBlock';
+    stepRiserBlock.position.set(-partT * 0.5 - stepD * 0.5, -treadT - riserH * 0.5, 0);
+    stepRiserBlock.castShadow = true;
+    stepRiserBlock.receiveShadow = true;
+    glassDoorGroup.add(stepRiserBlock);
+
     const stepBlock = new THREE.Mesh(
-      new THREE.BoxGeometry(stepD, stepH, stepW),
+      new THREE.BoxGeometry(stepD + 0.016, treadT, stepW + 0.024),
       lightJoineryOakMat
     );
     stepBlock.name = 'outbuildings.barn.stableDoorStep';
-    stepBlock.position.set(-partT * 0.5 - stepD * 0.5, -stepH * 0.5, 0);
+    stepBlock.position.set(-partT * 0.5 - (stepD + 0.016) * 0.5, -treadT * 0.5, 0);
     stepBlock.castShadow = true;
     stepBlock.receiveShadow = true;
     glassDoorGroup.add(stepBlock);
 
+    const frontTreadX = -partT * 0.5 - (stepD + 0.016);
+    const halfTreadW = (stepW + 0.024) * 0.5;
     const stepBullnose = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.016, 0.016, stepW, 16),
+      new THREE.CylinderGeometry(noseR, noseR, stepW + 0.024, 16),
       lightJoineryOakMat
     );
     stepBullnose.name = 'outbuildings.barn.stableDoorStep.bullnose';
     stepBullnose.rotation.x = Math.PI / 2;
-    stepBullnose.position.set(-partT * 0.5 - stepD, -0.016, 0);
+    stepBullnose.position.set(frontTreadX, -noseR, 0);
+    stepBullnose.castShadow = true;
+    stepBullnose.receiveShadow = true;
     glassDoorGroup.add(stepBullnose);
+
+    for (const sideZ of [-1, 1] as const) {
+      const sideLabel = sideZ < 0 ? 'north' : 'south';
+      const returnNose = new THREE.Mesh(
+        new THREE.CylinderGeometry(noseR, noseR, stepD + 0.016, 16),
+        lightJoineryOakMat
+      );
+      returnNose.name = `outbuildings.barn.stableDoorStep.bullnose.${sideLabel}`;
+      returnNose.rotation.z = Math.PI / 2;
+      returnNose.position.set(-partT * 0.5 - (stepD + 0.016) * 0.5, -noseR, sideZ * halfTreadW);
+      returnNose.castShadow = true;
+      returnNose.receiveShadow = true;
+      glassDoorGroup.add(returnNose);
+
+      const cornerSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(noseR, 14, 14),
+        lightJoineryOakMat
+      );
+      cornerSphere.name = `outbuildings.barn.stableDoorStep.bullnoseCorner.${sideLabel}`;
+      cornerSphere.position.set(frontTreadX, -noseR, sideZ * halfTreadW);
+      glassDoorGroup.add(cornerSphere);
+    }
   }
 
   addOutbuildingBrickWall(
@@ -1595,7 +1791,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     mezzanineFloorY,
     stableGroundTopY,
     vEastRangeNorth + wallT + 0.002,
-    2.554,
+    2.405,
     ['-x', '+z', '-z'],
     warmRoomPlasterMat,
     settingPlasterMat
@@ -1606,7 +1802,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     uBarnEnd,
     mezzanineFloorY,
     stableGroundTopY,
-    3.554,
+    3.305,
     vEastRangeSouth - wallT - 0.002,
     ['-x', '+z', '-z'],
     warmRoomPlasterMat,
@@ -1618,8 +1814,8 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     uBarnEnd,
     mezzanineFloorY,
     stableUpperFloorY,
-    2.554,
-    3.554,
+    2.405,
+    3.305,
     ['+x', '-x', '+z', '-z'],
     settingPlasterMat,
     settingPlasterMat
@@ -1657,6 +1853,18 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     uBarnEnd,
     barnLowerFloorY - 0.14,
     mezzanineFloorY,
+    vEastRangeSouth - wallT,
+    vEastRangeSouth,
+    ['-z'],
+    exteriorBrickMat,
+    settingPlasterMat
+  );
+  addOutbuildingBrickWall(
+    groundGroup,
+    uBarnEnd - partT,
+    uBarnEnd,
+    mezzanineFloorY,
+    stableGroundTopY,
     vEastRangeSouth - wallT,
     vEastRangeSouth,
     ['-z'],
@@ -1762,29 +1970,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     courtyardDoorMat,
     'Barn Courtyard Door'
   );
-  // Interior solid light-oak architrave & lintel casing on the Barn side (`v = 0.28m`) of the Barn Courtyard Door (`u = 15.85..16.85m, y = -0.34..1.68m`)
-  {
-    const barnDoorCasing = new THREE.Group();
-    barnDoorCasing.name = 'outbuildings.barn.courtyardDoorInteriorCasing';
-    barnDoorCasing.position.set(16.35, barnWestFloorY, vEastRangeNorth + wallT);
-    groundGroup.add(barnDoorCasing);
-    for (const sideU of [-1, 1] as const) {
-      const leg = new THREE.Mesh(
-        new THREE.BoxGeometry(0.068, 2.04, 0.022),
-        lightJoineryOakMat
-      );
-      leg.name = `outbuildings.barn.courtyardDoorInteriorCasing.leg.${sideU < 0 ? "west" : "east"}`;
-      leg.position.set(sideU * 0.514, 1.02, 0.011);
-      barnDoorCasing.add(leg);
-    }
-    const head = new THREE.Mesh(
-      new THREE.BoxGeometry(1.12, 0.075, 0.026),
-      lightJoineryOakMat
-    );
-    head.name = 'outbuildings.barn.courtyardDoorInteriorCasing.head';
-    head.position.set(0, 2.055, 0.013);
-    barnDoorCasing.add(head);
-  }
+
 
   // West Barn North Courtyard Wall (`u = 16.85..18.68m`, rising to `barnUpperTopY = 2.92m`) & East Barn Lower North Wall under Mezzanine (`u = 18.68..23.22m, y <= 1.54m`)
   // finished in Farrow & Ball "Setting Plaster" (`settingPlasterMat`) per Issues #8 & #9!
@@ -1810,6 +1996,19 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     vEastRangeNorth + wallT,
     ['+z'],
     [{ uCenter: 21.35, yCenter: 0.78, width: 0.92, height: 0.76 }],
+    settingPlasterMat
+  );
+  // Fill the `u = 23.02..23.22m, y = 1.54..1.96m` Barn/Stable step junction on the North Courtyard Wall (Issue #1: "random hole in the wall here")
+  addOutbuildingBrickWall(
+    groundGroup,
+    uBarnEnd - partT,
+    uBarnEnd,
+    mezzanineFloorY,
+    stableGroundTopY,
+    vEastRangeNorth,
+    vEastRangeNorth + wallT,
+    ['+z'],
+    exteriorBrickMat,
     settingPlasterMat
   );
 
@@ -1915,18 +2114,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       roughness: 0.55,
       metalness: 0.45,
     });
-    for (const [sideTag, vChan] of [
-      ['north', wallT + 0.026],
-      ['south', vEastRangeSouth - wallT - 0.026],
-    ] as const) {
-      const perimeterDrain = new THREE.Mesh(
-        new THREE.BoxGeometry(4.48, 0.006, 0.028),
-        dampChannelMat
-      );
-      perimeterDrain.name = `outbuildings.buildingRegs.partCCavityDrainChannel.${sideTag}`;
-      perimeterDrain.position.set(20.74, barnCarpetTopY + 0.002, vChan);
-      regsGroup.add(perimeterDrain);
-    }
+
 
     // 3. Part H (Drainage and Waste Disposal — Boxed 110mm SVP Soil Stack & Internal Durgo AAV in SW Stable Corner):
     //    Vertically connects the 1st-Floor Stable Ensuite WC (`u = 23.22..25.84m`) through the Ground Cloakroom WC (`u = 23.22..24.75m`).
@@ -2122,6 +2310,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     const botRailH = 0.18;
     const topRailH = 0.068;
 
+    const eastGlassDoorPivots: THREE.Group[] = [];
     for (const [leafIdx, sideSign] of [
       [1, -1],
       [2, 1],
@@ -2195,13 +2384,17 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
         leafPivot.add(handle);
       }
 
-      ctx.interactions.registerHingedDoor(
+      const registeredPivot = ctx.interactions.registerHingedDoor(
         eastGlassDoorGroup,
         leafPivot,
         new THREE.Vector3(0, 0, 0),
         'y',
         sideSign < 0 ? Math.PI * 0.46 : -Math.PI * 0.46
       );
+      eastGlassDoorPivots.push(registeredPivot);
+    }
+    if (eastGlassDoorPivots.length === 2) {
+      ctx.interactions.linkDoorPair(eastGlassDoorPivots[0]!, eastGlassDoorPivots[1]!);
     }
 
     // Issues #10 & #11 ("and here" at `[9.297, 0.706, 13.669]` on `outbuildings.groundShell.brickWall.73`
@@ -2268,4 +2461,186 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     409
   );
 
+  // Batch A Issue #1 ("on this wall we want to move the old hay r" at `[5.222, 1.207, 19.071]`) +
+  // Follow-up Issue #1 ("no this is more just a wooden thing on the wall that the hey went in it was made entirely of wood. No hay in it though its just decorative"
+  // at `[5.253, 1.179, 18.824]`, `outbuildings.stable.oldHayRack`):
+  // Built entirely of seasoned solid English oak timber (`lightJoineryOakMat` & `lightJoineryOakPostMat`) with mortise-and-tenon
+  // pegged joinery and turned wooden hay spindles — purely decorative and completely empty (no hay, no metal)!
+  {
+    const rackName = 'outbuildings.stable.oldHayRack';
+    const rackGroup = new THREE.Group();
+    rackGroup.name = rackName;
+    rackGroup.userData.zone = 'courtyard';
+    rackGroup.position.set(27.33, 1.21, vEastRangeSouth - wallT - 0.004);
+    // Face North (`-v` in outbuilding coords = `+z` in local group coords when `rotation.y = Math.PI`)
+    rackGroup.rotation.y = Math.PI;
+    groundGroup.add(rackGroup);
+
+    const rackW = 1.16;
+    const rackH = 0.62;
+    const botDepth = 0.11;
+    const topDepth = 0.36;
+    const halfW = rackW * 0.5;
+    const halfH = rackH * 0.5;
+
+    // 1. Rear Horizontal Solid-Oak Wall Mounting Ledgers (Top & Bottom) + Left/Right Rear Oak Wall Stiles
+    for (const [ledgerSuffix, ly] of [
+      ['topWallLedger', halfH - 0.028],
+      ['bottomWallLedger', -halfH + 0.028],
+    ] as const) {
+      const ledger = new THREE.Mesh(
+        new THREE.BoxGeometry(rackW + 0.06, 0.056, 0.028),
+        lightJoineryOakPostMat
+      );
+      ledger.name = `${rackName}.${ledgerSuffix}`;
+      ledger.position.set(0, ly, 0.014);
+      ledger.castShadow = true;
+      ledger.receiveShadow = true;
+      rackGroup.add(ledger);
+    }
+
+    for (const [sideSuffix, sx] of [
+      ['left', -halfW],
+      ['right', halfW],
+    ] as const) {
+      // Rear vertical oak wall stile (`z = 0.018m`)
+      const rearStile = new THREE.Mesh(
+        new THREE.BoxGeometry(0.052, rackH + 0.04, 0.034),
+        lightJoineryOakPostMat
+      );
+      rearStile.name = `${rackName}.rearWallStile.${sideSuffix}`;
+      rearStile.position.set(sx, 0, 0.017);
+      rearStile.castShadow = true;
+      rearStile.receiveShadow = true;
+      rackGroup.add(rearStile);
+
+      // Lower horizontal oak side cheek rail (`y = -halfH + 0.028`, bridging wall to lower front rail)
+      const botSideRail = new THREE.Mesh(
+        new THREE.BoxGeometry(0.044, 0.048, botDepth),
+        lightJoineryOakPostMat
+      );
+      botSideRail.name = `${rackName}.bottomSideRail.${sideSuffix}`;
+      botSideRail.position.set(sx, -halfH + 0.028, botDepth * 0.5 + 0.01);
+      botSideRail.castShadow = true;
+      botSideRail.receiveShadow = true;
+      rackGroup.add(botSideRail);
+
+      // Upper horizontal oak side cheek arm (`y = +halfH - 0.026`, projecting out `topDepth = 0.36m` from wall)
+      const topSideArm = new THREE.Mesh(
+        new THREE.BoxGeometry(0.048, 0.052, topDepth),
+        lightJoineryOakPostMat
+      );
+      topSideArm.name = `${rackName}.topSideArm.${sideSuffix}`;
+      topSideArm.position.set(sx, halfH - 0.026, topDepth * 0.5 + 0.01);
+      topSideArm.castShadow = true;
+      topSideArm.receiveShadow = true;
+      rackGroup.add(topSideArm);
+
+      // Angled front corner oak post raking from `(sx, -halfH + 0.028, botDepth)` up to `(sx, halfH - 0.026, topDepth)`
+      const dy = rackH - 0.054;
+      const dz = topDepth - botDepth;
+      const rakeLen = Math.hypot(dy, dz);
+      const rakeAngle = Math.atan2(dz, dy);
+      const angledFrontStile = new THREE.Mesh(
+        new THREE.BoxGeometry(0.048, rakeLen + 0.02, 0.046),
+        lightJoineryOakPostMat
+      );
+      angledFrontStile.name = `${rackName}.angledFrontStile.${sideSuffix}`;
+      angledFrontStile.position.set(sx, 0, (botDepth + topDepth) * 0.5 + 0.004);
+      angledFrontStile.rotation.x = rakeAngle;
+      angledFrontStile.castShadow = true;
+      angledFrontStile.receiveShadow = true;
+      rackGroup.add(angledFrontStile);
+
+      // 2 Turned wooden side spindles inside each trapezoidal side cheek
+      for (let sr = 1; sr <= 2; sr++) {
+        const frac = sr / 3;
+        const szBot = 0.028 + frac * (botDepth - 0.032);
+        const szTop = 0.028 + frac * (topDepth - 0.032);
+        const sDz = szTop - szBot;
+        const sLen = Math.hypot(dy, sDz);
+        const sideSpindle = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.012, 0.012, sLen, 12),
+          lightJoineryOakMat
+        );
+        sideSpindle.name = `${rackName}.sideSpindle.${sideSuffix}.${sr}`;
+        sideSpindle.position.set(sx, 0, (szBot + szTop) * 0.5);
+        sideSpindle.rotation.x = Math.atan2(sDz, dy);
+        sideSpindle.castShadow = true;
+        rackGroup.add(sideSpindle);
+      }
+
+      // Traditional carpenter's oak dowel peg heads on the mortise-and-tenon joints
+      for (const [pegIdx, py, pz] of [
+        [1, halfH - 0.026, 0.035],
+        [2, halfH - 0.026, topDepth - 0.015],
+        [3, -halfH + 0.028, 0.035],
+        [4, -halfH + 0.028, botDepth - 0.01],
+      ] as const) {
+        const peg = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.007, 0.007, 0.056, 8),
+          lightJoineryOakMat
+        );
+        peg.name = `${rackName}.oakPeg.${sideSuffix}.${pegIdx}`;
+        peg.rotation.z = Math.PI / 2;
+        peg.position.set(sx, py, pz);
+        rackGroup.add(peg);
+      }
+    }
+
+    // 2. Heavy Chamfered Solid-Oak Top Front Breast Rail & Lower Front Cradle Rail
+    const topFrontRail = new THREE.Mesh(
+      new THREE.BoxGeometry(rackW + 0.06, 0.056, 0.048),
+      lightJoineryOakPostMat
+    );
+    topFrontRail.name = `${rackName}.topFrontRail`;
+    topFrontRail.position.set(0, halfH - 0.026, topDepth - 0.008);
+    topFrontRail.castShadow = true;
+    topFrontRail.receiveShadow = true;
+    rackGroup.add(topFrontRail);
+
+    const bottomFrontRail = new THREE.Mesh(
+      new THREE.BoxGeometry(rackW + 0.05, 0.052, 0.044),
+      lightJoineryOakPostMat
+    );
+    bottomFrontRail.name = `${rackName}.bottomFrontRail`;
+    bottomFrontRail.position.set(0, -halfH + 0.028, botDepth - 0.004);
+    bottomFrontRail.castShadow = true;
+    bottomFrontRail.receiveShadow = true;
+    rackGroup.add(bottomFrontRail);
+
+    // 3. Slatted Solid-Oak Bottom Base Boards (`2` longitudinal oak slats at `y = -halfH + 0.022`)
+    for (let b = 0; b < 2; b++) {
+      const bz = 0.042 + b * 0.036;
+      const baseSlat = new THREE.Mesh(
+        new THREE.BoxGeometry(rackW - 0.04, 0.018, 0.026),
+        lightJoineryOakMat
+      );
+      baseSlat.name = `${rackName}.bottomSlat.${b + 1}`;
+      baseSlat.position.set(0, -halfH + 0.022, bz);
+      baseSlat.castShadow = true;
+      baseSlat.receiveShadow = true;
+      rackGroup.add(baseSlat);
+    }
+
+    // 4. 11 Angled Turned Solid-Oak Hay Spindles / Rungs raking from `bottomFrontRail` up to `topFrontRail`
+    const spindleCount = 11;
+    const spindleDy = rackH - 0.054;
+    const spindleDz = (topDepth - 0.008) - (botDepth - 0.004);
+    const spindleLen = Math.hypot(spindleDy, spindleDz);
+    const spindleRake = Math.atan2(spindleDz, spindleDy);
+    const spindleGeo = new THREE.CylinderGeometry(0.013, 0.013, spindleLen, 14);
+
+    for (let i = 0; i < spindleCount; i++) {
+      const t = (i + 1) / (spindleCount + 1); // evenly spaced between the left and right oak stiles
+      const sx = -halfW + t * rackW;
+      const spindle = new THREE.Mesh(spindleGeo, lightJoineryOakMat);
+      spindle.name = `${rackName}.oakSpindle.${i + 1}`;
+      spindle.position.set(sx, 0, ((botDepth - 0.004) + (topDepth - 0.008)) * 0.5);
+      spindle.rotation.x = spindleRake;
+      spindle.castShadow = true;
+      spindle.receiveShadow = true;
+      rackGroup.add(spindle);
+    }
+  }
 }

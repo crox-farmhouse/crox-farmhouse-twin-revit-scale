@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import type { SceneBuilderContext } from '../../../../../types/scene.ts';
-import type { BarnGolfSimulatorEnclosureHandles } from './barn-golf-simulator-enclosure.ts';
+import {
+  createForgedIronBladeGeometry,
+  GOLF_SIM_SHOT_PROFILES,
+  renderTrackManWidescreenShotState,
+  type BarnGolfSimulatorEnclosureHandles,
+} from './barn-golf-simulator-enclosure.ts';
 
 let cachedPineFloorTextures: {
   readonly colorTex: THREE.CanvasTexture;
@@ -8,6 +13,7 @@ let cachedPineFloorTextures: {
 } | null = null;
 let cachedCallawayPanelTexture: THREE.CanvasTexture | null = null;
 let cachedTrackManControlScreenTexture: THREE.CanvasTexture | null = null;
+let cachedTrackManControlScreenCanvas: HTMLCanvasElement | null = null;
 
 function getPlainUnvarnishedPineFloorTextures(
   loftLenU: number,
@@ -155,6 +161,127 @@ function createCallawayPanelTexture(): THREE.CanvasTexture {
   return callawayPanelTex;
 }
 
+export function renderTrackManControlScreenShotState(
+  shotIndex: number,
+  flightProgress: number
+): void {
+  if (!cachedTrackManControlScreenCanvas) return;
+  const tmCtx = cachedTrackManControlScreenCanvas.getContext('2d');
+  if (!tmCtx) return;
+
+  const shot =
+    GOLF_SIM_SHOT_PROFILES[
+      ((shotIndex % GOLF_SIM_SHOT_PROFILES.length) +
+        GOLF_SIM_SHOT_PROFILES.length) %
+        GOLF_SIM_SHOT_PROFILES.length
+    ]!;
+  const p = Math.max(0, Math.min(1, flightProgress));
+
+  const bg = tmCtx.createLinearGradient(0, 0, 0, 288);
+  bg.addColorStop(0, '#0f1722');
+  bg.addColorStop(1, '#182434');
+  tmCtx.fillStyle = bg;
+  tmCtx.fillRect(0, 0, 512, 288);
+
+  // TrackMan Orange Top Header Bar
+  tmCtx.fillStyle = '#ff6b00';
+  tmCtx.fillRect(0, 0, 512, 34);
+  tmCtx.fillStyle = '#ffffff';
+  tmCtx.font = 'bold 14px sans-serif';
+  tmCtx.fillText(`TRACKMAN iO // ${shot.clubName}`, 14, 22);
+
+  // Left 3D Fairway Dispersion & Trajectory View
+  tmCtx.fillStyle = '#1b3d28';
+  tmCtx.fillRect(14, 46, 268, 156);
+  tmCtx.strokeStyle = '#2e6b44';
+  tmCtx.lineWidth = 1.5;
+  tmCtx.strokeRect(14, 46, 268, 156);
+
+  // Fairway centerline & target green circle
+  tmCtx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+  tmCtx.lineWidth = 1;
+  tmCtx.beginPath();
+  tmCtx.moveTo(148, 196);
+  tmCtx.lineTo(148, 52);
+  tmCtx.stroke();
+
+  const endX = 148 + shot.endOffsetXFrac * 420;
+  const endY = 74 + shot.endOffsetYFrac * 240;
+  const ctrlX = 148 + shot.ctrlOffsetXFrac * 480;
+  const ctrlY = 44 + (shot.ctrlApexYFrac - 0.18) * 160;
+
+  tmCtx.strokeStyle = 'rgba(120, 235, 150, 0.45)';
+  tmCtx.lineWidth = 1.5;
+  tmCtx.beginPath();
+  tmCtx.arc(endX, endY, 12, 0, Math.PI * 2);
+  tmCtx.stroke();
+
+  if (p > 0.005) {
+    const steps = 28;
+    const maxStep = Math.max(1, Math.round(steps * p));
+    tmCtx.strokeStyle = '#ff6b00';
+    tmCtx.lineWidth = 3.5;
+    tmCtx.beginPath();
+    let ballX = 148;
+    let ballY = 194;
+    for (let i = 0; i <= maxStep; i++) {
+      const t = (i / steps) * Math.min(1, p / 0.84);
+      const inv = 1 - t;
+      const bx = inv * inv * 148 + 2 * inv * t * ctrlX + t * t * endX;
+      const by = inv * inv * 194 + 2 * inv * t * ctrlY + t * t * endY;
+      if (i === 0) tmCtx.moveTo(bx, by);
+      else tmCtx.lineTo(bx, by);
+      ballX = bx;
+      ballY = by;
+    }
+    tmCtx.stroke();
+
+    tmCtx.fillStyle = '#ffffff';
+    tmCtx.beginPath();
+    tmCtx.arc(ballX, ballY, 4.2, 0, Math.PI * 2);
+    tmCtx.fill();
+  }
+
+  const carryVal =
+    p >= 0.98
+      ? shot.carryYds.toFixed(1)
+      : (shot.carryYds * Math.min(1, p / 0.84)).toFixed(1);
+  const totalVal =
+    p >= 0.98
+      ? shot.totalYds.toFixed(1)
+      : (shot.totalYds * p).toFixed(1);
+
+  // Right Telemetry Data Tiles
+  const metrics: ReadonlyArray<readonly [string, string, number, number]> = [
+    ['CLUB SPEED', `${shot.clubSpeedMph.toFixed(1)} mph`, 296, 46],
+    ['BALL SPEED', `${shot.ballSpeedMph.toFixed(1)} mph`, 404, 46],
+    ['SMASH FACTOR', shot.smashFactor, 296, 126],
+    ['LAUNCH ANGLE', `${shot.launchAngleDeg.toFixed(1)} deg`, 404, 126],
+    ['SPIN RATE', `${shot.spinRateRpm} rpm`, 14, 212],
+    ['CARRY', `${carryVal} yds`, 180, 212],
+    ['TOTAL', `${totalVal} yds`, 346, 212],
+  ];
+  for (const [label, val, mx, my] of metrics) {
+    const tileW = my > 200 ? 152 : 96;
+    const tileH = 66;
+    tmCtx.fillStyle = '#1e2c3e';
+    tmCtx.fillRect(mx, my, tileW, tileH);
+    tmCtx.strokeStyle = '#324863';
+    tmCtx.lineWidth = 1.5;
+    tmCtx.strokeRect(mx, my, tileW, tileH);
+    tmCtx.fillStyle = '#90a4ae';
+    tmCtx.font = 'bold 10px sans-serif';
+    tmCtx.fillText(label, mx + 8, my + 18);
+    tmCtx.fillStyle = '#ff9100';
+    tmCtx.font = 'bold 16px monospace';
+    tmCtx.fillText(val, mx + 8, my + 48);
+  }
+
+  if (cachedTrackManControlScreenTexture) {
+    cachedTrackManControlScreenTexture.needsUpdate = true;
+  }
+}
+
 function createTrackManControlScreenTexture(): THREE.CanvasTexture {
   if (cachedTrackManControlScreenTexture) {
     return cachedTrackManControlScreenTexture;
@@ -162,65 +289,11 @@ function createTrackManControlScreenTexture(): THREE.CanvasTexture {
   const tmCtrlCanvas = document.createElement('canvas');
   tmCtrlCanvas.width = 512;
   tmCtrlCanvas.height = 288;
-  const tmCtx = tmCtrlCanvas.getContext('2d');
-  if (tmCtx) {
-    const bg = tmCtx.createLinearGradient(0, 0, 0, 288);
-    bg.addColorStop(0, '#0f1722');
-    bg.addColorStop(1, '#182434');
-    tmCtx.fillStyle = bg;
-    tmCtx.fillRect(0, 0, 512, 288);
-
-    // TrackMan Orange Top Header Bar
-    tmCtx.fillStyle = '#ff6b00';
-    tmCtx.fillRect(0, 0, 512, 34);
-    tmCtx.fillStyle = '#ffffff';
-    tmCtx.font = 'bold 16px sans-serif';
-    tmCtx.fillText('TRACKMAN iO // SHOT ANALYSIS & COURSE CONTROL', 16, 23);
-
-    // Left 3D Fairway Dispersion & Trajectory View
-    tmCtx.fillStyle = '#1b3d28';
-    tmCtx.fillRect(14, 46, 268, 156);
-    tmCtx.strokeStyle = '#2e6b44';
-    tmCtx.lineWidth = 1.5;
-    tmCtx.strokeRect(14, 46, 268, 156);
-
-    // Tracer arc
-    tmCtx.strokeStyle = '#ff6b00';
-    tmCtx.lineWidth = 3.5;
-    tmCtx.beginPath();
-    tmCtx.moveTo(148, 194);
-    tmCtx.quadraticCurveTo(132, 62, 146, 76);
-    tmCtx.stroke();
-
-    // Right Telemetry Data Tiles
-    const metrics: ReadonlyArray<readonly [string, string, number, number]> = [
-      ['CLUB SPEED', '114.2 mph', 296, 46],
-      ['BALL SPEED', '169.8 mph', 404, 46],
-      ['SMASH FACTOR', '1.49', 296, 126],
-      ['LAUNCH ANGLE', '11.8 deg', 404, 126],
-      ['SPIN RATE', '2,380 rpm', 14, 212],
-      ['CARRY', '286.4 yds', 180, 212],
-      ['TOTAL', '308.1 yds', 346, 212],
-    ];
-    for (const [label, val, mx, my] of metrics) {
-      const tileW = my > 200 ? 152 : 96;
-      const tileH = 66;
-      tmCtx.fillStyle = '#1e2c3e';
-      tmCtx.fillRect(mx, my, tileW, tileH);
-      tmCtx.strokeStyle = '#324863';
-      tmCtx.lineWidth = 1.5;
-      tmCtx.strokeRect(mx, my, tileW, tileH);
-      tmCtx.fillStyle = '#90a4ae';
-      tmCtx.font = 'bold 10px sans-serif';
-      tmCtx.fillText(label, mx + 8, my + 18);
-      tmCtx.fillStyle = '#ff9100';
-      tmCtx.font = 'bold 17px monospace';
-      tmCtx.fillText(val, mx + 8, my + 48);
-    }
-  }
+  cachedTrackManControlScreenCanvas = tmCtrlCanvas;
   const tmCtrlTex = new THREE.CanvasTexture(tmCtrlCanvas);
   tmCtrlTex.colorSpace = THREE.SRGBColorSpace;
   cachedTrackManControlScreenTexture = tmCtrlTex;
+  renderTrackManControlScreenShotState(1, 1.0);
   return tmCtrlTex;
 }
 
@@ -253,6 +326,10 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     screenMesh,
     hingeAssy,
     foldingMatGroup,
+    teedBall,
+    clubSwingPivot,
+    launchStreakMesh,
+    screenImpactRing,
   } = enclosure;
 
   const loftLenU = 2.69; // u = 12.31m .. 15.00m (butts flush against the West face of the 200mm steel header beam at u = 15.00m!)
@@ -1018,6 +1095,16 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     [-0.068, 0.065, 0.935, -0.48],
     [-0.095, -0.032, 0.92, 0.15],
   ];
+  const sharedBagIronBladeGeo = createForgedIronBladeGeometry(
+    0.074,
+    0.015,
+    0.042,
+    0.0052,
+    0.0095
+  );
+  const sharedBagHoselElbowGeo = new THREE.SphereGeometry(0.006, 12, 10);
+  sharedBagHoselElbowGeo.computeBoundingSphere();
+
   for (const [iIdx, [ix, iz, iTopY, iRotY]] of ironPositions.entries()) {
     const sLen = iTopY - 0.82;
     const ironShaft = new THREE.Mesh(
@@ -1035,22 +1122,29 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     bagTiltGroup.add(ironHeadGroup);
 
     const hosel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.006, 0.0055, 0.032, 10),
+      new THREE.CylinderGeometry(0.0058, 0.0052, 0.028, 12),
       chromeClubMat
     );
     hosel.name = `outbuildings.barn.golfSimulator.callawayTourBag.ironHosel.${iIdx + 1}`;
     hosel.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    hosel.position.set(0, 0.01, 0);
+    hosel.position.set(0, 0.012, 0);
     ironHeadGroup.add(hosel);
 
-    const bladeHead = new THREE.Mesh(
-      new THREE.BoxGeometry(0.014, 0.032, 0.068),
-      chromeClubMat
-    );
+    const hoselElbow = new THREE.Mesh(sharedBagHoselElbowGeo, chromeClubMat);
+    hoselElbow.name = `outbuildings.barn.golfSimulator.callawayTourBag.ironHoselElbow.${iIdx + 1}`;
+    hoselElbow.userData = { lodTier: 'high', lodMaxDistance: 12 };
+    hoselElbow.position.set(0, 0.025, 0);
+    ironHeadGroup.add(hoselElbow);
+
+    const bladeHead = new THREE.Mesh(sharedBagIronBladeGeo, chromeClubMat);
     bladeHead.name = 'outbuildings.barn.golfSimulator.callawayTourBag.iron';
-    bladeHead.position.set(-0.008, 0.024, 0.028);
-    bladeHead.rotation.x = -0.28;
-    bladeHead.rotation.z = 0.32;
+    bladeHead.position.set(0, 0.025, 0);
+    bladeHead.rotation.order = 'YXZ';
+    bladeHead.rotation.set(
+      -0.34 - (iIdx % 4) * 0.06,
+      -Math.PI * 0.5,
+      Math.PI - 0.36
+    );
     bladeHead.castShadow = true;
     ironHeadGroup.add(bladeHead);
   }
@@ -1164,6 +1258,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     ladderGroup.add(rungMesh);
   }
 
+  let registeredMatDoorId: string | undefined;
   if (interactions) {
     interactions.registerClickableObject(ladderGroup, { isClimbableLadder: true });
     const { matDoorId } = interactions.registerFoldingGolfMat(
@@ -1196,6 +1291,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
         statusBeaconRedMat.needsUpdate = true;
       }
     );
+    registeredMatDoorId = matDoorId;
     interactions.registerClickableObject(rearFairwayTurf, { interactableId: matDoorId });
     interactions.registerClickableObject(screenMesh, { interactableId: matDoorId });
     for (const child of simGroup.children) {
@@ -1384,20 +1480,39 @@ export function buildBarnGolfSimulatorPropsAndLoft(
   monBezel.castShadow = true;
   monHeadGroup.add(monBezel);
 
+  const monDisplayMat = new THREE.MeshStandardMaterial({
+    map: tmCtrlTex,
+    emissiveMap: tmCtrlTex,
+    emissive: new THREE.Color(0xffffff),
+    emissiveIntensity: 0.55,
+    roughness: 0.18,
+    metalness: 0.05,
+  });
+  monDisplayMat.userData = { isDynamicGolfScreen: true };
+
   const monDisplay = new THREE.Mesh(
     new THREE.PlaneGeometry(0.596, 0.336),
-    new THREE.MeshStandardMaterial({
-      map: tmCtrlTex,
-      emissiveMap: tmCtrlTex,
-      emissive: new THREE.Color(0xffffff),
-      emissiveIntensity: 0.55,
-      roughness: 0.18,
-      metalness: 0.05,
-    })
+    monDisplayMat
   );
   monDisplay.name = 'outbuildings.barn.golfSimulator.controlMonitor.screen';
   monDisplay.position.set(0, 0, 0.012);
   monHeadGroup.add(monDisplay);
+
+  if (interactions) {
+    interactions.registerGolfSimulatorShot({
+      clubSwingPivot,
+      teedBall,
+      screenMesh,
+      launchStreakMesh,
+      screenImpactRing,
+      clickableTargets: [bagGroup, clubSwingPivot],
+      matDoorId: registeredMatDoorId,
+      onUpdateScreens: (shotIdx, progress) => {
+        renderTrackManWidescreenShotState(shotIdx, progress);
+        renderTrackManControlScreenShotState(shotIdx, progress);
+      },
+    });
+  }
 
   return { ladderGroup, controlGroup };
 }

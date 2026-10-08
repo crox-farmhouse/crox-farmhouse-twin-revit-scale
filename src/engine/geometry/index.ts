@@ -11,9 +11,12 @@ export {
 export {
   addCasedArchitravePortal,
   buildMitredWallSkirtingGeometry,
+  buildMitredArchitraveSegments,
+  buildMitredWallSkirtingSegments,
   buildSweptMouldingGeometry,
   type CasedArchitravePortalOptions,
   createArchitraveProfile,
+  createProfiledSkirtingCapGeometry,
   createSkirtingCapProfile,
   createWallSkirtingBoardProfile,
 } from './swept-moulding.ts';

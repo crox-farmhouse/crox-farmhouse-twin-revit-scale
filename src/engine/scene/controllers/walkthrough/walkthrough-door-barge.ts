@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { isObjectVisibleInHierarchy } from '../../object-utils.ts';
 import {
   applySpiralStaircaseHelicalGuidance,
+  evaluateActiveStaircaseRiserState,
   evaluateArchitecturalWalkwayBounds,
   isInsideSpiralStaircaseCutout,
   sampleFloorElevation,
@@ -34,6 +35,8 @@ export type WalkthroughProximityDoorBargeHandler = (
 
 export interface CachedObstacle {
   readonly mesh: THREE.Mesh;
+  readonly visibilityNode: THREE.Object3D;
+  readonly localBox: THREE.Box3;
   centerX: number;
   centerZ: number;
   radiusXZ: number;
@@ -93,14 +96,14 @@ export class WalkthroughDoorBargeAndCollisionSolver {
   }
 
   public invalidateObstacleCache(): void {
-    this.cachedObstacles = null;
+    if (this.cachedObstacles === null) return;
+    // Keep pre-batch obstacle cache intact if already built from unbatched meshes
   }
 
   public captureFurnitureColliders(): void {
     this.cachedFurnitureBoxes = [];
     this.cachedObstacles = null;
     this.getObstacleCache();
-    this.cachedObstacles = null;
   }
 
   public checkProximityDoorBarge(
@@ -241,16 +244,30 @@ export class WalkthroughDoorBargeAndCollisionSolver {
 
     this.scene.traverse((obj) => {
       if (!(obj instanceof THREE.Mesh) || obj.geometry instanceof THREE.PlaneGeometry) return;
-      if (obj.userData?.isAnnotationGroup || obj.userData?.circuitId) return;
+      if (
+        obj.userData?.isAnnotationGroup ||
+        obj.userData?.circuitId ||
+        obj.userData?.isBatchedStaticMesh === true
+      ) {
+        return;
+      }
       if (
         typeof obj.name === 'string' &&
         (obj.name.startsWith('hall.stairs') ||
           obj.name.startsWith('outbuildings.barn.mezzanineLadder') ||
           obj.name.startsWith('outbuildings.store.loftLadder') ||
           obj.name.startsWith('outbuildings.barn.spiralStaircase') ||
+          obj.name.startsWith('outbuildings.stable.exteriorBalconyStaircase') ||
+          obj.name.startsWith('outbuildings.firstFloor.stableEastBalcony.deck') ||
+          obj.name.startsWith('outbuildings.firstFloor.stableEastBalcony.copingFascia') ||
           obj.name.startsWith('outbuildings.barn.mezzanineStairwell') ||
           obj.name.startsWith('outbuildings.firstFloor.stairwellFascia') ||
           obj.name.startsWith('outbuildings.firstFloor.stableUpStep') ||
+          obj.name.startsWith('outbuildings.barn.floorDropStep') ||
+          obj.name.includes('turfMat') ||
+          obj.name.includes('hittingStrip') ||
+          obj.name.includes('ballTray') ||
+          obj.name.includes('ballFlightTracer') ||
           obj.name.includes('cobblePath'))
       ) {
         return;
@@ -258,7 +275,13 @@ export class WalkthroughDoorBargeAndCollisionSolver {
 
       const isDynamicObject = (node: THREE.Object3D): boolean => {
         const u = node.userData as Record<string, unknown> | undefined;
-        if (typeof u?.interactableId === 'string' || u?.isBifoldDoor === true || u?.isCarGate === true) {
+        if (u?.isBifoldDoor === true || u?.isCarGate === true) {
+          return true;
+        }
+        if (
+          typeof u?.interactableId === 'string' &&
+          (u.interactableId.startsWith('door-') || u.interactableId.startsWith('bifold-cupboard-'))
+        ) {
           return true;
         }
         return typeof node.name === 'string' && /bifold|doorPivot/i.test(node.name);
@@ -268,6 +291,7 @@ export class WalkthroughDoorBargeAndCollisionSolver {
         obj.userData?.isArchitecturalShell === true ||
         obj.userData?.isCutawayWall === true ||
         Boolean(obj.userData?.cutawayWall);
+      let isHighPolyPropOrFoliage = false;
       let skipGroup = false;
       let cur: THREE.Object3D | null = obj.parent;
       while (cur && cur !== this.scene) {
@@ -275,20 +299,34 @@ export class WalkthroughDoorBargeAndCollisionSolver {
           skipGroup = true;
           break;
         }
-        if (
-          typeof cur.name === 'string' &&
-          (cur.name.endsWith('.groundCeiling') ||
+        if (typeof cur.name === 'string') {
+          if (
+            cur.name.endsWith('.groundCeiling') ||
             cur.name.endsWith('.roof') ||
             cur.name === 'outbuildings.roofTrusses' ||
             cur.name === 'outbuildings.barn.mezzanineLadder' ||
             cur.name === 'outbuildings.store.loftLadder' ||
             cur.name.startsWith('outbuildings.barn.spiralStaircase') ||
+            cur.name.startsWith('outbuildings.stable.exteriorBalconyStaircase') ||
             cur.name.startsWith('outbuildings.barn.mezzanineStairwell') ||
             cur.name.startsWith('hall.stairs') ||
-            cur.name.includes('ufh'))
-        ) {
-          skipGroup = true;
-          break;
+            cur.name.includes('turfMat') ||
+            cur.name.includes('ufh')
+          ) {
+            skipGroup = true;
+            break;
+          }
+          if (
+            cur.name.includes('porsche992TurboS') ||
+            cur.name.includes('landRoverDefender') ||
+            cur.name.includes('grapeVine') ||
+            cur.name.includes('climbingIvy') ||
+            cur.name.includes('wisteria') ||
+            cur.name.includes('oliveTree') ||
+            cur.name.includes('fiddleLeaf')
+          ) {
+            isHighPolyPropOrFoliage = true;
+          }
         }
         if (
           cur.userData?.isArchitecturalShell === true ||
@@ -302,7 +340,10 @@ export class WalkthroughDoorBargeAndCollisionSolver {
       }
       if (skipGroup) return;
 
-      this.tmpBox.setFromObject(obj);
+      if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
+      const geomBox = obj.geometry.boundingBox;
+      if (!geomBox || geomBox.isEmpty()) return;
+      this.tmpBox.copy(geomBox).applyMatrix4(obj.matrixWorld);
       if (this.tmpBox.isEmpty()) return;
 
       const sizeX = this.tmpBox.max.x - this.tmpBox.min.x;
@@ -329,15 +370,12 @@ export class WalkthroughDoorBargeAndCollisionSolver {
         Math.min(sizeX, sizeZ) <= 0.16 &&
         Math.max(sizeX, sizeZ) >= 0.35;
       const isBoxOrShellWall =
-        isBlindOrCurtain ||
-        obj.geometry instanceof THREE.BoxGeometry ||
-        hasArchitecturalShellAncestor ||
-        (!(obj.geometry instanceof THREE.CylinderGeometry) &&
-          !(obj.geometry instanceof THREE.SphereGeometry) &&
-          !(obj.geometry instanceof THREE.ConeGeometry) &&
-          !(obj.geometry instanceof THREE.TubeGeometry) &&
-          !(obj.geometry instanceof THREE.RingGeometry) &&
-          !(obj.geometry instanceof THREE.TorusGeometry));
+        !isHighPolyPropOrFoliage &&
+        (isBlindOrCurtain ||
+          isWindowGlass ||
+          hasDynamicAncestor ||
+          obj.geometry instanceof THREE.BoxGeometry ||
+          hasArchitecturalShellAncestor);
       if (
         isBoxOrShellWall &&
         (sizeY >= 0.45 || (isBlindOrCurtain && sizeY >= 0.25)) &&
@@ -345,92 +383,112 @@ export class WalkthroughDoorBargeAndCollisionSolver {
         Math.min(sizeX, sizeZ) >= 0.008 &&
         Math.max(sizeX, sizeZ) <= 28.0
       ) {
-        list.push({ mesh: obj, centerX, centerZ, radiusXZ, minY: this.tmpBox.min.y, maxY: this.tmpBox.max.y, isDynamic: hasDynamicAncestor });
+        list.push({
+          mesh: obj,
+          visibilityNode: obj.parent ?? obj,
+          localBox: geomBox.clone(),
+          centerX,
+          centerZ,
+          radiusXZ,
+          minY: this.tmpBox.min.y,
+          maxY: this.tmpBox.max.y,
+          isDynamic: hasDynamicAncestor,
+        });
       }
 
-      if (rebuildFurniture && !hasDynamicAncestor && Math.max(sizeX, sizeZ) <= 5.5) {
+      const isDoorFrameOrJamb =
+        typeof obj.name === 'string' &&
+        (obj.name.startsWith('outbuildings.door.') ||
+          obj.name.startsWith('outbuildings.doorArchitrave.') ||
+          obj.name.startsWith('outbuildings.garageDoor.') ||
+          obj.name.includes('.doorFrame') ||
+          obj.name.includes('.sill'));
+
+      if (
+        rebuildFurniture &&
+        !hasDynamicAncestor &&
+        !isDoorFrameOrJamb &&
+        Math.max(sizeX, sizeZ) <= 5.5
+      ) {
         const floorY = sampleFloorElevation(centerX, this.tmpBox.max.y, centerZ);
         const topAboveFloor = this.tmpBox.max.y - floorY;
         const botAboveFloor = this.tmpBox.min.y - floorY;
 
         if (topAboveFloor >= 0.34 && topAboveFloor <= 2.32 && botAboveFloor <= 1.65) {
-          if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
-          const localBox = obj.geometry.boundingBox;
-          if (localBox && !localBox.isEmpty()) {
-            const m = obj.matrixWorld.elements;
-            const lenAx = Math.hypot(m[0], m[2]);
-            const lenAz = Math.hypot(m[8], m[10]);
-            let ux = 1;
-            let uz = 0;
-            if (lenAx >= lenAz && lenAx > 1e-4) {
-              ux = m[0] / lenAx;
-              uz = m[2] / lenAx;
-            } else if (lenAz > 1e-4) {
-              ux = m[8] / lenAz;
-              uz = m[10] / lenAz;
-            }
-            const vx = -uz;
-            const vz = ux;
+          const localBox = geomBox;
+          const m = obj.matrixWorld.elements;
+          const lenAx = Math.hypot(m[0], m[2]);
+          const lenAz = Math.hypot(m[8], m[10]);
+          let ux = 1;
+          let uz = 0;
+          if (lenAx >= lenAz && lenAx > 1e-4) {
+            ux = m[0] / lenAx;
+            uz = m[2] / lenAx;
+          } else if (lenAz > 1e-4) {
+            ux = m[8] / lenAz;
+            uz = m[10] / lenAz;
+          }
+          const vx = -uz;
+          const vz = ux;
 
-            let minU = Number.POSITIVE_INFINITY;
-            let maxU = Number.NEGATIVE_INFINITY;
-            let minV = Number.POSITIVE_INFINITY;
-            let maxV = Number.NEGATIVE_INFINITY;
+          let minU = Number.POSITIVE_INFINITY;
+          let maxU = Number.NEGATIVE_INFINITY;
+          let minV = Number.POSITIVE_INFINITY;
+          let maxV = Number.NEGATIVE_INFINITY;
 
-            for (let cxIdx = 0; cxIdx < 2; cxIdx++) {
-              const lx = cxIdx === 0 ? localBox.min.x : localBox.max.x;
-              for (let cyIdx = 0; cyIdx < 2; cyIdx++) {
-                const ly = cyIdx === 0 ? localBox.min.y : localBox.max.y;
-                for (let czIdx = 0; czIdx < 2; czIdx++) {
-                  const lz = czIdx === 0 ? localBox.min.z : localBox.max.z;
-                  this.tmpCorner.set(lx, ly, lz).applyMatrix4(obj.matrixWorld);
-                  const u = this.tmpCorner.x * ux + this.tmpCorner.z * uz;
-                  const v = this.tmpCorner.x * vx + this.tmpCorner.z * vz;
-                  if (u < minU) minU = u;
-                  if (u > maxU) maxU = u;
-                  if (v < minV) minV = v;
-                  if (v > maxV) maxV = v;
-                }
+          for (let cxIdx = 0; cxIdx < 2; cxIdx++) {
+            const lx = cxIdx === 0 ? localBox.min.x : localBox.max.x;
+            for (let cyIdx = 0; cyIdx < 2; cyIdx++) {
+              const ly = cyIdx === 0 ? localBox.min.y : localBox.max.y;
+              for (let czIdx = 0; czIdx < 2; czIdx++) {
+                const lz = czIdx === 0 ? localBox.min.z : localBox.max.z;
+                this.tmpCorner.set(lx, ly, lz).applyMatrix4(obj.matrixWorld);
+                const u = this.tmpCorner.x * ux + this.tmpCorner.z * uz;
+                const v = this.tmpCorner.x * vx + this.tmpCorner.z * vz;
+                if (u < minU) minU = u;
+                if (u > maxU) maxU = u;
+                if (v < minV) minV = v;
+                if (v > maxV) maxV = v;
               }
             }
+          }
 
-            let uSpan = maxU - minU;
-            let vSpan = maxV - minV;
-            if (isBlindOrCurtain || isWindowGlass) {
-              const padDepth = isWindowGlass ? 0.15 : 0.1;
-              if (uSpan < vSpan) {
-                minU -= padDepth;
-                maxU += padDepth;
-                uSpan = maxU - minU;
-              } else {
-                minV -= padDepth;
-                maxV += padDepth;
-                vSpan = maxV - minV;
-              }
+          let uSpan = maxU - minU;
+          let vSpan = maxV - minV;
+          if (isBlindOrCurtain || isWindowGlass) {
+            const padDepth = isWindowGlass ? 0.15 : 0.1;
+            if (uSpan < vSpan) {
+              minU -= padDepth;
+              maxU += padDepth;
+              uSpan = maxU - minU;
+            } else {
+              minV -= padDepth;
+              maxV += padDepth;
+              vSpan = maxV - minV;
             }
+          }
 
-            const validDimensions =
-              isBlindOrCurtain || isWindowGlass
-                ? Math.max(uSpan, vSpan) >= 0.32 && Math.max(uSpan, vSpan) <= 5.2
-                : Math.min(uSpan, vSpan) >= 0.29 && Math.max(uSpan, vSpan) >= 0.36 && Math.max(uSpan, vSpan) <= 5.2;
+          const validDimensions =
+            isBlindOrCurtain || isWindowGlass
+              ? Math.max(uSpan, vSpan) >= 0.32 && Math.max(uSpan, vSpan) <= 5.2
+              : Math.min(uSpan, vSpan) >= 0.29 && Math.max(uSpan, vSpan) >= 0.36 && Math.max(uSpan, vSpan) <= 5.2;
 
-            if (validDimensions) {
-              furnitureList.push({
-                mesh: obj,
-                visibilityNode: obj.parent ?? obj,
-                centerX,
-                centerZ,
-                radiusXZ: Math.max(radiusXZ, Math.hypot(uSpan, vSpan) * 0.5),
-                minY: this.tmpBox.min.y,
-                maxY: this.tmpBox.max.y,
-                ux,
-                uz,
-                minU,
-                maxU,
-                minV,
-                maxV,
-              });
-            }
+          if (validDimensions) {
+            furnitureList.push({
+              mesh: obj,
+              visibilityNode: obj.parent ?? obj,
+              centerX,
+              centerZ,
+              radiusXZ: Math.max(radiusXZ, Math.hypot(uSpan, vSpan) * 0.5),
+              minY: this.tmpBox.min.y,
+              maxY: this.tmpBox.max.y,
+              ux,
+              uz,
+              minU,
+              maxU,
+              minV,
+              maxV,
+            });
           }
         }
       }
@@ -507,21 +565,31 @@ export class WalkthroughDoorBargeAndCollisionSolver {
 
     for (let i = 0; i < obstacles.length; i++) {
       const obs = obstacles[i];
-      if (!isObjectVisibleInHierarchy(obs.mesh)) continue;
+      if (!obs.isDynamic && (obs.maxY <= footMinY || obs.minY >= footMaxY)) continue;
+      const coarseDx = obs.centerX - fromFoot.x;
+      const coarseDz = obs.centerZ - fromFoot.z;
+      const coarseMaxDist = obs.radiusXZ + reach + (obs.isDynamic ? 1.4 : 0);
+      if (coarseDx * coarseDx + coarseDz * coarseDz > coarseMaxDist * coarseMaxDist) continue;
+
+      const visTarget = obs.mesh.parent ? obs.mesh : obs.visibilityNode;
+      if (!isObjectVisibleInHierarchy(visTarget)) continue;
+
       if (obs.isDynamic) {
-        this.tmpBox.setFromObject(obs.mesh);
+        if (!obs.mesh.parent) {
+          obs.mesh.matrixWorld.multiplyMatrices(obs.visibilityNode.matrixWorld, obs.mesh.matrix);
+        }
+        this.tmpBox.copy(obs.localBox).applyMatrix4(obs.mesh.matrixWorld);
         obs.centerX = (this.tmpBox.min.x + this.tmpBox.max.x) * 0.5;
         obs.centerZ = (this.tmpBox.min.z + this.tmpBox.max.z) * 0.5;
         obs.minY = this.tmpBox.min.y;
         obs.maxY = this.tmpBox.max.y;
+        if (obs.maxY <= footMinY || obs.minY >= footMaxY) continue;
+        const dx = obs.centerX - fromFoot.x;
+        const dz = obs.centerZ - fromFoot.z;
+        const maxDist = obs.radiusXZ + reach;
+        if (dx * dx + dz * dz > maxDist * maxDist) continue;
       }
-      if (obs.maxY <= footMinY || obs.minY >= footMaxY) continue;
-      const dx = obs.centerX - fromFoot.x;
-      const dz = obs.centerZ - fromFoot.z;
-      const maxDist = obs.radiusXZ + reach;
-      if (dx * dx + dz * dz <= maxDist * maxDist) {
-        this.nearbyObstacleMeshes.push(obs.mesh);
-      }
+      this.nearbyObstacleMeshes.push(obs.mesh);
     }
 
     if (this.nearbyObstacleMeshes.length === 0) return false;
@@ -531,8 +599,9 @@ export class WalkthroughDoorBargeAndCollisionSolver {
     this.wallRaycaster.far = Math.max(0.42, maxHitDist + 0.04);
     const perpX = -moveDirXZ.z;
     const perpZ = moveDirXZ.x;
+    const upperRayY = Math.min(1.28, Math.max(0.85, currentEyeHeight - 0.12));
 
-    for (const rayOffsetY of [0.45, 0.95, 1.35, currentEyeHeight] as const) {
+    for (const rayOffsetY of [0.52, upperRayY] as const) {
       for (const latOffset of [0, -0.15, 0.15] as const) {
         this.tmpOrigin.set(
           fromFoot.x + perpX * latOffset - moveDirXZ.x * backOff,
@@ -571,29 +640,45 @@ export class WalkthroughDoorBargeAndCollisionSolver {
   ): number {
     this.checkProximityDoorBarge(footPos, moveVec.x, moveVec.z, isSprinting);
     const updatedYaw = applySpiralStaircaseHelicalGuidance(footPos, moveVec, forwardInput, targetYawRad, dtSeconds);
-    const primaryBlocked = this.isBlockedByWallOrCabinet(footPos, moveVec, stepDist, currentEyeHeight, true, isSprinting);
+    const preStairState = evaluateActiveStaircaseRiserState(footPos.x, footPos.y, footPos.z);
+    const stairHaulPulse = preStairState
+      ? 0.92 + 0.22 * Math.sin(preStairState.riserIndex * Math.PI * 2 - Math.PI * 0.25)
+      : 1.0;
+    const effectiveStepDist = stepDist * stairHaulPulse;
+    const primaryBlocked = this.isBlockedByWallOrCabinet(
+      footPos,
+      moveVec,
+      effectiveStepDist,
+      currentEyeHeight,
+      true,
+      isSprinting
+    );
     if (!primaryBlocked) {
-      footPos.x += moveVec.x * stepDist;
-      footPos.z += moveVec.z * stepDist;
+      footPos.x += moveVec.x * effectiveStepDist;
+      footPos.z += moveVec.z * effectiveStepDist;
     } else {
       const { projU, projV, slideU, slideV } = computeWingWallSlideAxes(footPos.x, footPos.z, moveVec);
       if (
         Math.abs(projU) > 0.1 &&
-        !this.isBlockedByWallOrCabinet(footPos, slideU, Math.abs(projU) * stepDist, currentEyeHeight, false, isSprinting)
+        !this.isBlockedByWallOrCabinet(footPos, slideU, Math.abs(projU) * effectiveStepDist, currentEyeHeight, false, isSprinting)
       ) {
-        footPos.x += slideU.x * Math.abs(projU) * stepDist;
-        footPos.z += slideU.z * Math.abs(projU) * stepDist;
+        footPos.x += slideU.x * Math.abs(projU) * effectiveStepDist;
+        footPos.z += slideU.z * Math.abs(projU) * effectiveStepDist;
       } else if (
         Math.abs(projV) > 0.1 &&
-        !this.isBlockedByWallOrCabinet(footPos, slideV, Math.abs(projV) * stepDist, currentEyeHeight, false, isSprinting)
+        !this.isBlockedByWallOrCabinet(footPos, slideV, Math.abs(projV) * effectiveStepDist, currentEyeHeight, false, isSprinting)
       ) {
-        footPos.x += slideV.x * Math.abs(projV) * stepDist;
-        footPos.z += slideV.z * Math.abs(projV) * stepDist;
+        footPos.x += slideV.x * Math.abs(projV) * effectiveStepDist;
+        footPos.z += slideV.z * Math.abs(projV) * effectiveStepDist;
       }
     }
     this.depenetrateFootPosition(footPos, currentEyeHeight);
     const targetFloorY = sampleFloorElevation(footPos.x, footPos.y, footPos.z);
-    footPos.y = THREE.MathUtils.lerp(footPos.y, targetFloorY, 1 - Math.exp(-15 * dtSeconds));
+    const onStairsNow =
+      preStairState !== null ||
+      evaluateActiveStaircaseRiserState(footPos.x, targetFloorY, footPos.z) !== null;
+    const elevRate = onStairsNow ? 26 : 15;
+    footPos.y = THREE.MathUtils.lerp(footPos.y, targetFloorY, 1 - Math.exp(-elevRate * dtSeconds));
     return updatedYaw;
   }
 

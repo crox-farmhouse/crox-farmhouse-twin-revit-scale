@@ -757,7 +757,7 @@ export function buildEastRangePitchedRoofs(shellCtx: OutbuildingShellContext): v
     stableUpperEaveH,
     0.06,
     0.14,
-    [[uStableStart - 0.02, uStableEnd - wallT]],
+    [[uStableStart - 0.03, uStableEnd - wallT + 0.04]],
     [
       { id: 'stableWestNorth', uCenter: 24.85, vCenter: 1.12, widthU: 0.84, lengthS: 1.18 },
       { id: 'stableEastNorth', uCenter: 27.15, vCenter: 1.12, widthU: 0.84, lengthS: 1.18 },

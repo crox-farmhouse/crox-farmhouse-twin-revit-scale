@@ -121,10 +121,9 @@ export function buildGymMirrorsLightingAndPlants(
   gymFloorY: number
 ): void {
   void groundCeilingGroup;
-  const mirrorGroup = new THREE.Group();
-  mirrorGroup.name = 'outbuildings.gym.wallMirrors';
-  mirrorGroup.userData.zone = 'courtyard';
-  groundGroup.add(mirrorGroup);
+  // Issue #3 ("split the plants etc into separate objects"):
+  // Parent each mirror assembly, each indoor planter, the hydration bench, and the yoga mat
+  // directly to `groundGroup` so each is an independent top-level selectable/movable object!
 
   const mirrorGlassMat = new THREE.MeshStandardMaterial({
     map: createGymMirrorGlassTexture(),
@@ -238,9 +237,10 @@ export function buildGymMirrorsLightingAndPlants(
   ): void => {
     const mAssy = new THREE.Group();
     mAssy.name = name;
+    mAssy.userData.zone = 'courtyard';
     mAssy.position.set(cx, cy, cz);
     mAssy.rotation.y = rotY;
-    mirrorGroup.add(mAssy);
+    groundGroup.add(mAssy);
 
     const haloRingGeo = makeArchRingGeometry(archW + 0.036, archH + 0.036, 0.022, 0.01);
     const frameRingGeo = makeArchRingGeometry(archW, archH, 0.02, 0.028);
@@ -496,13 +496,9 @@ export function buildGymMirrorsLightingAndPlants(
   lightingGroup.add(warmAmbientLight);
 
   // ---------------------------------------------------------------------------
-  // 3. Lush Sculpted Botanical Indoor Gym Plants (`outbuildings.gym.plants`)
+  // 3. Lush Sculpted Botanical Indoor Gym Plants (Separate Top-Level Objects per Issue #3)
+  //    & Full-to-the-Rim Organic Potting Soil + River Pebbles (Issue #5)
   // ---------------------------------------------------------------------------
-  const plantsGroup = new THREE.Group();
-  plantsGroup.name = 'outbuildings.gym.plants';
-  plantsGroup.userData.zone = 'courtyard';
-  groundGroup.add(plantsGroup);
-
   const charcoalPlanterMat = new THREE.MeshStandardMaterial({
     color: 0x282c32,
     roughness: 0.68,
@@ -513,9 +509,35 @@ export function buildGymMirrorsLightingAndPlants(
     roughness: 0.74,
     metalness: 0.04,
   });
+
+  // Procedural rich dark organic potting soil & bark mulch texture so every planter
+  // looks genuinely filled to the rim with dark compost, bark chips, and perlite flecks
+  const createPottingSoilTexture = (): THREE.CanvasTexture => {
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const c = canvas.getContext('2d')!;
+    c.fillStyle = '#241911';
+    c.fillRect(0, 0, size, size);
+    for (let i = 0; i < 900; i++) {
+      const rx = ((i * 73) % size);
+      const ry = ((i * 137) % size);
+      const rw = 2 + (i % 5);
+      const rh = 1 + ((i * 3) % 4);
+      c.fillStyle = i % 9 === 0 ? '#5c4330' : i % 3 === 0 ? '#18100a' : '#332419';
+      c.fillRect(rx, ry, rw, rh);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  };
+
   const pottingSoilMat = new THREE.MeshStandardMaterial({
-    color: 0x261d16,
-    roughness: 0.92,
+    map: createPottingSoilTexture(),
+    color: 0x2b1e15,
+    roughness: 0.94,
+    metalness: 0.02,
   });
   const pebbleMat = new THREE.MeshStandardMaterial({
     color: 0x8a847c,
@@ -545,9 +567,11 @@ export function buildGymMirrorsLightingAndPlants(
   });
 
   // Helper to build a lush multi-stem architectural indoor plant in a stoneware floor planter
+  // parented directly to `groundGroup` (Issue #3) and filled to the upper rim with rich dark soil (Issue #5)
   const addSculptedGymPlanter = (
     name: string,
     uPos: number,
+    yPos: number,
     vPos: number,
     potMat: THREE.Material,
     potRTop: number,
@@ -557,77 +581,99 @@ export function buildGymMirrorsLightingAndPlants(
     leafLen: number,
     leafW: number,
     archDrop: number
-  ): void => {
+  ): THREE.Group => {
     const pGroup = new THREE.Group();
     pGroup.name = name;
-    pGroup.position.set(uPos, gymFloorY, vPos);
-    plantsGroup.add(pGroup);
+    pGroup.userData.zone = 'courtyard';
+    pGroup.position.set(uPos, yPos, vPos);
+    groundGroup.add(pGroup);
 
-    // Stoneware planter pot body + rolled rim collar + soil disc + river pebbles
+    // Issue #5 ("plant isn't full of soil" at `[-19.031, -0.208, 20.75]`):
+    // Keep the solid cylinder `potBody` slightly below `potH` (`bodyH = potH - 0.022`) so its solid top cap
+    // never occludes the dark potting soil bed, and place the sculpted `soilDisc` + `soilMound`
+    // directly at the top opening inside `potRim`!
+    const bodyH = Math.max(0.08, potH - 0.022);
     const potBody = new THREE.Mesh(
-      new THREE.CylinderGeometry(potRTop, potRBot, potH, 24),
+      new THREE.CylinderGeometry(potRTop, potRBot, bodyH, 24),
       potMat
     );
     potBody.name = `${name}.potBody`;
-    potBody.position.set(0, potH * 0.5, 0);
+    potBody.position.set(0, bodyH * 0.5, 0);
     potBody.castShadow = true;
     potBody.receiveShadow = true;
     pGroup.add(potBody);
 
+    const rimRadius = Math.max(0.012, potRTop * 0.075);
     const potRim = new THREE.Mesh(
-      new THREE.TorusGeometry(potRTop - 0.008, 0.014, 12, 24),
+      new THREE.TorusGeometry(potRTop - rimRadius * 0.55, rimRadius, 14, 28),
       potMat
     );
     potRim.name = `${name}.potRim`;
     potRim.rotation.x = Math.PI / 2;
-    potRim.position.set(0, potH - 0.006, 0);
+    potRim.position.set(0, potH - rimRadius * 0.65, 0);
+    potRim.castShadow = true;
+    potRim.receiveShadow = true;
     pGroup.add(potRim);
 
+    const soilOuterR = Math.max(0.04, potRTop - rimRadius * 0.85);
     const soilDisc = new THREE.Mesh(
-      new THREE.CylinderGeometry(potRTop - 0.018, potRTop - 0.018, 0.02, 20),
+      new THREE.CylinderGeometry(soilOuterR, soilOuterR * 0.96, 0.026, 24),
       pottingSoilMat
     );
     soilDisc.name = `${name}.soilDisc`;
-    soilDisc.position.set(0, potH - 0.025, 0);
+    soilDisc.position.set(0, potH - 0.017, 0);
+    soilDisc.receiveShadow = true;
     pGroup.add(soilDisc);
 
-    for (let p = 0; p < 7; p++) {
-      const ang = (p / 7) * Math.PI * 2;
-      const rad = potRTop * 0.48;
+    // Subtle central crowned organic compost mound so the planter is visibly full to the rim
+    const soilMound = new THREE.Mesh(
+      new THREE.CylinderGeometry(soilOuterR * 0.52, soilOuterR * 0.95, 0.012, 20),
+      pottingSoilMat
+    );
+    soilMound.name = `${name}.soilMound`;
+    soilMound.position.set(0, potH - 0.002, 0);
+    soilMound.receiveShadow = true;
+    pGroup.add(soilMound);
+
+    const pebbleCount = potRTop >= 0.15 ? 12 : 7;
+    for (let p = 0; p < pebbleCount; p++) {
+      const ang = (p / pebbleCount) * Math.PI * 2 + (p % 2) * 0.22;
+      const rad = soilOuterR * (p % 2 === 0 ? 0.68 : 0.42);
       const pebble = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(0.018, 1),
+        new THREE.DodecahedronGeometry(potRTop >= 0.15 ? 0.016 : 0.01, 1),
         pebbleMat
       );
       pebble.name = `${name}.pebble.${p + 1}`;
       pebble.userData.lodTier = 'high';
       pebble.userData.lodMaxDistance = 12;
-      pebble.scale.set(1.2, 0.55, 0.95);
-      pebble.position.set(Math.cos(ang) * rad, potH - 0.012, Math.sin(ang) * rad);
+      pebble.scale.set(1.25, 0.52, 0.95);
+      pebble.rotation.y = ang * 1.7;
+      pebble.position.set(Math.cos(ang) * rad, potH - 0.001, Math.sin(ang) * rad);
       pGroup.add(pebble);
     }
 
-    // Sculpted botanical leaf blades radiating from multi-tiered petioles
+    // Sculpted botanical leaf blades radiating from multi-tiered petioles rooted in the soil mound
     const leafGeo = createSculptedBotanicalLeafGeometry(leafLen, leafW, archDrop, 0.022);
     const leafMats = [deepEmeraldLeafMat, midBotanicalLeafMat, freshYoungLeafMat] as const;
 
     for (let i = 0; i < leafCount; i++) {
       const tier = i / leafCount; // 0 = outer lower leaves, 1 = inner tall crown leaves
       const azimuth = i * 2.39996 + uPos * 1.3; // Golden angle spiral distribution
-      const stemH = 0.16 + tier * 0.38;
-      const tiltOut = 0.22 + (1 - tier) * 0.48;
+      const stemH = 0.14 + tier * 0.36;
+      const tiltOut = 0.2 + (1 - tier) * 0.46;
       const scale = 0.78 + tier * 0.34;
 
       const stemHolder = new THREE.Group();
       stemHolder.name = `${name}.stem.${i + 1}`;
       stemHolder.position.set(
-        Math.cos(azimuth) * (potRTop * 0.24 * (1 - tier * 0.5)),
-        potH - 0.02,
-        Math.sin(azimuth) * (potRTop * 0.24 * (1 - tier * 0.5))
+        Math.cos(azimuth) * (soilOuterR * 0.34 * (1 - tier * 0.45)),
+        potH - 0.004,
+        Math.sin(azimuth) * (soilOuterR * 0.34 * (1 - tier * 0.45))
       );
       stemHolder.rotation.y = azimuth;
       pGroup.add(stemHolder);
 
-      // Petiole stem rising and arching outward
+      // Petiole stem rising and arching outward from the dark soil bed
       const petiole = new THREE.Mesh(
         new THREE.CylinderGeometry(0.006, 0.01, stemH, 8),
         woodyStemMat
@@ -650,12 +696,15 @@ export function buildGymMirrorsLightingAndPlants(
       leafMesh.receiveShadow = true;
       stemHolder.add(leafMesh);
     }
+
+    return pGroup;
   };
 
   // 3A. SW Corner (`u = 0.58m, v = 4.98m`, flanking the West side of the Squat Rack): Tall Strelitzia nicolai (Bird of Paradise)
   addSculptedGymPlanter(
     'outbuildings.gym.plants.swBirdOfParadise',
     0.58,
+    gymFloorY,
     4.98,
     charcoalPlanterMat,
     0.21,
@@ -667,26 +716,27 @@ export function buildGymMirrorsLightingAndPlants(
     0.24
   );
 
-  // 3B. Issue #5 ("move this plant out of the way" at `[-16.943, 0.117, 19.252]`, `outbuildings.gym.plants.seSnakePlant`):
-  // Moved away from the Gym-to-Shower/Toilet Room doorway to sit neatly against the central South brick pilaster (`u = 2.86m, v = 5.08m`)!
+  // 3B. SE Snake Plant (`u = 2.86m, v = 5.08m`, against the central South brick pilaster)
   addSculptedGymPlanter(
     'outbuildings.gym.plants.seSnakePlant',
     2.86,
+    gymFloorY,
     5.08,
     limestonePlanterMat,
     0.19,
     0.15,
     0.38,
-    16,
+    18,
     0.56,
     0.11,
-    0.06
+    0.05
   );
 
   // 3C. NW Corner (`u = 0.56m, v = 0.62m`, beside the Nike Grind Dumbbell Rack under the windows): Lush Monstera deliciosa
   addSculptedGymPlanter(
     'outbuildings.gym.plants.nwMonstera',
     0.56,
+    gymFloorY,
     0.62,
     limestonePlanterMat,
     0.19,
@@ -699,10 +749,12 @@ export function buildGymMirrorsLightingAndPlants(
   );
 
   // 3D. Slatted European Oak & Matte-Black Steel Towel / Hydration Console Bench in NE Corner (`u = 5.44m, v = 0.72m`)
+  //     Parented directly to `groundGroup` so it can be moved independently (Issue #3)
   const benchConsole = new THREE.Group();
   benchConsole.name = 'outbuildings.gym.hydrationBench';
+  benchConsole.userData.zone = 'courtyard';
   benchConsole.position.set(5.44, gymFloorY, 0.72);
-  plantsGroup.add(benchConsole);
+  groundGroup.add(benchConsole);
 
   const oakSlatMat = new THREE.MeshStandardMaterial({
     color: 0xb88c5a,
@@ -756,10 +808,12 @@ export function buildGymMirrorsLightingAndPlants(
     benchConsole.add(towelRoll);
   }
 
-  // Tabletop ceramic succulent/fern pot on the North end of the hydration bench (`z = +0.16m`)
+  // Tabletop ceramic succulent/fern pot on the North end of the hydration bench (`z = +0.16m`),
+  // parented directly to `groundGroup` as its own independent object (Issue #3)
   addSculptedGymPlanter(
     'outbuildings.gym.plants.neBenchPlant',
     5.44,
+    gymFloorY + 0.476,
     0.88,
     charcoalPlanterMat,
     0.09,
@@ -770,8 +824,117 @@ export function buildGymMirrorsLightingAndPlants(
     0.08,
     0.09
   );
-  const nePlant = plantsGroup.getObjectByName('outbuildings.gym.plants.neBenchPlant');
-  if (nePlant) {
-    nePlant.position.y = gymFloorY + 0.476;
-  }
+
+  // ---------------------------------------------------------------------------
+  // 4. Issue #4 ("rotate the yoga mat, make it full size not sure what this thing is I want to do planks on it and stuff"
+  //    at `[-17.053, -0.581, 20.449]` on `outbuildings.gym.yogaMat.matPad`):
+  //    Full-Size Unrolled Performance Plank & Floor-Exercise Mat (`1.88m x 0.78m x 0.008m`),
+  //    rotated 90° so its long axis runs North-South (`v = 3.24..5.12m`) parallel to the treadmill
+  //    and facing the South-East arched mirror, with a completely clear, flat surface ready for planks!
+  // ---------------------------------------------------------------------------
+  const yogaMatGroup = new THREE.Group();
+  yogaMatGroup.name = 'outbuildings.gym.yogaMat';
+  yogaMatGroup.userData.zone = 'courtyard';
+  yogaMatGroup.position.set(4.88, gymFloorY, 4.18);
+  yogaMatGroup.rotation.y = Math.PI / 2;
+  groundGroup.add(yogaMatGroup);
+
+  const createGymYogaMatTexture = (): THREE.CanvasTexture => {
+    const w = 1024;
+    const h = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const c = canvas.getContext('2d')!;
+
+    // Deep eucalyptus-sage / slate natural rubber base with high-grip micro-cell grain
+    c.fillStyle = '#344741';
+    c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 2400; i++) {
+      const gx = (i * 193) % w;
+      const gy = (i * 109) % h;
+      c.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.035)';
+      c.fillRect(gx, gy, 2, 2);
+    }
+
+    // Laser-etched warm-linen perimeter border & plank / body-alignment guide lines
+    c.strokeStyle = 'rgba(218, 204, 178, 0.52)';
+    c.lineWidth = 3.5;
+    c.strokeRect(28, 28, w - 56, h - 56);
+
+    // Central longitudinal spine alignment axis + forearm/plank & foot stance T-bars
+    c.beginPath();
+    c.moveTo(96, h * 0.5);
+    c.lineTo(w - 96, h * 0.5);
+    c.moveTo(164, h * 0.22);
+    c.lineTo(164, h * 0.78);
+    c.moveTo(w - 164, h * 0.22);
+    c.lineTo(w - 164, h * 0.78);
+    c.stroke();
+
+    // Central balance medallion
+    c.beginPath();
+    c.arc(w * 0.5, h * 0.5, 42, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.arc(w * 0.5, h * 0.5, 14, 0, Math.PI * 2);
+    c.stroke();
+
+    // Symmetric 45-degree alignment chevrons
+    c.beginPath();
+    c.moveTo(290, h * 0.5 - 64);
+    c.lineTo(354, h * 0.5);
+    c.lineTo(290, h * 0.5 + 64);
+    c.moveTo(w - 290, h * 0.5 - 64);
+    c.lineTo(w - 354, h * 0.5);
+    c.lineTo(w - 290, h * 0.5 + 64);
+    c.stroke();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  };
+
+  const yogaMatTopMat = new THREE.MeshStandardMaterial({
+    map: createGymYogaMatTexture(),
+    color: 0xffffff,
+    roughness: 0.72,
+    metalness: 0.04,
+  });
+  const yogaMatUndersideMat = new THREE.MeshStandardMaterial({
+    color: 0x222e2a,
+    roughness: 0.86,
+    metalness: 0.02,
+  });
+
+  // Full-size unrolled cushioned plank & exercise mat (`1.88m long x 0.78m wide x 0.008m thick`)
+  const matW = 1.88;
+  const matD = 0.78;
+  const matT = 0.008;
+  const matPad = new THREE.Mesh(
+    new THREE.BoxGeometry(matW, matT, matD),
+    [
+      yogaMatUndersideMat,
+      yogaMatUndersideMat,
+      yogaMatTopMat,
+      yogaMatUndersideMat,
+      yogaMatUndersideMat,
+      yogaMatUndersideMat,
+    ]
+  );
+  matPad.name = 'outbuildings.gym.yogaMat.matPad';
+  matPad.position.set(0, matT * 0.5 + 0.001, 0);
+  matPad.castShadow = true;
+  matPad.receiveShadow = true;
+  yogaMatGroup.add(matPad);
+
+  // Subtle lower dark natural-rubber grip base layer (`1.89m x 0.79m x 0.003m`) giving a clean bevelled edge step
+  const matBase = new THREE.Mesh(
+    new THREE.BoxGeometry(matW + 0.01, 0.003, matD + 0.01),
+    yogaMatUndersideMat
+  );
+  matBase.name = 'outbuildings.gym.yogaMat.gripBase';
+  matBase.position.set(0, 0.0015, 0);
+  matBase.receiveShadow = true;
+  yogaMatGroup.add(matBase);
 }

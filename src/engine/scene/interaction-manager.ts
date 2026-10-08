@@ -29,6 +29,7 @@ interface HingedDoorState {
   closedPivotPos?: THREE.Vector3;
   stowedPivotOffset?: THREE.Vector3;
   linkedDrawerId?: string;
+  partnerDoorId?: string;
   onStateChange?: (isOpen: boolean) => void;
   bargeSwingSign?: -1 | 1;
   fromAngle?: number;
@@ -142,6 +143,42 @@ interface MotorizedCarGatePairState {
   readonly speed: number;
 }
 
+interface GolfSimulatorShotState {
+  readonly id: string;
+  readonly clubSwingPivot: THREE.Group;
+  readonly teedBall: THREE.Mesh;
+  readonly screenMesh: THREE.Mesh;
+  readonly launchStreakMesh: THREE.Mesh;
+  readonly screenImpactRing: THREE.Mesh;
+  readonly bagStowPos: THREE.Vector3;
+  readonly bagStowRot: THREE.Euler;
+  readonly addressClubPos: THREE.Vector3;
+  readonly baseBallPos: THREE.Vector3;
+  readonly baseScreenPos: THREE.Vector3;
+  readonly matDoorId?: string;
+  readonly onUpdateScreens: (shotIndex: number, flightProgress: number) => void;
+  isPlaying: boolean;
+  elapsedSec: number;
+  shotIndex: number;
+  lastRenderedScreenProgress: number;
+}
+
+const GOLF_SHOT_SCREEN_IMPACTS: ReadonlyArray<{
+  readonly yHit: number;
+  readonly zHit: number;
+  readonly clubName: string;
+}> = [
+  { yHit: 1.38, zHit: -0.06, clubName: '46° Pitching Wedge (138 yds)' },
+  { yHit: 1.06, zHit: -0.05, clubName: 'Driver (308 yds)' },
+  { yHit: 1.56, zHit: 0.02, clubName: '54° Wedge (122 yds)' },
+  { yHit: 1.14, zHit: -0.14, clubName: '3-Wood (275 yds)' },
+];
+
+const tmpStreakStart = new THREE.Vector3();
+const tmpStreakEnd = new THREE.Vector3();
+const tmpStreakDir = new THREE.Vector3();
+const tmpStreakUp = new THREE.Vector3(0, 1, 0);
+
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
@@ -160,31 +197,31 @@ const CONFLICTING_DOOR_IDS: Readonly<Record<string, readonly string[]>> = {
   'door-3': ['door-6', 'door-7'],
   'door-6': ['door-3'],
   'door-7': ['door-3'],
-  'door-32': ['door-34', 'door-35', 'door-36', 'door-37', 'bifold-cupboard-1'],
-  'door-34': ['door-32', 'bifold-cupboard-1'],
-  'door-35': ['door-32', 'bifold-cupboard-1'],
-  'door-36': ['door-32', 'bifold-cupboard-1'],
-  'door-37': ['door-32', 'bifold-cupboard-1'],
-  'door-39': ['bifold-cupboard-1'],
-  'door-41': ['bifold-cupboard-1'],
+  'door-55': ['door-57', 'door-58', 'door-59', 'door-60', 'bifold-cupboard-1'],
+  'door-57': ['door-55', 'bifold-cupboard-1'],
+  'door-58': ['door-55', 'bifold-cupboard-1'],
+  'door-59': ['door-55', 'bifold-cupboard-1'],
+  'door-60': ['door-55', 'bifold-cupboard-1'],
+  'door-62': ['bifold-cupboard-1'],
+  'door-64': ['bifold-cupboard-1'],
   'bifold-cupboard-1': [
-    'door-32',
-    'door-34',
-    'door-35',
-    'door-36',
-    'door-37',
-    'door-39',
-    'door-41',
+    'door-55',
+    'door-57',
+    'door-58',
+    'door-59',
+    'door-60',
+    'door-62',
+    'door-64',
   ],
-  'door-38': ['door-42'],
-  'door-42': ['door-38'],
-  'door-40': ['door-60'],
-  'door-60': ['door-40'],
-  'door-43': ['door-46', 'door-47'],
-  'door-46': ['door-43'],
-  'door-47': ['door-43'],
-  'door-56': ['door-57'],
-  'door-57': ['door-56'],
+  'door-61': ['door-65'],
+  'door-65': ['door-61'],
+  'door-63': ['door-83'],
+  'door-83': ['door-63'],
+  'door-66': ['door-69', 'door-70'],
+  'door-69': ['door-66'],
+  'door-70': ['door-66'],
+  'door-79': ['door-80'],
+  'door-80': ['door-79'],
 };
 
 /**
@@ -207,6 +244,7 @@ export class SceneInteractionManager {
   >();
   private pulleyMaid: PulleyMaidState | null = null;
   private carGatePair: MotorizedCarGatePairState | null = null;
+  private golfSimulatorShot: GolfSimulatorShotState | null = null;
   private nextId = 1;
 
   public constructor(interactiveMeshes: THREE.Object3D[]) {
@@ -288,6 +326,22 @@ export class SceneInteractionManager {
     });
 
     return pivot;
+  }
+
+  /**
+   * Links two hinged door pivot groups (such as a pair of French double doors) so clicking,
+   * toggling, or barging either leaf opens and closes both leaves together as a synchronized pair.
+   */
+  public linkDoorPair(doorPivotA: THREE.Object3D, doorPivotB: THREE.Object3D): void {
+    const idA = (doorPivotA.userData as InteractiveUserData | undefined)?.interactableId;
+    const idB = (doorPivotB.userData as InteractiveUserData | undefined)?.interactableId;
+    if (!idA || !idB) return;
+    const stateA = this.hingedDoors.get(idA);
+    const stateB = this.hingedDoors.get(idB);
+    if (stateA && stateB) {
+      stateA.partnerDoorId = idB;
+      stateB.partnerDoorId = idA;
+    }
   }
 
   /**
@@ -433,6 +487,9 @@ export class SceneInteractionManager {
         child.rotation.z = rollerAngleZ;
       }
     });
+    if (this.golfSimulatorShot && !this.golfSimulatorShot.isPlaying) {
+      this.golfSimulatorShot.clubSwingPivot.visible = p < 0.08;
+    }
   }
 
   /**
@@ -637,6 +694,134 @@ export class SceneInteractionManager {
     this.toggleCallbacks.set(id, { onToggle, dynamicRoots });
   }
 
+  /**
+   * Registers the Barn TrackMan Golf Simulator active club swing, 3D ball launch,
+   * screen fabric ripple, and live projected trajectory animation.
+   */
+  public registerGolfSimulatorShot(config: {
+    readonly clubSwingPivot: THREE.Group;
+    readonly teedBall: THREE.Mesh;
+    readonly screenMesh: THREE.Mesh;
+    readonly launchStreakMesh: THREE.Mesh;
+    readonly screenImpactRing: THREE.Mesh;
+    readonly clickableTargets: readonly THREE.Object3D[];
+    readonly matDoorId?: string;
+    readonly onUpdateScreens: (shotIndex: number, flightProgress: number) => void;
+  }): string {
+    const id = 'golf-simulator-shot';
+    for (const target of config.clickableTargets) {
+      this.registerClickableObject(target, {
+        interactableId: id,
+        isGolfSimulatorShot: true,
+      });
+    }
+    this.golfSimulatorShot = {
+      id,
+      clubSwingPivot: config.clubSwingPivot,
+      teedBall: config.teedBall,
+      screenMesh: config.screenMesh,
+      launchStreakMesh: config.launchStreakMesh,
+      screenImpactRing: config.screenImpactRing,
+      bagStowPos: config.clubSwingPivot.position.clone(),
+      bagStowRot: config.clubSwingPivot.rotation.clone(),
+      addressClubPos: new THREE.Vector3(0.174, 0.86, 0.34),
+      baseBallPos: config.teedBall.position.clone(),
+      baseScreenPos: config.screenMesh.position.clone(),
+      matDoorId: config.matDoorId,
+      onUpdateScreens: config.onUpdateScreens,
+      isPlaying: false,
+      elapsedSec: 0,
+      shotIndex: 0,
+      lastRenderedScreenProgress: 1,
+    };
+    return id;
+  }
+
+  /**
+   * Returns true when the Barn Golf Simulator folding hitting mat is stowed away
+   * (or currently stowing away) so the golf bag is hidden and the simulator is put away.
+   */
+  public isGolfSimulatorStowed(): boolean {
+    const gs = this.golfSimulatorShot;
+    if (!gs || !gs.matDoorId) return false;
+    const matDoor = this.hingedDoors.get(gs.matDoorId);
+    if (!matDoor) return false;
+    return matDoor.isOpen || matDoor.progress > 0.05;
+  }
+
+  private cancelGolfSimulatorShot(): void {
+    const gs = this.golfSimulatorShot;
+    if (!gs || !gs.isPlaying) return;
+    gs.isPlaying = false;
+    gs.clubSwingPivot.position.copy(gs.bagStowPos);
+    gs.clubSwingPivot.rotation.copy(gs.bagStowRot);
+    gs.clubSwingPivot.updateMatrixWorld(true);
+    gs.teedBall.position.copy(gs.baseBallPos);
+    gs.teedBall.updateMatrixWorld(true);
+    gs.screenMesh.position.copy(gs.baseScreenPos);
+    gs.screenMesh.updateMatrixWorld(true);
+    gs.launchStreakMesh.visible = false;
+    gs.screenImpactRing.visible = false;
+    if (gs.lastRenderedScreenProgress < 1) {
+      gs.lastRenderedScreenProgress = 1;
+      gs.onUpdateScreens(gs.shotIndex, 1);
+    }
+  }
+
+  /**
+   * Triggers a full TrackMan Golf Simulator shot sequence (grabbing club from Callaway Tour Bag ->
+   * carrying to tee address -> backswing & downswing -> ball impact & 3D launch to screen ->
+   * screen fabric ripple -> live projected 3D trajectory -> returning club to golf bag).
+   * Does not trigger when the golf simulator hitting mat is stowed away.
+   */
+  public triggerGolfSimulatorShot(): boolean {
+    const gs = this.golfSimulatorShot;
+    if (!gs) return false;
+
+    // When the golf simulator is stowed away, never trigger the shot animation
+    if (this.isGolfSimulatorStowed()) {
+      return false;
+    }
+
+    // If a shot is already past the initial bag-grab, swing & ball launch (> 2.50s), allow re-triggering the next club
+    if (gs.isPlaying && gs.elapsedSec < 2.5) {
+      return false;
+    }
+
+    gs.shotIndex = (gs.shotIndex + 1) % GOLF_SHOT_SCREEN_IMPACTS.length;
+    gs.isPlaying = true;
+    gs.elapsedSec = 0;
+    gs.lastRenderedScreenProgress = -1;
+    gs.clubSwingPivot.visible = true;
+    gs.teedBall.visible = true;
+    gs.teedBall.position.copy(gs.baseBallPos);
+    gs.teedBall.updateMatrixWorld(true);
+    gs.onUpdateScreens(gs.shotIndex, 0);
+    return true;
+  }
+
+  public isGolfSimulatorShotPlaying(): boolean {
+    return this.golfSimulatorShot?.isPlaying ?? false;
+  }
+
+  public getGolfSimulatorShotElapsedSec(): number | null {
+    const gs = this.golfSimulatorShot;
+    return gs && gs.isPlaying ? gs.elapsedSec : null;
+  }
+
+  public getGolfSimulatorPromptLabel(): string {
+    if (this.isGolfSimulatorStowed()) return '';
+    const gs = this.golfSimulatorShot;
+    if (!gs) return 'Grab Club from Golf Bag & Play Golf';
+    const nextIdx = (gs.shotIndex + 1) % GOLF_SHOT_SCREEN_IMPACTS.length;
+    const nextClub = GOLF_SHOT_SCREEN_IMPACTS[nextIdx]?.clubName ?? '7-Iron';
+    if (gs.isPlaying && gs.elapsedSec < 2.5) {
+      const currClub = GOLF_SHOT_SCREEN_IMPACTS[gs.shotIndex]?.clubName ?? 'Shot';
+      return `TrackMan iO Tracking ${currClub}...`;
+    }
+    return `Grab ${nextClub} from Golf Bag & Swing`;
+  }
+
   private closeConflictingDoors(openedId: string): void {
     const conflicts = CONFLICTING_DOOR_IDS[openedId];
     if (!conflicts) return;
@@ -659,6 +844,10 @@ export class SceneInteractionManager {
    * Returns true if a prop was matched and toggled.
    */
   public handleInteractableClick(interactableId: string): boolean {
+    if (this.golfSimulatorShot && this.golfSimulatorShot.id === interactableId) {
+      return this.triggerGolfSimulatorShot();
+    }
+
     const toggleCb = this.toggleCallbacks.get(interactableId);
     if (toggleCb) {
       toggleCb.onToggle();
@@ -674,6 +863,9 @@ export class SceneInteractionManager {
         : door.overheadTrackZ !== undefined
           ? 1.55
           : 2.8;
+      if (door.isFoldingFloorMat && door.isOpen) {
+        this.cancelGolfSimulatorShot();
+      }
       if (door.linkedDrawerId) {
         const linkedDrawer = this.slidingDrawers.get(door.linkedDrawerId);
         if (linkedDrawer) {
@@ -685,6 +877,20 @@ export class SceneInteractionManager {
         this.closeConflictingDoors(interactableId);
       } else {
         doorManualCloseTimestampMs.set(interactableId, performance.now());
+      }
+      if (door.partnerDoorId) {
+        const partner = this.hingedDoors.get(door.partnerDoorId);
+        if (partner) {
+          partner.fromAngle = undefined;
+          partner.isOpen = door.isOpen;
+          partner.speed = door.speed;
+          partner.onStateChange?.(partner.isOpen);
+          if (partner.isOpen) {
+            this.closeConflictingDoors(door.partnerDoorId);
+          } else {
+            doorManualCloseTimestampMs.set(door.partnerDoorId, performance.now());
+          }
+        }
       }
       return true;
     }
@@ -707,6 +913,9 @@ export class SceneInteractionManager {
           linkedDoor.fromAngle = undefined;
           linkedDoor.isOpen = drawer.isOpen;
           linkedDoor.speed = 1.55;
+          if (linkedDoor.isFoldingFloorMat && linkedDoor.isOpen) {
+            this.cancelGolfSimulatorShot();
+          }
           linkedDoor.onStateChange?.(linkedDoor.isOpen);
         }
       }
@@ -727,11 +936,28 @@ export class SceneInteractionManager {
     door.fromAngle = undefined;
     door.isOpen = isOpen;
     door.speed = 2.8;
+    if (door.isFoldingFloorMat && isOpen) {
+      this.cancelGolfSimulatorShot();
+    }
     door.onStateChange?.(door.isOpen);
     if (isOpen) {
       this.closeConflictingDoors(interactableId);
     } else {
       doorManualCloseTimestampMs.set(interactableId, performance.now());
+    }
+    if (door.partnerDoorId) {
+      const partner = this.hingedDoors.get(door.partnerDoorId);
+      if (partner) {
+        partner.fromAngle = undefined;
+        partner.isOpen = isOpen;
+        partner.speed = 2.8;
+        partner.onStateChange?.(partner.isOpen);
+        if (isOpen) {
+          this.closeConflictingDoors(door.partnerDoorId);
+        } else {
+          doorManualCloseTimestampMs.set(door.partnerDoorId, performance.now());
+        }
+      }
     }
     return true;
   }
@@ -972,13 +1198,23 @@ export class SceneInteractionManager {
     const bargeSpeed = isSprinting ? 6.8 : 4.8;
     this.applyDoorBargeSwing(door, desiredSign, bargeSpeed);
 
-    // If barging through the split Utility Room Stable Door (`door-1` lower / `door-2` upper),
-    // open both halves together in the same direction so the player can run straight through.
-    if (interactableId === 'door-1' || interactableId === 'door-2') {
-      const partnerId = interactableId === 'door-1' ? 'door-2' : 'door-1';
+    // If barging through the split Utility Room Stable Door (`door-1` lower / `door-2` upper)
+    // or a linked pair of French double doors (`door.partnerDoorId`), open both leaves together.
+    if (interactableId === 'door-1' || interactableId === 'door-2' || door.partnerDoorId) {
+      const partnerId =
+        door.partnerDoorId ?? (interactableId === 'door-1' ? 'door-2' : 'door-1');
       const partner = this.hingedDoors.get(partnerId);
       if (partner && !partner.isOpen) {
-        this.applyDoorBargeSwing(partner, desiredSign, bargeSpeed);
+        const sameHingeDir =
+          Math.sign(partner.openAngle - partner.closedAngle) ===
+          Math.sign(door.openAngle - door.closedAngle);
+        const partnerSign =
+          desiredSign === undefined
+            ? undefined
+            : sameHingeDir
+              ? desiredSign
+              : (-desiredSign as -1 | 1);
+        this.applyDoorBargeSwing(partner, partnerSign, bargeSpeed);
       }
     }
 
@@ -1048,10 +1284,10 @@ export class SceneInteractionManager {
     if (door.id === 'door-28') return -1.35;
     if (door.id === 'door-13') return -1.38;
     if (door.id === 'door-19') return 1.38;
-    if (door.id === 'door-42') return -1.28;
-    if (door.id === 'door-60') return -1.28;
-    if (door.id === 'door-56') return 1.25;
-    if (door.id === 'door-57') return 1.15;
+    if (door.id === 'door-65') return -1.28;
+    if (door.id === 'door-83') return -1.28;
+    if (door.id === 'door-79') return 1.25;
+    if (door.id === 'door-80') return 1.15;
 
     if (door.overheadTrackZ !== undefined || door.isFoldingFloorMat) {
       return door.openAngle;
@@ -1146,12 +1382,18 @@ export class SceneInteractionManager {
       if (this.toggleCallbacks.has(id)) {
         return 'Extend / Retract Table';
       }
+      if (this.golfSimulatorShot && this.golfSimulatorShot.id === id) {
+        return this.getGolfSimulatorPromptLabel();
+      }
+    }
+    if (data.isGolfSimulatorShot) {
+      return this.getGolfSimulatorPromptLabel();
     }
     if (data.isBifoldDoor) {
       return `${isBifoldsOpen ? 'Close' : 'Open'} Bifold Patio Doors`;
     }
     if (data.isClimbableLadder) {
-      return 'Climb Loft Ladder';
+      return '';
     }
     if (data.isCarGate) {
       return `${this.isCarGatesOpen() ? 'Close' : 'Open'} Courtyard Gates`;
@@ -1250,6 +1492,7 @@ export class SceneInteractionManager {
             u.isBifoldDoor ||
             u.isCarGate ||
             u.isClimbableLadder ||
+            u.isGolfSimulatorShot ||
             u.isKNXSwitch ||
             u.isUtilitySwitch ||
             u.isCourtyardSwitch ||
@@ -1408,6 +1651,16 @@ export class SceneInteractionManager {
       this.carGatePair.northPivot.traverse((c) => outSet.add(c));
       this.carGatePair.southPivot.traverse((c) => outSet.add(c));
     }
+    if (this.golfSimulatorShot) {
+      this.golfSimulatorShot.clubSwingPivot.traverse((c) => outSet.add(c));
+      outSet.add(this.golfSimulatorShot.teedBall);
+      outSet.add(this.golfSimulatorShot.screenMesh);
+      outSet.add(this.golfSimulatorShot.launchStreakMesh);
+      outSet.add(this.golfSimulatorShot.screenImpactRing);
+      if (this.golfSimulatorShot.launchStreakMesh.parent) {
+        outSet.add(this.golfSimulatorShot.launchStreakMesh.parent);
+      }
+    }
   }
 
   /**
@@ -1553,6 +1806,276 @@ export class SceneInteractionManager {
 
         anyChanged = true;
       }
+    }
+
+    if (this.golfSimulatorShot && this.golfSimulatorShot.isPlaying) {
+      const gs = this.golfSimulatorShot;
+      gs.elapsedSec += Math.min(0.08, dtSeconds);
+      const t = gs.elapsedSec;
+      const impactCfg =
+        GOLF_SHOT_SCREEN_IMPACTS[gs.shotIndex % GOLF_SHOT_SCREEN_IMPACTS.length]!;
+      const addrPos = gs.addressClubPos;
+      const bagPos = gs.bagStowPos;
+      const bagRot = gs.bagStowRot;
+
+      // 1. 3D Golf Club Bag-Grab, Address, Swing & Return Kinematics (`0.00s -> 4.50s`)
+      //    - Phase 1A (`0.00s -> 0.28s`): Grab club inside Callaway Tour Bag & pull straight up out of the top divider cuff
+      //    - Phase 1B (`0.28s -> 0.72s`): Carry club from above the golf bag across to the Golfer Address Stance behind the teed ball
+      //    - Phase 1C (`0.72s -> 1.28s`): Takeaway & Full Backswing (`+z` / `+x` away from screen)
+      //    - Phase 1D (`1.28s -> 1.48s`): High-Speed Downswing accelerating through ball impact at `t = 1.48s` (`rz = 0`)
+      //    - Phase 1E (`1.48s -> 1.92s`): Follow-Through whipping toward the impact screen (`-z` / `-x`) into high tour finish
+      //    - Phase 1F (`1.92s -> 3.45s`): Hold high finish pose while watching projected ball flight
+      //    - Phase 1G (`3.45s -> 4.10s`): Carry club back to above the Callaway Tour Bag opening
+      //    - Phase 1H (`4.10s -> 4.50s`): Slide grip & shaft smoothly down into the golf bag divider cuff
+      const pullOutX = -0.02;
+      const pullOutY = 0.48;
+      const pullOutZ = 1.48;
+      const pullOutRx = 1.65;
+      const pullOutRy = 0.25;
+      const pullOutRz = -0.12;
+
+      if (t <= 0.28) {
+        const u = easeInOutCubic(Math.max(0, Math.min(1, t / 0.28)));
+        gs.clubSwingPivot.position.set(
+          bagPos.x + (pullOutX - bagPos.x) * u,
+          bagPos.y + (pullOutY - bagPos.y) * u,
+          bagPos.z + (pullOutZ - bagPos.z) * u
+        );
+        gs.clubSwingPivot.rotation.set(
+          bagRot.x + (pullOutRx - bagRot.x) * u,
+          bagRot.y + (pullOutRy - bagRot.y) * u,
+          bagRot.z + (pullOutRz - bagRot.z) * u
+        );
+      } else if (t <= 0.72) {
+        const u = easeInOutCubic(Math.max(0, Math.min(1, (t - 0.28) / 0.44)));
+        const carryArcY = Math.sin(u * Math.PI) * 0.14;
+        gs.clubSwingPivot.position.set(
+          pullOutX + (addrPos.x - pullOutX) * u,
+          pullOutY + (addrPos.y - pullOutY) * u + carryArcY,
+          pullOutZ + (addrPos.z - pullOutZ) * u
+        );
+        gs.clubSwingPivot.rotation.set(
+          pullOutRx * (1 - u),
+          pullOutRy * (1 - u),
+          pullOutRz * (1 - u)
+        );
+      } else if (t <= 1.28) {
+        const u = easeInOutCubic(Math.max(0, Math.min(1, (t - 0.72) / 0.56)));
+        gs.clubSwingPivot.rotation.set(-u * 0.16, -u * 0.42, u * 2.18);
+        gs.clubSwingPivot.position.set(
+          addrPos.x + u * 0.14,
+          addrPos.y + u * 0.26,
+          addrPos.z + u * 0.06
+        );
+      } else if (t <= 1.48) {
+        const u = Math.max(0, Math.min(1, (t - 1.28) / 0.2));
+        const accel = Math.pow(u, 2.15);
+        const rem = 1 - accel;
+        gs.clubSwingPivot.rotation.set(-rem * 0.16, -rem * 0.42, rem * 2.18);
+        gs.clubSwingPivot.position.set(
+          addrPos.x + rem * 0.14,
+          addrPos.y + rem * 0.26,
+          addrPos.z + rem * 0.06
+        );
+      } else if (t <= 1.92) {
+        const u = Math.max(0, Math.min(1, (t - 1.48) / 0.44));
+        const ft = 1 - Math.pow(1 - u, 3);
+        gs.clubSwingPivot.rotation.set(ft * 0.22, ft * 0.58, -ft * 2.32);
+        gs.clubSwingPivot.position.set(
+          addrPos.x - ft * 0.18,
+          addrPos.y + ft * 0.28,
+          addrPos.z - ft * 0.08
+        );
+      } else if (t <= 3.45) {
+        const breathe = Math.sin((t - 1.92) * 2.6) * 0.025;
+        gs.clubSwingPivot.rotation.set(0.22, 0.58, -2.32 + breathe);
+        gs.clubSwingPivot.position.set(
+          addrPos.x - 0.18,
+          addrPos.y + 0.28,
+          addrPos.z - 0.08
+        );
+      } else if (t <= 4.1) {
+        const u = easeInOutCubic(Math.max(0, Math.min(1, (t - 3.45) / 0.65)));
+        const startX = addrPos.x - 0.18;
+        const startY = addrPos.y + 0.28;
+        const startZ = addrPos.z - 0.08;
+        const startRx = 0.22;
+        const startRy = 0.58;
+        const startRz = -2.32;
+        gs.clubSwingPivot.position.set(
+          startX + (pullOutX - startX) * u,
+          startY + (pullOutY - startY) * u + Math.sin(u * Math.PI) * 0.1,
+          startZ + (pullOutZ - startZ) * u
+        );
+        gs.clubSwingPivot.rotation.set(
+          startRx + (pullOutRx - startRx) * u,
+          startRy + (pullOutRy - startRy) * u,
+          startRz + (pullOutRz - startRz) * u
+        );
+      } else if (t <= 4.5) {
+        const u = easeInOutCubic(Math.max(0, Math.min(1, (t - 4.1) / 0.4)));
+        gs.clubSwingPivot.position.set(
+          pullOutX + (bagPos.x - pullOutX) * u,
+          pullOutY + (bagPos.y - pullOutY) * u,
+          pullOutZ + (bagPos.z - pullOutZ) * u
+        );
+        gs.clubSwingPivot.rotation.set(
+          pullOutRx + (bagRot.x - pullOutRx) * u,
+          pullOutRy + (bagRot.y - pullOutRy) * u,
+          pullOutRz + (bagRot.z - pullOutRz) * u
+        );
+      } else {
+        gs.clubSwingPivot.position.copy(bagPos);
+        gs.clubSwingPivot.rotation.copy(bagRot);
+      }
+      gs.clubSwingPivot.updateMatrixWorld(true);
+
+      // 2. Physical 3D Golf Ball Launch to Screen (`1.48s -> 1.63s`),
+      //    Screen Fabric Ripple & Turf Rebound/Roll (`1.63s -> 3.47s`)
+      const x0 = gs.baseBallPos.x; // +0.138m inside foldingMatGroup
+      const y0 = gs.baseBallPos.y; // +0.036m inside foldingMatGroup
+      const z0 = gs.baseBallPos.z; // 0.0m
+      const xHitLocal = -2.98; // Just in front of screenMesh (-3.002m in foldingMatGroup coords)
+      const yHitLocal = impactCfg.yHit;
+      const zHitLocal = impactCfg.zHit;
+
+      const streakMat = gs.launchStreakMesh.material as THREE.MeshBasicMaterial;
+      const ringMat = gs.screenImpactRing.material as THREE.MeshBasicMaterial;
+
+      if (t < 1.48) {
+        gs.teedBall.position.copy(gs.baseBallPos);
+        gs.launchStreakMesh.visible = false;
+        gs.screenImpactRing.visible = false;
+        gs.screenMesh.position.copy(gs.baseScreenPos);
+      } else if (t <= 1.63) {
+        // High-speed 3D ball launch from tee to impact screen!
+        const f = Math.max(0, Math.min(1, (t - 1.48) / 0.15));
+        const bx = x0 + (xHitLocal - x0) * f;
+        const by = y0 + (yHitLocal - y0) * f + Math.sin(f * Math.PI) * 0.045;
+        const bz = z0 + (zHitLocal - z0) * f;
+        gs.teedBall.position.set(bx, by, bz);
+
+        // Position & orient glowing TrackMan launch streak in simGroup coordinates (`foldingMatGroup` is at `+0.982, +0.017, 0`)
+        tmpStreakStart.set(0.982 + x0, 0.017 + y0, z0);
+        tmpStreakEnd.set(0.982 + bx, 0.017 + by, bz);
+        tmpStreakDir.subVectors(tmpStreakEnd, tmpStreakStart);
+        const streakLen = tmpStreakDir.length();
+        if (streakLen > 0.04) {
+          gs.launchStreakMesh.visible = true;
+          gs.launchStreakMesh.position
+            .addVectors(tmpStreakStart, tmpStreakEnd)
+            .multiplyScalar(0.5);
+          tmpStreakDir.divideScalar(streakLen);
+          gs.launchStreakMesh.quaternion.setFromUnitVectors(tmpStreakUp, tmpStreakDir);
+          gs.launchStreakMesh.scale.set(1, streakLen, 1);
+          streakMat.opacity = 0.82;
+          gs.launchStreakMesh.updateMatrixWorld(true);
+        }
+        gs.screenImpactRing.visible = false;
+      } else if (t <= 3.47) {
+        // Ball has struck the impact screen at t = 1.63s!
+        const postImpact = t - 1.63;
+
+        // Fade out launch streak rapidly after screen impact (`1.63s -> 1.80s`)
+        if (postImpact < 0.17) {
+          gs.launchStreakMesh.visible = true;
+          streakMat.opacity = (1 - postImpact / 0.17) * 0.75;
+        } else {
+          gs.launchStreakMesh.visible = false;
+        }
+
+        // Expanding glowing impact ring on the screen (`1.63s -> 2.20s`)
+        if (postImpact < 0.57) {
+          const ru = postImpact / 0.57;
+          gs.screenImpactRing.visible = true;
+          gs.screenImpactRing.position.set(
+            gs.baseScreenPos.x + 0.008,
+            0.017 + yHitLocal,
+            zHitLocal
+          );
+          const ringScale = 0.65 + ru * 3.4;
+          gs.screenImpactRing.scale.set(ringScale, ringScale, 1);
+          ringMat.opacity = (1 - ru) * 0.88;
+          gs.screenImpactRing.updateMatrixWorld(true);
+        } else {
+          gs.screenImpactRing.visible = false;
+        }
+
+        // Damped harmonic fabric deflection on the impact screen (`1.63s -> 2.14s`)
+        if (postImpact < 0.51) {
+          const deflectX =
+            Math.exp(-postImpact * 9.5) * Math.sin(postImpact * 42.0) * 0.055;
+          gs.screenMesh.position.x = gs.baseScreenPos.x - deflectX;
+          gs.screenMesh.updateMatrixWorld(true);
+        } else {
+          gs.screenMesh.position.copy(gs.baseScreenPos);
+          gs.screenMesh.updateMatrixWorld(true);
+        }
+
+        // Physical ball drops from screen impact point (`yHitLocal`) onto forward turf (`y = 0.034`), bounces twice, and rolls back
+        const dropDur = 0.34;
+        if (postImpact <= dropDur) {
+          const du = postImpact / dropDur;
+          const bx = xHitLocal + du * 0.42;
+          const by = yHitLocal * (1 - du * du) + 0.034 * (du * du);
+          const bz = zHitLocal * (1 - du * 0.25);
+          gs.teedBall.position.set(bx, by, bz);
+        } else {
+          const rollT = Math.min(1, (postImpact - dropDur) / 1.5);
+          const rollEase = 1 - Math.pow(1 - rollT, 2.4);
+          const bx = xHitLocal + 0.42 + rollEase * 1.38;
+          const bounceEnv = Math.exp(-rollT * 5.2);
+          const by = 0.034 + Math.abs(Math.sin(rollT * Math.PI * 3.2)) * 0.14 * bounceEnv;
+          const bz = zHitLocal * (0.75 - rollEase * 0.55);
+          gs.teedBall.position.set(bx, by, bz);
+        }
+      } else {
+        // Re-tee fresh golf ball smoothly (`3.47s -> 3.92s`)
+        gs.launchStreakMesh.visible = false;
+        gs.screenImpactRing.visible = false;
+        gs.screenMesh.position.copy(gs.baseScreenPos);
+        gs.screenMesh.updateMatrixWorld(true);
+        const reTeeU = easeInOutCubic(Math.max(0, Math.min(1, (t - 3.47) / 0.45)));
+        gs.teedBall.position.set(
+          gs.baseBallPos.x,
+          gs.baseBallPos.y - (1 - reTeeU) * 0.018,
+          gs.baseBallPos.z
+        );
+      }
+      gs.teedBall.updateMatrixWorld(true);
+
+      // 3. Live Projected Ball Trajectory on Widescreen Impact Screen & 27" Control Monitor (`1.62s -> 4.27s`)
+      if (t >= 1.62) {
+        const rawFlight = Math.max(0, Math.min(1, (t - 1.62) / 2.65));
+        // Ease-out curve so the ball rockets off the screen face and settles smoothly on the green
+        const flightProgress = 1 - Math.pow(1 - rawFlight, 1.85);
+        if (
+          Math.abs(flightProgress - gs.lastRenderedScreenProgress) >= 0.014 ||
+          (rawFlight >= 1 && gs.lastRenderedScreenProgress < 1)
+        ) {
+          gs.lastRenderedScreenProgress = rawFlight >= 1 ? 1 : flightProgress;
+          gs.onUpdateScreens(gs.shotIndex, gs.lastRenderedScreenProgress);
+        }
+      }
+
+      if (t >= 4.55) {
+        gs.isPlaying = false;
+        gs.clubSwingPivot.position.copy(bagPos);
+        gs.clubSwingPivot.rotation.copy(bagRot);
+        gs.clubSwingPivot.updateMatrixWorld(true);
+        gs.teedBall.position.copy(gs.baseBallPos);
+        gs.teedBall.updateMatrixWorld(true);
+        gs.screenMesh.position.copy(gs.baseScreenPos);
+        gs.screenMesh.updateMatrixWorld(true);
+        gs.launchStreakMesh.visible = false;
+        gs.screenImpactRing.visible = false;
+        if (gs.lastRenderedScreenProgress < 1) {
+          gs.lastRenderedScreenProgress = 1;
+          gs.onUpdateScreens(gs.shotIndex, 1);
+        }
+      }
+
+      anyChanged = true;
     }
 
     return anyChanged;

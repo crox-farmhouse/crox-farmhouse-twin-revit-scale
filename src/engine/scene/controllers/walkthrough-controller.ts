@@ -9,8 +9,12 @@ import {
 } from './walkthrough/walkthrough-door-barge.ts';
 import {
   getWalkthroughTargetEyeHeight,
+  OB_COS,
+  OB_SIN,
+  outbuildingLocalToWorld,
   resolveWalkthroughEntryPose,
   sampleFloorElevation,
+  worldToOutbuildingLocal,
 } from './walkthrough/walkthrough-elevation-solver.ts';
 import { WalkthroughLadderClimbController } from './walkthrough/walkthrough-ladder-climb.ts';
 import {
@@ -48,6 +52,41 @@ export {
   worldToEastWingLocal,
 };
 
+function shortestAngleDelta(fromRad: number, toRad: number): number {
+  return Math.atan2(Math.sin(toRad - fromRad), Math.cos(toRad - fromRad));
+}
+
+function lerpAngle(fromRad: number, toRad: number, t: number): number {
+  return fromRad + shortestAngleDelta(fromRad, toRad) * t;
+}
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = THREE.MathUtils.clamp((x - edge0) / Math.max(1e-5, edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+function computeOutbuildingLookAtYaw(
+  fromU: number,
+  fromV: number,
+  toU: number,
+  toV: number
+): number {
+  const du = toU - fromU;
+  const dv = toV - fromV;
+  const wx = du * OB_COS + dv * OB_SIN;
+  const wz = -du * OB_SIN + dv * OB_COS;
+  return Math.atan2(-wx, -wz);
+}
+
+interface GolfShotStartPose {
+  readonly startU: number;
+  readonly startV: number;
+  readonly startFootY: number;
+  readonly startYaw: number;
+  readonly startPitch: number;
+  readonly startEyeH: number;
+}
+
 /**
  * Call-of-Duty-style First-Person Walkthrough Controller (no weapon) for Crox Farmhouse.
  */
@@ -58,6 +97,9 @@ export class WalkthroughController {
   private readonly getInteractiveMeshes: () => readonly THREE.Object3D[];
   private readonly describeInteractable: (mesh: THREE.Object3D) => string;
   private readonly onInteractWithMesh: (mesh: THREE.Object3D) => void;
+  private readonly onTriggerGolfSimulatorShot?: () => boolean;
+  private readonly getGolfSimulatorShotElapsedSec?: () => number | null;
+  private readonly getGolfSimulatorPrompt?: () => string | null;
   private readonly onStateChanged: (active: boolean) => void;
   private readonly onPoseUpdated: () => void;
   private readonly collisionAndBarge: WalkthroughDoorBargeAndCollisionSolver;
@@ -91,6 +133,8 @@ export class WalkthroughController {
 
   private targetedMesh: THREE.Object3D | null = null;
   private targetedPrompt: string | null = null;
+  private wasInGolfAutoSwingStance = false;
+  private golfShotStartPose: GolfShotStartPose | null = null;
   private lastRaycastMs = 0;
   private lastSessionSaveMs = 0;
 
@@ -107,6 +151,9 @@ export class WalkthroughController {
     readonly getInteractiveMeshes: () => readonly THREE.Object3D[];
     readonly describeInteractable: (mesh: THREE.Object3D) => string;
     readonly onInteractWithMesh: (mesh: THREE.Object3D) => void;
+    readonly onTriggerGolfSimulatorShot?: () => boolean;
+    readonly getGolfSimulatorShotElapsedSec?: () => number | null;
+    readonly getGolfSimulatorPrompt?: () => string | null;
     readonly onBargeWalkthroughDoor?: WalkthroughDoorBargeHandler;
     readonly onProximityBargeDoors?: WalkthroughProximityDoorBargeHandler;
     readonly onStateChanged: (active: boolean) => void;
@@ -118,6 +165,9 @@ export class WalkthroughController {
     this.getInteractiveMeshes = options.getInteractiveMeshes;
     this.describeInteractable = options.describeInteractable;
     this.onInteractWithMesh = options.onInteractWithMesh;
+    this.onTriggerGolfSimulatorShot = options.onTriggerGolfSimulatorShot;
+    this.getGolfSimulatorShotElapsedSec = options.getGolfSimulatorShotElapsedSec;
+    this.getGolfSimulatorPrompt = options.getGolfSimulatorPrompt;
     this.onStateChanged = options.onStateChanged;
     this.onPoseUpdated = options.onPoseUpdated;
 
@@ -219,16 +269,63 @@ export class WalkthroughController {
     return triggered;
   }
 
+  public beginFirstPersonGolfShot(): void {
+    const { obU, obV } = worldToOutbuildingLocal(this.footPos.x, this.footPos.z);
+    this.golfShotStartPose = {
+      startU: obU,
+      startV: obV,
+      startFootY: this.footPos.y,
+      startYaw: this.yawRad,
+      startPitch: this.pitchRad,
+      startEyeH: this.currentEyeHeight,
+    };
+    this.glideTargetFoot = null;
+    this.verticalVelocity = 0;
+    this.jumpOffsetY = 0;
+    this.wasInGolfAutoSwingStance = true;
+  }
+
+  private getGolfSimulatorZoneStatus(foot: THREE.Vector3): {
+    readonly inAutoSwingStance: boolean;
+    readonly inPlayZone: boolean;
+  } {
+    if (foot.y > 0.25) {
+      return { inAutoSwingStance: false, inPlayZone: false };
+    }
+    const { obU, obV } = worldToOutbuildingLocal(foot.x, foot.z);
+    // Callaway Tour Golf Bag is at outbuilding (u = 16.05m, v = 5.03m)
+    const distToBag = Math.hypot(obU - 16.05, obV - 5.03);
+    const inAutoSwingStance = foot.y <= 0.15 && distToBag <= 1.55;
+    const inPlayZone = distToBag <= 2.35;
+    return { inAutoSwingStance, inPlayZone };
+  }
+
   public triggerTargetedInteraction(): boolean {
     if (!this.active) return false;
     this.refreshTargetedInteractable(true);
     if (this.interactWithClimbableLadder()) {
       return true;
     }
-    if (!this.targetedMesh) return false;
-    this.onInteractWithMesh(this.targetedMesh);
-    this.refreshTargetedInteractable(true);
-    return true;
+    const { inPlayZone } = this.getGolfSimulatorZoneStatus(this.footPos);
+    if (this.targetedMesh) {
+      const prompt = this.describeInteractable(this.targetedMesh);
+      if (inPlayZone && prompt.includes('Golf Bag')) {
+        if (this.onTriggerGolfSimulatorShot?.()) {
+          this.beginFirstPersonGolfShot();
+          this.refreshTargetedInteractable(true);
+          return true;
+        }
+      }
+      this.onInteractWithMesh(this.targetedMesh);
+      this.refreshTargetedInteractable(true);
+      return true;
+    }
+    if (inPlayZone && this.onTriggerGolfSimulatorShot?.()) {
+      this.beginFirstPersonGolfShot();
+      this.refreshTargetedInteractable(true);
+      return true;
+    }
+    return false;
   }
 
   private blurActiveControlIfNeeded(): void {
@@ -315,6 +412,9 @@ export class WalkthroughController {
 
     this.targetYawRad = this.yawRad;
     this.targetPitchRad = this.pitchRad;
+    this.wasInGolfAutoSwingStance = this.getGolfSimulatorZoneStatus(
+      this.footPos
+    ).inAutoSwingStance;
     this.syncCameraFromFootAndAngles(0);
     this.refreshTargetedInteractable(true);
     this.onStateChanged(true);
@@ -333,6 +433,7 @@ export class WalkthroughController {
     this.lookDirty = false;
     this.targetedMesh = null;
     this.targetedPrompt = null;
+    this.wasInGolfAutoSwingStance = false;
     this.verticalVelocity = 0;
     this.jumpOffsetY = 0;
 
@@ -367,6 +468,9 @@ export class WalkthroughController {
     this.pitchRad = -0.03;
     this.targetYawRad = this.yawRad;
     this.targetPitchRad = this.pitchRad;
+    this.wasInGolfAutoSwingStance = this.getGolfSimulatorZoneStatus(
+      this.footPos
+    ).inAutoSwingStance;
     this.syncCameraFromFootAndAngles(0);
     this.refreshTargetedInteractable(true);
     this.onPoseUpdated();
@@ -404,8 +508,16 @@ export class WalkthroughController {
 
     const nextMesh = firstHit?.object ?? null;
     const ladderPrompt = this.ladderClimb.getProximityLadderPrompt(this.footPos, nextMesh);
+    const rawPrompt = nextMesh ? this.describeInteractable(nextMesh) : null;
+    const { inPlayZone } = this.getGolfSimulatorZoneStatus(this.footPos);
+    const rawGolfPrompt =
+      inPlayZone && (!rawPrompt || rawPrompt.includes('Golf Simulator Mat'))
+        ? (this.getGolfSimulatorPrompt?.() ?? null)
+        : null;
+    const golfProximityPrompt =
+      rawGolfPrompt && rawGolfPrompt.length > 0 ? rawGolfPrompt : null;
     const nextPrompt =
-      ladderPrompt ?? (nextMesh ? this.describeInteractable(nextMesh) : null);
+      ladderPrompt ?? golfProximityPrompt ?? (rawPrompt ? rawPrompt : null);
     if (nextMesh !== this.targetedMesh || nextPrompt !== this.targetedPrompt) {
       this.targetedMesh = nextMesh;
       this.targetedPrompt = nextPrompt;
@@ -413,7 +525,11 @@ export class WalkthroughController {
     }
   }
 
-  private syncCameraFromFootAndAngles(bobOffsetY: number, rollRad = 0): void {
+  private syncCameraFromFootAndAngles(
+    bobOffsetY: number,
+    rollRad = 0,
+    pitchNodRad = 0
+  ): void {
     syncWalkthroughCameraPose(
       this.rig,
       this.footPos,
@@ -421,9 +537,163 @@ export class WalkthroughController {
       this.jumpOffsetY,
       bobOffsetY,
       this.yawRad,
-      this.pitchRad,
+      THREE.MathUtils.clamp(this.pitchRad + pitchNodRad, -MAX_PITCH_RAD, MAX_PITCH_RAD),
       rollRad
     );
+  }
+
+  /**
+   * Synchronized First-Person Camera Choreography for the Golf Simulator Shot (`0.00s -> 4.55s`):
+   * 1. (`0.00s -> 0.28s`): Steps/turns to the Callaway Tour Golf Bag (`u = 16.18, v = 4.38`) and looks down
+   *    at the top divider cuff as the club is grabbed and lifted up out of the bag into 1PV hands.
+   * 2. (`0.28s -> 0.72s`): Steps from the golf bag to the Tee Box Address Stance (`u = 16.36, v = 3.92`)
+   *    with natural footsteps, looking down over the hands & clubhead sole at the teed Titleist ball.
+   * 3. (`0.72s -> 1.28s`): First-person backswing — eyes stay locked on the teed ball with athletic shoulder coil
+   *    while the 3D club sweeps back and up across the right side of the viewport.
+   * 4. (`1.28s -> 1.48s`): High-speed downswing through ball impact at `t = 1.48s` (`fovBoost = +3.8°`).
+   * 5. (`1.48s -> 1.92s`): Follow-through & head-up release — head turns up and West to face the 16:9 widescreen
+   *    impact screen as the 3D ball rockets into the screen (`1.48s -> 1.63s`).
+   * 6. (`1.92s -> 3.45s`): Watches the screen fabric ripple and the live projected ball trajectory arc across
+   *    the St Andrews fairway onto the green.
+   * 7. (`3.45s -> 4.55s`): Steps back to the Callaway Tour Golf Bag, watches the club slide back into the bag
+   *    divider cuff, and restores free first-person view.
+   */
+  private stepFirstPersonGolfShot(t: number, dtSeconds: number): void {
+    this.lookDirty = false;
+    this.glideTargetFoot = null;
+    this.jumpOffsetY = 0;
+    this.verticalVelocity = 0;
+
+    const start = this.golfShotStartPose ?? {
+      startU: 16.22,
+      startV: 4.18,
+      startFootY: -0.34,
+      startYaw: computeOutbuildingLookAtYaw(16.22, 4.18, 16.03, 5.01),
+      startPitch: -0.36,
+      startEyeH: STANDING_EYE_HEIGHT,
+    };
+
+    const bagStandU = 16.22;
+    const bagStandV = 4.18;
+    const teeStandU = 16.36;
+    const teeStandV = 3.92;
+    const simFloorY = -0.34;
+
+    const bagLookYaw = computeOutbuildingLookAtYaw(bagStandU, bagStandV, 16.03, 5.01);
+    const bagLookPitch = -0.36;
+    const ballLookYaw = computeOutbuildingLookAtYaw(teeStandU, teeStandV, 16.22, 3.35);
+    const ballLookPitch = -0.5;
+    const screenLookYaw = computeOutbuildingLookAtYaw(teeStandU, teeStandV, 13.13, 3.35);
+    const screenLookPitch = -0.02;
+
+    let obU = teeStandU;
+    let obV = teeStandV;
+    let footY = simFloorY;
+    let yaw = screenLookYaw;
+    let pitch = screenLookPitch;
+    let eyeH = STANDING_EYE_HEIGHT;
+    let bobOffsetY = 0;
+    let rollRad = 0;
+    let fovBoost = 0;
+
+    if (t <= 0.28) {
+      const u = smoothstep(0, 0.28, t);
+      const lookU = smoothstep(0, 0.2, t);
+      obU = THREE.MathUtils.lerp(start.startU, bagStandU, u);
+      obV = THREE.MathUtils.lerp(start.startV, bagStandV, u);
+      footY = THREE.MathUtils.lerp(start.startFootY, simFloorY, u);
+      yaw = lerpAngle(start.startYaw, bagLookYaw, lookU);
+      pitch = THREE.MathUtils.lerp(start.startPitch, bagLookPitch, lookU);
+      eyeH = THREE.MathUtils.lerp(start.startEyeH, 1.46, Math.sin(u * Math.PI * 0.85));
+      rollRad = -0.025 * Math.sin(u * Math.PI);
+    } else if (t <= 0.72) {
+      const u = smoothstep(0.28, 0.72, t);
+      obU = THREE.MathUtils.lerp(bagStandU, teeStandU, u);
+      obV = THREE.MathUtils.lerp(bagStandV, teeStandV, u);
+      yaw = lerpAngle(bagLookYaw, ballLookYaw, u);
+      pitch = THREE.MathUtils.lerp(bagLookPitch, ballLookPitch, u);
+      eyeH = THREE.MathUtils.lerp(1.46, 1.52, u);
+      bobOffsetY = Math.sin(u * Math.PI * 2) * 0.016;
+      rollRad = Math.sin(u * Math.PI * 2) * 0.014;
+    } else if (t <= 1.28) {
+      const u = smoothstep(0.72, 1.28, t);
+      obU = teeStandU;
+      obV = teeStandV;
+      yaw = ballLookYaw - u * 0.09;
+      pitch = ballLookPitch - u * 0.03;
+      eyeH = 1.52 - u * 0.04;
+      rollRad = -u * 0.055;
+    } else if (t <= 1.48) {
+      const rawU = THREE.MathUtils.clamp((t - 1.28) / 0.2, 0, 1);
+      const u = Math.pow(rawU, 2.0);
+      const rem = 1 - u;
+      obU = teeStandU;
+      obV = teeStandV;
+      yaw = ballLookYaw - rem * 0.09 + u * 0.12;
+      pitch = ballLookPitch - rem * 0.03 + u * 0.06;
+      eyeH = 1.48 + u * 0.05;
+      rollRad = -rem * 0.055 + u * 0.035;
+      fovBoost = u * 3.8;
+    } else if (t <= 1.92) {
+      const rawU = THREE.MathUtils.clamp((t - 1.48) / 0.44, 0, 1);
+      const u = 1 - Math.pow(1 - rawU, 2.6);
+      obU = teeStandU;
+      obV = teeStandV;
+      yaw = lerpAngle(ballLookYaw + 0.12, screenLookYaw, u);
+      pitch = THREE.MathUtils.lerp(ballLookPitch + 0.06, screenLookPitch, u);
+      eyeH = THREE.MathUtils.lerp(1.53, 1.62, u);
+      rollRad = THREE.MathUtils.lerp(0.035, 0.016, u);
+      fovBoost = (1 - u) * 3.8;
+    } else if (t <= 3.45) {
+      const u = THREE.MathUtils.clamp((t - 1.92) / 1.53, 0, 1);
+      obU = teeStandU;
+      obV = teeStandV;
+      yaw = screenLookYaw;
+      pitch = screenLookPitch + Math.sin(u * Math.PI) * 0.065;
+      eyeH = 1.62;
+      rollRad = 0.016 * (1 - u);
+    } else if (t <= 4.1) {
+      const u = smoothstep(3.45, 4.1, t);
+      obU = THREE.MathUtils.lerp(teeStandU, bagStandU, u);
+      obV = THREE.MathUtils.lerp(teeStandV, bagStandV, u);
+      yaw = lerpAngle(screenLookYaw, bagLookYaw, u);
+      pitch = THREE.MathUtils.lerp(screenLookPitch, -0.36, u);
+      eyeH = THREE.MathUtils.lerp(1.62, 1.5, u);
+      bobOffsetY = Math.sin(u * Math.PI * 2) * 0.014;
+      rollRad = Math.sin(u * Math.PI * 2) * 0.012;
+    } else {
+      const u = smoothstep(4.1, 4.55, t);
+      const finishBayYaw = computeOutbuildingLookAtYaw(bagStandU, bagStandV, 14.2, 3.85);
+      obU = bagStandU;
+      obV = bagStandV;
+      yaw = lerpAngle(bagLookYaw, finishBayYaw, smoothstep(0.35, 1.0, u));
+      pitch = THREE.MathUtils.lerp(-0.36, -0.1, smoothstep(0.25, 1.0, u));
+      eyeH = THREE.MathUtils.lerp(1.5, STANDING_EYE_HEIGHT, u);
+    }
+
+    const worldPos = outbuildingLocalToWorld(obU, obV);
+    this.footPos.set(worldPos.wx, footY, worldPos.wz);
+    this.yawRad = yaw;
+    this.pitchRad = pitch;
+    this.targetYawRad = yaw;
+    this.targetPitchRad = pitch;
+    this.currentEyeHeight = eyeH;
+
+    const desiredFov = this.baseFov + fovBoost;
+    if (Math.abs(this.currentFov - desiredFov) > 0.02) {
+      this.currentFov = THREE.MathUtils.lerp(
+        this.currentFov,
+        desiredFov,
+        1 - Math.exp(-14 * dtSeconds)
+      );
+      this.rig.perspCamera.fov = this.currentFov;
+      this.rig.perspCamera.updateProjectionMatrix();
+    }
+
+    this.syncCameraFromFootAndAngles(bobOffsetY, rollRad, 0);
+    this.refreshTargetedInteractable();
+    this.onPoseUpdated();
+    this.saveSessionState(false);
   }
 
   public update(dtSeconds: number): boolean {
@@ -472,11 +742,28 @@ export class WalkthroughController {
         this.rig.perspCamera.updateProjectionMatrix();
       }
 
-      this.syncCameraFromFootAndAngles(ladderStep.bobOffsetY, ladderStep.rollRad);
+      this.syncCameraFromFootAndAngles(
+        ladderStep.bobOffsetY,
+        ladderStep.rollRad,
+        ladderStep.pitchNodRad
+      );
       this.refreshTargetedInteractable();
       this.onPoseUpdated();
       this.saveSessionState(false);
       return true;
+    }
+
+    const golfElapsedSec = this.getGolfSimulatorShotElapsedSec?.() ?? null;
+    if (golfElapsedSec !== null) {
+      if (!this.golfShotStartPose) {
+        this.beginFirstPersonGolfShot();
+      }
+      this.stepFirstPersonGolfShot(golfElapsedSec, dtSeconds);
+      return true;
+    }
+    if (this.golfShotStartPose !== null) {
+      this.golfShotStartPose = null;
+      this.wasInGolfAutoSwingStance = true;
     }
 
     let movedOrRotated = false;
@@ -503,11 +790,13 @@ export class WalkthroughController {
       this.footPos.z,
       this.crouched
     );
-    if (this.footPos.y >= 1.5 && this.currentEyeHeight > targetEyeH) {
-      this.currentEyeHeight = targetEyeH;
-      movedOrRotated = true;
-    } else if (Math.abs(this.currentEyeHeight - targetEyeH) > 1e-3) {
-      this.currentEyeHeight = THREE.MathUtils.lerp(this.currentEyeHeight, targetEyeH, 1 - Math.exp(-14 * dtSeconds));
+    if (Math.abs(this.currentEyeHeight - targetEyeH) > 1e-3) {
+      const eyeRate = this.footPos.y >= 1.5 && this.currentEyeHeight > targetEyeH ? 24 : 14;
+      this.currentEyeHeight = THREE.MathUtils.lerp(
+        this.currentEyeHeight,
+        targetEyeH,
+        1 - Math.exp(-eyeRate * dtSeconds)
+      );
       movedOrRotated = true;
     }
 
@@ -599,17 +888,68 @@ export class WalkthroughController {
       this.glideTargetFoot = glideStep.nextGlideTarget;
       this.bobPhase += glideStep.bobDelta;
       movedOrRotated = true;
-    } else if (Math.abs(Math.sin(this.bobPhase)) > 0.02) {
-      this.bobPhase = 0;
+    } else if (Math.abs(Math.sin(this.bobPhase)) > 1e-3) {
+      const nearestZeroPhase = Math.round(this.bobPhase / Math.PI) * Math.PI;
+      this.bobPhase = THREE.MathUtils.lerp(
+        this.bobPhase,
+        nearestZeroPhase,
+        1 - Math.exp(-16 * dtSeconds)
+      );
+      if (Math.abs(this.bobPhase - nearestZeroPhase) <= 1e-3) {
+        this.bobPhase = 0;
+      }
       movedOrRotated = true;
     }
 
+    const { inAutoSwingStance } = this.getGolfSimulatorZoneStatus(this.footPos);
+    if (inAutoSwingStance && !this.wasInGolfAutoSwingStance) {
+      if (this.onTriggerGolfSimulatorShot?.()) {
+        this.beginFirstPersonGolfShot();
+        this.refreshTargetedInteractable(true);
+      }
+    }
+    this.wasInGolfAutoSwingStance = inAutoSwingStance;
+
+    const stairKinematics = this.ladderClimb.sampleManualStairWalkKinematics(
+      dtSeconds,
+      this.footPos,
+      (isMoving || Boolean(this.glideTargetFoot)) && this.jumpOffsetY === 0,
+      isSprinting
+    );
+    if (
+      stairKinematics.onStairs ||
+      Math.abs(stairKinematics.rollRad) > 1e-4 ||
+      Math.abs(stairKinematics.bobOffsetY) > 1e-4 ||
+      Math.abs(stairKinematics.pitchNodRad) > 1e-4
+    ) {
+      movedOrRotated = true;
+    }
+
+    if (stairKinematics.fovBoost > 0.02) {
+      const stairTargetFov =
+        this.baseFov + (isSprinting ? SPRINT_FOV_BOOST : 0) + stairKinematics.fovBoost;
+      this.currentFov = THREE.MathUtils.lerp(
+        this.currentFov,
+        stairTargetFov,
+        1 - Math.exp(-10 * dtSeconds)
+      );
+      this.rig.perspCamera.fov = this.currentFov;
+      this.rig.perspCamera.updateProjectionMatrix();
+    }
+
     if (movedOrRotated) {
-      const bobOffset =
-        (isMoving || this.glideTargetFoot) && this.jumpOffsetY === 0
+      const flatWalkBob =
+        this.jumpOffsetY === 0
           ? Math.sin(this.bobPhase) * (isSprinting ? 0.022 : 0.015)
           : 0;
-      this.syncCameraFromFootAndAngles(bobOffset);
+      const bobOffset = stairKinematics.onStairs
+        ? stairKinematics.bobOffsetY + flatWalkBob * 0.25
+        : flatWalkBob + stairKinematics.bobOffsetY;
+      this.syncCameraFromFootAndAngles(
+        bobOffset,
+        stairKinematics.rollRad,
+        stairKinematics.pitchNodRad
+      );
       this.refreshTargetedInteractable();
       this.onPoseUpdated();
       this.saveSessionState(false);

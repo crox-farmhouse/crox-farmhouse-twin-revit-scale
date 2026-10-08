@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildMitredArchitraveSegments } from '../../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../../types/scene.ts';
 import { createGymMirrorGlassTexture } from './gym-mirrors-and-lighting.ts';
 
@@ -210,6 +211,30 @@ export function buildGarageShowerRoom(
   eastWall.receiveShadow = true;
   roomGroup.add(eastWall);
 
+  // 60mm Wood-Fibre Thermal & Acoustic Insulation Core inside the Shower Room North & East Partition Walls facing the unheated Garage
+  const showerIwiMat = new THREE.MeshStandardMaterial({
+    color: 0xc89e65,
+    roughness: 0.92,
+    metalness: 0.01,
+  });
+  const northWallIwi = new THREE.Mesh(
+    new THREE.BoxGeometry(northMainSpanU - 0.02, wallH + 0.0015, 0.06),
+    showerIwiMat
+  );
+  northWallIwi.name = 'outbuildings.garage.showerRoom.northWall.woodFibreInsulation';
+  northWallIwi.userData.isArchitecturalShell = true;
+  northWallIwi.position.set(uMin + northMainSpanU * 0.5, wallMidY, (vNorthOuter + vNorthInner) * 0.5);
+  roomGroup.add(northWallIwi);
+
+  const eastWallIwi = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, wallH + 0.0015, eastWallSpanV),
+    showerIwiMat
+  );
+  eastWallIwi.name = 'outbuildings.garage.showerRoom.eastWall.woodFibreInsulation';
+  eastWallIwi.userData.isArchitecturalShell = true;
+  eastWallIwi.position.set((uEastInner + uMax) * 0.5, wallMidY, (vNorthInner + vSouthInner) * 0.5);
+  roomGroup.add(eastWallIwi);
+
   // 1C. Interior Calacatta Marble Porcelain Tile Wall Linings (`y = -0.49..1.92m`)
   const tileWallH = wallH - 0.03;
   const tileWallMidY = garageFloorTopY + 0.01 + tileWallH * 0.5;
@@ -281,7 +306,6 @@ export function buildGarageShowerRoom(
 
     const jambT = 0.028;
     const archW = 0.056;
-    const archT = 0.016;
 
     // Jambs & Head Lining
     for (const sideZ of [-1, 1] as const) {
@@ -301,25 +325,34 @@ export function buildGarageShowerRoom(
     head.position.set(0, doorOpeningH - jambT * 0.5, 0);
     dAssy.add(head);
 
-    // Moulded architraves on both faces
+    // 45°-Mitred Ogee/Torus Profiled Architraves on both faces
     for (const faceX of [-1, 1] as const) {
       const faceTag = faceX < 0 ? 'outer' : 'inner';
-      const xPos = faceX * (frameDepthT * 0.5 + archT * 0.5);
-      for (const sideZ of [-1, 1] as const) {
-        const leg = new THREE.Mesh(
-          new THREE.BoxGeometry(archT, doorOpeningH + archW, archW),
-          darkOakRecessMat
-        );
-        leg.name = `${doorGroupName}.architraveLeg.${faceTag}.${sideZ < 0 ? 'north' : 'south'}`;
-        leg.position.set(xPos, (doorOpeningH + archW) * 0.5, sideZ * (openingW * 0.5 + archW * 0.5 - 0.01));
-        dAssy.add(leg);
-      }
-      const topArch = new THREE.Mesh(
-        new THREE.BoxGeometry(archT, archW, openingW + archW * 2 - 0.02),
-        darkOakRecessMat
+      const [northLegGeo, headGeo, southLegGeo] = buildMitredArchitraveSegments(
+        -(openingW * 0.5 - 0.01),
+        openingW * 0.5 - 0.01,
+        0,
+        0,
+        doorOpeningH - 0.005,
+        'z',
+        faceX * (frameDepthT * 0.5),
+        faceX,
+        archW,
+        0.020
       );
+      const northLeg = new THREE.Mesh(northLegGeo, darkOakRecessMat);
+      northLeg.name = `${doorGroupName}.architraveLeg.${faceTag}.north`;
+      northLeg.castShadow = true;
+      dAssy.add(northLeg);
+
+      const southLeg = new THREE.Mesh(southLegGeo, darkOakRecessMat);
+      southLeg.name = `${doorGroupName}.architraveLeg.${faceTag}.south`;
+      southLeg.castShadow = true;
+      dAssy.add(southLeg);
+
+      const topArch = new THREE.Mesh(headGeo, darkOakRecessMat);
       topArch.name = `${doorGroupName}.architraveHeader.${faceTag}`;
-      topArch.position.set(xPos, doorOpeningH + archW * 0.5 - 0.005, 0);
+      topArch.castShadow = true;
       dAssy.add(topArch);
     }
 
@@ -1314,8 +1347,10 @@ export function buildGarageShowerRoom(
   }
 
   // ---------------------------------------------------------------------------
-  // 8. Cutaway-Aware Shower Room Ceiling Lid & Warm LED Downlights (`groundCeilingGroup`)
-  //    Hides automatically when viewing the Ground Floor in Cutaway Mode (`ceilingCutaway = true`)!
+  // 8. Cutaway-Aware Shower Room Ceiling Lid & Warm LED Downlights (`ceilingGroup`)
+  //    Issue #2 ("in cutaway mode dont show the ceiling" at `[-14.572, 1.94, 19.933]`, `outbuildings.garage.showerRoom.ceilingLid`):
+  //    Attached to `roofGroup` (`ctx.ceilingMeshGroup`) so `CutawayController` hides the Shower Room ceiling lid
+  //    and downlights whenever `ceilingCutaway === true` (on both Ground and First floor view modes)!
   // ---------------------------------------------------------------------------
   const ceilingGroup = new THREE.Group();
   ceilingGroup.name = 'outbuildings.garage.showerRoom.ceilingLid';
@@ -1362,7 +1397,7 @@ export function buildGarageShowerRoom(
     downlightBezel.userData.lodTier = 'high';
     downlightBezel.userData.lodMaxDistance = 12;
     downlightBezel.position.set(du, eaveTopY - 0.062, 4.7);
-    roomGroup.add(downlightBezel);
+    ceilingGroup.add(downlightBezel);
 
     const downlightLens = new THREE.Mesh(
       new THREE.CylinderGeometry(0.038, 0.038, 0.014, 18),
@@ -1372,7 +1407,7 @@ export function buildGarageShowerRoom(
     downlightLens.userData.lodTier = 'high';
     downlightLens.userData.lodMaxDistance = 12;
     downlightLens.position.set(du, eaveTopY - 0.063, 4.7);
-    roomGroup.add(downlightLens);
+    ceilingGroup.add(downlightLens);
   }
 
   // Warm 3000K PointLight inside the Shower Room

@@ -12,7 +12,8 @@ function tagHighLodDetail(obj: THREE.Object3D): void {
 
 /**
  * Builds the flush compound-curved glazing (windshield, fastback rear window, and iconic
- * 911 parabolic spear side windows) and the high-detail 992.2 interior cabin.
+ * 911 parabolic spear side windows with B-pillar & rear-quarter glass division) and the
+ * high-detail 992.2 interior cabin (visible through the glass in the reference photo).
  */
 export function buildPorsche992GlazingAndInteriorCabin(
   carGroup: THREE.Group,
@@ -52,7 +53,7 @@ export function buildPorsche992GlazingAndInteriorCabin(
   windshieldGlassMesh.name = 'outbuildings.garage.porsche992TurboS.glazing';
   glazingGroup.add(windshieldGlassMesh);
 
-  // Fastback Rear Window (`x = +0.48m .. +1.52m`)
+  // Fastback Rear Window (`x = +0.46m .. +1.54m`)
   const rearGlassBorderGeo = createConformalBodyPatchGeometry(
     0.46,
     1.54,
@@ -81,7 +82,7 @@ export function buildPorsche992GlazingAndInteriorCabin(
   rearGlassMesh.name = 'outbuildings.garage.porsche992TurboS.glazing';
   glazingGroup.add(rearGlassMesh);
 
-  // Iconic Porsche 911 Teardrop Spear Side Windows (`DLO`, built from exact 2D side-view `(x, y)` curves!)
+  // Iconic Porsche 911 Teardrop Spear Side Windows (`DLO`)
   const sideWindowTrimGeo = createSideWindowDloGeometry(0.018, 0.014, 0.0028);
   const sideWindowTrimMesh = new THREE.Mesh(sideWindowTrimGeo, mats.glossBlackTrimMat);
   sideWindowTrimMesh.name = 'outbuildings.garage.porsche992TurboS.glazing.sideWindowTrim';
@@ -91,6 +92,19 @@ export function buildPorsche992GlazingAndInteriorCabin(
   const sideWindowGlassMesh = new THREE.Mesh(sideWindowGlassGeo, mats.tintedGlassMat);
   sideWindowGlassMesh.name = 'outbuildings.garage.porsche992TurboS.glazing';
   glazingGroup.add(sideWindowGlassMesh);
+
+  // Gloss-black vertical B-pillar divider bar (`x = +0.26m`) between door window and rear quarter spear window (visible in photo!)
+  for (const sideZ of [-1, 1] as const) {
+    const bPillarBar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.032, 0.30, 0.012),
+      mats.glossBlackTrimMat
+    );
+    bPillarBar.name = 'outbuildings.garage.porsche992TurboS.glazing.bPillarDivider';
+    bPillarBar.position.set(0.26, 1.03, sideZ * 0.725);
+    bPillarBar.rotation.x = sideZ * 0.52;
+    bPillarBar.rotation.z = -0.18;
+    glazingGroup.add(bPillarBar);
+  }
 
   // 3. Detailed 992.2 Interior Cabin (`outbuildings.garage.porsche992TurboS.interior`)
   const interiorGroup = new THREE.Group();
@@ -106,6 +120,16 @@ export function buildPorsche992GlazingAndInteriorCabin(
   dashCowling.position.set(-0.56, 0.80, 0);
   tagHighLodDetail(dashCowling);
   interiorGroup.add(dashCowling);
+
+  // Interior rearview mirror + ADAS camera pod at top center of windshield (`x = -0.38m, y = 1.17m, z = 0`)
+  const rearViewMirror = new THREE.Mesh(
+    new THREE.BoxGeometry(0.055, 0.038, 0.18),
+    mats.glossBlackTrimMat
+  );
+  rearViewMirror.name = 'outbuildings.garage.porsche992TurboS.interior.rearViewMirror';
+  rearViewMirror.position.set(-0.38, 1.165, 0);
+  tagHighLodDetail(rearViewMirror);
+  interiorGroup.add(rearViewMirror);
 
   const chronoPod = new THREE.Mesh(
     new THREE.CylinderGeometry(0.036, 0.042, 0.055, 16),
@@ -129,7 +153,7 @@ export function buildPorsche992GlazingAndInteriorCabin(
   tagHighLodDetail(steeringWheel);
   interiorGroup.add(steeringWheel);
 
-  // Two 18-Way Adaptive Sport Seats Plus in two-tone Slate Grey & Chalk leather
+  // Two 18-Way Adaptive Sport Seats Plus with integrated sculpted headrests (clearly visible through the glass in the photo!)
   for (const seatZ of [-0.34, 0.34] as const) {
     const seatBase = new THREE.Mesh(
       new THREE.BoxGeometry(0.46, 0.11, 0.44),
@@ -146,9 +170,20 @@ export function buildPorsche992GlazingAndInteriorCabin(
     );
     seatBack.name = 'outbuildings.garage.porsche992TurboS.interior.seatBackrest';
     seatBack.position.set(0.22, 0.76, seatZ);
-    seatBack.rotation.z = -0.24;
+    seatBack.rotation.z = -0.22;
     tagHighLodDetail(seatBack);
     interiorGroup.add(seatBack);
+
+    const seatHeadrest = new THREE.Mesh(
+      new THREE.SphereGeometry(0.095, 14, 12),
+      mats.slateLeatherMat
+    );
+    seatHeadrest.name = 'outbuildings.garage.porsche992TurboS.interior.seatHeadrest';
+    seatHeadrest.scale.set(0.58, 1.35, 1.15);
+    seatHeadrest.position.set(0.285, 1.055, seatZ);
+    seatHeadrest.rotation.z = -0.18;
+    tagHighLodDetail(seatHeadrest);
+    interiorGroup.add(seatHeadrest);
 
     const seatCenterInsert = new THREE.Mesh(
       new THREE.BoxGeometry(0.115, 0.42, 0.26),
@@ -156,16 +191,17 @@ export function buildPorsche992GlazingAndInteriorCabin(
     );
     seatCenterInsert.name = 'outbuildings.garage.porsche992TurboS.interior.seatInsert';
     seatCenterInsert.position.set(0.212, 0.73, seatZ);
-    seatCenterInsert.rotation.z = -0.24;
+    seatCenterInsert.rotation.z = -0.22;
     tagHighLodDetail(seatCenterInsert);
     interiorGroup.add(seatCenterInsert);
   }
 }
 
 /**
- * Builds a single high-LOD 20"/21" Porsche 992.2 Turbo S Exclusive Design Forged Center-Lock Wheel,
- * Michelin Pilot Sport 4S tire (OPEN-ENDED tread cylinder so the wheel spokes, PCCB rotor & Speed Yellow
- * brake caliper are 100% visible!), 420mm/390mm PCCB cross-drilled carbon-ceramic rotor, and Speed Yellow caliper.
+ * Builds a single high-LOD 20"/21" Porsche 992.2 Turbo S Exclusive Design 10-Twin-Spoke (20-blade Y-spoke)
+ * Forged Center-Lock Wheel in Dark Turbonite with Diamond-Turned Machined Front Faces,
+ * Michelin Pilot Sport 4S tire, 420mm/390mm PCCB cross-drilled carbon-ceramic rotor with rotor bell & bobbins,
+ * and curved 10-piston / 4-piston Porsche Speed Yellow monobloc brake caliper matching the reference photo!
  */
 export function buildPorscheTurboSWheelCorner(
   parent: THREE.Group,
@@ -193,11 +229,10 @@ export function buildPorscheTurboSWheelCorner(
   cornerGroup.position.set(x, y, z);
   parent.add(cornerGroup);
 
-  // 1. Michelin Pilot Sport 4S Tire Assembly:
-  //    CRITICAL: `openEnded = true` so solid circular cylinder end-caps NEVER cover the forged wheel spokes or PCCB brakes!
-  const treadW = tireWidth * 0.82;
+  // 1. Michelin Pilot Sport 4S Tire Assembly (`openEnded = true` so wheel spokes & PCCB brakes are 100% unobstructed)
+  const treadW = tireWidth * 0.84;
   const treadCyl = new THREE.Mesh(
-    new THREE.CylinderGeometry(tireRadius, tireRadius, treadW, 36, 1, true),
+    new THREE.CylinderGeometry(tireRadius, tireRadius, treadW, 40, 1, true),
     materials.tireRubberMat
   );
   treadCyl.name = 'outbuildings.garage.porsche992TurboS.wheel.tireTread';
@@ -206,22 +241,22 @@ export function buildPorscheTurboSWheelCorner(
   treadCyl.receiveShadow = true;
   cornerGroup.add(treadCyl);
 
-  const sidewallTubeR = (tireRadius - rimRadius) * 0.55;
-  const sidewallMajorR = rimRadius + sidewallTubeR * 0.92;
+  const sidewallTubeR = (tireRadius - rimRadius) * 0.56;
+  const sidewallMajorR = rimRadius + sidewallTubeR * 0.90;
   for (const side of [-1, 1] as const) {
     const shoulderTorus = new THREE.Mesh(
-      new THREE.TorusGeometry(sidewallMajorR, sidewallTubeR, 16, 36),
+      new THREE.TorusGeometry(sidewallMajorR, sidewallTubeR, 18, 40),
       materials.tireRubberMat
     );
     shoulderTorus.name = 'outbuildings.garage.porsche992TurboS.wheel.tireSidewall';
-    shoulderTorus.scale.set(1, 1, 0.55);
+    shoulderTorus.scale.set(1, 1, 0.54);
     shoulderTorus.position.set(0, 0, side * (treadW * 0.46));
     cornerGroup.add(shoulderTorus);
   }
 
   // 2. Dark Turbonite Inner Alloy Wheel Barrel, Recessed Back-Plate & Outer Diamond-Turned Lip Flange
   const barrel = new THREE.Mesh(
-    new THREE.CylinderGeometry(rimRadius, rimRadius * 0.96, tireWidth * 0.82, 32, 1, true),
+    new THREE.CylinderGeometry(rimRadius, rimRadius * 0.96, tireWidth * 0.82, 36, 1, true),
     materials.turboniteBarrelMat
   );
   barrel.name = 'outbuildings.garage.porsche992TurboS.wheel.alloyBarrel';
@@ -229,7 +264,7 @@ export function buildPorscheTurboSWheelCorner(
   cornerGroup.add(barrel);
 
   const innerWheelBackDisk = new THREE.Mesh(
-    new THREE.CircleGeometry(rimRadius * 0.96, 28),
+    new THREE.CircleGeometry(rimRadius * 0.96, 32),
     materials.turboniteBarrelMat
   );
   innerWheelBackDisk.name = 'outbuildings.garage.porsche992TurboS.wheel.innerBackDisk';
@@ -239,7 +274,7 @@ export function buildPorscheTurboSWheelCorner(
 
   const outerFaceZ = signZ * (tireWidth * 0.42);
   const rimLipRing = new THREE.Mesh(
-    new THREE.TorusGeometry(rimRadius, 0.012, 14, 36),
+    new THREE.TorusGeometry(rimRadius, 0.0095, 14, 40),
     materials.diamondCutAlloyMat
   );
   rimLipRing.name = 'outbuildings.garage.porsche992TurboS.wheel.rimLipFlange';
@@ -247,33 +282,55 @@ export function buildPorscheTurboSWheelCorner(
   rimLipRing.position.set(0, 0, outerFaceZ);
   cornerGroup.add(rimLipRing);
 
-  // 3. 992.2 Turbo S Exclusive Design 5-Twin-Spoke (10-blade) Forged Wheel Face
-  const hubRadius = 0.058;
-  const spokeLen = rimRadius - hubRadius - 0.004;
+  // 3. Authentic 992.2 Turbo S Exclusive Design 10-Twin-Spoke (20-Blade Y-Spoke) Forged Wheel Face
+  //    Matches the exact multi-spoke dark-titanium + machined-face wheel design in the reference photo!
+  const hubRadius = 0.056;
+  const spokeLen = rimRadius - hubRadius - 0.003;
   const spokeMidR = hubRadius + spokeLen * 0.5;
-  for (let p = 0; p < 5; p++) {
-    const pairAngle = (p / 5) * Math.PI * 2;
-    for (const bladeOffset of [-0.145, 0.145] as const) {
+  const numSpokePairs = 10;
+  for (let p = 0; p < numSpokePairs; p++) {
+    const pairAngle = (p / numSpokePairs) * Math.PI * 2;
+    for (const [bladeOffset, splayAngle] of [
+      [-0.072, -0.055],
+      [0.072, 0.055],
+    ] as const) {
       const ang = pairAngle + bladeOffset;
-      const spoke = new THREE.Mesh(
-        new THREE.BoxGeometry(0.022, spokeLen, 0.02),
-        materials.diamondCutAlloyMat
+      // Dark Turbonite structural spoke body
+      const spokeBody = new THREE.Mesh(
+        new THREE.BoxGeometry(0.0105, spokeLen, 0.022),
+        materials.centerLockMat
       );
-      spoke.name = 'outbuildings.garage.porsche992TurboS.wheel.forgedSpoke';
-      spoke.position.set(
+      spokeBody.name = 'outbuildings.garage.porsche992TurboS.wheel.forgedSpoke';
+      spokeBody.position.set(
         Math.cos(ang) * spokeMidR,
         Math.sin(ang) * spokeMidR,
-        outerFaceZ - signZ * 0.014
+        outerFaceZ - signZ * 0.015
       );
-      spoke.rotation.z = ang - Math.PI / 2;
-      spoke.rotation.x = signZ * 0.12;
-      cornerGroup.add(spoke);
+      spokeBody.rotation.z = ang - Math.PI / 2 + splayAngle;
+      spokeBody.rotation.x = signZ * 0.13;
+      cornerGroup.add(spokeBody);
+
+      // Razor-thin diamond-turned bright machined face on the outer edge of each spoke blade
+      const spokeMachinedFace = new THREE.Mesh(
+        new THREE.BoxGeometry(0.0065, spokeLen * 0.96, 0.004),
+        materials.diamondCutAlloyMat
+      );
+      spokeMachinedFace.name = 'outbuildings.garage.porsche992TurboS.wheel.spokeMachinedFace';
+      spokeMachinedFace.position.set(
+        Math.cos(ang) * spokeMidR,
+        Math.sin(ang) * spokeMidR,
+        outerFaceZ - signZ * 0.004
+      );
+      spokeMachinedFace.rotation.z = ang - Math.PI / 2 + splayAngle;
+      spokeMachinedFace.rotation.x = signZ * 0.13;
+      tagHighLodDetail(spokeMachinedFace);
+      cornerGroup.add(spokeMachinedFace);
     }
   }
 
-  // 4. Forged Center-Lock Hub & Porsche Crest Cap
+  // 4. Forged Center-Lock Hub, RS-Style Center-Lock Nut & Colored Porsche Crest Cap
   const hubCyl = new THREE.Mesh(
-    new THREE.CylinderGeometry(hubRadius, hubRadius * 1.08, 0.044, 24),
+    new THREE.CylinderGeometry(hubRadius, hubRadius * 1.12, 0.046, 28),
     materials.turboniteBarrelMat
   );
   hubCyl.name = 'outbuildings.garage.porsche992TurboS.wheel.centerHub';
@@ -282,7 +339,7 @@ export function buildPorscheTurboSWheelCorner(
   cornerGroup.add(hubCyl);
 
   const centerLockNut = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.035, 0.039, 0.026, 12),
+    new THREE.CylinderGeometry(0.036, 0.041, 0.028, 16),
     materials.centerLockMat
   );
   centerLockNut.name = 'outbuildings.garage.porsche992TurboS.wheel.centerLockNut';
@@ -296,44 +353,62 @@ export function buildPorscheTurboSWheelCorner(
     materials.crestMat
   );
   crestCap.name = 'outbuildings.garage.porsche992TurboS.wheel.crestCenterCap';
-  crestCap.position.set(0, 0, outerFaceZ + signZ * 0.008);
+  crestCap.position.set(0, 0, outerFaceZ + signZ * 0.0085);
   if (isLeft) crestCap.rotation.y = Math.PI;
   tagHighLodDetail(crestCap);
   cornerGroup.add(crestCap);
 
-  // 5. PCCB 420mm Front / 390mm Rear Cross-Drilled Carbon-Ceramic Brake Rotor & Speed Yellow Caliper
-  const rotorR = isFront ? 0.205 : 0.192;
+  // 5. PCCB 420mm Front / 390mm Rear Cross-Drilled Carbon-Ceramic Brake Rotor, Aluminium Hat & Speed Yellow Caliper
+  const rotorR = isFront ? 0.210 : 0.196;
+  const rotorZ = outerFaceZ - signZ * 0.056;
   const rotorMesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(rotorR, rotorR, 0.026, 32),
+    new THREE.CylinderGeometry(rotorR, rotorR, 0.026, 36),
     materials.pccbRotorMat
   );
   rotorMesh.name = 'outbuildings.garage.porsche992TurboS.pccbRotor';
   rotorMesh.rotation.x = Math.PI / 2;
-  rotorMesh.position.set(0, 0, outerFaceZ - signZ * 0.056);
+  rotorMesh.position.set(0, 0, rotorZ);
   tagHighLodDetail(rotorMesh);
   cornerGroup.add(rotorMesh);
 
-  // 10-Piston Front / 4-Piston Rear Porsche Speed Yellow Monobloc Caliper
-  const caliperAngle = isFront ? 0.32 : Math.PI - 0.32;
-  const caliperR = rotorR - 0.026;
+  // Dark anodized aluminium rotor mounting hat/bell (`r = 0.105m`)
+  const rotorHat = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.105, 0.105, 0.032, 24),
+    materials.centerLockMat
+  );
+  rotorHat.name = 'outbuildings.garage.porsche992TurboS.pccbRotor.bellHat';
+  rotorHat.rotation.x = Math.PI / 2;
+  rotorHat.position.set(0, 0, rotorZ);
+  tagHighLodDetail(rotorHat);
+  cornerGroup.add(rotorHat);
+
+  // Curved 10-Piston Front / 4-Piston Rear Porsche Speed Yellow Monobloc Caliper
+  // Positioned on the inboard axle side (`caliperAngle = 0.18` on front wheel = rear side `+x`, clearly visible through the spokes!)
+  const caliperAngle = isFront ? 0.15 : Math.PI - 0.18;
+  const caliperR = rotorR - 0.030;
   const caliperGroup = new THREE.Group();
   caliperGroup.name = 'outbuildings.garage.porsche992TurboS.pccbCaliper';
-  caliperGroup.position.set(
-    Math.cos(caliperAngle) * caliperR,
-    Math.sin(caliperAngle) * caliperR,
-    outerFaceZ - signZ * 0.048
-  );
-  caliperGroup.rotation.z = caliperAngle;
+  caliperGroup.position.set(0, 0, outerFaceZ - signZ * 0.048);
   tagHighLodDetail(caliperGroup);
   cornerGroup.add(caliperGroup);
 
-  const caliperBody = new THREE.Mesh(
-    new THREE.BoxGeometry(0.074, isFront ? 0.195 : 0.155, 0.068),
-    materials.pccbYellowCaliperMat
-  );
-  caliperBody.name = 'outbuildings.garage.porsche992TurboS.pccbCaliper';
-  tagHighLodDetail(caliperBody);
-  caliperGroup.add(caliperBody);
+  const arcSpan = isFront ? 1.08 : 0.78;
+  const caliperSegs = 5;
+  for (let s = 0; s < caliperSegs; s++) {
+    const t = s / (caliperSegs - 1) - 0.5;
+    const segAng = caliperAngle + t * arcSpan;
+    const segMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.068, isFront ? 0.062 : 0.050, 0.072),
+      materials.pccbYellowCaliperMat
+    );
+    segMesh.name = s === 2
+      ? 'outbuildings.garage.porsche992TurboS.pccbCaliper'
+      : 'outbuildings.garage.porsche992TurboS.pccbCaliper.segment';
+    segMesh.position.set(Math.cos(segAng) * caliperR, Math.sin(segAng) * caliperR, 0);
+    segMesh.rotation.z = segAng;
+    tagHighLodDetail(segMesh);
+    caliperGroup.add(segMesh);
+  }
 }
 
 /**
@@ -353,11 +428,11 @@ export function buildPorsche992WheelsAndBrakes(
     crestMat: mats.crestMat,
   };
 
-  // Front Left & Right (`255/35 ZR20`, `tireR = 0.338m, rimR = 0.258m, width = 0.265m` at `x = -1.25m, z = ±0.785m`)
-  buildPorscheTurboSWheelCorner(carGroup, -1.25, 0.338, -0.785, 0.338, 0.258, 0.265, true, true, wheelMaterials);
-  buildPorscheTurboSWheelCorner(carGroup, -1.25, 0.338, 0.785, 0.338, 0.258, 0.265, false, true, wheelMaterials);
+  // Front Left & Right (`255/35 ZR20`, `tireR = 0.338m, rimR = 0.258m, width = 0.265m` at `x = -1.25m, z = ±0.788m`)
+  buildPorscheTurboSWheelCorner(carGroup, -1.25, 0.338, -0.788, 0.338, 0.258, 0.265, true, true, wheelMaterials);
+  buildPorscheTurboSWheelCorner(carGroup, -1.25, 0.338, 0.788, 0.338, 0.258, 0.265, false, true, wheelMaterials);
 
-  // Rear Left & Right (`315/30 ZR21`, `tireR = 0.356m, rimR = 0.274m, width = 0.325m` at `x = +1.20m, z = ±0.805m`)
-  buildPorscheTurboSWheelCorner(carGroup, 1.20, 0.356, -0.805, 0.356, 0.274, 0.325, true, false, wheelMaterials);
-  buildPorscheTurboSWheelCorner(carGroup, 1.20, 0.356, 0.805, 0.356, 0.274, 0.325, false, false, wheelMaterials);
+  // Rear Left & Right (`315/30 ZR21`, `tireR = 0.356m, rimR = 0.274m, width = 0.325m` at `x = +1.20m, z = ±0.812m`)
+  buildPorscheTurboSWheelCorner(carGroup, 1.20, 0.356, -0.812, 0.356, 0.274, 0.325, true, false, wheelMaterials);
+  buildPorscheTurboSWheelCorner(carGroup, 1.20, 0.356, 0.812, 0.356, 0.274, 0.325, false, false, wheelMaterials);
 }

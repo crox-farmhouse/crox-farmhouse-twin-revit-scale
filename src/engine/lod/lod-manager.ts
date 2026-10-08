@@ -14,6 +14,16 @@ interface ManagedLodObject {
   readonly tier: 1 | 2;
 }
 
+interface RuntimeDistanceLodItem {
+  readonly object: THREE.Object3D;
+  readonly centerX: number;
+  readonly centerY: number;
+  readonly centerZ: number;
+  readonly maxDistanceM: number;
+  readonly castsShadow: boolean;
+  visible: boolean;
+}
+
 interface ManagedRoomLodEntry {
   readonly zoneId: RoomZoneId;
   readonly shortName: string;
@@ -44,14 +54,15 @@ export interface RoomLodGroups {
  *   logs, small decor) and full per-room lighting detail.
  */
 export class RoomLodController {
-  private static readonly AUTO_HERO_RADIUS_M = 5.6;
-  private static readonly AUTO_STANDARD_RADIUS_M = 11.2;
+  private static readonly AUTO_HERO_RADIUS_M = 14.0;
   private static readonly HERO_PROP_MAX_DIM_M = 0.34;
   private static readonly SHELL_STRUCTURAL_MIN_DIM_M = 1.95;
 
   private readonly rooms = new Map<RoomZoneId, ManagedRoomLodEntry>();
+  private readonly runtimeDistanceItems: RuntimeDistanceLodItem[] = [];
   private policyMode: LodPolicyMode = 'auto';
   private focusedZoneId: RoomZoneId = 'kitchen';
+  private lastEvalShadowsDirty = false;
   private onLodChangeCallback?: (diagnostics: RoomLodDiagnostics) => void;
 
   public constructor(registrations: readonly RoomZoneLodRegistration[] = []) {
@@ -128,12 +139,65 @@ export class RoomLodController {
     room.managedObjects.push({ object, tier });
   }
 
+  public registerRuntimeDistanceObject(
+    object: THREE.Object3D,
+    centerX: number,
+    centerY: number,
+    centerZ: number,
+    maxDistanceM: number,
+    castsShadow = false
+  ): void {
+    this.runtimeDistanceItems.push({
+      object,
+      centerX,
+      centerY,
+      centerZ,
+      maxDistanceM,
+      castsShadow,
+      visible: object.visible,
+    });
+  }
+
+  public clearRuntimeDistanceObjects(): void {
+    for (let i = 0; i < this.runtimeDistanceItems.length; i++) {
+      const item = this.runtimeDistanceItems[i]!;
+      item.object.visible = true;
+      item.visible = true;
+    }
+    this.runtimeDistanceItems.length = 0;
+  }
+
+  public removeBatchedObjects(objectsToRemove?: ReadonlySet<THREE.Object3D>): void {
+    for (const room of this.rooms.values()) {
+      for (let i = room.managedObjects.length - 1; i >= 0; i--) {
+        const obj = room.managedObjects[i]!.object;
+        if (
+          obj.userData?.isBatchedStaticMesh ||
+          (objectsToRemove !== undefined && objectsToRemove.has(obj))
+        ) {
+          room.managedObjects.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  public didLastEvalChangeShadows(): boolean {
+    return this.lastEvalShadowsDirty;
+  }
+
   /**
    * Scans built scene root groups and binds interior furniture (`LOD1`) and fine props (`LOD2`)
    * to their enclosing `RoomZoneId` so every room supports dynamic `LOD0` / `LOD1` / `LOD2` switching.
    */
   public indexBuiltSceneHierarchy(roots: readonly THREE.Object3D[]): void {
     for (const room of this.rooms.values()) {
+      for (const item of room.managedObjects) {
+        item.object.visible = true;
+      }
+      room.shellGroup.visible = true;
+      room.standardGroup.visible = true;
+      room.heroGroup.visible = true;
+      room.currentTier = 2;
       room.managedObjects.length = 0;
     }
 
@@ -361,6 +425,7 @@ export class RoomLodController {
     forceNotify = false
   ): boolean {
     let anyChanged = false;
+    let shadowsDirty = false;
 
     // Determine if the camera target is inside a specific interior room
     const targetRoom = this.findContainingRoom(
@@ -396,11 +461,65 @@ export class RoomLodController {
       if (room.currentTier !== desiredTier || forceNotify) {
         if (room.currentTier !== desiredTier) {
           anyChanged = true;
+          // Only re-bake directional shadows if primary furniture (tier 1) visibility changed
+          if ((room.currentTier >= 1) !== (desiredTier >= 1)) {
+            shadowsDirty = true;
+          }
         }
         room.currentTier = desiredTier;
         this.applyTierToRoom(room, desiredTier);
       }
     }
+
+    // Evaluate runtime distance-culled micro-detail and outbuilding interior clusters
+    const nRuntime = this.runtimeDistanceItems.length;
+    if (nRuntime > 0) {
+      const camX = cameraPos.x;
+      const camY = cameraPos.y;
+      const camZ = cameraPos.z;
+      const tgtX = cameraTarget.x;
+      const tgtY = cameraTarget.y;
+      const tgtZ = cameraTarget.z;
+      const mode = this.policyMode;
+
+      for (let i = 0; i < nRuntime; i++) {
+        const item = this.runtimeDistanceItems[i]!;
+        let wantVisible = true;
+        if (mode === 'lod0') {
+          wantVisible = false;
+        } else if (mode === 'lod1') {
+          wantVisible = item.maxDistanceM > 20.0;
+        } else if (mode === 'auto') {
+          const dxC = item.centerX - camX;
+          const dyC = (item.centerY - camY) * 0.5;
+          const dzC = item.centerZ - camZ;
+          const distCamSq = dxC * dxC + dyC * dyC + dzC * dzC;
+
+          const dxT = item.centerX - tgtX;
+          const dyT = (item.centerY - tgtY) * 0.5;
+          const dzT = item.centerZ - tgtZ;
+          const distTgtSq = dxT * dxT + dyT * dyT + dzT * dzT;
+
+          const minDistSq = Math.min(distCamSq * 0.78, distTgtSq);
+          // 1.2m hysteresis band prevents popping when hovering near threshold
+          const threshold = item.visible ? item.maxDistanceM + 0.6 : item.maxDistanceM - 0.6;
+          wantVisible = minDistSq <= threshold * threshold;
+        }
+
+        if (item.visible !== wantVisible || forceNotify) {
+          if (item.visible !== wantVisible) {
+            anyChanged = true;
+            if (item.castsShadow) {
+              shadowsDirty = true;
+            }
+          }
+          item.visible = wantVisible;
+          item.object.visible = wantVisible;
+        }
+      }
+    }
+
+    this.lastEvalShadowsDirty = shadowsDirty;
 
     if ((anyChanged || forceNotify) && this.onLodChangeCallback) {
       this.onLodChangeCallback(this.getDiagnostics());
@@ -443,11 +562,8 @@ export class RoomLodController {
       return 2;
     }
 
-    if (effectiveDistM <= RoomLodController.AUTO_STANDARD_RADIUS_M) {
-      return 1;
-    }
-
-    return 0;
+    // Always keep primary room furniture (LOD1 Standard) visible on the active floor
+    return 1;
   }
 
   private applyTierToRoom(room: ManagedRoomLodEntry, tier: RoomLodTier): void {

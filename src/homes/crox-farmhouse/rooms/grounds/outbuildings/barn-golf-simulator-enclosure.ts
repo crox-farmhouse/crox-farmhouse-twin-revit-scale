@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 
 let cachedTrackManWidescreenTexture: THREE.CanvasTexture | null = null;
+let cachedWidescreenCanvas: HTMLCanvasElement | null = null;
+let cachedWidescreenBgCanvas: HTMLCanvasElement | null = null;
 let cachedGolfAstroturfTextures: {
   fairwayMap: THREE.CanvasTexture;
   hittingMap: THREE.CanvasTexture;
@@ -14,6 +16,466 @@ let cachedGolfSimArtworkTexture: THREE.CanvasTexture | null = null;
 let cachedGolfStatusSignTexture: THREE.CanvasTexture | null = null;
 
 /**
+ * Builds a watertight, crease-shaded 3D Forged Teardrop Wedge / Iron Blade `BufferGeometry`
+ * in face-plane coordinates (`u = 0..bladeLen` heel-to-toe along +X, `v = 0..toeHeight` sole-to-topline
+ * along +Y, front striking face flat at `z = -bevelThickness`, and back muscle/sole flaring smoothly in +Z).
+ */
+export function createForgedIronBladeGeometry(
+  bladeLen = 0.086,
+  heelHeight = 0.017,
+  toeHeight = 0.048,
+  topThickness = 0.0056,
+  soleExtraFlange = 0.0115
+): THREE.BufferGeometry {
+  const shape = new THREE.Shape();
+  // Start at Heel Bottom Corner (`u = 0, v = 0.0025`)
+  shape.moveTo(0, 0.0025);
+  // Gently cambered Leading Edge from Heel (`u = 0`) to Toe transition (`u = 0.76 * bladeLen`)
+  shape.quadraticCurveTo(
+    bladeLen * 0.42,
+    -0.0008,
+    bladeLen * 0.76,
+    0.002
+  );
+  // Lower Rounded Teardrop Toe Arc (`u = 0.76..1.00 * bladeLen`)
+  shape.bezierCurveTo(
+    bladeLen * 0.9,
+    0.0035,
+    bladeLen,
+    toeHeight * 0.24,
+    bladeLen,
+    toeHeight * 0.52
+  );
+  // High Rounded Teardrop Toe Peak (`u = 1.00..0.68 * bladeLen`, peaking at `v = toeHeight`)
+  shape.bezierCurveTo(
+    bladeLen,
+    toeHeight * 0.84,
+    bladeLen * 0.86,
+    toeHeight * 1.02,
+    bladeLen * 0.67,
+    toeHeight
+  );
+  // Straight Angled Wedge/Iron Top Line sloping down from High Toe to Heel Neck
+  shape.lineTo(bladeLen * 0.14, heelHeight + 0.0015);
+  // Smooth Parabolic Heel Neck Blend into the Hosel
+  shape.quadraticCurveTo(
+    bladeLen * 0.05,
+    heelHeight,
+    -0.004,
+    heelHeight - 0.001
+  );
+  shape.lineTo(-0.004, 0.0055);
+  shape.quadraticCurveTo(-0.004, 0.0025, 0, 0.0025);
+
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth: topThickness,
+    bevelEnabled: true,
+    bevelThickness: 0.0013,
+    bevelSize: 0.0012,
+    bevelSegments: 3,
+    curveSegments: 24,
+  });
+
+  // Taper the back side (`z > 0.001`) so the bottom sole has a wide cambered bounce flange
+  // while keeping the front striking face (`z <= 0.001`) 100% flat and crisp.
+  const posAttr = geo.attributes.position;
+  if (posAttr) {
+    for (let i = 0; i < posAttr.count; i++) {
+      const u = posAttr.getX(i);
+      const v = posAttr.getY(i);
+      const w = posAttr.getZ(i);
+      if (w > 0.001) {
+        const vNorm = THREE.MathUtils.clamp(v / toeHeight, 0, 1);
+        const uNorm = THREE.MathUtils.clamp(u / bladeLen, 0, 1);
+        const spanWeight = Math.sin(Math.min(1, Math.max(0, uNorm) * 1.08) * Math.PI);
+        // Smooth triangular wedge taper + extra lower tour muscle pad below 45% face height
+        const wedgeTaper = Math.pow(1 - vNorm, 1.35);
+        const muscleStep =
+          vNorm < 0.46
+            ? Math.sin(((0.46 - vNorm) / 0.46) * Math.PI * 0.5) * 0.35
+            : 0;
+        const backWeight = THREE.MathUtils.clamp(
+          (w - 0.001) / (topThickness + 0.0003),
+          0,
+          1
+        );
+        const extraW =
+          soleExtraFlange * (wedgeTaper * 0.78 + muscleStep) * spanWeight * backWeight;
+        posAttr.setZ(i, w + extraW);
+      }
+    }
+    posAttr.needsUpdate = true;
+  }
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+export interface GolfSimShotProfile {
+  readonly clubName: string;
+  readonly clubSpeedMph: number;
+  readonly ballSpeedMph: number;
+  readonly smashFactor: string;
+  readonly launchAngleDeg: number;
+  readonly spinRateRpm: string;
+  readonly carryYds: number;
+  readonly totalYds: number;
+  readonly apexFt: number;
+  readonly ctrlOffsetXFrac: number;
+  readonly ctrlApexYFrac: number;
+  readonly landOffsetXFrac: number;
+  readonly landOffsetYFrac: number;
+  readonly endOffsetXFrac: number;
+  readonly endOffsetYFrac: number;
+  readonly screenImpactY: number;
+  readonly screenImpactZ: number;
+  readonly outcomeBanner: string;
+}
+
+export const GOLF_SIM_SHOT_PROFILES: readonly GolfSimShotProfile[] = [
+  {
+    clubName: 'PITCHING WEDGE · 46° TOUR SM10',
+    clubSpeedMph: 86.4,
+    ballSpeedMph: 115.8,
+    smashFactor: '1.34',
+    launchAngleDeg: 24.2,
+    spinRateRpm: '8,640',
+    carryYds: 138.5,
+    totalYds: 136.8,
+    apexFt: 104,
+    ctrlOffsetXFrac: -0.015,
+    ctrlApexYFrac: 0.2,
+    landOffsetXFrac: -0.012,
+    landOffsetYFrac: 0.006,
+    endOffsetXFrac: -0.004,
+    endOffsetYFrac: -0.002,
+    screenImpactY: 1.28,
+    screenImpactZ: -0.04,
+    outcomeBanner: 'PIN-HIGH WEDGE! · 2 FT TO PIN · TAP-IN BIRDIE',
+  },
+  {
+    clubName: 'DRIVER · PARADYM Ai SMOKE',
+    clubSpeedMph: 114.2,
+    ballSpeedMph: 169.8,
+    smashFactor: '1.49',
+    launchAngleDeg: 11.8,
+    spinRateRpm: '2,380',
+    carryYds: 286.4,
+    totalYds: 308.1,
+    apexFt: 116,
+    ctrlOffsetXFrac: 0.035,
+    ctrlApexYFrac: 0.14,
+    landOffsetXFrac: 0.012,
+    landOffsetYFrac: 0.014,
+    endOffsetXFrac: 0.004,
+    endOffsetYFrac: 0.002,
+    screenImpactY: 0.92,
+    screenImpactZ: 0.06,
+    outcomeBanner: 'CRUSHED DRIVE! · 308.1 YDS · EAGLE LOOK',
+  },
+  {
+    clubName: '54° WEDGE · SPIN MILLED',
+    clubSpeedMph: 82.6,
+    ballSpeedMph: 104.5,
+    smashFactor: '1.27',
+    launchAngleDeg: 24.4,
+    spinRateRpm: '9,420',
+    carryYds: 124.8,
+    totalYds: 121.6,
+    apexFt: 108,
+    ctrlOffsetXFrac: -0.012,
+    ctrlApexYFrac: 0.12,
+    landOffsetXFrac: 0.005,
+    landOffsetYFrac: -0.012,
+    endOffsetXFrac: 0.002,
+    endOffsetYFrac: -0.001,
+    screenImpactY: 1.32,
+    screenImpactZ: -0.02,
+    outcomeBanner: 'SPIN-BACK DART! · 18 INCHES TO PIN · TAP-IN BIRDIE',
+  },
+  {
+    clubName: '3 WOOD · HIGH DRAW',
+    clubSpeedMph: 108.6,
+    ballSpeedMph: 160.4,
+    smashFactor: '1.48',
+    launchAngleDeg: 13.2,
+    spinRateRpm: '3,150',
+    carryYds: 258.2,
+    totalYds: 274.5,
+    apexFt: 104,
+    ctrlOffsetXFrac: 0.042,
+    ctrlApexYFrac: 0.16,
+    landOffsetXFrac: 0.018,
+    landOffsetYFrac: 0.011,
+    endOffsetXFrac: 0.008,
+    endOffsetYFrac: -0.003,
+    screenImpactY: 0.98,
+    screenImpactZ: 0.08,
+    outcomeBanner: 'PURE DRAW! · 274.5 YDS · ON THE DANCEFLOOR',
+  },
+];
+
+function sampleQuadBezier(
+  p0x: number,
+  p0y: number,
+  p1x: number,
+  p1y: number,
+  p2x: number,
+  p2y: number,
+  t: number
+): { readonly x: number; readonly y: number } {
+  const u = 1 - t;
+  return {
+    x: u * u * p0x + 2 * u * t * p1x + t * t * p2x,
+    y: u * u * p0y + 2 * u * t * p1y + t * t * p2y,
+  };
+}
+
+/**
+ * Renders the live TrackMan Virtual Golf 3 trajectory arc, flying 3D golf ball, green roll-out,
+ * apex callout, and live ticking telemetry bar onto the Widescreen Impact Screen texture.
+ * - `flightProgress < 0`: Ready / Club swinging (clears previous tracer and shows ARMED target reticle)
+ * - `flightProgress in [0, 1]`: Airborne ball flight (`0..0.76`) + green landing bounce & roll to pin (`0.76..1.0`)
+ */
+export function renderTrackManWidescreenShotState(
+  shotIndex: number,
+  flightProgress: number
+): void {
+  if (!cachedWidescreenCanvas || !cachedWidescreenBgCanvas || !cachedTrackManWidescreenTexture) {
+    return;
+  }
+  const canvas = cachedWidescreenCanvas;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.drawImage(cachedWidescreenBgCanvas, 0, 0);
+
+  const shot =
+    GOLF_SIM_SHOT_PROFILES[
+      ((shotIndex % GOLF_SIM_SHOT_PROFILES.length) + GOLF_SIM_SHOT_PROFILES.length) %
+        GOLF_SIM_SHOT_PROFILES.length
+    ]!;
+
+  const pinX = w * 0.52;
+  const pinBaseY = h * 0.485;
+  const startX = w * 0.5;
+  const startY = h * 0.92;
+  const ctrlX = w * (0.5 + shot.ctrlOffsetXFrac);
+  const ctrlY = h * shot.ctrlApexYFrac;
+  const landX = pinX + w * shot.landOffsetXFrac;
+  const landY = pinBaseY + h * shot.landOffsetYFrac;
+  const endX = pinX + w * shot.endOffsetXFrac;
+  const endY = pinBaseY + h * shot.endOffsetYFrac;
+
+  const airPhaseEnd = 0.76;
+
+  if (flightProgress >= 0) {
+    const clampedP = Math.max(0, Math.min(1, flightProgress));
+    const airT = Math.min(1, clampedP / airPhaseEnd);
+    const rollT =
+      clampedP > airPhaseEnd
+        ? Math.min(1, (clampedP - airPhaseEnd) / (1 - airPhaseEnd))
+        : 0;
+
+    // 1. Fairway ground shadow line beneath the airborne ball
+    const groundCurX = startX + (landX - startX) * airT;
+    const groundCurY = startY + (landY - startY) * airT;
+    ctx.strokeStyle = 'rgba(14, 32, 16, 0.34)';
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(groundCurX, groundCurY);
+    ctx.stroke();
+
+    // 2. Progressive TrackMan Orange (#ff6b00) 3D Shot Tracer Curve (with soft outer glow)
+    const steps = Math.max(2, Math.round(airT * 48));
+    for (const [strokeCol, lineW] of [
+      ['rgba(255, 107, 0, 0.32)', 11.0],
+      ['#ff6b00', 4.2],
+      ['#ffd28a', 1.5],
+    ] as const) {
+      ctx.strokeStyle = strokeCol;
+      ctx.lineWidth = lineW;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let i = 0; i <= steps; i++) {
+        const tStep = (i / steps) * airT;
+        const pt = sampleQuadBezier(startX, startY, ctrlX, ctrlY, landX, landY, tStep);
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke();
+    }
+
+    // 3. Green landing bounce & roll-out trail (`rollT > 0`)
+    let ballX: number;
+    let ballY: number;
+    let ballRadius: number;
+    if (clampedP <= airPhaseEnd) {
+      const tip = sampleQuadBezier(startX, startY, ctrlX, ctrlY, landX, landY, airT);
+      ballX = tip.x;
+      ballY = tip.y;
+      ballRadius = 11.5 * (1 - airT * 0.7) + 2.8;
+    } else {
+      const easeRoll = 1 - Math.pow(1 - rollT, 2.4);
+      const bounceH =
+        rollT < 0.45
+          ? Math.abs(Math.sin((rollT / 0.45) * Math.PI * 2)) * (1 - rollT) * 14
+          : 0;
+      ballX = landX + (endX - landX) * easeRoll;
+      ballY = landY + (endY - landY) * easeRoll - bounceH;
+      ballRadius = 3.6;
+
+      // White/gold roll-out line on the putting green
+      ctx.strokeStyle = 'rgba(255, 248, 220, 0.88)';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(landX, landY);
+      ctx.lineTo(ballX, ballY + bounceH);
+      ctx.stroke();
+
+      // Target proximity ring around the pin cup
+      const ringAlpha = 0.35 + 0.35 * Math.sin(rollT * Math.PI * 3);
+      ctx.strokeStyle = `rgba(255, 107, 0, ${ringAlpha.toFixed(2)})`;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.ellipse(pinX, pinBaseY, 16 + rollT * 8, 6 + rollT * 3, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // 4. Apex height callout badge once ball passes apex (`airT >= 0.52`)
+    if (airT >= 0.52 && flightProgress < 0.999) {
+      const apexPt = sampleQuadBezier(startX, startY, ctrlX, ctrlY, landX, landY, 0.5);
+      ctx.fillStyle = 'rgba(16, 18, 22, 0.84)';
+      ctx.fillRect(apexPt.x - 54, apexPt.y - 36, 108, 24);
+      ctx.strokeStyle = '#ff6b00';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(apexPt.x - 54, apexPt.y - 36, 108, 24);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`APEX ${shot.apexFt} FT`, apexPt.x, apexPt.y - 20);
+    }
+
+    // 5. Flying / rolling 3D-shaded white golf ball sprite
+    if (flightProgress < 0.999) {
+      const haloGrad = ctx.createRadialGradient(
+        ballX,
+        ballY,
+        ballRadius * 0.2,
+        ballX,
+        ballY,
+        ballRadius * 2.4
+      );
+      haloGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      haloGrad.addColorStop(0.5, 'rgba(255, 165, 70, 0.45)');
+      haloGrad.addColorStop(1, 'rgba(255, 107, 0, 0)');
+      ctx.fillStyle = haloGrad;
+      ctx.beginPath();
+      ctx.arc(ballX, ballY, ballRadius * 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(30, 40, 50, 0.45)';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+
+    // 6. Outcome celebration banner when ball settles on the green (`clampedP >= 0.84` and active shot)
+    if (clampedP >= 0.84 && flightProgress < 0.999) {
+      const bannerW = 460;
+      const bannerH = 44;
+      const bannerX = (w - bannerW) * 0.5;
+      const bannerY = 22;
+      ctx.fillStyle = 'rgba(16, 18, 22, 0.90)';
+      ctx.fillRect(bannerX, bannerY, bannerW, bannerH);
+      ctx.fillStyle = '#ff6b00';
+      ctx.fillRect(bannerX, bannerY, 6, bannerH);
+      ctx.fillRect(bannerX + bannerW - 6, bannerY, 6, bannerH);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 17px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(shot.outcomeBanner, w * 0.5, bannerY + 28);
+    }
+  } else {
+    // Pre-impact Ready / Armed target reticle on the green
+    ctx.strokeStyle = 'rgba(255, 107, 0, 0.82)';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(pinX, pinBaseY, 22, 8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    const bannerW = 360;
+    const bannerX = (w - bannerW) * 0.5;
+    ctx.fillStyle = 'rgba(16, 18, 22, 0.86)';
+    ctx.fillRect(bannerX, 22, bannerW, 42);
+    ctx.fillStyle = '#ff6b00';
+    ctx.fillRect(bannerX, 22, 6, 42);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`READY · ${shot.clubName}`, w * 0.5, 49);
+  }
+
+  // 7. Authentic TrackMan Virtual Golf 3 Top-Left Brand Pill & Bottom Widescreen Telemetry Dock
+  ctx.fillStyle = 'rgba(18, 20, 24, 0.86)';
+  ctx.fillRect(28, 22, 220, 44);
+  ctx.fillStyle = '#ff6b00';
+  ctx.fillRect(28, 22, 8, 44);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('TRACKMAN iO', 48, 50);
+
+  const barY = h - 88;
+  const barH = 68;
+  ctx.fillStyle = 'rgba(16, 18, 22, 0.88)';
+  ctx.fillRect(40, barY, w - 80, barH);
+  ctx.fillStyle = '#ff6b00';
+  ctx.fillRect(40, barY, w - 80, 4);
+
+  const isArmed = flightProgress < 0;
+  const clampedP = Math.max(0, Math.min(1, flightProgress));
+  const carryProgress = Math.min(1, clampedP / airPhaseEnd);
+  const liveCarry = (shot.carryYds * carryProgress).toFixed(1);
+  const liveTotal = (shot.totalYds * clampedP).toFixed(1);
+
+  const tmTiles = [
+    ['CLUB SPEED', isArmed ? '--.-' : shot.clubSpeedMph.toFixed(1), 'MPH'],
+    ['BALL SPEED', isArmed ? '--.-' : shot.ballSpeedMph.toFixed(1), 'MPH'],
+    ['SMASH FACTOR', isArmed ? '-.-' : shot.smashFactor, ''],
+    ['LAUNCH ANGLE', isArmed ? '--.-' : shot.launchAngleDeg.toFixed(1), 'DEG'],
+    ['SPIN RATE', isArmed ? '----' : shot.spinRateRpm, 'RPM'],
+    ['CARRY', isArmed ? '0.0' : liveCarry, 'YDS'],
+    ['TOTAL', isArmed ? '0.0' : liveTotal, 'YDS'],
+  ] as const;
+
+  const tileW = (w - 80) / tmTiles.length;
+  ctx.textAlign = 'center';
+  for (let i = 0; i < tmTiles.length; i++) {
+    const [label, val, unit] = tmTiles[i]!;
+    const cx = 40 + (i + 0.5) * tileW;
+    ctx.fillStyle = '#9aa5b1';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(label, cx, barY + 21);
+    ctx.fillStyle = i >= 5 ? '#ff6b00' : '#ffffff';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(val, cx, barY + 48);
+    if (unit) {
+      ctx.fillStyle = '#7b8794';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(unit, cx, barY + 62);
+    }
+  }
+
+  cachedTrackManWidescreenTexture.needsUpdate = true;
+}
+
+/**
  * Generates a Widescreen (`16:10` / `4.48m x 2.80m`) TrackMan iO Virtual Golf 3 (VG3)
  * championship course projection texture featuring signature TrackMan Orange (`#ff6b00`)
  * telemetry data tiles, minimap, layered mountain ridges, botanical pine & oak tree line,
@@ -25,10 +487,10 @@ export function createTrackManWidescreenTexture(): THREE.CanvasTexture {
   }
   const w = 1280;
   const h = 800;
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d')!;
+  const bgCanvas = document.createElement('canvas');
+  bgCanvas.width = w;
+  bgCanvas.height = h;
+  const ctx = bgCanvas.getContext('2d')!;
 
   // 1. Crisp summer sky gradient with warm horizon haze
   const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.48);
@@ -213,7 +675,7 @@ export function createTrackManWidescreenTexture(): THREE.CanvasTexture {
     ctx.fill();
   }
 
-  // 4. Putting Green, Apron Collar, Pin Flag & TrackMan Orange Ball-Flight Tracer
+  // 4. Putting Green, Apron Collar & Pin Flag
   ctx.fillStyle = '#52b43d';
   ctx.beginPath();
   ctx.ellipse(w * 0.51, h * 0.49, 166, 30, 0, 0, Math.PI * 2);
@@ -250,63 +712,18 @@ export function createTrackManWidescreenTexture(): THREE.CanvasTexture {
   ctx.closePath();
   ctx.fill();
 
-  // Signature TrackMan Orange (#ff6b00) 3D shot tracer curve
-  ctx.strokeStyle = '#ff6b00';
-  ctx.lineWidth = 4.0;
-  ctx.beginPath();
-  ctx.moveTo(w * 0.5, h * 0.92);
-  ctx.quadraticCurveTo(w * 0.48, h * 0.18, pinX - 8, pinBaseY - 2);
-  ctx.stroke();
+  cachedWidescreenBgCanvas = bgCanvas;
 
-  // 5. Authentic TrackMan Virtual Golf 3 Bottom Widescreen Telemetry Dock & Top-Left Brand Pill
-  ctx.fillStyle = 'rgba(18, 20, 24, 0.86)';
-  ctx.fillRect(28, 22, 220, 44);
-  ctx.fillStyle = '#ff6b00';
-  ctx.fillRect(28, 22, 8, 44);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 18px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('TRACKMAN iO', 48, 50);
-
-  // Bottom 6-tile TrackMan Orange & Dark Slate Data Bar
-  const barY = h - 88;
-  const barH = 68;
-  ctx.fillStyle = 'rgba(16, 18, 22, 0.88)';
-  ctx.fillRect(40, barY, w - 80, barH);
-  ctx.fillStyle = '#ff6b00';
-  ctx.fillRect(40, barY, w - 80, 4);
-
-  const tmTiles = [
-    ['CLUB SPEED', '94.2', 'MPH'],
-    ['BALL SPEED', '136.8', 'MPH'],
-    ['SMASH FACTOR', '1.45', ''],
-    ['LAUNCH ANGLE', '15.8', 'DEG'],
-    ['SPIN RATE', '6,180', 'RPM'],
-    ['CARRY', '184.5', 'YDS'],
-    ['TOTAL', '196.2', 'YDS'],
-  ] as const;
-
-  const tileW = (w - 80) / tmTiles.length;
-  ctx.textAlign = 'center';
-  for (let i = 0; i < tmTiles.length; i++) {
-    const [label, val, unit] = tmTiles[i]!;
-    const cx = 40 + (i + 0.5) * tileW;
-    ctx.fillStyle = '#9aa5b1';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(label, cx, barY + 21);
-    ctx.fillStyle = i >= 5 ? '#ff6b00' : '#ffffff';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.fillText(val, cx, barY + 48);
-    if (unit) {
-      ctx.fillStyle = '#7b8794';
-      ctx.font = 'bold 10px sans-serif';
-      ctx.fillText(unit, cx, barY + 62);
-    }
-  }
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  cachedWidescreenCanvas = canvas;
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   cachedTrackManWidescreenTexture = tex;
+
+  renderTrackManWidescreenShotState(0, 1.0);
   return tex;
 }
 
@@ -797,6 +1214,15 @@ export interface BarnGolfSimulatorEnclosureHandles {
   readonly screenMesh: THREE.Mesh;
   readonly hingeAssy: THREE.Group;
   readonly foldingMatGroup: THREE.Group;
+  readonly hittingBezel: THREE.Mesh;
+  readonly hittingStrip: THREE.Mesh;
+  readonly rubberTee: THREE.Mesh;
+  readonly teedBall: THREE.Mesh;
+  readonly ballTray: THREE.Mesh;
+  readonly clubSwingPivot: THREE.Group;
+  readonly ballFlightGroup: THREE.Group;
+  readonly launchStreakMesh: THREE.Mesh;
+  readonly screenImpactRing: THREE.Mesh;
 }
 
 export function buildBarnGolfSimulatorEnclosure(
@@ -1179,6 +1605,7 @@ export function buildBarnGolfSimulatorEnclosure(
     impactScreenMat
   );
   screenMesh.name = 'outbuildings.barn.golfSimulator.screen';
+  screenMesh.userData = { isGolfSimulatorDynamic: true };
   screenMesh.rotation.y = Math.PI / 2;
   screenMesh.position.set(-recessDepthU + 0.14, screenCenterY, 0);
   simGroup.add(screenMesh);
@@ -1676,7 +2103,11 @@ export function buildBarnGolfSimulatorEnclosure(
     golfBallMat
   );
   teedBall.name = 'outbuildings.barn.golfSimulator.hittingStrip.teedBall';
-  teedBall.userData = { lodTier: 'high', lodMaxDistance: 12 };
+  teedBall.userData = {
+    lodTier: 'high',
+    lodMaxDistance: 12,
+    isGolfSimulatorDynamic: true,
+  };
   teedBall.position.set(hittingRelX, 0.036, 0);
   teedBall.castShadow = true;
   foldingMatGroup.add(teedBall);
@@ -1699,6 +2130,331 @@ export function buildBarnGolfSimulatorEnclosure(
     ball.position.set(hittingRelX, 0.033, -0.92 + b * 0.07);
     foldingMatGroup.add(ball);
   }
+
+  // Active 3D Golf Club Stowed in the Callaway Tour Bag (`outbuildings.barn.golfSimulator.hittingStrip.activeClub`)
+  // - Rests inside the Callaway Tour Golf Bag (`-0.095, 0.16, 1.64` in `foldingMatGroup` coords, grip down in divider,
+  //   forged iron head protruding out the top cuff at `y ≈ 1.04m`).
+  // - When the user interacts with the Callaway Tour Golf Bag, the club is pulled up out of the bag in first-person,
+  //   carried to address on the South side of the hitting strip (`0.174, 0.86, +0.34`), swung through the teed ball,
+  //   and returned to the bag!
+  const clubSwingPivot = new THREE.Group();
+  clubSwingPivot.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub';
+  clubSwingPivot.userData = { isGolfSimulatorDynamic: true };
+  clubSwingPivot.position.set(-0.095, 0.16, 1.64);
+  clubSwingPivot.rotation.set(2.68, 0.45, -0.08);
+  foldingMatGroup.add(clubSwingPivot);
+
+  const clubLieGroup = new THREE.Group();
+  clubLieGroup.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.lieFrame';
+  clubLieGroup.userData = { isGolfSimulatorDynamic: true };
+  // Address lie angle (~61.5° lie -> +0.366 rad around X reaching -Z North to the teed ball) and slight forward shaft press (-0.032 rad around Z)
+  clubLieGroup.rotation.set(0.366, 0, -0.032);
+  clubSwingPivot.add(clubLieGroup);
+
+  const clubGripRubberMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1d22,
+    roughness: 0.84,
+    metalness: 0.04,
+  });
+  const clubGripCapRedMat = new THREE.MeshStandardMaterial({
+    color: 0xc82424,
+    roughness: 0.42,
+    metalness: 0.14,
+  });
+  const clubShaftChromeMat = new THREE.MeshStandardMaterial({
+    color: 0xdce2e9,
+    roughness: 0.16,
+    metalness: 0.92,
+  });
+  const clubForgedHeadMat = new THREE.MeshStandardMaterial({
+    color: 0xcfd6de,
+    roughness: 0.22,
+    metalness: 0.88,
+  });
+  const clubMilledFaceMat = new THREE.MeshStandardMaterial({
+    color: 0x323842,
+    roughness: 0.48,
+    metalness: 0.72,
+  });
+
+  // Golf Pride Tour Velvet Grip (`y = +0.04m .. -0.22m` relative to hands pivot)
+  const activeClubGrip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0135, 0.011, 0.26, 14),
+    clubGripRubberMat
+  );
+  activeClubGrip.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.grip';
+  activeClubGrip.userData = { isGolfSimulatorDynamic: true };
+  activeClubGrip.position.set(0, -0.09, 0);
+  activeClubGrip.castShadow = true;
+  clubLieGroup.add(activeClubGrip);
+
+  const activeClubGripCap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.014, 0.0135, 0.014, 14),
+    clubGripCapRedMat
+  );
+  activeClubGripCap.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.gripCap';
+  activeClubGripCap.userData = {
+    lodTier: 'high',
+    lodMaxDistance: 12,
+    isGolfSimulatorDynamic: true,
+  };
+  activeClubGripCap.position.set(0, 0.044, 0);
+  clubLieGroup.add(activeClubGripCap);
+
+  const activeClubGripCollar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0112, 0.0108, 0.01, 12),
+    clubGripCapRedMat
+  );
+  activeClubGripCollar.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.gripCollar';
+  activeClubGripCollar.userData = {
+    lodTier: 'high',
+    lodMaxDistance: 12,
+    isGolfSimulatorDynamic: true,
+  };
+  activeClubGripCollar.position.set(0, -0.222, 0);
+  clubLieGroup.add(activeClubGripCollar);
+
+  // Tapered Tour-Chrome Steel Shaft (`y = -0.22m .. -0.83m`)
+  const activeClubShaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0072, 0.0048, 0.62, 12),
+    clubShaftChromeMat
+  );
+  activeClubShaft.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.shaft';
+  activeClubShaft.userData = { isGolfSimulatorDynamic: true };
+  activeClubShaft.position.set(0, -0.525, 0);
+  activeClubShaft.castShadow = true;
+  clubLieGroup.add(activeClubShaft);
+
+  // Black & Silver Ringed Ferrule (`y = -0.835m`)
+  const activeClubFerrule = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0054, 0.0068, 0.024, 12),
+    clubGripRubberMat
+  );
+  activeClubFerrule.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.ferrule';
+  activeClubFerrule.userData = {
+    lodTier: 'high',
+    lodMaxDistance: 12,
+    isGolfSimulatorDynamic: true,
+  };
+  activeClubFerrule.position.set(0, -0.838, 0);
+  clubLieGroup.add(activeClubFerrule);
+
+  // Forged Tapered Hosel Neck (`y = -0.860m`) + Rounded Heel Elbow Joint (`y = -0.880m`)
+  const activeClubHosel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0062, 0.0074, 0.044, 16),
+    clubForgedHeadMat
+  );
+  activeClubHosel.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.hosel';
+  activeClubHosel.userData = { isGolfSimulatorDynamic: true };
+  activeClubHosel.position.set(0, -0.86, 0);
+  activeClubHosel.castShadow = true;
+  clubLieGroup.add(activeClubHosel);
+
+  const activeClubHoselElbow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.0074, 14, 12),
+    clubForgedHeadMat
+  );
+  activeClubHoselElbow.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.hoselElbow';
+  activeClubHoselElbow.userData = {
+    lodTier: 'high',
+    lodMaxDistance: 12,
+    isGolfSimulatorDynamic: true,
+  };
+  activeClubHoselElbow.position.set(0, -0.881, 0);
+  clubLieGroup.add(activeClubHoselElbow);
+
+  // Forged 46° Tour Pitching Wedge Head (`PW` — Titleist Vokey SM10 46°·10F Teardrop Silhouette)
+  const activeClubHeadGrp = new THREE.Group();
+  activeClubHeadGrp.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.head';
+  activeClubHeadGrp.userData = { isGolfSimulatorDynamic: true };
+  activeClubHeadGrp.position.set(0, -0.881, 0);
+  // Cancel `clubLieGroup.rotation.x` (`+0.366`) so local Y is vertical and local -Z is horizontal Heel-to-Toe North
+  activeClubHeadGrp.rotation.set(-0.366, 0, 0);
+  clubLieGroup.add(activeClubHeadGrp);
+
+  // Face-Plane Frame:
+  // Euler order 'ZYX' applies Ry(+PI/2) first (mapping Shape +X `u` -> `-Z` Heel-to-Toe North,
+  // Shape +Y `v` -> `+Y` Up, and Extrude +Z `w` -> `+X` Back of Clubhead East),
+  // followed by Rz(-0.72 rad = -41.2° visual loft) tilting the flat `-X` striking face skyward (`-X, +Y`).
+  const wedgeFaceGroup = new THREE.Group();
+  wedgeFaceGroup.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.faceFrame';
+  wedgeFaceGroup.userData = { isGolfSimulatorDynamic: true };
+  wedgeFaceGroup.position.set(-0.007, -0.002, 0.002);
+  wedgeFaceGroup.rotation.order = 'ZYX';
+  wedgeFaceGroup.rotation.set(0, Math.PI / 2, -0.72);
+  activeClubHeadGrp.add(wedgeFaceGroup);
+
+  const bladeLen = 0.088;
+  const heelHeight = 0.017;
+  const toeHeight = 0.049;
+
+  const activeClubBlade = new THREE.Mesh(
+    createForgedIronBladeGeometry(bladeLen, heelHeight, toeHeight, 0.0058, 0.012),
+    clubForgedHeadMat
+  );
+  activeClubBlade.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.headBlade';
+  activeClubBlade.userData = { isGolfSimulatorDynamic: true };
+  activeClubBlade.castShadow = true;
+  wedgeFaceGroup.add(activeClubBlade);
+
+  // Polished Tour-Chrome Lower Bounce Sole & Muscle Flange (`headSole`)
+  const soleShape = new THREE.Shape();
+  soleShape.moveTo(0.005, 0.0015);
+  soleShape.quadraticCurveTo(bladeLen * 0.44, -0.0005, bladeLen * 0.78, 0.002);
+  soleShape.quadraticCurveTo(bladeLen * 0.92, 0.005, bladeLen * 0.92, 0.018);
+  soleShape.lineTo(0.008, 0.012);
+  soleShape.closePath();
+
+  const soleGeo = new THREE.ExtrudeGeometry(soleShape, {
+    depth: 0.0085,
+    bevelEnabled: true,
+    bevelThickness: 0.0022,
+    bevelSize: 0.002,
+    bevelSegments: 3,
+    curveSegments: 18,
+  });
+  soleGeo.computeBoundingSphere();
+
+  const activeClubSole = new THREE.Mesh(soleGeo, clubShaftChromeMat);
+  activeClubSole.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.headSole';
+  activeClubSole.userData = { isGolfSimulatorDynamic: true };
+  activeClubSole.position.set(0, 0, 0.0048);
+  wedgeFaceGroup.add(activeClubSole);
+
+  // Flat CNC Spin-Milled Teardrop Face Insert (`groovedFace`) sitting 0.3mm proud of the `-Z` front bevel plane
+  const faceInsertShape = new THREE.Shape();
+  const uFace0 = 0.013;
+  const uFace1 = 0.068;
+  const vTopAt = (u: number) =>
+    heelHeight + ((u - bladeLen * 0.14) / (bladeLen * 0.53)) * (toeHeight - heelHeight);
+  faceInsertShape.moveTo(uFace0, 0.0042);
+  faceInsertShape.lineTo(uFace1, 0.0042);
+  faceInsertShape.lineTo(uFace1, vTopAt(uFace1) - 0.0055);
+  faceInsertShape.lineTo(uFace0, vTopAt(uFace0) - 0.0038);
+  faceInsertShape.closePath();
+
+  const faceInsertGeo = new THREE.ExtrudeGeometry(faceInsertShape, {
+    depth: 0.0006,
+    bevelEnabled: false,
+  });
+  faceInsertGeo.computeBoundingSphere();
+
+  const activeClubGroovedFace = new THREE.Mesh(
+    faceInsertGeo,
+    clubMilledFaceMat
+  );
+  activeClubGroovedFace.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.groovedFace';
+  activeClubGroovedFace.userData = { isGolfSimulatorDynamic: true };
+  activeClubGroovedFace.position.set(0, 0, -0.0016);
+  wedgeFaceGroup.add(activeClubGroovedFace);
+
+  // 11 Horizontal Spin-Milled Scoreline Grooves (`faceGrooves`) coplanar on the flat `-Z` striking face
+  const buildWedgeFaceGroovesGeometry = (): THREE.BufferGeometry => {
+    const pos: number[] = [];
+    const idx: number[] = [];
+    const grooveCount = 11;
+    const zGroove = -0.00185;
+    const grooveHalfH = 0.00042;
+
+    for (let g = 0; g < grooveCount; g++) {
+      const vCenter = 0.0068 + g * 0.0029;
+      const v0 = vCenter - grooveHalfH;
+      const v1 = vCenter + grooveHalfH;
+      // Scorelines start at `u = 0.0155m` unless clipped by the angled heel top-line
+      const uMinForV =
+        bladeLen * 0.14 +
+        Math.max(0, (v1 + 0.004 - heelHeight) / (toeHeight - heelHeight)) *
+          (bladeLen * 0.53);
+      const u0 = Math.max(0.0155, uMinForV);
+      const u1 = 0.0655;
+      if (u1 <= u0 + 0.006) continue;
+
+      const base = pos.length / 3;
+      // Outward normal in `-Z` direction (CCW when viewed from `-Z`)
+      pos.push(
+        u0, v0, zGroove,
+        u0, v1, zGroove,
+        u1, v1, zGroove,
+        u1, v0, zGroove
+      );
+      idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    geo.computeBoundingSphere();
+    return geo;
+  };
+
+  const activeClubFaceGrooves = new THREE.Mesh(
+    buildWedgeFaceGroovesGeometry(),
+    clubShaftChromeMat
+  );
+  activeClubFaceGrooves.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.faceGrooves';
+  activeClubFaceGrooves.userData = {
+    lodTier: 'high',
+    lodMaxDistance: 12,
+    isGolfSimulatorDynamic: true,
+  };
+  wedgeFaceGroup.add(activeClubFaceGrooves);
+
+  // Copper-Orange "VOKEY SM10 · 46°" Tour Muscle Accent Bar (`muscleInsert`) on the back flange
+  const activeClubBackMuscle = new THREE.Mesh(
+    new THREE.BoxGeometry(0.044, 0.0055, 0.003),
+    trackManOrangeMat
+  );
+  activeClubBackMuscle.name = 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.muscleInsert';
+  activeClubBackMuscle.userData = {
+    lodTier: 'high',
+    lodMaxDistance: 12,
+    isGolfSimulatorDynamic: true,
+  };
+  activeClubBackMuscle.position.set(0.042, 0.015, 0.0135);
+  activeClubBackMuscle.rotation.z = 0.22;
+  wedgeFaceGroup.add(activeClubBackMuscle);
+
+  // 3D Ball Flight Launch Streak & Screen Impact Ripple Ring (`outbuildings.barn.golfSimulator.ballFlightTracer`)
+  const ballFlightGroup = new THREE.Group();
+  ballFlightGroup.name = 'outbuildings.barn.golfSimulator.ballFlightTracer';
+  ballFlightGroup.userData = { isGolfSimulatorDynamic: true };
+  simGroup.add(ballFlightGroup);
+
+  const launchStreakMat = new THREE.MeshBasicMaterial({
+    color: 0xff7b18,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+  });
+  launchStreakMat.userData = { isDynamicGolfScreen: true };
+
+  // Unit cylinder along Y so we can orient & scale it dynamically between tee and ball in flight
+  const launchStreakGeo = new THREE.CylinderGeometry(0.008, 0.018, 1.0, 10, 1, true);
+  launchStreakGeo.computeBoundingSphere();
+  const launchStreakMesh = new THREE.Mesh(launchStreakGeo, launchStreakMat);
+  launchStreakMesh.name = 'outbuildings.barn.golfSimulator.ballFlightTracer.launchStreak';
+  launchStreakMesh.userData = { isGolfSimulatorDynamic: true };
+  launchStreakMesh.visible = false;
+  ballFlightGroup.add(launchStreakMesh);
+
+  const impactRingMat = new THREE.MeshBasicMaterial({
+    color: 0xff8a24,
+    transparent: true,
+    opacity: 0,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  impactRingMat.userData = { isDynamicGolfScreen: true };
+
+  const impactRingGeo = new THREE.RingGeometry(0.05, 0.095, 28);
+  impactRingGeo.computeBoundingSphere();
+  const screenImpactRing = new THREE.Mesh(impactRingGeo, impactRingMat);
+  screenImpactRing.name = 'outbuildings.barn.golfSimulator.ballFlightTracer.screenImpactRing';
+  screenImpactRing.userData = { isGolfSimulatorDynamic: true };
+  screenImpactRing.rotation.y = Math.PI / 2;
+  screenImpactRing.position.set(-recessDepthU + 0.148, screenCenterY, 0);
+  screenImpactRing.visible = false;
+  ballFlightGroup.add(screenImpactRing);
 
   // 4. High-Mounted Purlin-to-Purlin Structural Steel Rigging Crossbar (`outbuildings.barn.golfSimulator.overheadCrossbar`),
   //    BenQ LK936ST 4K UHD Laser Golf Projector & Rear-Zone TrackMan iO Launch Monitor
@@ -2006,5 +2762,14 @@ export function buildBarnGolfSimulatorEnclosure(
     screenMesh,
     hingeAssy,
     foldingMatGroup,
+    hittingBezel,
+    hittingStrip,
+    rubberTee,
+    teedBall,
+    ballTray,
+    clubSwingPivot,
+    ballFlightGroup,
+    launchStreakMesh,
+    screenImpactRing,
   };
 }

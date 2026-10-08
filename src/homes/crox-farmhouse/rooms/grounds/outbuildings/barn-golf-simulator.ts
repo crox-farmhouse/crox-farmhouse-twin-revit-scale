@@ -7,8 +7,14 @@ import {
   createGolfSimArtworkTexture,
   createGolfStatusSignTexture,
   createTrackManWidescreenTexture,
+  GOLF_SIM_SHOT_PROFILES,
+  renderTrackManWidescreenShotState,
+  type GolfSimShotProfile,
 } from './barn-golf-simulator-enclosure.ts';
-import { buildBarnGolfSimulatorPropsAndLoft } from './barn-golf-simulator-props-and-loft.ts';
+import {
+  buildBarnGolfSimulatorPropsAndLoft,
+  renderTrackManControlScreenShotState,
+} from './barn-golf-simulator-props-and-loft.ts';
 
 export {
   buildBarnGolfSimulatorEnclosure,
@@ -18,6 +24,10 @@ export {
   createGolfSimArtworkTexture,
   createGolfStatusSignTexture,
   createTrackManWidescreenTexture,
+  GOLF_SIM_SHOT_PROFILES,
+  renderTrackManWidescreenShotState,
+  renderTrackManControlScreenShotState,
+  type GolfSimShotProfile,
 };
 
 export function buildBarnGolfSimulator(

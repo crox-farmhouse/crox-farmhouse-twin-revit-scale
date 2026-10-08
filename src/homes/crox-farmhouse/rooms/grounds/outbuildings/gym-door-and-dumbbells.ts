@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildMitredArchitraveSegments, createProfiledSkirtingCapGeometry } from '../../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../../types/scene.ts';
 import { createBevelledHexHeadGeometry } from './shared-geometry-and-materials.ts';
 
@@ -220,7 +221,6 @@ export function buildGymOakDoorAndSkirting(
   const screenH = 2.38; // Full height from `baseY0 = -0.60m` up to `y = +1.78m` (`2.38m` tall!)
   const jambT = 0.034;
   const archW = 0.062;
-  const archT = 0.018;
   const thresholdStepH = 0.1; // Bridges `baseY0 = -0.60m` (Gym) up to `garageFloorTopY = -0.50m` (Garage)
 
   const glassDoorScreenGroup = new THREE.Group();
@@ -273,29 +273,34 @@ export function buildGymOakDoorAndSkirting(
   headLining.position.set(0, screenH - jambT * 0.5, 0);
   glassDoorScreenGroup.add(headLining);
 
-  // Moulded perimeter architraves on both the GYM (`-u`) and Garage (`+u`) wall faces
+  // 45°-Mitred Ogee/Torus Profiled Perimeter Architraves on both the GYM (`-u`) and Garage (`+u`) wall faces
   for (const sideX of [-1, 1] as const) {
     const faceTag = sideX < 0 ? 'gym' : 'garage';
-    const xFace = sideX * (partT * 0.5 + archT * 0.5);
-    for (const sideZ of [-1, 1] as const) {
-      const archLeg = new THREE.Mesh(
-        new THREE.BoxGeometry(archT, screenH + archW - thresholdStepH, archW),
-        lightOakTrimMat
-      );
-      archLeg.name = `outbuildings.gymGarageGlassDoor.architraveLeg.${faceTag}.${sideZ < 0 ? 'north' : 'south'}`;
-      archLeg.position.set(
-        xFace,
-        thresholdStepH + (screenH + archW - thresholdStepH) * 0.5,
-        sideZ * (screenW * 0.5 + archW * 0.5 - 0.012)
-      );
-      glassDoorScreenGroup.add(archLeg);
-    }
-    const archHeader = new THREE.Mesh(
-      new THREE.BoxGeometry(archT, archW, screenW + archW * 2 - 0.024),
-      lightOakTrimMat
+    const [northLegGeo, headGeo, southLegGeo] = buildMitredArchitraveSegments(
+      -(screenW * 0.5 - 0.012),
+      screenW * 0.5 - 0.012,
+      thresholdStepH,
+      thresholdStepH,
+      screenH - 0.006,
+      'z',
+      sideX * (partT * 0.5),
+      sideX,
+      archW,
+      0.020
     );
+    const northLeg = new THREE.Mesh(northLegGeo, lightOakTrimMat);
+    northLeg.name = `outbuildings.gymGarageGlassDoor.architraveLeg.${faceTag}.north`;
+    northLeg.castShadow = true;
+    glassDoorScreenGroup.add(northLeg);
+
+    const southLeg = new THREE.Mesh(southLegGeo, lightOakTrimMat);
+    southLeg.name = `outbuildings.gymGarageGlassDoor.architraveLeg.${faceTag}.south`;
+    southLeg.castShadow = true;
+    glassDoorScreenGroup.add(southLeg);
+
+    const archHeader = new THREE.Mesh(headGeo, lightOakTrimMat);
     archHeader.name = `outbuildings.gymGarageGlassDoor.architraveHeader.${faceTag}`;
-    archHeader.position.set(xFace, screenH + archW * 0.5 - 0.006, 0);
+    archHeader.castShadow = true;
     glassDoorScreenGroup.add(archHeader);
   }
 
@@ -488,7 +493,7 @@ export function buildGymOakDoorAndSkirting(
     skirtingGroup.add(baseMesh);
 
     const capMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(lenU, skirtCapH, skirtCapT),
+      createProfiledSkirtingCapGeometry(lenU, true, inwardSignV),
       skirtingMat
     );
     capMesh.name = `outbuildings.gym.skirting.mouldingCap.${skirtingSegIdx}`;
@@ -521,7 +526,7 @@ export function buildGymOakDoorAndSkirting(
     skirtingGroup.add(baseMesh);
 
     const capMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(skirtCapT, skirtCapH, lenV),
+      createProfiledSkirtingCapGeometry(lenV, false, inwardSignU),
       skirtingMat
     );
     capMesh.name = `outbuildings.gym.skirting.mouldingCap.${skirtingSegIdx}`;

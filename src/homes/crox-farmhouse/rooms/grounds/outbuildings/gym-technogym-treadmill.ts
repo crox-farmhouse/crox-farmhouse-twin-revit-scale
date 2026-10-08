@@ -361,7 +361,7 @@ export function buildGymTechnogymRunPersonal(
   // at `[-18.144, -0.392, 19.851]`, `outbuildings.gym.technogymRunPersonal.runningBelt`):
   // Moved closer to the South wall (`v = 4.32m`, tucking the front nose near `v = 5.30m`) and slightly to the right/West
   // (`u = 3.68m`), opening a wide, unobstructed 1.80m walkway to the Gym-to-Shower/Toilet Room door!
-  runGroup.position.set(3.88, gymFloorY, 4.32);
+  runGroup.position.set(3.70, gymFloorY, 4.305);
   runGroup.rotation.y = -0.0015;
   groundGroup.add(runGroup);
 

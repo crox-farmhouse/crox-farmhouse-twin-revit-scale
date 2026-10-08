@@ -1,6 +1,37 @@
 import * as THREE from 'three';
 import type { CircuitId, CircuitLevels } from '../../../types/knx.ts';
-import type { LightGroupMap, ZoneIndicatorMaterials } from '../../../types/scene.ts';
+import type { LightGroupMap, TimeOfDay, ZoneIndicatorMaterials } from '../../../types/scene.ts';
+
+const TOD_INDOOR_LIGHT_SCALE: Readonly<
+  Record<
+    TimeOfDay,
+    {
+      readonly lightScale: number;
+      readonly emissiveScale: number;
+      readonly coneScale: number;
+      readonly poolScale: number;
+    }
+  >
+> = {
+  day: {
+    lightScale: 0.25,
+    emissiveScale: 0.85,
+    coneScale: 0.15,
+    poolScale: 0.18,
+  },
+  dusk: {
+    lightScale: 0.62,
+    emissiveScale: 0.94,
+    coneScale: 0.55,
+    poolScale: 0.60,
+  },
+  night: {
+    lightScale: 1.0,
+    emissiveScale: 1.0,
+    coneScale: 1.0,
+    poolScale: 1.0,
+  },
+};
 import type {
   CircuitFixtureAppearance,
   SwitchLedIndicatorKey,
@@ -40,6 +71,8 @@ export class CircuitLightingController {
   private readonly tvScreenMat: THREE.MeshStandardMaterial;
   private readonly tvArtTextures: readonly THREE.CanvasTexture[];
   private readonly tvOffTexture: THREE.CanvasTexture;
+  private timeOfDay: TimeOfDay = 'dusk';
+  private lastLevels: Readonly<CircuitLevels> | null = null;
 
   public constructor(options: CircuitLightingOptions) {
     this.lightGroups = options.lightGroups;
@@ -63,7 +96,17 @@ export class CircuitLightingController {
     this.utilitySensorLedMat = indicatorMats.utilitySensorLedMat ?? fallbackMat;
   }
 
+  public setTimeOfDay(mode: TimeOfDay): void {
+    if (this.timeOfDay === mode) return;
+    this.timeOfDay = mode;
+    if (this.lastLevels) {
+      this.applyLevels(this.lastLevels);
+    }
+  }
+
   public applyLevels(liveLevels: Readonly<CircuitLevels>): void {
+    this.lastLevels = liveLevels;
+    const todScale = TOD_INDOOR_LIGHT_SCALE[this.timeOfDay];
     const entries = Object.entries(this.lightGroups) as Array<
       [CircuitId, LightGroupMap[CircuitId]]
     >;
@@ -79,22 +122,24 @@ export class CircuitLightingController {
           typeof light.userData?.baseIntensity === 'number'
             ? (light.userData.baseIntensity as number)
             : group.maxIntensity;
-        light.intensity = customMax * curved;
+        const targetIntensity = customMax * curved * todScale.lightScale;
+        light.userData = { ...light.userData, knxTargetIntensity: targetIntensity };
+        light.intensity = light.userData.isMutedByFloorOrDistance ? 0 : targetIntensity;
       }
       for (const mat of group.emissives) {
         const customEmissiveMax =
           typeof mat.userData?.baseEmissiveIntensity === 'number'
             ? (mat.userData.baseEmissiveIntensity as number)
             : appearance.emissiveMax;
-        mat.emissiveIntensity = customEmissiveMax * pct;
+        mat.emissiveIntensity = customEmissiveMax * pct * todScale.emissiveScale;
       }
       for (const coneMat of group.cones) {
-        const nextOpacity = appearance.coneOpacity * pct;
+        const nextOpacity = appearance.coneOpacity * pct * todScale.coneScale;
         coneMat.opacity = nextOpacity;
         coneMat.visible = nextOpacity > 0.002;
       }
       for (const pool of group.pools) {
-        const nextOpacity = pool.maxOpacity * pct;
+        const nextOpacity = pool.maxOpacity * pct * todScale.poolScale;
         pool.mat.opacity = nextOpacity;
         pool.mat.visible = nextOpacity > 0.002;
       }

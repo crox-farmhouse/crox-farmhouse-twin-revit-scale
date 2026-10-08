@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createProfiledSkirtingCapGeometry } from '../../../../../engine/geometry/index.ts';
 
 // ============================================================================
 // ISSUE #10: CORNER BAR WITH BEER ON TAP & MASTER-BEDROOM-STYLE MINI-FRIDGE
@@ -850,17 +851,19 @@ export function buildBarnGolfViewingBar(
   // of `outbuildings.barn.westFloor`), centered at `(u = 18.42m, y = barnCarpetTopY = -0.675m, v = 4.52m)` and spanning
   // `v = 3.62m..5.42m` (`1.80m` long up to the South Barn wall), with the 2 bullnose oak steps (`v = 0.28m..3.62m`)
   // butting directly up against the North end of the bar (`v = 3.62m`)!
-  viewingBarGroup.position.set(18.42, barnCarpetTopY, 4.52);
+  // Positioned at `u = 18.24m, v = 4.525m` (`barLenZ = 1.81m`, spanning `v = 3.620..5.430m` flush against the South Barn Wall `v = 5.430m`!)
+  // so the West face (`localX = -0.24m -> u = 18.00m`) aligns with `uBarnStepDropStart = 18.00m`!
+  viewingBarGroup.position.set(18.24, barnCarpetTopY, 4.525);
   groundGroup.add(viewingBarGroup);
 
-  const barLenZ = 1.80;
+  const barLenZ = 1.81;
   const barCarcassD = 0.40;
   const barTopD = 0.54;
   const barH = 1.06;
   const plinthH = 0.06;
   const topT = 0.040;
   const bodyH = barH - plinthH - topT; // 0.96m
-  const westFloorStepRiseH = (-0.34) - barnCarpetTopY; // 0.335m rise from -0.675m lower carpet to -0.34m upper limestone floor
+  const westFloorStepRiseH = (-0.34) - barnCarpetTopY; // 0.335m rise from -0.675m lower limestone floor to -0.34m upper limestone floor
 
   const marbleTopMat = new THREE.MeshStandardMaterial({
     map: createCalacattaMarbleTopTexture(),
@@ -895,9 +898,9 @@ export function buildBarnGolfViewingBar(
     roughness: 0.2,
   });
 
-  // 1. Recessed Dark-Anthracite Plinth & Fluted Solid Light-Oak Spectator Bar Carcass
+  // 1. Recessed Dark-Anthracite Plinth & Framed Solid Light-Oak Spectator Bar Carcass
   const plinth = new THREE.Mesh(
-    new THREE.BoxGeometry(barCarcassD - 0.04, plinthH, barLenZ - 0.04),
+    new THREE.BoxGeometry(barCarcassD - 0.04, plinthH, barLenZ - 0.02),
     darkAnthraciteMat
   );
   plinth.name = 'outbuildings.barn.golfViewingBar.plinth';
@@ -914,41 +917,121 @@ export function buildBarnGolfViewingBar(
   carcass.receiveShadow = true;
   viewingBarGroup.add(carcass);
 
-  // Solid light-oak West plinth moulding at `y = westFloorStepRiseH` (`-0.34m` upper limestone floor level)
+  // Issue #3 ("fix the edge of this cabinet so there is somewhere for the baseboard to but up to neatly"
+  // at `[-3.894, -0.194, 19.83]`, `outbuildings.barn.golfViewingBar.counter`):
+  // Frame the West (`-x`) cabinet front with full-height square-edged Solid Oak Corner/Wall Scribing Stiles (`64mm` wide in `z`,
+  // projecting `22mm` proud of `carcass` to `localX = -0.262m`, i.e., `u = 17.978m`) flush against the South Barn Wall (`v = 5.430m`),
+  // so `outbuildings.barn.baseboard.westSouth` (`v = 5.408..5.430m, y = -0.340..-0.194m`) butts 100% squarely and cleanly against
+  // the flat oak `southWallScribingStile`!
+  const stileW = 0.064;
+  const stileProjX = 0.022;
+  const westFrontX = -0.04 - barCarcassD * 0.5; // -0.240m (`u = 18.00m`)
+  const upperPanelH = (barH - topT) - westFloorStepRiseH; // 0.685m
+
+  // South Wall Scribing Pilaster Stile (`v = 5.366..5.430m`, flush with South Wall `v = 5.430m`)
+  const southWallScribingStile = new THREE.Mesh(
+    new THREE.BoxGeometry(stileProjX, upperPanelH, stileW),
+    lightJoineryOakMat
+  );
+  southWallScribingStile.name = 'outbuildings.barn.golfViewingBar.southWallScribingStile';
+  southWallScribingStile.position.set(
+    westFrontX - stileProjX * 0.5,
+    westFloorStepRiseH + upperPanelH * 0.5,
+    barLenZ * 0.5 - stileW * 0.5
+  );
+  southWallScribingStile.castShadow = true;
+  southWallScribingStile.receiveShadow = true;
+  viewingBarGroup.add(southWallScribingStile);
+
+  // North Step-End Corner Pilaster Stile (`v = 3.620..3.684m`, full height down to lower floor)
+  const northCornerStile = new THREE.Mesh(
+    new THREE.BoxGeometry(stileProjX, barH - topT, stileW),
+    lightJoineryOakMat
+  );
+  northCornerStile.name = 'outbuildings.barn.golfViewingBar.northCornerStile';
+  northCornerStile.position.set(
+    westFrontX - stileProjX * 0.5,
+    (barH - topT) * 0.5,
+    -barLenZ * 0.5 + stileW * 0.5
+  );
+  northCornerStile.castShadow = true;
+  northCornerStile.receiveShadow = true;
+  viewingBarGroup.add(northCornerStile);
+
+  // Full 146mm-tall Solid Light-Oak West Baseboard Plinth (`122mm` lower plinth + `24mm` Ogee/Torus moulding cap)
+  // spanning between the North and South pilasters at `y = westFloorStepRiseH .. westFloorStepRiseH + 0.146m` (`-0.340m..-0.194m`),
+  // continuing the exact height and profile of the South wall baseboard across the cabinet base!
+  const innerPanelSpanZ = barLenZ - stileW * 2;
+  const westSkirtBaseH = 0.122;
+  const westSkirtCapH = 0.024;
   const westFloorSkirt = new THREE.Mesh(
-    new THREE.BoxGeometry(0.024, 0.036, barLenZ),
+    new THREE.BoxGeometry(0.020, westSkirtBaseH, innerPanelSpanZ),
     lightJoineryOakMat
   );
   westFloorSkirt.name = 'outbuildings.barn.golfViewingBar.westFloorSkirt';
-  westFloorSkirt.position.set(-0.04 - barCarcassD * 0.5 - 0.008, westFloorStepRiseH + 0.018, 0);
+  westFloorSkirt.position.set(
+    westFrontX - 0.010,
+    westFloorStepRiseH + westSkirtBaseH * 0.5,
+    0
+  );
   westFloorSkirt.castShadow = true;
+  westFloorSkirt.receiveShadow = true;
   viewingBarGroup.add(westFloorSkirt);
 
-  // Vertical half-round fluted light-oak tambour slats along the West (`-x`, facing the Golf Simulator) face above `-0.34m`
-  const slatBottomY = westFloorStepRiseH + 0.036;
-  const slatTopY = barH - topT;
+  const westFloorSkirtCap = new THREE.Mesh(
+    createProfiledSkirtingCapGeometry(innerPanelSpanZ, false, -1),
+    lightJoineryOakMat
+  );
+  westFloorSkirtCap.name = 'outbuildings.barn.golfViewingBar.westFloorSkirtCap';
+  westFloorSkirtCap.position.set(
+    westFrontX - 0.010,
+    westFloorStepRiseH + westSkirtBaseH + westSkirtCapH * 0.5,
+    0
+  );
+  westFloorSkirtCap.castShadow = true;
+  viewingBarGroup.add(westFloorSkirtCap);
+
+  // Upper horizontal oak frieze rail (`42mm` tall) directly beneath the marble bar top between the North and South pilasters
+  const topFriezeH = 0.042;
+  const westTopFriezeRail = new THREE.Mesh(
+    new THREE.BoxGeometry(stileProjX, topFriezeH, innerPanelSpanZ),
+    lightJoineryOakMat
+  );
+  westTopFriezeRail.name = 'outbuildings.barn.golfViewingBar.westTopFriezeRail';
+  westTopFriezeRail.position.set(
+    westFrontX - stileProjX * 0.5,
+    barH - topT - topFriezeH * 0.5,
+    0
+  );
+  westTopFriezeRail.castShadow = true;
+  viewingBarGroup.add(westTopFriezeRail);
+
+  // Vertical half-round fluted light-oak tambour slats recessed cleanly inside the framed panel
+  // (`y = westFloorStepRiseH + 0.146 .. barH - topT - topFriezeH`, between `northCornerStile` and `southWallScribingStile`)
+  const slatBottomY = westFloorStepRiseH + westSkirtBaseH + westSkirtCapH;
+  const slatTopY = barH - topT - topFriezeH;
   const slatH = slatTopY - slatBottomY;
-  const numSlats = 28;
+  const numSlats = 26;
   for (let i = 0; i < numSlats; i++) {
-    const sz = -barLenZ * 0.5 + 0.04 + (i / (numSlats - 1)) * (barLenZ - 0.08);
+    const sz = -innerPanelSpanZ * 0.5 + 0.02 + (i / (numSlats - 1)) * (innerPanelSpanZ - 0.04);
     const slat = new THREE.Mesh(
       new THREE.CylinderGeometry(0.012, 0.012, slatH, 10),
       lightJoineryOakMat
     );
     slat.name = 'outbuildings.barn.golfViewingBar.flutedSlat';
-    slat.position.set(-0.04 - barCarcassD * 0.5 - 0.004, slatBottomY + slatH * 0.5, sz);
+    slat.position.set(westFrontX - 0.004, slatBottomY + slatH * 0.5, sz);
     slat.castShadow = true;
     viewingBarGroup.add(slat);
   }
 
   // Issue #3 ("Marble top" at `[-3.662, 0.385, 18.089]`, `outbuildings.barn.golfViewingBar.top`):
-  // Overhanging Bullnose Polished Calacatta Marble Bar Top (`0.54m` deep x `0.040m` thick x `1.82m` long, overhanging `+x` toward the bar stools!)
+  // Overhanging Bullnose Polished Calacatta Marble Bar Top (`0.54m` deep x `0.040m` thick x `1.81m` long, flush with South wall!)
   const counterTop = new THREE.Mesh(
-    new THREE.BoxGeometry(barTopD, topT, barLenZ + 0.02),
+    new THREE.BoxGeometry(barTopD, topT, barLenZ),
     marbleTopMat
   );
   counterTop.name = 'outbuildings.barn.golfViewingBar.top';
-  counterTop.position.set(0.03, barH - topT * 0.5, -0.01);
+  counterTop.position.set(0.03, barH - topT * 0.5, 0);
   counterTop.castShadow = true;
   counterTop.receiveShadow = true;
   viewingBarGroup.add(counterTop);
@@ -956,12 +1039,12 @@ export function buildBarnGolfViewingBar(
   // Half-round bullnose marble nosing along both West (`-x`) and East (`+x`) edges of the marble bar top
   for (const edgeX of [0.03 - barTopD * 0.5, 0.03 + barTopD * 0.5] as const) {
     const noseCyl = new THREE.Mesh(
-      new THREE.CylinderGeometry(topT * 0.5, topT * 0.5, barLenZ + 0.02, 14),
+      new THREE.CylinderGeometry(topT * 0.5, topT * 0.5, barLenZ, 14),
       marbleTopMat
     );
     noseCyl.rotation.x = Math.PI / 2;
     noseCyl.name = 'outbuildings.barn.golfViewingBar.topNosing';
-    noseCyl.position.set(edgeX, barH - topT * 0.5, -0.01);
+    noseCyl.position.set(edgeX, barH - topT * 0.5, 0);
     viewingBarGroup.add(noseCyl);
   }
 

@@ -64,9 +64,123 @@ export function getWalkthroughTargetEyeHeight(
   return crouched ? CROUCH_EYE_HEIGHT : STANDING_EYE_HEIGHT;
 }
 
+export interface ActiveStaircaseRiserState {
+  readonly staircaseId:
+    | 'main-hall'
+    | 'barn-spiral'
+    | 'stable-exterior-spiral'
+    | 'barn-stable-up-steps'
+    | 'barn-floor-drop-steps';
+  readonly riserIndex: number;
+  readonly riserHeight: number;
+  readonly progress01: number;
+}
+
+export const EXT_SPIRAL_CENTER_U = 32.68;
+export const EXT_SPIRAL_CENTER_V = 4.82;
+export const EXT_SPIRAL_THETA_START = -0.28 * Math.PI;
+export const EXT_SPIRAL_THETA_END = 0.72 * Math.PI;
+
 export function isInsideSpiralStaircaseCutout(x: number, z: number): boolean {
   const { obU, obV } = worldToOutbuildingLocal(x, z);
-  return obU >= 21.12 && obU <= 23.02 && obV >= 3.52 && obV <= 5.42;
+  const inBarnSpiral = obU >= 21.12 && obU <= 23.02 && obV >= 3.52 && obV <= 5.42;
+  const inExtBalconySpiral = obU >= 31.72 && obU <= 33.68 && obV >= 3.88 && obV <= 5.78;
+  return inBarnSpiral || inExtBalconySpiral;
+}
+
+function applyDiscreteStepRiserContour(linearY: number, baseY: number, riserHeight: number): number {
+  const riserIndex = (linearY - baseY) / riserHeight;
+  return linearY - 0.014 * Math.sin(riserIndex * Math.PI * 2);
+}
+
+/**
+ * Detects if the player's feet at `(x, footY, z)` are currently on any staircase in the property
+ * and returns the continuous physical riser index (`0 .. N`) for step-synchronized camera animation.
+ */
+export function evaluateActiveStaircaseRiserState(
+  x: number,
+  footY: number,
+  z: number
+): ActiveStaircaseRiserState | null {
+  const { ewX, ewZ } = worldToEastWingLocal(x, z);
+  // 1. Main Hall Quarter-Turn Staircase
+  if (ewX >= -16.64 && ewX <= -15.28 && ewZ >= -2.55 && ewZ <= -1.58 && footY >= 0.82 && footY <= 2.15) {
+    const riserHeight = (2.16 - 0.84) / 7;
+    const riserIndex = 6 + THREE.MathUtils.clamp((footY - 0.84) / riserHeight, 0, 7);
+    return {
+      staircaseId: 'main-hall',
+      riserIndex,
+      riserHeight,
+      progress01: THREE.MathUtils.clamp((footY - -0.3) / (2.16 - -0.3), 0, 1),
+    };
+  }
+  if (ewX >= -17.58 && ewX <= -16.58 && ewZ >= -1.62 && ewZ <= -0.26 && footY >= -0.29 && footY <= 0.83) {
+    const riserHeight = (0.84 - -0.3) / 6;
+    const riserIndex = THREE.MathUtils.clamp((footY - -0.3) / riserHeight, 0, 6);
+    return {
+      staircaseId: 'main-hall',
+      riserIndex,
+      riserHeight,
+      progress01: THREE.MathUtils.clamp((footY - -0.3) / (2.16 - -0.3), 0, 1),
+    };
+  }
+
+  const { obU, obV } = worldToOutbuildingLocal(x, z);
+  // 2. Stable Exterior Balcony Spiral Staircase (`centerU = 32.68m, centerV = 4.82m, y = -0.44..2.08m`, 14 risers)
+  const extDu = obU - EXT_SPIRAL_CENTER_U;
+  const extDv = obV - EXT_SPIRAL_CENTER_V;
+  const extDist = Math.hypot(extDu, extDv);
+  if (extDist <= 0.98 && footY > -0.42 && footY < 2.06) {
+    const riserHeight = (2.08 - -0.44) / 14; // 0.18m
+    const riserIndex = THREE.MathUtils.clamp((footY - -0.44) / riserHeight, 0, 14);
+    return {
+      staircaseId: 'stable-exterior-spiral',
+      riserIndex,
+      riserHeight,
+      progress01: riserIndex / 14,
+    };
+  }
+
+  // 3. Barn Interior Spiral Staircase (`centerU = 22.08m, centerV = 4.50m, y = -0.675..1.54m`, 13 risers)
+  const barnDu = obU - 22.08;
+  const barnDv = obV - 4.5;
+  const barnDist = Math.hypot(barnDu, barnDv);
+  if (barnDist <= 0.96 && footY > -0.65 && footY < 1.52) {
+    const riserHeight = (1.54 - -0.675) / 13; // 0.1704m
+    const riserIndex = THREE.MathUtils.clamp((footY - -0.675) / riserHeight, 0, 13);
+    return {
+      staircaseId: 'barn-spiral',
+      riserIndex,
+      riserHeight,
+      progress01: riserIndex / 13,
+    };
+  }
+
+  // 4. Barn Mezzanine-to-Stable 3 `UP` Steps (`u = 22.02..23.22m, v = 2.35..3.35m, y = 1.54..2.08m`, 3 risers)
+  if (obU >= 22.02 && obU <= 23.22 && obV >= 2.35 && obV <= 3.35 && footY > 1.55 && footY < 2.07) {
+    const riserHeight = (2.08 - 1.54) / 3; // 0.18m
+    const riserIndex = THREE.MathUtils.clamp((footY - 1.54) / riserHeight, 0, 3);
+    return {
+      staircaseId: 'barn-stable-up-steps',
+      riserIndex,
+      riserHeight,
+      progress01: riserIndex / 3,
+    };
+  }
+
+  // 5. Barn Floor Drop Steps (`u = 18.16..18.48m, v = 0.28..3.62m, y = -0.675..-0.34m`, 2 risers)
+  if (obU >= 18.16 && obU <= 18.48 && obV >= 0.28 && obV <= 3.62 && footY > -0.665 && footY < -0.35) {
+    const riserHeight = (-0.34 - -0.675) / 2; // 0.1675m
+    const riserIndex = THREE.MathUtils.clamp((footY - -0.675) / riserHeight, 0, 2);
+    return {
+      staircaseId: 'barn-floor-drop-steps',
+      riserIndex,
+      riserHeight,
+      progress01: riserIndex / 2,
+    };
+  }
+
+  return null;
 }
 
 /**
@@ -76,11 +190,12 @@ export function isInsideSpiralStaircaseCutout(x: number, z: number): boolean {
 export function sampleFloorElevation(x: number, refFootY: number, z: number): number {
   const { ewX, ewZ } = worldToEastWingLocal(x, z);
 
-  // 1. Main Hall Quarter-Turn Staircase (smooth continuous analytical elevation Up & Down)
+  // 1. Main Hall Quarter-Turn Staircase (smooth continuous analytical elevation Up & Down with riser step contour)
   // 1a. Upper Flight (climbing East +X along the North wall from X = -16.64m at Y = 0.84m to X = -15.36m at Y = 2.16m)
   if (ewX >= -16.64 && ewX <= -15.26 && ewZ >= -2.55 && ewZ <= -1.58 && refFootY >= 0.35) {
     const tUpper = THREE.MathUtils.clamp((ewX - -16.64) / (-15.36 - -16.64), 0, 1);
-    return 0.84 + tUpper * (2.16 - 0.84);
+    const linearY = 0.84 + tUpper * (2.16 - 0.84);
+    return applyDiscreteStepRiserContour(linearY, 0.84, (2.16 - 0.84) / 7);
   }
 
   // 1b. Quarter-Turn Landing (X = -17.58m..-16.58m, Z = -2.55m..-1.62m at Y = +0.84m)
@@ -98,7 +213,8 @@ export function sampleFloorElevation(x: number, refFootY: number, z: number): nu
   // 1c. Lower Flight (climbing North -Z along the West wall from Z = -0.32m at Y = -0.30m to Z = -1.62m at Y = +0.84m)
   if (ewX >= -17.58 && ewX <= -16.58 && ewZ >= -1.62 && ewZ <= -0.24 && refFootY <= 1.55) {
     const tLower = THREE.MathUtils.clamp((-0.32 - ewZ) / (-0.32 - -1.62), 0, 1);
-    return -0.3 + tLower * (0.84 - -0.3);
+    const linearY = -0.3 + tLower * (0.84 - -0.3);
+    return applyDiscreteStepRiserContour(linearY, -0.3, (0.84 - -0.3) / 6);
   }
 
   // 2. First Floor Rooms & Doorways (strictly bounded to the actual First Floor footprint)
@@ -115,9 +231,54 @@ export function sampleFloorElevation(x: number, refFootY: number, z: number): nu
     return 2.08;
   }
 
-  // 2b. Outbuilding Barn Mezzanine (`1.54m`), Spiral Staircase, 3 `UP` Steps (`1.54m..2.08m`), Stable Top Floor (`2.08m`)
+  // 2b. Outbuilding Barn Mezzanine (`1.54m`), Spiral Staircases, 3 `UP` Steps (`1.54m..2.08m`),
+  //     Stable Top Floor & 1st-Floor East Balcony (`2.08m`), and Stable Exterior Spiral Staircase (`-0.44m..2.08m`)
   const { obU, obV } = worldToOutbuildingLocal(x, z);
-  if (obV >= 0.25 && obV <= 5.45 && obU >= 0.25 && obU <= 28.8) {
+
+  // Stable East Balcony Exterior Spiral Staircase (`centerU = 32.68m, centerV = 4.82m, outerR = 0.84m`)
+  const extStairDu = obU - EXT_SPIRAL_CENTER_U;
+  const extStairDv = obV - EXT_SPIRAL_CENTER_V;
+  const extStairDist = Math.hypot(extStairDu, extStairDv);
+  if (
+    obU >= 31.70 &&
+    obU <= 33.72 &&
+    obV >= 3.84 &&
+    obV <= 5.80 &&
+    (extStairDist <= 1.04 || (obU <= 32.68 && obV >= 4.36 && obV <= 5.26))
+  ) {
+    const rawExtTheta = Math.atan2(extStairDv, extStairDu);
+    // West Bridge Top Landing (`u = 31.72..32.68m, v = 4.40..5.24m` at `y = 2.08m`)
+    if (
+      refFootY >= 1.15 &&
+      obU >= 31.70 &&
+      obU <= 32.68 &&
+      obV >= 4.36 &&
+      obV <= 5.26 &&
+      extStairDu <= 0.04 &&
+      (Math.abs(extStairDv) <= 0.14 || Math.abs(rawExtTheta) >= 0.70 * Math.PI)
+    ) {
+      return 2.08;
+    }
+
+    if (rawExtTheta >= EXT_SPIRAL_THETA_START && rawExtTheta <= EXT_SPIRAL_THETA_END) {
+      const tExtStair = THREE.MathUtils.clamp(
+        (rawExtTheta - EXT_SPIRAL_THETA_START) / (EXT_SPIRAL_THETA_END - EXT_SPIRAL_THETA_START),
+        0,
+        1
+      );
+      const linearExtY = THREE.MathUtils.lerp(-0.44, 2.08, tExtStair);
+      const steppedExtY = applyDiscreteStepRiserContour(linearExtY, -0.44, (2.08 - -0.44) / 14);
+      if (refFootY >= 0.65 || steppedExtY <= refFootY + 0.75) {
+        return steppedExtY;
+      }
+    } else if (refFootY >= 1.20 && obU <= 32.72 && obV >= 4.30 && obV <= 5.36) {
+      return 2.08;
+    }
+
+    return refFootY >= 1.25 ? 2.08 : -0.44;
+  }
+
+  if (obV >= 0.05 && obV <= 5.66 && obU >= 0.25 && obU <= 31.88) {
     const stairDu = obU - 22.08;
     const stairDv = obV - 4.5;
     const stairDist = Math.hypot(stairDu, stairDv);
@@ -125,7 +286,9 @@ export function sampleFloorElevation(x: number, refFootY: number, z: number): nu
     const thetaEnd = Math.PI * 0.82;
     const rawTheta = Math.atan2(stairDv, stairDu);
 
-    const inSpiralStairwellCutout = obU >= 21.14 && obU <= 23.02 && obV >= 3.56;
+    const inSpiralStairwellCutout =
+      (obU >= 21.14 && obU <= 23.02 && obV >= 3.56) ||
+      (obU >= 22.04 && obU <= 23.02 && obV >= 3.305);
     if (inSpiralStairwellCutout || (stairDist <= 1.02 && obV >= 3.48)) {
       if (
         refFootY >= 0.65 &&
@@ -145,7 +308,8 @@ export function sampleFloorElevation(x: number, refFootY: number, z: number): nu
           0,
           1
         );
-        const stairY = THREE.MathUtils.lerp(-0.675, 1.54, tStair);
+        const linearStairY = THREE.MathUtils.lerp(-0.675, 1.54, tStair);
+        const stairY = applyDiscreteStepRiserContour(linearStairY, -0.675, (1.54 - -0.675) / 13);
         if (refFootY >= 0.45 || stairY <= refFootY + 0.68) {
           return stairY;
         }
@@ -167,21 +331,32 @@ export function sampleFloorElevation(x: number, refFootY: number, z: number): nu
 
     if (refFootY >= 1.15 && obU >= 18.65 && !inSpiralStairwellCutout) {
       if (obU >= 23.22) return 2.08;
-      if (obU >= 22.35 && obV >= 2.35 && obV <= 3.35) {
-        const tUp = THREE.MathUtils.clamp((obU - 22.4) / (23.22 - 22.4), 0, 1);
-        return THREE.MathUtils.lerp(1.54, 2.08, tUp);
+      if (obU >= 22.02 && obV >= 2.35 && obV <= 3.35) {
+        const tUp = THREE.MathUtils.clamp((obU - 22.05) / (23.22 - 22.05), 0, 1);
+        const linearUpY = THREE.MathUtils.lerp(1.54, 2.08, tUp);
+        return applyDiscreteStepRiserContour(linearUpY, 1.54, (2.08 - 1.54) / 3);
       }
       return 1.54;
     }
-    if (obU < 5.87) return -0.588;
-    if (obU < 12.19) return -0.5;
-    if (obU < 18.18) return -0.34;
-    if (obU < 18.46) {
-      const tDrop = THREE.MathUtils.clamp((obU - 18.18) / 0.28, 0, 1);
-      return THREE.MathUtils.lerp(-0.34, -0.675, tDrop);
+    if (obV >= 0.0 && obV <= 5.45) {
+      if (obU < 5.87) return -0.588;
+      if (obU < 12.19) return -0.5;
+      if (obU < 18.18) return -0.34;
+      if (obU < 18.46) {
+        const tDrop = THREE.MathUtils.clamp((obU - 18.18) / 0.28, 0, 1);
+        const linearDropY = THREE.MathUtils.lerp(-0.34, -0.675, tDrop);
+        return applyDiscreteStepRiserContour(linearDropY, -0.675, (-0.34 - -0.675) / 2);
+      }
+      if (obU < 23.12) return -0.675;
+      return -0.44;
     }
-    if (obU < 23.12) return -0.675;
-    return -0.44;
+  }
+
+  // Outdoor threshold & Yorkstone path outside the Office East Patio Door and Spiral Staircase (`u = 31.85..34.20m`)
+  if (obU >= 31.85 && obU <= 34.20 && obV >= 0.85 && obV <= 5.85 && refFootY <= 1.25) {
+    if (obU <= 33.65) return -0.44;
+    const tGarden = THREE.MathUtils.clamp((obU - 33.65) / 0.55, 0, 1);
+    return THREE.MathUtils.lerp(-0.44, -0.18, tGarden);
   }
 
   // 3. Ground Floor East Wing (Kitchen +0.05m -> Dining Room 0.00m -> Boot Lobby & Main Hall -0.30m)
@@ -328,17 +503,8 @@ export function evaluateArchitecturalWalkwayBounds(
       curObU <= 22.05 &&
       nextObU > 21.84 &&
       nextObU > curObU &&
-      nextObV >= 3.48 &&
+      nextObV >= 3.25 &&
       nextObV <= 4.52
-    ) {
-      return 'blocked';
-    }
-    if (
-      curObV <= 3.58 &&
-      nextObV > 3.36 &&
-      nextObV > curObV &&
-      nextObU >= 21.92 &&
-      nextObU <= 23.02
     ) {
       return 'blocked';
     }
@@ -399,12 +565,82 @@ export function evaluateArchitecturalWalkwayBounds(
 
   if (
     fromFoot.y >= 1.35 &&
-    curObU >= 22.15 &&
+    curObU >= 21.95 &&
     curObU <= 23.55 &&
     curObV >= 2.38 &&
     curObV <= 3.32
   ) {
     return nextObV < 2.4 || nextObV > 3.3 ? 'blocked' : 'clear';
+  }
+
+  // 2a-iii. Stable 1st-Floor East Balcony (`u = 28.95..31.88m, v = 0.05..5.66m, y = 2.08m`)
+  //         and Stable Exterior Balcony Spiral Staircase (`centerU = 32.68m, centerV = 4.82m, y = -0.44..2.08m`)
+  const curExtDu = curObU - EXT_SPIRAL_CENTER_U;
+  const curExtDv = curObV - EXT_SPIRAL_CENTER_V;
+  const curExtDist = Math.hypot(curExtDu, curExtDv);
+  const nextExtDu = nextObU - EXT_SPIRAL_CENTER_U;
+  const nextExtDv = nextObV - EXT_SPIRAL_CENTER_V;
+  const nextExtDist = Math.hypot(nextExtDu, nextExtDv);
+
+  const onExtSpiralTopLanding =
+    fromFoot.y >= 1.45 &&
+    curObU >= 31.68 &&
+    curObU <= 32.72 &&
+    curObV >= 4.36 &&
+    curObV <= 5.26 &&
+    curExtDu <= 0.04;
+  const onExtSpiralHelixTreads =
+    fromFoot.y > -0.42 &&
+    fromFoot.y < 2.06 &&
+    curObU >= 31.72 &&
+    curObU <= 33.68 &&
+    curObV >= 3.86 &&
+    curObV <= 5.78 &&
+    curExtDist <= 0.98;
+  const atExtSpiralBottomEntry =
+    fromFoot.y <= 0.15 &&
+    curObU >= 32.20 &&
+    curObU <= 33.68 &&
+    curObV >= 3.72 &&
+    curObV <= 4.72 &&
+    curExtDist <= 1.02;
+
+  if (onExtSpiralTopLanding || onExtSpiralHelixTreads || atExtSpiralBottomEntry) {
+    // Central cast-iron column (`r = 0.078m`)
+    if (nextExtDist < 0.20 && nextExtDist < curExtDist) return 'blocked';
+    // Prevent walking West into the South-East ground brick pier (`u = 31.85m`) while below the top landing
+    if (fromFoot.y < 1.75 && nextObU < 32.02 && nextObU < curObU) return 'blocked';
+    // North radial bridge guardrail on `topLanding` (`v = 4.42..4.72m`)
+    if (fromFoot.y >= 1.55 && nextObU <= 32.68 && nextObV < 4.45 && nextObV < curObV) {
+      return 'blocked';
+    }
+    const exitingTopToBalcony =
+      fromFoot.y >= 1.65 && nextObU <= 31.96 && nextObV >= 4.40 && nextObV <= 5.24;
+    const exitingBottomToGarden =
+      fromFoot.y <= 0.15 && nextObU >= 32.22 && nextObU <= 33.68 && nextObV <= 4.68;
+    if (
+      !exitingTopToBalcony &&
+      !exitingBottomToGarden &&
+      nextExtDist > 0.82 &&
+      nextExtDist > curExtDist
+    ) {
+      return 'blocked';
+    }
+    return 'clear';
+  }
+
+  if (
+    fromFoot.y >= 1.65 &&
+    curObU >= 28.95 &&
+    curObU <= 31.88 &&
+    curObV >= 0.05 &&
+    curObV <= 5.66
+  ) {
+    if (nextObV < 0.26 && nextObV < curObV) return 'blocked';
+    if (nextObV > 5.45 && nextObV > curObV) return 'blocked';
+    const inBalconyStairGateV = nextObV >= 4.42 && nextObV <= 5.22;
+    if (!inBalconyStairGateV && nextObU > 31.58 && nextObU > curObU) return 'blocked';
+    if (inBalconyStairGateV && nextObU >= 31.50) return 'clear';
   }
 
   // 2b. Ground-floor West Canted Bay Windows (Living Room at Z = -0.26m, Sitting Room at Z = 5.92m)
@@ -435,8 +671,11 @@ export function evaluateArchitecturalWalkwayBounds(
 }
 
 /**
- * Smooth Helical Tangential Guidance & Auto-Curve Steering on the SE Barn Spiral Staircase
- * (`centerU = 22.08m, centerV = 4.50m`) so holding W (or S) glides effortlessly up and down the spiral.
+ * Smooth Helical Tangential Guidance & Auto-Curve Steering on:
+ * 1. SE Barn Interior Spiral Staircase (`centerU = 22.08m, centerV = 4.50m`)
+ * 2. Stable East Balcony Exterior Spiral Staircase (`centerU = 32.68m, centerV = 4.82m`)
+ * 3. Main Hall Quarter-Turn Staircase (`ewX = -17.58..-15.26m, ewZ = -2.55..-0.24m`)
+ * so holding W (or S) glides effortlessly up and down the stairs.
  */
 export function applySpiralStaircaseHelicalGuidance(
   footPos: THREE.Vector3,
@@ -446,6 +685,8 @@ export function applySpiralStaircaseHelicalGuidance(
   dtSeconds: number
 ): number {
   const { obU: curObU, obV: curObV } = worldToOutbuildingLocal(footPos.x, footPos.z);
+
+  // 1. Barn Interior Spiral Staircase (`centerU = 22.08m, centerV = 4.50m`)
   const stairDu = curObU - 22.08;
   const stairDv = curObV - 4.5;
   const stairDist = Math.hypot(stairDu, stairDv);
@@ -552,6 +793,147 @@ export function applySpiralStaircaseHelicalGuidance(
           return targetYawRad + deltaYaw * Math.min(1, dtSeconds * 3.6);
         }
       }
+    }
+  }
+
+  // 2. Stable East Balcony Exterior Spiral Staircase (`centerU = 32.68m, centerV = 4.82m`)
+  const extDu = curObU - EXT_SPIRAL_CENTER_U;
+  const extDv = curObV - EXT_SPIRAL_CENTER_V;
+  const extDist = Math.hypot(extDu, extDv);
+
+  if (
+    curObU >= 31.70 &&
+    curObU <= 33.68 &&
+    curObV >= 3.78 &&
+    curObV <= 5.78 &&
+    extDist >= 0.16 &&
+    extDist <= 0.98
+  ) {
+    const moveU = moveVec.x * OB_COS - moveVec.z * OB_SIN;
+    const moveV = moveVec.x * OB_SIN + moveVec.z * OB_COS;
+    const theta = Math.atan2(extDv, extDu);
+
+    const onExtMidHelix =
+      footPos.y > -0.36 &&
+      footPos.y < 1.98 &&
+      !(footPos.y >= 1.65 && extDu <= 0 && Math.abs(extDv) <= 0.42);
+    const enteringExtBottomHelix =
+      footPos.y <= -0.20 &&
+      curObU >= 32.35 &&
+      curObU <= 33.65 &&
+      curObV >= 3.80 &&
+      curObV <= 4.65 &&
+      moveU * -Math.sin(theta) + moveV * Math.cos(theta) > 0.28;
+    const enteringExtTopHelix =
+      footPos.y >= 1.65 &&
+      curObU >= 31.72 &&
+      curObU <= 32.68 &&
+      curObV >= 4.40 &&
+      curObV <= 5.45 &&
+      moveU * 0.65 + moveV * 0.76 > 0.28;
+
+    if (onExtMidHelix || enteringExtBottomHelix || enteringExtTopHelix) {
+      const radPull = THREE.MathUtils.clamp((0.55 - extDist) * 1.85, -0.6, 0.6);
+      const radU = Math.cos(theta);
+      const radV = Math.sin(theta);
+
+      let upU = -Math.sin(theta) + radPull * radU;
+      let upV = Math.cos(theta) + radPull * radV;
+      if (footPos.y >= 1.75 && theta >= Math.PI * 0.52) {
+        upU = THREE.MathUtils.lerp(upU, -0.92, 0.62);
+        upV = THREE.MathUtils.lerp(upV, -0.38, 0.62);
+      }
+      const upLen = Math.hypot(upU, upV) || 1;
+      upU /= upLen;
+      upV /= upLen;
+
+      let downU = Math.sin(theta) + radPull * radU;
+      let downV = -Math.cos(theta) + radPull * radV;
+      if (
+        footPos.y >= 1.75 &&
+        (curObV < 5.05 || Math.abs(theta) > Math.PI * 0.70)
+      ) {
+        downU = 32.38 - curObU;
+        downV = 5.32 - curObV;
+      } else if (footPos.y <= -0.15 && theta <= -Math.PI * 0.14) {
+        downU = THREE.MathUtils.lerp(downU, -0.58, 0.58);
+        downV = THREE.MathUtils.lerp(downV, -0.81, 0.58);
+      }
+      const downLen = Math.hypot(downU, downV) || 1;
+      downU /= downLen;
+      downV /= downLen;
+
+      const dotUp = moveU * upU + moveV * upV;
+      const dotDown = moveU * downU + moveV * downV;
+      let flowU = 0;
+      let flowV = 0;
+      let activeFlow = false;
+
+      if (dotUp >= dotDown && dotUp > 0.15) {
+        flowU = upU;
+        flowV = upV;
+        activeFlow = true;
+      } else if (dotDown > dotUp && dotDown > 0.15) {
+        flowU = downU;
+        flowV = downV;
+        activeFlow = true;
+      }
+
+      if (activeFlow) {
+        const guideWeight = extDist > 0.72 || extDist < 0.32 ? 0.92 : 0.74;
+        const guidedU = THREE.MathUtils.lerp(moveU, flowU, guideWeight);
+        const guidedV = THREE.MathUtils.lerp(moveV, flowV, guideWeight);
+        moveVec.set(
+          guidedU * OB_COS + guidedV * OB_SIN,
+          0,
+          -guidedU * OB_SIN + guidedV * OB_COS
+        );
+        if (moveVec.lengthSq() > 1e-5) {
+          moveVec.normalize();
+        }
+
+        if (forwardInput > 0 && footPos.y > -0.38 && footPos.y < 1.98) {
+          const flowWorldX = flowU * OB_COS + flowV * OB_SIN;
+          const flowWorldZ = -flowU * OB_SIN + flowV * OB_COS;
+          const desiredYaw = Math.atan2(-flowWorldX, -flowWorldZ);
+          const deltaYaw = Math.atan2(
+            Math.sin(desiredYaw - targetYawRad),
+            Math.cos(desiredYaw - targetYawRad)
+          );
+          return targetYawRad + deltaYaw * Math.min(1, dtSeconds * 3.8);
+        }
+      }
+    }
+  }
+
+  // 3. Main Hall Quarter-Turn Staircase Landing Smooth Auto-Curve Steering
+  const { ewX, ewZ } = worldToEastWingLocal(footPos.x, footPos.z);
+  if (
+    footPos.y >= 0.45 &&
+    footPos.y <= 1.25 &&
+    ewX >= -17.55 &&
+    ewX <= -16.45 &&
+    ewZ >= -2.52 &&
+    ewZ <= -1.48 &&
+    forwardInput > 0
+  ) {
+    // Turning from Lower Flight (moving North -Z) onto Upper Flight (moving East +X)
+    if (moveVec.z < -0.25 && ewZ <= -1.68) {
+      const desiredYaw = -Math.PI * 0.5; // Facing East (+X)
+      const deltaYaw = Math.atan2(
+        Math.sin(desiredYaw - targetYawRad),
+        Math.cos(desiredYaw - targetYawRad)
+      );
+      return targetYawRad + deltaYaw * Math.min(1, dtSeconds * 2.8);
+    }
+    // Turning from Upper Flight (moving West -X) onto Lower Flight (moving South +Z)
+    if (moveVec.x < -0.25 && ewX <= -16.72) {
+      const desiredYaw = Math.PI; // Facing South (+Z)
+      const deltaYaw = Math.atan2(
+        Math.sin(desiredYaw - targetYawRad),
+        Math.cos(desiredYaw - targetYawRad)
+      );
+      return targetYawRad + deltaYaw * Math.min(1, dtSeconds * 2.8);
     }
   }
 

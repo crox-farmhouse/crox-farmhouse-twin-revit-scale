@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildMitredArchitraveSegments } from '../../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../../types/scene.ts';
 import { createCarraraMarbleTileTexture } from './stable-upper-ensuite.ts';
 
@@ -171,32 +172,29 @@ export function buildStableGroundCloakroom(
   cloakGroup.add(thresholdSill);
 
   // Chamfered solid light-oak architraves (`0.058m` wide × `0.016m` thick) on BOTH North exterior (`v = 3.94 - 0.058`) and South interior (`v = 3.94 + 0.058`) faces
-  const archW = 0.058;
-  const archT = 0.016;
+  const archW = 0.064;
+  const archT = 0.020;
   for (const faceDir of [-1, 1] as const) {
-    const archZ = vNorth + faceDir * (partT * 0.5 + archT * 0.5);
-    for (const sSide of [-1, 1] as const) {
-      const sideArch = new THREE.Mesh(
-        new THREE.BoxGeometry(archW, doorH + archW, archT),
-        lightJoineryOakMat
-      );
-      sideArch.name = 'outbuildings.stable.groundCloakroom.doorFrame.architrave';
-      sideArch.position.set(
-        midU + sSide * (doorW * 0.5 + archW * 0.5 - 0.012),
-        stableGroundFloorY + (doorH + archW) * 0.5,
-        archZ
-      );
-      sideArch.castShadow = true;
-      cloakGroup.add(sideArch);
-    }
-    const topArch = new THREE.Mesh(
-      new THREE.BoxGeometry(doorW + archW * 2 - 0.024, archW, archT),
-      lightJoineryOakMat
+    const archWallZ = vNorth + faceDir * (partT * 0.5);
+    const [leftLegGeo, headGeo, rightLegGeo] = buildMitredArchitraveSegments(
+      midU - (doorW * 0.5 - 0.012),
+      midU + (doorW * 0.5 - 0.012),
+      stableGroundFloorY,
+      stableGroundFloorY,
+      stableGroundFloorY + doorH - 0.012,
+      'x',
+      archWallZ,
+      faceDir,
+      archW,
+      archT
     );
-    topArch.name = 'outbuildings.stable.groundCloakroom.doorFrame.architrave';
-    topArch.position.set(midU, stableGroundFloorY + doorH + archW * 0.5 - 0.012, archZ);
-    topArch.castShadow = true;
-    cloakGroup.add(topArch);
+    for (const segGeo of [leftLegGeo, rightLegGeo, headGeo] as const) {
+      const archMesh = new THREE.Mesh(segGeo, warmRoomPlasterMat);
+      archMesh.name = 'outbuildings.stable.groundCloakroom.doorFrame.architrave';
+      archMesh.castShadow = true;
+      archMesh.receiveShadow = true;
+      cloakGroup.add(archMesh);
+    }
   }
 
   // Interactive Hinged 4-Panel Shaker Solid European Oak Door (`outbuildings.stable.groundCloakroom.door`)
@@ -948,24 +946,71 @@ function createSculptedOliveLeafGeometry(
   return geo;
 }
 
+function createContouredOutdoorCushionGeometry(
+  width: number,
+  height: number,
+  depth: number,
+  crownRatio = 0.24
+): THREE.BufferGeometry {
+  const geo = new THREE.BoxGeometry(width, height, depth, 14, 6, 14);
+  const pos = geo.attributes.position;
+  const halfW = width * 0.5;
+  const halfH = height * 0.5;
+  const halfD = depth * 0.5;
+
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+
+    const nx = x / halfW;
+    const ny = y / halfH;
+    const nz = z / halfD;
+
+    // Softly round horizontal corners in plan view and crown top/bottom cushion faces
+    const edgeProfileX = Math.max(0, 1 - nx * nx * 0.16);
+    const edgeProfileZ = Math.max(0, 1 - nz * nz * 0.16);
+    const domeFactor = Math.max(0, (1 - nx * nx * 0.72) * (1 - nz * nz * 0.72));
+    const sideRoll = Math.sqrt(Math.max(0.18, 1 - 0.22 * ny * ny));
+
+    const sx = x * sideRoll * (0.94 + 0.06 * edgeProfileZ);
+    const sz = z * sideRoll * (0.94 + 0.06 * edgeProfileX);
+    const sy = y * (0.84 + 0.16 * edgeProfileX * edgeProfileZ) + Math.sign(ny) * height * crownRatio * domeFactor;
+
+    pos.setXYZ(i, sx, sy, sz);
+  }
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+  return geo;
+}
+
 export function buildStableBalconyOutdoorFurniture(
   balconyGroup: THREE.Group,
   stableUpperFloorY: number,
-  balStartU: number,
-  balEndU: number
+  _balStartU: number,
+  _balEndU: number
 ): void {
   const furnGroup = new THREE.Group();
   furnGroup.name = 'outbuildings.firstFloor.stableEastBalcony.furnitureSet';
   furnGroup.userData.zone = 'sitting';
   balconyGroup.add(furnGroup);
 
-  const midU = (balStartU + balEndU) * 0.5; // 30.45m on the restored 2.80m-deep balcony (`u = 29.05..31.85m`)
   const deckY = stableUpperFloorY;
 
   const weatheredTeakMat = new THREE.MeshStandardMaterial({
     color: 0x9e7b56,
-    roughness: 0.64,
-    metalness: 0.03,
+    roughness: 0.58,
+    metalness: 0.04,
+  });
+  const brushedBrassHardwareMat = new THREE.MeshStandardMaterial({
+    color: 0xc8a464,
+    roughness: 0.28,
+    metalness: 0.84,
+  });
+  const honedTravertineMat = new THREE.MeshStandardMaterial({
+    color: 0xe6dfd3,
+    roughness: 0.46,
+    metalness: 0.02,
   });
   const oliveBarkMat = new THREE.MeshStandardMaterial({
     color: 0x5c4d3d,
@@ -974,11 +1019,16 @@ export function buildStableBalconyOutdoorFurniture(
   });
   const wovenRopeMat = new THREE.MeshStandardMaterial({
     color: 0x7b7267,
-    roughness: 0.86,
+    roughness: 0.84,
     metalness: 0.02,
   });
   const sunbrellaOatmealMat = new THREE.MeshStandardMaterial({
     color: 0xebe5da,
+    roughness: 0.80,
+    metalness: 0.01,
+  });
+  const cushionPipingMat = new THREE.MeshStandardMaterial({
+    color: 0xd6cec0,
     roughness: 0.82,
     metalness: 0.01,
   });
@@ -995,6 +1045,11 @@ export function buildStableBalconyOutdoorFurniture(
   const outdoorRugMat = new THREE.MeshStandardMaterial({
     color: 0xd4cbbd,
     roughness: 0.92,
+    metalness: 0.01,
+  });
+  const outdoorRugBorderMat = new THREE.MeshStandardMaterial({
+    color: 0xb8ad9c,
+    roughness: 0.90,
     metalness: 0.01,
   });
   const terracottaPotMat = new THREE.MeshStandardMaterial({
@@ -1029,118 +1084,60 @@ export function buildStableBalconyOutdoorFurniture(
     roughness: 0.74,
   });
 
-  // 1. Flatweave Outdoor Patio Rug (`1.72m x 2.18m` centered at `u = midU, v = 2.45m` — clear of SE spiral staircase!)
+  // 1. Circular Woven Jute Outdoor Accent Rug (`r = 0.88m` centered in the North balcony bay at `u = midU + 0.12, v = 0.98m`
+  //    — 100% clear of the central French balcony doors `v = 2.215..3.495m` and SE spiral staircase `v = 4.42..5.22m`!)
+  const rugCenterU = 30.52;
+  const rugCenterV = 1.02;
   const patioRug = new THREE.Mesh(
-    new THREE.BoxGeometry(1.72, 0.008, 2.18),
+    new THREE.CylinderGeometry(0.96, 0.96, 0.007, 36),
     outdoorRugMat
   );
   patioRug.name = 'outbuildings.firstFloor.stableEastBalcony.outdoorRug';
-  patioRug.position.set(midU, deckY + 0.004, 2.45);
+  patioRug.position.set(rugCenterU, deckY + 0.0035, rugCenterV);
   patioRug.receiveShadow = true;
   furnGroup.add(patioRug);
 
-  // 2. 2-Seater Weathered-Teak & Woven-Rope Outdoor Sofa (`v = 1.50m`, `rotation.y = Math.PI` facing South `+v`)
-  const sofaGroup = new THREE.Group();
-  sofaGroup.name = 'outbuildings.firstFloor.stableEastBalcony.sofa';
-  sofaGroup.position.set(midU, deckY, 1.50);
-  sofaGroup.rotation.y = Math.PI;
-  furnGroup.add(sofaGroup);
-
-  const sofaW = 1.44; // along u
-  const sofaD = 0.74; // along v
-  const sofaBase = new THREE.Mesh(
-    new THREE.BoxGeometry(sofaW, 0.055, sofaD),
-    weatheredTeakMat
+  const patioRugBorder = new THREE.Mesh(
+    new THREE.TorusGeometry(0.96, 0.014, 10, 40),
+    outdoorRugBorderMat
   );
-  sofaBase.name = 'outbuildings.firstFloor.stableEastBalcony.sofa.base';
-  sofaBase.position.set(0, 0.24, 0);
-  sofaBase.castShadow = true;
-  sofaGroup.add(sofaBase);
+  patioRugBorder.rotation.x = Math.PI / 2;
+  patioRugBorder.name = 'outbuildings.firstFloor.stableEastBalcony.outdoorRug.border';
+  patioRugBorder.position.set(rugCenterU, deckY + 0.005, rugCenterV);
+  furnGroup.add(patioRugBorder);
 
-  for (const [lx, lz] of [
-    [-sofaW * 0.5 + 0.06, -sofaD * 0.5 + 0.06],
-    [sofaW * 0.5 - 0.06, -sofaD * 0.5 + 0.06],
-    [-sofaW * 0.5 + 0.06, sofaD * 0.5 - 0.06],
-    [sofaW * 0.5 - 0.06, sofaD * 0.5 - 0.06],
-  ] as const) {
-    const leg = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.022, 0.016, 0.22, 10),
-      weatheredTeakMat
-    );
-    leg.name = 'outbuildings.firstFloor.stableEastBalcony.sofa.leg';
-    leg.position.set(lx, 0.11, lz);
-    leg.castShadow = true;
-    sofaGroup.add(leg);
-  }
+  // 2. Pair of High-LOD Sculpted Solid-Teak & Open-Weave Rope Barrel Lounge Armchairs (`armchair.1` & `armchair.2`)
+  //    Positioned in the quiet North bay (`v = 0.64m..1.38m`), angled inward for morning coffee overlooking the garden!
+  const seatCushionGeo = createContouredOutdoorCushionGeometry(0.58, 0.115, 0.56, 0.22);
+  const backCushionGeo = createContouredOutdoorCushionGeometry(0.54, 0.30, 0.125, 0.24);
+  const throwPillowGeo = createContouredOutdoorCushionGeometry(0.25, 0.24, 0.085, 0.28);
 
-  const sofaBack = new THREE.Mesh(
-    new THREE.BoxGeometry(sofaW, 0.44, 0.055),
-    wovenRopeMat
-  );
-  sofaBack.name = 'outbuildings.firstFloor.stableEastBalcony.sofa.backrest';
-  sofaBack.position.set(0, 0.48, sofaD * 0.5 - 0.03);
-  sofaBack.castShadow = true;
-  sofaGroup.add(sofaBack);
+  // Curved wrap-around U-shaped solid-teak barrel crest rail geometry (`TubeGeometry` along `CatmullRomCurve3`)
+  const barrelCrestCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.31, 0.56, -0.25),
+    new THREE.Vector3(-0.32, 0.58, 0.04),
+    new THREE.Vector3(-0.27, 0.64, 0.24),
+    new THREE.Vector3(0.0, 0.665, 0.30),
+    new THREE.Vector3(0.27, 0.64, 0.24),
+    new THREE.Vector3(0.32, 0.58, 0.04),
+    new THREE.Vector3(0.31, 0.56, -0.25),
+  ]);
+  const barrelCrestGeo = new THREE.TubeGeometry(barrelCrestCurve, 28, 0.019, 12, false);
 
-  for (const sideX of [-1, 1] as const) {
-    const arm = new THREE.Mesh(
-      new THREE.BoxGeometry(0.055, 0.34, sofaD - 0.04),
-      wovenRopeMat
-    );
-    arm.name = 'outbuildings.firstFloor.stableEastBalcony.sofa.armrest';
-    arm.position.set(sideX * (sofaW * 0.5 - 0.03), 0.43, 0);
-    arm.castShadow = true;
-    sofaGroup.add(arm);
+  const barrelLowerRailCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.31, 0.26, -0.25),
+    new THREE.Vector3(-0.32, 0.26, 0.04),
+    new THREE.Vector3(-0.27, 0.26, 0.24),
+    new THREE.Vector3(0.0, 0.26, 0.29),
+    new THREE.Vector3(0.27, 0.26, 0.24),
+    new THREE.Vector3(0.32, 0.26, 0.04),
+    new THREE.Vector3(0.31, 0.26, -0.25),
+  ]);
+  const barrelLowerRailGeo = new THREE.TubeGeometry(barrelLowerRailCurve, 24, 0.014, 10, false);
 
-    const teakArmCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.068, 0.024, sofaD - 0.02),
-      weatheredTeakMat
-    );
-    teakArmCap.name = 'outbuildings.firstFloor.stableEastBalcony.sofa.armCap';
-    teakArmCap.position.set(sideX * (sofaW * 0.5 - 0.03), 0.605, 0);
-    sofaGroup.add(teakArmCap);
-  }
-
-  for (const sideX of [-0.33, 0.33] as const) {
-    const seatCush = new THREE.Mesh(
-      new THREE.BoxGeometry(0.64, 0.13, sofaD - 0.10),
-      sunbrellaOatmealMat
-    );
-    seatCush.name = 'outbuildings.firstFloor.stableEastBalcony.sofa.seatCushion';
-    seatCush.position.set(sideX, 0.33, -0.02);
-    seatCush.castShadow = true;
-    sofaGroup.add(seatCush);
-
-    const backCush = new THREE.Mesh(
-      new THREE.BoxGeometry(0.62, 0.34, 0.14),
-      sunbrellaOatmealMat
-    );
-    backCush.rotation.x = -0.18;
-    backCush.name = 'outbuildings.firstFloor.stableEastBalcony.sofa.backCushion';
-    backCush.position.set(sideX, 0.54, sofaD * 0.5 - 0.13);
-    backCush.castShadow = true;
-    sofaGroup.add(backCush);
-  }
-
-  for (const [px, pMat] of [
-    [-0.50, terracottaPillowMat],
-    [0.50, sagePillowMat],
-  ] as const) {
-    const throwPillow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.28, 0.26, 0.10),
-      pMat
-    );
-    throwPillow.rotation.y = px < 0 ? 0.35 : -0.35;
-    throwPillow.name = 'outbuildings.firstFloor.stableEastBalcony.sofa.throwPillow';
-    throwPillow.position.set(px, 0.52, 0.08);
-    throwPillow.castShadow = true;
-    sofaGroup.add(throwPillow);
-  }
-
-  // 3. 2 Matching Weathered-Teak & Woven-Rope Outdoor Lounge Armchairs (`v = 3.32m`, facing North `-v` toward coffee table)
-  for (const [cIdx, cu, cv, rotY] of [
-    [1, midU - 0.48, 3.32, 0.34],
-    [2, midU + 0.48, 3.32, -0.34],
+  for (const [cIdx, cu, cv, rotY, pillowMat] of [
+    [1, 29.82, 0.88, -2.42, terracottaPillowMat],
+    [2, 31.22, 1.02, 2.38, sagePillowMat],
   ] as const) {
     const chairGrp = new THREE.Group();
     chairGrp.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}`;
@@ -1148,84 +1145,166 @@ export function buildStableBalconyOutdoorFurniture(
     chairGrp.rotation.y = rotY;
     furnGroup.add(chairGrp);
 
-    const cW = 0.68;
-    const cD = 0.68;
-    const cBase = new THREE.Mesh(
-      new THREE.BoxGeometry(cW, 0.05, cD),
-      weatheredTeakMat
-    );
-    cBase.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.base`;
-    cBase.position.set(0, 0.24, 0);
-    cBase.castShadow = true;
-    chairGrp.add(cBase);
+    const cW = 0.64;
+    const cD = 0.60;
 
-    for (const [lx, lz] of [
-      [-cW * 0.5 + 0.05, -cD * 0.5 + 0.05],
-      [cW * 0.5 - 0.05, -cD * 0.5 + 0.05],
-      [-cW * 0.5 + 0.05, cD * 0.5 - 0.05],
-      [cW * 0.5 - 0.05, cD * 0.5 - 0.05],
+    // Chamfered solid-teak perimeter seat frame + 5 recessed solid-teak deck slats
+    for (const [rTag, rx, rz, rw, rd] of [
+      ['frontRail', 0, -cD * 0.5 + 0.024, cW, 0.044],
+      ['rearRail', 0, cD * 0.5 - 0.024, cW, 0.044],
+      ['leftRail', -cW * 0.5 + 0.024, 0, 0.044, cD - 0.088],
+      ['rightRail', cW * 0.5 - 0.024, 0, 0.044, cD - 0.088],
     ] as const) {
-      const leg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.020, 0.015, 0.22, 10),
+      const rail = new THREE.Mesh(
+        new THREE.BoxGeometry(rw, 0.042, rd),
         weatheredTeakMat
       );
-      leg.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.leg`;
-      leg.position.set(lx, 0.11, lz);
-      chairGrp.add(leg);
+      rail.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.${rTag}`;
+      rail.position.set(rx, 0.24, rz);
+      rail.castShadow = true;
+      rail.receiveShadow = true;
+      chairGrp.add(rail);
     }
 
-    const cBack = new THREE.Mesh(
-      new THREE.BoxGeometry(cW, 0.42, 0.05),
-      wovenRopeMat
-    );
-    cBack.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.backrest`;
-    cBack.position.set(0, 0.47, cD * 0.5 - 0.03);
-    cBack.castShadow = true;
-    chairGrp.add(cBack);
+    for (let s = 0; s < 5; s++) {
+      const sz = -0.18 + s * 0.09;
+      const slat = new THREE.Mesh(
+        new THREE.BoxGeometry(cW - 0.09, 0.016, 0.052),
+        weatheredTeakMat
+      );
+      slat.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.seatSlat.${s + 1}`;
+      slat.userData = { lodTier: 'high', lodMaxDistance: 12 };
+      slat.position.set(0, 0.242, sz);
+      chairGrp.add(slat);
+    }
 
-    for (const sx of [-1, 1] as const) {
-      const cArm = new THREE.Mesh(
-        new THREE.BoxGeometry(0.05, 0.32, cD - 0.04),
+    // 4 Splayed Turned Solid-Teak Legs with Brushed-Brass Ferrule Feet + Turned Front Arm Posts
+    for (const [lIdx, lx, lz, splayX, splayZ] of [
+      [1, -cW * 0.5 + 0.045, -cD * 0.5 + 0.045, 0.06, 0.05],
+      [2, cW * 0.5 - 0.045, -cD * 0.5 + 0.045, -0.06, 0.05],
+      [3, -cW * 0.5 + 0.045, cD * 0.5 - 0.045, 0.06, -0.07],
+      [4, cW * 0.5 - 0.045, cD * 0.5 - 0.045, -0.06, -0.07],
+    ] as const) {
+      const leg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.022, 0.015, 0.23, 14),
+        weatheredTeakMat
+      );
+      leg.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.leg.${lIdx}`;
+      leg.position.set(lx, 0.115, lz);
+      leg.rotation.set(splayZ, 0, splayX);
+      leg.castShadow = true;
+      chairGrp.add(leg);
+
+      const ferrule = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.016, 0.015, 0.028, 12),
+        brushedBrassHardwareMat
+      );
+      ferrule.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.ferrule.${lIdx}`;
+      ferrule.userData = { lodTier: 'high', lodMaxDistance: 12 };
+      ferrule.position.set(lx - splayX * 0.09, 0.015, lz + splayZ * 0.09);
+      chairGrp.add(ferrule);
+    }
+
+    for (const [sx, sideTag] of [
+      [-1, 'left'],
+      [1, 'right'],
+    ] as const) {
+      const armPost = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.017, 0.020, 0.31, 12),
+        weatheredTeakMat
+      );
+      armPost.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.armPost.${sideTag}`;
+      armPost.position.set(sx * 0.31, 0.405, -0.25);
+      armPost.castShadow = true;
+      chairGrp.add(armPost);
+    }
+
+    // Sculpted Wrap-Around U-Shaped Solid-Teak Barrel Crest Rail & Lower Frame Rail
+    // (Named `.backrest` on the primary barrel frame so existing USD / scene references resolve cleanly!)
+    const crestRailMesh = new THREE.Mesh(barrelCrestGeo, weatheredTeakMat);
+    crestRailMesh.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.backrest`;
+    crestRailMesh.castShadow = true;
+    crestRailMesh.receiveShadow = true;
+    chairGrp.add(crestRailMesh);
+
+    const lowerBarrelMesh = new THREE.Mesh(barrelLowerRailGeo, weatheredTeakMat);
+    lowerBarrelMesh.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.lowerBarrelRail`;
+    lowerBarrelMesh.castShadow = true;
+    chairGrp.add(lowerBarrelMesh);
+
+    // Open-Weave Tensioned Olefin Rope Vertical Cords (`17` vertical cords around the U-shaped barrel)
+    const numRopeCords = 17;
+    for (let r = 1; r < numRopeCords; r++) {
+      const t = r / numRopeCords;
+      const topPt = barrelCrestCurve.getPoint(t);
+      const botPt = barrelLowerRailCurve.getPoint(t);
+      const cordVec = new THREE.Vector3().subVectors(topPt, botPt);
+      const cordLen = cordVec.length();
+      const midPt = new THREE.Vector3().addVectors(topPt, botPt).multiplyScalar(0.5);
+
+      const cordMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0055, 0.0055, cordLen, 8),
         wovenRopeMat
       );
-      cArm.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.armrest`;
-      cArm.position.set(sx * (cW * 0.5 - 0.028), 0.42, 0);
-      cArm.castShadow = true;
-      chairGrp.add(cArm);
+      cordMesh.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.ropeCord.${r}`;
+      cordMesh.position.copy(midPt);
+      cordMesh.quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        cordVec.normalize()
+      );
+      cordMesh.castShadow = true;
+      chairGrp.add(cordMesh);
     }
 
-    const cSeat = new THREE.Mesh(
-      new THREE.BoxGeometry(cW - 0.11, 0.12, cD - 0.10),
-      sunbrellaOatmealMat
-    );
+    // Contoured Plump Sunbrella Bouclé Seat Cushion, Lumbar Back Cushion, and Accent Throw Pillow
+    const cSeat = new THREE.Mesh(seatCushionGeo, sunbrellaOatmealMat);
     cSeat.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.seatCushion`;
-    cSeat.position.set(0, 0.325, -0.02);
+    cSeat.position.set(0, 0.315, -0.015);
     cSeat.castShadow = true;
+    cSeat.receiveShadow = true;
     chairGrp.add(cSeat);
 
-    const cBackCush = new THREE.Mesh(
-      new THREE.BoxGeometry(cW - 0.13, 0.32, 0.13),
-      sunbrellaOatmealMat
+    const seatPiping = new THREE.Mesh(
+      new THREE.TorusGeometry(0.28, 0.005, 8, 32),
+      cushionPipingMat
     );
-    cBackCush.rotation.x = -0.18;
+    seatPiping.rotation.x = Math.PI / 2;
+    seatPiping.scale.set(0.98, 0.94, 1);
+    seatPiping.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.seatPiping`;
+    seatPiping.userData = { lodTier: 'high', lodMaxDistance: 12 };
+    seatPiping.position.set(0, 0.355, -0.015);
+    chairGrp.add(seatPiping);
+
+    const cBackCush = new THREE.Mesh(backCushionGeo, sunbrellaOatmealMat);
+    cBackCush.rotation.x = -0.20;
     cBackCush.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.backCushion`;
-    cBackCush.position.set(0, 0.52, cD * 0.5 - 0.12);
+    cBackCush.position.set(0, 0.50, 0.165);
     cBackCush.castShadow = true;
+    cBackCush.receiveShadow = true;
     chairGrp.add(cBackCush);
+
+    const throwPillow = new THREE.Mesh(throwPillowGeo, pillowMat);
+    throwPillow.rotation.set(-0.28, cIdx === 1 ? 0.28 : -0.28, cIdx === 1 ? -0.10 : 0.10);
+    throwPillow.name = `outbuildings.firstFloor.stableEastBalcony.armchair.${cIdx}.throwPillow`;
+    throwPillow.position.set(cIdx === 1 ? -0.11 : 0.11, 0.46, 0.075);
+    throwPillow.castShadow = true;
+    chairGrp.add(throwPillow);
   }
 
-  // 4. Slatted Solid-Teak Outdoor Coffee Table (`u = midU, v = 2.42m`) with Hurricane Candle Lantern & Tray
+  // 3. Sculpted Round Honed-Travertine & Turned-Teak Bistro Side Table (`outbuildings.firstFloor.stableEastBalcony.coffeeTable`)
+  //    Positioned between the two lounge armchairs at `(30.56, deckY, 0.56)` with >16cm clear gap on both sides
   const tableGrp = new THREE.Group();
   tableGrp.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable';
-  tableGrp.position.set(midU, deckY, 2.42);
+  tableGrp.position.set(30.56, deckY, 0.56);
   furnGroup.add(tableGrp);
 
-  const tW = 0.88;
-  const tD = 0.54;
-  const tH = 0.39;
+  const tR = 0.24;
+  const tH = 0.43;
+
+  // Chamfered Honed Travertine Stone Tabletop inset into a Turned Solid-Teak Rim Collar
   const tableTop = new THREE.Mesh(
-    new THREE.BoxGeometry(tW, 0.032, tD),
-    weatheredTeakMat
+    new THREE.CylinderGeometry(tR - 0.012, tR - 0.016, 0.024, 32),
+    honedTravertineMat
   );
   tableTop.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.top';
   tableTop.position.set(0, tH, 0);
@@ -1233,57 +1312,98 @@ export function buildStableBalconyOutdoorFurniture(
   tableTop.receiveShadow = true;
   tableGrp.add(tableTop);
 
-  for (const [lx, lz] of [
-    [-tW * 0.5 + 0.05, -tD * 0.5 + 0.05],
-    [tW * 0.5 - 0.05, -tD * 0.5 + 0.05],
-    [-tW * 0.5 + 0.05, tD * 0.5 - 0.05],
-    [tW * 0.5 - 0.05, tD * 0.5 - 0.05],
-  ] as const) {
+  const tableTeakRim = new THREE.Mesh(
+    new THREE.TorusGeometry(tR - 0.008, 0.014, 14, 36),
+    weatheredTeakMat
+  );
+  tableTeakRim.rotation.x = Math.PI / 2;
+  tableTeakRim.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.teakRim';
+  tableTeakRim.position.set(0, tH - 0.002, 0);
+  tableTeakRim.castShadow = true;
+  tableGrp.add(tableTeakRim);
+
+  // 3 Splayed Turned Solid-Teak Tripod Legs + Brushed-Brass Ring Stretcher
+  for (let l = 0; l < 3; l++) {
+    const ang = (l / 3) * Math.PI * 2 + Math.PI / 6;
+    const legR = tR - 0.055;
+    const lx = Math.cos(ang) * legR;
+    const lz = Math.sin(ang) * legR;
     const tLeg = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.020, 0.015, tH - 0.016, 10),
+      new THREE.CylinderGeometry(0.018, 0.013, tH - 0.016, 14),
       weatheredTeakMat
     );
-    tLeg.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.leg';
+    tLeg.name = `outbuildings.firstFloor.stableEastBalcony.coffeeTable.leg.${l + 1}`;
     tLeg.position.set(lx, (tH - 0.016) * 0.5, lz);
+    tLeg.rotation.set(Math.sin(ang) * 0.08, 0, -Math.cos(ang) * 0.08);
     tLeg.castShadow = true;
     tableGrp.add(tLeg);
   }
 
+  const stretcherRing = new THREE.Mesh(
+    new THREE.TorusGeometry(tR - 0.062, 0.009, 10, 28),
+    brushedBrassHardwareMat
+  );
+  stretcherRing.rotation.x = Math.PI / 2;
+  stretcherRing.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.stretcherRing';
+  stretcherRing.position.set(0, 0.14, 0);
+  tableGrp.add(stretcherRing);
+
+  // Handcrafted Brass-Framed Hurricane Candle Lantern & Ceramic Tray on the Bistro Side Table
+  const lanternBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.068, 0.072, 0.014, 20),
+    brushedBrassHardwareMat
+  );
+  lanternBase.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.lanternBase';
+  lanternBase.position.set(-0.06, tH + 0.019, -0.02);
+  tableGrp.add(lanternBase);
+
   const lanternGlass = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.075, 0.075, 0.22, 16),
-    new THREE.MeshStandardMaterial({ color: 0xeaf4f8, transparent: true, opacity: 0.42, roughness: 0.08 })
+    new THREE.CylinderGeometry(0.058, 0.058, 0.175, 20),
+    new THREE.MeshStandardMaterial({
+      color: 0xeaf4f8,
+      transparent: true,
+      opacity: 0.38,
+      roughness: 0.06,
+    })
   );
   lanternGlass.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.lanternGlass';
-  lanternGlass.position.set(-0.14, tH + 0.126, 0);
+  lanternGlass.position.set(-0.06, tH + 0.112, -0.02);
   tableGrp.add(lanternGlass);
 
+  const lanternTopRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.062, 0.005, 10, 24),
+    brushedBrassHardwareMat
+  );
+  lanternTopRing.rotation.x = Math.PI / 2;
+  lanternTopRing.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.lanternTopRing';
+  lanternTopRing.position.set(-0.06, tH + 0.20, -0.02);
+  tableGrp.add(lanternTopRing);
+
   const pillarCandle = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.036, 0.036, 0.13, 14),
+    new THREE.CylinderGeometry(0.028, 0.028, 0.105, 14),
     new THREE.MeshStandardMaterial({
       color: 0xfff8e8,
       emissive: new THREE.Color(0xffbe66),
-      emissiveIntensity: 1.2,
+      emissiveIntensity: 1.15,
       roughness: 0.4,
     })
   );
   pillarCandle.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.candle';
   pillarCandle.userData = { lodTier: 'high', lodMaxDistance: 12 };
-  pillarCandle.position.set(-0.14, tH + 0.08, 0);
+  pillarCandle.position.set(-0.06, tH + 0.072, -0.02);
   tableGrp.add(pillarCandle);
 
   const ceramicTray = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.14, 0.13, 0.022, 20),
+    new THREE.CylinderGeometry(0.088, 0.082, 0.016, 20),
     terracottaPillowMat
   );
   ceramicTray.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.ceramicTray';
   ceramicTray.userData = { lodTier: 'high', lodMaxDistance: 12 };
-  ceramicTray.position.set(0.16, tH + 0.027, 0.02);
+  ceramicTray.position.set(0.085, tH + 0.020, 0.035);
   tableGrp.add(ceramicTray);
 
-  // 5. Issue #6 ("Better plant meshes" at `[9.155, 2.996, 14.715]`, `outbuildings.firstFloor.stableEastBalcony.planter.2`):
-  //    High-LOD Sculpted Mediterranean Olive Trees (`Olea europaea`) & Underplanted Lavender/Rosemary in
-  //    Turned Ribbed Terracotta Amphora Planters (`LatheGeometry` pot + `TubeGeometry` gnarled branching trunks +
-  //    84 sculpted 3D curved lanceolate olive leaf blades & ripening olive drupes per planter — zero DodecahedronGeometry!)
+  // 4. High-LOD Sculpted Mediterranean Olive Trees (`Olea europaea`) in Turned Ribbed Terracotta Amphora Planters
+  //    Tucked into the North-West (`u = 29.40, v = 0.42`) and South-West (`u = 29.40, v = 5.26`) corners of the balcony!
   const potProfilePts: THREE.Vector2[] = [
     new THREE.Vector2(0.0, 0.0),
     new THREE.Vector2(0.135, 0.0),
@@ -1304,8 +1424,8 @@ export function buildStableBalconyOutdoorFurniture(
   const oliveLeafMats = [oliveLeafDarkMat, oliveLeafMidMat, oliveLeafSilveryMat] as const;
 
   for (const [pIdx, pu, pv, seedRot] of [
-    [1, midU - 0.95, 0.55, 0.25],
-    [2, midU - 0.95, 5.15, 1.85],
+    [1, 29.36, 0.36, 0.25],
+    [2, 29.36, 5.28, 1.85],
   ] as const) {
     const potGrp = new THREE.Group();
     potGrp.name = `outbuildings.firstFloor.stableEastBalcony.planter.${pIdx}`;
@@ -1313,7 +1433,6 @@ export function buildStableBalconyOutdoorFurniture(
     potGrp.rotation.y = seedRot;
     furnGroup.add(potGrp);
 
-    // Turned terracotta planter pot with rim collar & horizontal ribs
     const potMesh = new THREE.Mesh(turnedPotGeo, terracottaPotMat);
     potMesh.name = `outbuildings.firstFloor.stableEastBalcony.planter.${pIdx}.pot`;
     potMesh.castShadow = true;
@@ -1332,7 +1451,6 @@ export function buildStableBalconyOutdoorFurniture(
       potGrp.add(ribRing);
     }
 
-    // Organic dark potting soil bed & decorative river pebbles
     const soilBed = new THREE.Mesh(
       new THREE.CylinderGeometry(0.182, 0.176, 0.024, 20),
       pottingSoilMat
@@ -1341,7 +1459,6 @@ export function buildStableBalconyOutdoorFurniture(
     soilBed.position.set(0, 0.355, 0);
     potGrp.add(soilBed);
 
-    // Gnarled, curved woody Olive Tree trunk & 5 branching boughs built with `TubeGeometry` along `CatmullRomCurve3`
     const mainTrunkCurve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(0.0, 0.35, 0.0),
       new THREE.Vector3(0.018, 0.50, -0.012),
@@ -1383,12 +1500,11 @@ export function buildStableBalconyOutdoorFurniture(
       bMesh.castShadow = true;
       potGrp.add(bMesh);
 
-      // Radiating whorls of sculpted lanceolate 3D olive leaves along each bough & crown tip
       const numLeafWhorls = 16;
       for (let w = 0; w < numLeafWhorls; w++) {
         const frac = 0.22 + (w / (numLeafWhorls - 1)) * 0.78;
         const pt = bCurve.getPoint(frac);
-        const yaw = w * 2.39996 + bIdx * 1.25; // Golden-angle spiral phyllotaxis!
+        const yaw = w * 2.39996 + bIdx * 1.25;
         const pitch = -0.38 + (w % 4) * 0.24;
         const roll = ((w + bIdx) % 3 - 1) * 0.22;
 
@@ -1409,7 +1525,6 @@ export function buildStableBalconyOutdoorFurniture(
       }
     }
 
-    // Underplanted aromatic rosemary & lavender sprigs around the rim of the terracotta pot (`y = 0.36..0.48m`)
     for (let s = 0; s < 14; s++) {
       const ang = (s / 14) * Math.PI * 2;
       const rBase = 0.135 + (s % 2) * 0.022;

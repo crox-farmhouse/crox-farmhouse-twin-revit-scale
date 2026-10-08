@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createProfiledSkirtingCapGeometry } from '../../../../../engine/geometry/index.ts';
 import {
   createRakedVYExtrusion,
   type StableUpperEnsuiteSharedKit,
@@ -400,14 +401,14 @@ export function buildStableUpperBedroomFurniture(
   const wardD = 0.58; // 0.58m deep (`u = 23.22..23.80m`)
   const wardFrontU = wardU0 + wardD; // 23.80m
   const wardV0 = 0.29; // North wall inner face (`v = 0.28m`) + 1cm
-  const wardV1 = 2.49; // Cleanly North of the `v = 2.554m` entrance doorway opening!
+  const wardV1 = 2.33; // Cleanly North of the centered `v = 2.405..3.305m` entrance doorway & `v = 2.357m` architrave!
 
   const getNorthSlopeCeilHAtV = (v: number): number => {
     const t = Math.max(0, Math.min(1, (v - 0.28) / (vMidRoom - 0.28)));
     return eaveWallH + t * (ridgeCeilH - eaveWallH);
   };
 
-  // 1. Full-height vaulted Shaker wardrobe carcass (`v = 0.29..2.49m`, rising from `1.24m` at `v = 0.29m` to `2.39m` at `v = 2.49m`)
+  // 1. Full-height vaulted Shaker wardrobe carcass (`v = 0.29..2.33m`, rising from `1.24m` at `v = 0.29m` to `2.31m` at `v = 2.33m`)
   const wardCarcassGeo = createRakedVYExtrusion(
     [
       [wardV0, 0],
@@ -424,7 +425,7 @@ export function buildStableUpperBedroomFurniture(
   wardCarcass.receiveShadow = true;
   wardGroup.add(wardCarcass);
 
-  // 2. Raked Shaker crown cornice moulding following the vaulted ceiling slope (`v = 0.29..2.49m`)
+  // 2. Raked Shaker crown cornice moulding following the vaulted ceiling slope (`v = 0.29..2.33m`)
   const hCornice0 = getNorthSlopeCeilHAtV(wardV0);
   const hCornice1 = getNorthSlopeCeilHAtV(wardV1);
   const corniceSpanV = wardV1 - wardV0;
@@ -447,29 +448,45 @@ export function buildStableUpperBedroomFurniture(
   // 3. Colour-Drenched Setting-Plaster Plinth Skirting along the front (`u = wardFrontU + 0.008`) & South end (`v = wardV1 + 0.008`)
   //    per Batch 2 Issue #1 ("Color drenched same as wall baseboards in here")!
   const frontSkirt = new THREE.Mesh(
-    new THREE.BoxGeometry(0.018, 0.135, corniceSpanV + 0.018),
+    new THREE.BoxGeometry(0.018, 0.115, corniceSpanV + 0.018),
     warmRoomPlasterMat
   );
   frontSkirt.name = 'outbuildings.firstFloor.stableBedroom.wardrobes.frontSkirt';
-  frontSkirt.position.set(wardFrontU + 0.009, stableUpperFloorY + 0.0675, (wardV0 + wardV1) * 0.5);
+  frontSkirt.position.set(wardFrontU + 0.009, stableUpperFloorY + 0.0575, (wardV0 + wardV1) * 0.5);
   wardGroup.add(frontSkirt);
 
+  const frontSkirtCap = new THREE.Mesh(
+    createProfiledSkirtingCapGeometry(corniceSpanV + 0.018, false, 1),
+    warmRoomPlasterMat
+  );
+  frontSkirtCap.name = 'outbuildings.firstFloor.stableBedroom.wardrobes.frontSkirtCap';
+  frontSkirtCap.position.set(wardFrontU + 0.007, stableUpperFloorY + 0.115 + 0.012, (wardV0 + wardV1) * 0.5);
+  wardGroup.add(frontSkirtCap);
+
   const southEndSkirt = new THREE.Mesh(
-    new THREE.BoxGeometry(wardD + 0.018, 0.135, 0.018),
+    new THREE.BoxGeometry(wardD + 0.018, 0.115, 0.018),
     warmRoomPlasterMat
   );
   southEndSkirt.name = 'outbuildings.firstFloor.stableBedroom.wardrobes.southEndSkirt';
-  southEndSkirt.position.set(wardU0 + (wardD + 0.018) * 0.5, stableUpperFloorY + 0.0675, wardV1 + 0.009);
+  southEndSkirt.position.set(wardU0 + (wardD + 0.018) * 0.5, stableUpperFloorY + 0.0575, wardV1 + 0.009);
   wardGroup.add(southEndSkirt);
+
+  const southEndSkirtCap = new THREE.Mesh(
+    createProfiledSkirtingCapGeometry(wardD + 0.018, true, 1),
+    warmRoomPlasterMat
+  );
+  southEndSkirtCap.name = 'outbuildings.firstFloor.stableBedroom.wardrobes.southEndSkirtCap';
+  southEndSkirtCap.position.set(wardU0 + (wardD + 0.018) * 0.5, stableUpperFloorY + 0.115 + 0.012, wardV1 + 0.007);
+  wardGroup.add(southEndSkirtCap);
 
   // 4. 4 Raked Ceiling-Height 2-Panel Shaker Wardrobe Doors (`outbuildings.firstFloor.stableBedroom.wardrobe.door_1..4`)
   const doorBaseH = 0.145;
   const corniceClear = 0.044;
   const doorIntervalsV: ReadonlyArray<readonly [number, number]> = [
-    [0.33, 0.845],
-    [0.858, 1.373],
-    [1.392, 1.907],
-    [1.92, 2.435],
+    [0.33, 0.805],
+    [0.822, 1.297],
+    [1.318, 1.793],
+    [1.81, 2.285],
   ];
 
   const buildRakedDoorBoxAlongV = (
@@ -927,17 +944,65 @@ export function buildStableUpperBedroomFurniture(
     skirtMesh.receiveShadow = true;
     baseboardsGroup.add(skirtMesh);
 
+    const createMiteredProfiledCap = (): THREE.BufferGeometry => {
+      const inwardSign: 1 | -1 = alongU
+        ? normalSignZ >= 0
+          ? 1
+          : -1
+        : normalSignX >= 0
+          ? 1
+          : -1;
+      const geo = createProfiledSkirtingCapGeometry(len, alongU, inwardSign);
+      const pos = geo.attributes.position;
+      if (pos) {
+        for (let i = 0; i < pos.count; i++) {
+          if (alongU) {
+            const x = pos.getX(i);
+            const z = pos.getZ(i);
+            // Distance from wall face (0 at wall back, capT at front nose)
+            const distFromWall = Math.max(0, inwardSign * z + capT * 0.5);
+            const startShift =
+              startMiter === 'external'
+                ? -distFromWall
+                : startMiter === 'internal'
+                  ? distFromWall
+                  : 0;
+            const endShift =
+              endMiter === 'external'
+                ? distFromWall
+                : endMiter === 'internal'
+                  ? -distFromWall
+                  : 0;
+            if (x < 0) pos.setX(i, x + startShift);
+            else pos.setX(i, x + endShift);
+          } else {
+            const x = pos.getX(i);
+            const z = pos.getZ(i);
+            const distFromWall = Math.max(0, inwardSign * x + capT * 0.5);
+            const startShift =
+              startMiter === 'external'
+                ? -distFromWall
+                : startMiter === 'internal'
+                  ? distFromWall
+                  : 0;
+            const endShift =
+              endMiter === 'external'
+                ? distFromWall
+                : endMiter === 'internal'
+                  ? -distFromWall
+                  : 0;
+            if (z < 0) pos.setZ(i, z + startShift);
+            else pos.setZ(i, z + endShift);
+          }
+        }
+        pos.needsUpdate = true;
+        geo.computeVertexNormals();
+      }
+      return geo;
+    };
+
     const capMesh = new THREE.Mesh(
-      createMiteredBaseboardGeo(
-        alongU,
-        len,
-        capH,
-        capT,
-        normalSignX,
-        normalSignZ,
-        startMiter,
-        endMiter
-      ),
+      createMiteredProfiledCap(),
       warmRoomPlasterMat
     );
     capMesh.name = 'outbuildings.firstFloor.stableBedroom.baseboards.cap';
@@ -952,16 +1017,18 @@ export function buildStableUpperBedroomFurniture(
 
   // 1. North Bedroom Wall (`v = 0.28m`, from East side of Shaker wardrobes `u = 23.81m` to East wall `u = 28.77m` internal corner)
   addColorDrenchedBaseboardRun(23.81, 0.28, uRoomEast, 0.28, 0, 1, 'butt', 'internal');
-  // 2. East Bedroom Wall North & South corner piers (`u = 28.77m`, `v = 0.28..0.68m` and `v = 5.03..5.43m`)
-  addColorDrenchedBaseboardRun(uRoomEast, 0.28, uRoomEast, 0.68, -1, 0, 'internal', 'butt');
-  addColorDrenchedBaseboardRun(uRoomEast, 5.03, uRoomEast, 5.43, -1, 0, 'butt', 'internal');
+  // 2. East Bedroom Wall North & South piers (`u = 28.77m`, `v = 0.28..2.215m` and `v = 3.495..5.43m` right up to the French balcony door jambs — Issue #3!)
+  addColorDrenchedBaseboardRun(uRoomEast, 0.28, uRoomEast, 2.215, -1, 0, 'internal', 'butt');
+  addColorDrenchedBaseboardRun(uRoomEast, 3.495, uRoomEast, 5.43, -1, 0, 'butt', 'internal');
   // 3. South Bedroom Wall East of Ensuite (`v = 5.43m`, `u = 26.09..28.77m`)
   addColorDrenchedBaseboardRun(uEnsuiteEastFace, 5.43, uRoomEast, 5.43, 0, -1, 'internal', 'internal');
-  // 4. Ensuite East Wall Bedroom Face (`u = 26.09m`, `v = 3.62..5.43m` — Issue #1: true 45-degree external miter at `v = 3.62m` `[3.857, 2.135, 17.405]` and internal miter at `v = 5.43m`!)
+  // 4. Ensuite East Wall Bedroom Face (`u = 26.09m`, `v = 3.37..5.43m` — true 45-degree external miter at `v = 3.37m` and internal miter at `v = 5.43m`!)
   addColorDrenchedBaseboardRun(uEnsuiteEastFace, vNorthFace, uEnsuiteEastFace, 5.43, 1, 0, 'external', 'internal');
-  // 5. Ensuite North Wall Bedroom Face West & East of Ensuite Doorway (`v = 3.62m`, `u = 23.22..24.59m` and `u = 25.41..26.09m` with matching 45-degree external miter at `u = 26.09m`!)
+  // 5. Ensuite North Wall Bedroom Face West & East of Ensuite Doorway (`v = 3.37m`, `u = 23.22..24.59m` and `u = 25.41..26.09m` with matching 45-degree external miter at `u = 26.09m`!)
   addColorDrenchedBaseboardRun(uWest, vNorthFace, doorU0 - 0.03, vNorthFace, 0, -1, 'butt', 'butt');
   addColorDrenchedBaseboardRun(doorU1 + 0.03, vNorthFace, uEnsuiteEastFace, vNorthFace, 0, -1, 'butt', 'external');
+  // 6. West Bedroom Wall between built-in Shaker wardrobes (`v = 1.98m`) and North architrave of the centered entrance doorway (`v = 2.345m`)
+  addColorDrenchedBaseboardRun(uWest, 1.98, uWest, 2.345, 1, 0, 'butt', 'butt');
 
   bedroomGroup.traverse((child) => {
     if (child instanceof THREE.Mesh) {

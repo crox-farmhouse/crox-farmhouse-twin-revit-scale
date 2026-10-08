@@ -361,8 +361,18 @@ export function buildSplitStableDoor(
     lowerLeafGroup.add(lever);
   }
 
+  // Dark horizontal split shadow seam between the Lower Leaf and Upper Leaf (local Y = +0.50m -> world Y = 1.028m)
+  // Parented to lowerLeafGroup so the middle bar swings with the door and is never left visible in the doorway when open!
+  const splitGapShadow = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.812, 0.016, 0.062)),
+    grooveShadowMat
+  );
+  splitGapShadow.name = 'utility.stableDoor.splitGapShadow';
+  splitGapShadow.position.set(0, 0.5, 0);
+  lowerLeafGroup.add(splitGapShadow);
+
   doorGroup.add(lowerLeafGroup);
-  interactions.registerHingedDoor(
+  const lowerPivot = interactions.registerHingedDoor(
     doorGroup,
     lowerLeafGroup,
     new THREE.Vector3(-0.405, 0, 0),
@@ -370,18 +380,9 @@ export function buildSplitStableDoor(
     -1.35
   );
 
-  // Dark horizontal split shadow seam between the Lower Leaf and Upper Leaf (at Y = 1.028m)
-  const splitGapShadow = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(0.812, 0.016, 0.062)),
-    grooveShadowMat
-  );
-  splitGapShadow.name = 'utility.stableDoor.splitGapShadow';
-  splitGapShadow.position.set(0, 1.028, 0.02);
-  doorGroup.add(splitGapShadow);
-
   // =========================================================================
   // 2. UPPER STABLE LEAF (Y = 1.038m to 2.065m -> height 1.027m, width 0.81m)
-  //    Starts slightly ajar (-0.15 rad) and swings wide open (-1.45 rad) when clicked!
+  //    Coupled with the lower leaf so the entire door opens and closes as one!
   // =========================================================================
   const upperLeafGroup = new THREE.Group();
   upperLeafGroup.name = 'utility.stableDoor.upperLeafGroup';
@@ -489,14 +490,15 @@ export function buildSplitStableDoor(
 
   doorGroup.add(upperLeafGroup);
   ensureNamedHierarchy(doorGroup, 'utility.stableDoor');
-  interactions.registerHingedDoor(
+  const upperPivot = interactions.registerHingedDoor(
     doorGroup,
     upperLeafGroup,
     new THREE.Vector3(-0.405, 0, 0),
     'y',
-    -1.45,
-    -0.15
+    -1.35,
+    0
   );
+  interactions.linkDoorPair(lowerPivot, upperPivot);
 
   parent.add(doorGroup);
 }

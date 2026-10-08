@@ -20,6 +20,7 @@ import type {
   TimeOfDay,
 } from '../../types/scene.ts';
 import type { RoomZoneId } from '../../types/topology.ts';
+import type { GraphicsMode, TradeView } from '../../types/twin-ux.ts';
 import { round3 } from '../annotation/annotation-system.ts';
 import {
   SceneAnnotationController,
@@ -129,9 +130,6 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   private lastDoorShadowUpdateMs = 0;
   private doorsWereAnimating = false;
   private onSurfaceDoubleClick: ((point: THREE.Vector3) => void) | null = null;
-  private onObjectHoldInteraction: ((data: InteractiveUserData) => void) | null = null;
-  private holdTimerId: number | null = null;
-  private holdTriggered = false;
   private onUsdPrimPick: ((info: UsdIndexedPrimInfo) => void) | null = null;
 
   public constructor(
@@ -224,6 +222,16 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       describeInteractable: (mesh) =>
         this.interactions.describeInteractable(mesh, this.bifolds.isOpen()),
       onInteractWithMesh: (mesh) => this.triggerInteractiveObject(mesh),
+      onTriggerGolfSimulatorShot: () => {
+        const triggered = this.interactions.triggerGolfSimulatorShot();
+        if (triggered) {
+          this.needsRender = true;
+        }
+        return triggered;
+      },
+      getGolfSimulatorShotElapsedSec: () =>
+        this.interactions.getGolfSimulatorShotElapsedSec(),
+      getGolfSimulatorPrompt: () => this.interactions.getGolfSimulatorPromptLabel(),
       onBargeWalkthroughDoor: (
         interactableId,
         isSprinting,
@@ -291,7 +299,10 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     });
     this.scene.add(...this.annotations.getSceneObjects());
 
-    this.environment = new EnvironmentLighting(this.scene, this.renderer);
+    this.environment = new EnvironmentLighting(this.scene, this.renderer, () => {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.needsRender = true;
+    });
     this.setTimeOfDay('dusk');
 
     this.content = buildPropertySceneContent(this.layers, {
@@ -335,6 +346,9 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
         }
         this.interactions.collectDynamicObjects(dynamicObjects);
         return dynamicObjects;
+      },
+      onAfterBatchChange: () => {
+        this.cutaways.collectDynamicCutawayWalls();
       },
     });
 
@@ -434,6 +448,74 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     const next = this.postProcessing.cycleQualityPreset();
     this.needsRender = true;
     return next;
+  }
+
+  // ---------------------------------------------------------------------------
+  // UX contract API (graphics mode, current room, trade view, recenter)
+  // NOTE: Integration point for the parallel UX overhaul. UI code depends on these
+  // signatures; implementations are wired to PerformanceGovernor / RoomTracker /
+  // TradeViewController during integration.
+  // ---------------------------------------------------------------------------
+
+  private graphicsMode: GraphicsMode = 'auto';
+  private currentRoomId: RoomZoneId | null = null;
+  private readonly currentRoomListeners = new Set<(zoneId: RoomZoneId | null) => void>();
+  private tradeView: TradeView = 'owner';
+  private readonly tradeViewListeners = new Set<(view: TradeView) => void>();
+
+  public getGraphicsMode(): GraphicsMode {
+    return this.graphicsMode;
+  }
+
+  public setGraphicsMode(mode: GraphicsMode): void {
+    this.graphicsMode = mode;
+    if (mode === 'low') this.postProcessing.setQualityPreset('performance');
+    else if (mode === 'medium' || mode === 'high') this.postProcessing.setQualityPreset('balanced');
+    else if (mode === 'ultra') this.postProcessing.setQualityPreset('ultra');
+    this.needsRender = true;
+  }
+
+  public getCurrentRoomId(): RoomZoneId | null {
+    return this.currentRoomId;
+  }
+
+  /** Subscribes to current-room changes. Returns an unsubscribe function. */
+  public onCurrentRoomChanged(cb: (zoneId: RoomZoneId | null) => void): () => void {
+    this.currentRoomListeners.add(cb);
+    return () => this.currentRoomListeners.delete(cb);
+  }
+
+  /** Explicitly selects a room (e.g. from the room navigator) and frames it. */
+  public selectRoom(zoneId: RoomZoneId): void {
+    this.setCurrentRoomId(zoneId);
+    this.setFocusedZone(zoneId);
+  }
+
+  protected setCurrentRoomId(zoneId: RoomZoneId | null): void {
+    if (zoneId === this.currentRoomId) return;
+    this.currentRoomId = zoneId;
+    for (const cb of this.currentRoomListeners) cb(zoneId);
+  }
+
+  public getTradeView(): TradeView {
+    return this.tradeView;
+  }
+
+  public setTradeView(view: TradeView): void {
+    if (view === this.tradeView) return;
+    this.tradeView = view;
+    for (const cb of this.tradeViewListeners) cb(view);
+    this.needsRender = true;
+  }
+
+  public onTradeViewChanged(cb: (view: TradeView) => void): () => void {
+    this.tradeViewListeners.add(cb);
+    return () => this.tradeViewListeners.delete(cb);
+  }
+
+  /** Re-frames the camera on the current room (or the default overview). */
+  public recenterView(): void {
+    this.flyToPreset('top');
   }
 
   public isMotionBlurEnabled(): boolean {
@@ -548,13 +630,22 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
   private updateCameraFacingWallCutaways(forceNotifyView = false): void {
     const isWalkthrough = this.walkthrough.isActive();
+    const camPos = this.rig.getActiveCamera().position;
     const result = this.cutaways.update({
-      cameraPosition: this.rig.getActiveCamera().position,
+      cameraPosition: camPos,
       target: this.rig.controls.target,
       isOrthographic: this.rig.isOrthographic(),
       orthoZoom: this.rig.orthoCamera.zoom,
       isWalkthrough,
     });
+    if (
+      this.batchOptimizer.syncPointLightVisibilityAndDistance(
+        camPos,
+        this.layers.firstFloorMeshGroup.visible
+      )
+    ) {
+      this.needsRender = true;
+    }
     if (result.shadowsDirty) {
       this.renderer.shadowMap.needsUpdate = true;
     }
@@ -694,6 +785,23 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   // ---------------------------------------------------------------------------
 
   public handleInteractableClick(interactableId: string): boolean {
+    if (interactableId === 'golf-simulator-shot') {
+      if (!this.interactions.triggerGolfSimulatorShot()) {
+        return false;
+      }
+      if (!this.walkthrough.isActive()) {
+        if (this.annotations.isAnnotationMode()) {
+          this.annotations.setAnnotationMode(false);
+        }
+        this.walkthrough.enter(this.getCurrentCameraPoseSnapshot(), {
+          position: [-5.972, -0.34, 18.972],
+          yawDeg: 194,
+        });
+      }
+      this.walkthrough.beginFirstPersonGolfShot();
+      this.needsRender = true;
+      return true;
+    }
     const handled = this.interactions.handleInteractableClick(interactableId);
     if (handled) {
       this.needsRender = true;
@@ -703,6 +811,9 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
   public setTimeOfDay(mode: TimeOfDay): void {
     this.environment.setTimeOfDay(mode);
+    this.circuitLighting?.setTimeOfDay(mode);
+    this.batchOptimizer?.setTimeOfDay(mode);
+    this.renderer.shadowMap.needsUpdate = true;
     this.needsRender = true;
   }
 
@@ -877,10 +988,6 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     this.onSurfaceDoubleClick = cb;
   }
 
-  public setOnObjectHoldInteraction(cb: ((data: InteractiveUserData) => void) | null): void {
-    this.onObjectHoldInteraction = cb;
-  }
-
   private pickVisibleSurfacePoint(clientX: number, clientY: number): THREE.Vector3 | null {
     const raycaster = this.setRayFromClient(clientX, clientY);
     const hits = raycaster.intersectObjects(this.scene.children, true);
@@ -905,12 +1012,14 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   public setAnnotationMode(enabled: boolean): void {
     if (enabled) {
       this.batchOptimizer.unbatchAll();
+      this.updateCameraFacingWallCutaways(true);
       this.freezeStaticMatrices();
     }
     this.annotations.setAnnotationMode(enabled);
     if (!enabled && this.usdRuntime.canUseStaticBatching()) {
       this.walkthrough.captureFurnitureColliders();
       this.batchOptimizer.optimize();
+      this.updateCameraFacingWallCutaways(true);
       this.freezeStaticMatrices();
     }
     this.walkthrough.invalidateObstacleCache();
@@ -1075,53 +1184,13 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     this.needsRender = true;
   }
 
-  private clearHoldTimer(): void {
-    if (this.holdTimerId !== null) {
-      window.clearTimeout(this.holdTimerId);
-      this.holdTimerId = null;
-    }
-  }
-
   private setupInteractionEvents(): void {
     this.canvas.addEventListener('pointerdown', (e: PointerEvent) => {
       this.pointerDownPos = { x: e.clientX, y: e.clientY };
-      this.holdTriggered = false;
-      this.clearHoldTimer();
-      if (e.button !== 0 || this.annotations.isAnnotationMode() || e.shiftKey) return;
-
-      const raycaster = this.setRayFromClient(e.clientX, e.clientY);
-      const hits = raycaster.intersectObjects(this.content.interactiveMeshes, false);
-      const firstHit = hits.find((hit) => isObjectVisibleInHierarchy(hit.object));
-      if (!firstHit) return;
-      const data = firstHit.object.userData as InteractiveUserData;
-      if (
-        data.isKNXSwitch ||
-        data.zoneSceneSwitchZoneId ||
-        data.isCourtyardSwitch ||
-        data.isUtilitySwitch
-      ) {
-        this.holdTimerId = window.setTimeout(() => {
-          this.holdTimerId = null;
-          this.holdTriggered = true;
-          if (this.onObjectHoldInteraction) {
-            this.onObjectHoldInteraction(data);
-            this.needsRender = true;
-          }
-        }, 600);
-      }
     });
 
     let lastHoverRaycastMs = 0;
     this.canvas.addEventListener('pointermove', (e: PointerEvent) => {
-      if (this.holdTimerId !== null) {
-        const moveDist = Math.hypot(
-          e.clientX - this.pointerDownPos.x,
-          e.clientY - this.pointerDownPos.y
-        );
-        if (moveDist > 6) {
-          this.clearHoldTimer();
-        }
-      }
       if (this.walkthrough.isActive() || this.annotations.isGizmoDragging()) return;
 
       // Live 3D measurement rubber-band line preview when waiting for Point B
@@ -1154,11 +1223,6 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     });
 
     this.canvas.addEventListener('pointerup', (e: PointerEvent) => {
-      this.clearHoldTimer();
-      if (this.holdTriggered) {
-        this.holdTriggered = false;
-        return;
-      }
       if (e.button !== 0) return;
       if (this.annotations.isGizmoBusy()) return;
 

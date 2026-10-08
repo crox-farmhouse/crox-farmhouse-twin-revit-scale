@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { addCasedArchitravePortal } from '../../../engine/geometry/index.ts';
+import { addCasedArchitravePortal, createProfiledSkirtingCapGeometry } from '../../../engine/geometry/index.ts';
 import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../types/scene.ts';
 import type { createFirstFloorMaterials } from './first-floor-materials.ts';
 
@@ -207,7 +207,7 @@ export function createFirstFloorShellKit(
             scene.add(skirt);
 
             const skirtCap = new THREE.Mesh(
-              new THREE.BoxGeometry(sW, capH, capT),
+              createProfiledSkirtingCapGeometry(sW, true, side),
               antiqueOakSkirtingMat
             );
             skirtCap.name = `${wallId}.skirtingCap.${side < 0 ? "north" : "south"}`;
@@ -239,7 +239,7 @@ export function createFirstFloorShellKit(
             scene.add(skirt);
 
             const skirtCap = new THREE.Mesh(
-              new THREE.BoxGeometry(capT, capH, sD),
+              createProfiledSkirtingCapGeometry(sD, false, side),
               antiqueOakSkirtingMat
             );
             skirtCap.name = `${wallId}.skirtingCap.${side < 0 ? "west" : "east"}`;
@@ -342,9 +342,11 @@ export function createFirstFloorShellKit(
     tagUpperCutawayWall(skirt, descriptor);
     scene.add(skirt);
 
+    const capInwardSign: 1 | -1 =
+      interiorSide === 'south' || interiorSide === 'east' ? 1 : -1;
     const capGeo = isAlongX
-      ? new THREE.BoxGeometry(sSpan, capH, capT)
-      : shearGeometryAlongZ(new THREE.BoxGeometry(capT, capH, sSpan), slopeXPerZ);
+      ? createProfiledSkirtingCapGeometry(sSpan, true, capInwardSign)
+      : shearGeometryAlongZ(createProfiledSkirtingCapGeometry(sSpan, false, capInwardSign), slopeXPerZ);
     const skirtCap = new THREE.Mesh(capGeo, antiqueOakSkirtingMat);
     skirtCap.name = `${skirtId}.cap`;
     const capSx =

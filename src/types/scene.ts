@@ -53,11 +53,12 @@ export interface InteractiveUserData {
   readonly switchPa?: string;
   readonly sensorGa?: string;
   readonly zoneId?: RoomZoneId;
-  readonly zoneSceneSwitchZoneId?: RoomZoneId;
   readonly circuitId?: CircuitId;
   readonly ufhZoneId?: 'ufhZone1' | 'ufhZone2' | 'ufhZone3' | 'ufhZone4';
   readonly isKnxTempSensor?: boolean;
   readonly isClimbableLadder?: boolean;
+  readonly isGolfSimulatorShot?: boolean;
+  readonly zoneSceneSwitchZoneId?: RoomZoneId;
 }
 
 export interface GlowPoolEntry {
@@ -97,6 +98,8 @@ export interface CutawayWallDescriptor {
   readonly minSpan: number;
   readonly maxSpan: number;
   readonly floor: 'ground' | 'first';
+  readonly outwardSide?: 'north' | 'south' | 'east' | 'west';
+  readonly includeInFirstFloorCutaway?: boolean;
 }
 
 export interface CutawayWallGroups {

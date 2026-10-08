@@ -94,15 +94,72 @@ export function buildSweptMouldingGeometry(
  */
 export function createSkirtingCapProfile(): THREE.Shape {
   const s = new THREE.Shape();
-  s.moveTo(0, -0.003);
-  s.lineTo(0.016, -0.003);
-  s.lineTo(0.017, 0);
-  s.quadraticCurveTo(0.0185, 0.006, 0.0165, 0.012);
-  s.quadraticCurveTo(0.012, 0.017, 0.01, 0.021);
-  s.lineTo(0.008, 0.024);
+  // Starts at y = -0.027m (i.e. 0.095m above floor when path is at 0.122m) so the lower quirk,
+  // cyma reversa ogee cove, and upper torus roll form a prominent 51mm-tall architectural moulding band!
+  s.moveTo(0, -0.027);
+  s.lineTo(0.022, -0.027);
+  // Crisp 4.5mm recessed quirk step at 95mm height
+  s.lineTo(0.0175, -0.025);
+  s.lineTo(0.0175, -0.021);
+  // Swept concave/convex cyma reversa ogee throat (-0.021m .. -0.004m)
+  s.quadraticCurveTo(0.0195, -0.015, 0.0155, -0.009);
+  s.quadraticCurveTo(0.0115, -0.005, 0.0135, -0.002);
+  // Crisp fillet step into the projecting upper torus roll (-0.002m .. +0.014m)
+  s.lineTo(0.0165, -0.001);
+  s.quadraticCurveTo(0.0205, 0.006, 0.0165, 0.013);
+  // Upper cavetto neck & top chamfered wall-return fillet (+0.013m .. +0.024m)
+  s.quadraticCurveTo(0.011, 0.017, 0.0095, 0.021);
+  s.lineTo(0.006, 0.024);
   s.lineTo(0, 0.024);
   s.closePath();
   return s;
+}
+
+/**
+ * Drop-in 3D extruded Ogee/Torus skirting moulding cap geometry centered on its bounding box
+ * (`span` along X when `isAlongX = true` or along Z when `isAlongX = false`, centered around
+ * `y = floorY + 0.122 + 0.012`), with the sculpted moulding face oriented toward `inwardSign`.
+ */
+export function createProfiledSkirtingCapGeometry(
+  span: number,
+  isAlongX: boolean,
+  inwardSign: 1 | -1
+): THREE.BufferGeometry {
+  // 24mm-tall (`y = 0..0.024m`) full Quirk + Ogee + Torus cap profile that sits ON TOP of a `0.122m`
+  // lower plinth board (centered at `y = +0.012m` -> local `-0.012m..+0.012m`) so none of the Ogee cove
+  // is buried inside the lower plinth box!
+  const s = new THREE.Shape();
+  s.moveTo(0, 0);
+  s.lineTo(0.020, 0);
+  // Crisp lower quirk step at top of plinth
+  s.lineTo(0.016, 0.0015);
+  s.lineTo(0.016, 0.004);
+  // Swept concave/convex cyma reversa ogee throat (0.004m .. 0.013m)
+  s.quadraticCurveTo(0.018, 0.007, 0.014, 0.010);
+  s.quadraticCurveTo(0.010, 0.012, 0.012, 0.014);
+  // Projecting upper torus bead roll (0.014m .. 0.020m)
+  s.lineTo(0.015, 0.0145);
+  s.quadraticCurveTo(0.0185, 0.0175, 0.0145, 0.0205);
+  // Upper cavetto & chamfered wall-return fillet (0.0205m .. 0.024m)
+  s.quadraticCurveTo(0.0095, 0.0225, 0.006, 0.024);
+  s.lineTo(0, 0.024);
+  s.closePath();
+
+  const geo = new THREE.ExtrudeGeometry(s, {
+    depth: span,
+    bevelEnabled: false,
+    curveSegments: 8,
+  });
+  // Center extrusion along Z (`-span/2 .. +span/2`), center Y around `0.012m`, and center X around `0.008m`
+  geo.translate(-0.008, -0.012, -span * 0.5);
+  if (isAlongX) {
+    geo.rotateY(inwardSign > 0 ? -Math.PI / 2 : Math.PI / 2);
+  } else if (inwardSign < 0) {
+    geo.rotateY(Math.PI);
+  }
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+  return geo;
 }
 
 /**
@@ -114,11 +171,20 @@ export function createWallSkirtingBoardProfile(): THREE.Shape {
   const s = new THREE.Shape();
   s.moveTo(-0.003, -0.002);
   s.lineTo(-0.003, 0.022);
-  s.lineTo(0.122, 0.022);
-  s.lineTo(0.122, 0.017);
-  s.quadraticCurveTo(0.128, 0.0185, 0.134, 0.0165);
-  s.quadraticCurveTo(0.139, 0.012, 0.143, 0.01);
-  s.lineTo(0.146, 0.008);
+  // Flat lower plinth face (0 .. 95mm)
+  s.lineTo(0.095, 0.022);
+  // Crisp 4.5mm quirk step at 95mm height
+  s.lineTo(0.097, 0.0175);
+  s.lineTo(0.101, 0.0175);
+  // Swept cyma reversa ogee curve (101mm .. 120mm)
+  s.quadraticCurveTo(0.107, 0.0195, 0.113, 0.0155);
+  s.quadraticCurveTo(0.117, 0.0115, 0.120, 0.0135);
+  // Projecting upper torus roll (120mm .. 135mm)
+  s.lineTo(0.121, 0.0165);
+  s.quadraticCurveTo(0.128, 0.0205, 0.135, 0.0165);
+  // Upper cavetto neck & top chamfered wall-return fillet (135mm .. 146mm)
+  s.quadraticCurveTo(0.139, 0.011, 0.143, 0.0095);
+  s.lineTo(0.146, 0.006);
   s.lineTo(0.146, -0.002);
   s.closePath();
   return s;
@@ -138,8 +204,90 @@ export function buildMitredWallSkirtingGeometry(
     createWallSkirtingBoardProfile(),
     path,
     (x, z, y) => new THREE.Vector3(x, floorY + y, z),
-    6
+    8
   );
+}
+
+/**
+ * Sweeps a 146mm-tall Ogee/Torus moulded skirting board along a horizontal floor-plan polyline `path`
+ * of `[x, z]` wall points (ordered clockwise around the room interior so `(-dz, dx)` points into the room)
+ * and returns one `THREE.BufferGeometry` per segment `i` (`path[i] -> path[i + 1]`), with true 45° mitred
+ * joints at every shared vertex between consecutive segments.
+ */
+export function buildMitredWallSkirtingSegments(
+  path: ReadonlyArray<readonly [number, number]>,
+  floorY = 0,
+  curveSegments = 8
+): THREE.BufferGeometry[] {
+  const profile = createWallSkirtingBoardProfile();
+  const toSpace = (x: number, z: number, y: number): THREE.Vector3 =>
+    new THREE.Vector3(x, floorY + y, z);
+
+  const segs: Array<{ p0: THREE.Vector2; t: THREE.Vector2; n: THREE.Vector2; len: number }> = [];
+  for (let i = 0; i + 1 < path.length; i++) {
+    const [a0, y0] = path[i]!;
+    const [a1, y1] = path[i + 1]!;
+    const d = new THREE.Vector2(a1 - a0, y1 - y0);
+    const len = d.length();
+    const t = d.clone().divideScalar(len || 1);
+    segs.push({ p0: new THREE.Vector2(a0, y0), t, n: new THREE.Vector2(-t.y, t.x), len });
+  }
+
+  const unit = new THREE.ExtrudeGeometry(profile, { depth: 1, bevelEnabled: false, curveSegments });
+  const unitFlat = unit.index ? unit.toNonIndexed() : unit;
+  const src = unitFlat.getAttribute('position');
+  const srcUv = unitFlat.getAttribute('uv');
+  const tmp = new THREE.Vector3();
+
+  const result: THREE.BufferGeometry[] = [];
+  segs.forEach((seg, i) => {
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const prev = i > 0 ? segs[i - 1] : undefined;
+    const next = i + 1 < segs.length ? segs[i + 1] : undefined;
+    const startK = prev ? -seg.n.dot(prev.t) / (1 + seg.t.dot(prev.t)) : 0;
+    const endK = next ? -seg.n.dot(next.t) / (1 + seg.t.dot(next.t)) : 0;
+
+    const o3 = toSpace(seg.p0.x, seg.p0.y, 1).sub(toSpace(seg.p0.x, seg.p0.y, 0));
+    const n3 = toSpace(seg.p0.x + seg.n.x, seg.p0.y + seg.n.y, 0).sub(toSpace(seg.p0.x, seg.p0.y, 0));
+    const t3 = toSpace(seg.p0.x + seg.t.x, seg.p0.y + seg.t.y, 0).sub(toSpace(seg.p0.x, seg.p0.y, 0));
+    const flip = o3.dot(n3.clone().cross(t3)) < 0;
+
+    for (let v = 0; v < src.count; v += 3) {
+      const s0 = src.getZ(v);
+      const s1 = src.getZ(v + 1);
+      const s2 = src.getZ(v + 2);
+      if (prev && s0 < 0.5 && s1 < 0.5 && s2 < 0.5) continue;
+      if (next && s0 > 0.5 && s1 > 0.5 && s2 > 0.5) continue;
+      const order = flip ? [v, v + 2, v + 1] : [v, v + 1, v + 2];
+      for (const idx of order) {
+        const d = src.getX(idx);
+        const h = src.getY(idx);
+        const s = src.getZ(idx);
+        const along = s < 0.5 ? h * startK : seg.len + h * endK;
+        const a = seg.p0.x + seg.t.x * along + seg.n.x * h;
+        const y = seg.p0.y + seg.t.y * along + seg.n.y * h;
+        tmp.copy(toSpace(a, y, d));
+        positions.push(tmp.x, tmp.y, tmp.z);
+        if (srcUv) {
+          uvs.push(srcUv.getX(idx), srcUv.getY(idx) * (s < 0.5 ? 1 : seg.len));
+        }
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    if (uvs.length > 0) {
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    }
+    geo.computeVertexNormals();
+    geo.computeBoundingSphere();
+    result.push(geo);
+  });
+
+  unit.dispose();
+  if (unitFlat !== unit) unitFlat.dispose();
+  return result;
 }
 
 /**
@@ -150,19 +298,131 @@ export function buildMitredWallSkirtingGeometry(
  *   (`0.0315m`), concave ogee/cove neck (`0.0245m`), and `0.0225m` outer edge fillet matching
  *   the skirting board and stair stringer profile.
  */
-export function createArchitraveProfile(width = 0.092): THREE.Shape {
-  const mouldStart = Math.max(0.02, width - 0.026);
+export function createArchitraveProfile(width = 0.092, maxT = 0.022): THREE.Shape {
+  // Architectural Ogee + Quirk + Torus architrave profile in `(d, h)` matching `createWallSkirtingBoardProfile()`:
+  // - `d` is projection out from wall face (`0..maxT`),
+  // - `h` is distance outward from the doorway sight-edge (`0..width`):
+  //   * Inner flat band (`0 .. 0.44 * width`) at full projection `maxT`,
+  //   * Crisp recessed quirk step (`0.44 * width .. 0.48 * width`),
+  //   * Sweeping concave/convex cyma reversa Ogee throat (`0.48 * width .. 0.72 * width`),
+  //   * Projecting Torus bead roll (`0.72 * width .. 0.88 * width`),
+  //   * Outer cavetto & chamfered wall-return fillet (`0.88 * width .. width`).
   const s = new THREE.Shape();
   s.moveTo(0, 0);
-  s.lineTo(0.035, 0);
-  s.lineTo(0.035, mouldStart);
-  s.lineTo(0.0295, mouldStart);
-  s.quadraticCurveTo(0.0315, mouldStart + 0.006, 0.029, mouldStart + 0.013);
-  s.quadraticCurveTo(0.0245, mouldStart + 0.018, 0.0235, mouldStart + 0.022);
-  s.lineTo(0.0225, width);
+  s.lineTo(maxT, 0);
+  s.lineTo(maxT, width * 0.44);
+  // Crisp recessed quirk step
+  s.lineTo(maxT * 0.78, width * 0.46);
+  s.lineTo(maxT * 0.78, width * 0.50);
+  // Swept cyma reversa ogee throat
+  s.quadraticCurveTo(maxT * 0.88, width * 0.56, maxT * 0.68, width * 0.63);
+  s.quadraticCurveTo(maxT * 0.50, width * 0.68, maxT * 0.60, width * 0.72);
+  // Projecting upper torus roll
+  s.lineTo(maxT * 0.74, width * 0.73);
+  s.quadraticCurveTo(maxT * 0.92, width * 0.80, maxT * 0.72, width * 0.87);
+  // Outer cavetto & chamfered wall-return fillet
+  s.quadraticCurveTo(maxT * 0.48, width * 0.93, maxT * 0.36, width * 0.97);
+  s.lineTo(maxT * 0.22, width);
   s.lineTo(0, width);
   s.closePath();
   return s;
+}
+
+/**
+ * Sweeps a 3-sided 45°-mitred Ogee/Torus doorway architrave (`[leftLeg, head, rightLeg]`)
+ * along a doorway portal on a wall face (`axis = 'x'` means the opening spans X and the wall normal is Z;
+ * `axis = 'z'` means the opening spans Z and the wall normal is X).
+ */
+export function buildMitredArchitraveSegments(
+  uLeft: number,
+  uRight: number,
+  yLeftBot: number,
+  yRightBot: number,
+  yHead: number,
+  axis: 'x' | 'z',
+  wallFaceCoord: number,
+  normalSign: 1 | -1,
+  archW = 0.068,
+  archT = 0.022,
+  curveSegments = 8
+): [THREE.BufferGeometry, THREE.BufferGeometry, THREE.BufferGeometry] {
+  const profile = createArchitraveProfile(archW, archT);
+  const path: ReadonlyArray<readonly [number, number]> = [
+    [uLeft, yLeftBot],
+    [uLeft, yHead],
+    [uRight, yHead],
+    [uRight, yRightBot],
+  ];
+  const toSpace = (u: number, y: number, d: number): THREE.Vector3 =>
+    axis === 'x'
+      ? new THREE.Vector3(u, y, wallFaceCoord + normalSign * d)
+      : new THREE.Vector3(wallFaceCoord + normalSign * d, y, u);
+
+  const segs: Array<{ p0: THREE.Vector2; t: THREE.Vector2; n: THREE.Vector2; len: number }> = [];
+  for (let i = 0; i + 1 < path.length; i++) {
+    const [a0, y0] = path[i]!;
+    const [a1, y1] = path[i + 1]!;
+    const d = new THREE.Vector2(a1 - a0, y1 - y0);
+    const len = d.length();
+    const t = d.clone().divideScalar(len || 1);
+    segs.push({ p0: new THREE.Vector2(a0, y0), t, n: new THREE.Vector2(-t.y, t.x), len });
+  }
+
+  const unit = new THREE.ExtrudeGeometry(profile, { depth: 1, bevelEnabled: false, curveSegments });
+  const unitFlat = unit.index ? unit.toNonIndexed() : unit;
+  const src = unitFlat.getAttribute('position');
+  const srcUv = unitFlat.getAttribute('uv');
+  const tmp = new THREE.Vector3();
+
+  const out: THREE.BufferGeometry[] = [];
+  segs.forEach((seg, i) => {
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const prev = i > 0 ? segs[i - 1] : undefined;
+    const next = i + 1 < segs.length ? segs[i + 1] : undefined;
+    const startK = prev ? -seg.n.dot(prev.t) / (1 + seg.t.dot(prev.t)) : 0;
+    const endK = next ? -seg.n.dot(next.t) / (1 + seg.t.dot(next.t)) : 0;
+
+    const o3 = toSpace(seg.p0.x, seg.p0.y, 1).sub(toSpace(seg.p0.x, seg.p0.y, 0));
+    const n3 = toSpace(seg.p0.x + seg.n.x, seg.p0.y + seg.n.y, 0).sub(toSpace(seg.p0.x, seg.p0.y, 0));
+    const t3 = toSpace(seg.p0.x + seg.t.x, seg.p0.y + seg.t.y, 0).sub(toSpace(seg.p0.x, seg.p0.y, 0));
+    const flip = o3.dot(n3.clone().cross(t3)) < 0;
+
+    for (let v = 0; v < src.count; v += 3) {
+      const s0 = src.getZ(v);
+      const s1 = src.getZ(v + 1);
+      const s2 = src.getZ(v + 2);
+      if (prev && s0 < 0.5 && s1 < 0.5 && s2 < 0.5) continue;
+      if (next && s0 > 0.5 && s1 > 0.5 && s2 > 0.5) continue;
+      const order = flip ? [v, v + 2, v + 1] : [v, v + 1, v + 2];
+      for (const idx of order) {
+        const d = src.getX(idx);
+        const h = src.getY(idx);
+        const s = src.getZ(idx);
+        const along = s < 0.5 ? h * startK : seg.len + h * endK;
+        const a = seg.p0.x + seg.t.x * along + seg.n.x * h;
+        const y = seg.p0.y + seg.t.y * along + seg.n.y * h;
+        tmp.copy(toSpace(a, y, d));
+        positions.push(tmp.x, tmp.y, tmp.z);
+        if (srcUv) {
+          uvs.push(srcUv.getX(idx), srcUv.getY(idx) * (s < 0.5 ? 1 : seg.len));
+        }
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    if (uvs.length > 0) {
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    }
+    geo.computeVertexNormals();
+    geo.computeBoundingSphere();
+    out.push(geo);
+  });
+
+  unit.dispose();
+  if (unitFlat !== unit) unitFlat.dispose();
+  return [out[0]!, out[1]!, out[2]!];
 }
 
 export interface CasedArchitravePortalOptions {

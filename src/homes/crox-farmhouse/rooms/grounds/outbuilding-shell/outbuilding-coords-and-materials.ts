@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildMitredArchitraveSegments } from '../../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../../types/scene.ts';
 import {
   createWelshSlateRoofTextures,
@@ -1181,36 +1182,34 @@ export function createOutbuildingShellContext(
     // Full-perimeter chamfered door architraves on both the interior room face (`+z = +wallT * 0.5 + 0.009`)
     // and exterior courtyard face (`-z = -wallT * 0.5 - 0.009`), covering the frame-to-wall joint cleanly!
     const archW = 0.068;
-    const archT = 0.018;
+    const archT = 0.022;
     const archSlug = doorLabel.replace(/\s+/g, '');
-    for (const [faceZ, archMat] of [
-      [-wallT * 0.5 - archT * 0.5, courtyardDoorRecessMat],
-      [wallT * 0.5 + archT * 0.5, isDoubleLeaf ? courtyardDoorRecessMat : lightJoineryOakMat],
+    const uInnerLeft = -(width * 0.5 - 0.018);
+    const uInnerRight = width * 0.5 - 0.018;
+    const yInnerHead = height - 0.014;
+    for (const [normalSign, faceWallZ, archMat] of [
+      [-1 as const, -wallT * 0.5, courtyardDoorRecessMat],
+      [1 as const, wallT * 0.5, isDoubleLeaf ? courtyardDoorRecessMat : settingPlasterMat],
     ] as const) {
-      for (const sideX of [-1, 1] as const) {
-        const legArch = new THREE.Mesh(
-          new THREE.BoxGeometry(archW, height + archW - sillH, archT),
-          archMat
-        );
-        legArch.name = `outbuildings.doorArchitrave.${archSlug}`;
-        legArch.position.set(
-          sideX * (width * 0.5 + archW * 0.5 - 0.018),
-          sillH + (height + archW - sillH) * 0.5,
-          faceZ
-        );
-        legArch.castShadow = true;
-        legArch.receiveShadow = true;
-        doorGroup.add(legArch);
-      }
-      const headArch = new THREE.Mesh(
-        new THREE.BoxGeometry(width + archW * 2 - 0.036, archW, archT),
-        archMat
+      const [leftLegGeo, headGeo, rightLegGeo] = buildMitredArchitraveSegments(
+        uInnerLeft,
+        uInnerRight,
+        sillH,
+        sillH,
+        yInnerHead,
+        'x',
+        faceWallZ,
+        normalSign,
+        archW,
+        archT
       );
-      headArch.name = `outbuildings.doorArchitrave.${archSlug}`;
-      headArch.position.set(0, height + archW * 0.5 - 0.014, faceZ);
-      headArch.castShadow = true;
-      headArch.receiveShadow = true;
-      doorGroup.add(headArch);
+      for (const segGeo of [leftLegGeo, rightLegGeo, headGeo] as const) {
+        const archMesh = new THREE.Mesh(segGeo, archMat);
+        archMesh.name = `outbuildings.doorArchitrave.${archSlug}`;
+        archMesh.castShadow = true;
+        archMesh.receiveShadow = true;
+        doorGroup.add(archMesh);
+      }
     }
 
     // Reclaimed stone threshold sill fitted inside the doorway opening (Issue #7: zero gap under door!)
@@ -1583,6 +1582,7 @@ export function createOutbuildingShellContext(
     const bayW = width / numBays;
     const glassH = height - 0.11;
     const glassCenterY = height * 0.5 + 0.02;
+    const gymScreenDoorPivots: THREE.Group[] = [];
 
     for (let b = 0; b < numBays; b++) {
       const bx = -width * 0.5 + (b + 0.5) * bayW;
@@ -1665,14 +1665,18 @@ export function createOutbuildingShellContext(
         );
         bayContainer.add(handle);
 
-        ctx.interactions.registerHingedDoor(
+        const registeredPivot = ctx.interactions.registerHingedDoor(
           screenGroup,
           bayContainer,
           new THREE.Vector3(0, 0, 0),
           'y',
           -hingeSide * Math.PI * 0.48
         );
+        gymScreenDoorPivots.push(registeredPivot);
       }
+    }
+    if (gymScreenDoorPivots.length === 2) {
+      ctx.interactions.linkDoorPair(gymScreenDoorPivots[0]!, gymScreenDoorPivots[1]!);
     }
 
     parent.add(screenGroup);
@@ -1965,6 +1969,9 @@ export function createOutbuildingShellContext(
     // Helper to add a sloped panel (or split it around Velux skylight openings) in the slope's local plane
     // where `s` runs from `-slopeLenV * 0.5` (at the ridge) to `+slopeLenV * 0.5` (at the eaves) for `sideV = +1`,
     // or `-slopeLenV * 0.5` (at the eaves) to `+slopeLenV * 0.5` (at the ridge) for `sideV = -1`.
+    // `verticalDropY` shifts the sloped plane purely vertically (`-Y`), and projects skylight cutouts
+    // perpendicular to the roof slope (`sShift = -sideV * verticalDropY * sinPitch`) so the lightwell reveals
+    // align with 0.0mm gap!
     const addSlopedPanelWithSkylightCutouts = (
       targetGroup: THREE.Object3D,
       panelUMin: number,
@@ -1972,7 +1979,7 @@ export function createOutbuildingShellContext(
       sMin: number,
       sMax: number,
       thickness: number,
-      normalOffset: number,
+      verticalDropY: number,
       sideV: -1 | 1,
       mat: THREE.Material,
       skylights: ReadonlyArray<OutbuildingSkylightSpec>,
@@ -1981,8 +1988,8 @@ export function createOutbuildingShellContext(
       const slopePlane = new THREE.Group();
       slopePlane.position.set(
         0,
-        eaveRelH + slopeRise * 0.5 + normalOffset * cosPitch,
-        sideV * (halfSpanV * 0.5) - sideV * normalOffset * sinPitch
+        eaveRelH + slopeRise * 0.5 - verticalDropY,
+        sideV * (halfSpanV * 0.5)
       );
       slopePlane.rotation.x = sideV * pitchAngle;
       targetGroup.add(slopePlane);
@@ -2040,10 +2047,11 @@ export function createOutbuildingShellContext(
       for (const sk of activeSkylights) {
         const skUMin = Math.max(panelUMin, sk.uCenter - sk.widthU * 0.5);
         const skUMax = Math.min(panelUMax, sk.uCenter + sk.widthU * 0.5);
-        // Convert world `vCenter` to local slope coordinate `s` relative to `sideV * (halfSpanV * 0.5)`
+        // Convert world `vCenter` to local slope coordinate `s`, accounting for perpendicular projection across `verticalDropY`
         const dvFromMid = sk.vCenter - vMid; // negative on North (-1) slope
         const distAlongSlopeFromRidge = Math.abs(dvFromMid) / cosPitch;
-        const sCenter = sideV * (distAlongSlopeFromRidge - slopeLenV * 0.5);
+        const sCenterExt = sideV * (distAlongSlopeFromRidge - slopeLenV * 0.5);
+        const sCenter = sCenterExt - sideV * verticalDropY * sinPitch;
         const skSMin = Math.max(sMin, sCenter - sk.lengthS * 0.5);
         const skSMax = Math.min(sMax, sCenter + sk.lengthS * 0.5);
 
@@ -2090,19 +2098,19 @@ export function createOutbuildingShellContext(
       sectionRoofGroup.add(gutter);
     }
 
-    // 2. Issue #4 ("Put a vauled ceiling in here, insulated plasterboard" at `[-13.898, 2.571, 19.843]`):
-    //    Interior Insulated Plasterboard Vaulted Ceiling (`warmRoomPlasterMat`) lining the underside of the
-    //    North and South roof slopes across each interior room bay (`v = vMin + wallT .. vMax - wallT`),
-    //    with matching cutout apertures for the Velux skylights!
-    // Issue #7 ("Simplify this geometry" at `[-5.128, 2.993, 14.801]`) & Issue #10 ("Fix the geometry on this join"):
-    // Position the vaulted plasterboard ceiling at true rafter depth (`plasterNormalOffset = -(halfSpanV - innerHalfSpanV) * sinPitch`)
-    // so that at the inner wall face (`|v - vMid| = innerHalfSpanV = 2.575m`), the sloped ceiling plane meets the top of the
-    // brick walls directly at `eaveRelH` (`1.94m` / `2.92m` / `3.32m`) with zero extra eave frieze boxes!
+    // 2. Issue #4 ("Put a vauled ceiling in here, insulated plasterboard" at `[-13.898, 2.571, 19.843]`) &
+    //    Issue #2 ("Fix the ceilings I see some exposed brcik on the edges, ridge looks bad, gap in the velux" at `[6.306, 3.829, 14.837]`):
+    //    - Pure vertical drop `ceilCenterVertDrop = eaveDropFromExt - (ceilT * 0.5) / cosPitch` places the room-facing
+    //      UNDERSIDE of `vaultedPlasterCeiling` (`ceilT = 0.048m`) on the exact plane from `(z = ±innerHalfSpanV, y = eaveRelH)`
+    //      to `(z = 0, y = ceilApexRelH)` so the ceiling meets the gable walls and brick wall tops with 0.0mm gap and zero exposed brick!
+    //    - Both ceiling slopes meet at `(z = 0, y = ceilApexRelH)` with a mitered V-chevron apex fillet (`vaultedCeilingApex`).
     const innerHalfSpanV = (vMax - vMin) * 0.5 - wallT; // 2.575m
-    const eaveInwardDeltaV = halfSpanV - innerHalfSpanV; // 0.48m (0.20m overhang + 0.28m wallT)
-    const plasterNormalOffset = -eaveInwardDeltaV * sinPitch; // ~ -0.22m true insulated rafter depth
-    const innerMaxDistAlongSlope = (innerHalfSpanV + 0.04) / cosPitch;
     const ceilApexRelH = eaveRelH + innerHalfSpanV * (slopeRise / halfSpanV);
+    const eaveDropFromExt = ridgeRelH - ceilApexRelH; // (halfSpanV - innerHalfSpanV) * tanPitch
+    const ceilT = 0.048;
+    const ceilCenterVertDrop = eaveDropFromExt - (ceilT * 0.5) / cosPitch;
+    const innerMaxDistAlongSlope = (innerHalfSpanV + 0.08) / cosPitch;
+    const tanPitch = slopeRise / halfSpanV;
 
     for (const [bayUMin, bayUMax] of interiorUIntervals) {
       for (const sideV of [-1, 1] as const) {
@@ -2114,8 +2122,8 @@ export function createOutbuildingShellContext(
           bayUMax,
           sMin,
           sMax,
-          0.048,
-          plasterNormalOffset,
+          ceilT,
+          ceilCenterVertDrop,
           sideV,
           warmRoomPlasterMat,
           sideV === -1 ? northSkylights : [],
@@ -2123,28 +2131,40 @@ export function createOutbuildingShellContext(
         );
       }
 
-      // Central insulated plasterboard apex ridge fillet sealing the vaulted ceiling peak
-      const apexFillet = new THREE.Mesh(
-        new THREE.BoxGeometry(bayUMax - bayUMin, 0.045, 0.14),
-        warmRoomPlasterMat
+      // Mitered V-chevron plasterboard apex ridge fillet (`outbuildings.roof.vaultedCeilingApex`) whose lower faces
+      // are coplanar with the North and South vaulted ceiling undersides (`y = ceilApexRelH - |z| * tanPitch`)!
+      const apexHalfW = 0.14;
+      const apexEdgeY = ceilApexRelH - apexHalfW * tanPitch;
+      const apexRidgeT = ceilT / cosPitch;
+      const apexChevronGeo = createExtrudedVYPolygon(
+        [
+          [-apexHalfW, apexEdgeY],
+          [0, ceilApexRelH],
+          [apexHalfW, apexEdgeY],
+          [apexHalfW, apexEdgeY + apexRidgeT],
+          [0, ceilApexRelH + apexRidgeT],
+          [-apexHalfW, apexEdgeY + apexRidgeT],
+        ],
+        bayUMax - bayUMin
       );
+      const apexFillet = new THREE.Mesh(apexChevronGeo, warmRoomPlasterMat);
       apexFillet.name = 'outbuildings.roof.vaultedCeilingApex';
-      apexFillet.position.set(
-        (bayUMin + bayUMax) * 0.5 - uMid,
-        ceilApexRelH - 0.015,
-        0
-      );
+      apexFillet.position.set(bayUMin - uMid, 0, 0);
       sectionRoofGroup.add(apexFillet);
     }
 
-    // 3. Issues #5 & #6 ("Velux here" at `[-15.746, 2.508, 16.446]` and `[-11.903, 2.573, 16.247]`):
-    //    Build 3D Velux Roof Windows inside the North slope skylight cutouts
+    // 3. Issues #5 & #6 ("Velux here") & Issue #2 ("gap in the velux"):
+    //    Build 3D Velux Roof Windows inside the North slope skylight cutouts with full-depth perpendicular
+    //    lightwell reveals spanning all the way through `vaultedPlasterCeiling` (`ly = -eaveDropFromExt * cosPitch`).
     if (northSkylights.length > 0) {
       const northSlopeGroup = new THREE.Group();
       northSlopeGroup.name = `${roofSecId}.northVeluxSlope`;
       northSlopeGroup.position.set(0, eaveRelH + slopeRise * 0.5, -(halfSpanV * 0.5));
       northSlopeGroup.rotation.x = -pitchAngle;
       sectionRoofGroup.add(northSlopeGroup);
+
+      const lyCeilingUnderside = -eaveDropFromExt * cosPitch; // Exact underside of `vaultedPlasterCeiling` in `northSlopeGroup` local Y
+      const sShiftAtCeiling = ceilCenterVertDrop * sinPitch;
 
       for (const sk of northSkylights) {
         const dvFromMid = sk.vCenter - vMid;
@@ -2158,27 +2178,41 @@ export function createOutbuildingShellContext(
 
         const wU = sk.widthU;
         const lS = sk.lengthS;
-        const revealDepthY = 0.255; // Spans from underside of true-rafter-depth vaulted plasterboard (`-0.22m`) to top of exterior flashing (`+0.035m`)
-        const revealCenterY = -0.092;
-        const jambT = 0.032;
+        const jambT = 0.036;
+        const lyTop = 0.032;
+        const lyBot = lyCeilingUnderside - 0.003;
+        const revealDepthY = lyTop - lyBot;
+        const revealCenterY = (lyTop + lyBot) * 0.5;
+        // Because the ceiling cutout is shifted along `+s` by `sShiftAtCeiling = ceilCenterVertDrop * sinPitch`
+        // (pure vertical drop), tilt/shear the lightwell reveal walls along `+s` by `sShiftAtCeiling * 0.5`
+        // and widen their footprint so they completely seal both the exterior roof cutout and interior ceiling cutout!
+        const endOverhangS = Math.abs(sShiftAtCeiling) + 0.024;
 
         // White plastered lightwell reveal lining the roof/insulation cutout
         for (const sideX of [-1, 1] as const) {
           const sideReveal = new THREE.Mesh(
-            new THREE.BoxGeometry(jambT, revealDepthY, lS),
+            new THREE.BoxGeometry(jambT, revealDepthY, lS + endOverhangS),
             warmRoomPlasterMat
           );
           sideReveal.name = `outbuildings.roof.velux.${sk.id}.sideReveal.${sideX < 0 ? "west" : "east"}`;
-          sideReveal.position.set(sideX * (wU * 0.5 - jambT * 0.5), revealCenterY, 0);
+          sideReveal.position.set(
+            sideX * (wU * 0.5 - jambT * 0.35),
+            revealCenterY,
+            sShiftAtCeiling * 0.5
+          );
           veluxGroup.add(sideReveal);
         }
         for (const sideZ of [-1, 1] as const) {
+          const zAtExt = sideZ * (lS * 0.5);
+          const zAtCeil = sideZ * (lS * 0.5) + sShiftAtCeiling;
+          const endBoxDepthS = Math.abs(zAtCeil - zAtExt) + jambT;
+          const endBoxCenterS = (zAtExt + zAtCeil) * 0.5 - sideZ * (jambT * 0.25);
           const endReveal = new THREE.Mesh(
-            new THREE.BoxGeometry(wU - jambT * 2, revealDepthY, jambT),
+            new THREE.BoxGeometry(wU + 0.012, revealDepthY, endBoxDepthS),
             warmRoomPlasterMat
           );
           endReveal.name = `outbuildings.roof.velux.${sk.id}.endReveal.${sideZ < 0 ? "lower" : "upper"}`;
-          endReveal.position.set(0, revealCenterY, sideZ * (lS * 0.5 - jambT * 0.5));
+          endReveal.position.set(0, revealCenterY, endBoxCenterS);
           veluxGroup.add(endReveal);
         }
 
@@ -2474,8 +2508,8 @@ export function createOutbuildingShellContext(
     // Note: after `geo.rotateX(-Math.PI / 2)`, shape `(x, y)` maps to `(u = x, z = -y)`
     s.moveTo(uStart, -0.284);
     s.lineTo(23.016, -0.284);
-    s.lineTo(23.016, -3.56);
-    s.lineTo(22.04, -3.56);
+    s.lineTo(23.016, -3.305);
+    s.lineTo(22.04, -3.305);
     s.lineTo(22.04, -4.44);
     s.lineTo(21.995, -4.54);
     s.lineTo(21.37, -4.94);
@@ -2498,14 +2532,6 @@ export function createOutbuildingShellContext(
     roughness: 0.16,
     metalness: 0.05,
   });
-  const upDownConeBeamMat = new THREE.MeshBasicMaterial({
-    color: 0xffe2a6,
-    transparent: true,
-    opacity: 0.14,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  });
-
   const addOutbuildingExteriorUpDownWallLight = (
     parent: THREE.Object3D,
     uWallFace: number,
@@ -2580,18 +2606,6 @@ export function createOutbuildingShellContext(
       lens.name = `${lightName}.lens.${tag}`;
       lens.position.set(barrelX, dirY * (barrelH * 0.5 + 0.001), 0);
       sconceGroup.add(lens);
-
-      // Soft warm-white architectural wall-wash light cone grazing upward & downward along the brickwork
-      const coneH = 0.46;
-      const coneGeo = new THREE.ConeGeometry(0.16, coneH, 18, 1, true);
-      const coneMesh = new THREE.Mesh(coneGeo, upDownConeBeamMat);
-      coneMesh.name = `${lightName}.beam.${tag}`;
-      // ConeGeometry apex is at `+y`, base is at `-y`:
-      // For `dirY = +1` (upward beam), rotate `Math.PI` so apex is at bottom (`+barrelH * 0.5`) and wide base flares upward!
-      // For `dirY = -1` (downward beam), keep rotation `0` so apex is at top (`-barrelH * 0.5`) and wide base flares downward!
-      coneMesh.rotation.z = dirY > 0 ? Math.PI : 0;
-      coneMesh.position.set(0.036, dirY * (barrelH * 0.5 + coneH * 0.5), 0);
-      sconceGroup.add(coneMesh);
     }
 
     // 4. Warm architectural exterior wall-wash PointLight

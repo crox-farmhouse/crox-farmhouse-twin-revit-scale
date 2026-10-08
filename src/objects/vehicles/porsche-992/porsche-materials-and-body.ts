@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 /**
- * Generates a 512x512 procedural Porsche Ocean Blue Metallic (`#15436e` -> `#2d74b3`)
+ * Generates a 512x512 procedural Porsche Ocean Blue / Gentian Blue Metallic (`#103760` -> `#2b6fb3`)
  * automotive basecoat + fine metallic pearl micro-flake texture.
  */
 export function createOceanBlueMetallicTexture(): THREE.CanvasTexture {
@@ -12,11 +12,11 @@ export function createOceanBlueMetallicTexture(): THREE.CanvasTexture {
   const ctx = canvas.getContext('2d')!;
 
   const grad = ctx.createLinearGradient(0, 0, size, size);
-  grad.addColorStop(0, '#143f6b');
-  grad.addColorStop(0.32, '#1f5a94');
-  grad.addColorStop(0.54, '#2b72b5');
-  grad.addColorStop(0.76, '#1c538a');
-  grad.addColorStop(1, '#123962');
+  grad.addColorStop(0, '#113863');
+  grad.addColorStop(0.28, '#1b538c');
+  grad.addColorStop(0.52, '#276cb0');
+  grad.addColorStop(0.76, '#194d84');
+  grad.addColorStop(1, '#0f3259');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, size, size);
 
@@ -26,10 +26,10 @@ export function createOceanBlueMetallicTexture(): THREE.CanvasTexture {
     const idx = i * 4;
     const h1 = Math.sin(i * 12.9898 + 4.1) * 43758.5453;
     const f1 = h1 - Math.floor(h1);
-    const sparkle = (f1 - 0.5) * 10;
-    data[idx] = Math.max(14, Math.min(120, Math.round(data[idx]! + sparkle * 0.7)));
-    data[idx + 1] = Math.max(48, Math.min(185, Math.round(data[idx + 1]! + sparkle * 1.0)));
-    data[idx + 2] = Math.max(88, Math.min(245, Math.round(data[idx + 2]! + sparkle * 1.3)));
+    const sparkle = (f1 - 0.5) * 9;
+    data[idx] = Math.max(12, Math.min(115, Math.round(data[idx]! + sparkle * 0.65)));
+    data[idx + 1] = Math.max(44, Math.min(180, Math.round(data[idx + 1]! + sparkle * 0.95)));
+    data[idx + 2] = Math.max(84, Math.min(242, Math.round(data[idx + 2]! + sparkle * 1.25)));
   }
   ctx.putImageData(img, 0, 0);
 
@@ -53,28 +53,28 @@ export function createPccbRotorTexture(): THREE.CanvasTexture {
   const cx = size * 0.5;
   const cy = size * 0.5;
 
-  ctx.fillStyle = '#525862';
+  ctx.fillStyle = '#4c525c';
   ctx.fillRect(0, 0, size, size);
 
-  for (let r = 80; r < 245; r += 2) {
-    ctx.strokeStyle = r % 4 === 0 ? 'rgba(135, 144, 155, 0.45)' : 'rgba(52, 56, 62, 0.45)';
+  for (let r = 76; r < 248; r += 2) {
+    ctx.strokeStyle = r % 4 === 0 ? 'rgba(148, 156, 168, 0.48)' : 'rgba(44, 48, 54, 0.48)';
     ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.stroke();
   }
 
-  ctx.fillStyle = '#181b20';
-  const numSpiralArms = 30;
+  ctx.fillStyle = '#14171c';
+  const numSpiralArms = 32;
   for (let a = 0; a < numSpiralArms; a++) {
     const baseAngle = (a / numSpiralArms) * Math.PI * 2;
-    for (let h = 0; h < 5; h++) {
-      const rad = 112 + h * 28;
-      const ang = baseAngle + h * 0.048;
+    for (let h = 0; h < 6; h++) {
+      const rad = 104 + h * 24;
+      const ang = baseAngle + h * 0.052;
       const hx = cx + Math.cos(ang) * rad;
       const hy = cy + Math.sin(ang) * rad;
       ctx.beginPath();
-      ctx.arc(hx, hy, 3.8, 0, Math.PI * 2);
+      ctx.arc(hx, hy, 3.6, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -170,9 +170,9 @@ export function createUnderCarShadowTexture(): THREE.CanvasTexture {
 
   ctx.clearRect(0, 0, w, h);
   const grad = ctx.createRadialGradient(w * 0.5, h * 0.5, 16, w * 0.5, h * 0.5, w * 0.48);
-  grad.addColorStop(0, 'rgba(6, 8, 12, 0.80)');
-  grad.addColorStop(0.56, 'rgba(8, 11, 16, 0.58)');
-  grad.addColorStop(0.84, 'rgba(10, 14, 20, 0.20)');
+  grad.addColorStop(0, 'rgba(6, 8, 12, 0.84)');
+  grad.addColorStop(0.56, 'rgba(8, 11, 16, 0.62)');
+  grad.addColorStop(0.84, 'rgba(10, 14, 20, 0.22)');
   grad.addColorStop(1, 'rgba(10, 14, 20, 0.0)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
@@ -190,6 +190,7 @@ export interface Porsche992Materials {
   tintedGlassMat: THREE.MeshStandardMaterial;
   clearLensMat: THREE.MeshStandardMaterial;
   ledDrlMat: THREE.MeshStandardMaterial;
+  amberIndicatorMat: THREE.MeshStandardMaterial;
   crimsonTaillightMat: THREE.MeshStandardMaterial;
   smokedRedLensMat: THREE.MeshStandardMaterial;
   tireRubberMat: THREE.MeshStandardMaterial;
@@ -203,72 +204,87 @@ export interface Porsche992Materials {
 }
 
 /**
- * Creates the full PBR material palette for the Porsche 911 (992.2) Turbo S Coupé.
+ * Creates the full PBR + Clearcoat material palette for the Porsche 911 (992.2) Turbo S Coupé.
  */
 export function createPorsche992Materials(): Porsche992Materials {
   const oceanBlueTex = createOceanBlueMetallicTexture();
-  // Balanced metalness (`0.42`) & clearcoat sheen so the rich Porsche Ocean Blue Metallic colour
-  // gleams under the cool-white garage LEDs instead of appearing pitch black without an envMap!
-  const oceanBlueBodyMat = new THREE.MeshStandardMaterial({
-    color: 0x22649e,
+  // Showroom-grade MeshPhysicalMaterial with clearcoat = 1.0 over Ocean Blue Metallic basecoat
+  const oceanBlueBodyMat = new THREE.MeshPhysicalMaterial({
+    color: 0x1e5c98,
     map: oceanBlueTex,
-    emissive: new THREE.Color(0x06192e),
-    emissiveIntensity: 0.26,
-    roughness: 0.2,
-    metalness: 0.42,
+    emissive: new THREE.Color(0x051528),
+    emissiveIntensity: 0.18,
+    roughness: 0.21,
+    metalness: 0.52,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.06,
+    reflectivity: 0.92,
     side: THREE.DoubleSide,
   });
 
   const satinBlackAeroMat = new THREE.MeshStandardMaterial({
-    color: 0x1a1e24,
-    roughness: 0.42,
-    metalness: 0.28,
+    color: 0x1e2228,
+    roughness: 0.38,
+    metalness: 0.34,
     side: THREE.DoubleSide,
   });
 
-  const glossBlackTrimMat = new THREE.MeshStandardMaterial({
-    color: 0x101318,
-    roughness: 0.16,
-    metalness: 0.42,
+  const glossBlackTrimMat = new THREE.MeshPhysicalMaterial({
+    color: 0x0e1116,
+    roughness: 0.12,
+    metalness: 0.48,
+    clearcoat: 0.9,
+    clearcoatRoughness: 0.08,
     side: THREE.DoubleSide,
   });
 
   const turboniteMat = new THREE.MeshStandardMaterial({
-    color: 0x5c626b,
-    roughness: 0.26,
-    metalness: 0.72,
+    color: 0x4b515a,
+    roughness: 0.24,
+    metalness: 0.78,
   });
 
-  const tintedGlassMat = new THREE.MeshStandardMaterial({
-    color: 0x1a2c3e,
-    roughness: 0.08,
-    metalness: 0.18,
+  const tintedGlassMat = new THREE.MeshPhysicalMaterial({
+    color: 0x142230,
+    roughness: 0.05,
+    metalness: 0.15,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.04,
     transparent: true,
-    opacity: 0.58,
+    opacity: 0.62,
     side: THREE.DoubleSide,
   });
 
-  const clearLensMat = new THREE.MeshStandardMaterial({
+  const clearLensMat = new THREE.MeshPhysicalMaterial({
     color: 0xeaf4ff,
-    roughness: 0.06,
-    metalness: 0.12,
+    roughness: 0.04,
+    metalness: 0.1,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.04,
     transparent: true,
-    opacity: 0.44,
+    opacity: 0.42,
     side: THREE.DoubleSide,
   });
 
   const ledDrlMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     emissive: new THREE.Color(0xf0f8ff),
-    emissiveIntensity: 2.6,
-    roughness: 0.1,
+    emissiveIntensity: 2.8,
+    roughness: 0.08,
+  });
+
+  const amberIndicatorMat = new THREE.MeshStandardMaterial({
+    color: 0xffe4b8,
+    emissive: new THREE.Color(0xffb84d),
+    emissiveIntensity: 1.4,
+    roughness: 0.15,
   });
 
   const crimsonTaillightMat = new THREE.MeshStandardMaterial({
     color: 0xff1a22,
     emissive: new THREE.Color(0xff1118),
-    emissiveIntensity: 2.2,
-    roughness: 0.14,
+    emissiveIntensity: 2.4,
+    roughness: 0.12,
   });
 
   const smokedRedLensMat = new THREE.MeshStandardMaterial({
@@ -280,33 +296,35 @@ export function createPorsche992Materials(): Porsche992Materials {
   });
 
   const tireRubberMat = new THREE.MeshStandardMaterial({
-    color: 0x1a1d21,
-    roughness: 0.76,
-    metalness: 0.06,
+    color: 0x16191d,
+    roughness: 0.72,
+    metalness: 0.08,
     side: THREE.DoubleSide,
   });
 
   const diamondCutAlloyMat = new THREE.MeshStandardMaterial({
-    color: 0xe6ecf4,
-    emissive: new THREE.Color(0x181c22),
-    emissiveIntensity: 0.18,
-    roughness: 0.18,
-    metalness: 0.78,
+    color: 0xd8e0ea,
+    emissive: new THREE.Color(0x14181e),
+    emissiveIntensity: 0.14,
+    roughness: 0.16,
+    metalness: 0.84,
   });
 
   const pccbRotorMat = new THREE.MeshStandardMaterial({
     map: createPccbRotorTexture(),
     color: 0xffffff,
-    roughness: 0.34,
-    metalness: 0.58,
+    roughness: 0.3,
+    metalness: 0.64,
   });
 
-  const pccbYellowCaliperMat = new THREE.MeshStandardMaterial({
+  const pccbYellowCaliperMat = new THREE.MeshPhysicalMaterial({
     color: 0xf7c800, // Porsche Speed Yellow PCCB
     emissive: new THREE.Color(0x3a2e00),
-    emissiveIntensity: 0.2,
-    roughness: 0.22,
-    metalness: 0.24,
+    emissiveIntensity: 0.18,
+    roughness: 0.18,
+    metalness: 0.28,
+    clearcoat: 0.85,
+    clearcoatRoughness: 0.1,
   });
 
   const crestMat = new THREE.MeshStandardMaterial({
@@ -318,19 +336,19 @@ export function createPorsche992Materials(): Porsche992Materials {
 
   const titaniumExhaustMat = new THREE.MeshStandardMaterial({
     color: 0xb2bac6,
-    roughness: 0.2,
-    metalness: 0.82,
+    roughness: 0.18,
+    metalness: 0.86,
   });
 
   const slateLeatherMat = new THREE.MeshStandardMaterial({
-    color: 0x2c3138,
-    roughness: 0.58,
+    color: 0x262b32,
+    roughness: 0.56,
     metalness: 0.05,
   });
 
   const chalkLeatherMat = new THREE.MeshStandardMaterial({
     color: 0xdad6cc,
-    roughness: 0.54,
+    roughness: 0.52,
     metalness: 0.04,
   });
 
@@ -342,6 +360,7 @@ export function createPorsche992Materials(): Porsche992Materials {
     tintedGlassMat,
     clearLensMat,
     ledDrlMat,
+    amberIndicatorMat,
     crimsonTaillightMat,
     smokedRedLensMat,
     tireRubberMat,
@@ -397,15 +416,14 @@ export function evalSpline(x: number, knots: readonly (readonly [number, number]
 
 /**
  * Plan-view wrap-around shift `xWrapShift(x, z)`:
- * Curves the outer front bumper corners slightly rearward (`+x`) and outer rear bumper corners
- * slightly forward (`-x`) so the nose and tail are rounded in plan view.
+ * Curves the outer front bumper corners rearward (`+x`) and outer rear bumper corners
+ * forward (`-x`) so the nose and tail have the sculpted 992 plan-view curvature seen in the photo.
  */
 export function getPlanWrapShiftX(x: number, z: number): number {
-  const noseWrap = smoothstep(-1.82, -2.24, x);
-  const tailWrap = smoothstep(1.78, 2.24, x);
-  const zNorm = Math.min(1.15, Math.abs(z) / 0.92);
-  // Generous 18cm plan-view wrap at the rear corners so the 911 tail rounds smoothly into the widebody rear haunches!
-  return noseWrap * zNorm * zNorm * 0.14 - tailWrap * zNorm * zNorm * 0.18;
+  const noseWrap = smoothstep(-1.72, -2.24, x);
+  const tailWrap = smoothstep(1.75, 2.24, x);
+  const zNorm = Math.min(1.18, Math.abs(z) / 0.90);
+  return noseWrap * Math.pow(zNorm, 1.85) * 0.175 - tailWrap * Math.pow(zNorm, 1.9) * 0.185;
 }
 
 // ============================================================================
@@ -416,35 +434,33 @@ export function getPlanWrapShiftX(x: number, z: number): number {
 
 /**
  * 1. Centerline profile `yCenter(x)`:
- *    - Upright front bumper fascia (`x = -2.24..-2.12m`, rising from `0.15m` chin to `0.50m` nose crown)
- *    - Gently-sloped sunken Porsche 911 frunk hood (`x = -2.12..-0.92m`, `y = 0.50m -> 0.82m`)
- *    - Sleek raked windshield (`x = -0.92..-0.28m`, `y = 0.82m -> 1.242m`)
- *    - Low, elongated **911 Coupé Flyline Roof Crown** (`x = -0.28..+0.32m`, peaking at `1.268m`)
- *    - Continuous, taut **911 Fastback Rear Window & Slatted Engine Decklid** (`x = +0.32..+2.06m`, sloping
- *      smoothly all the way down to `0.802m` at the trailing ducktail edge!)
- *    - Recessed full-width LED taillight visor step (`x = 2.13m, y = 0.725m`)
- *    - Swelling muscular 992.2 lower rear bumper (`x = 2.23m, y = 0.56m` -> `x = 2.24m, y = 0.36m`)
- *      tucking cleanly under to the rear valance (`x = 2.20m, y = 0.18m`).
+ *    - Sculpted 992.2 front bumper fascia (`x = -2.24..-2.10m`)
+ *    - Low, dished central 911 frunk hood (`x = -2.10..-0.92m`, `y = 0.475m -> 0.805m`) sitting below the raised outer fender pontoons
+ *    - Sleek raked windshield (`x = -0.92..-0.26m`, `y = 0.808m -> 1.244m`)
+ *    - Low, iconic **911 Coupé Flyline Roof Crown** (`x = -0.26..+0.30m`, peaking at `1.266m`)
+ *    - Continuous, taut **911 Fastback Rear Window & Slatted Engine Decklid** (`x = +0.30..+2.06m`)
+ *    - Recessed full-width LED taillight visor step (`x = 2.14m, y = 0.722m`)
+ *    - Swelling muscular 992.2 lower rear bumper (`x = 2.22m, y = 0.565m` -> `x = 2.24m, y = 0.355m`).
  */
 export const CENTERLINE_Y_KNOTS: readonly (readonly [number, number])[] = [
-  [-2.24, 0.21],
-  [-2.21, 0.36],
-  [-2.14, 0.495],
-  [-1.95, 0.575],
-  [-1.65, 0.675],
-  [-1.30, 0.762],
-  [-0.94, 0.818], // Windshield cowl base
-  [-0.75, 0.945],
-  [-0.50, 1.125],
+  [-2.24, 0.205],
+  [-2.21, 0.355],
+  [-2.14, 0.478],
+  [-1.95, 0.558],
+  [-1.65, 0.658],
+  [-1.30, 0.748],
+  [-0.94, 0.808], // Windshield cowl base
+  [-0.75, 0.942],
+  [-0.50, 1.124],
   [-0.28, 1.242], // Top of windshield header
-  [-0.04, 1.268], // Smooth, low 911 roof crown
-  [0.24, 1.248],
-  [0.55, 1.182], // Start of rear fastback glass
-  [0.92, 1.075],
-  [1.28, 0.962],
-  [1.54, 0.888], // Base of rear window / start of slatted engine decklid
-  [1.84, 0.828], // Rear of decklid grille / base of active spoiler
-  [2.06, 0.802], // Integrated ducktail trailing lip above taillight visor
+  [-0.04, 1.266], // Smooth, low 911 roof crown
+  [0.24, 1.246],
+  [0.55, 1.180], // Start of rear fastback glass
+  [0.92, 1.074],
+  [1.28, 0.960],
+  [1.54, 0.886], // Base of rear window / start of slatted engine decklid
+  [1.84, 0.826], // Rear of decklid grille / base of active spoiler
+  [2.06, 0.800], // Integrated ducktail trailing lip above taillight visor
   [2.14, 0.722], // Recessed full-width taillight bar visor slot
   [2.22, 0.565], // Upper crown of lower rear bumper below taillight bar
   [2.24, 0.355], // Lower rear bumper face
@@ -452,26 +468,25 @@ export const CENTERLINE_Y_KNOTS: readonly (readonly [number, number])[] = [
 
 /**
  * 2. Fender / Door Beltline / Rear Haunch Shoulder Height `yShoulder(x)`:
- *    - Raised round 911 front fender pontoons (`x = -2.08..-1.00m`)
- *    - Horizontal door beltline (`y = 0.855m..0.865m` across `x = -0.90..+0.42m`)
- *    - Muscular 992.2 Turbo S rear quarter haunch cresting over the rear wheel (`y = 0.888m` at `x = 1.15m`)
- *      and then **sloping smoothly and organically downward** along the rear overhang (`0.835m` at `x = 1.56m` ->
- *      `0.762m` at `x = 1.95m` -> `0.712m` at the wrap-around taillight visor `x = 2.14m`), eliminating the boxy trunk look!
+ *    - Prominent raised Porsche 911 cannon-barrel front fender pontoons (`x = -2.08..-1.00m`, rising `55mm` above the sunken central hood!)
+ *    - Taut horizontal door beltline (`y = 0.855m..0.865m` across `x = -0.90..+0.42m`)
+ *    - Muscular 992.2 Turbo S widebody rear quarter haunch cresting over the rear wheel (`y = 0.896m` at `x = 1.12m`)
+ *      and sloping organically downward into the wrap-around taillight visor (`x = 2.14m`).
  */
 export const SHOULDER_Y_KNOTS: readonly (readonly [number, number])[] = [
   [-2.24, 0.21],
-  [-2.20, 0.37],
-  [-2.10, 0.535],
-  [-1.92, 0.665],
-  [-1.65, 0.778],
-  [-1.25, 0.848], // Crest of front fender pontoon over front wheel
-  [-0.90, 0.852],
+  [-2.20, 0.375],
+  [-2.10, 0.555],
+  [-1.92, 0.695],
+  [-1.65, 0.802],
+  [-1.25, 0.862], // High crest of 911 front fender pontoon over front wheel
+  [-0.90, 0.856],
   [-0.40, 0.858], // Taut horizontal door beltline
   [0.10, 0.865],
-  [0.48, 0.878],
-  [0.85, 0.892], // Muscular Turbo S rear haunch shoulder
-  [1.18, 0.888], // Crest over rear wheel
-  [1.56, 0.835], // Smooth downward teardrop taper behind rear wheel!
+  [0.48, 0.882],
+  [0.85, 0.898], // Muscular Turbo S rear haunch shoulder
+  [1.18, 0.894], // Crest over rear wheel
+  [1.56, 0.838], // Smooth downward teardrop taper behind rear wheel
   [1.92, 0.768],
   [2.08, 0.738],
   [2.14, 0.708], // Wrap-around taillight visor channel
@@ -481,24 +496,25 @@ export const SHOULDER_Y_KNOTS: readonly (readonly [number, number])[] = [
 
 /**
  * 3. Plan-View Outer Body Half-Width `zBodyMax(x)`:
- *    - Widebody rear haunches (`z = 0.958m` at `x = 1.20m`) tapering gracefully into the rounded 911 tail (`z = 0.76m` at `x = 2.24m`).
+ *    - Widebody front fenders (`z = 0.922m` at `x = -1.25m`), sculpted Coke-bottle door waist (`0.860m`),
+ *      and dramatic widebody Turbo S rear haunches (`z = 0.964m` at `x = 1.20m`).
  */
 export const BODY_WIDTH_Z_KNOTS: readonly (readonly [number, number])[] = [
-  [-2.24, 0.62],
-  [-2.18, 0.74],
-  [-2.04, 0.835],
-  [-1.78, 0.892],
-  [-1.45, 0.915],
-  [-1.25, 0.918], // Front wheel arch crown (`1.836m` width)
+  [-2.24, 0.63],
+  [-2.18, 0.755],
+  [-2.04, 0.848],
+  [-1.78, 0.902],
+  [-1.45, 0.920],
+  [-1.25, 0.922], // Front wheel arch crown (`1.844m` width)
   [-0.90, 0.896],
-  [-0.45, 0.868],
-  [-0.05, 0.862], // Taut Coke-bottle door waist
-  [0.35, 0.885],
-  [0.75, 0.946], // Widebody rear haunch flare
-  [1.20, 0.958], // Rear wheel arch crown (`1.916m` widebody width!)
-  [1.58, 0.932],
-  [1.90, 0.875],
-  [2.12, 0.815],
+  [-0.45, 0.866],
+  [-0.05, 0.858], // Taut Coke-bottle door waist
+  [0.35, 0.888],
+  [0.75, 0.952], // Widebody rear haunch flare
+  [1.20, 0.964], // Rear wheel arch crown (`1.928m` widebody width!)
+  [1.58, 0.936],
+  [1.90, 0.878],
+  [2.12, 0.818],
   [2.24, 0.755],
 ];
 
@@ -515,10 +531,10 @@ export const CROWN_WIDTH_Z_KNOTS: readonly (readonly [number, number])[] = [
   [-0.25, 0.568],
   [0.10, 0.558],
   [0.50, 0.525],
-  [0.96, 0.475],
-  [1.45, 0.425], // Narrow teardrop rear glass base creating broad 911 rear haunch shelves!
-  [1.85, 0.405],
-  [2.08, 0.440],
+  [0.96, 0.472],
+  [1.45, 0.420], // Narrow teardrop rear glass base creating broad 911 rear haunch shelves!
+  [1.85, 0.402],
+  [2.08, 0.438],
   [2.24, 0.420],
 ];
 
@@ -556,15 +572,19 @@ export function sampleMonocoqueHalfProfile(x: number, nv: number): [number, numb
 
   const frontApproach = smoothstep(-1.62, -2.24, x);
   const rearDeparture = smoothstep(1.56, 2.24, x);
-  const yBaseSill = 0.13 + frontApproach * 0.035 + rearDeparture * 0.055;
+  const yBaseSill = 0.13 + frontApproach * 0.032 + rearDeparture * 0.055;
   const yArchCut = sampleWheelArchCutoutY(x, yBaseSill);
 
-  const hoodWeight = 1 - smoothstep(-0.98, -0.78, x);
+  const hoodWeight = (1 - smoothstep(-0.98, -0.78, x)) * smoothstep(-2.14, -1.94, x);
   const cabinWeight = smoothstep(-0.92, -0.62, x) * (1 - smoothstep(1.42, 1.85, x));
 
-  // Side intercooler intake recess on the Turbo S rear fender leading flank (`x = 0.56..0.90m`)
+  // Side intercooler intake recess on the Turbo S rear fender leading flank (`x = 0.54..0.92m`)
   const intakeLongitudinal =
-    smoothstep(0.54, 0.64, x) * (1 - smoothstep(0.78, 0.92, x));
+    smoothstep(0.52, 0.64, x) * (1 - smoothstep(0.78, 0.94, x));
+
+  // Lower door aero undercut channel (`x = -0.82..+0.68m`) that feeds into the widebody rear haunch
+  const doorFlankWeight =
+    smoothstep(-0.86, -0.55, x) * (1 - smoothstep(0.45, 0.78, x));
 
   const pts: [number, number][] = [];
   for (let j = 0; j <= nv; j++) {
@@ -575,8 +595,9 @@ export function sampleMonocoqueHalfProfile(x: number, nv: number): [number, numb
     if (v <= 0.32) {
       const u = v / 0.32;
       z = u * zCrown;
-      const camber =
-        cabinWeight * 0.018 * (1 - u * u) - hoodWeight * 0.012 * Math.sin(u * Math.PI);
+      // Sunken central 992 frunk hood with twin longitudinal stamp creases near `u = 0.72`
+      const hoodRecess = hoodWeight * (-0.016 * (1 - u * u) + 0.008 * Math.exp(-Math.pow((u - 0.74) / 0.12, 2)));
+      const camber = cabinWeight * 0.018 * (1 - u * u) + hoodRecess;
       y = yCenter + camber;
     } else if (v <= 0.58) {
       const u = (v - 0.32) / 0.26;
@@ -587,12 +608,13 @@ export function sampleMonocoqueHalfProfile(x: number, nv: number): [number, numb
         yShoulder,
         0.74 * glassSlopeU + 0.26 * shelfBlend * shelfBlend
       );
-      const pontoonArch = hoodWeight * 0.022 * Math.sin(u * Math.PI);
+      // Iconic 911 cannon-barrel raised front fender pontoon dome (`u = 0.15..0.85`)
+      const pontoonArch = hoodWeight * 0.036 * Math.sin(Math.pow(u, 0.85) * Math.PI);
       y =
         lerp(yCenter, yShoulder, shelfBlend) * (1 - cabinWeight) +
         yCabinTransition * cabinWeight +
         pontoonArch;
-      z = lerp(zCrown, zMax * 0.94, Math.pow(u, 0.85));
+      z = lerp(zCrown, zMax * 0.94, Math.pow(u, 0.82));
     } else if (v <= 0.90) {
       const u = (v - 0.58) / 0.32;
       const yFlankNominal = lerp(yShoulder, yBaseSill + 0.035, u);
@@ -600,18 +622,21 @@ export function sampleMonocoqueHalfProfile(x: number, nv: number): [number, numb
       y = Math.max(yFlankNominal, lerp(yShoulder, yClampedMin, u));
 
       const flankBelly = Math.sin(u * Math.PI * 0.82);
-      z = lerp(zMax * 0.94, zMax * 0.96, u) + flankBelly * 0.038;
+      // Taut lower door sculpture + flared lower rocker shelf (`u > 0.72`)
+      const doorSculptureZ =
+        doorFlankWeight * (-0.014 * Math.sin(u * Math.PI) + smoothstep(0.68, 0.95, u) * 0.022);
+      z = lerp(zMax * 0.94, zMax * 0.96, u) + flankBelly * 0.038 + doorSculptureZ;
 
       if (intakeLongitudinal > 0.01) {
-        const intakeV = smoothstep(0.20, 0.35, u) * (1 - smoothstep(0.58, 0.74, u));
-        z -= intakeLongitudinal * intakeV * 0.048;
+        const intakeV = smoothstep(0.16, 0.32, u) * (1 - smoothstep(0.58, 0.76, u));
+        z -= intakeLongitudinal * intakeV * 0.056;
       }
     } else {
       const u = (v - 0.90) / 0.10;
       const yTop = Math.max(lerp(yShoulder, yBaseSill + 0.035, 1.0), yArchCut + 0.022);
       y = lerp(yTop, yArchCut, u);
       const isWheelArch = smoothstep(yBaseSill + 0.01, yBaseSill + 0.12, yArchCut);
-      const tuckIn = lerp(0.055, 0.018, isWheelArch);
+      const tuckIn = lerp(0.052, 0.018, isWheelArch);
       z = zMax * 0.96 - u * tuckIn;
     }
 
@@ -625,7 +650,6 @@ export function sampleLateralSurfaceZAtXY(x: number, yTarget: number): number {
   const halfPts = sampleMonocoqueHalfProfile(x, 64);
   let bestZ = halfPts[20]![1];
   let bestDiff = 1e9;
-  // Search across the tumblehome / upper flank region (`j = 16 .. 42`) where `y` decreases monotonically
   for (let j = 16; j < 44; j++) {
     const [y0, z0] = halfPts[j]!;
     const [y1, z1] = halfPts[j + 1]!;
@@ -645,11 +669,7 @@ export function sampleLateralSurfaceZAtXY(x: number, yTarget: number): number {
 }
 
 /**
- * Builds the Porsche 911 Teardrop Side Window (`DLO`) mesh directly from exact side-view `(x, y)` curves:
- * - Raked front A-pillar (`x = -0.82m..-0.30m`)
- * - Smooth parabolic 911 roof-rail arch (`x = -0.30m..+0.96m`, peaking at `y = 1.205m`)
- * - Horizontal door beltline sill (`y = 0.872m` from `x = -0.80m` to `x = +0.42m`) curving upward at the rear
- *   quarter panel (`x = +0.42m..+0.96m`) into the iconic 911 spear point at `(x = +0.96m, y = 0.945m)`!
+ * Builds the Porsche 911 Teardrop Side Window (`DLO`) mesh directly from exact side-view `(x, y)` curves.
  */
 export function createSideWindowDloGeometry(
   marginX: number,
@@ -667,19 +687,15 @@ export function createSideWindowDloGeometry(
 
   const evalDloTopY = (x: number): number => {
     if (x < -0.30) {
-      // Straight/gently-curved A-pillar parallel to windshield
       const u = Math.max(0, Math.min(1, (x - -0.82) / (-0.30 - -0.82)));
       return lerp(0.875, 1.195, Math.pow(u, 0.92)) + marginY;
     }
-    // Parabolic 911 roof rail arch from `x = -0.30m` (`1.195m`), peaking at `x = -0.05m` (`1.212m`),
-    // and sweeping down to the rear spear tip at `x = +0.96m` (`0.945m`)
     const u = Math.max(0, Math.min(1, (x - -0.30) / (0.96 - -0.30)));
     const arch = 1.195 + 0.045 * Math.sin(u * Math.PI * 0.65) - 0.25 * Math.pow(u, 1.55);
     return arch + marginY;
   };
 
   const evalDloBotY = (x: number): number => {
-    // Horizontal along the door top (`0.872m` -> `0.882m`), then sweeping upward into the C-pillar spear point (`0.945m`)
     const u = Math.max(0, Math.min(1, (x - -0.82) / (0.96 - -0.82)));
     const rearSweep = smoothstep(0.62, 1.0, u);
     return lerp(0.872, 0.885, u) + rearSweep * 0.060 - marginY;
@@ -689,7 +705,6 @@ export function createSideWindowDloGeometry(
     const baseVertex = positions.length / 3;
     for (let ix = 0; ix <= segX; ix++) {
       const tx = ix / segX;
-      // Cosine cluster near front and rear corners for crisp spear points
       const shapedTx = 0.5 - 0.5 * Math.cos(tx * Math.PI);
       const x = lerp(xStart, xEnd, lerp(tx, shapedTx, 0.55));
       const yBot = evalDloBotY(x);
@@ -736,8 +751,8 @@ export function createSideWindowDloGeometry(
  * Builds the unified, water-tight, smooth-shaded monocoque body shell (`outbuildings.garage.porsche992TurboS.bodyShell`).
  */
 export function createUnifiedPorsche992BodyGeometry(): THREE.BufferGeometry {
-  const nx = 116;
-  const nv = 44;
+  const nx = 124;
+  const nv = 48;
   const xMin = -2.24;
   const xMax = 2.24;
   const rowStride = nv * 2 + 1;
@@ -764,8 +779,6 @@ export function createUnifiedPorsche992BodyGeometry(): THREE.BufferGeometry {
     }
   }
 
-  // Add 2 extra water-tight rear-bumper lower wrap stations (`i = nx + 1` vertical lower bumper face at `y = 0.24m`,
-  // and `i = nx + 2` tucked-under rear valance sill at `x = 2.16m, y = 0.185m`) so the rear of the car is 100% closed!
   const lastHalfPts = sampleMonocoqueHalfProfile(xMax, nv);
   for (const [extraX, targetCenterY, tuckScaleZ] of [
     [2.235, 0.235, 0.97],
@@ -893,8 +906,8 @@ export function createConformalEllipticalHeadlightPatch(
   sideZ: 1 | -1
 ): THREE.BufferGeometry {
   const nv = 64;
-  const rings = 8;
-  const sectors = 28;
+  const rings = 10;
+  const sectors = 32;
   const positions: number[] = [];
   const uvs: number[] = [];
   const indices: number[] = [];
@@ -914,8 +927,7 @@ export function createConformalEllipticalHeadlightPatch(
       const p0 = halfPts[j0]!;
       const p1 = halfPts[j1]!;
 
-      // Dome profile rises slightly (`8mm`) in the center of the lens while the perimeter (`fracR = 1`) is flush (`2mm`)
-      const domeLift = outwardOffset + (1 - fracR * fracR) * 0.006;
+      const domeLift = outwardOffset + (1 - fracR * fracR) * 0.0065;
       const py = lerp(p0[0], p1[0], frac) + domeLift * 0.88;
       const pz = sideZ * (lerp(p0[1], p1[1], frac) + domeLift * 0.48);
       const vx = x + getPlanWrapShiftX(x, pz) - domeLift * 0.25;
@@ -961,14 +973,14 @@ export function buildWheelArchFenderLipAndLiner(
   bodyMat: THREE.Material,
   linerMat: THREE.Material
 ): void {
-  const segs = 32;
+  const segs = 36;
   const lipPositions: number[] = [];
   const lipIndices: number[] = [];
   const linerPositions: number[] = [];
   const linerIndices: number[] = [];
 
   const lipWidth = 0.022;
-  const linerDepthZ = 0.34;
+  const linerDepthZ = 0.36;
 
   for (const sideZ of [-1, 1] as const) {
     const lipBase = lipPositions.length / 3;
@@ -1037,7 +1049,8 @@ export function buildWheelArchFenderLipAndLiner(
 
 /**
  * Builds the contact shadow pad, undertray, unified smooth monocoque 992.2 widebody shell,
- * wheel-arch fender lips & liners, and sculpted lower side rocker skirts.
+ * panoramic gloss-black glass roof panel, frunk shut-lines & fuel filler flap,
+ * wheel-arch fender lips & liners, and sculpted lower side rocker skirts with rear flare.
  */
 export function buildPorsche992BodyAndUnderbody(
   carGroup: THREE.Group,
@@ -1057,7 +1070,6 @@ export function buildPorsche992BodyAndUnderbody(
   shadowPlane.position.set(0, 0.003, 0);
   carGroup.add(shadowPlane);
 
-  // Undertray tucked cleanly inside the wheelbase & bumper overhang (`3.65m x 1.32m`) so zero corners stick out!
   const undertray = new THREE.Mesh(
     new THREE.BoxGeometry(3.65, 0.036, 1.32),
     mats.satinBlackAeroMat
@@ -1074,13 +1086,71 @@ export function buildPorsche992BodyAndUnderbody(
   bodyShellMesh.receiveShadow = true;
   carGroup.add(bodyShellMesh);
 
+  // 1B. Gloss-Black Panoramic Glass Sunroof Panel (`x = -0.28..+0.44m`) matching the reference photo
+  const sunroofGeo = createConformalBodyPatchGeometry(
+    -0.28,
+    0.44,
+    () => 0.0,
+    () => 0.255,
+    18,
+    18,
+    0.0028,
+    false
+  );
+  const sunroofMesh = new THREE.Mesh(sunroofGeo, mats.glossBlackTrimMat);
+  sunroofMesh.name = 'outbuildings.garage.porsche992TurboS.panoramicSunroof';
+  carGroup.add(sunroofMesh);
+
+  // 1C. Crisp 992 Frunk Hood Shut-Line & Twin Longitudinal Hood Crease Accents (`x = -2.06..-0.94m`)
+  for (const sideZ of [-1, 1] as const) {
+    const shutLineGeo = createConformalBodyPatchGeometry(
+      -2.05,
+      -0.94,
+      () => 0.268,
+      () => 0.276,
+      20,
+      2,
+      0.0018,
+      false
+    );
+    if (sideZ === 1) {
+      const shutLineMesh = new THREE.Mesh(shutLineGeo, mats.glossBlackTrimMat);
+      shutLineMesh.name = 'outbuildings.garage.porsche992TurboS.frunkShutLine';
+      carGroup.add(shutLineMesh);
+    }
+  }
+  const frontTransverseShutGeo = createConformalBodyPatchGeometry(
+    -2.06,
+    -2.045,
+    () => 0.0,
+    () => 0.272,
+    3,
+    16,
+    0.0018,
+    false
+  );
+  const frontTransverseShutMesh = new THREE.Mesh(frontTransverseShutGeo, mats.glossBlackTrimMat);
+  frontTransverseShutMesh.name = 'outbuildings.garage.porsche992TurboS.frunkFrontShutLine';
+  carGroup.add(frontTransverseShutMesh);
+
+  // 1D. Right-Front Fender Circular Fuel Filler Flap (`x = -0.96m, v = 0.44..0.52, sideZ = +1`) visible in reference photo
+  const fillerFlapRingGeo = createConformalEllipticalHeadlightPatch(-0.96, 0.48, 0.058, 0.042, 0.002, 1);
+  const fillerFlapRing = new THREE.Mesh(fillerFlapRingGeo, mats.glossBlackTrimMat);
+  fillerFlapRing.name = 'outbuildings.garage.porsche992TurboS.fuelFillerFlap.seam';
+  carGroup.add(fillerFlapRing);
+
+  const fillerFlapCapGeo = createConformalEllipticalHeadlightPatch(-0.96, 0.48, 0.052, 0.037, 0.0026, 1);
+  const fillerFlapCap = new THREE.Mesh(fillerFlapCapGeo, mats.oceanBlueBodyMat);
+  fillerFlapCap.name = 'outbuildings.garage.porsche992TurboS.fuelFillerFlap';
+  carGroup.add(fillerFlapCap);
+
   // Front (`x = -1.25m`) and Rear (`x = +1.20m`) Cylindrical Fender Arch Lip Flanges & Wheelhouse Liners
   buildWheelArchFenderLipAndLiner(
     carGroup,
     -1.25,
     0.338,
     0.362,
-    0.885,
+    0.888,
     mats.oceanBlueBodyMat,
     mats.satinBlackAeroMat
   );
@@ -1089,19 +1159,40 @@ export function buildPorsche992BodyAndUnderbody(
     1.20,
     0.354,
     0.382,
-    0.922,
+    0.928,
     mats.oceanBlueBodyMat,
     mats.satinBlackAeroMat
   );
 
-  // Sculpted Lower Side Rocker Skirts (`x = -0.84m .. +0.78m`)
+  // Sculpted Lower Side Rocker Skirts & Flared Rear Sill Aero Winglet (`x = -0.86m .. +0.80m`)
   for (const sideZ of [-1, 1] as const) {
-    const rockerSkirt = new THREE.Mesh(
-      new THREE.BoxGeometry(1.62, 0.034, 0.055),
-      mats.satinBlackAeroMat
-    );
-    rockerSkirt.name = 'outbuildings.garage.porsche992TurboS.rockerSkirt';
-    rockerSkirt.position.set(-0.03, 0.138, sideZ * 0.835);
-    carGroup.add(rockerSkirt);
+    const rockerGroup = new THREE.Group();
+    rockerGroup.name = 'outbuildings.garage.porsche992TurboS.rockerSkirt';
+    carGroup.add(rockerGroup);
+
+    const rockerPts: THREE.Vector3[] = [];
+    for (let i = 0; i <= 20; i++) {
+      const t = i / 20;
+      const rx = lerp(-0.86, 0.80, t);
+      const flareZ = lerp(0.842, 0.905, Math.pow(t, 1.45));
+      rockerPts.push(new THREE.Vector3(rx, 0.142, sideZ * flareZ));
+    }
+    const rockerCurve = new THREE.CatmullRomCurve3(rockerPts);
+    const rockerBladeGeo = new THREE.TubeGeometry(rockerCurve, 24, 0.024, 8, false);
+    rockerBladeGeo.computeBoundingSphere();
+    const rockerBlade = new THREE.Mesh(rockerBladeGeo, mats.satinBlackAeroMat);
+    rockerBlade.name = 'outbuildings.garage.porsche992TurboS.rockerSkirt';
+    rockerBlade.scale.set(1.0, 0.65, 1.35);
+    rockerBlade.position.set(0, 0.142 * 0.35, -sideZ * 0.86 * 0.35);
+    rockerGroup.add(rockerBlade);
+
+    // Body-colored upper sill moulding above the black aero skirt blade
+    const upperSillGeo = new THREE.TubeGeometry(rockerCurve, 24, 0.020, 8, false);
+    upperSillGeo.computeBoundingSphere();
+    const upperSill = new THREE.Mesh(upperSillGeo, mats.oceanBlueBodyMat);
+    upperSill.name = 'outbuildings.garage.porsche992TurboS.rockerSkirt.upperMoulding';
+    upperSill.scale.set(1.0, 0.85, 1.1);
+    upperSill.position.set(0, 0.032 + 0.142 * 0.15, -sideZ * 0.86 * 0.1);
+    rockerGroup.add(upperSill);
   }
 }
