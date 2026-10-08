@@ -1,9 +1,9 @@
 import { batch } from '@preact/signals';
 import type { SceneAnnotationStore } from '../../engine/annotation/annotation-system.ts';
-import type { FocusController } from '../../engine/focus/focus-controller.ts';
-import type { PropertyScene } from '../../engine/scene/property-scene.ts';
+import type { FocusController } from '../../engine/rooms/focus-controller.ts';
+import type { PropertyScene } from '../../engine/viewer/property-scene.ts';
 import type { KNXPropertyBusController } from '../../integrations/knx/index.ts';
-import { CIRCUITS } from '../../knx/constants.ts';
+import { CIRCUITS } from '../../integrations/knx/constants.ts';
 import {
   activeTool,
   currentRoomId,
@@ -30,16 +30,16 @@ import {
 } from '../../state/shell-store.ts';
 import { twinStore } from '../../state/twin-store.ts';
 import { buildShareUrl, isRoomZoneId } from '../../state/url-state.ts';
-import type { CircuitId } from '../../types/knx.ts';
-import type { FloorViewMode, SceneAnnotationRecord, TimeOfDay } from '../../types/scene.ts';
-import type { RoomZoneId } from '../../types/topology.ts';
+import type { CircuitId } from '../../core/types/knx.ts';
+import type { FloorViewMode, SceneAnnotationRecord, TimeOfDay } from '../../core/types/scene.ts';
+import type { RoomZoneId } from '../../core/types/topology.ts';
 import type {
   GraphicsMode,
   RoomSceneControl,
   ShareViewState,
   TradeView,
-} from '../../types/twin-ux.ts';
-import { TRADE_VIEW_LABELS } from '../../types/twin-ux.ts';
+} from '../../core/types/twin-ux.ts';
+import { TRADE_VIEW_LABELS } from '../../core/types/twin-ux.ts';
 import type { AnnotatorHudController } from '../annotator/annotator-hud.ts';
 import {
   copyTextWithFallback,

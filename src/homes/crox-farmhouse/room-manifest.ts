@@ -1,12 +1,12 @@
-import { CIRCUITS, DEFAULT_SCENES } from '../../knx/constants.ts';
-import type { CircuitId, ScenePreset } from '../../types/knx.ts';
-import type { RoomZoneId } from '../../types/topology.ts';
+import { CIRCUITS, DEFAULT_SCENES } from '../../integrations/knx/constants.ts';
+import type { CircuitId, ScenePreset } from '../../core/types/knx.ts';
+import type { RoomZoneId } from '../../core/types/topology.ts';
 import type {
   RoomDeviceControl,
   RoomLightControl,
   RoomManifestEntry,
   RoomSceneControl,
-} from '../../types/twin-ux.ts';
+} from '../../core/types/twin-ux.ts';
 
 /**
  * Declarative room manifest for the Crox Farmhouse room context panel.

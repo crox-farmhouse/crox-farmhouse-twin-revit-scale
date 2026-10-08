@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { CutawayWallDescriptor } from '../../types/scene.ts';
-import type { RoomZoneId } from '../../types/topology.ts';
+import type { CutawayWallDescriptor } from '../../core/types/scene.ts';
+import type { RoomZoneId } from '../../core/types/topology.ts';
 
 export interface WindowRomanBlindOptions {
   readonly name: string;

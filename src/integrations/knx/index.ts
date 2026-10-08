@@ -3,20 +3,20 @@ export {
   encodeGroupAddress,
   encodePhysicalAddress,
   formatFrameHex,
-} from '../../knx/addressing.ts';
+} from './addressing.ts';
 export {
   KNXAIAssistant,
   VoiceRecognitionController,
   type AIAssistantExecutionResult,
   type ExecutedToolCallRecord,
-} from '../../knx/ai-assistant.ts';
+} from './ai-assistant.ts';
 export {
   CIRCUITS,
   DEFAULT_SCENES,
   OUTDOOR_CIRCUIT_IDS,
   SCENE_CIRCUIT_IDS,
   SWITCH_SCENE_COUNT,
-} from '../../knx/constants.ts';
+} from './constants.ts';
 export {
   buildTP1FrameHex,
   decodeDpt1,
@@ -30,7 +30,7 @@ export {
   encodeDpt5Scaling,
   encodeDpt9Float,
   parseTP1FrameHex,
-} from '../../knx/dpt-codec.ts';
+} from './dpt-codec.ts';
 export {
   KNXPropertyBusController,
   NIGHT_WALK_ABOVE_CABINET_PCT,
@@ -39,7 +39,7 @@ export {
   NIGHT_WALK_UPLIGHTS_PCT,
   NIGHT_WALK_UTILITY_PCT,
   TV_ARTWORKS,
-} from '../../knx/emulator.ts';
+} from './emulator.ts';
 export {
   BUILDINGS,
   FLOORS,
@@ -47,9 +47,9 @@ export {
   ROOM_ZONES,
   findInteriorRoomZoneAtPoint,
   isPointInsideAnyInteriorRoom,
-} from '../../knx/topology.ts';
+} from './topology.ts';
 export {
   LoopbackSimulationTransport,
   WebSocketKNXGatewayTransport,
   type KNXBusTransport,
-} from '../../knx/transport.ts';
+} from './transport.ts';

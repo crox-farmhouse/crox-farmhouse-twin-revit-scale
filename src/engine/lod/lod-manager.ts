@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { FloorViewMode } from '../../types/scene.ts';
-import type { FloorId, RoomBoundingBox, RoomZoneId } from '../../types/topology.ts';
+import type { FloorViewMode } from '../../core/types/scene.ts';
+import type { FloorId, RoomBoundingBox, RoomZoneId } from '../../core/types/topology.ts';
 import type {
   LodPolicyMode,
   RoomLodDiagnostics,

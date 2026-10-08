@@ -1,8 +1,8 @@
 import type { JSX } from 'preact';
 import { useState } from 'preact/hooks';
 import { currentRoomId, isMobile, liveLevels, navigatorOpen } from '../../state/shell-store.ts';
-import type { CircuitLevels } from '../../types/knx.ts';
-import type { RoomManifestEntry } from '../../types/twin-ux.ts';
+import type { CircuitLevels } from '../../core/types/knx.ts';
+import type { RoomManifestEntry } from '../../core/types/twin-ux.ts';
 import { Icon } from './icons.tsx';
 import { getRoomManifest, getRoomNavTree } from './room-data.ts';
 import { useShell } from './shell-context.ts';

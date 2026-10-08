@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { buildMitredArchitraveSegments } from '../../../../../engine/geometry/index.ts';
-import type { SceneBuilderContext } from '../../../../../types/scene.ts';
+import type { SceneBuilderContext } from '../../../../../core/types/scene.ts';
 
 // ============================================================================
 // ISSUE #8: SMALL ENSUITE BATHROOM IN THE SW CORNER OF THE 1ST-FLOOR STABLE

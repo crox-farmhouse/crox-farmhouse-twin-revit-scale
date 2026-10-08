@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { CircuitId } from '../../../../types/knx.ts';
-import type { SceneBuilderContext } from '../../../../types/scene.ts';
+import type { CircuitId } from '../../../../core/types/knx.ts';
+import type { SceneBuilderContext } from '../../../../core/types/scene.ts';
 
 export interface RecessedFloorUplightOptions {
   readonly name: string;

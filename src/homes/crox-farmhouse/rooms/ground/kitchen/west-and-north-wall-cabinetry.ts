@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { SceneBuilderContext } from '../../../../../types/scene.ts';
+import type { SceneBuilderContext } from '../../../../../core/types/scene.ts';
 import {
   attachDrawerBoxBehindFront,
   buildHollowCabinetCarcass,

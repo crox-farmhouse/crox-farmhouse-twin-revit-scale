@@ -1,8 +1,8 @@
-import type { FocusController, FocusState } from '../../engine/focus/focus-controller.ts';
-import type { PropertyScene } from '../../engine/scene/property-scene.ts';
-import type { KNXPropertyBusController } from '../../knx/emulator.ts';
-import type { CircuitConfig, CircuitId } from '../../types/knx.ts';
-import type { FloorId, RoomZoneId } from '../../types/topology.ts';
+import type { FocusController, FocusState } from '../../engine/rooms/focus-controller.ts';
+import type { PropertyScene } from '../../engine/viewer/property-scene.ts';
+import type { KNXPropertyBusController } from '../../integrations/knx/emulator.ts';
+import type { CircuitConfig, CircuitId } from '../../core/types/knx.ts';
+import type { FloorId, RoomZoneId } from '../../core/types/topology.ts';
 import { twinStore } from '../../state/twin-store.ts';
 import type { HomeHudModel, HudFloor, HudRoom, HudRoomScene } from './hud-model.ts';
 

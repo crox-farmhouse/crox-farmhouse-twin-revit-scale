@@ -5,14 +5,14 @@ import {
 import type {
   MovableTargetCandidate,
   PropertyScene,
-} from '../../engine/scene/property-scene.ts';
+} from '../../engine/viewer/property-scene.ts';
 import { twinStore } from '../../state/twin-store.ts';
 import type {
   AnnotationKind,
   AnnotationToolMode,
   LiveMeasurePreviewState,
   SceneAnnotationRecord,
-} from '../../types/scene.ts';
+} from '../../core/types/scene.ts';
 import { mountAnnotationSummaryPill } from '../components/AnnotationSummaryPill.tsx';
 import {
   copyTextWithFallback,

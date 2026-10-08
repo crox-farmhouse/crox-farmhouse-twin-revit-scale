@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { buildMitredArchitraveSegments } from '../../../../../engine/geometry/index.ts';
-import type { SceneBuilderContext } from '../../../../../types/scene.ts';
+import type { SceneBuilderContext } from '../../../../../core/types/scene.ts';
 import { createGymMirrorGlassTexture } from './gym-mirrors-and-lighting.ts';
 
 /**

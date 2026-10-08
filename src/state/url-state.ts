@@ -1,6 +1,6 @@
-import { ROOM_ZONES } from '../knx/topology.ts';
-import type { RoomZoneId } from '../types/topology.ts';
-import type { ShareViewState, TradeView } from '../types/twin-ux.ts';
+import { ROOM_ZONES } from '../integrations/knx/topology.ts';
+import type { RoomZoneId } from '../core/types/topology.ts';
+import type { ShareViewState, TradeView } from '../core/types/twin-ux.ts';
 
 /**
  * Share-link state codec.

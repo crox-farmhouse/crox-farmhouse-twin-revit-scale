@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import type { CircuitId } from '../../../../../types/knx.ts';
+import type { CircuitId } from '../../../../../core/types/knx.ts';
 import type {
   CutawayWallDescriptor,
   InteractiveUserData,
   SceneBuilderContext,
-} from '../../../../../types/scene.ts';
-import type { RoomZoneId } from '../../../../../types/topology.ts';
+} from '../../../../../core/types/scene.ts';
+import type { RoomZoneId } from '../../../../../core/types/topology.ts';
 import {
   buildCorstonPowerSocket,
   type CorstonSocketPlacement,

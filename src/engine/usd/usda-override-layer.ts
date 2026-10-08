@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { SceneAnnotationRecord, Vec3Tuple } from '../../types/scene.ts';
+import type { SceneAnnotationRecord, Vec3Tuple } from '../../core/types/scene.ts';
 import {
   type UsdPrim,
   type UsdStageDocument,

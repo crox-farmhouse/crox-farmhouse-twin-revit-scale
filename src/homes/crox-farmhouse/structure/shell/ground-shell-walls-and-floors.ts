@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createProfiledSkirtingCapGeometry } from '../../../../engine/geometry/index.ts';
 import { createWovenWoolCarpetTextures } from '../../../../engine/textures/procedural-textures.ts';
-import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../types/scene.ts';
+import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../core/types/scene.ts';
 import { getEastWingSouthWallZ, type createGroundFloorMaterials } from '../ground-floor-materials.ts';
 
 export type GroundShellKitMaterials = Pick<

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { addCasedArchitravePortal, createProfiledSkirtingCapGeometry } from '../../../engine/geometry/index.ts';
-import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../types/scene.ts';
+import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../core/types/scene.ts';
 import type { createFirstFloorMaterials } from './first-floor-materials.ts';
 
 /**

@@ -1,6 +1,6 @@
-import { SmartHomeHub } from '../core/smart-home-hub.ts';
-import type { PropertyScene } from '../engine/scene/property-scene.ts';
-import type { KNXPropertyBusController } from '../knx/emulator.ts';
+import { SmartHomeHub } from '../app/smart-home-hub.ts';
+import type { PropertyScene } from '../engine/viewer/property-scene.ts';
+import type { KNXPropertyBusController } from '../integrations/knx/emulator.ts';
 import { mountTwinStatusBadge } from './components/TwinStatusBadge.tsx';
 import {
   bindCameraAndFloorEvents,

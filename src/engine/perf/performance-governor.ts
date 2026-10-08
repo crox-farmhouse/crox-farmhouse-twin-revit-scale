@@ -1,4 +1,4 @@
-import type { GraphicsMode, GraphicsTier, GraphicsTierSettings } from '../../types/twin-ux.ts';
+import type { GraphicsMode, GraphicsTier, GraphicsTierSettings } from '../../core/types/twin-ux.ts';
 import { percentile } from './benchmark.ts';
 import {
   compareTiers,

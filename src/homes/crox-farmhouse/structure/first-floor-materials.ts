@@ -4,7 +4,7 @@ import {
   createImperialBrickTextures,
   createWovenWoolCarpetTextures,
 } from '../../../engine/textures/procedural-textures.ts';
-import type { SceneBuilderContext } from '../../../types/scene.ts';
+import type { SceneBuilderContext } from '../../../core/types/scene.ts';
 
 /**
  * First-floor level constants and shared architectural materials.

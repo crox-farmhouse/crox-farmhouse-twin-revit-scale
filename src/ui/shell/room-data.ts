@@ -8,10 +8,10 @@ import {
   ROOM_NAV_TREE,
 } from '../../homes/crox-farmhouse/room-manifest.ts';
 import { CROX_ZONE_SCENES } from '../../homes/crox-farmhouse/hud-model.ts';
-import { ROOM_ZONES } from '../../knx/topology.ts';
-import type { FloorViewMode } from '../../types/scene.ts';
-import type { RoomBoundingBox, RoomZoneId } from '../../types/topology.ts';
-import type { RoomManifestEntry } from '../../types/twin-ux.ts';
+import { ROOM_ZONES } from '../../integrations/knx/topology.ts';
+import type { FloorViewMode } from '../../core/types/scene.ts';
+import type { RoomBoundingBox, RoomZoneId } from '../../core/types/topology.ts';
+import type { RoomManifestEntry } from '../../core/types/twin-ux.ts';
 import type { HudRoomScene } from '../focus/hud-model.ts';
 
 export { CROX_ROOM_MANIFEST, getRoomManifest, ROOM_NAV_TREE };

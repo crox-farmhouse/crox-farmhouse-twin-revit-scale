@@ -4,7 +4,7 @@ import {
   buildMitredWallSkirtingGeometry,
 } from '../../../../../engine/geometry/swept-moulding.ts';
 import { buildWindowRomanBlind } from '../../../../../objects/decor/roman-blind.ts';
-import type { SceneBuilderContext } from '../../../../../types/scene.ts';
+import type { SceneBuilderContext } from '../../../../../core/types/scene.ts';
 import type { DiningRoomKit } from '../dining-room.ts';
 import type { DiningRoomSharedMaterials } from './walk-in-cupboard-and-north-wall.ts';
 

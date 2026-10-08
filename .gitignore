@@ -6,3 +6,4 @@ codemod/
 .snapshots/usd-export-cli.mjs
 .snapshots/*.actual
 .snapshots/scene.golden.snap
+.snapshots/lighting-consistency-cli.mjs

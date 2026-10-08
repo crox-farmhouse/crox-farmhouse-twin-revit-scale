@@ -1,9 +1,9 @@
-import type { MovableTargetCandidate } from '../../engine/scene/property-scene.ts';
+import type { MovableTargetCandidate } from '../../engine/viewer/property-scene.ts';
 import type {
   AnnotationKind,
   SceneAnnotationHit,
   SceneObjectTransformAnnotation,
-} from '../../types/scene.ts';
+} from '../../core/types/scene.ts';
 
 export function requireAnnotatorEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);

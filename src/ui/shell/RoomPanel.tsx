@@ -9,10 +9,10 @@ import {
   timeOfDay,
   tradeView,
 } from '../../state/shell-store.ts';
-import type { CircuitLevels } from '../../types/knx.ts';
-import type { TimeOfDay } from '../../types/scene.ts';
-import type { RoomLightControl, RoomManifestEntry, TradeView } from '../../types/twin-ux.ts';
-import { TRADE_VIEW_LABELS } from '../../types/twin-ux.ts';
+import type { CircuitLevels } from '../../core/types/knx.ts';
+import type { TimeOfDay } from '../../core/types/scene.ts';
+import type { RoomLightControl, RoomManifestEntry, TradeView } from '../../core/types/twin-ux.ts';
+import { TRADE_VIEW_LABELS } from '../../core/types/twin-ux.ts';
 import { Icon, type IconName } from './icons.tsx';
 import { NotesSection } from './NotesSection.tsx';
 import { getRoomLabel, getRoomLevelScenes, getRoomManifest } from './room-data.ts';

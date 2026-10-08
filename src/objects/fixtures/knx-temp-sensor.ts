@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import type { UfhZoneId } from '../../engine/scene/property-scene-profile.ts';
-import type { CutawayWallDescriptor, SceneBuilderContext } from '../../types/scene.ts';
-import type { RoomZoneId } from '../../types/topology.ts';
+import type { UfhZoneId } from '../../engine/viewer/property-scene-profile.ts';
+import type { CutawayWallDescriptor, SceneBuilderContext } from '../../core/types/scene.ts';
+import type { RoomZoneId } from '../../core/types/topology.ts';
 
 export interface RoomKnxTempSensorOptions {
   readonly name: string;

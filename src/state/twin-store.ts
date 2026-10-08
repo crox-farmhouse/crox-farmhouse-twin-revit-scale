@@ -6,14 +6,14 @@ import {
   type Signal,
 } from '@preact/signals';
 import type { UsdStageStatsSummary } from '../engine/usd/stage-runtime.ts';
-import { CIRCUITS } from '../knx/constants.ts';
-import type { CircuitId, CircuitLevels, KNXTelegram } from '../types/knx.ts';
+import { CIRCUITS } from '../integrations/knx/constants.ts';
+import type { CircuitId, CircuitLevels, KNXTelegram } from '../core/types/knx.ts';
 import type {
   AnnotationToolMode,
   FloorViewMode,
   SceneAnnotationRecord,
   TimeOfDay,
-} from '../types/scene.ts';
+} from '../core/types/scene.ts';
 
 function createInitialDeviceStates(): Readonly<Record<CircuitId, number>> {
   const initial = {} as Record<CircuitId, number>;

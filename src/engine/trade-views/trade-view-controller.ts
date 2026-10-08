@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { TradeView } from '../../types/twin-ux.ts';
+import type { TradeView } from '../../core/types/twin-ux.ts';
 import { classifyObject, isRenderableObject, type TradeCategory } from './trade-classifier.ts';
 import { TRADE_CATEGORY_COLORS, TRADE_VIEW_PROFILES, type TradeDisplayMode } from './trade-view-profiles.ts';
 import { ServiceScheduleIndex, type ServicePoint } from './service-labels.ts';

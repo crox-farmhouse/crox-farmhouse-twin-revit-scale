@@ -1,7 +1,7 @@
-import { CIRCUITS } from '../../knx/constants.ts';
-import { ROOM_ZONES } from '../../knx/topology.ts';
-import type { FocusRoom } from '../../engine/focus/focus-controller.ts';
-import type { RoomZoneDefinition, RoomZoneId } from '../../types/topology.ts';
+import { CIRCUITS } from '../../integrations/knx/constants.ts';
+import { ROOM_ZONES } from '../../integrations/knx/topology.ts';
+import type { FocusRoom } from '../../engine/rooms/focus-controller.ts';
+import type { RoomZoneDefinition, RoomZoneId } from '../../core/types/topology.ts';
 import type { HomeHudModel, HudFloor, HudRoom, HudRoomScene } from '../../ui/focus/hud-model.ts';
 
 const MAIN_HOUSE_FLOORS = ['ground', 'first'] as const;

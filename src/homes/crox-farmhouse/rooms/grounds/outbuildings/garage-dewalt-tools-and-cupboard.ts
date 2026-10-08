@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createBrushedStainlessSteelMaterial } from './shared-geometry-and-materials.ts';
-import type { SceneBuilderContext } from '../../../../../types/scene';
+import type { SceneBuilderContext } from '../../../../../core/types/scene';
 
 let cachedDeWaltLogoTexture: THREE.CanvasTexture | null = null;
 

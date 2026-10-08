@@ -8,7 +8,7 @@ import type {
   AccessPointEntityState,
   CctvCameraEntityState,
 } from '../../../core/entities.ts';
-import type { SceneBuilderContext } from '../../../types/scene.ts';
+import type { SceneBuilderContext } from '../../../core/types/scene.ts';
 import {
   CROX_FARMHOUSE_UNIFI_ACCESS_POINTS,
   CROX_FARMHOUSE_UNIFI_CAMERAS,

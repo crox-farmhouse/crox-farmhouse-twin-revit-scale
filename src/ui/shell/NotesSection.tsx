@@ -11,9 +11,9 @@ import {
 } from '../../state/shell-store.ts';
 import { twinStore } from '../../state/twin-store.ts';
 import { isRoomZoneId } from '../../state/url-state.ts';
-import type { SceneAnnotationRecord } from '../../types/scene.ts';
-import type { RoomZoneId } from '../../types/topology.ts';
-import { TRADE_VIEW_LABELS } from '../../types/twin-ux.ts';
+import type { SceneAnnotationRecord } from '../../core/types/scene.ts';
+import type { RoomZoneId } from '../../core/types/topology.ts';
+import { TRADE_VIEW_LABELS } from '../../core/types/twin-ux.ts';
 import { formatLength } from './format.ts';
 import { Icon, type IconName } from './icons.tsx';
 import { getRoomManifest } from './room-data.ts';

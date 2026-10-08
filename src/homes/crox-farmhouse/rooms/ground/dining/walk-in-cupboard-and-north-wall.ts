@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { buildWindowRomanBlind } from '../../../../../objects/decor/roman-blind.ts';
 import { buildBootRoomHeatingManifold } from '../../../../../objects/fixtures/hydronic-manifold.ts';
-import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../../types/scene.ts';
+import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../../core/types/scene.ts';
 import type { DiningRoomKit } from '../dining-room.ts';
 
 export interface DiningRoomSharedMaterials {

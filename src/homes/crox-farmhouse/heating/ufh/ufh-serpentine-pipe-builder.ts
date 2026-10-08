@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { UfhZoneId } from '../../../../engine/scene/property-scene-profile.ts';
+import type { UfhZoneId } from '../../../../engine/viewer/property-scene-profile.ts';
 
 export function roundPolylineCorners2D(
   waypoints: ReadonlyArray<readonly [number, number]>,

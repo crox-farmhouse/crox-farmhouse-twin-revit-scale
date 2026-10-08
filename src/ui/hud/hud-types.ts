@@ -1,6 +1,6 @@
-import type { SmartHomeHub } from '../../core/smart-home-hub.ts';
-import type { PropertyScene } from '../../engine/scene/property-scene.ts';
-import type { KNXPropertyBusController } from '../../knx/emulator.ts';
+import type { SmartHomeHub } from '../../app/smart-home-hub.ts';
+import type { PropertyScene } from '../../engine/viewer/property-scene.ts';
+import type { KNXPropertyBusController } from '../../integrations/knx/emulator.ts';
 
 export function requireElement<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);

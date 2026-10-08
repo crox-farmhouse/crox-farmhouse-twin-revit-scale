@@ -6,7 +6,7 @@ import {
   type Point2D,
 } from '../../../../engine/geometry/index.ts';
 import { buildTraditionalWindowCurtains } from '../../../../objects/decor/curtains-and-fiddle-leaf-plant.ts';
-import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../types/scene.ts';
+import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../core/types/scene.ts';
 import type {
   GroundShellKitMaterials,
   GroundShellWallsAndFloors,

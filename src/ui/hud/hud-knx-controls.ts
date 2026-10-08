@@ -1,15 +1,15 @@
 import type { SmartHomeBusEvent } from '../../core/entities.ts';
-import type { SmartHomeHub } from '../../core/smart-home-hub.ts';
-import type { PropertyScene } from '../../engine/scene/property-scene.ts';
+import type { SmartHomeHub } from '../../app/smart-home-hub.ts';
+import type { PropertyScene } from '../../engine/viewer/property-scene.ts';
 import {
   KNXAIAssistant,
   VoiceRecognitionController,
   type ExecutedToolCallRecord,
-} from '../../knx/ai-assistant.ts';
-import { CIRCUITS } from '../../knx/constants.ts';
-import type { KNXPropertyBusController } from '../../knx/emulator.ts';
+} from '../../integrations/knx/ai-assistant.ts';
+import { CIRCUITS } from '../../integrations/knx/constants.ts';
+import type { KNXPropertyBusController } from '../../integrations/knx/emulator.ts';
 import { twinStore } from '../../state/twin-store.ts';
-import type { KNXTelegram, ShortPressMode, WakeBehavior } from '../../types/knx.ts';
+import type { KNXTelegram, ShortPressMode, WakeBehavior } from '../../core/types/knx.ts';
 import { requireElement } from './hud-types.ts';
 
 export class HudKnxControlsController {

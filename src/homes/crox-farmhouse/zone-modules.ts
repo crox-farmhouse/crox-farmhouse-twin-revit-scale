@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import { ROOM_ZONES } from '../../knx/topology.ts';
+import { ROOM_ZONES } from '../../integrations/knx/topology.ts';
 import type {
   CameraPresetDefinition,
   SceneBuilderContext,
   SceneZoneModule,
   ZoneIndicatorMaterials,
-} from '../../types/scene.ts';
-import { createScopedBuilderContext } from '../../engine/scene/scene-content.ts';
-import { SceneZoneRegistry } from '../../engine/scene/scene-zone-registry.ts';
+} from '../../core/types/scene.ts';
+import { createScopedBuilderContext } from '../../engine/viewer/scene-content.ts';
+import { SceneZoneRegistry } from '../../engine/viewer/scene-zone-registry.ts';
 import {
   MAIN_EAST_WING_OFFSET,
   MAIN_EAST_WING_ROTATION_Y,

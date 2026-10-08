@@ -1,7 +1,7 @@
-import type { CircuitId } from '../../types/knx.ts';
-import { PropertyScene } from '../../engine/scene/property-scene.ts';
-import type { PropertySceneProfile } from '../../engine/scene/property-scene-profile.ts';
-import type { InteractiveUserData } from '../../types/scene.ts';
+import type { CircuitId } from '../../core/types/knx.ts';
+import { PropertyScene } from '../../engine/viewer/property-scene.ts';
+import type { PropertySceneProfile } from '../../engine/viewer/property-scene-profile.ts';
+import type { InteractiveUserData } from '../../core/types/scene.ts';
 import { CROX_FARMHOUSE_LOD_REGISTRATIONS } from './manifest.ts';
 import { buildCroxUnderfloorHeatingSystem } from './heating/ufh-system.ts';
 import {

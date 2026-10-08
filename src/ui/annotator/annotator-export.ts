@@ -1,5 +1,5 @@
 import type { SceneAnnotationStore } from '../../engine/annotation/annotation-system.ts';
-import type { SceneAnnotationRecord } from '../../types/scene.ts';
+import type { SceneAnnotationRecord } from '../../core/types/scene.ts';
 
 export interface AnnotationsExportPayload {
   readonly exportedAt: string;

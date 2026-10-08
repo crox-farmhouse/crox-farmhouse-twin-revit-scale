@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { createScopedBuilderContext } from '../../../../engine/scene/scene-content.ts';
+import { createScopedBuilderContext } from '../../../../engine/viewer/scene-content.ts';
 import { buildGroundFloorCorstonSockets } from '../../../../objects/fixtures/corston-power-sockets.ts';
 import { buildRoomKnxTempSensor } from '../../../../objects/fixtures/knx-temp-sensor.ts';
 import { buildRecessedFloorUplights } from './floor-uplights.ts';
 import { buildRoomCeilingPendant, buildRoomCorstonToggleSwitch } from './kitchen-knx-lighting.ts';
 import { buildRoomCeilingPirSensor } from './room-motion-sensors.ts';
-import type { SceneBuilderContext } from '../../../../types/scene.ts';
+import type { SceneBuilderContext } from '../../../../core/types/scene.ts';
 import {
   MAIN_EAST_WING_OFFSET,
   MAIN_EAST_WING_ROTATION_Y,

@@ -1,5 +1,5 @@
-import type { CircuitConfig, CircuitId } from '../../types/knx.ts';
-import type { FloorId, RoomBoundingBox, RoomZoneId } from '../../types/topology.ts';
+import type { CircuitConfig, CircuitId } from '../../core/types/knx.ts';
+import type { FloorId, RoomBoundingBox, RoomZoneId } from '../../core/types/topology.ts';
 
 /** Named lighting scene preset for a room in the focus-aware HUD. */
 export interface HudRoomScene {

@@ -4,7 +4,7 @@ import {
   createVitoriaRossoChequerboardTextures,
   VITORIA_CHEQUER_REPEAT_M,
 } from '../../../engine/textures/vitoria-chequerboard-tiles.ts';
-import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../types/scene.ts';
+import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../core/types/scene.ts';
 
 /**
  * Continuous ~7.62° (`-0.13299` rad) angle of the Main East-West Wing (`Cinema Room`, `Hall`,

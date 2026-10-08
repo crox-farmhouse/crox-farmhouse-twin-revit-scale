@@ -4,7 +4,7 @@ import type {
   ThermalWarmupEstimate,
   UfhZoneId,
   UfhZoneState,
-} from '../../../../engine/scene/property-scene-profile.ts';
+} from '../../../../engine/viewer/property-scene-profile.ts';
 import { transformEastWingTuple } from '../../structure/ground-floor-materials.ts';
 import {
   addClosedUfhCircuit,

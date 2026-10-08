@@ -1,4 +1,4 @@
-import type { BuildingId, FloorId, RoomBoundingBox, RoomZoneId } from '../types/topology.ts';
+import type { BuildingId, FloorId, RoomBoundingBox, RoomZoneId } from './types/topology.ts';
 
 /**
  * Protocol-agnostic Smart Home Core Entity, LOD & Integration Contracts.

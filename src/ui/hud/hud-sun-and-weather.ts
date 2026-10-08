@@ -1,7 +1,7 @@
-import type { PropertyScene } from '../../engine/scene/property-scene.ts';
-import type { KNXPropertyBusController } from '../../knx/emulator.ts';
+import type { PropertyScene } from '../../engine/viewer/property-scene.ts';
+import type { KNXPropertyBusController } from '../../integrations/knx/emulator.ts';
 import { timeOfDayToSunMinutes, twinStore } from '../../state/twin-store.ts';
-import type { TimeOfDay } from '../../types/scene.ts';
+import type { TimeOfDay } from '../../core/types/scene.ts';
 import { requireElement, type HudSharedContext } from './hud-types.ts';
 
 export const TOD_LUX_MAP: Readonly<Record<TimeOfDay, number>> = {

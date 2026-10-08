@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { TradeView } from '../../types/twin-ux.ts';
+import type { TradeView } from '../../core/types/twin-ux.ts';
 import {
   classifyObject,
   isRenderableObject,

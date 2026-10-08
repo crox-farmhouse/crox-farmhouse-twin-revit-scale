@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { PropertyScene } from '../../engine/scene/property-scene.ts';
-import type { AnnotationKind, SceneAnnotationRecord } from '../../types/scene.ts';
+import type { PropertyScene } from '../../engine/viewer/property-scene.ts';
+import type { AnnotationKind, SceneAnnotationRecord } from '../../core/types/scene.ts';
 import type { ProjectedPinScreenCoord } from './annotator-types.ts';
 
 const ORTHO_FRUSTUM_HALF_HEIGHT = 12;

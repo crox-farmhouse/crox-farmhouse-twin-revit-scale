@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import type { CircuitId } from '../../../../../types/knx.ts';
+import type { CircuitId } from '../../../../../core/types/knx.ts';
 import type {
   InteractiveUserData,
   SceneBuilderContext,
-} from '../../../../../types/scene.ts';
+} from '../../../../../core/types/scene.ts';
 import {
   createBraidedCableTexture,
   createCementTexture,

@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { GraphicsTier } from '../../types/twin-ux.ts';
+import type { GraphicsTier } from '../../core/types/twin-ux.ts';
 import {
   detectDeviceProfile,
   estimateInitialTier,

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CROX_FARMHOUSE_LOD_REGISTRATIONS } from '../../homes/crox-farmhouse/manifest.ts';
-import type { Vec3Tuple } from '../../types/scene.ts';
+import type { Vec3Tuple } from '../../core/types/scene.ts';
 import { convertThreeMaterialToUsdSpec } from './procedural-materials.ts';
 import {
   CROX_USD_ZONE_LAYERS,

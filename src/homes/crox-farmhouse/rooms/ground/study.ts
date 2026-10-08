@@ -4,7 +4,7 @@ import {
   buildMitredWallSkirtingGeometry,
   buildPolygonalFloorSlab,
 } from '../../../../engine/geometry/index.ts';
-import type { SceneBuilderContext } from '../../../../types/scene.ts';
+import type { SceneBuilderContext } from '../../../../core/types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
 import type { defineTier2Levels } from '../../structure/tier2-levels.ts';

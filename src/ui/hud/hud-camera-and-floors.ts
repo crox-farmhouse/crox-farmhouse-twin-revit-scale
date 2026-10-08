@@ -1,8 +1,8 @@
 import type { LodPolicyMode, RoomLodDiagnostics } from '../../core/entities.ts';
-import type { GraphicsQualityPreset } from '../../engine/scene/controllers/post-processing-pipeline.ts';
-import type { PropertyScene } from '../../engine/scene/property-scene.ts';
+import type { GraphicsQualityPreset } from '../../engine/rendering/post-processing-pipeline.ts';
+import type { PropertyScene } from '../../engine/viewer/property-scene.ts';
 import { twinStore } from '../../state/twin-store.ts';
-import type { CameraPresetName, FloorViewMode } from '../../types/scene.ts';
+import type { CameraPresetName, FloorViewMode } from '../../core/types/scene.ts';
 import { requireElement } from './hud-types.ts';
 
 export function syncFloorModeUI(scene: PropertyScene): void {

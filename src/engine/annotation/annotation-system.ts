@@ -14,7 +14,7 @@ import type {
   SceneMeshDiagnosticInfo,
   SceneObjectTransformAnnotation,
   Vec3Tuple,
-} from '../../types/scene.ts';
+} from '../../core/types/scene.ts';
 
 const STORAGE_KEY = 'crox_twin_annotations_v1';
 

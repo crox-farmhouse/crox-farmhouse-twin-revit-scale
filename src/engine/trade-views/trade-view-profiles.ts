@@ -1,4 +1,4 @@
-import type { TradeView } from '../../types/twin-ux.ts';
+import type { TradeView } from '../../core/types/twin-ux.ts';
 import type { TradeCategory } from './trade-classifier.ts';
 
 /** How a category is rendered in a given trade view. */

@@ -7,14 +7,14 @@ import { buildFirstFloorPendantsAndSwitches } from './pendants-and-switches.ts';
 import { buildFirstFloorCeilingsAndRoof } from './roof.ts';
 import { buildUpperLanding } from './upper-landing.ts';
 import { buildWestWingCorridor } from './west-wing-corridor.ts';
-import { createScopedBuilderContext } from '../../../../engine/scene/scene-content.ts';
+import { createScopedBuilderContext } from '../../../../engine/viewer/scene-content.ts';
 import { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
 import {
   MAIN_EAST_WING_OFFSET,
   MAIN_EAST_WING_ROTATION_Y,
 } from '../../structure/ground-floor-materials.ts';
-import type { SceneBuilderContext } from '../../../../types/scene.ts';
+import type { SceneBuilderContext } from '../../../../core/types/scene.ts';
 
 /**
  * Builds the First Floor (Upstairs) of the Main House (`Y = 2.28m..4.38m`) and the

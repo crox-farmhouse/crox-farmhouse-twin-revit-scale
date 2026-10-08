@@ -17,7 +17,7 @@ import { RoomLodController } from '../../src/engine/lod/lod-manager.ts';
 import {
   buildPropertySceneContent,
   createPropertySceneLayers,
-} from '../../src/engine/scene/scene-content.ts';
+} from '../../src/engine/viewer/scene-content.ts';
 import {
   convertCroxSceneToUsdStageBundle,
   parseAndInstantiateUsdaZone,

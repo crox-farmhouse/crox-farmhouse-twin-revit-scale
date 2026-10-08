@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { SceneInteractionManager } from '../../../../../engine/scene/interaction-manager.ts';
+import type { SceneInteractionManager } from '../../../../../engine/interaction/interaction-manager.ts';
 import {
   createBrushedStainlessTexture,
   createMarbleBacksplashTexture,

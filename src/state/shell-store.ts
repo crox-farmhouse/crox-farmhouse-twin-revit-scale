@@ -1,8 +1,8 @@
 import { computed, signal, type ReadonlySignal, type Signal } from '@preact/signals';
-import type { CircuitLevels } from '../types/knx.ts';
-import type { FloorViewMode, TimeOfDay } from '../types/scene.ts';
-import type { RoomZoneId } from '../types/topology.ts';
-import type { GraphicsMode, TradeView } from '../types/twin-ux.ts';
+import type { CircuitLevels } from '../core/types/knx.ts';
+import type { FloorViewMode, TimeOfDay } from '../core/types/scene.ts';
+import type { RoomZoneId } from '../core/types/topology.ts';
+import type { GraphicsMode, TradeView } from '../core/types/twin-ux.ts';
 
 /**
  * UI-shell state (top bar, side panels, tool dock, modals, toasts).

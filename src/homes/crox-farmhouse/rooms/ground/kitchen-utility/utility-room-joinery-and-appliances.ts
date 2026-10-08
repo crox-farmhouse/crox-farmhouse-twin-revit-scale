@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { InteractiveUserData, SceneBuilderContext } from '../../../../../types/scene.ts';
+import type { InteractiveUserData, SceneBuilderContext } from '../../../../../core/types/scene.ts';
 import {
   createBrushedStainlessTexture,
   createMarbleBacksplashTexture,

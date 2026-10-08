@@ -1,4 +1,4 @@
-import type { GraphicsTier, GraphicsTierSettings } from '../../types/twin-ux.ts';
+import type { GraphicsTier, GraphicsTierSettings } from '../../core/types/twin-ux.ts';
 
 /** Tiers ordered from cheapest to most expensive. */
 export const GRAPHICS_TIER_ORDER: readonly GraphicsTier[] = ['low', 'medium', 'high', 'ultra'];

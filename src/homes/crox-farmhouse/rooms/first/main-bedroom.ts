@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/index.ts';
 import { buildLeafieldSuperKingBed } from './leafield-super-king-bed.ts';
-import type { SceneBuilderContext } from '../../../../types/scene.ts';
+import type { SceneBuilderContext } from '../../../../core/types/scene.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
 

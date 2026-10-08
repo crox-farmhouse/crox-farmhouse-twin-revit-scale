@@ -12,8 +12,8 @@ import {
   viewMode,
   type ShellViewMode,
 } from '../../state/shell-store.ts';
-import type { FloorViewMode } from '../../types/scene.ts';
-import { TRADE_VIEW_LABELS, type TradeView } from '../../types/twin-ux.ts';
+import type { FloorViewMode } from '../../core/types/scene.ts';
+import { TRADE_VIEW_LABELS, type TradeView } from '../../core/types/twin-ux.ts';
 import { Icon, type IconName } from './icons.tsx';
 import { PROPERTY_NAME } from './room-data.ts';
 import { useShell } from './shell-context.ts';

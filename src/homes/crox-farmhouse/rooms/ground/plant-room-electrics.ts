@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../types/scene.ts';
+import type { CutawayWallDescriptor, SceneBuilderContext } from '../../../../core/types/scene.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { defineTier2Levels } from '../../structure/tier2-levels.ts';
 

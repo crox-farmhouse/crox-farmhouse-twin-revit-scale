@@ -1,4 +1,4 @@
-import type { PropertyScene } from '../engine/scene/property-scene.ts';
+import type { PropertyScene } from '../engine/viewer/property-scene.ts';
 import {
   INITIAL_INCREMENTAL_USDA_ZONES,
   type UsdIndexedPrimInfo,

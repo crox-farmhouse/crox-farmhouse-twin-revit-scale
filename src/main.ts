@@ -1,4 +1,4 @@
-import { SmartHomeHub } from './core/smart-home-hub.ts';
+import { SmartHomeHub } from './app/smart-home-hub.ts';
 import {
   KNXPropertyBusController,
   LoopbackSimulationTransport,
@@ -6,8 +6,8 @@ import {
 } from './integrations/knx/index.ts';
 import { SceneAnnotationStore } from './engine/annotation/annotation-system.ts';
 import { CroxPropertyScene } from './homes/crox-farmhouse/crox-property-scene.ts';
-import type { InboundKNXFrame } from './types/knx.ts';
-import { FocusController } from './engine/focus/focus-controller.ts';
+import type { InboundKNXFrame } from './core/types/knx.ts';
+import { FocusController } from './engine/rooms/focus-controller.ts';
 import { createCroxFarmhouseFocusRooms } from './homes/crox-farmhouse/hud-model.ts';
 import { AnnotatorHudController } from './ui/annotator-hud.ts';
 import { HudController } from './ui/hud.ts';

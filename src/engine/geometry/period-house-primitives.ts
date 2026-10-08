@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { SceneInteractionManager } from '../scene/interaction-manager.ts';
+import type { SceneInteractionManager } from '../interaction/interaction-manager.ts';
 import { addCasedArchitravePortal } from './swept-moulding.ts';
 
 

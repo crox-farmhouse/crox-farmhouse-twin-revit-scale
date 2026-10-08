@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import type { CircuitId } from '../../types/knx.ts';
+import type { CircuitId } from '../../core/types/knx.ts';
 import type {
   CutawayWallDescriptor,
   InteractiveUserData,
   SceneBuilderContext,
-} from '../../types/scene.ts';
+} from '../../core/types/scene.ts';
 
 export type CorstonSocketKind =
   | 'double'

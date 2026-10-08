@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Vec3Tuple } from '../../types/scene.ts';
+import type { Vec3Tuple } from '../../core/types/scene.ts';
 import type {
   UsdPreviewSurfaceData,
   UsdProceduralPatternKind,

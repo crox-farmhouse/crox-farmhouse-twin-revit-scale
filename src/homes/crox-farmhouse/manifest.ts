@@ -7,9 +7,9 @@ import {
   KNX_PHYSICAL_DEVICES,
   ROOM_ZONES,
 } from '../../integrations/knx/index.ts';
-import { DEFAULT_UNIFI_ACCESS_POINTS } from '../../integrations/unifi-access/adapter.ts';
-import { DEFAULT_UNIFI_PROTECT_CAMERAS } from '../../integrations/unifi-protect/adapter.ts';
-import type { RoomZoneDefinition } from '../../types/topology.ts';
+import { DEFAULT_UNIFI_ACCESS_POINTS } from '../../integrations/unifi/access/adapter.ts';
+import { DEFAULT_UNIFI_PROTECT_CAMERAS } from '../../integrations/unifi/protect/adapter.ts';
+import type { RoomZoneDefinition } from '../../core/types/topology.ts';
 
 /**
  * Declarative Property Manifest for Crox Farmhouse (Tur Langton).

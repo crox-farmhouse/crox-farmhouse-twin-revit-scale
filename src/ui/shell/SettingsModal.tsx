@@ -11,7 +11,7 @@ import {
   settingsOpen,
   units,
 } from '../../state/shell-store.ts';
-import type { GraphicsMode } from '../../types/twin-ux.ts';
+import type { GraphicsMode } from '../../core/types/twin-ux.ts';
 import { Icon } from './icons.tsx';
 import { useShell } from './shell-context.ts';
 

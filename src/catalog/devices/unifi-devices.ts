@@ -3,7 +3,7 @@ import type {
   AccessPointEntityState,
   CctvCameraEntityState,
 } from '../../core/entities.ts';
-import type { InteractiveUserData } from '../../types/scene.ts';
+import type { InteractiveUserData } from '../../core/types/scene.ts';
 
 export interface UniFiCameraVisualHandle {
   readonly entityId: string;
