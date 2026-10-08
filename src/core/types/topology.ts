@@ -36,6 +36,7 @@ export type RoomZoneId =
   | 'annexBedroom'
   | 'outbuildingGym'
   | 'outbuildingGarage'
+  | 'outbuildingStore'
   | 'outbuildingBarn'
   | 'outbuildingMezzanine'
   | 'outbuildingStableOffice'

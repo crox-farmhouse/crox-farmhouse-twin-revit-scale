@@ -38,6 +38,10 @@ export interface InteractiveUserData {
   readonly switchLocation?: string;
   readonly switchDirection?: 'up' | 'down';
   readonly switchPa?: string;
+  /** 1-based gang on a multi-gang KNX push-button plate. */
+  readonly switchGang?: number;
+  /** Physical address of a KNX presence detector (ceiling PIR) mesh. */
+  readonly presenceDetectorPa?: string;
   readonly sensorGa?: string;
   readonly zoneId?: RoomZoneId;
   readonly circuitId?: CircuitId;

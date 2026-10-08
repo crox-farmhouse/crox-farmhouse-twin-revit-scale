@@ -27,7 +27,16 @@ export type RoomPendantCircuitId =
   | 'upperLandingPendant'
   | 'bedroom2Pendant'
   | 'bedroom3Pendant'
-  | 'bedroom4Pendant';
+  | 'bedroom4Pendant'
+  | 'hallStairLeds'
+  | 'hallBeamLeds'
+  | 'hallLamps5A'
+  | 'walkInCupboardLeds'
+  | 'livingRoomShelfLeds'
+  | 'livingRoomTvBacklight'
+  | 'sittingRoomLamps5A'
+  | 'sittingRoomShelfLeds'
+  | 'upperLandingSconces';
 
 /** Room circuits switched automatically by a room PIR (see `MOTION_CIRCUIT_RULES`). */
 export type MotionCircuitId = 'wineCellarLeds' | 'cloakroomWcLights';
@@ -47,7 +56,28 @@ export type OutbuildingCircuitId =
   | 'stableOfficeSpotlights'
   | 'stableOfficeWallsAndLamps5A'
   | 'stableSuiteDownlights'
-  | 'stableSuiteLamps5A';
+  | 'stableSuiteLamps5A'
+  | 'gymMirrorBacklights'
+  | 'gymCoveLeds'
+  | 'gymTrussSpots'
+  | 'garageShowerLights'
+  | 'garageTrussSpots'
+  | 'storeLoftLeds'
+  | 'golfSimHalo'
+  | 'barnCoveLeds'
+  | 'barnWallSconces'
+  | 'barnStairLeds'
+  | 'barnPoolTableLight'
+  | 'barnPictureLights'
+  | 'mezzanineDownlights'
+  | 'mezzanineBookcaseLight'
+  | 'stableCloakroomLights'
+  | 'stableOfficeLamps5A'
+  | 'stableEnsuiteLights'
+  | 'stableBalconyLights';
+
+/** Exterior feature circuits outside the legacy kitchen scene `outdoorLevels`. */
+export type ExteriorFeatureCircuitId = 'pergolaFestoons' | 'stableExternalWallLights';
 
 export type CircuitId =
   | KitchenSceneCircuitId
@@ -59,11 +89,30 @@ export type CircuitId =
   | MotionCircuitId
   | 'entranceHallUplights'
   | OutdoorCircuitId
+  | ExteriorFeatureCircuitId
   | OutbuildingCircuitId;
 
 export type SceneCircuitLevels = Record<KitchenSceneCircuitId, number>;
 export type OutdoorCircuitLevels = Record<OutdoorCircuitId, number>;
 export type CircuitLevels = Record<CircuitId, number>;
+
+/** Lighting fitting type carried by a single circuit. */
+export type CircuitKind =
+  | 'pendants'
+  | 'downlights'
+  | 'spots'
+  | 'battens'
+  | 'wall'
+  | 'picture'
+  | 'shelf'
+  | 'cove'
+  | 'strip'
+  | 'step'
+  | 'uplights'
+  | 'task'
+  | 'lamps'
+  | 'feature'
+  | 'exterior';
 
 export interface CircuitConfig {
   readonly id: CircuitId;
@@ -79,7 +128,32 @@ export interface CircuitConfig {
   readonly gaValue: string;
   readonly gaStatus: string;
   readonly isSceneMember: boolean;
+  /** Fitting type on this channel (one type per circuit) — drives UI grouping and audits. */
+  readonly kind?: CircuitKind;
+  /** False for switched-only channels (5 A lamp sockets on a relay, LED drivers without DALI). */
+  readonly dimmable?: boolean;
+  /** Level the actuator channel boots at (percent). Defaults to 85. */
+  readonly defaultLevel?: number;
+  /** Extra natural-language names ("island pendants", "barn downlights") for the AI resolver. */
+  readonly aliases?: readonly string[];
 }
+
+/** A per-zone lighting scene stepped by the zone's wall toggles (Bright → … → Night). */
+export interface ZoneScenePreset {
+  readonly id: string;
+  readonly label: string;
+  readonly levels: Partial<Record<CircuitId, number>>;
+}
+
+/**
+ * Lighting state of a zone as owned by its actuator channels:
+ * - `scene`: a stored zone scene is active (`sceneIndex`)
+ * - `full`: hold-up full brightness
+ * - `night`: hold-down night object (very dim)
+ * - `manual`: individual channels set from UI / AI / bus
+ * - `off`: everything 0 % (e.g. night mode timed out on vacancy)
+ */
+export type ZoneLightingMode = 'scene' | 'full' | 'night' | 'manual' | 'off';
 
 export interface AuxiliaryCircuitLevels {
   utilitySpotlights?: number;
