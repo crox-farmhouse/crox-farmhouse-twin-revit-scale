@@ -10,13 +10,21 @@ export {
   type AIAssistantExecutionResult,
   type ExecutedToolCallRecord,
 } from './ai-assistant.ts';
-export {
-  CIRCUITS,
-  DEFAULT_SCENES,
-  OUTDOOR_CIRCUIT_IDS,
-  SCENE_CIRCUIT_IDS,
-  SWITCH_SCENE_COUNT,
-} from './constants.ts';
+export { OUTDOOR_CIRCUIT_IDS, SCENE_CIRCUIT_IDS, SWITCH_SCENE_COUNT } from './scene-table.ts';
+export { exportDeviceCsv, exportGroupAddressCsv } from './ga-export.ts';
+export { MotionPresenceBridge, isInsideCoverage, isPointInPolygonXZ } from './motion-presence.ts';
+export { findCircuit, findZone } from './project.ts';
+export type {
+  KnxCoverageVolume,
+  KnxGroupAddressEntry,
+  KnxLightingZone,
+  KnxPresenceDetectorDevice,
+  KnxProject,
+  KnxPushButtonDevice,
+  KnxPushButtonGang,
+  KnxZoneGroupAddresses,
+} from './project.ts';
+export { ZoneLightingController } from './zone-lighting.ts';
 export {
   buildTP1FrameHex,
   decodeDpt1,
@@ -39,15 +47,9 @@ export {
   NIGHT_WALK_UPLIGHTS_PCT,
   NIGHT_WALK_UTILITY_PCT,
   TV_ARTWORKS,
+  type KnxPresenceState,
+  type KnxZoneStateView,
 } from './emulator.ts';
-export {
-  BUILDINGS,
-  FLOORS,
-  KNX_PHYSICAL_DEVICES,
-  ROOM_ZONES,
-  findInteriorRoomZoneAtPoint,
-  isPointInsideAnyInteriorRoom,
-} from './topology.ts';
 export {
   LoopbackSimulationTransport,
   WebSocketKNXGatewayTransport,

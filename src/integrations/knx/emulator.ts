@@ -12,12 +12,10 @@ import type {
   RoomMotionSensorId,
   ScenePreset,
   TelegramEmitInput,
+  ZoneLightingMode,
 } from '../../core/types/knx.ts';
 import type { RoomZoneId } from '../../core/types/topology.ts';
 import { compileEEPROMBytes } from './addressing.ts';
-import { CIRCUITS, DEFAULT_SCENES, ROOM_AUTOMATION_CONFIG, SCENE_CIRCUIT_IDS } from './constants.ts';
-import { CROX_ZONE_SCENES } from '../../homes/crox-farmhouse/hud-model.ts';
-import { RoomAutomation, type RoomMotionSensorConfig } from './room-automation.ts';
 import {
   buildTP1FrameHex,
   decodeDpt1,
@@ -32,17 +30,30 @@ import {
   encodeDpt9Float,
   parseTP1FrameHex,
 } from './dpt-codec.ts';
+import type {
+  KnxLightingZone,
+  KnxPresenceDetectorDevice,
+  KnxProject,
+  KnxPushButtonDevice,
+} from './project.ts';
+import { RoomAutomation, type RoomMotionSensorConfig } from './room-automation.ts';
+import { OUTDOOR_CIRCUIT_IDS, SCENE_CIRCUIT_IDS } from './scene-table.ts';
 import {
   LoopbackSimulationTransport,
   WebSocketKNXGatewayTransport,
   type KNXBusTransport,
 } from './transport.ts';
+import { ZoneLightingController, type SwitchDirection, type ZoneLevels } from './zone-lighting.ts';
 
-export const NIGHT_WALK_UPLIGHTS_PCT = 10;
-export const NIGHT_WALK_SPOTLIGHTS_PCT = 10;
-export const NIGHT_WALK_UNDER_CABINET_PCT = 20;
-export const NIGHT_WALK_ABOVE_CABINET_PCT = 20;
-export const NIGHT_WALK_UTILITY_PCT = 15;
+/**
+ * Legacy kitchen / utility night-object levels (kept as exports for HUD copy). The live
+ * values come from each zone's `nightLevels` in the project.
+ */
+export const NIGHT_WALK_UPLIGHTS_PCT = 3;
+export const NIGHT_WALK_SPOTLIGHTS_PCT = 4;
+export const NIGHT_WALK_UNDER_CABINET_PCT = 5;
+export const NIGHT_WALK_ABOVE_CABINET_PCT = 5;
+export const NIGHT_WALK_UTILITY_PCT = 5;
 
 export const TV_ARTWORKS: readonly string[] = [
   'Tur Langton Sunset',
@@ -51,22 +62,72 @@ export const TV_ARTWORKS: readonly string[] = [
   'Nocturne in Blue & Gold',
 ];
 
+/** Zone mode + active scene as exposed to UI / AI (`sceneIndex` null unless a scene is active). */
+export interface KnxZoneStateView {
+  readonly mode: ZoneLightingMode;
+  readonly sceneIndex: number | null;
+}
+
+/** Presence object of one detector. `lastSeenSimSec` null = latched by a manual toggle. */
+export interface KnxPresenceState {
+  readonly detected: boolean;
+  readonly lastSeenSimSec: number | null;
+}
+
+/** Central scene index reported while a zone is at full brightness (hold ▲). */
+const ACTIVE_SCENE_FULL = 99;
+/** Central scene index reported while the open-plan zone is lit but matches no stored scene. */
+const ACTIVE_SCENE_CUSTOM = 98;
+/** Zones the legacy "hold ▼ = all off" object puts into night mode. */
+const LEGACY_MASTER_OFF_ZONES: readonly RoomZoneId[] = [
+  'kitchen',
+  'sitting',
+  'utility',
+  'familyRoom',
+  'courtyard',
+];
+
+interface MutablePresence {
+  detected: boolean;
+  lastSeenSimSec: number | null;
+}
+
+type ZoneObject = 'scene' | 'night' | 'full' | 'dim';
+
 /**
- * Crox Farmhouse (Main House + Annex) KNX TP1 / cEMI Bus Controller & EEPROM Emulator.
+ * Generic KNX TP1 / cEMI bus controller & actuator emulator for a {@link KnxProject}.
  *
- * Designed to operate seamlessly in either:
- * - In-browser Simulation Mode (`LoopbackSimulationTransport`)
- * - Live Physical Bus Mode (`WebSocketKNXGatewayTransport`) connected to a KNXnet/IP interface.
+ * Every lighting zone shares one switch model (see {@link ZoneLightingController}):
+ * short ▲/▼ steps the zone's stored scenes, hold ▲ = full, hold ▼ (≥ long-press time) =
+ * night mode (3–5 % when dark, off in daylight). Presence detectors keep night zones lit
+ * while occupied; once every detector of a night zone has been vacant for its hold time
+ * the zone switches fully off, and presence in an off zone after dark restores night mode.
+ *
+ * Runs either against the in-browser loopback (`LoopbackSimulationTransport`) or a live
+ * KNXnet/IP gateway (`WebSocketKNXGatewayTransport`).
  */
 export class KNXPropertyBusController {
   public static readonly TV_ART_CYCLE_INTERVAL_SEC = 8.0;
   public static readonly CAR_GATE_TRAVEL_SEC = 10.0;
 
+  private readonly project: KnxProject;
+  private readonly circuitById = new Map<CircuitId, CircuitConfig>();
+  private readonly zoneLighting: ZoneLightingController;
+  private readonly pushButtonByPa = new Map<string, KnxPushButtonDevice>();
+  private readonly detectorByPa = new Map<string, KnxPresenceDetectorDevice>();
+  private readonly detectorByGa = new Map<string, KnxPresenceDetectorDevice>();
+  private readonly zoneObjectByGa = new Map<
+    string,
+    { readonly zone: KnxLightingZone; readonly object: ZoneObject }
+  >();
+  private readonly presence = new Map<string, MutablePresence>();
+  private readonly nightEnteredSimSec = new Map<RoomZoneId, number>();
+
   private transport: KNXBusTransport;
   private unsubscribeTransportRx: (() => void) | null = null;
   private unsubscribeTransportStatus: (() => void) | null = null;
 
-  /** Fast O(1) lookup tables mapping Group Addresses (`1/1/x`, `1/2/x`, `1/3/x`) to CircuitConfig */
+  /** O(1) lookup tables mapping channel GAs (switch / value / status) to circuits. */
   private readonly gaSwitchToCircuit = new Map<string, CircuitConfig>();
   private readonly gaValueToCircuit = new Map<string, CircuitConfig>();
   private readonly gaStatusToCircuit = new Map<string, CircuitConfig>();
@@ -82,183 +143,89 @@ export class KNXPropertyBusController {
   private stagedParams: DeviceParameters = { ...this.flashedParams };
   private isDirty = false;
 
-  private readonly scenes: ScenePreset[] = DEFAULT_SCENES.map((sc) => ({
-    ...sc,
-    levels: { ...sc.levels },
-    ...(sc.outdoorLevels ? { outdoorLevels: { ...sc.outdoorLevels } } : {}),
-    ...(sc.auxiliaryLevels ? { auxiliaryLevels: { ...sc.auxiliaryLevels } } : {}),
-  }));
-
+  private readonly scenes: ScenePreset[];
   private activeSceneIndex = 0;
-  private readonly zoneSceneIndex = new Map<RoomZoneId, number>();
   private lastActiveSceneIndex = 0;
-  private utilitySwitchOn = true;
-  private lastUtilityLevel = 100;
-  // 0 = Off, 1 = Both (Festoons 85% + Lamp Post 90%), 2 = Festoons Only (95%), 3 = Lamp Post Only (95%)
-  private courtyardModeIndex = 1;
 
-  // Motorized Dual-Leaf Front Car Entrance Gates (PA 1.1.22 · GA 1/5/1 & 1/5/2 · 10.0s synchronized travel)
   private carGatesOpen = false;
   private carGatesProgress = 0;
   private carGatesLastNotifiedPct = 0;
 
-  private kitchenMotionDetected = true;
-  private utilityMotionDetected = true;
-  private ambientLux = 38; // Default Dusk = 38 lx (< 100 lx threshold)
+  private ambientLux = 38; // Dusk default (< 100 lx threshold)
+  private simTimeSec = 0;
+  private presenceHoldOverrideSec: number | null = null;
 
   private tvArtIndex = 0;
   private tvArtSlideTimerSec = 0;
 
-  private readonly targetLevels: CircuitLevels = {
-    ...this.scenes[0]!.levels,
-    utilitySpotlights: 100,
-    familyRoomSpots: 85,
-    diningPendant: 85,
-    diningPictureLight: 85,
-    diningFairyLights: 100,
-    bootLobbyPendant: 85,
-    hallPendant: 85,
-    frontRoomPendant: 85,
-    entranceHallPendant: 85,
-    livingRoomPendant: 85,
-    studyPendant: 80,
-    mainBedroomPendant: 80,
-    familyBathroomPendant: 85,
-    upperLandingPendant: 85,
-    bedroom2Pendant: 80,
-    bedroom3Pendant: 80,
-    bedroom4Pendant: 80,
-    wineCellarLeds: 70,
-    cloakroomWcLights: 90,
-    entranceHallUplights: 60,
-    courtyardFestoons: 85,
-    reclaimedLampPost: 90,
-    gymSpotsAndBattens: 85,
-    gymWallAndCoveLights: 80,
-    garageHighBayLights: 85,
-    garageBenchAndShower: 80,
-    barnTrussAndSimHalo: 85,
-    barnBarsAndLamps5A: 80,
-    mezzanineSconcesAndAmbient: 75,
-    mezzanineLamps5A: 85,
-    stableOfficeSpotlights: 85,
-    stableOfficeWallsAndLamps5A: 80,
-    stableSuiteDownlights: 75,
-    stableSuiteLamps5A: 85,
-    hallStairLeds: 60,
-    hallBeamLeds: 50,
-    hallLamps5A: 70,
-    walkInCupboardLeds: 0,
-    livingRoomShelfLeds: 60,
-    livingRoomTvBacklight: 0,
-    sittingRoomLamps5A: 80,
-    sittingRoomShelfLeds: 60,
-    pergolaFestoons: 0,
-    upperLandingSconces: 70,
-    gymMirrorBacklights: 70,
-    gymCoveLeds: 70,
-    gymTrussSpots: 70,
-    garageShowerLights: 0,
-    garageTrussSpots: 70,
-    storeLoftLeds: 0,
-    golfSimHalo: 60,
-    barnCoveLeds: 70,
-    barnWallSconces: 70,
-    barnStairLeds: 50,
-    barnPoolTableLight: 70,
-    barnPictureLights: 60,
-    mezzanineDownlights: 70,
-    mezzanineBookcaseLight: 70,
-    stableCloakroomLights: 0,
-    stableOfficeLamps5A: 80,
-    stableEnsuiteLights: 0,
-    stableBalconyLights: 0,
-    stableExternalWallLights: 0,
-  };
-  private readonly liveLevels: CircuitLevels = {
-    ...this.scenes[0]!.levels,
-    utilitySpotlights: 100,
-    familyRoomSpots: 85,
-    diningPendant: 85,
-    diningPictureLight: 85,
-    diningFairyLights: 100,
-    bootLobbyPendant: 85,
-    hallPendant: 85,
-    frontRoomPendant: 85,
-    entranceHallPendant: 85,
-    livingRoomPendant: 85,
-    studyPendant: 80,
-    mainBedroomPendant: 80,
-    familyBathroomPendant: 85,
-    upperLandingPendant: 85,
-    bedroom2Pendant: 80,
-    bedroom3Pendant: 80,
-    bedroom4Pendant: 80,
-    wineCellarLeds: 70,
-    cloakroomWcLights: 90,
-    entranceHallUplights: 60,
-    courtyardFestoons: 85,
-    reclaimedLampPost: 90,
-    gymSpotsAndBattens: 85,
-    gymWallAndCoveLights: 80,
-    garageHighBayLights: 85,
-    garageBenchAndShower: 80,
-    barnTrussAndSimHalo: 85,
-    barnBarsAndLamps5A: 80,
-    mezzanineSconcesAndAmbient: 75,
-    mezzanineLamps5A: 85,
-    stableOfficeSpotlights: 85,
-    stableOfficeWallsAndLamps5A: 80,
-    stableSuiteDownlights: 75,
-    stableSuiteLamps5A: 85,
-    hallStairLeds: 60,
-    hallBeamLeds: 50,
-    hallLamps5A: 70,
-    walkInCupboardLeds: 0,
-    livingRoomShelfLeds: 60,
-    livingRoomTvBacklight: 0,
-    sittingRoomLamps5A: 80,
-    sittingRoomShelfLeds: 60,
-    pergolaFestoons: 0,
-    upperLandingSconces: 70,
-    gymMirrorBacklights: 70,
-    gymCoveLeds: 70,
-    gymTrussSpots: 70,
-    garageShowerLights: 0,
-    garageTrussSpots: 70,
-    storeLoftLeds: 0,
-    golfSimHalo: 60,
-    barnCoveLeds: 70,
-    barnWallSconces: 70,
-    barnStairLeds: 50,
-    barnPoolTableLight: 70,
-    barnPictureLights: 60,
-    mezzanineDownlights: 70,
-    mezzanineBookcaseLight: 70,
-    stableCloakroomLights: 0,
-    stableOfficeLamps5A: 80,
-    stableEnsuiteLights: 0,
-    stableBalconyLights: 0,
-    stableExternalWallLights: 0,
-  };
+  private readonly targetLevels: CircuitLevels;
+  private readonly liveLevels: CircuitLevels;
 
-  /** Night-walk dim and PIR-driven circuits for rooms other than the kitchen / utility. */
-  private readonly roomAutomation = new RoomAutomation(ROOM_AUTOMATION_CONFIG);
+  /** PIR-driven circuits (wine cellar, cloakroom WC). */
+  private readonly roomAutomation: RoomAutomation;
 
   private telegrams: KNXTelegram[] = [];
   private nextTelegramId = 1;
   private readonly listeners = new Set<KNXEventListener>();
 
-  public constructor(initialTransport?: KNXBusTransport) {
-    for (const circuit of CIRCUITS) {
+  public constructor(project: KnxProject, initialTransport?: KNXBusTransport) {
+    this.project = project;
+    this.scenes = project.centralScenes.map((sc) => ({
+      ...sc,
+      levels: { ...sc.levels },
+      ...(sc.outdoorLevels ? { outdoorLevels: { ...sc.outdoorLevels } } : {}),
+      ...(sc.auxiliaryLevels ? { auxiliaryLevels: { ...sc.auxiliaryLevels } } : {}),
+    }));
+    this.zoneLighting = new ZoneLightingController(project.zones);
+    this.roomAutomation = new RoomAutomation(project.roomAutomation);
+
+    const initial: Partial<Record<CircuitId, number>> = {};
+    for (const circuit of project.circuits) {
+      this.circuitById.set(circuit.id, circuit);
       this.gaSwitchToCircuit.set(circuit.gaSwitch, circuit);
       this.gaValueToCircuit.set(circuit.gaValue, circuit);
       this.gaStatusToCircuit.set(circuit.gaStatus, circuit);
+      initial[circuit.id] = this.clampForCircuit(circuit.id, circuit.defaultLevel ?? 85);
     }
+    const firstScene = this.scenes[0];
+    if (firstScene) {
+      for (const id of SCENE_CIRCUIT_IDS) {
+        initial[id] = firstScene.levels[id];
+      }
+    }
+    for (const rule of project.roomAutomation.motionCircuitRules) {
+      initial[rule.circuitId] = rule.onLevel;
+    }
+    // A project lists every circuit it drives; ids it omits read as undefined (treated as 0).
+    this.targetLevels = initial as CircuitLevels;
+    this.liveLevels = { ...this.targetLevels };
+
+    for (const button of project.pushButtons) {
+      this.pushButtonByPa.set(button.pa, button);
+    }
+    for (const detector of project.presenceDetectors) {
+      this.detectorByPa.set(detector.pa, detector);
+      this.detectorByGa.set(detector.gaPresence, detector);
+      // Legacy behaviour: kitchen / utility / room PIRs start "occupied" (latched).
+      const latchedOn = detector.legacy !== undefined;
+      this.presence.set(detector.pa, { detected: latchedOn, lastSeenSimSec: null });
+    }
+    for (const zone of project.zones) {
+      this.zoneObjectByGa.set(zone.ga.scene, { zone, object: 'scene' });
+      this.zoneObjectByGa.set(zone.ga.night, { zone, object: 'night' });
+      this.zoneObjectByGa.set(zone.ga.full, { zone, object: 'full' });
+      this.zoneObjectByGa.set(zone.ga.dim, { zone, object: 'dim' });
+      this.syncZoneModeFromLevels(zone.id);
+    }
+    this.refreshActiveCentralScene();
 
     this.transport = initialTransport ?? new LoopbackSimulationTransport();
     this.bindTransport(this.transport);
   }
+
+  // ---------------------------------------------------------------------------------------
+  // Transport
+  // ---------------------------------------------------------------------------------------
 
   private bindTransport(nextTransport: KNXBusTransport): void {
     this.unsubscribeTransportRx?.();
@@ -281,19 +248,13 @@ export class KNXPropertyBusController {
     void this.transport.connect();
   }
 
-  /**
-   * Connects the Digital Twin directly to a live WebSocket KNXnet/IP gateway
-   * (e.g. `ws://localhost:8765/knx` or `wss://crox-knx.local/cemi`).
-   */
+  /** Connects to a live WebSocket KNXnet/IP gateway (e.g. `ws://localhost:8765/knx`). */
   public async connectToGateway(endpointUrl: string): Promise<void> {
     this.transport.disconnect();
-    const wsTransport = new WebSocketKNXGatewayTransport(endpointUrl);
-    this.bindTransport(wsTransport);
+    this.bindTransport(new WebSocketKNXGatewayTransport(endpointUrl));
   }
 
-  /**
-   * Switches back to the in-browser KNX TP1 simulation transport.
-   */
+  /** Switches back to the in-browser KNX TP1 simulation transport. */
   public useSimulationTransport(): void {
     this.transport.disconnect();
     this.bindTransport(new LoopbackSimulationTransport());
@@ -311,338 +272,52 @@ export class KNXPropertyBusController {
     return this.transport.endpointUrl;
   }
 
+  // ---------------------------------------------------------------------------------------
+  // Project / topology accessors
+  // ---------------------------------------------------------------------------------------
+
+  public getProject(): KnxProject {
+    return this.project;
+  }
+
+  public getCircuits(): readonly CircuitConfig[] {
+    return this.project.circuits;
+  }
+
+  public getZones(): readonly KnxLightingZone[] {
+    return this.project.zones;
+  }
+
+  public getZone(zoneId: RoomZoneId): KnxLightingZone | undefined {
+    return this.zoneLighting.getZone(zoneId);
+  }
+
+  public getPushButtons(): readonly KnxPushButtonDevice[] {
+    return this.project.pushButtons;
+  }
+
+  public getPresenceDetectors(): readonly KnxPresenceDetectorDevice[] {
+    return this.project.presenceDetectors;
+  }
+
+  /** Channels of a lighting zone (zone membership; falls back to `CircuitConfig.zoneId`). */
   public getCircuitsForZone(zoneId: RoomZoneId): readonly CircuitConfig[] {
-    return CIRCUITS.filter((c) => c.zoneId === zoneId);
+    const zone = this.zoneLighting.getZone(zoneId);
+    if (zone) {
+      return zone.circuits
+        .map((id) => this.circuitById.get(id))
+        .filter((c): c is CircuitConfig => c !== undefined);
+    }
+    return this.project.circuits.filter((c) => c.zoneId === zoneId);
   }
 
-  /**
-   * Ingests a raw KNX TP1/cEMI hex frame or structured frame received from the physical KNX bus
-   * (or injected via developer tools) and updates the Digital Twin's live state.
-   */
-  public ingestExternalFrame(frameOrHex: string | InboundKNXFrame): void {
-    let src = '1.1.1';
-    let dst = '';
-    let isGroup = true;
-    let apci = 'A_GroupValue_Write';
-    let payloadBytes: readonly number[] = [0x00, 0x80];
-    let dptHint: string | undefined;
-    let summaryHint: string | undefined;
-
-    if (typeof frameOrHex === 'string') {
-      const parsed = parseTP1FrameHex(frameOrHex);
-      if (!parsed) return;
-      src = parsed.src;
-      dst = parsed.dst;
-      isGroup = parsed.isGroup;
-      apci = parsed.apci;
-      payloadBytes = parsed.payloadBytes;
-    } else {
-      src = frameOrHex.src ?? '1.1.1';
-      dst = frameOrHex.dst;
-      isGroup = frameOrHex.isGroup ?? true;
-      apci = frameOrHex.apci ?? 'A_GroupValue_Write';
-      payloadBytes = frameOrHex.payloadBytes ?? [0x00, 0x80];
-      dptHint = frameOrHex.dpt;
-      summaryHint = frameOrHex.summary;
-    }
-
-    if (!isGroup) {
-      this.emitTelegram({
-        src,
-        dst,
-        isGroup: false,
-        apci,
-        dpt: dptHint ?? 'Mgmt',
-        summary: summaryHint ?? `External P2P Frame (${apci})`,
-        payloadBytes,
-        fromExternalBus: true,
-      });
-      return;
-    }
-
-    // 1. Check absolute dimming value or status feedback GAs (1/2/x, 1/3/x — DPT 5.001)
-    const valCircuit = this.gaValueToCircuit.get(dst) ?? this.gaStatusToCircuit.get(dst);
-    if (valCircuit) {
-      const pct = decodeDpt5Scaling(payloadBytes);
-      this.targetLevels[valCircuit.id] = pct;
-      this.roomAutomation.noteManualLevel(valCircuit.id, pct);
-      if (valCircuit.id === 'utilitySpotlights') {
-        this.utilitySwitchOn = pct > 0;
-        if (pct > NIGHT_WALK_UTILITY_PCT) {
-          this.lastUtilityLevel = pct;
-        }
-      }
-      this.emitTelegram({
-        src,
-        dst,
-        isGroup: true,
-        apci,
-        dpt: dptHint ?? '5.001',
-        summary: summaryHint ?? `[RX Bus] ${valCircuit.shortName} → ${pct}%`,
-        payloadBytes,
-        fromExternalBus: true,
-      });
-      this.notify({ type: 'stateChange', reason: 'externalBusSync' });
-      return;
-    }
-
-    // 2. Check 1-bit switching GAs (1/1/x — DPT 1.001)
-    const swCircuit = this.gaSwitchToCircuit.get(dst);
-    if (swCircuit) {
-      const isOn = decodeDpt1(payloadBytes);
-      const pct = isOn ? 100 : 0;
-      this.targetLevels[swCircuit.id] = pct;
-      this.roomAutomation.noteManualLevel(swCircuit.id, pct);
-      if (swCircuit.id === 'utilitySpotlights') {
-        this.utilitySwitchOn = isOn;
-      }
-      this.emitTelegram({
-        src,
-        dst,
-        isGroup: true,
-        apci,
-        dpt: dptHint ?? '1.001',
-        summary: summaryHint ?? `[RX Bus] ${swCircuit.shortName} Switch → ${isOn ? 'ON' : 'OFF'}`,
-        payloadBytes,
-        fromExternalBus: true,
-      });
-      this.notify({ type: 'stateChange', reason: 'externalBusSync' });
-      return;
-    }
-
-    // 3. Master Off / Night-Walk Dim (1/0/0 — DPT 1.001)
-    if (dst === '1/0/0') {
-      this.activeSceneIndex = -1;
-      this.utilitySwitchOn = false;
-      this.courtyardModeIndex = 0;
-      this.targetLevels.courtyardFestoons = 0;
-      this.targetLevels.reclaimedLampPost = 0;
-      this.targetLevels.familyRoomSpots = 0;
-      this.targetLevels.diningPendant = 0;
-      this.targetLevels.diningPictureLight = 0;
-      this.targetLevels.diningFairyLights = 0;
-      this.applyKitchenOffStateLevels();
-      this.applyUtilityOffStateLevels();
-      this.emitTelegram({
-        src,
-        dst,
-        isGroup: true,
-        apci,
-        dpt: dptHint ?? '1.001',
-        summary: summaryHint ?? '[RX Bus] Master Off / Night-Walk Standby',
-        payloadBytes,
-        fromExternalBus: true,
-      });
-      this.notify({ type: 'stateChange', reason: 'externalBusSync' });
-      return;
-    }
-
-    // 4. Scene Recall / Scene Store (1/0/1 — DPT 17.001 / 18.001)
-    if (dst === '1/0/1') {
-      const { store, sceneIndex } = decodeDpt18SceneControl(payloadBytes);
-      if (store) {
-        this.saveCurrentLevelsToActiveScene(sceneIndex, src);
-      } else {
-        const scene = this.scenes[sceneIndex];
-        if (scene) {
-          this.activeSceneIndex = sceneIndex;
-          for (const id of SCENE_CIRCUIT_IDS) {
-            this.targetLevels[id] = scene.levels[id];
-          }
-          if (scene.outdoorLevels) {
-            this.targetLevels.courtyardFestoons = scene.outdoorLevels.courtyardFestoons;
-            this.targetLevels.reclaimedLampPost = scene.outdoorLevels.reclaimedLampPost;
-          }
-          if (scene.auxiliaryLevels) {
-            if (scene.auxiliaryLevels.utilitySpotlights !== undefined) {
-              this.targetLevels.utilitySpotlights = scene.auxiliaryLevels.utilitySpotlights;
-              this.utilitySwitchOn =
-                scene.auxiliaryLevels.utilitySpotlights > NIGHT_WALK_UTILITY_PCT;
-            }
-            if (scene.auxiliaryLevels.familyRoomSpots !== undefined) {
-              this.targetLevels.familyRoomSpots = scene.auxiliaryLevels.familyRoomSpots;
-            }
-          }
-          this.emitTelegram({
-            src,
-            dst,
-            isGroup: true,
-            apci,
-            dpt: dptHint ?? '17.001',
-            summary: summaryHint ?? `[RX Bus] Recall ${scene.code}: "${scene.name}"`,
-            payloadBytes,
-            fromExternalBus: true,
-          });
-          this.notify({ type: 'stateChange', reason: 'externalBusSync' });
-        }
-      }
-      return;
-    }
-
-    // 5. Master Full On (1/0/2 — DPT 5.001)
-    if (dst === '1/0/2') {
-      this.activeSceneIndex = 99;
-      for (const id of SCENE_CIRCUIT_IDS) {
-        this.targetLevels[id] = 100;
-      }
-      this.emitTelegram({
-        src,
-        dst,
-        isGroup: true,
-        apci,
-        dpt: dptHint ?? '5.001',
-        summary: summaryHint ?? '[RX Bus] Master Full On (100%)',
-        payloadBytes,
-        fromExternalBus: true,
-      });
-      this.notify({ type: 'stateChange', reason: 'externalBusSync' });
-      return;
-    }
-
-    // 6. Kitchen PIR Occupancy (1/4/1 — DPT 1.018)
-    if (dst === '1/4/1') {
-      this.kitchenMotionDetected = decodeDpt1(payloadBytes);
-      if (this.activeSceneIndex === -1) {
-        this.applyKitchenOffStateLevels();
-      }
-      this.emitTelegram({
-        src,
-        dst,
-        isGroup: true,
-        apci,
-        dpt: dptHint ?? '1.018',
-        summary:
-          summaryHint ??
-          `[RX Bus] Kitchen PIR → ${this.kitchenMotionDetected ? 'Motion' : 'Vacant'}`,
-        payloadBytes,
-        fromExternalBus: true,
-      });
-      this.notify({ type: 'stateChange', reason: 'externalBusSync' });
-      return;
-    }
-
-    // 7. Ambient Lux Sensor (1/4/2 — DPT 9.004)
-    if (dst === '1/4/2') {
-      this.ambientLux = Math.max(0, decodeDpt9Float(payloadBytes));
-      if (this.activeSceneIndex === -1) {
-        this.applyKitchenOffStateLevels();
-      }
-      if (!this.utilitySwitchOn) {
-        this.applyUtilityOffStateLevels();
-      }
-      this.applyRoomNightWalkLevels();
-      this.emitTelegram({
-        src,
-        dst,
-        isGroup: true,
-        apci,
-        dpt: dptHint ?? '9.004',
-        summary: summaryHint ?? `[RX Bus] Ambient Lux → ${this.ambientLux} lx`,
-        payloadBytes,
-        fromExternalBus: true,
-      });
-      this.notify({ type: 'stateChange', reason: 'externalBusSync' });
-      return;
-    }
-
-    // 8. Utility PIR Occupancy (1/4/3 — DPT 1.018)
-    if (dst === '1/4/3') {
-      this.utilityMotionDetected = decodeDpt1(payloadBytes);
-      if (!this.utilitySwitchOn) {
-        this.applyUtilityOffStateLevels();
-      }
-      this.emitTelegram({
-        src,
-        dst,
-        isGroup: true,
-        apci,
-        dpt: dptHint ?? '1.018',
-        summary:
-          summaryHint ??
-          `[RX Bus] Utility PIR → ${this.utilityMotionDetected ? 'Motion' : 'Vacant'}`,
-        payloadBytes,
-        fromExternalBus: true,
-      });
-      this.notify({ type: 'stateChange', reason: 'externalBusSync' });
-      return;
-    }
-
-    // 8b. Room PIR Occupancy sensors (Boot Lobby 1/4/5, Cloakroom WC 1/4/6 — DPT 1.018)
-    const roomSensor = this.roomAutomation.getMotionSensorByGa(dst);
-    if (roomSensor) {
-      const detected = decodeDpt1(payloadBytes);
-      this.roomAutomation.setMotionDetected(roomSensor.id, detected);
-      this.applyRoomMotionLevels(roomSensor.id);
-      this.emitTelegram({
-        src,
-        dst,
-        isGroup: true,
-        apci,
-        dpt: dptHint ?? '1.018',
-        summary: summaryHint ?? `[RX Bus] ${roomSensor.name} → ${detected ? 'Motion' : 'Vacant'}`,
-        payloadBytes,
-        fromExternalBus: true,
-      });
-      this.notify({ type: 'stateChange', reason: 'externalBusSync' });
-      return;
-    }
-
-    // 9. Frame TV Art Index (1/4/4 — DPT 17.001)
-    if (dst === '1/4/4') {
-      const idx = decodeDpt17Scene(payloadBytes);
-      this.tvArtIndex = idx % TV_ARTWORKS.length;
-      this.emitTelegram({
-        src,
-        dst,
-        isGroup: true,
-        apci,
-        dpt: dptHint ?? '17.001',
-        summary: summaryHint ?? `[RX Bus] Frame TV Art → "${this.getTvArtTitle()}"`,
-        payloadBytes,
-        fromExternalBus: true,
-      });
-      this.notify({ type: 'stateChange', reason: 'externalBusSync' });
-      return;
-    }
-
-    // 10. Motorized Front Car Gates Open/Close Command (1/5/1 — DPT 1.001)
-    if (dst === '1/5/1') {
-      this.carGatesOpen = decodeDpt1(payloadBytes);
-      this.emitTelegram({
-        src,
-        dst,
-        isGroup: true,
-        apci,
-        dpt: dptHint ?? '1.001',
-        summary:
-          summaryHint ??
-          `[RX Bus] Front Car Gates → ${this.carGatesOpen ? 'OPENING (10s synchronized)' : 'CLOSING (10s synchronized)'}`,
-        payloadBytes,
-        fromExternalBus: true,
-      });
-      this.notify({ type: 'stateChange', reason: 'externalBusSync' });
-      return;
-    }
-
-    // 11. Motorized Front Car Gates Position / Status (1/5/2 — DPT 5.001)
-    if (dst === '1/5/2') {
-      const pct = decodeDpt5Scaling(payloadBytes);
-      this.carGatesOpen = pct >= 50;
-      this.emitTelegram({
-        src,
-        dst,
-        isGroup: true,
-        apci,
-        dpt: dptHint ?? '5.001',
-        summary:
-          summaryHint ??
-          `[RX Bus] Front Car Gates Position → ${pct}% (${this.carGatesOpen ? 'OPEN' : 'CLOSED'})`,
-        payloadBytes,
-        fromExternalBus: true,
-      });
-      this.notify({ type: 'stateChange', reason: 'externalBusSync' });
-    }
+  public getSimTimeSec(): number {
+    return this.simTimeSec;
   }
+
+  // ---------------------------------------------------------------------------------------
+  // Events
+  // ---------------------------------------------------------------------------------------
 
   public subscribe(fn: KNXEventListener): () => void {
     this.listeners.add(fn);
@@ -655,258 +330,6 @@ export class KNXPropertyBusController {
     for (const fn of this.listeners) {
       fn(event);
     }
-  }
-
-  public getFlashedParams(): Readonly<DeviceParameters> {
-    return this.flashedParams;
-  }
-
-  public getStagedParams(): Readonly<DeviceParameters> {
-    return this.stagedParams;
-  }
-
-  public getIsDirty(): boolean {
-    return this.isDirty;
-  }
-
-  public getScenes(): readonly ScenePreset[] {
-    return this.scenes;
-  }
-
-  public getActiveSceneIndex(): number {
-    return this.activeSceneIndex;
-  }
-
-  public getTargetLevels(): Readonly<CircuitLevels> {
-    return this.targetLevels;
-  }
-
-  public getLiveLevels(): Readonly<CircuitLevels> {
-    return this.liveLevels;
-  }
-
-  public getTelegrams(): readonly KNXTelegram[] {
-    return this.telegrams;
-  }
-
-  public clearTelegrams(): void {
-    this.telegrams = [];
-  }
-
-  public getKitchenMotionDetected(): boolean {
-    return this.kitchenMotionDetected;
-  }
-
-  public getUtilityMotionDetected(): boolean {
-    return this.utilityMotionDetected;
-  }
-
-  public getAmbientLux(): number {
-    return this.ambientLux;
-  }
-
-  public isBelowLuxThreshold(): boolean {
-    return this.ambientLux < this.flashedParams.luxThreshold;
-  }
-
-  public isUtilitySwitchOn(): boolean {
-    return this.utilitySwitchOn;
-  }
-
-  public isKitchenNightDimActive(): boolean {
-    return (
-      this.activeSceneIndex === -1 &&
-      this.kitchenMotionDetected &&
-      this.isBelowLuxThreshold() &&
-      (this.targetLevels.underCabinet > 0 ||
-        this.targetLevels.aboveCabinet > 0 ||
-        this.targetLevels.bifoldUplights > 0 ||
-        this.targetLevels.spotlights > 0)
-    );
-  }
-
-  public isUtilityNightDimActive(): boolean {
-    return (
-      !this.utilitySwitchOn &&
-      this.utilityMotionDetected &&
-      this.isBelowLuxThreshold() &&
-      this.targetLevels.utilitySpotlights > 0
-    );
-  }
-
-  public isAnyKitchenLightOn(): boolean {
-    return SCENE_CIRCUIT_IDS.some((id) => this.targetLevels[id] > 0);
-  }
-
-  public isUtilityLightOn(): boolean {
-    return this.targetLevels.utilitySpotlights > 0;
-  }
-
-  public isCourtyardLightOn(): boolean {
-    return (
-      this.targetLevels.courtyardFestoons > 0 ||
-      this.targetLevels.reclaimedLampPost > 0
-    );
-  }
-
-  public getCourtyardModeLabel(): string {
-    const f = this.targetLevels.courtyardFestoons;
-    const lp = this.targetLevels.reclaimedLampPost;
-    if (f > 0 && lp > 0) {
-      return `Festoons ${f}% + Lamp Post ${lp}%`;
-    }
-    if (f > 0) {
-      return `Festoons Only (${f}%)`;
-    }
-    if (lp > 0) {
-      return `Lamp Post Only (${lp}%)`;
-    }
-    return 'OFF (0%)';
-  }
-
-  public isCarGatesOpen(): boolean {
-    return this.carGatesOpen;
-  }
-
-  public getCarGatesProgress(): number {
-    return this.carGatesProgress;
-  }
-
-  public isCarGatesMoving(): boolean {
-    const target = this.carGatesOpen ? 1 : 0;
-    return Math.abs(target - this.carGatesProgress) > 0.001;
-  }
-
-  public getCarGatesStatusLabel(): string {
-    const pct = Math.round(this.carGatesProgress * 100);
-    if (this.isCarGatesMoving()) {
-      return this.carGatesOpen ? `OPENING · ${pct}% (10s)` : `CLOSING · ${pct}% (10s)`;
-    }
-    return this.carGatesOpen ? 'OPEN · 100%' : 'CLOSED · 0%';
-  }
-
-  public setCarGatesOpen(open: boolean, emitBus = true, sourcePa = '1.1.22'): boolean {
-    this.carGatesOpen = open;
-
-    if (emitBus) {
-      const prefix = sourcePa === '1.1.2' ? 'AI Gateway → ' : '';
-      this.emitTelegram({
-        src: sourcePa,
-        dst: '1/5/1',
-        isGroup: true,
-        apci: 'A_GroupValue_Write',
-        dpt: '1.001',
-        summary: `${prefix}Front Car Gates (Dual-Leaf) → ${
-          open ? 'OPENING (10.0s travel)' : 'CLOSING (10.0s travel)'
-        }`,
-        payloadBytes: encodeDpt1(open),
-      });
-    }
-
-    this.notify({ type: 'stateChange', reason: 'carGateChange' });
-    return this.carGatesOpen;
-  }
-
-  public toggleCarGates(sourcePa = '1.1.22'): boolean {
-    return this.setCarGatesOpen(!this.carGatesOpen, true, sourcePa);
-  }
-
-  public isAnyLightOn(): boolean {
-    return Object.values(this.targetLevels).some((v) => v > 0);
-  }
-
-  private applyKitchenOffStateLevels(): void {
-    this.targetLevels.islandPendants = 0;
-    this.targetLevels.sittingPendants = 0;
-
-    if (this.kitchenMotionDetected && this.isBelowLuxThreshold()) {
-      this.targetLevels.bifoldUplights = NIGHT_WALK_UPLIGHTS_PCT;
-      this.targetLevels.spotlights = NIGHT_WALK_SPOTLIGHTS_PCT;
-      this.targetLevels.underCabinet = NIGHT_WALK_UNDER_CABINET_PCT;
-      this.targetLevels.aboveCabinet = NIGHT_WALK_ABOVE_CABINET_PCT;
-    } else {
-      this.targetLevels.bifoldUplights = 0;
-      this.targetLevels.spotlights = 0;
-      this.targetLevels.underCabinet = 0;
-      this.targetLevels.aboveCabinet = 0;
-    }
-  }
-
-  private applyUtilityOffStateLevels(): void {
-    if (this.utilityMotionDetected && this.isBelowLuxThreshold()) {
-      this.targetLevels.utilitySpotlights = NIGHT_WALK_UTILITY_PCT;
-    } else {
-      this.targetLevels.utilitySpotlights = 0;
-    }
-  }
-
-  private applyAutomaticLevels(levels: Partial<Record<CircuitId, number>>): void {
-    for (const circuit of CIRCUITS) {
-      const level = levels[circuit.id];
-      if (level !== undefined) {
-        this.targetLevels[circuit.id] = level;
-      }
-    }
-  }
-
-  private applyRoomNightWalkLevels(): void {
-    this.applyAutomaticLevels(
-      this.roomAutomation.computeNightWalkLevels(this.isBelowLuxThreshold())
-    );
-  }
-
-  private applyRoomMotionLevels(sensorId: RoomMotionSensorId): void {
-    this.applyAutomaticLevels(this.roomAutomation.computeMotionCircuitLevels(sensorId));
-    this.applyRoomNightWalkLevels();
-  }
-
-  public getRoomMotionSensors(): readonly RoomMotionSensorConfig[] {
-    return this.roomAutomation.getMotionSensors();
-  }
-
-  public getRoomMotionDetected(sensorId: RoomMotionSensorId): boolean {
-    return this.roomAutomation.isMotionDetected(sensorId);
-  }
-
-  /** True when a room night-walk circuit (hall, boot lobby) is switched off and idling dim. */
-  public isRoomNightDimActive(circuitId: CircuitId): boolean {
-    return this.roomAutomation.isNightDimActive(circuitId, this.isBelowLuxThreshold());
-  }
-
-  public setRoomMotionDetected(sensorId: RoomMotionSensorId, detected: boolean, emitBus = true): void {
-    const sensor = this.roomAutomation.getMotionSensor(sensorId);
-    if (!sensor) return;
-    this.roomAutomation.setMotionDetected(sensorId, detected);
-    this.applyRoomMotionLevels(sensorId);
-
-    if (emitBus) {
-      const switched = this.roomAutomation
-        .getMotionCircuitRules(sensorId)
-        .map((rule) => {
-          const circuit = CIRCUITS.find((c) => c.id === rule.circuitId);
-          return `${circuit?.shortName ?? rule.circuitId} ${this.targetLevels[rule.circuitId]}%`;
-        })
-        .join(', ');
-      this.emitTelegram({
-        src: sensor.pa,
-        dst: sensor.ga,
-        isGroup: true,
-        apci: 'A_GroupValue_Write',
-        dpt: '1.018',
-        summary: `${sensor.name} (${sensor.pa}) → ${detected ? 'Motion Detected' : 'No Motion (Vacant)'}${
-          switched ? ` → ${switched}` : ''
-        }`,
-        payloadBytes: encodeDpt1(detected),
-      });
-    }
-
-    this.notify({ type: 'stateChange', reason: 'sensorChange' });
-  }
-
-  public toggleRoomMotion(sensorId: RoomMotionSensorId): boolean {
-    const next = !this.roomAutomation.isMotionDetected(sensorId);
-    this.setRoomMotionDetected(sensorId, next);
-    return next;
   }
 
   public emitTelegram(input: TelegramEmitInput): KNXTelegram {
@@ -949,123 +372,544 @@ export class KNXPropertyBusController {
     return telegram;
   }
 
-  public handleSwitchShortPress(
-    direction: 'up' | 'down' = 'up',
-    switchLocation?: string
-  ): void {
-    const anyKitchenOn = this.isAnyKitchenLightOn();
-    const isOffOrNightStandby = !anyKitchenOn || this.activeSceneIndex === -1;
-    let nextSceneIdx = 0;
+  // ---------------------------------------------------------------------------------------
+  // Simple getters
+  // ---------------------------------------------------------------------------------------
 
-    // Physical 2-way toggle switches cycle strictly through the 3 Switch Scenes (0=Cooking, 1=Dining, 2=Lounge)
-    if (isOffOrNightStandby) {
-      if (this.flashedParams.wakeBehavior === 'last') {
-        nextSceneIdx = Math.min(2, Math.max(0, this.lastActiveSceneIndex));
-      } else {
-        nextSceneIdx = direction === 'up' ? 0 : 2;
-      }
-    } else if (this.activeSceneIndex > 2) {
-      // Coming out of an Extended AI Scene (3..7) or "All Full (100%)" (99) back to the 3 Switch Scenes
-      nextSceneIdx =
-        direction === 'up' ? 0 : Math.min(2, Math.max(0, this.lastActiveSceneIndex));
-    } else {
-      const mode = this.flashedParams.shortPressMode;
-      const step = direction === 'up' ? 1 : -1;
-      if (mode === 'cycle3') {
-        nextSceneIdx = (this.activeSceneIndex + step + 3) % 3;
-      } else {
-        nextSceneIdx = this.activeSceneIndex === 0 ? 2 : 0;
-      }
-    }
-
-    const dirTag = switchLocation
-      ? `${switchLocation} · ${direction === 'up' ? '▲ Up' : '▼ Down'}`
-      : direction === 'up'
-        ? '▲ Up'
-        : '▼ Down';
-    this.recallScene(nextSceneIdx, '1.1.10', dirTag);
+  public getFlashedParams(): Readonly<DeviceParameters> {
+    return this.flashedParams;
   }
 
-  public handleSwitchLongPressHoldUp(switchLocation?: string, sourcePa = '1.1.10'): void {
-    if (this.activeSceneIndex >= 0 && this.activeSceneIndex <= 2) {
-      this.lastActiveSceneIndex = this.activeSceneIndex;
-    }
-    this.activeSceneIndex = 99; // 99 = ALL FULL (100%)
+  public getStagedParams(): Readonly<DeviceParameters> {
+    return this.stagedParams;
+  }
 
-    for (const id of SCENE_CIRCUIT_IDS) {
-      this.targetLevels[id] = 100;
-    }
-    if (sourcePa === '1.1.2') {
-      this.targetLevels.utilitySpotlights = 100;
-      this.utilitySwitchOn = true;
-      this.lastUtilityLevel = 100;
-    }
+  public getIsDirty(): boolean {
+    return this.isDirty;
+  }
 
-    const locPrefix = switchLocation
-      ? sourcePa === '1.1.2'
-        ? `${switchLocation} → `
-        : `Corston (${switchLocation} ▲ Hold) → `
-      : 'Hold ▲ Up → ';
+  public getScenes(): readonly ScenePreset[] {
+    return this.scenes;
+  }
+
+  public getActiveSceneIndex(): number {
+    return this.activeSceneIndex;
+  }
+
+  public getTargetLevels(): Readonly<CircuitLevels> {
+    return this.targetLevels;
+  }
+
+  public getLiveLevels(): Readonly<CircuitLevels> {
+    return this.liveLevels;
+  }
+
+  public getTelegrams(): readonly KNXTelegram[] {
+    return this.telegrams;
+  }
+
+  public clearTelegrams(): void {
+    this.telegrams = [];
+  }
+
+  public getAmbientLux(): number {
+    return this.ambientLux;
+  }
+
+  public isBelowLuxThreshold(): boolean {
+    return this.ambientLux < this.flashedParams.luxThreshold;
+  }
+
+  public isAnyLightOn(): boolean {
+    return this.project.circuits.some((c) => this.targetLevels[c.id] > 0);
+  }
+
+  public isAnyKitchenLightOn(): boolean {
+    return SCENE_CIRCUIT_IDS.some((id) => this.targetLevels[id] > 0);
+  }
+
+  public isUtilityLightOn(): boolean {
+    return this.isZoneLit('utility');
+  }
+
+  public isCourtyardLightOn(): boolean {
+    return OUTDOOR_CIRCUIT_IDS.some((id) => this.targetLevels[id] > 0);
+  }
+
+  public getCourtyardModeLabel(): string {
+    const f = this.targetLevels.courtyardFestoons;
+    const lp = this.targetLevels.reclaimedLampPost;
+    const state = this.getZoneState('courtyard');
+    const mode = state.mode === 'scene' ? this.getZoneSceneLabel('courtyard') : state.mode;
+    if (f > 0 && lp > 0) return `${mode} · Festoons ${f}% + Lamp Post ${lp}%`;
+    if (f > 0) return `${mode} · Festoons ${f}%`;
+    if (lp > 0) return `${mode} · Lamp Post ${lp}%`;
+    return 'OFF (0%)';
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Zone lighting (generic switch model)
+  // ---------------------------------------------------------------------------------------
+
+  public getZoneState(zoneId: RoomZoneId): KnxZoneStateView {
+    const state = this.zoneLighting.getState(zoneId);
+    return { mode: state.mode, sceneIndex: state.mode === 'scene' ? state.sceneIndex : null };
+  }
+
+  public getZoneSceneLabel(zoneId: RoomZoneId): string {
+    const zone = this.zoneLighting.getZone(zoneId);
+    const state = this.zoneLighting.getState(zoneId);
+    if (!zone) return '';
+    switch (state.mode) {
+      case 'scene':
+        return zone.scenes[state.sceneIndex]?.label ?? 'Scene';
+      case 'full':
+        return 'Full';
+      case 'night':
+        return 'Night';
+      case 'manual':
+        return 'Custom';
+      case 'off':
+        return 'Off';
+    }
+  }
+
+  /** Recalls stored zone scene `sceneIndex` (zone scene object, DPT 17.001). */
+  public recallZoneScene(
+    zoneId: RoomZoneId,
+    sceneIndex: number,
+    sourcePa = this.project.centralPa.ipInterface,
+    location?: string
+  ): void {
+    const zone = this.zoneLighting.getZone(zoneId);
+    const scene = zone?.scenes[sceneIndex];
+    if (!zone || !scene) return;
+    this.applyLevels(this.zoneLighting.sceneLevels(zoneId, sceneIndex));
+    this.zoneLighting.markScene(zoneId, sceneIndex);
+    this.nightEnteredSimSec.delete(zoneId);
+    this.syncOverlappingZones(zone);
+    this.refreshActiveCentralScene();
     this.emitTelegram({
       src: sourcePa,
-      dst: '1/0/2',
+      dst: zone.ga.scene,
       isGroup: true,
       apci: 'A_GroupValue_Write',
-      dpt: '5.001',
-      summary: `${locPrefix}All Kitchen${sourcePa === '1.1.2' ? ' & Utility' : ''} Lights FULL (100%)`,
-      payloadBytes: encodeDpt5Scaling(100),
+      dpt: '17.001',
+      summary: `${this.prefix(sourcePa, location)}${zone.name} → Scene ${sceneIndex + 1} "${scene.label}"`,
+      payloadBytes: encodeDpt17Scene(sceneIndex),
     });
-
-    this.notify({ type: 'stateChange', reason: 'masterFull' });
+    this.notify({ type: 'stateChange', reason: 'sceneRecall' });
   }
 
-  public handleSwitchLongPressHoldDown(switchLocation?: string, sourcePa = '1.1.10'): void {
-    if (this.activeSceneIndex >= 0 && this.activeSceneIndex <= 2) {
-      this.lastActiveSceneIndex = this.activeSceneIndex;
-    }
-    this.activeSceneIndex = -1;
-
-    if (this.utilitySwitchOn && this.targetLevels.utilitySpotlights > NIGHT_WALK_UTILITY_PCT) {
-      this.lastUtilityLevel = this.targetLevels.utilitySpotlights;
-    }
-    this.utilitySwitchOn = false;
-    this.courtyardModeIndex = 0;
-    this.targetLevels.courtyardFestoons = 0;
-    this.targetLevels.reclaimedLampPost = 0;
-    this.targetLevels.familyRoomSpots = 0;
-    this.targetLevels.diningPendant = 0;
-    this.targetLevels.diningPictureLight = 0;
-    this.targetLevels.diningFairyLights = 0;
-
-    this.applyKitchenOffStateLevels();
-    this.applyUtilityOffStateLevels();
-
-    const kNight = this.isKitchenNightDimActive();
-    const uNight = this.isUtilityNightDimActive();
-    const locPrefix = switchLocation
-      ? sourcePa === '1.1.2'
-        ? switchLocation
-        : `Corston (${switchLocation} ▼ Hold)`
-      : 'Hold ▼ Down';
-    let summary = `${locPrefix} → All Kitchen, Dining, Utility & Courtyard Lights OFF (0%)`;
-    if (kNight && uNight) {
-      summary = `${locPrefix} (${this.ambientLux}lx) → Night-Walk Dim (Uplights ${NIGHT_WALK_UPLIGHTS_PCT}%, Spots ${NIGHT_WALK_SPOTLIGHTS_PCT}%, UnderCab ${NIGHT_WALK_UNDER_CABINET_PCT}%, AboveCab ${NIGHT_WALK_ABOVE_CABINET_PCT}%, Utility ${NIGHT_WALK_UTILITY_PCT}%), Courtyard & Dining 0%`;
-    } else if (kNight) {
-      summary = `${locPrefix} (${this.ambientLux}lx) → Kitchen Night Dim (Uplights ${NIGHT_WALK_UPLIGHTS_PCT}%, Spots ${NIGHT_WALK_SPOTLIGHTS_PCT}%, UnderCab ${NIGHT_WALK_UNDER_CABINET_PCT}%, AboveCab ${NIGHT_WALK_ABOVE_CABINET_PCT}%), Utility, Courtyard & Dining 0%`;
-    } else if (uNight) {
-      summary = `${locPrefix} (${this.ambientLux}lx) → Kitchen, Courtyard & Dining 0%, Utility Night Dim (${NIGHT_WALK_UTILITY_PCT}%)`;
-    }
-
+  /** Hold ▲: every zone channel to 100 % (zone full-on object). */
+  public setZoneFull(
+    zoneId: RoomZoneId,
+    sourcePa = this.project.centralPa.ipInterface,
+    location?: string
+  ): void {
+    const zone = this.zoneLighting.getZone(zoneId);
+    if (!zone) return;
+    this.applyLevels(this.zoneLighting.fullLevels(zoneId));
+    this.zoneLighting.markMode(zoneId, 'full');
+    this.nightEnteredSimSec.delete(zoneId);
+    this.syncOverlappingZones(zone);
+    this.refreshActiveCentralScene();
     this.emitTelegram({
       src: sourcePa,
-      dst: '1/0/0',
+      dst: zone.ga.full,
       isGroup: true,
       apci: 'A_GroupValue_Write',
       dpt: '1.001',
-      summary,
+      summary: `${this.prefix(sourcePa, location)}${zone.name} → Full brightness (100%)`,
+      payloadBytes: encodeDpt1(true),
+    });
+    this.notify({ type: 'stateChange', reason: 'masterFull' });
+  }
+
+  /**
+   * Hold ▼: night mode — the zone's night levels (3–5 %) when dark, all off in daylight.
+   * Switches fully off once the zone's detectors have been vacant for the hold time.
+   */
+  public enterZoneNight(
+    zoneId: RoomZoneId,
+    sourcePa = this.project.centralPa.ipInterface,
+    location?: string
+  ): void {
+    const zone = this.zoneLighting.getZone(zoneId);
+    if (!zone) return;
+    const dark = this.isBelowLuxThreshold();
+    this.applyLevels(this.zoneLighting.nightLevels(zoneId, dark));
+    this.zoneLighting.markMode(zoneId, 'night');
+    this.nightEnteredSimSec.set(zoneId, this.simTimeSec);
+    this.syncOverlappingZones(zone);
+    this.refreshActiveCentralScene();
+    const levels = Object.entries(this.zoneLighting.nightLevels(zoneId, dark))
+      .filter(([, v]) => (v ?? 0) > 0)
+      .map(([id, v]) => `${this.circuitById.get(id as CircuitId)?.shortName ?? id} ${v}%`)
+      .join(', ');
+    this.emitTelegram({
+      src: sourcePa,
+      dst: zone.ga.night,
+      isGroup: true,
+      apci: 'A_GroupValue_Write',
+      dpt: '1.001',
+      summary: `${this.prefix(sourcePa, location)}${zone.name} → Night mode${
+        dark ? (levels ? ` (${levels})` : '') : ` (${this.ambientLux}lx daylight → off)`
+      }`,
+      payloadBytes: encodeDpt1(true),
+    });
+    this.notify({ type: 'stateChange', reason: 'masterOff' });
+  }
+
+  /** Everything in the zone to 0 % (night-mode vacancy, UI "Off"). */
+  public setZoneOff(zoneId: RoomZoneId, sourcePa = this.project.centralPa.ipInterface): void {
+    const zone = this.zoneLighting.getZone(zoneId);
+    if (!zone) return;
+    this.applyLevels(this.zoneLighting.offLevels(zoneId));
+    this.zoneLighting.markMode(zoneId, 'off');
+    this.nightEnteredSimSec.delete(zoneId);
+    this.syncOverlappingZones(zone);
+    this.refreshActiveCentralScene();
+    const vacancy = this.detectorByPa.has(sourcePa);
+    this.emitTelegram({
+      src: sourcePa,
+      dst: zone.ga.full,
+      isGroup: true,
+      apci: 'A_GroupValue_Write',
+      dpt: '1.001',
+      summary: vacancy
+        ? `${zone.name} vacant (${this.detectorByPa.get(sourcePa)?.name ?? sourcePa}) → Night mode off (0%)`
+        : `${this.prefix(sourcePa)}${zone.name} → Off (0%)`,
       payloadBytes: encodeDpt1(false),
     });
+    this.notify({ type: 'stateChange', reason: 'circuitLevel' });
+  }
 
+  /** Short ▲ / ▼: next / previous stored zone scene (wraps; wakes from off / night). */
+  public handleZoneSwitchShortPress(
+    zoneId: RoomZoneId,
+    direction: SwitchDirection = 'up',
+    sourcePa = this.project.centralPa.ipInterface,
+    switchLocation?: string
+  ): void {
+    const zone = this.zoneLighting.getZone(zoneId);
+    if (!zone || zone.scenes.length === 0) return;
+    this.notePushButtonPresence(sourcePa);
+    const next = this.zoneLighting.nextSceneIndex(zoneId, direction, this.isZoneLit(zoneId));
+    this.recallZoneScene(zoneId, next, sourcePa, this.locationTag(switchLocation, direction));
+  }
+
+  /** Hold ▲ = full brightness; hold ▼ = night mode. */
+  public handleZoneSwitchLongPressHold(
+    zoneId: RoomZoneId,
+    direction: SwitchDirection = 'down',
+    sourcePa = this.project.centralPa.ipInterface,
+    switchLocation?: string
+  ): void {
+    this.notePushButtonPresence(sourcePa);
+    const tag = switchLocation ? `${switchLocation} ${direction === 'up' ? '▲' : '▼'} hold` : undefined;
+    if (direction === 'up') {
+      this.setZoneFull(zoneId, sourcePa, tag);
+    } else {
+      this.enterZoneNight(zoneId, sourcePa, tag);
+    }
+  }
+
+  /**
+   * One toggle gesture as a push-button interface reports it: presses shorter than the
+   * device's long-press time step scenes, longer presses trigger full / night.
+   */
+  public handleZoneSwitchGesture(
+    zoneId: RoomZoneId,
+    direction: SwitchDirection,
+    pressDurationMs: number,
+    sourcePa = this.project.centralPa.ipInterface,
+    switchLocation?: string
+  ): void {
+    const threshold =
+      this.pushButtonByPa.get(sourcePa)?.params.longPressMs ?? this.flashedParams.holdThresholdMs;
+    if (pressDurationMs >= threshold) {
+      this.handleZoneSwitchLongPressHold(zoneId, direction, sourcePa, switchLocation);
+    } else {
+      this.handleZoneSwitchShortPress(zoneId, direction, sourcePa, switchLocation);
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Presence detectors
+  // ---------------------------------------------------------------------------------------
+
+  public getPresenceState(pa: string): KnxPresenceState {
+    const p = this.presence.get(pa);
+    return p ? { detected: p.detected, lastSeenSimSec: p.lastSeenSimSec } : { detected: false, lastSeenSimSec: null };
+  }
+
+  /** Effective hold time of a detector (override → detector parameter → project default). */
+  public getPresenceHoldTimeSec(pa?: string): number {
+    if (this.presenceHoldOverrideSec !== null) return this.presenceHoldOverrideSec;
+    const detector = pa ? this.detectorByPa.get(pa) : undefined;
+    return detector?.params.holdTimeSec ?? this.project.defaultPresenceHoldTimeSec;
+  }
+
+  /** Overrides every detector's hold time (e.g. 12 s for demos); `null` restores parameters. */
+  public setPresenceHoldTimeOverride(seconds: number | null): void {
+    this.presenceHoldOverrideSec = seconds === null ? null : Math.max(1, seconds);
+    this.notify({ type: 'stateChange', reason: 'sensorChange' });
+  }
+
+  /**
+   * Movement seen by detector `pa` now (e.g. the walkthrough camera inside its coverage).
+   * Re-triggers the hold timer; sends presence ON on the vacant → occupied transition.
+   */
+  public reportPresence(pa: string): void {
+    const p = this.presence.get(pa);
+    if (!p) return;
+    p.lastSeenSimSec = this.simTimeSec;
+    if (!p.detected) {
+      this.setPresence(pa, true, true, true);
+    }
+  }
+
+  /** Sets a detector's presence object (manual toggles latch until toggled again). */
+  public setPresence(pa: string, detected: boolean, emitBus = true, fromMovement = false): void {
+    const detector = this.detectorByPa.get(pa);
+    const p = this.presence.get(pa);
+    if (!detector || !p) return;
+    const changed = p.detected !== detected;
+    p.detected = detected;
+    if (!fromMovement) {
+      p.lastSeenSimSec = null;
+    }
+    if (!changed && !detected) return;
+
+    const reaction = changed ? this.applyPresenceReaction(detector, detected) : '';
+    this.applyLegacyPresence(detector, detected, changed);
+
+    if (emitBus && changed) {
+      this.emitTelegram({
+        src: detector.pa,
+        dst: detector.gaPresence,
+        isGroup: true,
+        apci: 'A_GroupValue_Write',
+        dpt: '1.018',
+        summary: `${detector.name} (${detector.pa}) → ${detected ? 'Presence' : 'Vacant'}${reaction}`,
+        payloadBytes: encodeDpt1(detected),
+      });
+    }
+    this.notify({ type: 'stateChange', reason: 'sensorChange' });
+  }
+
+  public togglePresence(pa: string): boolean {
+    const next = !this.getPresenceState(pa).detected;
+    this.setPresence(pa, next);
+    return next;
+  }
+
+  public isZoneOccupied(zoneId: RoomZoneId): boolean {
+    return this.project.presenceDetectors.some(
+      (d) => d.zoneId === zoneId && (this.presence.get(d.pa)?.detected ?? false)
+    );
+  }
+
+  private applyPresenceReaction(detector: KnxPresenceDetectorDevice, detected: boolean): string {
+    const zoneId = detector.zoneId;
+    const state = this.zoneLighting.getState(zoneId);
+    if (detected) {
+      if (state.mode === 'off' && this.isBelowLuxThreshold()) {
+        this.applyLevels(this.zoneLighting.nightLevels(zoneId, true));
+        this.zoneLighting.markMode(zoneId, 'night');
+        this.nightEnteredSimSec.set(zoneId, this.simTimeSec);
+        this.refreshActiveCentralScene();
+        return ' → night mode restored';
+      }
+      return '';
+    }
+    if (state.mode === 'night' && !this.isZoneOccupied(zoneId)) {
+      this.applyLevels(this.zoneLighting.offLevels(zoneId));
+      this.zoneLighting.markMode(zoneId, 'off');
+      this.nightEnteredSimSec.delete(zoneId);
+      this.refreshActiveCentralScene();
+      return ' → night mode off (0%)';
+    }
+    return '';
+  }
+
+  private applyLegacyPresence(
+    detector: KnxPresenceDetectorDevice,
+    detected: boolean,
+    changed: boolean
+  ): void {
+    const legacy = detector.legacy;
+    if (!legacy) return;
+    if (legacy.kind === 'kitchen') {
+      this.tvArtSlideTimerSec = 0;
+      if (detected && changed) {
+        this.tvArtIndex = (this.tvArtIndex + 1) % TV_ARTWORKS.length;
+      }
+    } else if (legacy.kind === 'room') {
+      this.roomAutomation.setMotionDetected(legacy.sensorId, detected);
+      this.applyLevels(this.roomAutomation.computeMotionCircuitLevels(legacy.sensorId));
+    }
+  }
+
+  private notePushButtonPresence(sourcePa: string): void {
+    const button = this.pushButtonByPa.get(sourcePa);
+    if (!button) return;
+    for (const detector of this.project.presenceDetectors) {
+      if (detector.zoneId === button.mountedInZoneId) {
+        const p = this.presence.get(detector.pa);
+        if (p && (p.detected ? p.lastSeenSimSec !== null : true)) {
+          this.reportPresence(detector.pa);
+        }
+      }
+    }
+  }
+
+  private legacyDetector(kind: 'kitchen' | 'utility'): KnxPresenceDetectorDevice | undefined {
+    return this.project.presenceDetectors.find((d) => d.legacy?.kind === kind);
+  }
+
+  private roomDetector(sensorId: RoomMotionSensorId): KnxPresenceDetectorDevice | undefined {
+    return this.project.presenceDetectors.find(
+      (d) => d.legacy?.kind === 'room' && d.legacy.sensorId === sensorId
+    );
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Legacy kitchen / utility / courtyard / room APIs (wrappers over the zone model)
+  // ---------------------------------------------------------------------------------------
+
+  public getKitchenMotionDetected(): boolean {
+    const d = this.legacyDetector('kitchen');
+    return d ? this.getPresenceState(d.pa).detected : false;
+  }
+
+  public getUtilityMotionDetected(): boolean {
+    const d = this.legacyDetector('utility');
+    return d ? this.getPresenceState(d.pa).detected : false;
+  }
+
+  public setKitchenMotionDetected(detected: boolean): void {
+    const d = this.legacyDetector('kitchen');
+    if (d) this.setPresence(d.pa, detected);
+  }
+
+  public setUtilityMotionDetected(detected: boolean): void {
+    const d = this.legacyDetector('utility');
+    if (d) this.setPresence(d.pa, detected);
+  }
+
+  public toggleKitchenMotion(): boolean {
+    this.setKitchenMotionDetected(!this.getKitchenMotionDetected());
+    return this.getKitchenMotionDetected();
+  }
+
+  public toggleUtilityMotion(): boolean {
+    this.setUtilityMotionDetected(!this.getUtilityMotionDetected());
+    return this.getUtilityMotionDetected();
+  }
+
+  public isUtilitySwitchOn(): boolean {
+    const mode = this.zoneLighting.getState('utility').mode;
+    return mode === 'scene' || mode === 'full' || mode === 'manual';
+  }
+
+  public isKitchenNightDimActive(): boolean {
+    return this.zoneLighting.getState('kitchen').mode === 'night' && this.isZoneLit('kitchen');
+  }
+
+  public isUtilityNightDimActive(): boolean {
+    return this.zoneLighting.getState('utility').mode === 'night' && this.isZoneLit('utility');
+  }
+
+  /** True when a zone containing `circuitId` idles in night mode with the circuit lit. */
+  public isRoomNightDimActive(circuitId: CircuitId): boolean {
+    return (
+      this.targetLevels[circuitId] > 0 &&
+      this.zoneLighting
+        .zonesForCircuit(circuitId)
+        .some((z) => this.zoneLighting.getState(z.id).mode === 'night')
+    );
+  }
+
+  public getRoomMotionSensors(): readonly RoomMotionSensorConfig[] {
+    return this.roomAutomation.getMotionSensors();
+  }
+
+  public getRoomMotionDetected(sensorId: RoomMotionSensorId): boolean {
+    return this.roomAutomation.isMotionDetected(sensorId);
+  }
+
+  public setRoomMotionDetected(sensorId: RoomMotionSensorId, detected: boolean, emitBus = true): void {
+    const d = this.roomDetector(sensorId);
+    if (d) {
+      this.setPresence(d.pa, detected, emitBus);
+      return;
+    }
+    this.roomAutomation.setMotionDetected(sensorId, detected);
+    this.applyLevels(this.roomAutomation.computeMotionCircuitLevels(sensorId));
+    this.notify({ type: 'stateChange', reason: 'sensorChange' });
+  }
+
+  public toggleRoomMotion(sensorId: RoomMotionSensorId): boolean {
+    const next = !this.roomAutomation.isMotionDetected(sensorId);
+    this.setRoomMotionDetected(sensorId, next);
+    return next;
+  }
+
+  /** Legacy kitchen toggle short press (kitchen zone). */
+  public handleSwitchShortPress(direction: SwitchDirection = 'up', switchLocation?: string): void {
+    this.handleZoneSwitchShortPress(
+      'kitchen',
+      direction,
+      this.project.centralPa.kitchenSwitchGroup,
+      switchLocation
+    );
+  }
+
+  /** Legacy kitchen hold ▲: open-plan kitchen + sitting area full. */
+  public handleSwitchLongPressHoldUp(
+    switchLocation?: string,
+    sourcePa = this.project.centralPa.kitchenSwitchGroup
+  ): void {
+    this.handleZoneSwitchLongPressHold('kitchen', 'up', sourcePa, switchLocation);
+    this.setZoneFull('sitting', sourcePa, switchLocation);
+    this.activeSceneIndex = ACTIVE_SCENE_FULL;
+  }
+
+  /**
+   * Legacy "all off" (hold ▼ on a kitchen toggle / central master-off object): night mode for
+   * the kitchen, sitting area, utility, dining room and courtyard.
+   */
+  public handleSwitchLongPressHoldDown(
+    switchLocation?: string,
+    sourcePa = this.project.centralPa.kitchenSwitchGroup
+  ): void {
+    if (this.activeSceneIndex >= 0 && this.activeSceneIndex <= 2) {
+      this.lastActiveSceneIndex = this.activeSceneIndex;
+    }
+    for (const zoneId of LEGACY_MASTER_OFF_ZONES) {
+      if (this.zoneLighting.getZone(zoneId)) {
+        this.enterZoneNightSilently(zoneId);
+      }
+    }
+    this.refreshActiveCentralScene();
+    const loc = switchLocation
+      ? sourcePa === this.project.centralPa.aiBridge
+        ? switchLocation
+        : `Corston (${switchLocation} ▼ Hold)`
+      : 'Hold ▼ Down';
+    this.emitTelegram({
+      src: sourcePa,
+      dst: this.project.centralGa.masterOff,
+      isGroup: true,
+      apci: 'A_GroupValue_Write',
+      dpt: '1.001',
+      summary: `${loc} → All off: kitchen, sitting, utility, dining & courtyard → night mode${
+        this.isBelowLuxThreshold() ? '' : ` (${this.ambientLux}lx daylight → off)`
+      }`,
+      payloadBytes: encodeDpt1(false),
+    });
     this.notify({ type: 'stateChange', reason: 'masterOff' });
   }
 
@@ -1073,303 +917,45 @@ export class KNXPropertyBusController {
     this.handleSwitchLongPressHoldDown();
   }
 
-  /**
-   * Universal Single-Toggle KNX Zone Switch — Short Press (`< 600ms`):
-   * - Cycles through the zone's 3 programmed scenes (`S1` -> `S2` -> `S3` -> `S1` on `▲` Up,
-   *   or `S3` -> `S2` -> `S1` -> `S3` on `▼` Down).
-   * - If all lights in the zone are currently OFF (`0%`), wakes the zone into `S1` (or `S3` on `▼`).
-   */
-  public handleZoneSwitchShortPress(
-    zoneId: RoomZoneId,
-    direction: 'up' | 'down' = 'up',
-    sourcePa = '2.1.10',
-    switchLocation?: string
-  ): void {
-    if (zoneId === 'kitchen') {
-      this.handleSwitchShortPress(direction, switchLocation);
-      return;
-    }
-    if (zoneId === 'utility') {
-      this.handleUtilitySwitchToggle(sourcePa);
-      return;
-    }
-    if (zoneId === 'courtyard') {
-      this.handleCourtyardSwitchShortPress(direction, sourcePa);
-      return;
-    }
-
-    const scenes = CROX_ZONE_SCENES[zoneId];
-    const zoneCircuits = CIRCUITS.filter((c) => c.zoneId === zoneId);
-    if (!scenes || scenes.length === 0 || zoneCircuits.length === 0) return;
-
-    const anyOn = zoneCircuits.some((c) => (this.targetLevels[c.id] ?? 0) > 0);
-    let nextIdx = 0;
-    if (!anyOn) {
-      nextIdx = direction === 'down' ? scenes.length - 1 : 0;
-    } else {
-      const curIdx = this.zoneSceneIndex.get(zoneId) ?? 0;
-      nextIdx =
-        direction === 'up'
-          ? (curIdx + 1) % scenes.length
-          : (curIdx - 1 + scenes.length) % scenes.length;
-    }
-
-    this.zoneSceneIndex.set(zoneId, nextIdx);
-    const chosenScene = scenes[nextIdx]!;
-    for (const [cid, val] of Object.entries(chosenScene.levels)) {
-      if (typeof val === 'number') {
-        this.targetLevels[cid as CircuitId] = Math.max(0, Math.min(100, Math.round(val)));
-      }
-    }
-
-    const locPrefix = switchLocation
-      ? `Corston (${switchLocation} ${direction === 'up' ? '▲' : '▼'}) → `
-      : `Zone Switch (${zoneId} ${direction === 'up' ? '▲' : '▼'}) → `;
-    const dstGa = zoneId.startsWith('outbuilding') ? '3/0/1' : '1/0/1';
-
-    this.emitTelegram({
-      src: sourcePa,
-      dst: dstGa,
-      isGroup: true,
-      apci: 'A_GroupValue_Write',
-      dpt: '17.001',
-      summary: `${locPrefix}Recall ${chosenScene.label}`,
-      payloadBytes: encodeDpt17Scene(nextIdx),
-    });
-
-    this.notify({ type: 'stateChange', reason: 'sceneRecall' });
-  }
-
-  /**
-   * Universal Single-Toggle KNX Zone Switch — Long Press Hold (`>= 600ms`):
-   * - Holding UP (`▲`) or Holding DOWN (`▼`) switches all lighting circuits in the zone OFF (`0%`).
-   */
-  public handleZoneSwitchLongPressHold(
-    zoneId: RoomZoneId,
-    direction: 'up' | 'down' = 'down',
-    sourcePa = '2.1.10',
-    switchLocation?: string
-  ): void {
-    if (zoneId === 'kitchen') {
-      this.handleSwitchLongPressHoldDown(switchLocation, sourcePa);
-      return;
-    }
-    if (zoneId === 'utility') {
-      if (this.utilitySwitchOn) {
-        this.handleUtilitySwitchToggle(sourcePa);
-      }
-      return;
-    }
-    if (zoneId === 'courtyard') {
-      this.handleCourtyardSwitchLongPressHoldDown(sourcePa);
-      return;
-    }
-
-    const zoneCircuits = CIRCUITS.filter((c) => c.zoneId === zoneId);
-    for (const c of zoneCircuits) {
-      this.targetLevels[c.id] = 0;
-      const nightRule = this.roomAutomation.getNightWalkRule(c.id);
-      if (nightRule) {
-        this.roomAutomation.noteManualLevel(c.id, 0);
-        this.targetLevels[c.id] = this.roomAutomation.offStateLevel(
-          nightRule,
-          this.isBelowLuxThreshold()
-        );
-      }
-    }
-
-    const locPrefix = switchLocation
-      ? `Corston (${switchLocation} ${direction === 'up' ? '▲' : '▼'} Hold ≥600ms)`
-      : `Zone Switch (${zoneId} ${direction === 'up' ? '▲' : '▼'} Hold ≥600ms)`;
-    const dstGa = zoneId.startsWith('outbuilding') ? '3/0/0' : '1/0/0';
-
-    this.emitTelegram({
-      src: sourcePa,
-      dst: dstGa,
-      isGroup: true,
-      apci: 'A_GroupValue_Write',
-      dpt: '1.001',
-      summary: `${locPrefix} → All Zone Lights OFF (0%)`,
-      payloadBytes: encodeDpt1(false),
-    });
-
-    this.notify({ type: 'stateChange', reason: 'masterOff' });
-  }
-
-
-  /**
-   * Bifold Pier 2-Gang Switch — Gang 2 (PA 1.1.14) controls the Cobbled Courtyard
-   * Festoon Lighting (Ch 7, GA 1/2/7) and Reclaimed Lamp Post (Ch 8, GA 1/2/8).
-   */
   public handleCourtyardSwitchShortPress(
-    direction: 'up' | 'down' = 'up',
-    sourcePa = '1.1.14'
+    direction: SwitchDirection = 'up',
+    sourcePa = this.project.centralPa.courtyardSwitch
   ): void {
-    const anyOn = this.isCourtyardLightOn();
+    this.handleZoneSwitchShortPress('courtyard', direction, sourcePa, 'Courtyard');
+  }
 
-    if (direction === 'down') {
-      if (anyOn) {
-        this.courtyardModeIndex = 0;
-        this.targetLevels.courtyardFestoons = 0;
-        this.targetLevels.reclaimedLampPost = 0;
-      } else {
-        this.courtyardModeIndex = 3;
-        this.targetLevels.courtyardFestoons = 0;
-        this.targetLevels.reclaimedLampPost = 95;
-      }
+  public handleCourtyardSwitchLongPressHoldUp(sourcePa = this.project.centralPa.courtyardSwitch): void {
+    this.handleZoneSwitchLongPressHold('courtyard', 'up', sourcePa, 'Courtyard');
+  }
+
+  public handleCourtyardSwitchLongPressHoldDown(
+    sourcePa = this.project.centralPa.courtyardSwitch
+  ): void {
+    this.handleZoneSwitchLongPressHold('courtyard', 'down', sourcePa, 'Courtyard');
+  }
+
+  /** Legacy utility toggle: lit → night mode, otherwise → first utility scene. */
+  public handleUtilitySwitchToggle(sourcePa = this.project.centralPa.utilitySwitch): void {
+    this.notePushButtonPresence(sourcePa);
+    if (this.isUtilitySwitchOn()) {
+      this.enterZoneNight('utility', sourcePa, 'Utility');
     } else {
-      // Tap Up cycles: Off (0) -> Both Warm (1) -> Festoons Only (2) -> Lamp Post Only (3) -> Off (0)
-      if (!anyOn) {
-        this.courtyardModeIndex = 1;
-      } else {
-        this.courtyardModeIndex = (this.courtyardModeIndex + 1) % 4;
-      }
-
-      if (this.courtyardModeIndex === 0) {
-        this.targetLevels.courtyardFestoons = 0;
-        this.targetLevels.reclaimedLampPost = 0;
-      } else if (this.courtyardModeIndex === 1) {
-        this.targetLevels.courtyardFestoons = 85;
-        this.targetLevels.reclaimedLampPost = 90;
-      } else if (this.courtyardModeIndex === 2) {
-        this.targetLevels.courtyardFestoons = 95;
-        this.targetLevels.reclaimedLampPost = 0;
-      } else {
-        this.targetLevels.courtyardFestoons = 0;
-        this.targetLevels.reclaimedLampPost = 95;
-      }
+      this.recallZoneScene('utility', 0, sourcePa, 'Utility');
     }
-
-    const label = this.getCourtyardModeLabel();
-    this.emitTelegram({
-      src: sourcePa,
-      dst: '1/1/7',
-      isGroup: true,
-      apci: 'A_GroupValue_Write',
-      dpt: '17.001',
-      summary: `Bifold 2-Gang (G2 Courtyard ${direction === 'up' ? '▲' : '▼'}) → ${label}`,
-      payloadBytes: encodeDpt17Scene(this.courtyardModeIndex),
-    });
-
-    this.notify({ type: 'stateChange', reason: 'circuitLevel' });
   }
 
-  public handleCourtyardSwitchLongPressHoldUp(sourcePa = '1.1.14'): void {
-    this.courtyardModeIndex = 1;
-    this.targetLevels.courtyardFestoons = 100;
-    this.targetLevels.reclaimedLampPost = 100;
-
-    this.emitTelegram({
-      src: sourcePa,
-      dst: '1/2/7',
-      isGroup: true,
-      apci: 'A_GroupValue_Write',
-      dpt: '5.001',
-      summary: 'Bifold 2-Gang (G2 ▲ Hold) → Courtyard Festoons & Lamp Post FULL (100%)',
-      payloadBytes: encodeDpt5Scaling(100),
-    });
-
-    this.notify({ type: 'stateChange', reason: 'circuitLevel' });
+  private enterZoneNightSilently(zoneId: RoomZoneId): void {
+    this.applyLevels(this.zoneLighting.nightLevels(zoneId, this.isBelowLuxThreshold()));
+    this.zoneLighting.markMode(zoneId, 'night');
+    this.nightEnteredSimSec.set(zoneId, this.simTimeSec);
   }
 
-  public handleCourtyardSwitchLongPressHoldDown(sourcePa = '1.1.14'): void {
-    this.courtyardModeIndex = 0;
-    this.targetLevels.courtyardFestoons = 0;
-    this.targetLevels.reclaimedLampPost = 0;
-
-    this.emitTelegram({
-      src: sourcePa,
-      dst: '1/1/7',
-      isGroup: true,
-      apci: 'A_GroupValue_Write',
-      dpt: '1.001',
-      summary: 'Bifold 2-Gang (G2 ▼ Hold) → Courtyard Festoons & Lamp Post OFF (0%)',
-      payloadBytes: encodeDpt1(false),
-    });
-
-    this.notify({ type: 'stateChange', reason: 'circuitLevel' });
-  }
-
-  public handleUtilitySwitchToggle(sourcePa = '1.1.11'): void {
-    if (this.utilitySwitchOn) {
-      if (this.targetLevels.utilitySpotlights > NIGHT_WALK_UTILITY_PCT) {
-        this.lastUtilityLevel = this.targetLevels.utilitySpotlights;
-      }
-      this.utilitySwitchOn = false;
-      this.applyUtilityOffStateLevels();
-
-      const nightActive = this.isUtilityNightDimActive();
-      this.emitTelegram({
-        src: sourcePa,
-        dst: '1/1/6',
-        isGroup: true,
-        apci: 'A_GroupValue_Write',
-        dpt: '1.001',
-        summary: nightActive
-          ? `Utility Switch Off (${this.ambientLux}lx & Motion) → Utility Night Dim (${NIGHT_WALK_UTILITY_PCT}%)`
-          : 'Utility Switch Off → Utility Spots Fully OFF (0%)',
-        payloadBytes: encodeDpt1(false),
-      });
-    } else {
-      this.utilitySwitchOn = true;
-      const nextPct = this.lastUtilityLevel > 0 ? this.lastUtilityLevel : 100;
-      this.targetLevels.utilitySpotlights = nextPct;
-
-      this.emitTelegram({
-        src: sourcePa,
-        dst: '1/1/6',
-        isGroup: true,
-        apci: 'A_GroupValue_Write',
-        dpt: '1.001',
-        summary: `Utility Switch ON → Utility Spots ${nextPct}%`,
-        payloadBytes: encodeDpt1(true),
-      });
-    }
-
-    this.notify({ type: 'stateChange', reason: 'circuitLevel' });
-  }
-
-  public setKitchenMotionDetected(detected: boolean): void {
-    const wasDetected = this.kitchenMotionDetected;
-    this.kitchenMotionDetected = detected;
-    this.tvArtSlideTimerSec = 0;
-
-    if (detected && !wasDetected) {
-      // Waking on new presence toggles to the next artwork in Art Mode
-      this.tvArtIndex = (this.tvArtIndex + 1) % TV_ARTWORKS.length;
-    }
-
-    if (this.activeSceneIndex === -1) {
-      this.applyKitchenOffStateLevels();
-    }
-
-    const artTitle = this.getTvArtTitle();
-    let summary = detected
-      ? `Kitchen PIR (1.1.12) → Motion: Frame TV Art Mode ON ("${artTitle}")`
-      : 'Kitchen PIR (1.1.12) → Vacant: Frame TV Auto-OFF';
-    if (this.activeSceneIndex === -1) {
-      if (detected && this.isBelowLuxThreshold()) {
-        summary = `Kitchen PIR: Motion (${this.ambientLux}lx) → Night Dim ON & TV Art ("${artTitle}")`;
-      } else if (!detected) {
-        summary = 'Kitchen PIR: Vacant → Lights 0% & Frame TV Auto-OFF';
-      }
-    }
-
-    this.emitTelegram({
-      src: '1.1.12',
-      dst: '1/4/1',
-      isGroup: true,
-      apci: 'A_GroupValue_Write',
-      dpt: '1.018',
-      summary,
-      payloadBytes: encodeDpt1(detected),
-    });
-
-    this.notify({ type: 'stateChange', reason: 'sensorChange' });
-  }
+  // ---------------------------------------------------------------------------------------
+  // Frame TV art (kitchen presence)
+  // ---------------------------------------------------------------------------------------
 
   public isTvArtModeActive(): boolean {
-    return this.kitchenMotionDetected;
+    return this.getKitchenMotionDetected();
   }
 
   public getTvArtIndex(): number {
@@ -1377,310 +963,186 @@ export class KNXPropertyBusController {
   }
 
   public getTvArtTitle(): string {
-    return TV_ARTWORKS[this.tvArtIndex] ?? 'Tur Langton Sunset';
+    return TV_ARTWORKS[this.tvArtIndex] ?? TV_ARTWORKS[0] ?? '';
   }
 
-  public cycleTvArt(emitBus = true, sourcePa = '1.1.12'): void {
-    if (!this.kitchenMotionDetected) {
-      // If someone interacts with the TV while room was marked vacant, presence is detected
+  public cycleTvArt(emitBus = true, sourcePa = this.project.centralPa.kitchenPresence): void {
+    if (!this.getKitchenMotionDetected()) {
+      // Interacting with the TV while the room is marked vacant means someone is there.
       this.setKitchenMotionDetected(true);
       return;
     }
     this.tvArtIndex = (this.tvArtIndex + 1) % TV_ARTWORKS.length;
     this.tvArtSlideTimerSec = 0;
-    const title = this.getTvArtTitle();
-
-    if (emitBus) {
-      this.emitTelegram({
-        src: sourcePa,
-        dst: '1/4/4',
-        isGroup: true,
-        apci: 'A_GroupValue_Write',
-        dpt: '17.001',
-        summary: `Frame TV Art Mode → Art ${this.tvArtIndex + 1}/${TV_ARTWORKS.length}: "${title}"`,
-        payloadBytes: encodeDpt17Scene(this.tvArtIndex),
-      });
-    }
-
+    if (emitBus) this.emitTvArt(sourcePa);
     this.notify({ type: 'stateChange', reason: 'sensorChange' });
   }
 
-  public setTvArtIndex(index: number, emitBus = true, sourcePa = '1.1.2'): void {
+  public setTvArtIndex(index: number, emitBus = true, sourcePa = this.project.centralPa.aiBridge): void {
     const count = TV_ARTWORKS.length;
     this.tvArtIndex = ((index % count) + count) % count;
     this.tvArtSlideTimerSec = 0;
-    if (!this.kitchenMotionDetected) {
-      this.kitchenMotionDetected = true;
+    if (!this.getKitchenMotionDetected()) {
+      const d = this.legacyDetector('kitchen');
+      const p = d ? this.presence.get(d.pa) : undefined;
+      if (p) p.detected = true;
     }
-    const title = this.getTvArtTitle();
-
-    if (emitBus) {
-      this.emitTelegram({
-        src: sourcePa,
-        dst: '1/4/4',
-        isGroup: true,
-        apci: 'A_GroupValue_Write',
-        dpt: '17.001',
-        summary: `Frame TV Art Mode → Art ${this.tvArtIndex + 1}/${count}: "${title}"`,
-        payloadBytes: encodeDpt17Scene(this.tvArtIndex),
-      });
-    }
-
+    if (emitBus) this.emitTvArt(sourcePa);
     this.notify({ type: 'stateChange', reason: 'sensorChange' });
   }
 
-  public toggleKitchenMotion(): boolean {
-    this.setKitchenMotionDetected(!this.kitchenMotionDetected);
-    return this.kitchenMotionDetected;
-  }
-
-  public setUtilityMotionDetected(detected: boolean): void {
-    this.utilityMotionDetected = detected;
-    if (!this.utilitySwitchOn) {
-      this.applyUtilityOffStateLevels();
-    }
-
-    let summary = `Utility PIR (1.1.13) → ${detected ? 'Motion Detected' : 'No Motion (Vacant)'}`;
-    if (!this.utilitySwitchOn) {
-      if (detected && this.isBelowLuxThreshold()) {
-        summary = `Utility PIR: Motion (${this.ambientLux}lx) → Utility Night Dim ON (${NIGHT_WALK_UTILITY_PCT}%)`;
-      } else if (!detected) {
-        summary = 'Utility PIR: No Motion (Vacant) → Utility Spots Fully OFF (0%)';
-      }
-    }
-
+  private emitTvArt(sourcePa: string): void {
     this.emitTelegram({
-      src: '1.1.13',
-      dst: '1/4/3',
+      src: sourcePa,
+      dst: this.project.centralGa.tvArt,
       isGroup: true,
       apci: 'A_GroupValue_Write',
-      dpt: '1.018',
-      summary,
-      payloadBytes: encodeDpt1(detected),
+      dpt: '17.001',
+      summary: `Frame TV Art Mode → Art ${this.tvArtIndex + 1}/${TV_ARTWORKS.length}: "${this.getTvArtTitle()}"`,
+      payloadBytes: encodeDpt17Scene(this.tvArtIndex),
     });
-
-    this.notify({ type: 'stateChange', reason: 'sensorChange' });
   }
 
-  public toggleUtilityMotion(): boolean {
-    this.setUtilityMotionDetected(!this.utilityMotionDetected);
-    return this.utilityMotionDetected;
+  // ---------------------------------------------------------------------------------------
+  // Car gates
+  // ---------------------------------------------------------------------------------------
+
+  public isCarGatesOpen(): boolean {
+    return this.carGatesOpen;
   }
+
+  public getCarGatesProgress(): number {
+    return this.carGatesProgress;
+  }
+
+  public isCarGatesMoving(): boolean {
+    const target = this.carGatesOpen ? 1 : 0;
+    return Math.abs(target - this.carGatesProgress) > 0.001;
+  }
+
+  public getCarGatesStatusLabel(): string {
+    const pct = Math.round(this.carGatesProgress * 100);
+    if (this.isCarGatesMoving()) {
+      return this.carGatesOpen ? `OPENING · ${pct}% (10s)` : `CLOSING · ${pct}% (10s)`;
+    }
+    return this.carGatesOpen ? 'OPEN · 100%' : 'CLOSED · 0%';
+  }
+
+  public setCarGatesOpen(open: boolean, emitBus = true, sourcePa = this.project.centralPa.carGates): boolean {
+    this.carGatesOpen = open;
+    if (emitBus) {
+      const prefix = sourcePa === this.project.centralPa.aiBridge ? 'AI Gateway → ' : '';
+      this.emitTelegram({
+        src: sourcePa,
+        dst: this.project.centralGa.carGatesCommand,
+        isGroup: true,
+        apci: 'A_GroupValue_Write',
+        dpt: '1.001',
+        summary: `${prefix}Front Car Gates (Dual-Leaf) → ${
+          open ? 'OPENING (10.0s travel)' : 'CLOSING (10.0s travel)'
+        }`,
+        payloadBytes: encodeDpt1(open),
+      });
+    }
+    this.notify({ type: 'stateChange', reason: 'carGateChange' });
+    return this.carGatesOpen;
+  }
+
+  public toggleCarGates(sourcePa = this.project.centralPa.carGates): boolean {
+    return this.setCarGatesOpen(!this.carGatesOpen, true, sourcePa);
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Lux
+  // ---------------------------------------------------------------------------------------
 
   public setAmbientLux(lux: number, emitBus = true): void {
+    const wasDark = this.isBelowLuxThreshold();
     this.ambientLux = Math.max(0, Math.round(lux));
-
-    if (this.activeSceneIndex === -1) {
-      this.applyKitchenOffStateLevels();
+    const dark = this.isBelowLuxThreshold();
+    if (dark !== wasDark) {
+      // Night objects follow daylight: dim when dark, off in daylight.
+      for (const zone of this.project.zones) {
+        if (this.zoneLighting.getState(zone.id).mode === 'night') {
+          this.applyLevels(this.zoneLighting.nightLevels(zone.id, dark));
+        }
+      }
     }
-    if (!this.utilitySwitchOn) {
-      this.applyUtilityOffStateLevels();
-    }
-    this.applyRoomNightWalkLevels();
-
     if (emitBus) {
-      const nightEligible = this.isBelowLuxThreshold();
       this.emitTelegram({
-        src: '1.1.12',
-        dst: '1/4/2',
+        src: this.project.centralPa.kitchenPresence,
+        dst: this.project.centralGa.ambientLux,
         isGroup: true,
         apci: 'A_GroupValue_Write',
         dpt: '9.004',
         summary: `Lux Sensor → ${this.ambientLux} lx (${
-          nightEligible
-            ? `< ${this.flashedParams.luxThreshold}lx · Night Dim Enabled`
-            : `≥ ${this.flashedParams.luxThreshold}lx · Daylight Full Off`
+          dark
+            ? `< ${this.flashedParams.luxThreshold}lx · night mode dims`
+            : `≥ ${this.flashedParams.luxThreshold}lx · night mode off`
         })`,
         payloadBytes: encodeDpt9Float(this.ambientLux),
       });
     }
-
     this.notify({ type: 'stateChange', reason: 'sensorChange' });
   }
 
-  public recallScene(sceneIdx: number, sourcePa = '1.1.10', switchLocation?: string): void {
+  // ---------------------------------------------------------------------------------------
+  // Central scene table (legacy kitchen open-plan scenes)
+  // ---------------------------------------------------------------------------------------
+
+  public recallScene(sceneIdx: number, sourcePa = this.project.centralPa.kitchenSwitchGroup, switchLocation?: string): void {
     const scene = this.scenes[sceneIdx];
     if (!scene) return;
-
+    this.applyCentralScene(scene);
     this.activeSceneIndex = sceneIdx;
     if (sceneIdx >= 0 && sceneIdx <= 2) {
       this.lastActiveSceneIndex = sceneIdx;
     }
-
-    for (const id of SCENE_CIRCUIT_IDS) {
-      this.targetLevels[id] = scene.levels[id];
-    }
-
-    if (scene.outdoorLevels) {
-      this.targetLevels.courtyardFestoons = scene.outdoorLevels.courtyardFestoons;
-      this.targetLevels.reclaimedLampPost = scene.outdoorLevels.reclaimedLampPost;
-    }
-
-    if (scene.auxiliaryLevels) {
-      if (scene.auxiliaryLevels.utilitySpotlights !== undefined) {
-        this.targetLevels.utilitySpotlights = scene.auxiliaryLevels.utilitySpotlights;
-        this.utilitySwitchOn =
-          scene.auxiliaryLevels.utilitySpotlights > NIGHT_WALK_UTILITY_PCT;
-      }
-      if (scene.auxiliaryLevels.familyRoomSpots !== undefined) {
-        this.targetLevels.familyRoomSpots = scene.auxiliaryLevels.familyRoomSpots;
-      }
-    }
-
     const locPrefix = switchLocation
-      ? sourcePa === '1.1.2'
+      ? sourcePa === this.project.centralPa.aiBridge
         ? `${switchLocation} → `
         : `Corston (${switchLocation}) → `
       : '';
     const sceneTierTag = scene.isSwitchScene ? '' : ' [Extended AI/UI Scene]';
     this.emitTelegram({
       src: sourcePa,
-      dst: '1/0/1',
+      dst: this.project.centralGa.centralScene,
       isGroup: true,
       apci: 'A_GroupValue_Write',
       dpt: '17.001',
       summary: `${locPrefix}Recall ${scene.code}: "${scene.name}"${sceneTierTag}`,
       payloadBytes: encodeDpt17Scene(sceneIdx),
     });
-
     this.notify({ type: 'stateChange', reason: 'sceneRecall' });
   }
 
-  public setCircuitLevel(
-    circuitId: CircuitId,
-    pct: number,
-    emitBus = true,
-    sourcePa = '1.1.1',
-    switchLocation?: string
-  ): void {
-    const clamped = Math.max(0, Math.min(100, Math.round(pct)));
-    this.targetLevels[circuitId] = clamped;
-    // Room night-walk circuits: switching off idles at the night level when it is dark.
-    const nightRule = this.roomAutomation.getNightWalkRule(circuitId);
-    let nightDimSuffix = '';
-    if (nightRule) {
-      this.roomAutomation.noteManualLevel(circuitId, clamped);
-      if (!this.roomAutomation.isSwitchOn(circuitId)) {
-        this.targetLevels[circuitId] = this.roomAutomation.offStateLevel(
-          nightRule,
-          this.isBelowLuxThreshold()
-        );
-        if (this.targetLevels[circuitId] > 0) {
-          nightDimSuffix = ` (Off → Night Dim ${this.targetLevels[circuitId]}%)`;
-        }
+  private applyCentralScene(scene: ScenePreset): void {
+    const levels: ZoneLevels = {};
+    for (const id of SCENE_CIRCUIT_IDS) {
+      levels[id] = scene.levels[id];
+    }
+    if (scene.outdoorLevels) {
+      levels.courtyardFestoons = scene.outdoorLevels.courtyardFestoons;
+      levels.reclaimedLampPost = scene.outdoorLevels.reclaimedLampPost;
+    }
+    if (scene.auxiliaryLevels) {
+      for (const [id, v] of Object.entries(scene.auxiliaryLevels)) {
+        if (typeof v === 'number') levels[id as CircuitId] = v;
       }
     }
-    if (circuitId === 'utilitySpotlights') {
-      this.utilitySwitchOn = clamped > 0;
-      if (clamped > NIGHT_WALK_UTILITY_PCT) {
-        this.lastUtilityLevel = clamped;
+    this.applyLevels(levels);
+    for (const id of Object.keys(levels) as CircuitId[]) {
+      for (const zone of this.zoneLighting.zonesForCircuit(id)) {
+        this.nightEnteredSimSec.delete(zone.id);
+        this.syncZoneModeFromLevels(zone.id);
       }
-    }
-
-    const circuit = CIRCUITS.find((c) => c.id === circuitId);
-    if (circuit && emitBus) {
-      const prefix =
-        sourcePa === '1.1.2'
-          ? 'AI Gateway → '
-          : switchLocation
-            ? `Corston (${switchLocation}) → `
-            : '';
-      this.emitTelegram({
-        src: sourcePa,
-        dst: circuit.gaValue,
-        isGroup: true,
-        apci: 'A_GroupValue_Write',
-        dpt: '5.001',
-        summary: `${prefix}${circuit.shortName} → ${clamped}%${nightDimSuffix}`,
-        payloadBytes: encodeDpt5Scaling(this.targetLevels[circuitId]),
-      });
-    }
-
-    if (!this.isAnyKitchenLightOn()) {
-      this.activeSceneIndex = -1;
-    }
-
-    this.notify({ type: 'stateChange', reason: 'circuitLevel' });
-  }
-
-  public toggleCircuit(
-    circuitId: CircuitId,
-    sourcePa?: string,
-    switchLocation?: string,
-    direction?: 'up' | 'down'
-  ): void {
-    if (circuitId === 'utilitySpotlights') {
-      this.handleUtilitySwitchToggle(sourcePa ?? '1.1.11');
-      return;
-    }
-
-    const defaultSwitchPaMap: Partial<Record<CircuitId, string>> = {
-      familyRoomSpots: '1.1.15',
-      bootLobbyPendant: '1.1.16',
-      hallPendant: '1.1.17',
-      frontRoomPendant: '1.1.18',
-      entranceHallPendant: '1.1.19',
-      livingRoomPendant: '1.1.21',
-      studyPendant: '1.1.23',
-      mainBedroomPendant: '1.2.10',
-      familyBathroomPendant: '1.2.11',
-      upperLandingPendant: '1.2.12',
-      bedroom2Pendant: '1.2.13',
-      bedroom3Pendant: '1.2.14',
-      bedroom4Pendant: '1.2.15',
-      courtyardFestoons: '1.1.14',
-      reclaimedLampPost: '1.1.14',
-      wineCellarLeds: '1.1.25',
-      cloakroomWcLights: '1.1.26',
-      entranceHallUplights: '1.1.19',
-      gymSpotsAndBattens: '2.1.10',
-      gymWallAndCoveLights: '2.1.10',
-      garageHighBayLights: '2.1.11',
-      garageBenchAndShower: '2.1.11',
-      barnTrussAndSimHalo: '2.1.12',
-      barnBarsAndLamps5A: '2.1.12',
-      mezzanineSconcesAndAmbient: '2.1.13',
-      mezzanineLamps5A: '2.1.13',
-      stableOfficeSpotlights: '2.1.14',
-      stableOfficeWallsAndLamps5A: '2.1.14',
-      stableSuiteDownlights: '2.1.15',
-      stableSuiteLamps5A: '2.1.15',
-    };
-
-    const resolvedPa = sourcePa ?? defaultSwitchPaMap[circuitId] ?? '1.1.10';
-    const locLabel =
-      switchLocation && direction
-        ? `${switchLocation} ${direction === 'up' ? '▲' : '▼'}`
-        : switchLocation;
-
-    const isKitchenSceneCircuit = (SCENE_CIRCUIT_IDS as readonly string[]).includes(
-      circuitId
-    );
-    if (!isKitchenSceneCircuit) {
-      const current = this.targetLevels[circuitId] ?? 0;
-      const isOn = this.roomAutomation.getNightWalkRule(circuitId)
-        ? this.roomAutomation.isSwitchOn(circuitId)
-        : current > 0;
-      const nextLevel = isOn ? 0 : 88;
-      this.setCircuitLevel(circuitId, nextLevel, true, resolvedPa, locLabel);
-      return;
-    }
-
-    const current = this.targetLevels[circuitId] ?? 0;
-    if (current > 0) {
-      this.setCircuitLevel(circuitId, 0, true, resolvedPa, locLabel);
-    } else {
-      const fallbackScene =
-        this.scenes[Math.max(0, Math.min(7, this.activeSceneIndex))] ?? this.scenes[0];
-      const presetVal = fallbackScene
-        ? fallbackScene.levels[circuitId as keyof typeof fallbackScene.levels]
-        : 85;
-      const restore = presetVal > 0 ? presetVal : 85;
-      this.setCircuitLevel(circuitId, restore, true, resolvedPa, locLabel);
     }
   }
 
-  public saveCurrentLevelsToActiveScene(targetSceneIdx?: number, sourcePa = '1.1.1'): void {
+  public saveCurrentLevelsToActiveScene(
+    targetSceneIdx?: number,
+    sourcePa = this.project.centralPa.ipInterface
+  ): void {
     const idx =
       targetSceneIdx !== undefined
         ? targetSceneIdx
@@ -1705,16 +1167,266 @@ export class KNXPropertyBusController {
 
     this.emitTelegram({
       src: sourcePa,
-      dst: '1/0/1',
+      dst: this.project.centralGa.centralScene,
       isGroup: true,
       apci: 'A_GroupValue_Write',
       dpt: '18.001',
-      summary: `Store Scene ${scene.number} ("${scene.name}") into Actuator 1.1.20`,
+      summary: `Store Scene ${scene.number} ("${scene.name}") into Actuator ${this.project.centralPa.kitchenActuator}`,
       payloadBytes: encodeDpt18SceneControl(idx, true),
     });
-
     this.notify({ type: 'eepromChanged' });
   }
+
+  // ---------------------------------------------------------------------------------------
+  // Channels
+  // ---------------------------------------------------------------------------------------
+
+  public setCircuitLevel(
+    circuitId: CircuitId,
+    pct: number,
+    emitBus = true,
+    sourcePa = this.project.centralPa.ipInterface,
+    switchLocation?: string
+  ): void {
+    const level = this.clampForCircuit(circuitId, pct);
+    this.targetLevels[circuitId] = level;
+    this.roomAutomation.noteManualLevel(circuitId, level);
+    for (const zone of this.zoneLighting.zonesForCircuit(circuitId)) {
+      this.zoneLighting.noteManual(zone.id, this.isZoneLit(zone.id));
+      this.nightEnteredSimSec.delete(zone.id);
+    }
+    this.refreshActiveCentralScene();
+
+    const circuit = this.circuitById.get(circuitId);
+    if (circuit && emitBus) {
+      const prefix =
+        sourcePa === this.project.centralPa.aiBridge
+          ? 'AI Gateway → '
+          : switchLocation
+            ? `Corston (${switchLocation}) → `
+            : '';
+      this.emitTelegram({
+        src: sourcePa,
+        dst: circuit.gaValue,
+        isGroup: true,
+        apci: 'A_GroupValue_Write',
+        dpt: '5.001',
+        summary: `${prefix}${circuit.shortName} → ${level}%`,
+        payloadBytes: encodeDpt5Scaling(level),
+      });
+    }
+    this.notify({ type: 'stateChange', reason: 'circuitLevel' });
+  }
+
+  /** On ↔ off for one channel; "on" restores the zone's current scene level (or default). */
+  public toggleCircuit(
+    circuitId: CircuitId,
+    sourcePa?: string,
+    switchLocation?: string,
+    direction?: SwitchDirection
+  ): void {
+    const circuit = this.circuitById.get(circuitId);
+    if (!circuit) return;
+    const resolvedPa = sourcePa ?? this.defaultSwitchPaForZone(circuit.zoneId);
+    if (resolvedPa) this.notePushButtonPresence(resolvedPa);
+    const locLabel =
+      switchLocation && direction
+        ? `${switchLocation} ${direction === 'up' ? '▲' : '▼'}`
+        : switchLocation;
+    const current = this.targetLevels[circuitId];
+    if (current > 0) {
+      this.setCircuitLevel(circuitId, 0, true, resolvedPa, locLabel);
+      return;
+    }
+    this.setCircuitLevel(circuitId, this.restoreLevel(circuit), true, resolvedPa, locLabel);
+  }
+
+  private restoreLevel(circuit: CircuitConfig): number {
+    for (const zone of this.zoneLighting.zonesForCircuit(circuit.id)) {
+      const state = this.zoneLighting.getState(zone.id);
+      const v = zone.scenes[state.sceneIndex]?.levels[circuit.id] ?? zone.scenes[0]?.levels[circuit.id];
+      if (v !== undefined && v > 0) return v;
+    }
+    const d = circuit.defaultLevel ?? 85;
+    return d > 0 ? d : 85;
+  }
+
+  private defaultSwitchPaForZone(zoneId: RoomZoneId): string {
+    const button =
+      this.project.pushButtons.find((b) => b.mountedInZoneId === zoneId && b.gangs.some((g) => g.zoneId === zoneId)) ??
+      this.project.pushButtons.find((b) => b.gangs.some((g) => g.zoneId === zoneId));
+    return button?.pa ?? this.project.centralPa.ipInterface;
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // External bus frames
+  // ---------------------------------------------------------------------------------------
+
+  /**
+   * Ingests a raw KNX TP1/cEMI hex frame or structured frame received from the physical bus
+   * (or injected via developer tools) and updates the twin's live state.
+   */
+  public ingestExternalFrame(frameOrHex: string | InboundKNXFrame): void {
+    let src = this.project.centralPa.ipInterface;
+    let dst = '';
+    let isGroup = true;
+    let apci = 'A_GroupValue_Write';
+    let payloadBytes: readonly number[] = [0x00, 0x80];
+    let dptHint: string | undefined;
+    let summaryHint: string | undefined;
+
+    if (typeof frameOrHex === 'string') {
+      const parsed = parseTP1FrameHex(frameOrHex);
+      if (!parsed) return;
+      src = parsed.src;
+      dst = parsed.dst;
+      isGroup = parsed.isGroup;
+      apci = parsed.apci;
+      payloadBytes = parsed.payloadBytes;
+    } else {
+      src = frameOrHex.src ?? src;
+      dst = frameOrHex.dst;
+      isGroup = frameOrHex.isGroup ?? true;
+      apci = frameOrHex.apci ?? 'A_GroupValue_Write';
+      payloadBytes = frameOrHex.payloadBytes ?? [0x00, 0x80];
+      dptHint = frameOrHex.dpt;
+      summaryHint = frameOrHex.summary;
+    }
+
+    const rx = (dpt: string, summary: string): void => {
+      this.emitTelegram({
+        src,
+        dst,
+        isGroup,
+        apci,
+        dpt: dptHint ?? dpt,
+        summary: summaryHint ?? `[RX Bus] ${summary}`,
+        payloadBytes,
+        fromExternalBus: true,
+      });
+      this.notify({ type: 'stateChange', reason: 'externalBusSync' });
+    };
+
+    if (!isGroup) {
+      this.emitTelegram({
+        src,
+        dst,
+        isGroup: false,
+        apci,
+        dpt: dptHint ?? 'Mgmt',
+        summary: summaryHint ?? `External P2P Frame (${apci})`,
+        payloadBytes,
+        fromExternalBus: true,
+      });
+      return;
+    }
+
+    const valCircuit = this.gaValueToCircuit.get(dst) ?? this.gaStatusToCircuit.get(dst);
+    if (valCircuit) {
+      const pct = decodeDpt5Scaling(payloadBytes);
+      this.setCircuitLevel(valCircuit.id, pct, false);
+      rx('5.001', `${valCircuit.shortName} → ${pct}%`);
+      return;
+    }
+
+    const swCircuit = this.gaSwitchToCircuit.get(dst);
+    if (swCircuit) {
+      const isOn = decodeDpt1(payloadBytes);
+      this.setCircuitLevel(swCircuit.id, isOn ? 100 : 0, false);
+      rx('1.001', `${swCircuit.shortName} Switch → ${isOn ? 'ON' : 'OFF'}`);
+      return;
+    }
+
+    const zoneObject = this.zoneObjectByGa.get(dst);
+    if (zoneObject) {
+      const { zone, object } = zoneObject;
+      if (object === 'scene') {
+        const { store, sceneIndex } = decodeDpt18SceneControl(payloadBytes);
+        if (!store && zone.scenes[sceneIndex]) {
+          this.applyLevels(this.zoneLighting.sceneLevels(zone.id, sceneIndex));
+          this.zoneLighting.markScene(zone.id, sceneIndex);
+          this.nightEnteredSimSec.delete(zone.id);
+        }
+        rx('17.001', `${zone.name} scene ${sceneIndex + 1}`);
+      } else if (object === 'full') {
+        const on = decodeDpt1(payloadBytes);
+        this.applyLevels(on ? this.zoneLighting.fullLevels(zone.id) : this.zoneLighting.offLevels(zone.id));
+        this.zoneLighting.markMode(zone.id, on ? 'full' : 'off');
+        this.nightEnteredSimSec.delete(zone.id);
+        rx('1.001', `${zone.name} ${on ? 'full' : 'off'}`);
+      } else if (object === 'night') {
+        if (decodeDpt1(payloadBytes)) this.enterZoneNightSilently(zone.id);
+        rx('1.001', `${zone.name} night mode`);
+      } else {
+        rx('3.007', `${zone.name} relative dim`);
+      }
+      this.refreshActiveCentralScene();
+      return;
+    }
+
+    const detector = this.detectorByGa.get(dst);
+    if (detector) {
+      const detected = decodeDpt1(payloadBytes);
+      this.setPresence(detector.pa, detected, false);
+      rx('1.018', `${detector.name} → ${detected ? 'Presence' : 'Vacant'}`);
+      return;
+    }
+
+    const ga = this.project.centralGa;
+    if (dst === ga.masterOff) {
+      for (const zoneId of LEGACY_MASTER_OFF_ZONES) {
+        if (this.zoneLighting.getZone(zoneId)) this.enterZoneNightSilently(zoneId);
+      }
+      this.refreshActiveCentralScene();
+      rx('1.001', 'Master Off → night mode');
+      return;
+    }
+    if (dst === ga.centralScene) {
+      const { store, sceneIndex } = decodeDpt18SceneControl(payloadBytes);
+      if (store) {
+        this.saveCurrentLevelsToActiveScene(sceneIndex, src);
+        return;
+      }
+      const scene = this.scenes[sceneIndex];
+      if (scene) {
+        this.applyCentralScene(scene);
+        this.activeSceneIndex = sceneIndex;
+        rx('17.001', `Recall ${scene.code}: "${scene.name}"`);
+      }
+      return;
+    }
+    if (dst === ga.masterFull) {
+      this.applyLevels(this.zoneLighting.fullLevels('kitchen'));
+      this.zoneLighting.markMode('kitchen', 'full');
+      this.activeSceneIndex = ACTIVE_SCENE_FULL;
+      rx('5.001', 'Master Full On (100%)');
+      return;
+    }
+    if (dst === ga.ambientLux) {
+      this.setAmbientLux(decodeDpt9Float(payloadBytes), false);
+      rx('9.004', `Ambient Lux → ${this.ambientLux} lx`);
+      return;
+    }
+    if (dst === ga.tvArt) {
+      this.tvArtIndex = decodeDpt17Scene(payloadBytes) % TV_ARTWORKS.length;
+      rx('17.001', `Frame TV Art → "${this.getTvArtTitle()}"`);
+      return;
+    }
+    if (dst === ga.carGatesCommand) {
+      this.carGatesOpen = decodeDpt1(payloadBytes);
+      rx('1.001', `Front Car Gates → ${this.carGatesOpen ? 'OPENING' : 'CLOSING'}`);
+      return;
+    }
+    if (dst === ga.carGatesPosition) {
+      const pct = decodeDpt5Scaling(payloadBytes);
+      this.carGatesOpen = pct >= 50;
+      rx('5.001', `Front Car Gates Position → ${pct}%`);
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // EEPROM / ETS programming
+  // ---------------------------------------------------------------------------------------
 
   public updateStagedParams(partial: Partial<DeviceParameters>): void {
     this.stagedParams = { ...this.stagedParams, ...partial };
@@ -1727,10 +1439,9 @@ export class KNXPropertyBusController {
     return compileEEPROMBytes(params, this.scenes);
   }
 
-  public async executeFlashProcedure(
-    onProgress?: (pct: number, msg: string) => void
-  ): Promise<void> {
+  public async executeFlashProcedure(onProgress?: (pct: number, msg: string) => void): Promise<void> {
     const eeprom = this.compileEEPROMImage(true);
+    const pa = this.project.centralPa;
     const steps: ReadonlyArray<{
       readonly pct: number;
       readonly msg: string;
@@ -1738,14 +1449,14 @@ export class KNXPropertyBusController {
     }> = [
       {
         pct: 20,
-        msg: 'T_Connect(1.1.10, 1.1.12/13 & 1.1.20)',
+        msg: `T_Connect(${pa.kitchenSwitchGroup} & ${pa.kitchenActuator})`,
         tg: {
-          src: '1.1.1',
-          dst: '1.1.10',
+          src: pa.ipInterface,
+          dst: pa.kitchenSwitchGroup,
           isGroup: false,
           apci: 'T_Connect',
           dpt: 'Mgmt',
-          summary: 'Open P2P Management Connection → 1.1.10',
+          summary: `Open P2P Management Connection → ${pa.kitchenSwitchGroup}`,
           payloadBytes: [0x80],
         },
       },
@@ -1753,8 +1464,8 @@ export class KNXPropertyBusController {
         pct: 45,
         msg: 'A_DeviceDescriptor_Read(0) → Mask 0x07B0',
         tg: {
-          src: '1.1.10',
-          dst: '1.1.1',
+          src: pa.kitchenSwitchGroup,
+          dst: pa.ipInterface,
           isGroup: false,
           apci: 'A_DeviceDescriptor_Res',
           dpt: 'Mask',
@@ -1766,8 +1477,8 @@ export class KNXPropertyBusController {
         pct: 75,
         msg: 'A_Memory_Write(0x4018..0x403F)',
         tg: {
-          src: '1.1.1',
-          dst: '1.1.10',
+          src: pa.ipInterface,
+          dst: pa.kitchenSwitchGroup,
           isGroup: false,
           apci: 'A_Memory_Write',
           dpt: 'EEPROM',
@@ -1779,8 +1490,8 @@ export class KNXPropertyBusController {
         pct: 100,
         msg: 'A_Restart(0x0380) → Online',
         tg: {
-          src: '1.1.1',
-          dst: '1.1.20',
+          src: pa.ipInterface,
+          dst: pa.kitchenActuator,
           isGroup: false,
           apci: 'A_Restart',
           dpt: 'Mgmt',
@@ -1796,28 +1507,33 @@ export class KNXPropertyBusController {
       await new Promise<void>((resolve) => setTimeout(resolve, 180));
     }
 
+    const wasDark = this.isBelowLuxThreshold();
     this.flashedParams = { ...this.stagedParams };
     this.isDirty = false;
-    if (this.activeSceneIndex === -1) {
-      this.applyKitchenOffStateLevels();
-    }
-    if (!this.utilitySwitchOn) {
-      this.applyUtilityOffStateLevels();
+    if (wasDark !== this.isBelowLuxThreshold()) {
+      this.setAmbientLux(this.ambientLux, false);
     }
     this.notify({ type: 'flashed', params: this.flashedParams });
     this.notify({ type: 'stateChange', reason: 'sensorChange' });
   }
 
+  // ---------------------------------------------------------------------------------------
+  // Simulation step
+  // ---------------------------------------------------------------------------------------
+
+  /** Advances sim time: presence hold timers, TV art, gate travel and channel soft-dim ramps. */
   public stepDimming(dtSeconds: number): boolean {
-    if (this.kitchenMotionDetected) {
+    this.simTimeSec += dtSeconds;
+    this.stepPresence();
+
+    if (this.getKitchenMotionDetected()) {
       this.tvArtSlideTimerSec += dtSeconds;
       if (this.tvArtSlideTimerSec >= KNXPropertyBusController.TV_ART_CYCLE_INTERVAL_SEC) {
         this.tvArtSlideTimerSec = 0;
-        this.cycleTvArt(true, '1.1.12');
+        this.cycleTvArt(true, this.project.centralPa.kitchenPresence);
       }
     }
 
-    // Step 10.0-second synchronized travel for the Motorized Front Car Entrance Gates (PA 1.1.22)
     const gateTarget = this.carGatesOpen ? 1 : 0;
     if (this.carGatesProgress !== gateTarget) {
       const gateStep = dtSeconds / KNXPropertyBusController.CAR_GATE_TRAVEL_SEC;
@@ -1826,19 +1542,16 @@ export class KNXPropertyBusController {
       } else {
         this.carGatesProgress = Math.max(0, this.carGatesProgress - gateStep);
       }
-
       const pct = Math.round(this.carGatesProgress * 100);
       if (this.carGatesProgress === gateTarget) {
         this.carGatesLastNotifiedPct = pct;
         this.emitTelegram({
-          src: '1.1.22',
-          dst: '1/5/2',
+          src: this.project.centralPa.carGates,
+          dst: this.project.centralGa.carGatesPosition,
           isGroup: true,
           apci: 'A_GroupValue_Write',
           dpt: '5.001',
-          summary: `Front Car Gates Status → ${pct}% (${
-            this.carGatesOpen ? 'FULLY OPEN' : 'FULLY CLOSED'
-          })`,
+          summary: `Front Car Gates Status → ${pct}% (${this.carGatesOpen ? 'FULLY OPEN' : 'FULLY CLOSED'})`,
           payloadBytes: encodeDpt5Scaling(pct),
         });
         this.notify({ type: 'stateChange', reason: 'carGateChange' });
@@ -1851,24 +1564,127 @@ export class KNXPropertyBusController {
     const ramp = Math.max(0.15, this.flashedParams.rampSpeedSec);
     const rate = (100 / ramp) * dtSeconds;
     let changed = false;
-
-    for (const c of CIRCUITS) {
+    for (const c of this.project.circuits) {
       const target = this.targetLevels[c.id];
-      const current = this.liveLevels[c.id];
+      const current = this.liveLevels[c.id] ?? 0;
       if (Math.abs(target - current) > 0.05) {
-        if (current < target) {
-          this.liveLevels[c.id] = Math.min(target, current + rate);
-        } else {
-          this.liveLevels[c.id] = Math.max(target, current - rate);
-        }
+        this.liveLevels[c.id] =
+          current < target ? Math.min(target, current + rate) : Math.max(target, current - rate);
         changed = true;
       } else if (current !== target) {
         this.liveLevels[c.id] = target;
         changed = true;
       }
     }
-
     return changed;
   }
-}
 
+  private stepPresence(): void {
+    for (const detector of this.project.presenceDetectors) {
+      const p = this.presence.get(detector.pa);
+      if (!p || !p.detected || p.lastSeenSimSec === null) continue;
+      if (this.simTimeSec - p.lastSeenSimSec >= this.getPresenceHoldTimeSec(detector.pa)) {
+        this.setPresence(detector.pa, false, true, true);
+      }
+    }
+    // Night zones entered while nobody is detected switch off after the hold time.
+    for (const [zoneId, since] of this.nightEnteredSimSec) {
+      if (this.zoneLighting.getState(zoneId).mode !== 'night') {
+        this.nightEnteredSimSec.delete(zoneId);
+        continue;
+      }
+      if (this.isZoneOccupied(zoneId)) continue;
+      const hasDetector = this.project.presenceDetectors.some((d) => d.zoneId === zoneId);
+      if (!hasDetector) continue;
+      if (this.simTimeSec - since >= this.getPresenceHoldTimeSec()) {
+        const zone = this.zoneLighting.getZone(zoneId);
+        const detector = this.project.presenceDetectors.find((d) => d.zoneId === zoneId);
+        if (zone && detector) this.setZoneOff(zoneId, detector.pa);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // Internals
+  // ---------------------------------------------------------------------------------------
+
+  private clampForCircuit(circuitId: CircuitId, pct: number): number {
+    const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+    const circuit = this.circuitById.get(circuitId);
+    // Switched-only channels (relays): any level > 0 means fully on.
+    if (circuit?.dimmable === false && clamped > 0) return 100;
+    return clamped;
+  }
+
+  private applyLevels(levels: ZoneLevels): void {
+    for (const [id, v] of Object.entries(levels)) {
+      if (typeof v === 'number' && this.circuitById.has(id as CircuitId)) {
+        this.targetLevels[id as CircuitId] = this.clampForCircuit(id as CircuitId, v);
+      }
+    }
+  }
+
+  private isZoneLit(zoneId: RoomZoneId): boolean {
+    const zone = this.zoneLighting.getZone(zoneId);
+    return zone ? zone.circuits.some((id) => this.targetLevels[id] > 0) : false;
+  }
+
+  /** Zones sharing channels with `changed` (open-plan overlap) are re-derived from levels. */
+  private syncOverlappingZones(changed: KnxLightingZone): void {
+    for (const zone of this.project.zones) {
+      if (zone.id === changed.id) continue;
+      if (zone.circuits.some((id) => changed.circuits.includes(id))) {
+        this.syncZoneModeFromLevels(zone.id);
+      }
+    }
+  }
+
+  /** Infers a zone's mode from its channel levels (stored scene match, full, off or manual). */
+  private syncZoneModeFromLevels(zoneId: RoomZoneId): void {
+    const zone = this.zoneLighting.getZone(zoneId);
+    if (!zone) return;
+    if (!this.isZoneLit(zoneId)) {
+      const mode = this.zoneLighting.getState(zoneId).mode;
+      if (mode !== 'night') this.zoneLighting.markMode(zoneId, 'off');
+      return;
+    }
+    const matches = (levels: ZoneLevels): boolean =>
+      zone.circuits.every((id) => this.targetLevels[id] === this.clampForCircuit(id, levels[id] ?? 0));
+    const sceneIdx = zone.scenes.findIndex((_, i) => matches(this.zoneLighting.sceneLevels(zoneId, i)));
+    if (sceneIdx >= 0) {
+      this.zoneLighting.markScene(zoneId, sceneIdx);
+    } else if (matches(this.zoneLighting.fullLevels(zoneId))) {
+      this.zoneLighting.markMode(zoneId, 'full');
+    } else {
+      this.zoneLighting.markMode(zoneId, 'manual');
+    }
+  }
+
+  /** Keeps the legacy central-scene index in step with the open-plan channels. */
+  private refreshActiveCentralScene(): void {
+    if (!this.isAnyKitchenLightOn() || this.zoneLighting.getState('kitchen').mode === 'night') {
+      this.activeSceneIndex = -1;
+      return;
+    }
+    if (this.zoneLighting.getState('kitchen').mode === 'full') {
+      this.activeSceneIndex = ACTIVE_SCENE_FULL;
+      return;
+    }
+    const idx = this.scenes.findIndex((scene) =>
+      SCENE_CIRCUIT_IDS.every((id) => scene.levels[id] === this.targetLevels[id])
+    );
+    this.activeSceneIndex = idx >= 0 ? idx : ACTIVE_SCENE_CUSTOM;
+    if (idx >= 0 && idx <= 2) this.lastActiveSceneIndex = idx;
+  }
+
+  private prefix(sourcePa: string, location?: string): string {
+    if (sourcePa === this.project.centralPa.aiBridge) return 'AI Gateway → ';
+    if (location) return `Corston (${location}) → `;
+    const button = this.pushButtonByPa.get(sourcePa);
+    return button ? `${button.name} (${button.pa}) → ` : '';
+  }
+
+  private locationTag(location: string | undefined, direction: SwitchDirection): string | undefined {
+    return location ? `${location} ${direction === 'up' ? '▲' : '▼'}` : undefined;
+  }
+}

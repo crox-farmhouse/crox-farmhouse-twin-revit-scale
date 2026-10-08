@@ -1,25 +1,82 @@
-import type { PropertyScene } from '../../engine/viewer/property-scene.ts';
-import type { CircuitId } from '../../core/types/knx.ts';
+import type { CircuitId, ScenePreset, ZoneLightingMode } from '../../core/types/knx.ts';
 import type { TimeOfDay } from '../../core/types/scene.ts';
-import { CIRCUITS, DEFAULT_SCENES, SCENE_CIRCUIT_IDS } from './constants.ts';
-import {
+import type { RoomZoneId } from '../../core/types/topology.ts';
+import { type KNXPropertyBusController, TV_ARTWORKS } from './emulator.ts';
+import { createKnxNameResolver, tokeniseKnxName, type KnxNameResolver } from './name-resolver.ts';
+import type { KnxLightingZone, KnxProject } from './project.ts';
+
+/**
+ * Natural-language KNX assistant (the "AI bridge" device on the bus).
+ *
+ * Everything the model sees — tool schema, circuit / zone / scene lists, live state — is generated
+ * from the {@link KnxProject}, so new fittings, circuits and zones need no changes here. When the
+ * Vertex proxy is unreachable an offline parser built on {@link createKnxNameResolver} handles the
+ * common commands ("barn downlights 40%", "office off", "kitchen night mode").
+ */
+
+// -----------------------------------------------------------------------------
+// Public contract
+// -----------------------------------------------------------------------------
+
+/** Zone-level actuator objects (scene / night / full / off) the assistant drives. */
+export interface KnxAssistantZoneBus {
+  recallZoneScene(zoneId: RoomZoneId, sceneIndex: number, sourcePa?: string, location?: string): void;
+  enterZoneNight(zoneId: RoomZoneId, sourcePa?: string, location?: string): void;
+  setZoneFull(zoneId: RoomZoneId, sourcePa?: string, location?: string): void;
+  setZoneOff(zoneId: RoomZoneId, sourcePa?: string): void;
+  getZoneState(zoneId: RoomZoneId): { readonly mode: ZoneLightingMode; readonly sceneIndex: number | null };
+}
+
+/** The slice of the bus controller the assistant uses (plus the zone objects above). */
+export type KnxAssistantBus = Pick<
   KNXPropertyBusController,
-  NIGHT_WALK_ABOVE_CABINET_PCT,
-  NIGHT_WALK_SPOTLIGHTS_PCT,
-  NIGHT_WALK_UNDER_CABINET_PCT,
-  NIGHT_WALK_UPLIGHTS_PCT,
-  NIGHT_WALK_UTILITY_PCT,
-  TV_ARTWORKS,
-} from './emulator.ts';
+  | 'recallScene'
+  | 'setCircuitLevel'
+  | 'handleSwitchLongPressHoldUp'
+  | 'handleSwitchLongPressHoldDown'
+  | 'saveCurrentLevelsToActiveScene'
+  | 'getScenes'
+  | 'getActiveSceneIndex'
+  | 'setTvArtIndex'
+  | 'cycleTvArt'
+  | 'getTvArtTitle'
+  | 'getTvArtIndex'
+  | 'isTvArtModeActive'
+  | 'setCarGatesOpen'
+  | 'getCarGatesStatusLabel'
+  | 'getAmbientLux'
+  | 'setAmbientLux'
+  | 'getKitchenMotionDetected'
+  | 'getUtilityMotionDetected'
+  | 'setKitchenMotionDetected'
+  | 'setUtilityMotionDetected'
+> &
+  KnxAssistantZoneBus & {
+    getTargetLevels(): Readonly<Partial<Record<CircuitId, number>>>;
+  };
+
+/** Non-KNX simulator state the assistant may change (sky preset, bifold doors). */
+export interface KnxAssistantEnvironment {
+  setTimeOfDay(timeOfDay: TimeOfDay): void;
+  isBifoldsOpen(): boolean;
+  toggleBifolds(): void;
+}
+
+/** The parts of a {@link KnxProject} the assistant reads (a full project satisfies it). */
+export type KnxAssistantProject = Pick<
+  KnxProject,
+  'name' | 'circuits' | 'zones' | 'rooms' | 'centralScenes' | 'centralPa'
+>;
 
 export interface KNXToolParameterProperty {
-  readonly type: 'NUMBER' | 'INTEGER' | 'STRING' | 'BOOLEAN' | 'ARRAY';
+  readonly type: 'NUMBER' | 'INTEGER' | 'STRING' | 'BOOLEAN' | 'ARRAY' | 'OBJECT';
   readonly description: string;
   readonly enum?: readonly string[];
   readonly items?: {
     readonly type: 'STRING';
     readonly enum?: readonly string[];
   };
+  readonly properties?: Readonly<Record<string, KNXToolParameterProperty>>;
 }
 
 export interface KNXFunctionDeclaration {
@@ -32,243 +89,46 @@ export interface KNXFunctionDeclaration {
   };
 }
 
-export type SceneNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-
-/**
- * Formal Gemini / Vertex AI Function Declarations exposed by the Crox Farmhouse KNX IP Bridge (PA 1.1.2).
- */
-export const KNX_AI_TOOLS: readonly KNXFunctionDeclaration[] = [
-  {
-    name: 'recall_scene',
-    description:
-      'Recall one of the 8 preset scenes stored in KNX Dimming Actuator 1.1.20 via GA 1/0/1 (DPT 17.001). Scenes 1-3 are on the physical Corston 2-Way Toggle Switches (1=Cooking, 2=Dining, 3=Lounge). Scenes 4-8 are Extended AI/UI Scenes (4=Morning Coffee, 5=Cocktail Party, 6=Wine & Intimate, 7=Courtyard Glow, 8=Baking & Detail).',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        sceneNumber: {
-          type: 'INTEGER',
-          description:
-            'Scene number 1 to 8: 1=Cooking, 2=Dining, 3=Lounge, 4=Morning Coffee, 5=Cocktail Party, 6=Wine & Intimate, 7=Courtyard Glow, 8=Baking & Detail.',
-        },
-        reason: {
-          type: 'STRING',
-          description: 'Short friendly 1-sentence explanation of why this scene was chosen.',
-        },
-      },
-      required: ['sceneNumber'],
-    },
-  },
-  {
-    name: 'set_master_state',
-    description:
-      'Trigger the master long-press lighting state: "all_full" brings all 6 kitchen circuits to 100% Full On (GA 1/0/2, equivalent to Hold Up); "off" triggers Full Off / Night-Walk Dim (GA 1/0/0, equivalent to Hold Down, which keeps Under-Cabinet at 18%, Above-Cabinet Plinth Strip LEDs at 20%, & Bifold Uplights at 15% when <100 lx and PIR motion is detected, or 0% when vacant).',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        mode: {
-          type: 'STRING',
-          enum: ['all_full', 'off'],
-          description: '"all_full" for 100% Full On, or "off" for Full Off / Night-Walk Dim.',
-        },
-        reason: {
-          type: 'STRING',
-          description: 'Short friendly 1-sentence explanation.',
-        },
-      },
-      required: ['mode'],
-    },
-  },
-  {
-    name: 'set_circuit_levels',
-    description:
-      'Set granular absolute dimming percentages (0-100) for any combination of the 9 individual KNX lighting channels on Actuator 1.1.20 (GA 1/2/1..9, DPT 5.001), including indoor kitchen/utility circuits, Above-Cabinet Plinth Strip LEDs, and the outdoor Cobbled Courtyard Festoon Lighting & Reclaimed Lamp Post. Use this whenever the user asks for custom lighting, outdoor courtyard lighting, specific fixtures, or a mood not covered by a single preset scene.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        islandPendants: {
-          type: 'INTEGER',
-          description: 'Ch 1 (GA 1/2/1): 3 Concrete Round Dome Pendants over Hague Blue Island (0-100).',
-        },
-        sittingPendants: {
-          type: 'INTEGER',
-          description: 'Ch 2 (GA 1/2/2): 2 Vintage Filament Glass Pendants in Sitting Area (0-100).',
-        },
-        bifoldUplights: {
-          type: 'INTEGER',
-          description: 'Ch 3 (GA 1/2/3): 5 Recessed Floor Uplights in front of South Bifolds (0-100).',
-        },
-        spotlights: {
-          type: 'INTEGER',
-          description: 'Ch 4 (GA 1/2/4): 10 Warm-Dim Kitchen Ceiling Downlights (0-100).',
-        },
-        underCabinet: {
-          type: 'INTEGER',
-          description: 'Ch 5 (GA 1/2/5): Warm LED Strips under Shaker Wall Cupboards & AGA Hood (0-100).',
-        },
-        aboveCabinet: {
-          type: 'INTEGER',
-          description:
-            'Ch 9 (GA 1/2/9): Warm LED Uplight Strips inset inside the recessed cornice plinth voids above the kitchen cabinets (0-100).',
-        },
-        utilitySpotlights: {
-          type: 'INTEGER',
-          description: 'Ch 6 (GA 1/2/6): 2 Recessed Downlights in Utility Room (0-100).',
-        },
-        courtyardFestoons: {
-          type: 'INTEGER',
-          description:
-            'Ch 7 (GA 1/2/7): Outdoor Warm Catenary Festoon Bulbs strung across the Cobbled Courtyard outside the bifold doors (0-100).',
-        },
-        reclaimedLampPost: {
-          type: 'INTEGER',
-          description:
-            'Ch 8 (GA 1/2/8): Outdoor Traditional Reclaimed Cast-Iron Victorian Lamp Post in the Cobbled Courtyard (0-100).',
-        },
-        familyRoomSpots: {
-          type: 'INTEGER',
-          description:
-            'Ch 10 (GA 1/2/10): 6 Recessed Ceiling Downlights between Exposed White Joists + Alcove Floor & Table Lamps in the Dining Room (0-100).',
-        },
-        reason: {
-          type: 'STRING',
-          description: 'Short friendly 1-sentence explanation of the custom lighting mix.',
-        },
-      },
-    },
-  },
-  {
-    name: 'adjust_circuit_levels',
-    description:
-      'Relatively brighten (+deltaPct) or dim (-deltaPct) one or more lighting circuits from their current live percentage.',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        circuits: {
-          type: 'ARRAY',
-          description: 'Array of circuit IDs to adjust.',
-          items: {
-            type: 'STRING',
-            enum: [
-              'islandPendants',
-              'sittingPendants',
-              'bifoldUplights',
-              'spotlights',
-              'underCabinet',
-              'aboveCabinet',
-              'utilitySpotlights',
-              'courtyardFestoons',
-              'reclaimedLampPost',
-              'familyRoomSpots',
-            ],
-          },
-        },
-        deltaPct: {
-          type: 'INTEGER',
-          description: 'Signed percentage delta (-100 to +100, e.g. -25 to dim by 25%, +20 to brighten by 20%).',
-        },
-      },
-      required: ['circuits', 'deltaPct'],
-    },
-  },
-  {
-    name: 'save_scene_preset',
-    description:
-      'Store the current live kitchen dimming levels into Scene 1..8 in KNX Actuator 1.1.20 EEPROM (GA 1/0/1, DPT 18.001).',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        sceneNumber: {
-          type: 'INTEGER',
-          description: 'Target scene number (1 to 8) to overwrite with current levels.',
-        },
-      },
-    },
-  },
-  {
-    name: 'control_tv_art',
-    description:
-      'Cycle or select the artwork displayed on the Sitting Area Frame TV in Art Mode (GA 1/4/4, DPT 17.001). Artworks: 1 = Tur Langton Sunset (pastoral hills), 2 = St Ives Modernist (geometric abstract), 3 = Botanical Meadow (watercolour flora), 4 = Nocturne in Blue & Gold (coastal horizon).',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        action: {
-          type: 'STRING',
-          enum: ['next', 'select'],
-          description: '"next" to cycle to the next painting, or "select" to pick a specific artNumber (1-4).',
-        },
-        artNumber: {
-          type: 'INTEGER',
-          description: '1 = Tur Langton Sunset, 2 = St Ives Modernist, 3 = Botanical Meadow, 4 = Nocturne in Blue & Gold.',
-        },
-      },
-      required: ['action'],
-    },
-  },
-  {
-    name: 'set_environment',
-    description:
-      'Control simulator environment states: time of day (day/dusk/night ambient lux), kitchen/utility PIR motion occupancy sensors (which also control the Frame TV Art Mode auto-on/off and Night-Walk Dim), bifold doors, or the motorized dual-leaf Front Car Entrance Gates (GA 1/5/1, 10s travel).',
-    parameters: {
-      type: 'OBJECT',
-      properties: {
-        timeOfDay: {
-          type: 'STRING',
-          enum: ['day', 'dusk', 'night'],
-          description: 'Set exterior daylight/lux level: day (480 lx), dusk (38 lx), or night (5 lx).',
-        },
-        kitchenMotion: {
-          type: 'BOOLEAN',
-          description: 'Kitchen ceiling PIR sensor (1.1.12) motion state (also wakes/turns off Frame TV Art Mode).',
-        },
-        utilityMotion: {
-          type: 'BOOLEAN',
-          description: 'Utility ceiling PIR sensor (1.1.13) motion state.',
-        },
-        bifoldsOpen: {
-          type: 'BOOLEAN',
-          description: 'Open (true) or close (false) the South Courtyard bifold doors.',
-        },
-        carGatesOpen: {
-          type: 'BOOLEAN',
-          description: 'Open (true) or close (false) the motorized dual-leaf Front Car Entrance Gates (PA 1.1.22, GA 1/5/1, 10.0s synchronized swing).',
-        },
-      },
-    },
-  },
-];
-
 export type CircuitLevelsPartial = Partial<Record<CircuitId, number>>;
+export type ZoneModeCommand = 'full' | 'night' | 'off';
 
 export type KNXToolCall =
   | {
+      readonly name: 'recall_zone_scene';
+      readonly args: {
+        readonly zone: RoomZoneId;
+        readonly sceneIndex: number;
+        readonly sceneId: string;
+        readonly reason?: string;
+      };
+    }
+  | {
+      readonly name: 'set_zone_mode';
+      readonly args: { readonly zone: RoomZoneId; readonly mode: ZoneModeCommand; readonly reason?: string };
+    }
+  | {
+      readonly name: 'set_circuit_levels';
+      readonly args: { readonly levels: CircuitLevelsPartial; readonly reason?: string };
+    }
+  | {
+      readonly name: 'adjust_circuit_levels';
+      readonly args: { readonly circuits: readonly CircuitId[]; readonly deltaPct: number; readonly reason?: string };
+    }
+  | {
       readonly name: 'recall_scene';
-      readonly args: { readonly sceneNumber: SceneNumber; readonly reason?: string };
+      readonly args: { readonly sceneNumber: number; readonly reason?: string };
     }
   | {
       readonly name: 'set_master_state';
       readonly args: { readonly mode: 'all_full' | 'off'; readonly reason?: string };
     }
   | {
-      readonly name: 'set_circuit_levels';
-      readonly args: CircuitLevelsPartial & { readonly reason?: string };
-    }
-  | {
-      readonly name: 'adjust_circuit_levels';
-      readonly args: {
-        readonly circuits: readonly CircuitId[];
-        readonly deltaPct: number;
-      };
-    }
-  | {
       readonly name: 'save_scene_preset';
-      readonly args: { readonly sceneNumber?: SceneNumber };
+      readonly args: { readonly sceneNumber?: number };
     }
   | {
       readonly name: 'control_tv_art';
-      readonly args: {
-        readonly action: 'next' | 'select';
-        readonly artNumber?: 1 | 2 | 3 | 4;
-      };
+      readonly args: { readonly action: 'next' | 'select'; readonly artNumber?: number };
     }
   | {
       readonly name: 'set_environment';
@@ -293,6 +153,12 @@ export interface AIAssistantExecutionResult {
   readonly reply: string;
 }
 
+export type KnxAssistantModel = 'gemini-3.5-flash-lite' | 'gemini-3.5-flash';
+
+// -----------------------------------------------------------------------------
+// Internals
+// -----------------------------------------------------------------------------
+
 interface VertexFunctionCallPart {
   readonly name?: string;
   readonly args?: Readonly<Record<string, unknown>>;
@@ -303,143 +169,353 @@ interface VertexContentPart {
   readonly functionCall?: VertexFunctionCallPart;
 }
 
-interface VertexCandidate {
-  readonly content?: {
-    readonly parts?: readonly VertexContentPart[];
-  };
-}
-
 interface VertexGenerateContentResponse {
-  readonly candidates?: readonly VertexCandidate[];
+  readonly candidates?: readonly { readonly content?: { readonly parts?: readonly VertexContentPart[] } }[];
   readonly modelVersion?: string;
-  readonly error?: {
-    readonly message?: string;
-  };
 }
 
-const VALID_CIRCUIT_IDS: readonly CircuitId[] = [
-  'islandPendants',
-  'sittingPendants',
-  'bifoldUplights',
-  'spotlights',
-  'underCabinet',
-  'aboveCabinet',
-  'utilitySpotlights',
-  'courtyardFestoons',
-  'reclaimedLampPost',
-  'familyRoomSpots',
-  'bootLobbyPendant',
-  'hallPendant',
-  'frontRoomPendant',
-  'entranceHallPendant',
-  'livingRoomPendant',
-  'studyPendant',
-  'mainBedroomPendant',
-  'familyBathroomPendant',
-  'upperLandingPendant',
-  'bedroom2Pendant',
-  'bedroom3Pendant',
-  'bedroom4Pendant',
-];
+const ASSISTANT_LOCATION = 'AI Assistant';
+const DEFAULT_RELATIVE_STEP_PCT = 20;
+
+/** Ambient lux reported by the presence/lux sensor for each sky preset. */
+const TIME_OF_DAY_LUX: Readonly<Record<TimeOfDay, number>> = { day: 480, dusk: 38, night: 5 };
+
+/** Mood words → words that appear in legacy central scene names. */
+const CENTRAL_SCENE_SYNONYMS: Readonly<Record<string, string>> = {
+  romantic: 'wine',
+  intimate: 'wine',
+  drink: 'cocktail',
+  dinner: 'dining',
+  dine: 'dining',
+  relax: 'lounge',
+  cosy: 'lounge',
+  cozy: 'lounge',
+  bake: 'baking',
+  cook: 'cooking',
+};
+
+/** Vite `BASE_URL` (sub-path deployments); typed locally so this module builds without vite/client. */
+function appBaseUrl(): string {
+  return (import.meta as ImportMeta & { readonly env?: { readonly BASE_URL?: string } }).env?.BASE_URL ?? '/';
+}
 
 function formatToolCallString(call: KNXToolCall): string {
   const cleanArgs: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(call.args)) {
-    if (k !== 'reason' && v !== undefined) {
-      cleanArgs[k] = v;
-    }
+    if (k !== 'reason' && v !== undefined) cleanArgs[k] = v;
   }
   return `${call.name}(${JSON.stringify(cleanArgs)})`;
 }
 
+function clampPct(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function toNumber(raw: unknown): number | null {
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+function isRecord(raw: unknown): raw is Readonly<Record<string, unknown>> {
+  return typeof raw === 'object' && raw !== null && !Array.isArray(raw);
+}
+
+function parseZoneMode(raw: unknown): ZoneModeCommand | null {
+  if (typeof raw !== 'string') return null;
+  const v = raw.trim().toLowerCase();
+  if (v === 'full' || v === 'on' || v === 'all_full' || v === 'max') return 'full';
+  if (v === 'night' || v === 'nightlight' || v === 'night_mode' || v === 'dim') return 'night';
+  if (v === 'off' || v === 'dark') return 'off';
+  return null;
+}
+
+// -----------------------------------------------------------------------------
+// Tool schema (generated from the project)
+// -----------------------------------------------------------------------------
+
+/** Builds the Gemini function declarations for a project. */
+export function buildKnxAiTools(project: KnxAssistantProject): KNXFunctionDeclaration[] {
+  const roomName = new Map(project.rooms.map((r) => [r.id, r.name]));
+  const zoneIds = project.zones.map((z) => z.id);
+  const circuitIds = project.circuits.map((c) => c.id);
+  const sceneZones = project.zones.filter((z) => z.scenes.length > 0);
+
+  const zoneSceneDesc = sceneZones
+    .map((z) => `${z.id}: ${z.scenes.map((s, i) => `${i + 1}=${s.label}`).join(', ')}`)
+    .join('; ');
+
+  const levelProps: Record<string, KNXToolParameterProperty> = {};
+  for (const c of project.circuits) {
+    levelProps[c.id] = {
+      type: 'INTEGER',
+      description: `${c.name} (${roomName.get(c.zoneId) ?? c.zoneId})${c.dimmable === false ? ', switched only: 0 or 100' : ''} — 0-100 %`,
+    };
+  }
+
+  const reason: KNXToolParameterProperty = {
+    type: 'STRING',
+    description: 'Short friendly 1-sentence explanation of the choice.',
+  };
+
+  const tools: KNXFunctionDeclaration[] = [
+    {
+      name: 'recall_zone_scene',
+      description: `Recall a stored lighting scene in one room zone (zone scene object, DPT 17.001). Scenes per zone: ${zoneSceneDesc || 'none'}.`,
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          zone: { type: 'STRING', enum: sceneZones.map((z) => z.id), description: 'Zone id.' },
+          scene: { type: 'STRING', description: 'Scene label or 1-based scene number within the zone.' },
+          reason,
+        },
+        required: ['zone', 'scene'],
+      },
+    },
+    {
+      name: 'set_zone_mode',
+      description:
+        'Switch a whole room zone: "full" = every channel 100 %, "night" = night-light levels (3–5 %), "off" = all channels 0 %.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          zone: { type: 'STRING', enum: zoneIds, description: 'Zone id.' },
+          mode: { type: 'STRING', enum: ['full', 'night', 'off'], description: 'Zone mode.' },
+          reason,
+        },
+        required: ['zone', 'mode'],
+      },
+    },
+    {
+      name: 'set_circuit_levels',
+      description:
+        'Set absolute dimming levels (0-100 %) for any combination of individual lighting circuits (actuator channels). Use for specific fittings or custom moods.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          levels: { type: 'OBJECT', description: 'Map of circuit id → percent.', properties: levelProps },
+          reason,
+        },
+        required: ['levels'],
+      },
+    },
+    {
+      name: 'adjust_circuit_levels',
+      description:
+        'Relatively brighten (+deltaPct) or dim (-deltaPct) circuits from their current level. Give `circuits`, or `zone` to adjust every circuit in that zone.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          circuits: {
+            type: 'ARRAY',
+            description: 'Circuit ids to adjust.',
+            items: { type: 'STRING', enum: circuitIds },
+          },
+          zone: { type: 'STRING', enum: zoneIds, description: 'Adjust all circuits of this zone.' },
+          deltaPct: { type: 'INTEGER', description: 'Signed delta, -100..+100 (e.g. -25 dims by 25 %).' },
+          reason,
+        },
+        required: ['deltaPct'],
+      },
+    },
+  ];
+
+  if (project.centralScenes.length > 0) {
+    const centralDesc = project.centralScenes.map((s) => `${s.number}=${s.name}`).join(', ');
+    tools.push(
+      {
+        name: 'recall_scene',
+        description: `Recall a scene from the central (kitchen open-plan) actuator scene table: ${centralDesc}.`,
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            sceneNumber: { type: 'INTEGER', description: `Scene number: ${centralDesc}.` },
+            reason,
+          },
+          required: ['sceneNumber'],
+        },
+      },
+      {
+        name: 'save_scene_preset',
+        description: 'Store the current central-table circuit levels into a central scene slot.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            sceneNumber: { type: 'INTEGER', description: `Target scene number 1-${project.centralScenes.length}.` },
+          },
+        },
+      },
+    );
+  }
+
+  tools.push(
+    {
+      name: 'set_master_state',
+      description: 'Whole-house master objects: "all_full" = every circuit 100 %, "off" = master off (night-walk dim where occupied).',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          mode: { type: 'STRING', enum: ['all_full', 'off'], description: 'Master mode.' },
+          reason,
+        },
+        required: ['mode'],
+      },
+    },
+    {
+      name: 'control_tv_art',
+      description: `Cycle or select the Frame TV artwork: ${TV_ARTWORKS.map((t, i) => `${i + 1}=${t}`).join(', ')}.`,
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          action: { type: 'STRING', enum: ['next', 'select'], description: '"next" cycles, "select" uses artNumber.' },
+          artNumber: { type: 'INTEGER', description: `1-${TV_ARTWORKS.length}.` },
+        },
+        required: ['action'],
+      },
+    },
+    {
+      name: 'set_environment',
+      description:
+        'Simulator environment: time of day (ambient lux), kitchen / utility presence, bifold doors, motorised car gates.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          timeOfDay: {
+            type: 'STRING',
+            enum: ['day', 'dusk', 'night'],
+            description: `day (${TIME_OF_DAY_LUX.day} lx), dusk (${TIME_OF_DAY_LUX.dusk} lx) or night (${TIME_OF_DAY_LUX.night} lx).`,
+          },
+          kitchenMotion: { type: 'BOOLEAN', description: 'Kitchen presence detector state.' },
+          utilityMotion: { type: 'BOOLEAN', description: 'Utility presence detector state.' },
+          bifoldsOpen: { type: 'BOOLEAN', description: 'Open (true) or close (false) the bifold doors.' },
+          carGatesOpen: { type: 'BOOLEAN', description: 'Open (true) or close (false) the car gates.' },
+        },
+      },
+    },
+  );
+  return tools;
+}
+
+// -----------------------------------------------------------------------------
+// Assistant
+// -----------------------------------------------------------------------------
+
 export class KNXAIAssistant {
-  private readonly knx: KNXPropertyBusController;
-  private readonly scene: PropertyScene;
-  private readonly onEnvironmentSync?: () => void;
-  private selectedModel: 'gemini-3.5-flash-lite' | 'gemini-3.5-flash' =
-    'gemini-3.5-flash-lite';
+  private readonly bus: KnxAssistantBus;
+  private readonly project: KnxAssistantProject;
+  private readonly env: KnxAssistantEnvironment;
+  private readonly onEnvironmentChanged?: () => void;
+  private readonly resolver: KnxNameResolver;
+  private readonly tools: readonly KNXFunctionDeclaration[];
+  private readonly zoneById: ReadonlyMap<RoomZoneId, KnxLightingZone>;
+  private readonly circuitIds: ReadonlySet<string>;
+  private readonly roomName: ReadonlyMap<RoomZoneId, string>;
+  private readonly sourcePa: string;
+  private selectedModel: KnxAssistantModel = 'gemini-3.5-flash-lite';
 
   public constructor(
-    knx: KNXPropertyBusController,
-    scene: PropertyScene,
-    onEnvironmentSync?: () => void
+    bus: KnxAssistantBus,
+    project: KnxAssistantProject,
+    env: KnxAssistantEnvironment,
+    onEnvironmentChanged?: () => void,
   ) {
-    this.knx = knx;
-    this.scene = scene;
-    this.onEnvironmentSync = onEnvironmentSync;
+    this.bus = bus;
+    this.project = project;
+    this.env = env;
+    this.onEnvironmentChanged = onEnvironmentChanged;
+    this.resolver = createKnxNameResolver(project);
+    this.tools = buildKnxAiTools(project);
+    this.zoneById = new Map(project.zones.map((z) => [z.id, z]));
+    this.circuitIds = new Set(project.circuits.map((c) => c.id));
+    this.roomName = new Map(project.rooms.map((r) => [r.id, r.name]));
+    this.sourcePa = project.centralPa.aiBridge;
   }
 
   public getSelectedModel(): string {
     return this.selectedModel;
   }
 
-  public setSelectedModel(
-    model: 'gemini-3.5-flash-lite' | 'gemini-3.5-flash'
-  ): void {
+  public setSelectedModel(model: KnxAssistantModel): void {
     this.selectedModel = model;
   }
 
-  private buildSystemPrompt(): string {
-    const levels = this.knx.getTargetLevels();
-    const activeIdx = this.knx.getActiveSceneIndex();
-    const scenes = this.knx.getScenes();
-    const activeSceneName =
-      activeIdx === -1
-        ? 'Off / Night-Walk Dim'
-        : activeIdx === 99
-          ? 'All Full On (100%)'
-          : scenes[activeIdx]
-            ? `${scenes[activeIdx].code} (${scenes[activeIdx].name})`
-            : 'Custom';
+  /** The generated function declarations sent to the model. */
+  public getTools(): readonly KNXFunctionDeclaration[] {
+    return this.tools;
+  }
 
-    const sceneListDesc = DEFAULT_SCENES.map((s) => {
-      const outStr = s.outdoorLevels
-        ? `, Festoons=${s.outdoorLevels.courtyardFestoons}%, LampPost=${s.outdoorLevels.reclaimedLampPost}%`
-        : '';
-      return `- Scene ${s.number} ("${s.name}", ${s.isSwitchScene ? 'Physical Switch + AI' : 'Extended AI/UI Only'}): Island=${s.levels.islandPendants}%, Sitting=${s.levels.sittingPendants}%, Uplights=${s.levels.bifoldUplights}%, Spots=${s.levels.spotlights}%, UnderCabinet=${s.levels.underCabinet}%, AboveCabinet=${s.levels.aboveCabinet}%${outStr}`;
-    }).join('\n');
+  public getResolver(): KnxNameResolver {
+    return this.resolver;
+  }
 
-    return [
-      'You are the intelligent KNX Smart Home & Lighting Assistant (PA 1.1.2) for the kitchen, utility room, and cobbled courtyard at Crox Farmhouse in Tur Langton.',
-      'You have full granular control over all 9 lighting circuits (0-100%) — including the 6 indoor kitchen circuits (including Above-Cabinet Plinth Strip LEDs), 1 utility room circuit, and 2 outdoor cobbled courtyard circuits (courtyardFestoons & reclaimedLampPost) — plus 8 preset scenes, the Sitting Area Frame TV Art Mode, and the room environment/sensors.',
+  private zoneLabel(zoneId: RoomZoneId): string {
+    return this.zoneById.get(zoneId)?.name ?? this.roomName.get(zoneId) ?? zoneId;
+  }
+
+  private circuitLabel(circuitId: CircuitId): string {
+    return this.project.circuits.find((c) => c.id === circuitId)?.shortName ?? circuitId;
+  }
+
+  private describeZoneState(zone: KnxLightingZone): string {
+    const state = this.bus.getZoneState(zone.id);
+    if (state.mode === 'scene' && state.sceneIndex !== null) {
+      const scene = zone.scenes[state.sceneIndex];
+      return `scene ${state.sceneIndex + 1}${scene ? ` "${scene.label}"` : ''}`;
+    }
+    return state.mode;
+  }
+
+  public buildSystemPrompt(): string {
+    const levels = this.bus.getTargetLevels();
+    const lines: string[] = [
+      `You are the KNX smart-home lighting assistant (IP bridge PA ${this.sourcePa}) for ${this.project.name}.`,
+      'Use ONLY the zone ids, circuit ids and scenes listed below.',
       '',
-      'AVAILABLE PRESET SCENES (GA 1/0/1):',
-      sceneListDesc,
+      'LIGHTING ZONES (id "name": scenes — current state):',
+    ];
+    for (const z of this.project.zones) {
+      const aliases = z.aliases && z.aliases.length > 0 ? ` (aka ${z.aliases.join(', ')})` : '';
+      const scenes = z.usesCentralSceneTable
+        ? 'central scene table (recall_scene)'
+        : z.scenes.map((s, i) => `${i + 1} "${s.label}"`).join(', ') || 'no scenes';
+      lines.push(`- ${z.id} "${z.name}"${aliases}: ${scenes} — ${this.describeZoneState(z)}`);
+    }
+    lines.push('', 'CIRCUITS (id "name" [zone] — live %):');
+    for (const c of this.project.circuits) {
+      const aliases = c.aliases && c.aliases.length > 0 ? ` (aka ${c.aliases.join(', ')})` : '';
+      const switched = c.dimmable === false ? ' switched-only' : '';
+      lines.push(`- ${c.id} "${c.name}"${aliases} [${c.zoneId}]${switched} — ${levels[c.id] ?? 0}%`);
+    }
+    if (this.project.centralScenes.length > 0) {
+      const idx = this.bus.getActiveSceneIndex();
+      const active = this.bus.getScenes()[idx];
+      lines.push(
+        '',
+        'CENTRAL SCENE TABLE (recall_scene):',
+        ...this.project.centralScenes.map((s) => `- ${s.number} "${s.name}"`),
+        `Active central scene: ${active ? `${active.number} "${active.name}"` : idx === 99 ? 'All full' : 'none / custom'}`,
+      );
+    }
+    lines.push(
       '',
-      '9 LIGHTING CIRCUITS (Actuator 1.1.20):',
-      '- islandPendants (Ch 1, GA 1/2/1): 3 Concrete Round Dome Pendants over the Hague Blue Island',
-      '- sittingPendants (Ch 2, GA 1/2/2): 2 Spaced-Apart Clear Glass Vintage Filament Pendants in the Sitting Area',
-      '- bifoldUplights (Ch 3, GA 1/2/3): 5 Recessed Floor Uplights in front of the 4 South Courtyard Bifold Doors',
-      '- spotlights (Ch 4, GA 1/2/4): 10 Warm-Dim Recessed Ceiling Downlights across the main kitchen ceiling',
-      '- underCabinet (Ch 5, GA 1/2/5): Warm LED Strips under the Dove Grey Shaker wall cupboards, AGA hood & island',
-      '- aboveCabinet (Ch 9, GA 1/2/9): Warm LED Uplight Strips inset inside the recessed cornice plinth voids above the kitchen cabinets',
-      '- utilitySpotlights (Ch 6, GA 1/2/6): 2 Recessed Ceiling Downlights in the Utility Room',
-      '- courtyardFestoons (Ch 7, GA 1/2/7): Outdoor Warm Catenary Festoon Lighting strung over the Cobbled Courtyard outside the bifold doors (also controlled by Gang 2 of the 2-gang Corston switch next to the bifolds)',
-      '- reclaimedLampPost (Ch 8, GA 1/2/8): Outdoor Traditional Reclaimed Cast-Iron Victorian Lamp Post in the Cobbled Courtyard (also controlled by Gang 2 of the 2-gang Corston switch next to the bifolds)',
-      '- familyRoomSpots (Ch 10, GA 1/2/10): 6 Recessed Ceiling Downlights between Exposed White Joists + Alcove Floor & Table Lamps in the Dining Room',
-      '',
-      'CURRENT LIVE ROOM & COURTYARD STATE:',
-      `- Active Scene: ${activeSceneName}`,
-      `- Live Circuit Levels: islandPendants=${levels.islandPendants}%, sittingPendants=${levels.sittingPendants}%, bifoldUplights=${levels.bifoldUplights}%, spotlights=${levels.spotlights}%, underCabinet=${levels.underCabinet}%, aboveCabinet=${levels.aboveCabinet}%, utilitySpotlights=${levels.utilitySpotlights}%, familyRoomSpots=${levels.familyRoomSpots}%, courtyardFestoons=${levels.courtyardFestoons}%, reclaimedLampPost=${levels.reclaimedLampPost}%`,
-      `- Ambient Light: ${this.knx.getAmbientLux()} lx (Night-Walk Dim threshold < ${this.knx.getFlashedParams().luxThreshold} lx)`,
-      `- Kitchen PIR Presence (1.1.12): ${this.knx.getKitchenMotionDetected() ? 'Motion Detected (Occupied)' : 'Vacant (No Motion)'}`,
-      `- Utility PIR Presence (1.1.13): ${this.knx.getUtilityMotionDetected() ? 'Motion Detected (Occupied)' : 'Vacant (No Motion)'}`,
-      `- Sitting Area Frame TV: ${this.knx.isTvArtModeActive() ? `Art Mode ON (Art ${this.knx.getTvArtIndex() + 1}: "${this.knx.getTvArtTitle()}")` : 'Auto-OFF (Standby)'}`,
-      `- Bifold Doors: ${this.scene.isBifoldsOpen() ? 'Open' : 'Closed'}`,
-      `- Motorized Front Car Gates (PA 1.1.22, GA 1/5/1): ${this.knx.getCarGatesStatusLabel()}`,
+      'ENVIRONMENT:',
+      `- Ambient light ${this.bus.getAmbientLux()} lx`,
+      `- Kitchen presence: ${this.bus.getKitchenMotionDetected() ? 'occupied' : 'vacant'}; utility presence: ${this.bus.getUtilityMotionDetected() ? 'occupied' : 'vacant'}`,
+      `- Frame TV: ${this.bus.isTvArtModeActive() ? `Art mode "${this.bus.getTvArtTitle()}"` : 'standby'}`,
+      `- Bifold doors: ${this.env.isBifoldsOpen() ? 'open' : 'closed'}; car gates: ${this.bus.getCarGatesStatusLabel()}`,
       '',
       'INSTRUCTIONS:',
-      '1. Always call one or more tool functions to fulfill the user request.',
-      '2. IMPORTANT FOR UTILITY ROOM: Preset scenes (1-8) ONLY control the kitchen and courtyard circuits and DO NOT change `utilitySpotlights` (Ch 6, GA 1/2/6). Whenever the user mentions the utility room or utility lights (e.g. turn on, turn off, dim, brighten, or set a percentage), you MUST call `set_circuit_levels` with `utilitySpotlights` (0-100) or `adjust_circuit_levels` with `circuits: ["utilitySpotlights"]`.',
-      '3. If the user mentions outside, the cobbled courtyard, the festoon lights, or the reclaimed lamp post, set `courtyardFestoons` and/or `reclaimedLampPost` via `set_circuit_levels` (or recall Scene 7 "Courtyard Glow" / Scene 5 "Cocktail Party").',
-      '4. If the user asks to open or close the front car gates / driveway gates, call `set_environment` with `carGatesOpen: true` or `false`.',
-      '5. Always populate the `reason` field (or include a short text part) explaining your lighting choices concisely in 1 sentence.',
-    ].join('\n');
+      '1. Always call one or more tools to fulfil the request.',
+      '2. For a whole room prefer recall_zone_scene (named moods) or set_zone_mode (full / night / off).',
+      '3. For specific fittings use set_circuit_levels (absolute) or adjust_circuit_levels (relative).',
+      '4. Switched-only circuits accept just 0 or 100.',
+      '5. Populate `reason` with one short sentence.',
+    );
+    return lines.join('\n');
   }
 
   /**
-   * Calls Gemini 2.5 Flash/Pro on Vertex AI via the Vite server proxy (/api/knx-ai)
-   * with native function calling, falling back to local parsing only if the network fails.
+   * Sends the prompt to Gemini via the Vite proxy (`/api/knx-ai`) with native function calling;
+   * falls back to the offline parser when the proxy is unreachable.
    */
   public async executeCommand(rawPrompt: string): Promise<AIAssistantExecutionResult> {
     const prompt = rawPrompt.trim();
@@ -449,261 +525,218 @@ export class KNXAIAssistant {
         modelUsed: this.selectedModel,
         executedCalls: [],
         reply:
-          'Ready. Ask naturally in your own words (e.g., "We’re having a glass of wine by the bifolds, make it cosy and put the nocturne on the TV" or "It’s too bright overhead while I read in the sitting area").',
+          'Ready. Ask naturally (e.g. "barn downlights to 40%", "office off", "make the kitchen cosy and put the nocturne on the TV").',
       };
     }
 
+    let data: VertexGenerateContentResponse;
     try {
-      const vertexRequest = {
-        systemInstruction: {
-          parts: [{ text: this.buildSystemPrompt() }],
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: prompt }],
-          },
-        ],
-        tools: [
-          {
-            functionDeclarations: KNX_AI_TOOLS,
-          },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          thinkingConfig: {
-            thinkingBudget: 0,
-          },
-        },
-      };
-
-      const resp = await fetch(`${import.meta.env?.BASE_URL ?? '/'}api/knx-ai`, {
+      const resp = await fetch(`${appBaseUrl()}api/knx-ai`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: this.selectedModel,
-          vertexRequest,
+          vertexRequest: {
+            systemInstruction: { parts: [{ text: this.buildSystemPrompt() }] },
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            tools: [{ functionDeclarations: this.tools }],
+            generationConfig: { temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } },
+          },
         }),
       });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      data = (await resp.json()) as VertexGenerateContentResponse;
+    } catch {
+      return this.executeFallbackLocalParser(prompt);
+    }
 
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
-      }
-
-      const data = (await resp.json()) as VertexGenerateContentResponse;
-      const parts = data.candidates?.[0]?.content?.parts ?? [];
-
-      const parsedCalls: KNXToolCall[] = [];
-      const textParts: string[] = [];
-      const reasonParts: string[] = [];
-
-      for (const part of parts) {
-        if (typeof part.text === 'string' && part.text.trim()) {
-          textParts.push(part.text.trim());
-        }
-        if (part.functionCall && typeof part.functionCall.name === 'string') {
-          const coerced = this.coerceRawFunctionCall(
-            part.functionCall.name,
-            part.functionCall.args ?? {}
-          );
-          if (coerced) {
-            parsedCalls.push(coerced);
-            if ('reason' in coerced.args && typeof coerced.args.reason === 'string') {
-              reasonParts.push(coerced.args.reason);
-            }
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const calls: KNXToolCall[] = [];
+    const textParts: string[] = [];
+    const reasonParts: string[] = [];
+    for (const part of parts) {
+      if (typeof part.text === 'string' && part.text.trim()) textParts.push(part.text.trim());
+      if (part.functionCall && typeof part.functionCall.name === 'string') {
+        const coerced = this.coerceRawFunctionCall(part.functionCall.name, part.functionCall.args ?? {});
+        if (coerced) {
+          calls.push(coerced);
+          if ('reason' in coerced.args && typeof coerced.args.reason === 'string') {
+            reasonParts.push(coerced.args.reason);
           }
         }
       }
-
-      const executedCalls: ExecutedToolCallRecord[] = [];
-      const actionSummaries: string[] = [];
-
-      for (const call of parsedCalls) {
-        const summary = this.invokeToolCall(call);
-        executedCalls.push({
-          call,
-          formatted: formatToolCallString(call),
-        });
-        if (summary) {
-          actionSummaries.push(summary);
-        }
-      }
-
-      const naturalExplanation = textParts.join(' ') || reasonParts.join(' ');
-      const reply = naturalExplanation
-        ? actionSummaries.length > 0
-          ? `${naturalExplanation} (${actionSummaries.join(' · ')})`
-          : naturalExplanation
-        : actionSummaries.join(' · ') || 'No lighting changes needed.';
-
-      return {
-        prompt,
-        modelUsed: data.modelVersion ?? this.selectedModel,
-        executedCalls,
-        reply,
-      };
-    } catch {
-      // Fallback to local parser only if Vertex proxy is unreachable
-      return this.executeFallbackLocalParser(prompt);
     }
+    const { executedCalls, summaries } = this.runCalls(calls);
+    const explanation = textParts.join(' ') || reasonParts.join(' ');
+    const reply = explanation
+      ? summaries.length > 0
+        ? `${explanation} (${summaries.join(' · ')})`
+        : explanation
+      : summaries.join(' · ') || 'No lighting changes needed.';
+    return { prompt, modelUsed: data.modelVersion ?? this.selectedModel, executedCalls, reply };
   }
 
-  private coerceRawFunctionCall(
-    name: string,
-    rawArgs: Readonly<Record<string, unknown>>
-  ): KNXToolCall | null {
-    const reason = typeof rawArgs.reason === 'string' ? rawArgs.reason : undefined;
-    const aliasMap: Readonly<Record<string, CircuitId>> = {
-      above_cabinet: 'aboveCabinet',
-      aboveCab: 'aboveCabinet',
-      plinthLeds: 'aboveCabinet',
-      utility: 'utilitySpotlights',
-      utilityRoom: 'utilitySpotlights',
-      utilitySpots: 'utilitySpotlights',
-      utility_spotlights: 'utilitySpotlights',
-      festoon: 'courtyardFestoons',
-      festoons: 'courtyardFestoons',
-      courtyard_festoons: 'courtyardFestoons',
-      lampPost: 'reclaimedLampPost',
-      lamppost: 'reclaimedLampPost',
-      reclaimed_lamp_post: 'reclaimedLampPost',
-      family: 'familyRoomSpots',
-      familyRoom: 'familyRoomSpots',
-      family_room: 'familyRoomSpots',
-      dining: 'familyRoomSpots',
-      diningRoom: 'familyRoomSpots',
-      dining_room: 'familyRoomSpots',
-      snug: 'familyRoomSpots',
-    };
+  private runCalls(calls: readonly KNXToolCall[]): {
+    executedCalls: ExecutedToolCallRecord[];
+    summaries: string[];
+  } {
+    const executedCalls: ExecutedToolCallRecord[] = [];
+    const summaries: string[] = [];
+    for (const call of calls) {
+      const summary = this.invokeToolCall(call);
+      executedCalls.push({ call, formatted: formatToolCallString(call) });
+      if (summary) summaries.push(summary);
+    }
+    return { executedCalls, summaries };
+  }
+
+  // --- Name coercion ---------------------------------------------------------------------------
+
+  private resolveZoneId(raw: unknown): RoomZoneId | null {
+    if (typeof raw !== 'string' || !raw.trim()) return null;
+    const exact = this.project.zones.find((z) => z.id === raw);
+    if (exact) return exact.id;
+    return this.resolver.resolveZone(raw)?.id ?? null;
+  }
+
+  private resolveCircuitId(raw: string): CircuitId | null {
+    const exact = this.project.circuits.find((c) => c.id === raw);
+    if (exact) return exact.id;
+    return this.resolver.resolveCircuit(raw)?.id ?? null;
+  }
+
+  /** Matches a central scene by number, code, name or mood word; returns its 1-based number. */
+  private resolveCentralSceneNumber(raw: unknown): number | null {
+    const scenes = this.project.centralScenes;
+    const n = toNumber(raw);
+    if (n !== null) {
+      const num = Math.round(n);
+      return scenes.some((s) => s.number === num) ? num : null;
+    }
+    if (typeof raw !== 'string') return null;
+    const query = new Set(tokeniseKnxName(raw).map((t) => CENTRAL_SCENE_SYNONYMS[t] ?? t));
+    let best: ScenePreset | null = null;
+    let bestScore = 0;
+    for (const s of scenes) {
+      const code = s.code.toLowerCase();
+      if (raw.trim().toLowerCase() === code) return s.number;
+      const tokens = tokeniseKnxName(`${s.name} ${s.shortLabel}`);
+      const hits = tokens.filter((t) => query.has(t)).length;
+      const score = tokens.length > 0 ? hits / tokens.length : 0;
+      if (hits > 0 && score > bestScore) {
+        best = s;
+        bestScore = score;
+      }
+    }
+    return best ? best.number : null;
+  }
+
+  private circuitsOfZone(zoneId: RoomZoneId): CircuitId[] {
+    const zone = this.zoneById.get(zoneId);
+    if (zone && zone.circuits.length > 0) return [...zone.circuits];
+    return this.project.circuits.filter((c) => c.zoneId === zoneId).map((c) => c.id);
+  }
+
+  public coerceRawFunctionCall(name: string, rawArgs: Readonly<Record<string, unknown>>): KNXToolCall | null {
+    const reasonArg = typeof rawArgs.reason === 'string' ? { reason: rawArgs.reason } : {};
 
     switch (name) {
-      case 'recall_scene': {
-        const num = Number(rawArgs.sceneNumber);
-        if (num >= 1 && num <= 8) {
-          return {
-            name: 'recall_scene',
-            args: { sceneNumber: Math.round(num) as SceneNumber, ...(reason ? { reason } : {}) },
-          };
+      case 'recall_zone_scene': {
+        const zone = this.resolveZoneId(rawArgs.zone);
+        if (!zone) return null;
+        const rawScene = rawArgs.scene ?? rawArgs.sceneNumber ?? rawArgs.sceneIndex ?? rawArgs.sceneId;
+        const zoneDef = this.zoneById.get(zone);
+        if (zoneDef?.usesCentralSceneTable && zoneDef.scenes.length === 0) {
+          const sceneNumber = this.resolveCentralSceneNumber(rawScene);
+          return sceneNumber === null ? null : { name: 'recall_scene', args: { sceneNumber, ...reasonArg } };
         }
-        return null;
+        const sceneText = typeof rawScene === 'number' ? String(rawScene) : typeof rawScene === 'string' ? rawScene : '';
+        const match = this.resolver.resolveScene(zone, sceneText);
+        if (!match) return null;
+        return { name: 'recall_zone_scene', args: { zone, sceneIndex: match.index, sceneId: match.id, ...reasonArg } };
       }
 
-      case 'set_master_state': {
-        const mode = rawArgs.mode === 'all_full' ? 'all_full' : 'off';
-        return {
-          name: 'set_master_state',
-          args: { mode, ...(reason ? { reason } : {}) },
-        };
+      case 'set_zone_mode': {
+        const zone = this.resolveZoneId(rawArgs.zone);
+        const mode = parseZoneMode(rawArgs.mode);
+        if (!zone || !mode) return null;
+        return { name: 'set_zone_mode', args: { zone, mode, ...reasonArg } };
       }
 
       case 'set_circuit_levels': {
-        const levels: Partial<Record<CircuitId, number>> = {};
-        for (const cId of VALID_CIRCUIT_IDS) {
-          const rawVal = rawArgs[cId];
-          const numVal =
-            typeof rawVal === 'number'
-              ? rawVal
-              : typeof rawVal === 'string' && rawVal.trim() !== ''
-                ? Number(rawVal)
-                : NaN;
-          if (!Number.isNaN(numVal)) {
-            levels[cId] = Math.max(0, Math.min(100, Math.round(numVal)));
-          }
+        const source = isRecord(rawArgs.levels) ? rawArgs.levels : rawArgs;
+        const levels: CircuitLevelsPartial = {};
+        for (const [key, rawVal] of Object.entries(source)) {
+          if (key === 'reason') continue;
+          const pct = toNumber(rawVal);
+          const id = pct === null ? null : this.resolveCircuitId(key);
+          if (id !== null && pct !== null && levels[id] === undefined) levels[id] = clampPct(pct);
         }
-        for (const [aliasKey, targetId] of Object.entries(aliasMap)) {
-          if (levels[targetId] === undefined && rawArgs[aliasKey] !== undefined) {
-            const rawVal = rawArgs[aliasKey];
-            const numVal =
-              typeof rawVal === 'number'
-                ? rawVal
-                : typeof rawVal === 'string' && rawVal.trim() !== ''
-                   ? Number(rawVal)
-                   : NaN;
-            if (!Number.isNaN(numVal)) {
-              levels[targetId] = Math.max(0, Math.min(100, Math.round(numVal)));
-            }
-          }
-        }
-        if (Object.keys(levels).length === 0) {
-          return null;
-        }
-        return {
-          name: 'set_circuit_levels',
-          args: { ...levels, ...(reason ? { reason } : {}) },
-        };
+        if (Object.keys(levels).length === 0) return null;
+        return { name: 'set_circuit_levels', args: { levels, ...reasonArg } };
       }
 
       case 'adjust_circuit_levels': {
-        const rawCircuits = Array.isArray(rawArgs.circuits) ? rawArgs.circuits : [];
         const circuits: CircuitId[] = [];
+        const rawCircuits = Array.isArray(rawArgs.circuits) ? rawArgs.circuits : [];
         for (const c of rawCircuits) {
-          if (typeof c === 'string') {
-            if ((VALID_CIRCUIT_IDS as readonly string[]).includes(c)) {
-              circuits.push(c as CircuitId);
-            } else if (aliasMap[c]) {
-              circuits.push(aliasMap[c]);
-            }
-          }
+          const id = typeof c === 'string' ? this.resolveCircuitId(c) : null;
+          if (id && !circuits.includes(id)) circuits.push(id);
         }
-        const rawDelta = rawArgs.deltaPct;
-        const parsedDelta =
-          typeof rawDelta === 'number'
-            ? rawDelta
-            : typeof rawDelta === 'string' && rawDelta.trim() !== ''
-              ? Number(rawDelta)
-              : -20;
-        const deltaPct = !Number.isNaN(parsedDelta) ? Math.round(parsedDelta) : -20;
+        if (circuits.length === 0) {
+          const zone = this.resolveZoneId(rawArgs.zone);
+          if (zone) circuits.push(...this.circuitsOfZone(zone));
+        }
+        if (circuits.length === 0) return null;
+        const delta = toNumber(rawArgs.deltaPct);
         return {
           name: 'adjust_circuit_levels',
-          args: {
-            circuits: circuits.length > 0 ? circuits : SCENE_CIRCUIT_IDS,
-            deltaPct,
-          },
+          args: { circuits, deltaPct: Math.round(delta ?? -DEFAULT_RELATIVE_STEP_PCT), ...reasonArg },
         };
+      }
+
+      case 'recall_scene': {
+        const sceneNumber = this.resolveCentralSceneNumber(rawArgs.sceneNumber ?? rawArgs.scene);
+        return sceneNumber === null ? null : { name: 'recall_scene', args: { sceneNumber, ...reasonArg } };
+      }
+
+      case 'set_master_state': {
+        const mode = rawArgs.mode === 'all_full' || rawArgs.mode === 'full' ? 'all_full' : 'off';
+        return { name: 'set_master_state', args: { mode, ...reasonArg } };
       }
 
       case 'save_scene_preset': {
-        const num = Number(rawArgs.sceneNumber);
-        const sceneNumber =
-          num >= 1 && num <= 8 ? (Math.round(num) as SceneNumber) : undefined;
-        return {
-          name: 'save_scene_preset',
-          args: sceneNumber ? { sceneNumber } : {},
-        };
+        const sceneNumber = this.resolveCentralSceneNumber(rawArgs.sceneNumber);
+        return { name: 'save_scene_preset', args: sceneNumber === null ? {} : { sceneNumber } };
       }
 
       case 'control_tv_art': {
-        const action = rawArgs.action === 'select' || rawArgs.artNumber !== undefined ? 'select' : 'next';
-        const num = Number(rawArgs.artNumber);
-        const artNumber = num >= 1 && num <= 4 ? (Math.round(num) as 1 | 2 | 3 | 4) : undefined;
-        return {
-          name: 'control_tv_art',
-          args: { action, ...(artNumber ? { artNumber } : {}) },
-        };
+        const num = toNumber(rawArgs.artNumber);
+        const artNumber = num !== null && num >= 1 && num <= TV_ARTWORKS.length ? Math.round(num) : undefined;
+        const action = rawArgs.action === 'select' || artNumber !== undefined ? 'select' : 'next';
+        return { name: 'control_tv_art', args: { action, ...(artNumber !== undefined ? { artNumber } : {}) } };
       }
 
       case 'set_environment': {
         const tod = rawArgs.timeOfDay;
-        const timeOfDay: TimeOfDay | undefined =
-          tod === 'day' || tod === 'dusk' || tod === 'night' ? tod : undefined;
-        const kitchenMotion =
-          typeof rawArgs.kitchenMotion === 'boolean' ? rawArgs.kitchenMotion : undefined;
-        const utilityMotion =
-          typeof rawArgs.utilityMotion === 'boolean' ? rawArgs.utilityMotion : undefined;
-        const bifoldsOpen =
-          typeof rawArgs.bifoldsOpen === 'boolean' ? rawArgs.bifoldsOpen : undefined;
-        const carGatesOpen =
-          typeof rawArgs.carGatesOpen === 'boolean' ? rawArgs.carGatesOpen : undefined;
-        return {
-          name: 'set_environment',
-          args: {
-            ...(timeOfDay !== undefined ? { timeOfDay } : {}),
-            ...(kitchenMotion !== undefined ? { kitchenMotion } : {}),
-            ...(utilityMotion !== undefined ? { utilityMotion } : {}),
-            ...(bifoldsOpen !== undefined ? { bifoldsOpen } : {}),
-            ...(carGatesOpen !== undefined ? { carGatesOpen } : {}),
-          },
-        };
+        const bool = (v: unknown): boolean | undefined => (typeof v === 'boolean' ? v : undefined);
+        const args: {
+          timeOfDay?: TimeOfDay;
+          kitchenMotion?: boolean;
+          utilityMotion?: boolean;
+          bifoldsOpen?: boolean;
+          carGatesOpen?: boolean;
+        } = {};
+        if (tod === 'day' || tod === 'dusk' || tod === 'night') args.timeOfDay = tod;
+        const km = bool(rawArgs.kitchenMotion);
+        if (km !== undefined) args.kitchenMotion = km;
+        const um = bool(rawArgs.utilityMotion);
+        if (um !== undefined) args.utilityMotion = um;
+        const bo = bool(rawArgs.bifoldsOpen);
+        if (bo !== undefined) args.bifoldsOpen = bo;
+        const cg = bool(rawArgs.carGatesOpen);
+        if (cg !== undefined) args.carGatesOpen = cg;
+        return { name: 'set_environment', args };
       }
 
       default:
@@ -711,183 +744,245 @@ export class KNXAIAssistant {
     }
   }
 
+  // --- Execution -------------------------------------------------------------------------------
+
   public invokeToolCall(call: KNXToolCall): string {
+    const pa = this.sourcePa;
     switch (call.name) {
-      case 'recall_scene': {
-        const idx = call.args.sceneNumber - 1;
-        const sc = this.knx.getScenes()[idx];
-        this.knx.recallScene(idx, '1.1.2', 'AI Assistant');
-        return sc
-          ? `Recalled ${sc.code} (${sc.name})`
-          : `Recalled Scene ${call.args.sceneNumber}`;
+      case 'recall_zone_scene': {
+        const { zone, sceneIndex } = call.args;
+        this.bus.recallZoneScene(zone, sceneIndex, pa, ASSISTANT_LOCATION);
+        const label = this.zoneById.get(zone)?.scenes[sceneIndex]?.label ?? `Scene ${sceneIndex + 1}`;
+        return `${this.zoneLabel(zone)} → ${label}`;
       }
 
-      case 'set_master_state': {
-        if (call.args.mode === 'all_full') {
-          this.knx.handleSwitchLongPressHoldUp('AI Assistant', '1.1.2');
-          return 'All kitchen & utility circuits → 100% Full';
-        }
-        this.knx.handleSwitchLongPressHoldDown('AI Assistant', '1.1.2');
-        const kNight = this.knx.isKitchenNightDimActive();
-        const uNight = this.knx.isUtilityNightDimActive();
-        if (kNight || uNight) {
-          return `Night-Walk Dim active (Uplights ${NIGHT_WALK_UPLIGHTS_PCT}%, Spots ${NIGHT_WALK_SPOTLIGHTS_PCT}%, UnderCab ${NIGHT_WALK_UNDER_CABINET_PCT}%, AboveCab ${NIGHT_WALK_ABOVE_CABINET_PCT}%, Utility ${uNight ? NIGHT_WALK_UTILITY_PCT : 0}%)`;
-        }
-        return 'All lights → 0% Off';
+      case 'set_zone_mode': {
+        const { zone, mode } = call.args;
+        if (mode === 'full') this.bus.setZoneFull(zone, pa, ASSISTANT_LOCATION);
+        else if (mode === 'night') this.bus.enterZoneNight(zone, pa, ASSISTANT_LOCATION);
+        else this.bus.setZoneOff(zone, pa);
+        return `${this.zoneLabel(zone)} → ${mode === 'full' ? 'Full' : mode === 'night' ? 'Night' : 'Off'}`;
       }
 
       case 'set_circuit_levels': {
         const changes: string[] = [];
-        for (const circuitId of VALID_CIRCUIT_IDS) {
-          const pct = call.args[circuitId];
-          if (typeof pct === 'number' && !Number.isNaN(pct)) {
-            const clamped = Math.max(0, Math.min(100, Math.round(pct)));
-            this.knx.setCircuitLevel(circuitId, clamped, true, '1.1.2');
-            const cfg = CIRCUITS.find((c) => c.id === circuitId);
-            changes.push(`${cfg ? cfg.shortName : circuitId} ${clamped}%`);
-          }
+        for (const [id, pct] of Object.entries(call.args.levels)) {
+          if (!this.circuitIds.has(id) || typeof pct !== 'number') continue;
+          const circuitId = this.project.circuits.find((c) => c.id === id)?.id;
+          if (!circuitId) continue;
+          const clamped = clampPct(pct);
+          this.bus.setCircuitLevel(circuitId, clamped, true, pa);
+          changes.push(`${this.circuitLabel(circuitId)} ${clamped}%`);
         }
         return changes.join(', ');
       }
 
       case 'adjust_circuit_levels': {
-        const current = this.knx.getTargetLevels();
+        const current = this.bus.getTargetLevels();
         const changes: string[] = [];
-        for (const cId of call.args.circuits) {
-          const base = current[cId] ?? 0;
-          const next = Math.max(0, Math.min(100, Math.round(base + call.args.deltaPct)));
-          this.knx.setCircuitLevel(cId, next, true, '1.1.2');
-          const cfg = CIRCUITS.find((c) => c.id === cId);
-          changes.push(`${cfg ? cfg.shortName : cId} ${next}%`);
+        for (const id of call.args.circuits) {
+          const next = clampPct((current[id] ?? 0) + call.args.deltaPct);
+          this.bus.setCircuitLevel(id, next, true, pa);
+          changes.push(`${this.circuitLabel(id)} ${next}%`);
         }
         return changes.join(', ');
       }
 
+      case 'recall_scene': {
+        const scenes = this.bus.getScenes();
+        const idx = scenes.findIndex((s) => s.number === call.args.sceneNumber);
+        const sceneIdx = idx >= 0 ? idx : call.args.sceneNumber - 1;
+        this.bus.recallScene(sceneIdx, pa, ASSISTANT_LOCATION);
+        const sc = scenes[sceneIdx];
+        return sc ? `Recalled ${sc.code} (${sc.name})` : `Recalled Scene ${call.args.sceneNumber}`;
+      }
+
+      case 'set_master_state': {
+        if (call.args.mode === 'all_full') {
+          this.bus.handleSwitchLongPressHoldUp(ASSISTANT_LOCATION, pa);
+          return 'All lights → 100% Full';
+        }
+        this.bus.handleSwitchLongPressHoldDown(ASSISTANT_LOCATION, pa);
+        return 'Master off (night-walk dim where occupied)';
+      }
+
       case 'save_scene_preset': {
+        const scenes = this.bus.getScenes();
         const targetIdx =
-          call.args.sceneNumber !== undefined ? call.args.sceneNumber - 1 : undefined;
-        this.knx.saveCurrentLevelsToActiveScene(targetIdx, '1.1.2');
-        const scenes = this.knx.getScenes();
-        const savedScene =
-          targetIdx !== undefined
-            ? scenes[targetIdx]
-            : scenes[Math.max(0, this.knx.getActiveSceneIndex())];
-        return `Stored ${savedScene ? `${savedScene.code} (${savedScene.name})` : 'Scene'}`;
+          call.args.sceneNumber !== undefined
+            ? scenes.findIndex((s) => s.number === call.args.sceneNumber)
+            : undefined;
+        const idx = targetIdx !== undefined && targetIdx >= 0 ? targetIdx : undefined;
+        this.bus.saveCurrentLevelsToActiveScene(idx, pa);
+        const saved = scenes[idx ?? Math.max(0, this.bus.getActiveSceneIndex())];
+        return `Stored ${saved ? `${saved.code} (${saved.name})` : 'Scene'}`;
       }
 
       case 'control_tv_art': {
         if (call.args.action === 'select' && call.args.artNumber !== undefined) {
-          this.knx.setTvArtIndex(call.args.artNumber - 1, true, '1.1.2');
+          this.bus.setTvArtIndex(call.args.artNumber - 1, true, pa);
         } else {
-          this.knx.cycleTvArt(true, '1.1.2');
+          this.bus.cycleTvArt(true, pa);
         }
-        return `TV Art → "${this.knx.getTvArtTitle()}"`;
+        return `TV Art → "${this.bus.getTvArtTitle()}"`;
       }
 
       case 'set_environment': {
-        const envNotes: string[] = [];
-        const todLuxMap: Record<TimeOfDay, number> = {
-          day: 480,
-          dusk: 38,
-          night: 5,
-        };
-        if (call.args.timeOfDay) {
-          this.scene.setTimeOfDay(call.args.timeOfDay);
-          this.knx.setAmbientLux(todLuxMap[call.args.timeOfDay], true);
-          envNotes.push(`Time → ${call.args.timeOfDay.toUpperCase()} (${todLuxMap[call.args.timeOfDay]} lx)`);
+        const notes: string[] = [];
+        const { timeOfDay, kitchenMotion, utilityMotion, bifoldsOpen, carGatesOpen } = call.args;
+        if (timeOfDay) {
+          this.env.setTimeOfDay(timeOfDay);
+          this.bus.setAmbientLux(TIME_OF_DAY_LUX[timeOfDay], true);
+          notes.push(`Time → ${timeOfDay.toUpperCase()} (${TIME_OF_DAY_LUX[timeOfDay]} lx)`);
         }
-        if (typeof call.args.kitchenMotion === 'boolean') {
-          this.knx.setKitchenMotionDetected(call.args.kitchenMotion);
-          envNotes.push(`Kitchen PIR → ${call.args.kitchenMotion ? 'Motion' : 'Vacant'}`);
+        if (kitchenMotion !== undefined) {
+          this.bus.setKitchenMotionDetected(kitchenMotion);
+          notes.push(`Kitchen PIR → ${kitchenMotion ? 'Motion' : 'Vacant'}`);
         }
-        if (typeof call.args.utilityMotion === 'boolean') {
-          this.knx.setUtilityMotionDetected(call.args.utilityMotion);
-          envNotes.push(`Utility PIR → ${call.args.utilityMotion ? 'Motion' : 'Vacant'}`);
+        if (utilityMotion !== undefined) {
+          this.bus.setUtilityMotionDetected(utilityMotion);
+          notes.push(`Utility PIR → ${utilityMotion ? 'Motion' : 'Vacant'}`);
         }
-        if (typeof call.args.bifoldsOpen === 'boolean') {
-          if (this.scene.isBifoldsOpen() !== call.args.bifoldsOpen) {
-            this.scene.toggleBifolds();
-          }
-          envNotes.push(`Bifolds → ${call.args.bifoldsOpen ? 'Open' : 'Closed'}`);
+        if (bifoldsOpen !== undefined) {
+          if (this.env.isBifoldsOpen() !== bifoldsOpen) this.env.toggleBifolds();
+          notes.push(`Bifolds → ${bifoldsOpen ? 'Open' : 'Closed'}`);
         }
-        if (typeof call.args.carGatesOpen === 'boolean') {
-          this.knx.setCarGatesOpen(call.args.carGatesOpen, true, '1.1.2');
-          envNotes.push(`Front Car Gates → ${call.args.carGatesOpen ? 'Opening (10s)' : 'Closing (10s)'}`);
+        if (carGatesOpen !== undefined) {
+          this.bus.setCarGatesOpen(carGatesOpen, true, pa);
+          notes.push(`Car gates → ${carGatesOpen ? 'Opening' : 'Closing'}`);
         }
-        if (this.onEnvironmentSync) {
-          this.onEnvironmentSync();
-        }
-        return envNotes.join(', ');
+        this.onEnvironmentChanged?.();
+        return notes.join(', ');
       }
     }
   }
 
-  private executeFallbackLocalParser(prompt: string): AIAssistantExecutionResult {
+  // --- Offline parser --------------------------------------------------------------------------
+
+  /** Parses a prompt without the model; exposed for tests and offline use. */
+  public parseLocally(prompt: string): KNXToolCall[] {
     const lower = prompt.toLowerCase();
+    const has = (re: RegExp): boolean => re.test(lower);
     const calls: KNXToolCall[] = [];
 
-    if (/\b(?:gate|gates|driveway)\b/i.test(lower)) {
-      const shouldOpen = !/\b(?:close|shut|lock)\b/i.test(lower);
+    if (has(/\b(?:gate|gates|driveway)\b/)) {
+      calls.push({ name: 'set_environment', args: { carGatesOpen: !has(/\b(?:close|shut|lock)\b/) } });
+      return calls;
+    }
+    if (has(/\b(?:bifold|bifolds)\b/) && has(/\b(?:open|close|shut)\b/)) {
+      calls.push({ name: 'set_environment', args: { bifoldsOpen: !has(/\b(?:close|shut)\b/) } });
+      return calls;
+    }
+    if (has(/\b(?:tv|telly|artwork|painting|art)\b/)) {
+      const queryTokens = new Set(tokeniseKnxName(prompt));
+      const artIdx = TV_ARTWORKS.findIndex((title) => tokeniseKnxName(title).some((t) => queryTokens.has(t) && t.length > 3));
+      calls.push({
+        name: 'control_tv_art',
+        args: artIdx >= 0 ? { action: 'select', artNumber: artIdx + 1 } : { action: 'next' },
+      });
+      return calls;
+    }
+    const tod = /\b(?:make it|set (?:it |the time )?to|switch to|time to)\s+(day|daytime|dusk|sunset|night|nighttime)\b/.exec(lower);
+    if (tod) {
+      const t = tod[1];
       calls.push({
         name: 'set_environment',
-        args: { carGatesOpen: shouldOpen },
+        args: { timeOfDay: t.startsWith('day') ? 'day' : t === 'dusk' || t === 'sunset' ? 'dusk' : 'night' },
       });
-    } else if (/\b(?:utility)\b/i.test(lower)) {
-      const pctMatch = lower.match(/(\d{1,3})\s*%/);
-      const targetPct = pctMatch
-        ? Math.max(0, Math.min(100, Number(pctMatch[1])))
-        : /\b(?:off|dark|0)\b/i.test(lower)
-          ? 0
-          : /\b(?:dim|low|soft)\b/i.test(lower)
-            ? 30
-            : 100;
-      calls.push({
-        name: 'set_circuit_levels',
-        args: { utilitySpotlights: targetPct },
-      });
-    } else if (/\b(?:all\s+off|full\s+off|good\s*night|everything\s+off|\boff\b)\b/i.test(lower)) {
+      return calls;
+    }
+
+    const pctMatch = /(\d{1,3})\s*(?:%|percent)/.exec(lower);
+    const pct = pctMatch ? clampPct(Number(pctMatch[1])) : null;
+    const wantsOff = has(/\b(?:off|dark)\b/);
+    const wantsNight = has(/\bnight\s*(?:mode|light|lights)?\b/) && !wantsOff;
+    const wantsFull = has(/\b(?:full|max|maximum|brightest|on)\b/);
+    const relative = has(/\b(?:brighter|brighten|lighter|increase|raise|more)\b/)
+      ? DEFAULT_RELATIVE_STEP_PCT
+      : has(/\b(?:dim|dimmer|darker|lower|decrease|less|too bright)\b/)
+        ? -DEFAULT_RELATIVE_STEP_PCT
+        : 0;
+
+    const zoneMatch = this.resolver.resolveZone(prompt);
+    const circuitMatch = this.resolver.resolveCircuit(prompt);
+    const queryTokens = new Set(tokeniseKnxName(prompt));
+    const circuitFullyNamed =
+      circuitMatch !== null && circuitMatch.matched.split(' ').every((t) => queryTokens.has(t));
+    const preferCircuit =
+      circuitMatch !== null &&
+      (zoneMatch === null ||
+        (circuitFullyNamed && circuitMatch.matched.split(' ').length > zoneMatch.matched.split(' ').length) ||
+        circuitMatch.score > zoneMatch.score + 0.1);
+
+    if (preferCircuit && circuitMatch) {
+      const id = circuitMatch.id;
+      if (pct !== null) calls.push({ name: 'set_circuit_levels', args: { levels: { [id]: pct } } });
+      else if (wantsOff) calls.push({ name: 'set_circuit_levels', args: { levels: { [id]: 0 } } });
+      else if (relative !== 0) calls.push({ name: 'adjust_circuit_levels', args: { circuits: [id], deltaPct: relative } });
+      else calls.push({ name: 'set_circuit_levels', args: { levels: { [id]: 100 } } });
+      return calls;
+    }
+
+    if (zoneMatch) {
+      const zoneId = zoneMatch.id;
+      const zone = this.zoneById.get(zoneId);
+      if (pct !== null) {
+        const levels: CircuitLevelsPartial = {};
+        for (const id of this.circuitsOfZone(zoneId)) levels[id] = pct;
+        calls.push({ name: 'set_circuit_levels', args: { levels } });
+      } else if (wantsOff) {
+        calls.push({ name: 'set_zone_mode', args: { zone: zoneId, mode: 'off' } });
+      } else if (wantsNight) {
+        calls.push({ name: 'set_zone_mode', args: { zone: zoneId, mode: 'night' } });
+      } else if (relative !== 0) {
+        calls.push({ name: 'adjust_circuit_levels', args: { circuits: this.circuitsOfZone(zoneId), deltaPct: relative } });
+      } else {
+        const scene = zone && zone.scenes.length > 0 ? this.resolver.resolveScene(zoneId, prompt) : null;
+        const central = zone?.usesCentralSceneTable ? this.resolveCentralSceneNumber(prompt) : null;
+        if (scene && !wantsFull) {
+          calls.push({ name: 'recall_zone_scene', args: { zone: zoneId, sceneIndex: scene.index, sceneId: scene.id } });
+        } else if (central !== null && !wantsFull) {
+          calls.push({ name: 'recall_scene', args: { sceneNumber: central } });
+        } else {
+          calls.push({ name: 'set_zone_mode', args: { zone: zoneId, mode: 'full' } });
+        }
+      }
+      return calls;
+    }
+
+    if (has(/\b(?:all\s+off|everything\s+off|good\s*night|lights\s+off|off)\b/)) {
       calls.push({ name: 'set_master_state', args: { mode: 'off' } });
-    } else if (/\b(?:all\s+full|full\s+on|everything\s+on|100%)\b/i.test(lower)) {
+      return calls;
+    }
+    if (has(/\b(?:all\s+on|everything\s+on|full\s+on|all\s+full)\b/)) {
       calls.push({ name: 'set_master_state', args: { mode: 'all_full' } });
-    } else if (/\b(?:coffee|morning)\b/i.test(lower)) {
-      calls.push({ name: 'recall_scene', args: { sceneNumber: 4 } });
-    } else if (/\b(?:party|cocktail|drinks)\b/i.test(lower)) {
-      calls.push({ name: 'recall_scene', args: { sceneNumber: 5 } });
-    } else if (/\b(?:wine|intimate|romantic)\b/i.test(lower)) {
-      calls.push({ name: 'recall_scene', args: { sceneNumber: 6 } });
-    } else if (/\b(?:courtyard|patio|outside|festoon|lamp\s*post)\b/i.test(lower)) {
-      calls.push({ name: 'recall_scene', args: { sceneNumber: 7 } });
-    } else if (/\b(?:baking|bake)\b/i.test(lower)) {
-      calls.push({ name: 'recall_scene', args: { sceneNumber: 8 } });
-    } else if (/\b(?:dining|dinner|dine)\b/i.test(lower)) {
-      calls.push({ name: 'recall_scene', args: { sceneNumber: 2 } });
-    } else if (/\b(?:lounge|relax|cozy|cosy)\b/i.test(lower)) {
-      calls.push({ name: 'recall_scene', args: { sceneNumber: 3 } });
-    } else {
-      calls.push({ name: 'recall_scene', args: { sceneNumber: 1 } });
+      return calls;
     }
+    const central = this.resolveCentralSceneNumber(prompt);
+    if (central !== null) calls.push({ name: 'recall_scene', args: { sceneNumber: central } });
+    return calls;
+  }
 
-    const executedCalls: ExecutedToolCallRecord[] = [];
-    const summaries: string[] = [];
-    for (const c of calls) {
-      summaries.push(this.invokeToolCall(c));
-      executedCalls.push({ call: c, formatted: formatToolCallString(c) });
-    }
-
+  private executeFallbackLocalParser(prompt: string): AIAssistantExecutionResult {
+    const calls = this.parseLocally(prompt);
+    const { executedCalls, summaries } = this.runCalls(calls);
     return {
       prompt,
       modelUsed: 'local-fallback',
       executedCalls,
-      reply: summaries.join(' · '),
+      reply:
+        summaries.join(' · ') ||
+        'Offline: I couldn’t match that to a room, light or scene — try "kitchen full", "office off" or "barn downlights 40%".',
     };
   }
 }
 
 export { TV_ARTWORKS };
 
-/**
- * Strict Web Speech API types (zero `any`) for browser voice input.
- */
+// -----------------------------------------------------------------------------
+// Voice input (Web Speech API, strictly typed)
+// -----------------------------------------------------------------------------
+
 interface SpeechRecognitionAlternativeLike {
   readonly transcript: string;
   readonly confidence: number;

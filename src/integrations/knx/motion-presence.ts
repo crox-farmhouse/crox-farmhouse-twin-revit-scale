@@ -34,16 +34,32 @@ export function isPointInPolygonXZ(
   return inside;
 }
 
+/** Distance (m) from an XZ point to a polygon: 0 inside, otherwise to the nearest edge. */
+export function distanceToPolygonXZ(
+  x: number,
+  z: number,
+  polygon: readonly (readonly [number, number])[]
+): number {
+  if (isPointInPolygonXZ(x, z, polygon)) return 0;
+  let best = Infinity;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [ax, az] = polygon[j]!;
+    const [bx, bz] = polygon[i]!;
+    const dx = bx - ax;
+    const dz = bz - az;
+    const len2 = dx * dx + dz * dz;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / len2)) : 0;
+    best = Math.min(best, Math.hypot(x - (ax + t * dx), z - (az + t * dz)));
+  }
+  return best;
+}
+
 export function isInsideCoverage(x: number, y: number, z: number, coverage: KnxCoverageVolume): boolean {
   return y >= coverage.minY && y <= coverage.maxY && isPointInPolygonXZ(x, z, coverage.polygon);
 }
 
 function toXyz(pos: FootPosition): readonly [number, number, number] {
-  return Array.isArray(pos) ? (pos as readonly [number, number, number]) : [
-    (pos as { x: number }).x,
-    (pos as { y: number }).y,
-    (pos as { z: number }).z,
-  ];
+  return 'x' in pos ? [pos.x, pos.y, pos.z] : pos;
 }
 
 /**
