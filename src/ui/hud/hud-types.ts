@@ -17,43 +17,18 @@ export interface HudSharedContext {
   readonly onFloorModeChanged: () => void;
 }
 
-export function bindDraggableHudWindow(
-  hudWindow: HTMLElement,
-  hudTitlebar: HTMLElement,
+/**
+ * Binds the collapse toggle of a legacy HUD section header. The legacy panels now
+ * live inside the developer drawer, so their headers are static (no dragging).
+ */
+export function bindCollapsibleHudSection(
+  hudSection: HTMLElement,
+  hudHeader: HTMLElement,
   hudCollapseBtn: HTMLButtonElement
 ): void {
-  let isDraggingHud = false;
-  let dragOffsetX = 0;
-  let dragOffsetY = 0;
-
+  hudHeader.classList.add('is-static');
   hudCollapseBtn.addEventListener('click', (e: MouseEvent) => {
     e.stopPropagation();
-    hudWindow.classList.toggle('is-collapsed');
+    hudSection.classList.toggle('is-collapsed');
   });
-
-  hudTitlebar.addEventListener('pointerdown', (e: PointerEvent) => {
-    if (e.target === hudCollapseBtn) return;
-    isDraggingHud = true;
-    const rect = hudWindow.getBoundingClientRect();
-    dragOffsetX = e.clientX - rect.left;
-    dragOffsetY = e.clientY - rect.top;
-    hudTitlebar.setPointerCapture(e.pointerId);
-  });
-
-  hudTitlebar.addEventListener('pointermove', (e: PointerEvent) => {
-    if (!isDraggingHud) return;
-    const maxX = Math.max(0, window.innerWidth - hudWindow.offsetWidth);
-    const maxY = Math.max(0, window.innerHeight - 28);
-    const nextLeft = Math.max(0, Math.min(maxX, e.clientX - dragOffsetX));
-    const nextTop = Math.max(0, Math.min(maxY, e.clientY - dragOffsetY));
-    hudWindow.style.left = `${nextLeft}px`;
-    hudWindow.style.top = `${nextTop}px`;
-    hudWindow.style.right = 'auto';
-  });
-
-  const stopDrag = (): void => {
-    isDraggingHud = false;
-  };
-  hudTitlebar.addEventListener('pointerup', stopDrag);
-  hudTitlebar.addEventListener('pointercancel', stopDrag);
 }

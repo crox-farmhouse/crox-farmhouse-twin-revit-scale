@@ -1,13 +1,6 @@
 /* ============================================================================
-   Floating 3D Issue Annotator Palette (Top-Left)
+   3D Issue Annotator (docked inspector; see shell.css .shell-inspector)
    ============================================================================ */
-
-.annotator-window {
-  left: 14px;
-  right: auto;
-  top: 14px;
-  width: 318px;
-}
 
 .annotator-body {
   max-height: calc(100vh - 60px);
@@ -493,14 +486,10 @@
 
 
 /* ============================================================================
-   Floating OpenUSD Stage Studio HUD (#usd-stage-panel)
+   OpenUSD Stage Studio (#usd-stage-panel, developer drawer)
    ============================================================================ */
 
 .usd-stage-window {
-  left: 342px;
-  right: auto;
-  top: 14px;
-  width: 356px;
   border-color: #1e425e;
 }
 

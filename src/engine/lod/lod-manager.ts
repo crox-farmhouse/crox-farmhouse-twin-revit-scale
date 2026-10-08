@@ -20,7 +20,6 @@ interface RuntimeDistanceLodItem {
   readonly centerY: number;
   readonly centerZ: number;
   readonly maxDistanceM: number;
-  readonly castsShadow: boolean;
   visible: boolean;
 }
 
@@ -63,6 +62,10 @@ export class RoomLodController {
   private policyMode: LodPolicyMode = 'auto';
   private focusedZoneId: RoomZoneId = 'kitchen';
   private lastEvalShadowsDirty = false;
+  /** Perf-governor multiplier applied to every distance threshold (hero radius + runtime items). */
+  private distanceScale = 1.0;
+  /** Base radius (m) inside which rooms get LOD2 Hero detail in `auto` mode. */
+  private highDetailMaxDistanceM = RoomLodController.AUTO_HERO_RADIUS_M;
   private onLodChangeCallback?: (diagnostics: RoomLodDiagnostics) => void;
 
   public constructor(registrations: readonly RoomZoneLodRegistration[] = []) {
@@ -137,25 +140,73 @@ export class RoomLodController {
     if (!room) return;
     object.userData = { ...object.userData, lodTier: tier, zoneId };
     room.managedObjects.push({ object, tier });
+    if (tier === 2) {
+      RoomLodController.disableShadowCasting(object);
+    }
   }
 
+  /**
+   * Registers a distance-culled micro-detail object. Distance culling never changes the set of
+   * shadow casters: the object is made permanently non-shadow-casting (these are small props),
+   * so the `_castsShadow` argument is ignored and kept only for call-site compatibility.
+   */
   public registerRuntimeDistanceObject(
     object: THREE.Object3D,
     centerX: number,
     centerY: number,
     centerZ: number,
     maxDistanceM: number,
-    castsShadow = false
+    _castsShadow = false
   ): void {
+    RoomLodController.disableShadowCasting(object);
     this.runtimeDistanceItems.push({
       object,
       centerX,
       centerY,
       centerZ,
       maxDistanceM,
-      castsShadow,
       visible: object.visible,
     });
+  }
+
+  /**
+   * High-detail (LOD2 / distance-culled) props are fixed as non-shadow-casting at load so LOD
+   * switching driven by the camera can never add or remove sun/point-light shadow casters.
+   */
+  private static disableShadowCasting(object: THREE.Object3D): void {
+    object.traverse((node) => {
+      if (node instanceof THREE.Mesh && node.castShadow) {
+        node.castShadow = false;
+      }
+    });
+  }
+
+  /**
+   * Perf-governor hook: scales every LOD distance threshold (hero radius and runtime
+   * distance-culled items). `1` = default; `<1` hides detail sooner. Takes effect on the next
+   * `evaluateLod`. Never affects lighting or shadow casters.
+   */
+  public setDistanceScale(scale: number): void {
+    this.distanceScale = Number.isFinite(scale) && scale > 0 ? scale : 1.0;
+  }
+
+  public getDistanceScale(): number {
+    return this.distanceScale;
+  }
+
+  /** Perf-governor hook: base radius (m, before `distanceScale`) for LOD2 Hero rooms in `auto` mode. */
+  public setHighDetailMaxDistance(m: number): void {
+    this.highDetailMaxDistanceM =
+      Number.isFinite(m) && m >= 0 ? m : RoomLodController.AUTO_HERO_RADIUS_M;
+  }
+
+  public getHighDetailMaxDistance(): number {
+    return this.highDetailMaxDistanceM;
+  }
+
+  /** World-space centre of a registered room (used e.g. as the point-light budget anchor). */
+  public getRoomCenter(zoneId: RoomZoneId): THREE.Vector3 | undefined {
+    return this.rooms.get(zoneId)?.center;
   }
 
   public clearRuntimeDistanceObjects(): void {
@@ -203,6 +254,9 @@ export class RoomLodController {
 
     const rootSet = new Set<THREE.Object3D>(roots);
     const box = new THREE.Box3();
+    for (const room of this.rooms.values()) {
+      RoomLodController.disableShadowCasting(room.heroGroup);
+    }
     const size = new THREE.Vector3();
     const center = new THREE.Vector3();
 
@@ -266,6 +320,9 @@ export class RoomLodController {
       if (explicitTier === 1 || explicitTier === 2) {
         const room = this.rooms.get(explicitZone);
         room?.managedObjects.push({ object: obj, tier: explicitTier });
+        if (room && explicitTier === 2) {
+          RoomLodController.disableShadowCasting(obj);
+        }
       }
       return;
     }
@@ -287,6 +344,9 @@ export class RoomLodController {
           maxDim <= RoomLodController.HERO_PROP_MAX_DIM_M ? 2 : 1;
         obj.userData = { ...obj.userData, lodTier: tier, zoneId: room.zoneId };
         room.managedObjects.push({ object: obj, tier });
+        if (tier === 2) {
+          RoomLodController.disableShadowCasting(obj);
+        }
         return;
       }
     }
@@ -325,6 +385,9 @@ export class RoomLodController {
 
     obj.userData = { ...obj.userData, lodTier: tier, zoneId: room.zoneId };
     room.managedObjects.push({ object: obj, tier });
+    if (tier === 2) {
+      RoomLodController.disableShadowCasting(obj);
+    }
   }
 
   private containsCriticalInteractive(obj: THREE.Object3D): boolean {
@@ -461,7 +524,9 @@ export class RoomLodController {
       if (room.currentTier !== desiredTier || forceNotify) {
         if (room.currentTier !== desiredTier) {
           anyChanged = true;
-          // Only re-bake directional shadows if primary furniture (tier 1) visibility changed
+          // LOD2 hero props never cast shadows, so only a tier-1 (primary furniture) visibility
+          // change alters the shadow-caster set. In `auto` mode that boundary depends solely on
+          // the floor view mode (never on camera distance or focus), see computeDesiredTierForRoom.
           if ((room.currentTier >= 1) !== (desiredTier >= 1)) {
             shadowsDirty = true;
           }
@@ -481,6 +546,7 @@ export class RoomLodController {
       const tgtY = cameraTarget.y;
       const tgtZ = cameraTarget.z;
       const mode = this.policyMode;
+      const scale = this.distanceScale;
 
       for (let i = 0; i < nRuntime; i++) {
         const item = this.runtimeDistanceItems[i]!;
@@ -502,16 +568,15 @@ export class RoomLodController {
 
           const minDistSq = Math.min(distCamSq * 0.78, distTgtSq);
           // 1.2m hysteresis band prevents popping when hovering near threshold
-          const threshold = item.visible ? item.maxDistanceM + 0.6 : item.maxDistanceM - 0.6;
+          const scaledMax = item.maxDistanceM * scale;
+          const threshold = item.visible ? scaledMax + 0.6 : scaledMax - 0.6;
           wantVisible = minDistSq <= threshold * threshold;
         }
 
         if (item.visible !== wantVisible || forceNotify) {
           if (item.visible !== wantVisible) {
+            // Runtime items are permanently non-shadow-casting: never dirties shadows.
             anyChanged = true;
-            if (item.castsShadow) {
-              shadowsDirty = true;
-            }
           }
           item.visible = wantVisible;
           item.object.visible = wantVisible;
@@ -538,18 +603,14 @@ export class RoomLodController {
     if (this.policyMode === 'lod2') return 2;
 
     // In 'auto' mode:
-    // 1. Rooms on a hidden/non-active floor drop to LOD0 Shell (except Upper Landing when looking up from Hall)
+    // 1. Rooms on a hidden/non-active floor drop to LOD0 Shell. The double-height stair void
+    //    (Upper Landing seen from the Hall and vice versa) always keeps LOD1 so the shadow-caster
+    //    set does not depend on which room the camera happens to be focused on.
     if (floorViewMode === 'ground' && room.floorId === 'first') {
-      if (room.zoneId === 'upperLanding' && this.focusedZoneId === 'hall') {
-        return 1;
-      }
-      return 0;
+      return room.zoneId === 'upperLanding' ? 1 : 0;
     }
     if (floorViewMode === 'first' && room.floorId === 'ground') {
-      if (room.zoneId === 'hall' && this.focusedZoneId === 'upperLanding') {
-        return 1;
-      }
-      return 0;
+      return room.zoneId === 'hall' ? 1 : 0;
     }
 
     // 2. The explicitly focused room (and Kitchen/Sitting pair when either is focused) gets LOD2 Hero
@@ -558,7 +619,7 @@ export class RoomLodController {
       (this.focusedZoneId === 'kitchen' && room.zoneId === 'sitting') ||
       (this.focusedZoneId === 'sitting' && room.zoneId === 'kitchen');
 
-    if (isFocusedPair || effectiveDistM <= RoomLodController.AUTO_HERO_RADIUS_M) {
+    if (isFocusedPair || effectiveDistM <= this.highDetailMaxDistanceM * this.distanceScale) {
       return 2;
     }
 

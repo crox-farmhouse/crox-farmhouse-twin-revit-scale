@@ -28,8 +28,25 @@ export interface ManagedPointLightEntry {
   readonly isFirstFloor: boolean;
   readonly isStandalone: boolean;
   readonly baseIntensity: number;
-  readonly maxCameraDistance: number;
 }
+
+/** World-space anchor (or room id) used to pick which point lights stay inside the light budget. */
+export type PointLightBudgetAnchor = RoomZoneId | THREE.Vector3;
+
+/** Seconds taken to fade a point light in/out when it enters or leaves the light budget. */
+const POINT_LIGHT_BUDGET_FADE_S = 0.25;
+
+/** `userData` key holding a managed light's current budget fade weight (0..1). */
+export const POINT_LIGHT_BUDGET_WEIGHT_KEY = 'budgetWeight';
+
+/** Reads the budget fade weight that `SceneBatchOptimizer` stored on a light (1 when unmanaged). */
+export function getPointLightBudgetWeight(light: THREE.Light): number {
+  const w = light.userData?.[POINT_LIGHT_BUDGET_WEIGHT_KEY];
+  return typeof w === 'number' ? w : 1;
+}
+
+/** Userdata flag for helper meshes that must never be batched, deduplicated or shadow-culled. */
+export const SHADOW_PASS_HOOK_FLAG = 'isShadowPassHook';
 
 export interface SceneBatchOptimizerOptions {
   readonly layers: PropertySceneLayers;
@@ -40,6 +57,8 @@ export interface SceneBatchOptimizerOptions {
   readonly indicatorMats: ZoneIndicatorMaterials;
   readonly roomSwitchLedMats: readonly RoomSwitchLedBinding[];
   readonly getDynamicObjects: () => Set<THREE.Object3D>;
+  /** Called before any batch/unbatch mutation (e.g. to suspend trade-view material overlays). */
+  readonly onBeforeBatchChange?: () => void;
   readonly onAfterBatchChange?: () => void;
 }
 
@@ -72,6 +91,14 @@ export class SceneBatchOptimizer {
   private extraLodBound = false;
   private timeOfDay: TimeOfDay = 'dusk';
 
+  // Fixed point-light budget (camera-independent). `Infinity` keeps every managed light active.
+  private pointLightBudget = Number.POSITIVE_INFINITY;
+  private budgetAnchor: PointLightBudgetAnchor | null = null;
+  /** Per managed light (parallel to `managedPointLights`): current fade weight 0..1. */
+  private readonly budgetWeights: number[] = [];
+  /** Per managed light: target fade weight (0 = outside budget, 1 = inside). */
+  private readonly budgetTargets: number[] = [];
+
   private getStandaloneLightTodScale(): number {
     // Outbuilding / Barn / Gym / Garage / Mezzanine / Stable interiors have deep footprints and minimal
     // window daylight, so their standalone task & ambient PointLights stay bright across all times of day.
@@ -83,13 +110,134 @@ export class SceneBatchOptimizer {
   public setTimeOfDay(mode: TimeOfDay): void {
     if (this.timeOfDay === mode) return;
     this.timeOfDay = mode;
-    const todScale = this.getStandaloneLightTodScale();
+    this.applyManagedLightIntensities();
+  }
+
+  /**
+   * Physical (pre-budget) intensity of a managed light: the KNX dimmer target for KNX circuits,
+   * or `baseIntensity × time-of-day scale` for standalone lights. Never depends on the camera.
+   */
+  private getManagedLightTargetIntensity(entry: ManagedPointLightEntry): number {
+    if (entry.isStandalone) {
+      return entry.baseIntensity * this.getStandaloneLightTodScale();
+    }
+    const knxTarget = entry.light.userData?.knxTargetIntensity;
+    return typeof knxTarget === 'number' ? knxTarget : entry.baseIntensity;
+  }
+
+  /** Writes `target × budgetWeight` into every managed light. Returns true if any intensity changed. */
+  private applyManagedLightIntensities(): boolean {
+    let changed = false;
     for (let i = 0; i < this.managedPointLights.length; i++) {
       const entry = this.managedPointLights[i]!;
-      if (entry.isStandalone && entry.light.intensity > 0) {
-        entry.light.intensity = entry.baseIntensity * todScale;
+      const weight = this.budgetWeights[i] ?? 1;
+      const next = this.getManagedLightTargetIntensity(entry) * weight;
+      if (entry.light.intensity !== next) {
+        entry.light.intensity = next;
+        changed = true;
       }
     }
+    return changed;
+  }
+
+  /**
+   * Sets a fixed number of managed point lights that may be lit at once (per quality tier).
+   * Lights are chosen by proximity to the budget anchor room (never the camera) and only change
+   * when the budget or anchor changes. `Infinity` (default) keeps every light active.
+   * Returns true if the active set changed (call `stepFades` each frame to animate the switch).
+   */
+  public setPointLightBudget(n: number): boolean {
+    const next = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : Number.POSITIVE_INFINITY;
+    if (next === this.pointLightBudget) return false;
+    this.pointLightBudget = next;
+    return this.recomputeBudgetTargets();
+  }
+
+  public getPointLightBudget(): number {
+    return this.pointLightBudget;
+  }
+
+  /**
+   * Sets the room (zone id, resolved via `RoomLodController.getRoomCenter`) or world position that
+   * the light budget is centred on. Only explicit calls change the active set.
+   * Returns true if the active set changed.
+   */
+  public setBudgetAnchorZone(anchor: PointLightBudgetAnchor): boolean {
+    if (anchor instanceof THREE.Vector3) {
+      if (this.budgetAnchor instanceof THREE.Vector3 && this.budgetAnchor.equals(anchor)) return false;
+      this.budgetAnchor = anchor.clone();
+    } else {
+      if (this.budgetAnchor === anchor) return false;
+      this.budgetAnchor = anchor;
+    }
+    return this.recomputeBudgetTargets();
+  }
+
+  private resolveBudgetAnchorPosition(): THREE.Vector3 | null {
+    const anchor = this.budgetAnchor;
+    if (anchor === null) return null;
+    if (anchor instanceof THREE.Vector3) return anchor;
+    return this.options.lodController.getRoomCenter(anchor) ?? null;
+  }
+
+  /** Recomputes which managed lights are inside the budget. Returns true if any target changed. */
+  private recomputeBudgetTargets(): boolean {
+    const n = this.managedPointLights.length;
+    const budget = this.pointLightBudget;
+    const nextTargets = new Array<number>(n).fill(1);
+    if (Number.isFinite(budget) && budget < n) {
+      const anchorPos = this.resolveBudgetAnchorPosition();
+      const order: number[] = [];
+      for (let i = 0; i < n; i++) order.push(i);
+      if (anchorPos) {
+        const dist = order.map((i) => this.managedPointLights[i]!.worldPos.distanceToSquared(anchorPos));
+        // Stable sort by distance to the anchor room; ties keep registration order.
+        order.sort((a, b) => dist[a]! - dist[b]! || a - b);
+      }
+      nextTargets.fill(0);
+      for (let k = 0; k < budget; k++) {
+        nextTargets[order[k]!] = 1;
+      }
+    }
+    let changed = false;
+    for (let i = 0; i < n; i++) {
+      if (this.budgetTargets[i] !== nextTargets[i]) {
+        this.budgetTargets[i] = nextTargets[i]!;
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  /**
+   * Advances budget fades (~250 ms) and writes the resulting intensities.
+   * Returns true while any light intensity changed this step (caller should re-render).
+   */
+  public stepFades(dtSeconds: number): boolean {
+    const n = this.managedPointLights.length;
+    if (n === 0) return false;
+    const step = dtSeconds > 0 ? dtSeconds / POINT_LIGHT_BUDGET_FADE_S : 1;
+    let anyWeightChanged = false;
+    for (let i = 0; i < n; i++) {
+      const cur = this.budgetWeights[i] ?? 1;
+      const target = this.budgetTargets[i] ?? 1;
+      if (cur === target) continue;
+      const next = target > cur ? Math.min(target, cur + step) : Math.max(target, cur - step);
+      this.budgetWeights[i] = next;
+      const light = this.managedPointLights[i]!.light;
+      light.userData = { ...light.userData, [POINT_LIGHT_BUDGET_WEIGHT_KEY]: next };
+      anyWeightChanged = true;
+    }
+    if (!anyWeightChanged) return false;
+    return this.applyManagedLightIntensities();
+  }
+
+  /** True while any managed light is still fading toward its budget target. */
+  public hasPendingFades(): boolean {
+    for (let i = 0; i < this.managedPointLights.length; i++) {
+      if ((this.budgetWeights[i] ?? 1) !== (this.budgetTargets[i] ?? 1)) return true;
+    }
+    return false;
   }
 
   public constructor(options: SceneBatchOptimizerOptions) {
@@ -113,6 +261,7 @@ export class SceneBatchOptimizer {
   public unbatchAll(): void {
     if (!this.isCurrentlyBatched) return;
 
+    this.options.onBeforeBatchChange?.();
     const { lodController, interactiveMeshes, onAfterBatchChange } = this.options;
     lodController.clearRuntimeDistanceObjects();
     if (this.allRegisteredBatchMeshes.size > 0) {
@@ -159,10 +308,12 @@ export class SceneBatchOptimizer {
       }
       rec.light.position.copy(rec.originalPosition);
       rec.light.visible = rec.originalVisible;
-      rec.light.intensity = rec.originalIntensity;
+      // KNX lights keep their live dimmer level (not the stale level captured at optimize time).
+      const knxTarget = rec.light.userData?.knxTargetIntensity;
+      rec.light.intensity = typeof knxTarget === 'number' ? knxTarget : rec.originalIntensity;
       rec.light.distance = rec.originalDistance;
       if (rec.light.userData) {
-        rec.light.userData.isMutedByFloorOrDistance = false;
+        delete rec.light.userData[POINT_LIGHT_BUDGET_WEIGHT_KEY];
       }
     }
 
@@ -171,6 +322,8 @@ export class SceneBatchOptimizer {
     this.originalMeshProps.clear();
     this.originalLightRecords.length = 0;
     this.managedPointLights.length = 0;
+    this.budgetWeights.length = 0;
+    this.budgetTargets.length = 0;
     this.isCurrentlyBatched = false;
     this.extraLodBound = false;
 
@@ -191,6 +344,7 @@ export class SceneBatchOptimizer {
     if (this.isCurrentlyBatched) {
       this.unbatchAll();
     }
+    this.options.onBeforeBatchChange?.();
 
     const { layers, lodController, interactiveMeshes, onAfterBatchChange } = this.options;
     const {
@@ -305,8 +459,19 @@ export class SceneBatchOptimizer {
 
     // 10. Consolidate redundant standalone PointLights and hoist 1F PointLights to prevent shader recompilations
     this.consolidateAndHoistPointLights(scene, firstFloorMeshGroup);
+    this.budgetWeights.length = 0;
+    this.budgetTargets.length = 0;
+    this.recomputeBudgetTargets();
+    for (let i = 0; i < this.managedPointLights.length; i++) {
+      // Lights start at their budget target (no fade-in on load / re-batch).
+      const w = this.budgetTargets[i] ?? 1;
+      this.budgetWeights[i] = w;
+      const light = this.managedPointLights[i]!.light;
+      light.userData = { ...light.userData, [POINT_LIGHT_BUDGET_WEIGHT_KEY]: w };
+    }
 
     this.isCurrentlyBatched = true;
+    this.applyManagedLightIntensities();
     onAfterBatchChange?.();
   }
 
@@ -463,6 +628,8 @@ export class SceneBatchOptimizer {
         ancestorLeafOrPlant ||
         (typeof node.name === 'string' && LEAF_OR_MICRO_SHADOW_EXCLUDE_RE.test(node.name));
 
+      if (node.userData?.[SHADOW_PASS_HOOK_FLAG]) return;
+
       if (node instanceof THREE.Mesh) {
         if (!this.originalMeshProps.has(node)) {
           this.originalMeshProps.set(node, {
@@ -585,6 +752,7 @@ export class SceneBatchOptimizer {
     mutableMaterials: ReadonlySet<THREE.Material>
   ): boolean {
     if (!mesh.visible) return false;
+    if (mesh.userData?.[SHADOW_PASS_HOOK_FLAG]) return false;
     if (protectedObjects.has(mesh)) return false;
     if (mesh.userData?.isGolfSimulatorDynamic) return false;
     if (mesh.children.length > 0) return false;
@@ -793,7 +961,7 @@ export class SceneBatchOptimizer {
             const mat = node.material as THREE.Material;
             const intKey = this.buildInteractiveKey(nextUserData, isInteractive);
 
-            const key = `${mat.uuid}|${node.castShadow ? 1 : 0}|${nextRuntimeMaxDist}|${intKey}|${cellKey}`;
+            const key = `${mat.uuid}|${node.castShadow ? 1 : 0}|${nextRuntimeMaxDist}|${intKey}|${cellKey}|${tradeCategoryKey(node)}`;
             let list = buckets.get(key);
             if (!list) {
               list = [];
@@ -855,7 +1023,7 @@ export class SceneBatchOptimizer {
       const cutKey = first.cutawayWall
         ? `cut:${first.cutawayWall.floor}:${first.cutawayWall.axis}:${Math.round(first.cutawayWall.coord * 10)}:${first.cutawayWall.outwardSide ?? ''}:${first.cutawayWall.includeInFirstFloorCutaway ? 1 : 0}:${Math.round(first.offsetX * 10)}:${Math.round(first.offsetZ * 10)}:${Math.round(first.rotationY * 100)}:${Math.floor(((first.cutawayWall.minSpan + first.cutawayWall.maxSpan) * 0.5) / 5.0)}`
         : '';
-      const baseKey = `${mat.uuid}|${intKey}|${cutKey}|${first.zoneId ?? ''}`;
+      const baseKey = `${mat.uuid}|${intKey}|${cutKey}|${first.zoneId ?? ''}|${tradeCategoryKey(first.mesh)}`;
       let groupLists = byMaterialAndCell.get(baseKey);
       if (!groupLists) {
         groupLists = [];
@@ -1084,7 +1252,7 @@ export class SceneBatchOptimizer {
         if (!posAttr || posAttr.count === 0) return;
 
         const isInt = interactiveSet.has(node);
-        const key = `${node.material.uuid}|${node.castShadow ? 1 : 0}|${node.receiveShadow ? 1 : 0}|${isInt ? 1 : 0}`;
+        const key = `${node.material.uuid}|${node.castShadow ? 1 : 0}|${node.receiveShadow ? 1 : 0}|${isInt ? 1 : 0}|${tradeCategoryKey(node)}`;
         let list = buckets.get(key);
         if (!list) {
           list = [];
@@ -1175,9 +1343,35 @@ export class SceneBatchOptimizer {
       return false;
     };
 
+    // Any layer the CutawayController may hide (floors, ceilings, roof, camera-facing walls).
+    // Lights parented under them are hoisted so cutaways never switch lights off.
+    const { groundFloorCeilingGroup, ceilingMeshGroup, cutawayWallGroups } = this.options.layers;
+    const cutawayLayers = new Set<THREE.Object3D>([
+      firstFloorMeshGroup,
+      groundFloorCeilingGroup,
+      ceilingMeshGroup,
+      cutawayWallGroups.southWest,
+      cutawayWallGroups.west,
+      cutawayWallGroups.north,
+      cutawayWallGroups.east,
+    ]);
+    const isInsideCutawayLayer = (obj: THREE.Object3D): boolean => {
+      let cur: THREE.Object3D | null = obj.parent;
+      while (cur) {
+        if (cutawayLayers.has(cur) || cur.userData?.cutawayWall) return true;
+        cur = cur.parent;
+      }
+      return false;
+    };
+
     const standaloneClusters = new Map<
       string,
-      Array<{ readonly light: THREE.PointLight; readonly worldPos: THREE.Vector3; readonly is1F: boolean }>
+      Array<{
+        readonly light: THREE.PointLight;
+        readonly worldPos: THREE.Vector3;
+        readonly is1F: boolean;
+        readonly hoist: boolean;
+      }>
     >();
 
     for (const light of allPointLights) {
@@ -1194,9 +1388,10 @@ export class SceneBatchOptimizer {
       const worldPos = new THREE.Vector3();
       light.getWorldPosition(worldPos);
       const is1F = isInsideFirstFloor(light);
+      const hoist = is1F || isInsideCutawayLayer(light);
 
       if (knxLights.has(light)) {
-        if (is1F) {
+        if (hoist) {
           this.snapshotParentChildren(light.parent);
           this.snapshotParentChildren(scene);
           scene.add(light);
@@ -1209,7 +1404,6 @@ export class SceneBatchOptimizer {
           isFirstFloor: is1F,
           isStandalone: false,
           baseIntensity: light.intensity,
-          maxCameraDistance: 32,
         });
         continue;
       }
@@ -1228,7 +1422,7 @@ export class SceneBatchOptimizer {
         list = [];
         standaloneClusters.set(clusterKey, list);
       }
-      list.push({ light, worldPos, is1F });
+      list.push({ light, worldPos, is1F, hoist });
     }
 
     for (const list of standaloneClusters.values()) {
@@ -1261,7 +1455,7 @@ export class SceneBatchOptimizer {
         }
         primary.light.position.copy(avgPos);
         primary.light.updateMatrixWorld();
-      } else if (primary.is1F) {
+      } else if (primary.hoist) {
         this.snapshotParentChildren(primary.light.parent!);
         this.snapshotParentChildren(scene);
         scene.add(primary.light);
@@ -1277,60 +1471,25 @@ export class SceneBatchOptimizer {
         isFirstFloor: primary.is1F,
         isStandalone: true,
         baseIntensity: rawBaseIntensity,
-        maxCameraDistance: 28,
       });
     }
   }
 
   /**
-   * Updates hoisted 1F and standalone Outbuilding/Grounds `PointLight` intensities based on
-   * floor visibility and camera distance without changing `.visible` (so `NUM_POINT_LIGHTS`
-   * remains constant and shaders never recompile, while distant/hidden lights early-out in the shader).
+   * Re-syncs managed `PointLight` intensities from KNX dimmer targets and time of day.
+   *
+   * Lighting is a pure function of KNX state + time of day: the camera position and floor
+   * visibility arguments are intentionally ignored (kept for call-site compatibility). Lights are
+   * never muted by camera distance or by hiding the first floor, and `.visible` is never toggled,
+   * so `NUM_POINT_LIGHTS` stays constant and shaders never recompile. Returns true only if a
+   * KNX/time-of-day/budget-driven intensity actually changed.
    */
   public syncPointLightVisibilityAndDistance(
-    cameraPos: THREE.Vector3,
-    firstFloorVisible: boolean
+    _cameraPos: THREE.Vector3,
+    _firstFloorVisible: boolean
   ): boolean {
     if (!this.isCurrentlyBatched || this.managedPointLights.length === 0) return false;
-    let changed = false;
-
-    for (let i = 0; i < this.managedPointLights.length; i++) {
-      const entry = this.managedPointLights[i]!;
-      const dx = entry.worldPos.x - cameraPos.x;
-      const dz = entry.worldPos.z - cameraPos.z;
-      const distSq = dx * dx + dz * dz;
-      const maxD = entry.maxCameraDistance;
-      const shouldMute = (entry.isFirstFloor && !firstFloorVisible) || distSq >= maxD * maxD;
-
-      if (!entry.isStandalone) {
-        const prevMuted = Boolean(entry.light.userData?.isMutedByFloorOrDistance);
-        if (prevMuted !== shouldMute) {
-          entry.light.userData = {
-            ...entry.light.userData,
-            isMutedByFloorOrDistance: shouldMute,
-          };
-          changed = true;
-        }
-        const knxTarget =
-          typeof entry.light.userData?.knxTargetIntensity === 'number'
-            ? (entry.light.userData.knxTargetIntensity as number)
-            : entry.baseIntensity;
-        const nextInt = shouldMute ? 0 : knxTarget;
-        if (entry.light.intensity !== nextInt) {
-          entry.light.intensity = nextInt;
-          changed = true;
-        }
-        continue;
-      }
-
-      const nextInt = shouldMute ? 0 : entry.baseIntensity * this.getStandaloneLightTodScale();
-      if (entry.light.intensity !== nextInt) {
-        entry.light.intensity = nextInt;
-        changed = true;
-      }
-    }
-
-    return changed;
+    return this.applyManagedLightIntensities();
   }
 
   private readonly scratchNormalMatrix = new THREE.Matrix3();
@@ -1492,4 +1651,10 @@ export class SceneBatchOptimizer {
     merged.boundingSphere = bbox.getBoundingSphere(new THREE.Sphere());
     return merged;
   }
+}
+
+/** Trade category tag (set by `classifyScene`) so merged batches never mix trade categories. */
+function tradeCategoryKey(obj: THREE.Object3D): string {
+  const cat: unknown = obj.userData?.tradeCategory;
+  return typeof cat === 'string' ? cat : '';
 }

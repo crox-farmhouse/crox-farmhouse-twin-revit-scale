@@ -123,7 +123,9 @@ export class EnvironmentLighting {
   private readonly envMaps: Partial<Record<TimeOfDay, THREE.Texture>> = {};
   private readonly bgMaps: Partial<Record<TimeOfDay, THREE.Texture>> = {};
   private readonly onEnvUpdated?: () => void;
+  private readonly renderer?: THREE.WebGLRenderer;
   private currentMode: TimeOfDay = 'dusk';
+  private shadowMapSize: 1024 | 2048 | 4096 = 2048;
 
   /** Creates the hemisphere + shadow-casting sun lights + English countryside HDR skybox & IBL maps. */
   public constructor(
@@ -132,6 +134,7 @@ export class EnvironmentLighting {
     onEnvUpdated?: () => void
   ) {
     this.scene = scene;
+    this.renderer = renderer;
     this.onEnvUpdated = onEnvUpdated;
 
     this.hemiLight = new THREE.HemisphereLight(0xdcd8ce, 0x3d352e, 0.42);
@@ -142,7 +145,7 @@ export class EnvironmentLighting {
     this.sunLight.target.position.set(-2.5, 0.0, 8.0);
     scene.add(this.sunLight.target);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.set(2048, 2048);
+    this.sunLight.shadow.mapSize.set(this.shadowMapSize, this.shadowMapSize);
     this.sunLight.shadow.camera.near = 2.0;
     this.sunLight.shadow.camera.far = 55.0;
     this.sunLight.shadow.camera.left = -24.0;
@@ -480,6 +483,28 @@ export class EnvironmentLighting {
       this.scene.environment = envTex;
       this.scene.environmentIntensity = cfg.envIntensity;
       this.scene.environmentRotation.set(0, cfg.envRotationY, 0);
+    }
+  }
+
+  public getShadowMapSize(): 1024 | 2048 | 4096 {
+    return this.shadowMapSize;
+  }
+
+  /**
+   * Changes the sun shadow-map resolution (graphics tier). Only the shadow texture resolution changes:
+   * the shadow frustum, bias and light intensities stay fixed, and nothing here depends on the camera
+   * position, zoom or projection, so lighting looks the same in every view.
+   */
+  public setShadowMapSize(size: 1024 | 2048 | 4096): void {
+    if (size === this.shadowMapSize) return;
+    this.shadowMapSize = size;
+    const shadow = this.sunLight.shadow;
+    shadow.map?.dispose();
+    shadow.map = null;
+    shadow.mapSize.set(size, size);
+    shadow.needsUpdate = true;
+    if (this.renderer) {
+      this.renderer.shadowMap.needsUpdate = true;
     }
   }
 

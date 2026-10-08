@@ -321,7 +321,9 @@ export function bindCameraAndFloorEvents(scene: PropertyScene): void {
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-    if (e.code === 'KeyB' && !e.repeat) {
+    // F (recenter), W (walk), 1/2/3 (floors), M/N (tools) are owned by the UI shell
+    // keyboard map; B (motion blur) is only available in developer mode.
+    if (e.code === 'KeyB' && !e.repeat && document.body.classList.contains('is-dev-mode')) {
       e.preventDefault();
       scene.toggleMotionBlur();
       syncGraphicsUI(scene);
@@ -334,31 +336,6 @@ export function bindCameraAndFloorEvents(scene: PropertyScene): void {
         (activeEl as HTMLElement).blur();
       }
       scene.toggleWalkthroughMode();
-      syncWalkthroughUI(scene);
-      syncFloorModeUI(scene);
-    } else if (
-      (e.code === 'KeyF' ||
-        e.code === 'KeyW' ||
-        e.code === 'KeyA' ||
-        e.code === 'KeyS' ||
-        e.code === 'KeyD') &&
-      !e.repeat &&
-      !scene.isWalkthroughMode() &&
-      !scene.isAnnotationMode()
-    ) {
-      e.preventDefault();
-      if (tag === 'SELECT' || tag === 'BUTTON') {
-        (activeEl as HTMLElement).blur();
-      }
-      scene.setWalkthroughMode(true);
-      if (
-        e.code === 'KeyW' ||
-        e.code === 'KeyA' ||
-        e.code === 'KeyS' ||
-        e.code === 'KeyD'
-      ) {
-        scene.getWalkthrough().pressKey(e.code);
-      }
       syncWalkthroughUI(scene);
       syncFloorModeUI(scene);
     } else if (

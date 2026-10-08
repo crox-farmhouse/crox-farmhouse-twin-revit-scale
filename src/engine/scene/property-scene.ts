@@ -20,7 +20,21 @@ import type {
   TimeOfDay,
 } from '../../types/scene.ts';
 import type { RoomZoneId } from '../../types/topology.ts';
-import type { GraphicsMode, TradeView } from '../../types/twin-ux.ts';
+import type { GraphicsMode, GraphicsTierSettings, TradeView } from '../../types/twin-ux.ts';
+import {
+  PerformanceGovernor,
+  detectDeviceProfile,
+  estimateInitialTier,
+  getDeviceCacheKey,
+  getPointLightBudget,
+  readCachedPerf,
+  updateCachedTier,
+  type PerformanceGovernorStats,
+} from '../perf/index.ts';
+import { RoomTracker } from './room-tracker.ts';
+import { TradeViewController, classifyScene } from '../trade-views/index.ts';
+import { STANDING_EYE_HEIGHT } from './controllers/walkthrough/walkthrough-spawns.ts';
+import type { RoomZoneLodRegistration } from '../../core/entities.ts';
 import { round3 } from '../annotation/annotation-system.ts';
 import {
   SceneAnnotationController,
@@ -132,6 +146,14 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   private onSurfaceDoubleClick: ((point: THREE.Vector3) => void) | null = null;
   private onUsdPrimPick: ((info: UsdIndexedPrimInfo) => void) | null = null;
 
+  private readonly lodRegistrations: readonly RoomZoneLodRegistration[];
+  private readonly roomTracker: RoomTracker;
+  private readonly footScratch = new THREE.Vector3();
+  private readonly governor: PerformanceGovernor;
+  private readonly tradeViews: TradeViewController;
+  private userInteracting = false;
+  private graphicsToastListener: ((message: string) => void) | null = null;
+
   public constructor(
     canvas: HTMLCanvasElement,
     onObjectInteraction: (data: InteractiveUserData) => void,
@@ -143,6 +165,11 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     this.onObjectInteraction = onObjectInteraction;
     this.zoneRegistry = profile.createZoneRegistry();
     this.lodController = new RoomLodController(profile.lodRegistrations);
+    this.lodRegistrations = profile.lodRegistrations;
+    this.roomTracker = new RoomTracker({
+      registrations: profile.lodRegistrations,
+      onChange: (zoneId) => this.setCurrentRoomId(zoneId),
+    });
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0f1318);
@@ -330,6 +357,19 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       this.needsRender = true;
     });
 
+    // Trade views: tag every renderable before batching so merged batches stay single-category.
+    classifyScene([this.scene]);
+    this.tradeViews = new TradeViewController({
+      roots: [this.scene],
+      requestRender: () => {
+        this.needsRender = true;
+      },
+      invalidateShadows: () => {
+        this.renderer.shadowMap.needsUpdate = true;
+      },
+    });
+    this.tradeViews.captureServicePoints();
+
     this.batchOptimizer = new SceneBatchOptimizer({
       layers: this.layers,
       lodController: this.lodController,
@@ -347,8 +387,12 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
         this.interactions.collectDynamicObjects(dynamicObjects);
         return dynamicObjects;
       },
+      onBeforeBatchChange: () => {
+        this.tradeViews.suspend();
+      },
       onAfterBatchChange: () => {
         this.cutaways.collectDynamicCutawayWalls();
+        this.tradeViews.resume();
       },
     });
 
@@ -369,6 +413,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       },
       onZoneLoadedFromUsda: () => {
         applySelectiveBevelModifier(this.layers);
+        classifyScene([this.scene]);
         this.interactions.rebindAfterUsdZoneLoad([this.scene]);
         this.cutaways.collectDynamicCutawayWalls();
         this.walkthrough.captureFurnitureColliders();
@@ -401,9 +446,32 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
     this.walkthrough.captureFurnitureColliders();
     this.batchOptimizer.optimize();
+    this.batchOptimizer.setBudgetAnchorZone('kitchen');
+    this.tradeViews.indexScene();
     this.updateCameraFacingWallCutaways(true);
     this.freezeStaticMatrices();
     this.setupInteractionEvents();
+
+    // Navigation: anchor pans / orbits / zooms on the visible surface under the cursor.
+    this.rig.setSurfacePicker((ndcX, ndcY) => this.pickVisibleSurfacePointNdc(ndcX, ndcY));
+    this.rig.controls.addEventListener('start', () => {
+      this.userInteracting = true;
+    });
+    this.rig.controls.addEventListener('end', () => {
+      this.userInteracting = false;
+    });
+
+    // Performance auto-tune: cached tier for this GPU, else a device heuristic.
+    const deviceProfile = detectDeviceProfile(this.renderer);
+    const perfCacheKey = getDeviceCacheKey(deviceProfile);
+    const initialTier = readCachedPerf(perfCacheKey)?.tier ?? estimateInitialTier(deviceProfile);
+    this.governor = new PerformanceGovernor({
+      devicePixelRatio: deviceProfile.devicePixelRatio,
+      initialTier,
+      applyTier: (settings) => this.applyGraphicsTier(settings),
+      onToast: (message) => this.graphicsToastListener?.(message),
+      onAutoTierChange: (tier) => updateCachedTier(perfCacheKey, tier),
+    });
     this.walkthrough.restoreFromSessionIfActive(this.getCurrentCameraPoseSnapshot());
   }
 
@@ -457,21 +525,39 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   // TradeViewController during integration.
   // ---------------------------------------------------------------------------
 
-  private graphicsMode: GraphicsMode = 'auto';
   private currentRoomId: RoomZoneId | null = null;
   private readonly currentRoomListeners = new Set<(zoneId: RoomZoneId | null) => void>();
   private tradeView: TradeView = 'owner';
   private readonly tradeViewListeners = new Set<(view: TradeView) => void>();
 
   public getGraphicsMode(): GraphicsMode {
-    return this.graphicsMode;
+    return this.governor.getMode();
   }
 
   public setGraphicsMode(mode: GraphicsMode): void {
-    this.graphicsMode = mode;
-    if (mode === 'low') this.postProcessing.setQualityPreset('performance');
-    else if (mode === 'medium' || mode === 'high') this.postProcessing.setQualityPreset('balanced');
-    else if (mode === 'ultra') this.postProcessing.setQualityPreset('ultra');
+    this.governor.setMode(mode);
+    this.needsRender = true;
+  }
+
+  /** Live FPS / tier stats from the performance governor. */
+  public getGraphicsStats(): PerformanceGovernorStats {
+    return this.governor.getStats();
+  }
+
+  /** Receives short user-facing messages such as auto quality step-downs. */
+  public setOnGraphicsToast(cb: ((message: string) => void) | null): void {
+    this.graphicsToastListener = cb;
+  }
+
+  private applyGraphicsTier(settings: GraphicsTierSettings): void {
+    this.postProcessing.applyTierSettings(settings);
+    this.environment.setShadowMapSize(settings.shadowMapSize);
+    this.lodController.setDistanceScale(settings.lodDistanceScale);
+    this.lodController.setHighDetailMaxDistance(settings.highDetailMaxDistance);
+    const budget = settings.tier === 'ultra' ? Infinity : getPointLightBudget(settings.tier);
+    this.batchOptimizer.setPointLightBudget(budget);
+    this.updateCameraFacingWallCutaways(true);
+    this.renderer.shadowMap.needsUpdate = true;
     this.needsRender = true;
   }
 
@@ -487,13 +573,16 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
   /** Explicitly selects a room (e.g. from the room navigator) and frames it. */
   public selectRoom(zoneId: RoomZoneId): void {
-    this.setCurrentRoomId(zoneId);
+    this.roomTracker.setExplicit(zoneId, this.rig.getPivot());
     this.setFocusedZone(zoneId);
   }
 
   protected setCurrentRoomId(zoneId: RoomZoneId | null): void {
     if (zoneId === this.currentRoomId) return;
     this.currentRoomId = zoneId;
+    if (zoneId && this.batchOptimizer.setBudgetAnchorZone(zoneId)) {
+      this.needsRender = true;
+    }
     for (const cb of this.currentRoomListeners) cb(zoneId);
   }
 
@@ -504,8 +593,14 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
   public setTradeView(view: TradeView): void {
     if (view === this.tradeView) return;
     this.tradeView = view;
+    this.tradeViews.setView(view);
     for (const cb of this.tradeViewListeners) cb(view);
     this.needsRender = true;
+  }
+
+  /** CSV schedule of service points (sockets, switches, sanitaryware, …) for a trade. */
+  public exportServiceSchedule(view: TradeView = this.tradeView): string {
+    return this.tradeViews.exportServiceScheduleCsv(view);
   }
 
   public onTradeViewChanged(cb: (view: TradeView) => void): () => void {
@@ -515,7 +610,24 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
 
   /** Re-frames the camera on the current room (or the default overview). */
   public recenterView(): void {
-    this.flyToPreset('top');
+    const reg = this.currentRoomId
+      ? this.lodRegistrations.find((r) => r.zoneId === this.currentRoomId)
+      : undefined;
+    if (!reg || this.walkthrough.isActive()) {
+      this.flyToPreset('top');
+      return;
+    }
+    this.postProcessing.resetHistory();
+    this.rig.useCamera(false);
+    this.rig.frameBounds(reg.bounds);
+    this.roomTracker.rebaseExplicitAnchor(
+      new THREE.Vector3(
+        (reg.bounds.minX + reg.bounds.maxX) / 2,
+        reg.bounds.minY,
+        (reg.bounds.minZ + reg.bounds.maxZ) / 2
+      )
+    );
+    this.needsRender = true;
   }
 
   public isMotionBlurEnabled(): boolean {
@@ -651,6 +763,17 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     }
     if (result.needsRender) {
       this.needsRender = true;
+    }
+    if (isWalkthrough) {
+      this.footScratch.copy(camPos);
+      this.footScratch.y -= STANDING_EYE_HEIGHT;
+      this.roomTracker.updateFromWalkthrough(this.footScratch);
+    } else {
+      this.roomTracker.updateFromOrbit(
+        this.rig.controls.target,
+        this.cutaways.getFloorViewMode(),
+        performance.now()
+      );
     }
     if (this.viewListeners.size > 0) {
       if (isWalkthrough && !forceNotifyView) {
@@ -988,8 +1111,19 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     this.onSurfaceDoubleClick = cb;
   }
 
+  private pickVisibleSurfacePointNdc(ndcX: number, ndcY: number): THREE.Vector3 | null {
+    const camera = this.rig.getActiveCamera();
+    camera.updateMatrixWorld();
+    this.pointer.set(ndcX, ndcY);
+    this.raycaster.setFromCamera(this.pointer, camera);
+    return this.firstVisibleSurfaceHit(this.raycaster);
+  }
+
   private pickVisibleSurfacePoint(clientX: number, clientY: number): THREE.Vector3 | null {
-    const raycaster = this.setRayFromClient(clientX, clientY);
+    return this.firstVisibleSurfaceHit(this.setRayFromClient(clientX, clientY));
+  }
+
+  private firstVisibleSurfaceHit(raycaster: THREE.Raycaster): THREE.Vector3 | null {
     const hits = raycaster.intersectObjects(this.scene.children, true);
     const hit = hits.find(
       (h) =>
@@ -1290,6 +1424,7 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
     const h = Math.max(1, this.canvas.clientHeight);
     this.rig.resize(w, h);
     this.postProcessing.resize(w, h);
+    this.governor.setDevicePixelRatio(window.devicePixelRatio || 1);
     this.needsRender = true;
   }
 
@@ -1301,8 +1436,11 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       cameraMoved = true;
     }
 
-    if (!this.walkthrough.isActive() && this.rig.updateTween(dtSeconds)) {
-      this.updateCameraFacingWallCutaways();
+    // Tween + frame-rate independent damping in one step (controls 'change'
+    // already refreshes cutaways for damped motion; tweens need it explicitly).
+    const wasTweening = this.rig.isTweening();
+    if (!this.walkthrough.isActive() && this.rig.update(dtSeconds)) {
+      if (wasTweening) this.updateCameraFacingWallCutaways();
       this.needsRender = true;
       cameraMoved = true;
     }
@@ -1324,9 +1462,8 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       this.needsRender = true;
     }
 
-    if (!this.walkthrough.isActive() && this.rig.controls.update()) {
+    if (this.batchOptimizer.stepFades(dtSeconds)) {
       this.needsRender = true;
-      cameraMoved = true;
     }
 
     if (cameraMoved && this.postProcessing.isMotionBlurEnabled()) {
@@ -1342,6 +1479,11 @@ export class PropertyScene<TSecurity extends SecurityOverlay3D = SecurityOverlay
       this.annotations.prepareForRender();
       this.postProcessing.render(this.scene, camera, dtSeconds);
       this.needsRender = false;
+      this.governor.recordFrame(dtSeconds * 1000, cameraMoved || this.userInteracting);
+    }
+
+    if (!cameraMoved && !this.userInteracting && this.governor.hasPendingChange()) {
+      this.governor.notifyCameraIdle();
     }
   }
 }

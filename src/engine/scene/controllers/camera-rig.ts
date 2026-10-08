@@ -1,13 +1,33 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { CameraTweenState } from '../../../types/scene.ts';
+import { GrabPanController, type SurfacePicker } from './navigation/grab-pan-controller.ts';
+import {
+  clampPivot as computeClampedPivot,
+  computeFramingPose,
+  type NavigationBounds,
+} from './navigation/pivot-math.ts';
 
 export type RigCamera = THREE.PerspectiveCamera | THREE.OrthographicCamera;
+export type { NavigationBounds, SurfacePicker };
 
 const ORTHO_HALF_HEIGHT = 5.6;
+/** Damping factor tuned for 60 fps; rescaled per frame by `update(dt)`. */
+const BASE_DAMPING_FACTOR = 0.08;
+/** Longest frame step fed to damping (avoids lurches after tab switches). */
+const MAX_DAMPING_DT = 0.1;
+/** Duration of the corrective swing when the pivot has to move off the view axis. */
+const PIVOT_CORRECTION_DURATION = 0.35;
+const FRAME_ELEVATION_DEG = 52;
+
+interface OrthoZoomTween {
+  readonly start: number;
+  readonly end: number;
+}
 
 /**
- * Perspective + orthographic cameras, orbit controls and eased camera fly-tos.
+ * Perspective + orthographic cameras, orbit controls (rotate/zoom-to-cursor),
+ * grab-and-drag panning, pivot sanity clamping and eased camera fly-tos.
  */
 export class CameraRig {
   public readonly perspCamera: THREE.PerspectiveCamera;
@@ -16,7 +36,14 @@ export class CameraRig {
 
   private activeCamera: RigCamera;
   private cameraTween: CameraTweenState | null = null;
+  private orthoZoomTween: OrthoZoomTween | null = null;
+  /** True while the current tween is itself a pivot correction (prevents loops). */
+  private correctionTween = false;
   private readonly onActiveCameraChanged: (camera: RigCamera) => void;
+  private readonly grabPan: GrabPanController;
+  private readonly onControlsEnd = (): void => {
+    this.clampPivotInternal('tween');
+  };
 
   public constructor(
     canvas: HTMLCanvasElement,
@@ -44,13 +71,26 @@ export class CameraRig {
 
     this.controls = new OrbitControls(this.activeCamera, canvas);
     this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.08;
+    this.controls.dampingFactor = BASE_DAMPING_FACTOR;
     this.controls.target.set(-1.2, 1.05, 0.2);
     this.controls.maxPolarAngle = Math.PI * 0.485;
-    this.controls.minDistance = 1.6;
+    this.controls.minDistance = 0.8;
     this.controls.maxDistance = 44.0;
     this.controls.minZoom = 0.28;
     this.controls.maxZoom = 3.2;
+    // Panning is done by GrabPanController (cursor-anchored); zoom follows the cursor.
+    this.controls.enablePan = false;
+    this.controls.zoomToCursor = true;
+    this.controls.addEventListener('end', this.onControlsEnd);
+
+    this.grabPan = new GrabPanController(
+      {
+        controls: this.controls,
+        getActiveCamera: () => this.activeCamera,
+        cancelTween: () => this.cancelTween(),
+      },
+      canvas
+    );
   }
 
   public getActiveCamera(): RigCamera {
@@ -59,6 +99,19 @@ export class CameraRig {
 
   public isOrthographic(): boolean {
     return this.activeCamera === this.orthoCamera;
+  }
+
+  /** Current orbit pivot (copy). */
+  public getPivot(): THREE.Vector3 {
+    return this.controls.target.clone();
+  }
+
+  /**
+   * Installs the raycast used for grab-pan / orbit-pivot / zoom picking. It receives
+   * NDC coordinates and returns the first visible surface hit, or null.
+   */
+  public setSurfacePicker(picker: SurfacePicker | null): void {
+    this.grabPan.setSurfacePicker(picker);
   }
 
   /**
@@ -83,6 +136,21 @@ export class CameraRig {
       elapsed: 0,
       duration,
     };
+    this.orthoZoomTween = null;
+    this.correctionTween = false;
+  }
+
+  public isTweening(): boolean {
+    return this.cameraTween !== null;
+  }
+
+  /** Abandons any in-flight fly-to where it is (the pivot is re-sanitised). */
+  public cancelTween(): void {
+    if (!this.cameraTween) return;
+    this.cameraTween = null;
+    this.orthoZoomTween = null;
+    this.correctionTween = false;
+    this.clampPivotInternal('onRayOnly');
   }
 
   /** Advances any active fly-to. Returns true if the camera moved. */
@@ -90,12 +158,69 @@ export class CameraRig {
     const tween = this.cameraTween;
     if (!tween) return false;
     tween.elapsed += dtSeconds;
-    const t = Math.min(1, tween.elapsed / tween.duration);
+    const t = tween.duration > 0 ? Math.min(1, tween.elapsed / tween.duration) : 1;
     const ease = 1 - Math.pow(1 - t, 3);
     this.activeCamera.position.lerpVectors(tween.startPos, tween.endPos, ease);
     this.controls.target.lerpVectors(tween.startTarget, tween.endTarget, ease);
-    if (t >= 1) this.cameraTween = null;
+    const zoomTween = this.orthoZoomTween;
+    if (zoomTween && this.activeCamera === this.orthoCamera) {
+      this.orthoCamera.zoom = THREE.MathUtils.lerp(zoomTween.start, zoomTween.end, ease);
+      this.orthoCamera.updateProjectionMatrix();
+    }
+    if (t >= 1) {
+      const wasCorrection = this.correctionTween;
+      this.cameraTween = null;
+      this.orthoZoomTween = null;
+      this.correctionTween = false;
+      this.clampPivotInternal(wasCorrection ? 'instant' : 'tween');
+    }
     return true;
+  }
+
+  /**
+   * Per-frame update: advances fly-tos and OrbitControls with frame-rate independent
+   * damping. Returns true if the camera moved (caller should re-render).
+   */
+  public update(dtSeconds: number): boolean {
+    const dt = THREE.MathUtils.clamp(Number.isFinite(dtSeconds) ? dtSeconds : 0, 0, MAX_DAMPING_DT);
+    const tweened = this.updateTween(dt);
+    // OrbitControls (r180) only uses deltaTime for auto-rotate; its damping is a fixed
+    // per-call factor. Rescale it so the decay per second matches 60 fps behaviour.
+    const base = this.controls.dampingFactor;
+    this.controls.dampingFactor = 1 - Math.pow(1 - base, dt * 60);
+    const controlsMoved = this.controls.update(dt);
+    this.controls.dampingFactor = base;
+    return tweened || controlsMoved;
+  }
+
+  /**
+   * Keeps the pivot inside the site bounds and within 25 m of the camera. Corrections
+   * along the view axis apply instantly (no visible change); otherwise the view swings
+   * to the corrected pivot over a short tween. No-op while a fly-to is running (it
+   * clamps itself on completion).
+   */
+  public clampPivot(): void {
+    this.clampPivotInternal('tween');
+  }
+
+  /**
+   * Flies to frame `bounds`, keeping the current view azimuth at ~52° elevation.
+   */
+  public frameBounds(bounds: NavigationBounds, durationSec = 0.7): void {
+    const pose = computeFramingPose(bounds, {
+      camera: this.activeCamera,
+      currentTarget: this.controls.target,
+      elevationDeg: FRAME_ELEVATION_DEG,
+      minDistance: this.controls.minDistance,
+      maxDistance: this.controls.maxDistance,
+      orthoHalfHeight: ORTHO_HALF_HEIGHT,
+      minZoom: this.controls.minZoom,
+      maxZoom: this.controls.maxZoom,
+    });
+    this.startTween(pose.position, pose.target, durationSec);
+    if (this.activeCamera === this.orthoCamera) {
+      this.orthoZoomTween = { start: this.orthoCamera.zoom, end: pose.orthoZoom };
+    }
   }
 
   public resize(width: number, height: number): void {
@@ -108,5 +233,35 @@ export class CameraRig {
     this.orthoCamera.top = ORTHO_HALF_HEIGHT;
     this.orthoCamera.bottom = -ORTHO_HALF_HEIGHT;
     this.orthoCamera.updateProjectionMatrix();
+  }
+
+  public dispose(): void {
+    this.controls.removeEventListener('end', this.onControlsEnd);
+    this.grabPan.dispose();
+    this.controls.dispose();
+  }
+
+  /**
+   * @param offAxis How to apply a correction that is not on the view axis: swing the
+   *     view over a short tween, snap instantly, or leave the pivot alone.
+   */
+  private clampPivotInternal(offAxis: 'tween' | 'instant' | 'onRayOnly'): void {
+    if (this.cameraTween) return;
+    const camPos = this.activeCamera.position;
+    const result = computeClampedPivot(
+      camPos,
+      this.controls.target,
+      undefined,
+      undefined,
+      this.controls.minDistance
+    );
+    if (!result.changed) return;
+    if (result.onViewRay || offAxis === 'instant') {
+      this.controls.target.copy(result.pivot);
+      return;
+    }
+    if (offAxis === 'onRayOnly') return;
+    this.startTween(camPos.clone(), result.pivot, PIVOT_CORRECTION_DURATION);
+    this.correctionTween = true;
   }
 }

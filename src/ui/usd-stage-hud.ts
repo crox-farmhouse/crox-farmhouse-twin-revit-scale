@@ -65,9 +65,6 @@ export class UsdStageHudController {
   private readonly compileStatusEl: HTMLElement;
 
   private selectedPrim: UsdIndexedPrimInfo | null = null;
-  private isDragging = false;
-  private dragOffsetX = 0;
-  private dragOffsetY = 0;
 
   public constructor(
     scene: PropertyScene,
@@ -120,7 +117,7 @@ export class UsdStageHudController {
       this.selectedPrim = initialCandidates[0];
     }
 
-    this.bindDraggableWindow();
+    this.bindSectionHeader();
     this.bindEvents();
 
     this.runtime.subscribe(() => {
@@ -162,37 +159,14 @@ export class UsdStageHudController {
     await this.runtime.loadZonesFromUsdaFiles(zonesToLoad);
   }
 
-  private bindDraggableWindow(): void {
+  /** Developer-drawer section header: collapse toggle only (no window dragging). */
+  private bindSectionHeader(): void {
+    this.titlebarEl.classList.add('is-static');
     this.collapseBtn.addEventListener('click', (e: MouseEvent) => {
       e.stopPropagation();
       const collapsed = this.panelEl.classList.toggle('is-collapsed');
       twinStore.syncUsdStageState({ usdPanelOpen: !collapsed });
     });
-
-    this.titlebarEl.addEventListener('pointerdown', (e: PointerEvent) => {
-      if (e.target === this.collapseBtn) return;
-      this.isDragging = true;
-      const rect = this.panelEl.getBoundingClientRect();
-      this.dragOffsetX = e.clientX - rect.left;
-      this.dragOffsetY = e.clientY - rect.top;
-      this.titlebarEl.setPointerCapture(e.pointerId);
-    });
-
-    this.titlebarEl.addEventListener('pointermove', (e: PointerEvent) => {
-      if (!this.isDragging) return;
-      const maxX = Math.max(0, window.innerWidth - this.panelEl.offsetWidth);
-      const maxY = Math.max(0, window.innerHeight - 28);
-      const nextLeft = Math.max(0, Math.min(maxX, e.clientX - this.dragOffsetX));
-      const nextTop = Math.max(0, Math.min(maxY, e.clientY - this.dragOffsetY));
-      this.panelEl.style.left = `${nextLeft}px`;
-      this.panelEl.style.top = `${nextTop}px`;
-    });
-
-    const stopDrag = (): void => {
-      this.isDragging = false;
-    };
-    this.titlebarEl.addEventListener('pointerup', stopDrag);
-    this.titlebarEl.addEventListener('pointercancel', stopDrag);
   }
 
   private bindEvents(): void {

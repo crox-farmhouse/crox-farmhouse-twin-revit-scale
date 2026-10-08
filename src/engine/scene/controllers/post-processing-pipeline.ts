@@ -1,16 +1,37 @@
 import * as THREE from 'three';
 import type { RigCamera } from './camera-rig.ts';
+import type { GraphicsTier, GraphicsTierSettings } from '../../../types/twin-ux.ts';
+import { getTierSettings, isGraphicsTier } from '../../perf/tier-settings.ts';
 
+/** Legacy 3-step preset kept for the existing HUD; each preset maps onto a {@link GraphicsTier}. */
 export type GraphicsQualityPreset = 'ultra' | 'balanced' | 'performance';
 
 export interface GraphicsSettingsState {
   readonly quality: GraphicsQualityPreset;
+  readonly tier: GraphicsTier;
   readonly motionBlurEnabled: boolean;
   readonly motionBlurStrength: number;
+  readonly postProcessingEnabled: boolean;
   readonly ambientOcclusionEnabled: boolean;
   readonly bloomEnabled: boolean;
+  readonly sharpenEnabled: boolean;
   readonly pixelRatio: number;
 }
+
+const PRESET_TO_TIER: Readonly<Record<GraphicsQualityPreset, GraphicsTier>> = {
+  ultra: 'ultra',
+  balanced: 'high',
+  performance: 'low',
+};
+
+function tierToPreset(tier: GraphicsTier): GraphicsQualityPreset {
+  if (tier === 'ultra') return 'ultra';
+  if (tier === 'low') return 'performance';
+  return 'balanced';
+}
+
+/** Vertical projection scale (`P[1][1]`) of the rig's 42° perspective camera; used until one is seen. */
+const DEFAULT_PERSPECTIVE_PROJ_Y = 1 / Math.tan(THREE.MathUtils.degToRad(21));
 
 const POST_VERTEX_SHADER = /* glsl */ `
   varying vec2 vUv;
@@ -31,6 +52,8 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
   uniform float uNear;
   uniform float uFar;
   uniform float uIsOrtho;
+  // Perspective-equivalent view distance for the orthographic camera (same world-units-per-pixel).
+  uniform float uOrthoEquivDepth;
   uniform float uExposure;
 
   uniform mat4 uCurrInvViewProj;
@@ -88,13 +111,17 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
     );
   }
 
-  // Symmetric-pair depth curvature AO: 3 rotated symmetric pairs (6 depth taps total)
+  // Symmetric-pair depth curvature AO: 3 rotated symmetric pairs (6 depth taps total).
+  // Radius and distance fade are driven by the on-screen scale (world units per pixel), so an
+  // orthographic view produces the same AO as a perspective view at the same apparent zoom.
+  // Depth deltas are linear metres for both projections (see linearizeDepth).
   float computeContactAO(vec2 uv, float centerLinZ, float noise) {
-    if (uAoIntensity <= 0.001 || centerLinZ >= 20.0) {
+    float scaleZ = uIsOrtho > 0.5 ? uOrthoEquivDepth : centerLinZ;
+    if (uAoIntensity <= 0.001 || scaleZ >= 20.0) {
       return 1.0;
     }
 
-    float radiusPx = clamp(20.0 / max(1.2, centerLinZ), 2.5, 14.0);
+    float radiusPx = clamp(20.0 / max(1.2, scaleZ), 2.5, 14.0);
     vec2 aspectStep = uTexelSize * radiusPx;
     float baseAngle = noise * 6.2831853;
     float c0 = cos(baseAngle);
@@ -121,7 +148,7 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
       occlusion += crease;
     }
 
-    float distanceFade = 1.0 - smoothstep(13.0, 20.0, centerLinZ);
+    float distanceFade = 1.0 - smoothstep(13.0, 20.0, scaleZ);
     float ao = 1.0 - (occlusion * 0.333) * uAoIntensity * distanceFade;
     return clamp(ao, 0.52, 1.0);
   }
@@ -238,7 +265,14 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
   }
 `;
 
-const STORAGE_KEY = 'crox_graphics_settings_v1';
+const STORAGE_KEY = 'crox_graphics_settings_v2';
+const AO_INTENSITY = 0.42;
+const BLOOM_INTENSITY = 0.18;
+const SHARPEN_INTENSITY = 0.26;
+
+function currentDevicePixelRatio(): number {
+  return typeof window !== 'undefined' && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
+}
 
 export class PostProcessingPipeline {
   private readonly renderer: THREE.WebGLRenderer;
@@ -253,22 +287,28 @@ export class PostProcessingPipeline {
   private readonly prevViewProj = new THREE.Matrix4();
   private hasPrevMatrix = false;
 
-  private quality: GraphicsQualityPreset = 'ultra';
-  private motionBlurEnabled = true;
+  private tier: GraphicsTier = 'high';
+  /** Motion blur is opt-in (plan 2.2) and only takes effect while the post pipeline is enabled. */
+  private motionBlurEnabled = false;
   private motionBlurStrength = 0.68;
+  private postEnabled = true;
   private ambientOcclusionEnabled = true;
-  private bloomEnabled = true;
+  private bloomEnabled = false;
+  private sharpenEnabled = true;
+  private targetPixelRatio = 1.0;
   private cssWidth = 1;
   private cssHeight = 1;
-  private currentPixelRatio = 1.5;
+  private currentPixelRatio = 1.0;
+  private lastPerspectiveProjY = DEFAULT_PERSPECTIVE_PROJ_Y;
 
   public constructor(renderer: THREE.WebGLRenderer, initialWidth: number, initialHeight: number) {
     this.renderer = renderer;
     this.cssWidth = Math.max(1, initialWidth);
     this.cssHeight = Math.max(1, initialHeight);
 
+    this.assignTierSettings(getTierSettings(this.tier, currentDevicePixelRatio()));
     this.restoreSettings();
-    this.currentPixelRatio = this.computeTargetPixelRatio();
+    this.currentPixelRatio = this.targetPixelRatio;
 
     const rtWidth = Math.max(1, Math.round(this.cssWidth * this.currentPixelRatio));
     const rtHeight = Math.max(1, Math.round(this.cssHeight * this.currentPixelRatio));
@@ -307,14 +347,15 @@ export class PostProcessingPipeline {
         uNear: { value: 0.1 },
         uFar: { value: 120.0 },
         uIsOrtho: { value: 0.0 },
+        uOrthoEquivDepth: { value: 10.0 },
         uExposure: { value: renderer.toneMappingExposure },
         uCurrInvViewProj: { value: new THREE.Matrix4() },
         uPrevViewProj: { value: new THREE.Matrix4() },
-        uMotionBlurEnabled: { value: 1.0 },
+        uMotionBlurEnabled: { value: 0.0 },
         uShutterScale: { value: 0.55 },
-        uAoIntensity: { value: 0.42 },
-        uBloomIntensity: { value: 0.18 },
-        uSharpenIntensity: { value: 0.28 },
+        uAoIntensity: { value: AO_INTENSITY },
+        uBloomIntensity: { value: BLOOM_INTENSITY },
+        uSharpenIntensity: { value: SHARPEN_INTENSITY },
       },
     });
 
@@ -326,19 +367,17 @@ export class PostProcessingPipeline {
     this.syncRendererPixelRatio();
   }
 
-  private computeTargetPixelRatio(): number {
-    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-    if (this.quality === 'ultra') {
-      return Math.min(Math.max(dpr, 1.25), 1.75);
-    }
-    if (this.quality === 'balanced') {
-      return Math.min(Math.max(dpr, 1.0), 1.25);
-    }
-    return 1.0;
+  private assignTierSettings(settings: GraphicsTierSettings): void {
+    this.tier = settings.tier;
+    this.targetPixelRatio = Math.max(0.5, settings.pixelRatio);
+    this.postEnabled = settings.postProcessing;
+    this.ambientOcclusionEnabled = settings.postProcessing && settings.ambientOcclusion;
+    this.bloomEnabled = settings.postProcessing && settings.bloom;
+    this.sharpenEnabled = settings.postProcessing && settings.sharpen;
   }
 
   private syncRendererPixelRatio(): void {
-    this.currentPixelRatio = this.computeTargetPixelRatio();
+    this.currentPixelRatio = this.targetPixelRatio;
     this.renderer.setPixelRatio(this.currentPixelRatio);
     this.renderer.setSize(this.cssWidth, this.cssHeight, false);
 
@@ -362,34 +401,42 @@ export class PostProcessingPipeline {
 
   public getSettings(): GraphicsSettingsState {
     return {
-      quality: this.quality,
+      quality: tierToPreset(this.tier),
+      tier: this.tier,
       motionBlurEnabled: this.motionBlurEnabled,
       motionBlurStrength: this.motionBlurStrength,
+      postProcessingEnabled: this.postEnabled,
       ambientOcclusionEnabled: this.ambientOcclusionEnabled,
       bloomEnabled: this.bloomEnabled,
+      sharpenEnabled: this.sharpenEnabled,
       pixelRatio: this.currentPixelRatio,
     };
   }
 
-  public setQualityPreset(preset: GraphicsQualityPreset): void {
-    this.quality = preset;
-    if (preset === 'ultra') {
-      this.ambientOcclusionEnabled = true;
-      this.bloomEnabled = true;
-    } else if (preset === 'balanced') {
-      this.ambientOcclusionEnabled = true;
-      this.bloomEnabled = false;
-    } else {
-      this.ambientOcclusionEnabled = false;
-      this.bloomEnabled = false;
+  /**
+   * Applies a graphics tier (pixel ratio, AO, bloom, sharpen, post on/off). With post disabled the
+   * scene renders straight to the canvas using the renderer's built-in ACES tone mapping, which uses
+   * the same exposure curve as the post shader so lighting looks identical either way.
+   */
+  public applyTierSettings(settings: GraphicsTierSettings): void {
+    const prevRatio = this.targetPixelRatio;
+    this.assignTierSettings(settings);
+    if (Math.abs(prevRatio - this.targetPixelRatio) > 1e-4 || this.currentPixelRatio !== this.targetPixelRatio) {
+      this.syncRendererPixelRatio();
     }
-    this.syncRendererPixelRatio();
+    this.hasPrevMatrix = false;
     this.saveSettings();
+  }
+
+  /** Legacy preset API: `ultra` → ultra tier, `balanced` → high tier, `performance` → low tier. */
+  public setQualityPreset(preset: GraphicsQualityPreset): void {
+    this.applyTierSettings(getTierSettings(PRESET_TO_TIER[preset], currentDevicePixelRatio()));
   }
 
   public cycleQualityPreset(): GraphicsQualityPreset {
     const order: readonly GraphicsQualityPreset[] = ['ultra', 'balanced', 'performance'];
-    const next = order[(order.indexOf(this.quality) + 1) % order.length];
+    const current = tierToPreset(this.tier);
+    const next = order[(order.indexOf(current) + 1) % order.length]!;
     this.setQualityPreset(next);
     return next;
   }
@@ -411,53 +458,50 @@ export class PostProcessingPipeline {
 
   private saveSettings(): void {
     try {
-      sessionStorage.setItem(
+      localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          quality: this.quality,
+          tier: this.tier,
+          pixelRatio: this.targetPixelRatio,
           motionBlurEnabled: this.motionBlurEnabled,
         })
       );
     } catch {
-      // Ignore storage quota errors
+      // Ignore storage quota / disabled storage errors
     }
   }
 
   private restoreSettings(): void {
     try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw) as Partial<{
-        quality: GraphicsQualityPreset;
-        motionBlurEnabled: boolean;
+        tier: unknown;
+        pixelRatio: unknown;
+        motionBlurEnabled: unknown;
       }>;
-      if (
-        parsed.quality === 'ultra' ||
-        parsed.quality === 'balanced' ||
-        parsed.quality === 'performance'
-      ) {
-        this.quality = parsed.quality;
-        if (this.quality === 'balanced') {
-          this.bloomEnabled = false;
-        } else if (this.quality === 'performance') {
-          this.ambientOcclusionEnabled = false;
-          this.bloomEnabled = false;
-        }
+      if (isGraphicsTier(parsed.tier)) {
+        const base = getTierSettings(parsed.tier, currentDevicePixelRatio());
+        const ratio =
+          typeof parsed.pixelRatio === 'number' && parsed.pixelRatio > 0
+            ? Math.min(base.pixelRatio, parsed.pixelRatio)
+            : base.pixelRatio;
+        this.assignTierSettings({ ...base, pixelRatio: ratio });
       }
       if (typeof parsed.motionBlurEnabled === 'boolean') {
         this.motionBlurEnabled = parsed.motionBlurEnabled;
       }
     } catch {
-      // Ignore malformed session settings
+      // Ignore malformed stored settings
     }
   }
 
   /**
-   * Renders the 3D scene through the HDR velocity-motion-blur + contact-AO + bloom pipeline.
+   * Renders the 3D scene through the HDR velocity-motion-blur + contact-AO + bloom pipeline,
+   * or directly to the canvas when the active tier disables post-processing.
    */
   public render(scene: THREE.Scene, camera: RigCamera, dtSeconds: number): void {
-    // Fast bypass when in 'performance' mode with motion blur disabled
-    if (this.quality === 'performance' && !this.motionBlurEnabled) {
+    if (!this.postEnabled) {
       this.renderer.setRenderTarget(null);
       this.renderer.render(scene, camera);
       this.hasPrevMatrix = false;
@@ -490,10 +534,20 @@ export class PostProcessingPipeline {
 
     // 2. Update post-processing uniforms
     const isOrtho = (camera as THREE.OrthographicCamera).isOrthographicCamera === true;
+    const projY = camera.projectionMatrix.elements[5]!;
+    if (!isOrtho && projY > 1e-6) {
+      this.lastPerspectiveProjY = projY;
+    }
     const uniforms = this.postMaterial.uniforms;
     uniforms.uNear.value = camera.near;
     uniforms.uFar.value = camera.far;
     uniforms.uIsOrtho.value = isOrtho ? 1.0 : 0.0;
+    // Distance at which the perspective camera would show the same world-units-per-pixel as the
+    // ortho camera: perspective scale = P11 / z, ortho scale = P11_ortho.
+    uniforms.uOrthoEquivDepth.value = isOrtho
+      ? this.lastPerspectiveProjY / Math.max(1e-6, projY)
+      : 0.0;
+    // Exposure comes only from the renderer (never from the camera type, zoom or position).
     uniforms.uExposure.value = this.renderer.toneMappingExposure;
 
     if (cameraMoved) {
@@ -506,9 +560,10 @@ export class PostProcessingPipeline {
     uniforms.uMotionBlurEnabled.value =
       this.motionBlurEnabled && !isOrtho && cameraMoved ? 1.0 : 0.0;
     uniforms.uShutterScale.value = this.motionBlurStrength * fpsNorm;
-    uniforms.uAoIntensity.value = this.ambientOcclusionEnabled && !isOrtho ? 0.42 : 0.0;
-    uniforms.uBloomIntensity.value = this.bloomEnabled ? 0.18 : 0.0;
-    uniforms.uSharpenIntensity.value = this.quality === 'performance' ? 0.0 : 0.26;
+    // AO is identical for ortho and perspective (shader scales by apparent on-screen size).
+    uniforms.uAoIntensity.value = this.ambientOcclusionEnabled ? AO_INTENSITY : 0.0;
+    uniforms.uBloomIntensity.value = this.bloomEnabled ? BLOOM_INTENSITY : 0.0;
+    uniforms.uSharpenIntensity.value = this.sharpenEnabled ? SHARPEN_INTENSITY : 0.0;
 
     // 3. Draw single-pass composite quad to screen
     this.renderer.render(this.postScene, this.postCamera);

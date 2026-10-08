@@ -3,6 +3,7 @@ import type { RoomLodController } from '../../lod/lod-manager.ts';
 import type { CutawayWallDescriptor, FloorViewMode } from '../../../types/scene.ts';
 import type { PropertySceneLayers } from '../scene-content.ts';
 import type { SceneZoneRegistry } from '../scene-zone-registry.ts';
+import { SHADOW_PASS_HOOK_FLAG } from '../scene-batch-optimizer.ts';
 
 export interface CutawayViewInput {
   readonly cameraPosition: THREE.Vector3;
@@ -18,9 +19,43 @@ export interface CutawayUpdateResult {
 }
 
 /**
+ * Creates a zero-area, always-drawn shadow-casting mesh whose `onBeforeShadow` / `onAfterShadow`
+ * callbacks bracket every shadow-map pass (Three.js renders shadow casters in scene-graph order).
+ */
+function createShadowPassHook(name: string): THREE.Mesh {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(9), 3));
+  // Non-zero bounding sphere so generic "tiny mesh => castShadow=false" filters leave it alone.
+  geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1);
+  geo.boundingBox = new THREE.Box3(new THREE.Vector3(-1, -1, -1), new THREE.Vector3(1, 1, 1));
+  const mat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, depthTest: false });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.name = name;
+  mesh.castShadow = true;
+  mesh.receiveShadow = false;
+  mesh.frustumCulled = false;
+  mesh.matrixAutoUpdate = false;
+  mesh.raycast = (): void => {};
+  mesh.userData = {
+    [SHADOW_PASS_HOOK_FLAG]: true,
+    // Excluded from annotation picking, USD stage traversal, bevel and walkthrough obstacles.
+    isAnnotationGroup: true,
+    lodIgnore: true,
+  };
+  return mesh;
+}
+
+/**
  * Owns the floor-view / ceiling-cutaway state and decides, every time the camera
  * moves, which floors, ceilings, roof and walls are hidden so the camera can
  * see into the focused rooms. Also drives room LOD evaluation.
+ *
+ * Lighting invariant: cutaways only change what the *camera* sees. Geometry hidden by a
+ * cutaway (first floor, ceilings, roof, camera-facing walls) keeps casting shadows: two
+ * shadow-pass hook meshes (first and last child of the scene) temporarily re-show it during
+ * every shadow-map render. Floor mode, zoom and camera position therefore never change sun
+ * shadows, light intensities or which lights are active. Only the overhead fixture shade
+ * opacity (a see-through aid) changes.
  */
 export class CutawayController {
   private readonly layers: PropertySceneLayers;
@@ -37,6 +72,12 @@ export class CutawayController {
     readonly mat: THREE.MeshStandardMaterial;
     readonly cutawayOpacity: number;
   }> = [];
+
+  private shadowCastersIgnoreCutaway = true;
+  private readonly shadowPassStartHook: THREE.Mesh = createShadowPassHook('__cutawayShadowPassStart');
+  private readonly shadowPassEndHook: THREE.Mesh = createShadowPassHook('__cutawayShadowPassEnd');
+  /** Objects temporarily re-shown by the start hook; restored by the end hook. */
+  private readonly shadowPassRevealed: THREE.Object3D[] = [];
 
   private floorViewMode: FloorViewMode = 'ground';
   private ceilingCutaway = true;
@@ -67,6 +108,92 @@ export class CutawayController {
     this.layers = layers;
     this.zoneRegistry = zoneRegistry;
     this.lodController = lodController;
+    this.shadowPassStartHook.onBeforeShadow = (): void => {
+      this.revealCutawayGeometryForShadowPass();
+    };
+    this.shadowPassEndHook.onAfterShadow = (): void => {
+      this.restoreCutawayGeometryAfterShadowPass();
+    };
+  }
+
+  /**
+   * When true (default), geometry hidden by cutaways still casts shadows, so sun/point shadows
+   * are identical in every floor mode, zoom level and camera position. Returns true if changed
+   * (caller should redraw the shadow map once).
+   */
+  public setShadowCastersIgnoreCutaway(enabled: boolean): boolean {
+    if (this.shadowCastersIgnoreCutaway === enabled) return false;
+    this.shadowCastersIgnoreCutaway = enabled;
+    this.ensureShadowPassHooks();
+    return true;
+  }
+
+  public getShadowCastersIgnoreCutaway(): boolean {
+    return this.shadowCastersIgnoreCutaway;
+  }
+
+  /** Every object whose `.visible` this controller toggles for cutaway purposes. */
+  private forEachCutawayManagedObject(fn: (obj: THREE.Object3D) => void): void {
+    const { firstFloorMeshGroup, groundFloorCeilingGroup, ceilingMeshGroup, cutawayWallGroups } =
+      this.layers;
+    fn(firstFloorMeshGroup);
+    fn(groundFloorCeilingGroup);
+    fn(ceilingMeshGroup);
+    fn(cutawayWallGroups.southWest);
+    fn(cutawayWallGroups.west);
+    fn(cutawayWallGroups.north);
+    fn(cutawayWallGroups.east);
+    for (const item of this.dynamicCutawayWallItems) {
+      fn(item.obj);
+    }
+  }
+
+  private revealCutawayGeometryForShadowPass(): void {
+    if (!this.shadowCastersIgnoreCutaway || this.shadowPassRevealed.length > 0) return;
+    this.forEachCutawayManagedObject((obj) => {
+      if (!obj.visible) {
+        obj.visible = true;
+        this.shadowPassRevealed.push(obj);
+      }
+    });
+  }
+
+  private restoreCutawayGeometryAfterShadowPass(): void {
+    for (let i = 0; i < this.shadowPassRevealed.length; i++) {
+      this.shadowPassRevealed[i]!.visible = false;
+    }
+    this.shadowPassRevealed.length = 0;
+  }
+
+  /** Keeps the start hook as the scene's first child and the end hook as its last child. */
+  private ensureShadowPassHooks(): void {
+    const scene = this.layers.scene;
+    const start = this.shadowPassStartHook;
+    const end = this.shadowPassEndHook;
+    if (!this.shadowCastersIgnoreCutaway) {
+      if (start.parent) start.parent.remove(start);
+      if (end.parent) end.parent.remove(end);
+      return;
+    }
+    const children = scene.children;
+    if (children[0] !== start) {
+      if (start.parent !== scene) scene.add(start);
+      const idx = children.indexOf(start);
+      if (idx > 0) {
+        children.splice(idx, 1);
+        children.unshift(start);
+      }
+    }
+    if (children[children.length - 1] !== end) {
+      if (end.parent === scene) {
+        children.splice(children.indexOf(end), 1);
+        children.push(end);
+      } else {
+        scene.add(end);
+      }
+    }
+    start.castShadow = true;
+    end.castShadow = true;
   }
 
   public getFloorViewMode(): FloorViewMode {
@@ -105,6 +232,8 @@ export class CutawayController {
 
   /** Indexes every object tagged with `userData.cutawayWall` under the scene, recording any parent wing/room container transform. */
   public collectDynamicCutawayWalls(): void {
+    this.restoreCutawayGeometryAfterShadowPass();
+    this.ensureShadowPassHooks();
     this.dynamicCutawayWallItems.length = 0;
     this.overheadLightMaterials.length = 0;
     this.allDynamicWallsShown = false;
@@ -186,6 +315,12 @@ export class CutawayController {
       this.layers;
     let needsRender = false;
     let lodShadowsDirty = false;
+    // Safety net: never leave cutaway geometry revealed if a shadow pass was interrupted.
+    this.restoreCutawayGeometryAfterShadowPass();
+    this.ensureShadowPassHooks();
+    // Cutaway visibility changes alter the shadow-caster set only when hidden geometry is
+    // excluded from shadow passes (legacy mode).
+    const cutawayAffectsShadows = !this.shadowCastersIgnoreCutaway;
 
     const cam = view.cameraPosition;
     const target = view.target;
@@ -263,6 +398,8 @@ export class CutawayController {
           target.z
         ));
 
+    // Only fixture *shade* transparency changes here (a see-through aid for cutaway views). Emissive
+    // intensity, light intensity and which lights are active are never touched by cutaways.
     // Issue #3 ("in 1pv lights should not be see through" at `[-2.579, 0.933, 16.359]`, `outbuildings.barn.poolTableLight.shade`):
     // Overhead light fixtures use low opacity (`0.32..0.42`) when viewing from outside in cutaway mode,
     // and become 100% opaque (`opacity = 1.0`, not see-through) in 1PV / interior view or when cutaway is off!
@@ -338,7 +475,10 @@ export class CutawayController {
         }
         this.allDynamicWallsShown = true;
       }
-      return { needsRender: needsRender || changed, shadowsDirty: changed || lodShadowsDirty };
+      return {
+        needsRender: needsRender || changed,
+        shadowsDirty: (cutawayAffectsShadows && changed) || lodShadowsDirty,
+      };
     }
 
     this.allDynamicWallsShown = false;
@@ -447,7 +587,10 @@ export class CutawayController {
       }
     }
 
-    return { needsRender: needsRender || changed, shadowsDirty: changed || lodShadowsDirty };
+    return {
+        needsRender: needsRender || changed,
+        shadowsDirty: (cutawayAffectsShadows && changed) || lodShadowsDirty,
+      };
   }
 
   private ensureCeilingSubgroupsVisible(): void {

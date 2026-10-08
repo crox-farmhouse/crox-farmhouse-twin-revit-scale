@@ -561,8 +561,10 @@ export class HudKnxControlsController {
       this.knx.cycleTvArt(true, '1.1.12');
     });
 
+    // Space / arrow keys simulate the kitchen rocker switch: developer mode only.
+    const isDevMode = (): boolean => document.body.classList.contains('is-dev-mode');
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (this.scene.isWalkthroughMode()) return;
+      if (this.scene.isWalkthroughMode() || !isDevMode()) return;
       const tag = document.activeElement?.tagName ?? '';
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
       if (e.code === 'Space' || e.code === 'ArrowUp') {
@@ -574,7 +576,7 @@ export class HudKnxControlsController {
       }
     });
     window.addEventListener('keyup', (e: KeyboardEvent) => {
-      if (this.scene.isWalkthroughMode()) return;
+      if (this.scene.isWalkthroughMode() || !isDevMode()) return;
       const tag = document.activeElement?.tagName ?? '';
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
       if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown') {

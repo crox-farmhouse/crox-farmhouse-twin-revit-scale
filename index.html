@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="description" content="Crox Farmhouse (Tur Langton) 10m x 5m Kitchen 3D Digital Twin & KNX Emulator" />
-  <title>Crox Farmhouse — Kitchen Twin</title>
+  <meta name="description" content="Crox Farmhouse (Tur Langton) 3D digital twin: rooms, lighting, heating and notes for owners and trades" />
+  <title>Crox Farmhouse — Digital Twin</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
@@ -19,19 +19,7 @@
       <span id="walkthrough-interact-label" class="walkthrough-interact-label">to Open Door</span>
     </div>
 
-    <!-- Always-Visible Top-Center Quick-Launch Pill (when in Orbit Mode) -->
-    <button
-      id="walkthrough-floating-enter-btn"
-      class="walkthrough-floating-enter-btn"
-      type="button"
-      title="Enter First-Person Walkthrough Mode (Shortcut: Press V or F)"
-    >
-      <span class="walkthrough-live-dot"></span>
-      <span>Enter 1st-Person Walkthrough</span>
-      <kbd>V</kbd>
-    </button>
-
-    <!-- Floating First-Person Walkthrough Top-Center Bar -->
+    <!-- First-Person Walkthrough Bar (docked under the top bar while walking) -->
     <div id="walkthrough-hud" class="walkthrough-hud" hidden role="region" aria-label="First-Person Walkthrough Controls">
       <div class="walkthrough-hud-top">
         <div class="walkthrough-hud-brand">
@@ -47,14 +35,6 @@
             title="Toggle Per-Pixel 3D Camera Shutter Motion Blur (Shortcut: B)"
           >
             Blur: ON (B)
-          </button>
-          <button
-            id="walkthrough-gfx-btn"
-            class="hud-inline-btn walkthrough-action-btn"
-            type="button"
-            title="Cycle Graphics Quality Preset: Ultra (HiDPI + SSAO + Bloom + CAS) / Balanced / Max FPS"
-          >
-            GFX: Ultra
           </button>
           <button
             id="walkthrough-fov-btn"
@@ -120,12 +100,14 @@
       </div>
     </div>
 
-    <!-- Floating 3D Issue Annotator Palette (Top-Left) -->
-    <aside id="annotator-panel" class="hud-window annotator-window" aria-label="3D Issue Annotator">
-      <header id="annotator-titlebar" class="hud-titlebar" title="Drag to move Annotator">
-        <button id="annotator-collapse-btn" class="hud-win-btn" type="button" title="Collapse / Expand Annotator" aria-label="Collapse Annotator"></button>
-        <span class="hud-title">3D Issue Annotator</span>
-        <span id="annotator-count-badge" class="hud-count">0</span>
+    <!-- Note / Measure inspector: docked above the tool dock while a tool or note is active -->
+    <aside id="annotator-panel" class="shell-inspector shell-glass" aria-label="Note and measure inspector">
+      <header id="annotator-titlebar" class="shell-inspector-head">
+        <span class="shell-inspector-title">Notes &amp; measurements</span>
+        <span id="annotator-count-badge" class="shell-pill">0</span>
+        <button id="annotator-collapse-btn" class="shell-icon-btn shell-icon-btn-sm" type="button" title="Close (Esc)" aria-label="Close inspector">
+          <svg class="shell-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="M6 6l12 12" /></svg>
+        </button>
       </header>
 
       <div id="annotator-body" class="hud-body annotator-body">
@@ -372,9 +354,14 @@
       </div>
     </aside>
 
-    <!-- Floating HUD Palette -->
-    <aside id="hud-panel" class="hud-window" aria-label="Kitchen &amp; KNX HUD">
-      <header id="hud-titlebar" class="hud-titlebar" title="Drag to move HUD">
+    <!--
+      Developer-mode panels. The legacy KNX HUD and OpenUSD stage controllers keep
+      driving this DOM; the UI shell moves it into the Developer drawer at startup.
+      Hidden in normal mode.
+    -->
+    <div id="dev-legacy-host" hidden>
+    <aside id="hud-panel" class="dev-legacy-panel" aria-label="Smart home &amp; KNX developer tools">
+      <header id="hud-titlebar" class="hud-titlebar">
         <button id="hud-collapse-btn" class="hud-win-btn" type="button" title="Collapse / Expand HUD" aria-label="Collapse HUD"></button>
         <span class="hud-title">Crox Farmhouse · KNX</span>
         <span id="switch-bus-led" class="hud-bus-led" title="KNX TP1 Bus Activity"></span>
@@ -815,9 +802,9 @@
       </div>
     </aside>
 
-    <!-- Floating OpenUSD Stage Studio HUD (pxr 26.8 · MaterialX · Sublayers & VariantSets) -->
-    <aside id="usd-stage-panel" class="hud-window usd-stage-window" aria-label="OpenUSD Stage Studio">
-      <header id="usd-stage-titlebar" class="hud-titlebar usd-stage-titlebar" title="Drag to move OpenUSD Stage Studio">
+    <!-- OpenUSD Stage Studio (pxr 26.8 · MaterialX · Sublayers & VariantSets) -->
+    <aside id="usd-stage-panel" class="dev-legacy-panel usd-stage-window" aria-label="OpenUSD Stage Studio">
+      <header id="usd-stage-titlebar" class="hud-titlebar usd-stage-titlebar">
         <button id="usd-stage-collapse-btn" class="hud-win-btn" type="button" title="Collapse / Expand OpenUSD Stage Studio" aria-label="Collapse OpenUSD Stage Studio"></button>
         <span class="hud-title">OpenUSD Stage · <code>/CroxFarmhouse</code></span>
         <span id="usd-stage-prim-badge" class="hud-count usd-count-badge">0 prims</span>
@@ -917,6 +904,22 @@
         </section>
       </div>
     </aside>
+    </div>
+
+    <!-- Preact UI shell (top bar, room navigator, room panel, tool dock, dialogs) -->
+    <div id="shell-root"></div>
+
+    <!-- Loading screen: visible before scripts run; removed once the scene is interactive -->
+    <div id="loading-screen" class="loading-screen" role="status" aria-live="polite">
+      <div class="loading-card">
+        <div class="loading-mark" aria-hidden="true">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9v12h14V9" /><path d="M10 21v-6h4v6" /></svg>
+        </div>
+        <div class="loading-title">Crox Farmhouse</div>
+        <div id="loading-label" class="loading-label">Loading…</div>
+        <div class="loading-bar"><div id="loading-bar-fill" class="loading-bar-fill"></div></div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/src/main.ts"></script>

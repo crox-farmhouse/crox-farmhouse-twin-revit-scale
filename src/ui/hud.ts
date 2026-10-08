@@ -16,14 +16,14 @@ import {
   syncUfhUI,
 } from './hud/hud-sun-and-weather.ts';
 import {
-  bindDraggableHudWindow,
+  bindCollapsibleHudSection,
   requireElement,
   type HudSharedContext,
 } from './hud/hud-types.ts';
 
 export {
   bindCameraAndFloorEvents,
-  bindDraggableHudWindow,
+  bindCollapsibleHudSection,
   bindSunAndWeatherEvents,
   HudKnxControlsController,
   requireElement,
@@ -84,7 +84,7 @@ export class HudController {
       onFloorModeChanged: () => this.syncFloorModeUI(),
     };
 
-    bindDraggableHudWindow(this.hudWindow, this.hudTitlebar, this.hudCollapseBtn);
+    bindCollapsibleHudSection(this.hudWindow, this.hudTitlebar, this.hudCollapseBtn);
     bindSunAndWeatherEvents(sharedCtx);
     bindCameraAndFloorEvents(this.scene);
 

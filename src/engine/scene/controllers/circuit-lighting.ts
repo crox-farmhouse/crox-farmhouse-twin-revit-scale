@@ -38,6 +38,7 @@ import type {
   SwitchLedIndicatorRule,
 } from '../property-scene-profile.ts';
 import type { RoomSwitchLedBinding } from '../scene-content.ts';
+import { getPointLightBudgetWeight } from '../scene-batch-optimizer.ts';
 
 const SWITCH_LED_ON = 3.0;
 const SWITCH_LED_OFF = 0.15;
@@ -124,7 +125,9 @@ export class CircuitLightingController {
             : group.maxIntensity;
         const targetIntensity = customMax * curved * todScale.lightScale;
         light.userData = { ...light.userData, knxTargetIntensity: targetIntensity };
-        light.intensity = light.userData.isMutedByFloorOrDistance ? 0 : targetIntensity;
+        // Pure function of KNX level × time of day (× the fixed, room-anchored light-budget fade
+        // weight). Never depends on camera position, zoom or floor/cutaway mode.
+        light.intensity = targetIntensity * getPointLightBudgetWeight(light);
       }
       for (const mat of group.emissives) {
         const customEmissiveMax =

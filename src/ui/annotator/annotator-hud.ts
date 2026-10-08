@@ -104,10 +104,6 @@ export class AnnotatorHudController {
   private activeTransformState: ActiveTransformUIState | null = null;
   private liveMeasureState: LiveMeasurePreviewState | null = null;
 
-  private isDragging = false;
-  private dragOffsetX = 0;
-  private dragOffsetY = 0;
-
   public constructor(
     scene: PropertyScene,
     store: SceneAnnotationStore,
@@ -201,7 +197,7 @@ export class AnnotatorHudController {
     // Reapply any saved object moves/rotations from localStorage before syncing markers
     this.scene.reapplySavedMoveAnnotations(this.store.getRecords());
 
-    this.bindDraggableWindow();
+    this.bindCloseButton();
     this.bindEvents();
 
     this.store.subscribe((records, selectedId) => {
@@ -233,36 +229,51 @@ export class AnnotatorHudController {
     }, 20);
   }
 
-  private bindDraggableWindow(): void {
+  /**
+   * The annotator inspector is docked above the tool dock (no floating window).
+   * Its header button closes the active tool and clears the selection.
+   */
+  private bindCloseButton(): void {
     this.collapseBtn.addEventListener('click', (e: MouseEvent) => {
       e.stopPropagation();
-      this.panelEl.classList.toggle('is-collapsed');
+      this.store.selectAnnotation(null);
+      this.activateTool(null);
     });
+    // The header is a static label; keep the legacy id for styling hooks.
+    this.titlebarEl.classList.add('is-static');
+  }
 
-    this.titlebarEl.addEventListener('pointerdown', (e: PointerEvent) => {
-      if (e.target === this.collapseBtn) return;
-      this.isDragging = true;
-      const rect = this.panelEl.getBoundingClientRect();
-      this.dragOffsetX = e.clientX - rect.left;
-      this.dragOffsetY = e.clientY - rect.top;
-      this.titlebarEl.setPointerCapture(e.pointerId);
-    });
+  /**
+   * Activates an annotation tool from the shell tool dock, or returns to plain
+   * orbit navigation when `tool` is null.
+   */
+  public activateTool(tool: AnnotationToolMode | null): void {
+    if (tool === null) {
+      if (this.scene.isAnnotationMode()) {
+        this.scene.cancelActiveMeasurement();
+        this.scene.setAnnotationMode(false);
+      }
+      this.syncModeAndToolButtonsUI();
+      this.renderInspectorBoxes(this.store.getSelectedRecord());
+      return;
+    }
+    this.selectTool(tool, true);
+  }
 
-    this.titlebarEl.addEventListener('pointermove', (e: PointerEvent) => {
-      if (!this.isDragging) return;
-      const maxX = Math.max(0, window.innerWidth - this.panelEl.offsetWidth);
-      const maxY = Math.max(0, window.innerHeight - 28);
-      const nextLeft = Math.max(0, Math.min(maxX, e.clientX - this.dragOffsetX));
-      const nextTop = Math.max(0, Math.min(maxY, e.clientY - this.dragOffsetY));
-      this.panelEl.style.left = `${nextLeft}px`;
-      this.panelEl.style.top = `${nextTop}px`;
-    });
+  /** Selects a record, flies to its saved camera pose and focuses its note field. */
+  public focusRecord(id: number): void {
+    this.handleMarkerOrPinSelect(id);
+  }
 
-    const stopDrag = (): void => {
-      this.isDragging = false;
-    };
-    this.titlebarEl.addEventListener('pointerup', stopDrag);
-    this.titlebarEl.addEventListener('pointercancel', stopDrag);
+  /** Removes a record, undoing any object move it carried. */
+  public removeRecord(id: number): void {
+    const rec = this.store.getRecords().find((r) => r.id === id);
+    if (!rec) return;
+    if (rec.kind === 'move' && rec.objectTransform) {
+      this.scene.resetMovedObject(rec.objectTransform.targetUuid);
+      this.scene.detachMoveGizmo();
+    }
+    this.store.removeAnnotation(id);
   }
 
   private selectTool(tool: AnnotationToolMode, enableAnnotateMode = true): void {
@@ -448,9 +459,6 @@ export class AnnotatorHudController {
       if (key === 'p') {
         e.preventDefault();
         this.selectTool('pin', true);
-      } else if (key === 'm') {
-        e.preventDefault();
-        this.selectTool('move', true);
       } else if (key === 'r') {
         e.preventDefault();
         this.selectTool('measure', true);
