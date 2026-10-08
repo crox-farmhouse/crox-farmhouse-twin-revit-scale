@@ -86,6 +86,7 @@ export class ShellController {
   private levelPushTimer: ReturnType<typeof setTimeout> | null = null;
   private lastLevelPush = 0;
   private pendingLevels: Readonly<CircuitLevels> | null = null;
+  private panelsBeforeWalk: { readonly navigator: boolean; readonly roomPanel: boolean } | null = null;
 
   public constructor(deps: ShellDeps) {
     this.api = deps.api;
@@ -122,7 +123,9 @@ export class ShellController {
     api.walkthrough.onChanged((walking) => {
       if (walking && viewMode.value !== 'walk') viewMode.value = 'walk';
       else if (!walking && viewMode.value === 'walk') viewMode.value = '3d';
+      this.syncImmersivePanels(walking);
     });
+    this.syncImmersivePanels(api.walkthrough.isActive());
     api.lighting.onLevelsChanged((levels) => this.pushLiveLevels(levels));
     api.lighting.subscribe((event) => {
       if (event.type !== 'stateChange') return;
@@ -153,6 +156,27 @@ export class ShellController {
       const room = api.rooms.findAt(point);
       if (room) this.selectRoom(room.zoneId);
     });
+  }
+
+  /**
+   * Walk mode is immersive: collapse the navigator and room panel on entry and
+   * restore whatever was open on exit (the walk overlay's room chip replaces them).
+   */
+  private syncImmersivePanels(walking: boolean): void {
+    if (walking && this.panelsBeforeWalk === null) {
+      this.panelsBeforeWalk = { navigator: navigatorOpen.value, roomPanel: roomPanelOpen.value };
+      batch(() => {
+        navigatorOpen.value = false;
+        roomPanelOpen.value = false;
+      });
+    } else if (!walking && this.panelsBeforeWalk !== null) {
+      const saved = this.panelsBeforeWalk;
+      this.panelsBeforeWalk = null;
+      batch(() => {
+        navigatorOpen.value = saved.navigator;
+        roomPanelOpen.value = saved.roomPanel;
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------

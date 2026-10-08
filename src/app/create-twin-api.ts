@@ -133,7 +133,8 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
     footEmitAccum = 0;
     const foot = scene.getWalkthrough().getFootPosition();
     const pos = toTuple(foot);
-    const zoneId = home.focus.findRoomAt(foot.x, foot.y, foot.z)?.zoneId ?? null;
+    // Same room the engine's tracker committed for the walker (keeps UI + presence consistent).
+    const zoneId = scene.getCurrentRoomId();
     for (const l of [...footListeners]) l(pos, zoneId);
   };
 

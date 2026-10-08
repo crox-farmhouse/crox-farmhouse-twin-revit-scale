@@ -3,14 +3,24 @@ import { useState } from 'preact/hooks';
 import { currentRoomId, isMobile, liveLevels, navigatorOpen } from '../../state/shell-store.ts';
 import type { CircuitLevels } from '../../core/types/knx.ts';
 import type { RoomManifestEntry } from '../../core/types/twin-ux.ts';
+import type { TwinLightingZone } from '../../app/twin-api.ts';
 import { Icon } from './icons.tsx';
 import { useShell } from './shell-context.ts';
 
-function countLightsOn(entry: RoomManifestEntry, levels: Readonly<CircuitLevels> | null): number {
+/**
+ * Circuits currently on in a room. Uses the room's lighting zone (every KNX
+ * circuit across all layers) when one exists, else the manifest light list.
+ */
+function countLightsOn(
+  entry: RoomManifestEntry,
+  zone: TwinLightingZone | undefined,
+  levels: Readonly<CircuitLevels> | null,
+): number {
   if (!levels) return 0;
+  const ids: readonly string[] = zone ? zone.circuitIds : entry.lights.map((l) => l.circuitId);
   let on = 0;
-  for (const l of entry.lights) {
-    const level: unknown = Reflect.get(levels, l.circuitId);
+  for (const id of ids) {
+    const level: unknown = Reflect.get(levels, id);
     if (typeof level === 'number' && level > 0.5) on += 1;
   }
   return on;
@@ -78,7 +88,7 @@ export function RoomNavigator(): JSX.Element {
                 <ul class="shell-nav-list" role="list">
                   {rooms.map((room) => {
                     const isCurrent = currentEntry?.zoneId === room.zoneId;
-                    const lightsOn = countLightsOn(room, levels);
+                    const lightsOn = countLightsOn(room, ctl.api.lighting.zones.get(room.zoneId), levels);
                     return (
                       <li key={room.zoneId}>
                         <button

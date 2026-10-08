@@ -1,7 +1,6 @@
 import type { JSX } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import type { TwinWalkthroughState } from '../../app/twin-api.ts';
-import type { RoomZoneId } from '../../core/types/topology.ts';
 import { currentRoomId, navigatorOpen, viewMode, walkHintNonce } from '../../state/shell-store.ts';
 import { Icon } from './icons.tsx';
 import { useShell } from './shell-context.ts';
@@ -31,16 +30,8 @@ function useWalkState(): TwinWalkthroughState {
 function WalkRoomChip(): JSX.Element {
   const ctl = useShell();
   const [open, setOpen] = useState(false);
-  // The walker's own room (5 Hz) wins over the shell's selected room.
-  const [walkerRoom, setWalkerRoom] = useState<RoomZoneId | null>(null);
-  useEffect(
-    () =>
-      ctl.api.walkthrough.onFootPositionChanged((_pos, zoneId) => {
-        setWalkerRoom((prev) => (prev === zoneId ? prev : zoneId));
-      }),
-    [ctl]
-  );
-  const roomId = walkerRoom ?? currentRoomId.value;
+  // The engine's room tracker follows the walker's feet, so this is the room you stand in.
+  const roomId = currentRoomId.value;
   const entry = roomId ? ctl.api.rooms.getManifest(roomId) : undefined;
   const floorLabel = entry ? (entry.floor === 'first' ? 'First floor' : 'Ground floor') : 'Outside';
   const spawns = ctl.api.walkthrough.spawns();
