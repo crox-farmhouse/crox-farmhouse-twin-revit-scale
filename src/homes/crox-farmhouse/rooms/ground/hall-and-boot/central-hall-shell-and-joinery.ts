@@ -521,7 +521,7 @@ export function buildCentralHallShellAndJoinery(
       roughness: 0.18,
     });
     beamLedMat.userData.baseEmissiveIntensity = 2.4;
-    lightGroups.hallPendant.emissives.push(beamLedMat);
+    lightGroups.hallBeamLeds.emissives.push(beamLedMat);
 
     const beamLedStrip = new THREE.Mesh(
       createSharedGeo(new THREE.BoxGeometry(0.014, 0.008, beamLedMaxZ - beamLedMinZ)),
@@ -530,10 +530,10 @@ export function buildCentralHallShellAndJoinery(
     beamLedStrip.name = 'hall.fireplaceBeam.ledStrip';
     beamLedStrip.position.set(-13.53, beamSoffitY - 0.004, (beamLedMinZ + beamLedMaxZ) / 2);
     hallFireplaceGroup.add(beamLedStrip);
-    interactions.registerLightFixture(beamLedStrip, 'hallPendant');
+    interactions.registerLightFixture(beamLedStrip, 'hallBeamLeds');
 
     // Emissive strip + floor pool only (the hall's South & East wall lights provide the PointLight fill).
-    ctx.addGlowPool('hallPendant', -13.4, lowerFloorY + 0.006, (beamLedMinZ + beamLedMaxZ) / 2, 0.7, 0.2);
+    ctx.addGlowPool('hallBeamLeds', -13.4, lowerFloorY + 0.006, (beamLedMinZ + beamLedMaxZ) / 2, 0.7, 0.2);
   }
 
   scene.add(hallFireplaceGroup);

@@ -8,7 +8,9 @@ import {
   type CorstonSocketPlacement,
 } from '../../../../../objects/fixtures/corston-power-sockets.ts';
 import { buildRoomCorstonToggleSwitch } from '../../ground/kitchen-utility/knx-wall-and-keypad-devices.ts';
+import { croxPushButton } from '../../../knx/devices-placement.ts';
 import type { OutbuildingShellContext } from './outbuilding-coords-and-materials.ts';
+import { bindOutbuildingLightsToKnxCircuits } from './outbuilding-light-bindings.ts';
 
 function setInteractiveTreeUserData(root: THREE.Object3D, data: InteractiveUserData): void {
   root.userData = { ...root.userData, ...data };
@@ -358,6 +360,7 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
 
   const spotGroup = ctx.lightGroups.stableOfficeSpotlights;
   const wallAndLampGroup = ctx.lightGroups.stableOfficeWallsAndLamps5A;
+  const officeLampGroup = ctx.lightGroups.stableOfficeLamps5A;
   const barnLampGroup = ctx.lightGroups.barnBarsAndLamps5A;
 
   // 1. Six Recessed Warm-White Ceiling Spotlights in Empty Office (`y = stableGroundTopY = 1.96m`)
@@ -418,13 +421,15 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
 
     groundCeilingGroup.add(fixture);
 
-    // Downward warm PointLight on groundGroup so it illuminates the room even when ceiling cutaway is active
-    const ptLight = new THREE.PointLight(0xffcb88, 6.5, 5.2, 1.8);
-    ptLight.name = `${fixtureName}.pointLight`;
-    ptLight.position.set(u, stableGroundTopY - 0.16, v);
-    groundGroup.add(ptLight);
-    spotGroup.lights.push(ptLight);
   });
+
+  // One shared warm fill PointLight for the six spots (each spot is emissive-only) on groundGroup so
+  // it illuminates the room even when the ceiling cutaway is active — keeps the light budget flat.
+  const officeSpotFill = new THREE.PointLight(0xffcb88, 6.5, 7.5, 1.6);
+  officeSpotFill.name = 'outbuildings.stable.office.spotlight.fillLight';
+  officeSpotFill.position.set(27.6, stableGroundTopY - 0.2, 2.7);
+  groundGroup.add(officeSpotFill);
+  spotGroup.lights.push(officeSpotFill);
 
   // 2. Four Aged-Brass & Fluted-Glass Wall Sconces in Empty Office (`stableOfficeWallsAndLamps5A`)
   const wallLightMat = new THREE.MeshStandardMaterial({
@@ -494,11 +499,7 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
       sconceGroup.add(cap);
     }
 
-    const sconceLight = new THREE.PointLight(0xffb866, 3.8, 3.8, 1.9);
-    sconceLight.name = `${sconceName}.pointLight`;
-    sconceLight.position.set(0, 0, 0.12);
-    sconceGroup.add(sconceLight);
-    wallAndLampGroup.lights.push(sconceLight);
+    // Sconces are emissive-only (fluted glass glows); the spot fill light carries the room.
 
     groundGroup.add(sconceGroup);
   }
@@ -508,7 +509,7 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
   const officeFloorLamp = new THREE.Group();
   officeFloorLamp.name = 'outbuildings.stable.office.floorLamp';
   const officeLampData: InteractiveUserData = {
-    circuitId: 'stableOfficeWallsAndLamps5A',
+    circuitId: 'stableOfficeLamps5A',
     switchPa: '2.1.14',
     switchLocation: 'Office 5V Floor Lamp',
   };
@@ -533,7 +534,10 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
 
   const floorShadeGeo = new THREE.CylinderGeometry(0.16, 0.22, 0.28, 24, 1, true);
   floorShadeGeo.computeBoundingSphere();
-  const floorShade = new THREE.Mesh(floorShadeGeo, wallLightMat);
+  // Own material so the 5A lamp circuit dims independently of the wall sconces.
+  const floorShadeMat = wallLightMat.clone();
+  officeLampGroup.emissives.push(floorShadeMat);
+  const floorShade = new THREE.Mesh(floorShadeGeo, floorShadeMat);
   floorShade.name = 'outbuildings.stable.office.floorLamp.shade';
   floorShade.position.set(0, 1.42, 0);
   setInteractiveTreeUserData(floorShade, officeLampData);
@@ -544,7 +548,7 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
   officeLampLight.name = 'outbuildings.stable.office.floorLamp.pointLight';
   officeLampLight.position.set(0, 1.38, 0);
   officeFloorLamp.add(officeLampLight);
-  wallAndLampGroup.lights.push(officeLampLight);
+  officeLampGroup.lights.push(officeLampLight);
 
   groundGroup.add(officeFloorLamp);
 
@@ -585,13 +589,84 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
   ctx.interactiveMeshes.push(barShade);
   barLamp.add(barShade);
 
-  const barLampLight = new THREE.PointLight(0xffb454, 3.6, 3.5, 1.9);
-  barLampLight.name = 'outbuildings.barn.cornerBar.counterLamp.pointLight';
-  barLampLight.position.set(0, 0.24, 0);
-  barLamp.add(barLampLight);
-  barnLampGroup.lights.push(barLampLight);
+  // Emissive-only: the corner bar's existing `cornerBar.light` PointLight lights the counter.
 
   groundGroup.add(barLamp);
+}
+
+/**
+ * Guest suite vaulted-ceiling spots (`stableSuiteDownlights`): four brass surface cans fixed
+ * square to the 27.6° plastered vault either side of the ridge (apex 4.666 m at v = 2.85 m,
+ * 3.907 m at v = 1.4 m — measured), emissive-only plus one shared fill PointLight.
+ */
+function buildGuestSuiteVaultSpots(s: OutbuildingShellContext): void {
+  const { ctx, firstFloorGroup, spotlightHousingMat, spotlightBrassTrimMat } = s;
+  const group = ctx.lightGroups.stableSuiteDownlights;
+  const RIDGE_V = 2.85;
+  const APEX_Y = 4.666;
+  const SLOPE = (APEX_Y - 3.907) / (RIDGE_V - 1.4);
+  const tilt = Math.atan(SLOPE);
+
+  const lensMat = new THREE.MeshStandardMaterial({
+    color: 0xfff5e4,
+    emissive: new THREE.Color(0xffc27a),
+    emissiveIntensity: 2.2,
+    roughness: 0.2,
+  });
+  lensMat.userData = { ...lensMat.userData, baseEmissiveIntensity: 2.2 };
+  group.emissives.push(lensMat);
+
+  const canGeo = new THREE.CylinderGeometry(0.042, 0.046, 0.11, 18);
+  canGeo.computeBoundingSphere();
+  const roseGeo = new THREE.CylinderGeometry(0.055, 0.055, 0.012, 18);
+  roseGeo.computeBoundingSphere();
+  const lensGeo = new THREE.CylinderGeometry(0.034, 0.034, 0.004, 16);
+  lensGeo.computeBoundingSphere();
+
+  const spots: ReadonlyArray<readonly [number, number]> = [
+    [26.6, 1.6],
+    [28.0, 1.6],
+    [26.6, 4.1],
+    [28.0, 4.1],
+  ];
+  spots.forEach(([u, v], idx) => {
+    const name = `outbuildings.firstFloor.stableBedroom.downlight.${idx + 1}`;
+    const data: InteractiveUserData = {
+      circuitId: 'stableSuiteDownlights',
+      switchPa: '2.1.63',
+      switchLocation: `Guest Suite Vault Spot ${idx + 1}`,
+    };
+    const fixture = new THREE.Group();
+    fixture.name = name;
+    fixture.userData = { zone: 'outbuildingStableSuite', ...data };
+    const ceilingY = APEX_Y - SLOPE * Math.abs(v - RIDGE_V);
+    fixture.position.set(u, ceilingY, v);
+    // Axis square to the slope, aimed down-and-in towards the ridge.
+    fixture.rotation.x = v < RIDGE_V ? -tilt : tilt;
+
+    const rose = new THREE.Mesh(roseGeo, spotlightBrassTrimMat);
+    rose.name = `${name}.rose`;
+    rose.position.y = -0.006;
+    fixture.add(rose);
+    const can = new THREE.Mesh(canGeo, spotlightHousingMat);
+    can.name = `${name}.can`;
+    can.position.y = -0.067;
+    setInteractiveTreeUserData(can, data);
+    ctx.interactiveMeshes.push(can);
+    fixture.add(can);
+    const lens = new THREE.Mesh(lensGeo, lensMat);
+    lens.name = `${name}.emitter`;
+    lens.position.y = -0.124;
+    fixture.add(lens);
+    firstFloorGroup.add(fixture);
+  });
+
+  const fill = new THREE.PointLight(0xffd6a0, 3.2, 6.5, 1.6);
+  fill.name = 'outbuildings.firstFloor.stableBedroom.downlight.fillLight';
+  fill.position.set(27.3, 3.7, RIDGE_V);
+  fill.userData = { ...fill.userData, baseIntensity: 3.2 };
+  firstFloorGroup.add(fill);
+  group.lights.push(fill);
 }
 
 /**
@@ -998,21 +1073,29 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
   ];
 
 
-  for (const sw of switchPlacements) {
+  // Each placement is its own KNX push-button device: 2.1.40 … 2.1.67 in this order
+  // (CROX_PUSH_BUTTONS), which supplies the gangs (multi-gang plates at pass-throughs).
+  // Doorway plates sit at ~1.05 m AFFL (authored y is 1.15 m AFFL); bedside plates stay put.
+  const FIRST_OUTBUILDING_PLATE = 40;
+  const DOORWAY_DROP_M = 0.1;
+  switchPlacements.forEach((sw, i) => {
+    const devicePa = `2.1.${FIRST_OUTBUILDING_PLATE + i}`;
+    const isBedside = sw.customUnitName.includes('bedside');
     const unit = buildRoomCorstonToggleSwitch(ctx, {
       customUnitName: sw.customUnitName,
       circuitId: sw.circuitId,
       zoneSceneSwitchZoneId: sw.zoneId,
       switchPa: sw.switchPa,
+      devicePa,
       switchLocation: sw.switchLocation,
       x: sw.u,
-      y: sw.y,
+      y: isBedside ? sw.y : sw.y - DOORWAY_DROP_M,
       z: sw.v,
       facing: sw.facing,
       parentGroup: sw.isFirstFloor ? firstFloorGroup : groundGroup,
     });
-    unit.userData = { ...unit.userData, zone: sw.zoneId };
-  }
+    unit.userData = { ...unit.userData, zone: croxPushButton(devicePa)?.mountedInZoneId ?? sw.zoneId };
+  });
 }
 
 /**
@@ -1268,85 +1351,7 @@ function buildOutbuilding5VLampSocketsAndCords(s: OutbuildingShellContext): void
 function bindExistingOutbuildingLightsToKnxCircuits(s: OutbuildingShellContext): void {
   const { ctx, groundGroup, groundCeilingGroup, firstFloorGroup, roofGroup } = s;
 
-  const classifyOutbuildingObjectCircuit = (obj: THREE.Object3D): CircuitId | null => {
-    let curr: THREE.Object3D | null = obj;
-    while (curr) {
-      const n = curr.name || '';
-      if (n.startsWith('outbuildings.stable.office.')) {
-        if (n.includes('spotlight')) return 'stableOfficeSpotlights';
-        if (n.includes('wallLight') || n.includes('floorLamp')) return 'stableOfficeWallsAndLamps5A';
-      }
-      if (n.startsWith('outbuildings.stable.groundCloakroom.')) {
-        return 'stableOfficeWallsAndLamps5A';
-      }
-      if (
-        n.startsWith('outbuildings.gym.ceilingSpotlight') ||
-        n.startsWith('outbuildings.trusses.gym.')
-      ) {
-        return 'gymSpotsAndBattens';
-      }
-      if (n.startsWith('outbuildings.gym.')) {
-        return 'gymWallAndCoveLights';
-      }
-      if (
-        n.startsWith('outbuildings.trusses.garage.') ||
-        n.startsWith('outbuildings.trusses.store.')
-      ) {
-        return 'garageHighBayLights';
-      }
-      if (n.startsWith('outbuildings.garage.')) {
-        return 'garageBenchAndShower';
-      }
-      if (
-        n.startsWith('outbuildings.trusses.barn.') ||
-        n.startsWith('outbuildings.barn.golfSimulator.') ||
-        n.startsWith('outbuildings.barn.mezzanineUndersideSpot')
-      ) {
-        return 'barnTrussAndSimHalo';
-      }
-      if (
-        n.startsWith('outbuildings.barn.cornerBar.') ||
-        n.startsWith('outbuildings.barn.golfViewingBar.') ||
-        n.startsWith('outbuildings.barn.poolTable.') ||
-        n.startsWith('outbuildings.barn.pictureLight')
-      ) {
-        return 'barnBarsAndLamps5A';
-      }
-      if (
-        n.startsWith('outbuildings.mezzanine.tableLamp') ||
-        n.startsWith('outbuildings.mezzanine.floorTaskLamp') ||
-        n.startsWith('outbuildings.mezzanine.sideboardTaskLamp') ||
-        n.startsWith('outbuildings.mezzanine.lavaLamp')
-      ) {
-        return 'mezzanineLamps5A';
-      }
-      if (n.startsWith('outbuildings.mezzanine.')) {
-        return 'mezzanineSconcesAndAmbient';
-      }
-      if (
-        n.startsWith('outbuildings.firstFloor.stableBedroom.bedsideLamp') ||
-        n.startsWith('outbuildings.firstFloor.stableBedroom.dressingTable.lamp')
-      ) {
-        return 'stableSuiteLamps5A';
-      }
-      if (
-        n.startsWith('outbuildings.firstFloor.stable') ||
-        n.startsWith('outbuildings.trusses.stable.')
-      ) {
-        return 'stableSuiteDownlights';
-      }
-      curr = curr.parent;
-    }
-    return null;
-  };
-
-  const seenLights = new Set<THREE.Light>();
-  const seenMaterials = new Set<THREE.MeshStandardMaterial>();
-  for (const cid of Object.keys(ctx.lightGroups) as CircuitId[]) {
-    const grp = ctx.lightGroups[cid];
-    for (const l of grp.lights) seenLights.add(l);
-    for (const m of grp.emissives) seenMaterials.add(m);
-  }
+  bindOutbuildingLightsToKnxCircuits(ctx, [groundGroup, groundCeilingGroup, firstFloorGroup, roofGroup]);
 
   const interactiveLampRoots: ReadonlyArray<{
     readonly prefix: string;
@@ -1400,28 +1405,7 @@ function bindExistingOutbuildingLightsToKnxCircuits(s: OutbuildingShellContext):
 
   for (const rootGroup of [groundGroup, groundCeilingGroup, firstFloorGroup, roofGroup]) {
     rootGroup.traverse((obj) => {
-      const cid = classifyOutbuildingObjectCircuit(obj);
-      if (!cid) return;
-      const lg = ctx.lightGroups[cid];
-      if (!lg) return;
-
-      if (obj instanceof THREE.PointLight && !seenLights.has(obj)) {
-        seenLights.add(obj);
-        lg.lights.push(obj);
-      } else if (obj instanceof THREE.Mesh) {
-        const mat = obj.material;
-        if (
-          mat instanceof THREE.MeshStandardMaterial &&
-          mat.emissiveIntensity > 0.35 &&
-          !mat.emissiveMap &&
-          !obj.name.includes('statusLed') &&
-          !obj.name.includes('knxCoolingLed') &&
-          !seenMaterials.has(mat)
-        ) {
-          seenMaterials.add(mat);
-          lg.emissives.push(mat);
-        }
-
+      if (obj instanceof THREE.Mesh) {
         for (const lampSpec of interactiveLampRoots) {
           if (obj.name.startsWith(lampSpec.prefix)) {
             setInteractiveTreeUserData(obj, {
@@ -1449,6 +1433,7 @@ export function buildOutbuildingMepAndKnx(s: OutbuildingShellContext): void {
 
   // 1. Empty Office Space Spotlights + Wall Sconces + 5V Floor Lamp & Barn Bar 5V Lamp
   buildEmptyOfficeAndBarnCounterLighting(s);
+  buildGuestSuiteVaultSpots(s);
 
   // 2. 25 Single-Gang Corston Toggle Switches across all 6 Outbuilding Zones
   buildOutbuildingCorstonZoneSwitches(s);

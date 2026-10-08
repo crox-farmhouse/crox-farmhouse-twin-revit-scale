@@ -76,7 +76,7 @@ export function buildCentralHallFurnitureAndDecor(
       roughness: 0.14,
     });
     lampBulbMat.userData.baseEmissiveIntensity = 2.8;
-    lightGroups.hallPendant.emissives.push(lampShadeMat, lampBulbMat);
+    lightGroups.hallLamps5A.emissives.push(lampShadeMat, lampBulbMat);
 
     // 1. Stepped circular weighted aged-brass plinth base (r = 0.165m)
     const basePlinth = new THREE.Mesh(
@@ -257,10 +257,10 @@ export function buildCentralHallFurnitureAndDecor(
     floorLampGroup.add(topFinial);
 
     scene.add(floorLampGroup);
-    interactions.registerLightFixture(floorLampGroup, 'hallPendant');
+    interactions.registerLightFixture(floorLampGroup, 'hallLamps5A');
 
     // Emissive linen shade + bulb + floor glow pool (the Hall's consolidated PointLight is on `hall.southWallLight`)
-    ctx.addGlowPool('hallPendant', -13.619, lowerFloorY + 0.006, -2.044, 1.25, 0.26);
+    ctx.addGlowPool('hallLamps5A', -13.619, lowerFloorY + 0.006, -2.044, 1.25, 0.26);
   }
 
   // Issue #5: Framed Landscape Artwork on the Hall / Front Room Cross-Wall (`[-17.586, 1.301, 1.158]`)

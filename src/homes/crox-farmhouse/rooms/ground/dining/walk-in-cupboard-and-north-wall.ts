@@ -669,7 +669,7 @@ export function buildWalkInCupboardAndNorthWall(
       emissiveIntensity: 2.8,
       roughness: 0.16,
     });
-    lightGroups.familyRoomSpots.emissives.push(coatLedMat);
+    lightGroups.walkInCupboardLeds.emissives.push(coatLedMat);
 
     // Anodized brass extruded aluminium LED profile channel under the front of the upper hat shelf (X = -9.32m, Y = 1.80m)
     const ledChannelHousing = new THREE.Mesh(
@@ -697,7 +697,7 @@ export function buildWalkInCupboardAndNorthWall(
     wallWashLed.position.set(-9.512, 1.663, benchCenterZ);
     cupboardBenchGroup.add(wallWashLed);
 
-    ctx.addGlowPool('familyRoomSpots', -8.92, 0.008, benchCenterZ, 1.25, 0.28);
+    ctx.addGlowPool('walkInCupboardLeds', -8.92, 0.008, benchCenterZ, 1.25, 0.28);
   }
 
   // 4 woven storage baskets on the extended upper built-in hat shelf

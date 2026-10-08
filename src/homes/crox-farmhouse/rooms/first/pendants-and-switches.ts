@@ -125,7 +125,7 @@ export function buildFirstFloorPendantsAndSwitches(
       emissiveIntensity: 2.8,
       roughness: 0.15,
     });
-    lightGroups.upperLandingPendant.emissives.push(landingSconceShadeMat, landingSconceBulbMat);
+    lightGroups.upperLandingSconces.emissives.push(landingSconceShadeMat, landingSconceBulbMat);
 
     const buildUpperLandingWallSconce = (cfg: {
       readonly name: string;
@@ -247,7 +247,7 @@ export function buildFirstFloorPendantsAndSwitches(
       }
 
       ewScene.add(sconceGroup);
-      interactions.registerLightFixture(sconceGroup, 'upperLandingPendant');
+      interactions.registerLightFixture(sconceGroup, 'upperLandingSconces');
     };
 
     buildUpperLandingWallSconce({

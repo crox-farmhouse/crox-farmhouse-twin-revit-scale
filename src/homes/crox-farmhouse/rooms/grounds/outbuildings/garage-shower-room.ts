@@ -1412,6 +1412,7 @@ export function buildGarageShowerRoom(
 
   // Warm 3000K PointLight inside the Shower Room
   const showerRoomLight = new THREE.PointLight(0xfff1dc, 2.2, 5.2, 1.5);
+  showerRoomLight.name = 'outbuildings.garage.showerRoom.light';
   showerRoomLight.position.set(7.45, eaveTopY - 0.22, 4.7);
   roomGroup.add(showerRoomLight);
 }

@@ -697,6 +697,21 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
     buildLionHeadTrophyUrn,
     buildOldGrindstone,
   });
+
+  // Pergola festoon bulbs are their own KNX circuit (emissive-only — the courtyard festoon
+  // PointLight already lights the terrace).
+  const festoons = ctx.lightGroups.pergolaFestoons;
+  scene.getObjectByName('courtyard.grapeVinePergola')?.traverse((obj) => {
+    if (
+      obj instanceof THREE.Mesh &&
+      obj.name === 'courtyard.grapeVinePergola.bulb' &&
+      obj.material instanceof THREE.MeshStandardMaterial &&
+      !festoons.emissives.includes(obj.material)
+    ) {
+      obj.material.userData = { ...obj.material.userData, baseEmissiveIntensity: 1.6 };
+      festoons.emissives.push(obj.material);
+    }
+  });
 }
 
 let lionUrnInstanceCounter = 0;

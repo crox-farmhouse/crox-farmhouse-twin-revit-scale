@@ -678,7 +678,7 @@ export function buildSittingRoomFireplace(
       emissiveIntensity: 2.4,
       roughness: 0.2,
     });
-    lightGroups.livingRoomPendant.emissives.push(alcoveLedStripMat);
+    lightGroups.sittingRoomShelfLeds.emissives.push(alcoveLedStripMat);
 
     const alcoveLedChannelMat = new THREE.MeshStandardMaterial({
       color: 0xd0cbc0,
@@ -966,7 +966,7 @@ export function buildSittingRoomFireplace(
         roughness: 0.65,
         side: THREE.DoubleSide,
       });
-      lightGroups.livingRoomPendant.emissives.push(lampShadeMat);
+      lightGroups.sittingRoomLamps5A.emissives.push(lampShadeMat);
 
       // Aged brass foot plinth
       const lampPlinth = tagHighLod(
@@ -1010,16 +1010,18 @@ export function buildSittingRoomFireplace(
       lampShade.castShadow = true;
       lampGroup.add(lampShade);
 
-      // Warm internal LED bulb glow
+      // Warm internal LED bulb glow (own material: the lamp is on the 5A circuit, not the shelf LEDs)
+      const lampBulbMat = alcoveLedStripMat.clone();
+      lightGroups.sittingRoomLamps5A.emissives.push(lampBulbMat);
       const lampBulb = tagHighLod(
-        new THREE.Mesh(createSharedGeo(new THREE.SphereGeometry(0.024, 12, 12)), alcoveLedStripMat)
+        new THREE.Mesh(createSharedGeo(new THREE.SphereGeometry(0.024, 12, 12)), lampBulbMat)
       );
       lampBulb.name = 'sittingRoom.leftAlcoveLamp.bulb';
       lampBulb.position.set(0, 0.26, 0);
       lampGroup.add(lampBulb);
 
       alcoveGroup.add(lampGroup);
-      interactions.registerLightFixture(lampGroup, 'livingRoomPendant');
+      interactions.registerLightFixture(lampGroup, 'sittingRoomLamps5A');
 
       // 2. Wide Champagne-Taupe Ceramic 3-Wick Candle Bowl on the Sitting Room Brick Fireplace Hearth
       const hearthSurfaceY = tier2FloorY + 0.0785;

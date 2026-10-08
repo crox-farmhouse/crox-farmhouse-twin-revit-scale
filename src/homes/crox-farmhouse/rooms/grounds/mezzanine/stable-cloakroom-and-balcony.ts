@@ -897,6 +897,7 @@ export function buildStableGroundCloakroom(
   basinGroup.add(mirrorGlass);
 
   const cloakLight = new THREE.PointLight(0xffd488, 1.4, 3.6, 1.6);
+  cloakLight.name = 'outbuildings.stable.groundCloakroom.light';
   cloakLight.position.set(24.0, stableGroundFloorY + 2.15, 4.68);
   cloakGroup.add(cloakLight);
 
