@@ -1,5 +1,4 @@
 import type { JSX } from 'preact';
-import { useState } from 'preact/hooks';
 import {
   currentRoomId,
   deviceRevision,
@@ -9,11 +8,11 @@ import {
   timeOfDay,
   tradeView,
 } from '../../state/shell-store.ts';
-import type { CircuitLevels } from '../../core/types/knx.ts';
 import type { TimeOfDay } from '../../core/types/scene.ts';
-import type { RoomLightControl, RoomManifestEntry, TradeView } from '../../core/types/twin-ux.ts';
+import type { RoomManifestEntry, TradeView } from '../../core/types/twin-ux.ts';
 import { TRADE_VIEW_LABELS } from '../../core/types/twin-ux.ts';
 import { Icon, type IconName } from './icons.tsx';
+import { LightingSection, LightRow, levelOf } from './LightingSection.tsx';
 import { NotesSection } from './NotesSection.tsx';
 import { useShell } from './shell-context.ts';
 
@@ -34,63 +33,6 @@ const TRADE_SECTIONS: Readonly<Record<TradeView, TradeSections>> = {
   plumber: { lights: false, scenes: false, heating: true, devices: false, wholeHouseLights: false },
 };
 
-function levelOf(levels: Readonly<CircuitLevels> | null, circuitId: string): number {
-  if (!levels) return 0;
-  const v: unknown = Reflect.get(levels, circuitId);
-  return typeof v === 'number' ? v : 0;
-}
-
-interface LightRowProps {
-  readonly light: RoomLightControl;
-  readonly level: number;
-}
-
-function LightRow({ light, level }: LightRowProps): JSX.Element {
-  const ctl = useShell();
-  const [dragValue, setDragValue] = useState<number | null>(null);
-  const shown = Math.round(dragValue ?? level);
-  const on = shown > 0;
-  return (
-    <li class={`shell-light${on ? ' is-on' : ''}`}>
-      <button
-        type="button"
-        class={`shell-switch${on ? ' is-on' : ''}`}
-        role="switch"
-        aria-checked={on}
-        aria-label={`${light.label}: ${on ? 'on' : 'off'}`}
-        onClick={() => ctl.toggleLight(light.circuitId)}
-      >
-        <span class="shell-switch-knob" />
-      </button>
-      <div class="shell-light-body">
-        <div class="shell-light-label">
-          <span>{light.label}</span>
-          {light.dimmable && <span class="shell-light-pct">{shown}%</span>}
-        </div>
-        {light.dimmable && (
-          <input
-            class="shell-range"
-            type="range"
-            min={0}
-            max={100}
-            step={1}
-            value={shown}
-            aria-label={`${light.label} brightness`}
-            style={{ '--fill': `${shown}%` }}
-            onInput={(e) => {
-              const v = Number(e.currentTarget.value);
-              setDragValue(v);
-              ctl.setLightLevel(light.circuitId, v);
-            }}
-            onChange={() => setDragValue(null)}
-            onPointerUp={() => setDragValue(null)}
-          />
-        )}
-      </div>
-    </li>
-  );
-}
-
 function RoomSections({ entry, sections }: { readonly entry: RoomManifestEntry; readonly sections: TradeSections }): JSX.Element {
   const ctl = useShell();
   const levels = liveLevels.value;
@@ -100,10 +42,13 @@ function RoomSections({ entry, sections }: { readonly entry: RoomManifestEntry; 
   const levelScenes = entry.scenes.length === 0 ? ctl.roomLevelScenes(entry.zoneId) : [];
   const ufhZone = ctl.ufhZoneForRoom(entry.zoneId);
   const anyOn = entry.lights.some((l) => levelOf(levels, l.circuitId) > 0.5);
+  const zone = ctl.api.lighting.zones.get(entry.zoneId);
 
   return (
     <>
-      {sections.lights && entry.lights.length > 0 && (
+      {sections.lights && zone && <LightingSection zone={zone} levels={levels} showScenes={sections.scenes} />}
+
+      {sections.lights && !zone && entry.lights.length > 0 && (
         <section class="shell-card">
           <div class="shell-card-head">
             <span class="shell-card-title">
@@ -128,7 +73,7 @@ function RoomSections({ entry, sections }: { readonly entry: RoomManifestEntry; 
         </section>
       )}
 
-      {sections.scenes && (entry.scenes.length > 0 || levelScenes.length > 0) && (
+      {sections.scenes && !zone && (entry.scenes.length > 0 || levelScenes.length > 0) && (
         <section class="shell-card">
           <div class="shell-card-head">
             <span class="shell-card-title">

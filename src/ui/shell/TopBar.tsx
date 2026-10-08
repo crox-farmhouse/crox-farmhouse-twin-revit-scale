@@ -99,6 +99,17 @@ export function TopBar(): JSX.Element {
             </button>
           ))}
         </div>
+        {view === 'walk' && (
+          <button
+            type="button"
+            class="shell-btn shell-walk-exit"
+            title="Leave the walkthrough (Esc)"
+            onClick={() => ctl.setViewMode('3d')}
+          >
+            <Icon name="close" size={15} />
+            <span class="shell-btn-label">Exit walk</span>
+          </button>
+        )}
       </div>
 
       <div class="shell-topbar-right">

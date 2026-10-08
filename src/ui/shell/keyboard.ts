@@ -4,6 +4,7 @@ import {
   helpOpen,
   openHelp,
   settingsOpen,
+  showWalkHints,
 } from '../../state/shell-store.ts';
 import type { ShellController } from './shell-controller.ts';
 
@@ -35,6 +36,11 @@ export function bindShellKeyboard(ctl: ShellController): void {
         e.preventDefault();
         return;
       }
+      if (walking && !ctl.api.walkthrough.getState().pointerLocked) {
+        e.preventDefault();
+        ctl.setViewMode('3d');
+        return;
+      }
       if (activeTool.value !== 'orbit') {
         ctl.setTool('orbit');
       }
@@ -43,6 +49,10 @@ export function bindShellKeyboard(ctl: ShellController): void {
 
     if (e.key === '?') {
       e.preventDefault();
+      if (walking && !helpOpen.value) {
+        showWalkHints();
+        return;
+      }
       if (helpOpen.value) closeTopOverlay();
       else openHelp(0);
       return;
