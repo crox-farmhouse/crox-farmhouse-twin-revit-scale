@@ -1,0 +1,85 @@
+Individual address,Name,Role,Building,Floor,Zone,Description
+1.1.1,ETS6 / KNXnet/IP Tunneling Interface,ipGateway,mainHouse,ground,kitchen,KNXnet/IP Tunneling & Routing Interface bridging Digital Twin <-> TP1 Bus
+1.1.2,Gemini AI Voice & Natural-Language KNX Bridge,aiBridge,mainHouse,ground,kitchen,AI Assistant KNX Endpoint for multi-room scene recall & natural-language dimming
+1.1.10,Corston 2-gang toggle — Kitchen entrance 2-gang,wallSwitch,mainHouse,ground,kitchen,"Kitchen — hall door (west); gangs: 1=Kitchen, 2=Sitting area"
+1.1.11,Corston 1-gang toggle — Utility door (kitchen side),wallSwitch,mainHouse,ground,kitchen,Utility doorway — kitchen side; gangs: 1=Utility
+1.1.12,Kitchen PIR & lux,pirLuxSensor,mainHouse,ground,kitchen,"Ceiling presence detector, presence GA 1/4/1, hold 60s"
+1.1.13,Utility PIR,pirLuxSensor,mainHouse,ground,utility,"Ceiling presence detector, presence GA 1/4/3, hold 60s"
+1.1.14,Corston 2-gang toggle — Bifold pier 2-gang,wallSwitch,mainHouse,ground,kitchen,"Kitchen — south bifold pier; gangs: 1=Kitchen, 2=Courtyard"
+1.1.15,Corston 1-gang toggle — Dining room entrance,wallSwitch,mainHouse,ground,familyRoom,Dining room — doorway; gangs: 1=Dining room
+1.1.16,Corston 1-gang toggle — Boot lobby,wallSwitch,mainHouse,ground,bootLobby,Boot lobby — inside back door; gangs: 1=Boot lobby
+1.1.17,Corston 2-gang toggle — Stair foot 2-gang,wallSwitch,mainHouse,ground,hall,"Staircase hall — east wall by boot-lobby door (stair foot); gangs: 1=Hall, 2=Landing"
+1.1.18,Corston 1-gang toggle — Living room,wallSwitch,mainHouse,ground,livingRoom,Living room — east wall by hallway door; gangs: 1=Living room
+1.1.19,Corston 1-gang toggle — Entrance hall,wallSwitch,mainHouse,ground,entranceHall,Front entrance hall — south wall by front door; gangs: 1=Entrance hall
+1.1.20,16-Channel Ground Floor KNX Universal Dimming Actuator,dimmingActuator,mainHouse,ground,kitchen,DIN-rail 16-channel phase/24V-PWM dimming actuator for Ground Floor & Courtyard circuits (Ch 1..16)
+1.1.21,Corston 1-gang toggle — Sitting room,wallSwitch,mainHouse,ground,sittingRoom,Sitting room — north wall by hallway door; gangs: 1=Sitting room
+1.1.22,KNX Motorized Front Car Gate Controller (24V Dual-Leaf Rams),gateController,courtyardGrounds,exterior,courtyard,Synchronized 10s dual-leaf swing gate actuator for Front Car Entrance (GA 1/5/1 & 1/5/2)
+1.1.23,Corston 1-gang toggle — Plant room,wallSwitch,mainHouse,ground,study,Plant Room — partition wall; gangs: 1=Plant room
+1.1.24,Plant room PIR (wall),pirLuxSensor,mainHouse,ground,study,"Ceiling presence detector, presence GA 1/4/30, hold 60s"
+1.1.25,Wine cellar PIR,pirLuxSensor,mainHouse,ground,bootLobby,"Ceiling presence detector, presence GA 1/4/5, hold 30s"
+1.1.26,Cloakroom WC PIR,pirLuxSensor,mainHouse,ground,bootLobby,"Ceiling presence detector, presence GA 1/4/6, hold 30s"
+1.1.28,24-Channel Ground Floor KNX Universal Dimming Actuator (Layer Circuits),dimmingActuator,mainHouse,ground,hall,"Shelf / step / beam LED drivers, 5A lamp-socket relays and the pergola festoons"
+1.1.30,Corston 1-gang toggle — Kitchen AGA wall,wallSwitch,mainHouse,ground,kitchen,Kitchen — left of AGA (north wall); gangs: 1=Kitchen
+1.1.31,Corston 1-gang toggle — Sitting area east wall,wallSwitch,mainHouse,ground,sitting,Sitting area — east wall; gangs: 1=Sitting area
+1.1.32,Corston 1-gang toggle — Utility door (utility side),wallSwitch,mainHouse,ground,utility,Utility doorway — utility side; gangs: 1=Utility
+1.1.33,Corston 1-gang toggle — Dining room second entrance,wallSwitch,mainHouse,ground,familyRoom,Dining room — second doorway; gangs: 1=Dining room
+1.1.61,Sitting area PIR,pirLuxSensor,mainHouse,ground,sitting,"Ceiling presence detector, presence GA 1/4/22, hold 60s"
+1.1.62,Dining room PIR,pirLuxSensor,mainHouse,ground,familyRoom,"Ceiling presence detector, presence GA 1/4/24, hold 60s"
+1.1.63,Boot lobby PIR,pirLuxSensor,mainHouse,ground,bootLobby,"Ceiling presence detector, presence GA 1/4/25, hold 60s"
+1.1.64,Staircase hall PIR,pirLuxSensor,mainHouse,ground,hall,"Ceiling presence detector, presence GA 1/4/26, hold 60s"
+1.1.65,Living room PIR,pirLuxSensor,mainHouse,ground,livingRoom,"Ceiling presence detector, presence GA 1/4/27, hold 60s"
+1.1.66,Entrance hall PIR,pirLuxSensor,mainHouse,ground,entranceHall,"Ceiling presence detector, presence GA 1/4/28, hold 60s"
+1.1.67,Sitting room PIR,pirLuxSensor,mainHouse,ground,sittingRoom,"Ceiling presence detector, presence GA 1/4/29, hold 60s"
+1.1.68,Courtyard external PIR,pirLuxSensor,courtyardGrounds,exterior,courtyard,"Ceiling presence detector, presence GA 5/4/21, hold 60s"
+1.2.10,Corston 1-gang toggle — Main bedroom,wallSwitch,mainHouse,first,mainBedroom,Main bedroom — doorway; gangs: 1=Main bedroom
+1.2.11,Corston 1-gang toggle — Family bathroom,wallSwitch,mainHouse,first,familyBathroom,Family bathroom — doorway; gangs: 1=Bathroom
+1.2.12,Corston 2-gang toggle — Stair head 2-gang,wallSwitch,mainHouse,first,upperLanding,"Landing — top of stairs; gangs: 1=Landing, 2=Hall"
+1.2.13,Corston 1-gang toggle — Bedroom 2,wallSwitch,mainHouse,first,bedroom2,Bedroom 2 — doorway; gangs: 1=Bedroom 2
+1.2.14,Corston 1-gang toggle — Bedroom 3,wallSwitch,mainHouse,first,bedroom3,Bedroom 3 — doorway; gangs: 1=Bedroom 3
+1.2.15,Corston 1-gang toggle — Bedroom 4,wallSwitch,mainHouse,first,bedroom4,Bedroom 4 — doorway; gangs: 1=Bedroom 4
+1.2.20,6-Channel First Floor KNX Universal Dimming Actuator,dimmingActuator,mainHouse,first,upperLanding,"DIN-rail 6-channel phase dimming actuator on TP1 Line 1.2 for First Floor bedrooms, bathroom & landing (Ch 17..22)"
+1.2.60,Main bedroom PIR,pirLuxSensor,mainHouse,first,mainBedroom,"Ceiling presence detector, presence GA 2/4/21, hold 60s"
+1.2.61,Family bathroom PIR,pirLuxSensor,mainHouse,first,familyBathroom,"Ceiling presence detector, presence GA 2/4/22, hold 60s"
+1.2.62,Landing PIR,pirLuxSensor,mainHouse,first,upperLanding,"Ceiling presence detector, presence GA 2/4/23, hold 60s"
+1.2.63,Bedroom 2 PIR,pirLuxSensor,mainHouse,first,bedroom2,"Ceiling presence detector, presence GA 2/4/24, hold 60s"
+1.2.64,Bedroom 3 PIR,pirLuxSensor,mainHouse,first,bedroom3,"Ceiling presence detector, presence GA 2/4/25, hold 60s"
+1.2.65,Bedroom 4 PIR,pirLuxSensor,mainHouse,first,bedroom4,"Ceiling presence detector, presence GA 2/4/26, hold 60s"
+2.1.1,Outbuilding Sub-Board KNX TP1 Line Coupler & PSU (640mA),ipGateway,annex,ground,outbuildingGarage,Outbuilding Sub-DB (Garage East Wall) coupling Main House Line 1.1 to Outbuilding Line 2.1
+2.1.20,12-Ch Outbuilding Universal Dimming & 5V/5A Lamp Socket Actuator,dimmingActuator,annex,ground,outbuildingGarage,"DIN-rail trailing-edge dimmer & switched 5A/5V lamp socket actuator in Garage Sub-DB (GA 3/1/1..12, 3/2/1..12, 3/3/1..12)"
+2.1.21,24-Channel Outbuilding KNX Universal Dimming Actuator (Layer Circuits),dimmingActuator,annex,ground,outbuildingBarn,"Truss spots, coves, sconces, picture lights, stair LEDs, ensuite / balcony and stable external lights"
+2.1.30,Zennio KLIC-DD / Intesis Air-to-Air VRF AC KNX Gateway (4 Indoor Units),aiBridge,annex,ground,outbuildingBarn,Bidirectional KNX <-> Daikin/Mitsubishi Multi-Split Inverter AC interface with automatic UFH heating/cooling deadband interlock
+2.1.40,Corston 1-gang toggle — Gym courtyard entry (west),wallSwitch,annex,ground,outbuildingGym,Gym — courtyard screen west pier; gangs: 1=Gym
+2.1.41,Corston 1-gang toggle — Gym courtyard entry (east),wallSwitch,annex,ground,outbuildingGym,Gym — courtyard screen east pier; gangs: 1=Gym
+2.1.42,Corston 2-gang toggle — Gym to garage doors,wallSwitch,annex,ground,outbuildingGym,"Gym — east partition by garage glass doors; gangs: 1=Gym, 2=Garage"
+2.1.43,Corston 1-gang toggle — Gym shower door,wallSwitch,annex,ground,outbuildingGym,Gym — by shower-room door; gangs: 1=Gym
+2.1.44,Corston 1-gang toggle — Garage west bay,wallSwitch,annex,ground,outbuildingGarage,Garage — west bay pier; gangs: 1=Garage
+2.1.45,Corston 1-gang toggle — Garage central pier,wallSwitch,annex,ground,outbuildingGarage,Garage — central pier between doors; gangs: 1=Garage
+2.1.46,Corston 1-gang toggle — Garage east bay,wallSwitch,annex,ground,outbuildingGarage,Garage — east bay pier; gangs: 1=Garage
+2.1.47,Corston 2-gang toggle — Garage to gym doors,wallSwitch,annex,ground,outbuildingGarage,"Garage — west wall by gym glass doors; gangs: 1=Garage, 2=Gym"
+2.1.48,Corston 1-gang toggle — Shower room entry,wallSwitch,annex,ground,outbuildingGarage,Garage shower room — entry pier; gangs: 1=Garage
+2.1.49,Corston 1-gang toggle — Store courtyard door,wallSwitch,annex,ground,outbuildingStore,Store — courtyard door latch jamb; gangs: 1=Store
+2.1.50,Corston 2-gang toggle — Store to barn portal 2-gang,wallSwitch,annex,ground,outbuildingStore,"Store corridor — east end by barn portal; gangs: 1=Store, 2=Barn"
+2.1.51,Corston 2-gang toggle — Barn west entry 2-gang,wallSwitch,annex,ground,outbuildingBarn,"Barn — west portal from store corridor; gangs: 1=Barn, 2=Mezzanine"
+2.1.52,Corston 2-gang toggle — Barn courtyard door 2-gang,wallSwitch,annex,ground,outbuildingBarn,"Barn — north courtyard door; gangs: 1=Barn, 2=Mezzanine"
+2.1.53,Corston 1-gang toggle — Golf sim console,wallSwitch,annex,ground,outbuildingBarn,Barn — golf sim & viewing bar steps; gangs: 1=Barn
+2.1.54,Corston 1-gang toggle — Sunken lounge steps,wallSwitch,annex,ground,outbuildingBarn,Barn — sunken pool lounge steps (north); gangs: 1=Barn
+2.1.55,Corston 2-gang toggle — Spiral stair foot 2-gang,wallSwitch,annex,ground,outbuildingBarn,"Barn — spiral stair base; gangs: 1=Barn, 2=Mezzanine"
+2.1.56,Corston 2-gang toggle — Barn to office door,wallSwitch,annex,ground,outbuildingBarn,"Barn — by glass door to office; gangs: 1=Barn, 2=Office"
+2.1.57,Corston 2-gang toggle — Mezzanine stair head 2-gang,wallSwitch,annex,first,outbuildingMezzanine,"Mezzanine — stair landing & suite steps; gangs: 1=Mezzanine, 2=Barn"
+2.1.58,Corston 2-gang toggle — Mezzanine sofa wall 2-gang,wallSwitch,annex,first,outbuildingMezzanine,"Mezzanine — south wall by sofa; gangs: 1=Mezzanine, 2=Barn"
+2.1.59,Corston 2-gang toggle — Office west door,wallSwitch,annex,ground,outbuildingStableOffice,"Office — west door from barn; gangs: 1=Office, 2=Barn"
+2.1.60,Corston 1-gang toggle — Office courtyard door,wallSwitch,annex,ground,outbuildingStableOffice,Office — north courtyard door; gangs: 1=Office
+2.1.61,Corston 1-gang toggle — Office cloakroom door,wallSwitch,annex,ground,outbuildingStableOffice,Office — by cloakroom WC door; gangs: 1=Office
+2.1.62,Corston 2-gang toggle — Office patio doors 2-gang,wallSwitch,annex,ground,outbuildingStableOffice,"Office — east patio doors; gangs: 1=Office, 2=Garden"
+2.1.63,Corston 1-gang toggle — Guest suite entry,wallSwitch,annex,first,outbuildingStableSuite,Guest suite — entry portal from mezzanine; gangs: 1=Guest suite
+2.1.64,Corston 1-gang toggle — Ensuite door,wallSwitch,annex,first,outbuildingStableSuite,Guest suite — ensuite door; gangs: 1=Guest suite
+2.1.65,Corston 1-gang toggle — Bedside west,wallSwitch,annex,first,outbuildingStableSuite,Guest suite — bedside (west); gangs: 1=Guest suite
+2.1.66,Corston 1-gang toggle — Bedside east,wallSwitch,annex,first,outbuildingStableSuite,Guest suite — bedside (east); gangs: 1=Guest suite
+2.1.67,Corston 1-gang toggle — Balcony doors,wallSwitch,annex,first,outbuildingStableSuite,Guest suite — balcony doors; gangs: 1=Guest suite
+2.1.80,Gym PIR,pirLuxSensor,annex,ground,outbuildingGym,"Ceiling presence detector, presence GA 3/4/21, hold 60s"
+2.1.81,Garage PIR,pirLuxSensor,annex,ground,outbuildingGarage,"Ceiling presence detector, presence GA 3/4/22, hold 60s"
+2.1.82,Store PIR,pirLuxSensor,annex,ground,outbuildingStore,"Ceiling presence detector, presence GA 3/4/23, hold 60s"
+2.1.83,Barn PIR (golf & bar),pirLuxSensor,annex,ground,outbuildingBarn,"Ceiling presence detector, presence GA 3/4/24, hold 60s"
+2.1.84,Mezzanine PIR,pirLuxSensor,annex,first,outbuildingMezzanine,"Ceiling presence detector, presence GA 3/4/25, hold 60s"
+2.1.85,Office PIR,pirLuxSensor,annex,ground,outbuildingStableOffice,"Ceiling presence detector, presence GA 3/4/26, hold 60s"
+2.1.86,Guest suite PIR,pirLuxSensor,annex,first,outbuildingStableSuite,"Ceiling presence detector, presence GA 3/4/27, hold 60s"
