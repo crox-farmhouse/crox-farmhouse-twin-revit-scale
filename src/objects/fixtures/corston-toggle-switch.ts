@@ -1,0 +1,267 @@
+import * as THREE from 'three';
+import type { CircuitId } from '../../core/types/knx.ts';
+import type { CutawayWallDescriptor, InteractiveUserData } from '../../core/types/scene.ts';
+import type { RoomZoneId } from '../../core/types/topology.ts';
+
+/**
+ * Generic N-gang Corston Architectural antique-brass dolly toggle plate on a KNX push-button
+ * coupler. Each gang is its own clickable target (upper half = "up", lower half = "down") carrying
+ * the push-button's physical address, gang number and the lighting zone it drives, plus a small
+ * amber status LED (zone-on feedback). Home-agnostic: placement and bindings come from the caller.
+ */
+
+export type WallFacing = 'north' | 'south' | 'east' | 'west';
+
+export interface CorstonToggleGangSpec {
+  /** 1-based gang index on the plate, left to right. */
+  readonly gang: number;
+  /** Lighting zone whose scene / night / full objects this gang sends to. */
+  readonly zoneId: RoomZoneId;
+  readonly label: string;
+  /** First circuit of the zone (legacy circuit handlers + LED registration). */
+  readonly circuitId?: CircuitId;
+}
+
+/** The minimal builder context this fixture needs (satisfied by `SceneBuilderContext`). */
+export interface KnxFixtureBuildContext {
+  readonly scene: THREE.Object3D;
+  readonly interactiveMeshes: THREE.Object3D[];
+  registerSwitchLedMaterial?(circuitId: CircuitId, mat: THREE.MeshStandardMaterial): void;
+}
+
+export interface CorstonToggleSwitchOptions {
+  /** Scene-graph name of the plate group (meshes are `${name}.g<gang>.*`). */
+  readonly name: string;
+  readonly switchPa: string;
+  /** Human-readable mounting location ("Kitchen — east door, latch side"). */
+  readonly location: string;
+  readonly gangs: readonly CorstonToggleGangSpec[];
+  /** World (or parent-local) centre of the plate face on the wall. */
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  /** Explicit yaw; otherwise derived from `facing` (direction the plate faces into the room). */
+  readonly rotY?: number;
+  readonly facing?: WallFacing;
+  /** Room the plate is mounted in (tags the group for room LOD / tracking). */
+  readonly mountedInZoneId?: RoomZoneId;
+  readonly parentGroup?: THREE.Object3D;
+  readonly cutawayWall?: CutawayWallDescriptor;
+  /** Reuse an existing LED material for a gang (legacy indicator wiring); default: new per gang. */
+  readonly ledMaterialForGang?: (gang: number) => THREE.MeshStandardMaterial | undefined;
+  /** Extra flags merged into a gang's clickable meshes (legacy handler flags). */
+  readonly extraUserDataForGang?: (gang: number) => InteractiveUserData | undefined;
+  /** Status LED intensity at build time (default off). */
+  readonly ledInitiallyOn?: boolean;
+}
+
+export interface CorstonToggleSwitchHandle {
+  readonly group: THREE.Group;
+  readonly gangCount: number;
+  /** Per-gang LED material (gang number → material). */
+  readonly ledMaterials: ReadonlyMap<number, THREE.MeshStandardMaterial>;
+  /** Lights / darkens a gang's status LED (e.g. zone mode !== 'off'). */
+  setGangLed(gang: number, on: boolean): void;
+  /** Tilts a gang's dolly to show the last operated direction. */
+  setGangDolly(gang: number, direction: 'up' | 'down'): void;
+}
+
+// --- Dimensions (metres) ------------------------------------------------------------------------
+
+const PLATE_HEIGHT = 0.088;
+const PLATE_DEPTH = 0.005;
+const SINGLE_PLATE_WIDTH = 0.088;
+const GANG_PITCH = 0.058;
+const DOLLY_TILT_RAD = 0.32;
+const LED_ON_INTENSITY = 3.0;
+const LED_OFF_INTENSITY = 0.05;
+
+export function corstonPlateWidth(gangCount: number): number {
+  return SINGLE_PLATE_WIDTH + Math.max(0, gangCount - 1) * GANG_PITCH;
+}
+
+export function facingToRotY(facing: WallFacing): number {
+  return facing === 'south' ? 0 : facing === 'north' ? Math.PI : facing === 'east' ? Math.PI / 2 : -Math.PI / 2;
+}
+
+// --- Shared resources ---------------------------------------------------------------------------
+
+function prepGeo<T extends THREE.BufferGeometry>(geo: T): T {
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+const plateGeoCache = new Map<number, THREE.BoxGeometry>();
+function plateGeo(gangCount: number): THREE.BoxGeometry {
+  let geo = plateGeoCache.get(gangCount);
+  if (!geo) {
+    geo = prepGeo(new THREE.BoxGeometry(corstonPlateWidth(gangCount), PLATE_HEIGHT, PLATE_DEPTH));
+    plateGeoCache.set(gangCount, geo);
+  }
+  return geo;
+}
+
+const singleHalfGeo = prepGeo(new THREE.BoxGeometry(0.078, 0.039, 0.004));
+const multiHalfGeo = prepGeo(new THREE.BoxGeometry(GANG_PITCH - 0.004, 0.039, 0.004));
+const collarGeo = prepGeo(new THREE.CylinderGeometry(0.0115, 0.013, 0.007, 16));
+const pivotGeo = prepGeo(new THREE.SphereGeometry(0.0075, 10, 10));
+const leverGeo = prepGeo(new THREE.CylinderGeometry(0.0028, 0.0048, 0.026, 12));
+const tipGeo = prepGeo(new THREE.SphereGeometry(0.0034, 10, 10));
+const ledGeo = prepGeo(new THREE.CylinderGeometry(0.0024, 0.0024, 0.002, 10));
+const screwGeo = prepGeo(new THREE.CylinderGeometry(0.0022, 0.0022, 0.0012, 10));
+
+/** Corston Architectural Detail antique brass (matches corston-power-sockets.ts). */
+const brassMat = new THREE.MeshStandardMaterial({ color: 0xb89146, roughness: 0.27, metalness: 0.85 });
+const bronzeMat = new THREE.MeshStandardMaterial({ color: 0x5c4422, roughness: 0.4, metalness: 0.8 });
+
+function createLedMaterial(on: boolean): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color: 0xffb84d,
+    emissive: new THREE.Color(0xff9d2e),
+    emissiveIntensity: on ? LED_ON_INTENSITY : LED_OFF_INTENSITY,
+  });
+}
+
+function tagHighLod(obj: THREE.Object3D, maxDistance = 14): void {
+  obj.userData.lodTier = 'high';
+  obj.userData.lodMaxDistance = maxDistance;
+}
+
+function makeInteractive(
+  mesh: THREE.Object3D,
+  data: InteractiveUserData,
+  interactiveMeshes: THREE.Object3D[],
+): void {
+  Object.assign(mesh.userData, data);
+  interactiveMeshes.push(mesh);
+}
+
+// --- Builder ------------------------------------------------------------------------------------
+
+export function buildCorstonToggleSwitch(
+  ctx: KnxFixtureBuildContext,
+  options: CorstonToggleSwitchOptions,
+): CorstonToggleSwitchHandle {
+  const { name, switchPa, location, x, y, z, parentGroup, cutawayWall, mountedInZoneId } = options;
+  const gangs = [...options.gangs].sort((a, b) => a.gang - b.gang);
+  const gangCount = Math.max(1, gangs.length);
+
+  const group = new THREE.Group();
+  group.name = name;
+  group.position.set(x, y, z);
+  group.rotation.y = options.rotY ?? facingToRotY(options.facing ?? 'south');
+  group.userData = {
+    ...(mountedInZoneId ? { zone: mountedInZoneId } : {}),
+    knxPushButtonPa: switchPa,
+    switchLocation: location,
+    ...(cutawayWall ? { isCutawayWall: true, cutawayWall } : {}),
+  };
+
+  const plate = new THREE.Mesh(plateGeo(gangCount), brassMat);
+  plate.name = `${name}.backplate`;
+  plate.position.set(0, 0, PLATE_DEPTH / 2);
+  group.add(plate);
+
+  // Two slotted fixing screws (top / bottom centre) like the Corston plates.
+  for (const sy of [0.036, -0.036]) {
+    const screw = new THREE.Mesh(screwGeo, bronzeMat);
+    screw.name = `${name}.screw`;
+    screw.rotation.x = Math.PI / 2;
+    screw.position.set(0, sy, PLATE_DEPTH + 0.0006);
+    tagHighLod(screw, 6);
+    group.add(screw);
+  }
+
+  const ledMaterials = new Map<number, THREE.MeshStandardMaterial>();
+  const dollies = new Map<number, THREE.Group>();
+  const halfGeo = gangCount === 1 ? singleHalfGeo : multiHalfGeo;
+
+  gangs.forEach((spec, i) => {
+    const offsetX = (i - (gangCount - 1) / 2) * GANG_PITCH;
+    const prefix = `${name}.g${spec.gang}`;
+    const base: InteractiveUserData = {
+      ...options.extraUserDataForGang?.(spec.gang),
+      isKNXSwitch: true,
+      switchPa,
+      switchGang: spec.gang,
+      zoneSceneSwitchZoneId: spec.zoneId,
+      switchLocation: `${location} · G${spec.gang} ${spec.label}`,
+      ...(spec.circuitId ? { circuitId: spec.circuitId } : {}),
+    };
+    const up: InteractiveUserData = { ...base, switchDirection: 'up' };
+    const down: InteractiveUserData = { ...base, switchDirection: 'down' };
+
+    const upper = new THREE.Mesh(halfGeo, brassMat);
+    upper.name = `${prefix}.upperHalf`;
+    upper.position.set(offsetX, 0.0195, PLATE_DEPTH + 0.0035);
+    makeInteractive(upper, up, ctx.interactiveMeshes);
+    group.add(upper);
+
+    const lower = new THREE.Mesh(halfGeo, brassMat);
+    lower.name = `${prefix}.lowerHalf`;
+    lower.position.set(offsetX, -0.0195, PLATE_DEPTH + 0.0035);
+    makeInteractive(lower, down, ctx.interactiveMeshes);
+    group.add(lower);
+
+    const collar = new THREE.Mesh(collarGeo, bronzeMat);
+    collar.name = `${prefix}.collar`;
+    collar.rotation.x = Math.PI / 2;
+    collar.position.set(offsetX, 0, 0.0095);
+    tagHighLod(collar);
+    makeInteractive(collar, up, ctx.interactiveMeshes);
+    group.add(collar);
+
+    // Dolly = pivot dome + lever + tip, hinged at the collar so it can tilt up / down.
+    const dolly = new THREE.Group();
+    dolly.name = `${prefix}.dolly`;
+    dolly.position.set(offsetX, 0, 0.012);
+    dolly.rotation.x = -DOLLY_TILT_RAD;
+    const pivot = new THREE.Mesh(pivotGeo, brassMat);
+    pivot.name = `${prefix}.dolly.pivot`;
+    tagHighLod(pivot);
+    makeInteractive(pivot, up, ctx.interactiveMeshes);
+    dolly.add(pivot);
+    const lever = new THREE.Mesh(leverGeo, brassMat);
+    lever.name = `${prefix}.dolly.lever`;
+    lever.rotation.x = Math.PI / 2;
+    lever.position.set(0, 0, 0.01);
+    tagHighLod(lever);
+    makeInteractive(lever, up, ctx.interactiveMeshes);
+    dolly.add(lever);
+    const tip = new THREE.Mesh(tipGeo, brassMat);
+    tip.name = `${prefix}.dolly.tip`;
+    tip.position.set(0, 0, 0.023);
+    tagHighLod(tip);
+    makeInteractive(tip, up, ctx.interactiveMeshes);
+    dolly.add(tip);
+    group.add(dolly);
+    dollies.set(spec.gang, dolly);
+
+    const ledMat = options.ledMaterialForGang?.(spec.gang) ?? createLedMaterial(options.ledInitiallyOn === true);
+    const led = new THREE.Mesh(ledGeo, ledMat);
+    led.name = `${prefix}.statusLed`;
+    led.rotation.x = Math.PI / 2;
+    led.position.set(offsetX, 0.0405, PLATE_DEPTH + 0.0008);
+    tagHighLod(led);
+    group.add(led);
+    ledMaterials.set(spec.gang, ledMat);
+    if (spec.circuitId) ctx.registerSwitchLedMaterial?.(spec.circuitId, ledMat);
+  });
+
+  (parentGroup ?? ctx.scene).add(group);
+
+  return {
+    group,
+    gangCount,
+    ledMaterials,
+    setGangLed: (gang, on) => {
+      const mat = ledMaterials.get(gang);
+      if (!mat) return;
+      mat.emissiveIntensity = on ? LED_ON_INTENSITY : LED_OFF_INTENSITY;
+    },
+    setGangDolly: (gang, direction) => {
+      const dolly = dollies.get(gang);
+      if (dolly) dolly.rotation.x = direction === 'up' ? -DOLLY_TILT_RAD : DOLLY_TILT_RAD;
+    },
+  };
+}

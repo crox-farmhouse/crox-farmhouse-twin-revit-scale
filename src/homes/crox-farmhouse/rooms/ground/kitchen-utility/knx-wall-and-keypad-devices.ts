@@ -1,15 +1,16 @@
 import * as THREE from 'three';
 import type { CircuitId } from '../../../../../core/types/knx.ts';
-import { CIRCUITS } from '../../../../../integrations/knx/constants.ts';
 import type { RoomZoneId } from '../../../../../core/types/topology.ts';
 import type { CutawayWallDescriptor, InteractiveUserData } from '../../../../../core/types/scene.ts';
 import type { SceneBuilderContext } from '../../../../../engine/viewer/scene-types.ts';
-import { buildRoomKnxTempSensor } from '../../../../../objects/fixtures/knx-temp-sensor.ts';
 import {
-  buildRoomCeilingPendant,
-  sharedRoomBrassMat,
-  sharedRoomCollarMat,
-} from './knx-ceiling-and-track-lights.ts';
+  buildCorstonToggleSwitch,
+  facingToRotY,
+  type CorstonToggleGangSpec,
+} from '../../../../../objects/fixtures/corston-toggle-switch.ts';
+import { buildRoomKnxTempSensor } from '../../../../../objects/fixtures/knx-temp-sensor.ts';
+import { croxPushButton, croxPushButtonGangs, croxZoneFirstCircuit } from '../../../knx/devices-placement.ts';
+import { buildRoomCeilingPendant } from './knx-ceiling-and-track-lights.ts';
 
 function prepGeo<T extends THREE.BufferGeometry>(geo: T): T {
   geo.computeBoundingSphere();
@@ -25,23 +26,6 @@ function setInteractiveUserData(mesh: THREE.Object3D, data: InteractiveUserData)
   Object.assign(mesh.userData, data);
 }
 
-// ============================================================================
-// Shared BufferGeometries for Corston Switches & KNX Motion Sensors
-// ============================================================================
-const sharedSingleGangBackplateGeo = prepGeo(new THREE.BoxGeometry(0.088, 0.088, 0.005));
-const sharedDoubleGangBackplateGeo = prepGeo(new THREE.BoxGeometry(0.146, 0.088, 0.005));
-const sharedSingleHalfPlateGeo = prepGeo(new THREE.BoxGeometry(0.078, 0.039, 0.004));
-const sharedDoubleHalfPlateGeo = prepGeo(new THREE.BoxGeometry(0.064, 0.039, 0.004));
-const sharedSwitchCollarRingGeo = prepGeo(
-  new THREE.CylinderGeometry(0.0115, 0.013, 0.007, 16)
-);
-const sharedSwitchPivotDomeGeo = prepGeo(new THREE.SphereGeometry(0.0075, 10, 10));
-const sharedSwitchToggleLeverGeo = prepGeo(
-  new THREE.CylinderGeometry(0.0028, 0.0048, 0.026, 12)
-);
-const sharedSwitchLeverTipGeo = prepGeo(new THREE.SphereGeometry(0.0034, 10, 10));
-const sharedSwitchLedGeo = prepGeo(new THREE.CylinderGeometry(0.0024, 0.0024, 0.002, 10));
-
 const sharedSensorBezelGeo = prepGeo(new THREE.CylinderGeometry(0.062, 0.058, 0.018, 16));
 const sharedSensorDomeGeo = prepGeo(
   new THREE.SphereGeometry(0.032, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55)
@@ -49,171 +33,58 @@ const sharedSensorDomeGeo = prepGeo(
 const sharedSensorLedRingGeo = prepGeo(new THREE.TorusGeometry(0.038, 0.0035, 8, 20));
 const sharedSensorLuxWindowGeo = prepGeo(new THREE.CylinderGeometry(0.006, 0.006, 0.004, 10));
 
-function addCorstonToggleMechanismToPlate(
-  parentGroup: THREE.Group,
-  gangPrefix: string,
-  offsetX: number,
-  halfPlateWidth: number,
-  brassPlateMat: THREE.Material,
-  darkBronzeMat: THREE.Material,
-  ledMat: THREE.Material,
-  userData: InteractiveUserData,
-  interactiveMeshes: THREE.Object3D[]
-): void {
-  const upUserData: InteractiveUserData = { ...userData, switchDirection: 'up' };
-  const downUserData: InteractiveUserData = { ...userData, switchDirection: 'down' };
+// ============================================================================
+// Corston KNX push-button plates (gangs resolved from CROX_PUSH_BUTTONS by PA)
+// ============================================================================
 
-  const halfPlateGeo =
-    Math.abs(halfPlateWidth - 0.078) < 0.001
-      ? sharedSingleHalfPlateGeo
-      : Math.abs(halfPlateWidth - 0.064) < 0.001
-        ? sharedDoubleHalfPlateGeo
-        : prepGeo(new THREE.BoxGeometry(halfPlateWidth, 0.039, 0.004));
-
-  const upperHalfPlate = new THREE.Mesh(halfPlateGeo, brassPlateMat);
-  upperHalfPlate.name = `${gangPrefix}.upperHalfPlate`;
-  upperHalfPlate.position.set(offsetX, 0.0195, 0.006);
-  setInteractiveUserData(upperHalfPlate, upUserData);
-  interactiveMeshes.push(upperHalfPlate);
-  parentGroup.add(upperHalfPlate);
-
-  const lowerHalfPlate = new THREE.Mesh(halfPlateGeo, brassPlateMat);
-  lowerHalfPlate.name = `${gangPrefix}.lowerHalfPlate`;
-  lowerHalfPlate.position.set(offsetX, -0.0195, 0.006);
-  setInteractiveUserData(lowerHalfPlate, downUserData);
-  interactiveMeshes.push(lowerHalfPlate);
-  parentGroup.add(lowerHalfPlate);
-
-  const collarRing = new THREE.Mesh(sharedSwitchCollarRingGeo, darkBronzeMat);
-  collarRing.name = `${gangPrefix}.collarRing`;
-  collarRing.rotation.x = Math.PI / 2;
-  collarRing.position.set(offsetX, 0, 0.0095);
-  tagHighLod(collarRing);
-  setInteractiveUserData(collarRing, upUserData);
-  interactiveMeshes.push(collarRing);
-  parentGroup.add(collarRing);
-
-  const pivotDome = new THREE.Mesh(sharedSwitchPivotDomeGeo, brassPlateMat);
-  pivotDome.name = `${gangPrefix}.pivotDome`;
-  pivotDome.position.set(offsetX, 0, 0.012);
-  tagHighLod(pivotDome);
-  setInteractiveUserData(pivotDome, upUserData);
-  interactiveMeshes.push(pivotDome);
-  parentGroup.add(pivotDome);
-
-  const toggleLever = new THREE.Mesh(sharedSwitchToggleLeverGeo, brassPlateMat);
-  toggleLever.name = `${gangPrefix}.toggleLever`;
-  toggleLever.rotation.x = Math.PI / 2;
-  toggleLever.position.set(offsetX, 0, 0.022);
-  tagHighLod(toggleLever);
-  setInteractiveUserData(toggleLever, upUserData);
-  interactiveMeshes.push(toggleLever);
-  parentGroup.add(toggleLever);
-
-  const leverTip = new THREE.Mesh(sharedSwitchLeverTipGeo, brassPlateMat);
-  leverTip.name = `${gangPrefix}.leverTip`;
-  leverTip.position.set(offsetX, 0, 0.035);
-  tagHighLod(leverTip);
-  setInteractiveUserData(leverTip, upUserData);
-  interactiveMeshes.push(leverTip);
-  parentGroup.add(leverTip);
-
-  const led = new THREE.Mesh(sharedSwitchLedGeo, ledMat);
-  led.name = `${gangPrefix}.statusLed`;
-  led.rotation.x = Math.PI / 2;
-  led.position.set(offsetX, 0.024, 0.0078);
-  tagHighLod(led);
-  parentGroup.add(led);
+interface CroxPlateOptions {
+  readonly name: string;
+  readonly pa: string;
+  readonly location: string;
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly rotY: number;
+  readonly parent: THREE.Object3D;
+  /** Used when the PA is not in CROX_PUSH_BUTTONS (single gang). */
+  readonly fallbackZoneId?: RoomZoneId;
+  readonly fallbackCircuitId?: CircuitId;
+  readonly ledMaterialForGang?: (gang: number) => THREE.MeshStandardMaterial | undefined;
+  readonly extraUserDataForGang?: (gang: number) => InteractiveUserData | undefined;
+  readonly cutawayWall?: CutawayWallDescriptor;
 }
 
-function buildCorstonSingleToggleUnit(
-  unitName: string,
-  x: number,
-  y: number,
-  z: number,
-  rotY: number,
-  brassPlateMat: THREE.Material,
-  darkBronzeMat: THREE.Material,
-  ledMat: THREE.Material,
-  userData: InteractiveUserData,
-  interactiveMeshes: THREE.Object3D[]
-): THREE.Group {
-  const switchGroup = new THREE.Group();
-  switchGroup.name = unitName;
-  switchGroup.position.set(x, y, z);
-  switchGroup.rotation.y = rotY;
-
-  const backplate = new THREE.Mesh(sharedSingleGangBackplateGeo, brassPlateMat);
-  backplate.name = `${unitName}.backplate`;
-  backplate.position.set(0, 0, 0.0025);
-  switchGroup.add(backplate);
-
-  addCorstonToggleMechanismToPlate(
-    switchGroup,
-    unitName,
-    0,
-    0.078,
-    brassPlateMat,
-    darkBronzeMat,
-    ledMat,
-    userData,
-    interactiveMeshes
-  );
-
-  return switchGroup;
+function buildCroxPlate(ctx: SceneBuilderContext, o: CroxPlateOptions): THREE.Group {
+  const device = croxPushButton(o.pa);
+  const fallbackGang: CorstonToggleGangSpec[] = o.fallbackZoneId
+    ? [{ gang: 1, zoneId: o.fallbackZoneId, label: o.location, ...(o.fallbackCircuitId ? { circuitId: o.fallbackCircuitId } : {}) }]
+    : [];
+  const gangs = croxPushButtonGangs(o.pa) ?? fallbackGang;
+  const handle = buildCorstonToggleSwitch(ctx, {
+    name: o.name,
+    switchPa: o.pa,
+    location: device?.location ?? o.location,
+    gangs,
+    x: o.x,
+    y: o.y,
+    z: o.z,
+    rotY: o.rotY,
+    ...(device ? { mountedInZoneId: device.mountedInZoneId } : o.fallbackZoneId ? { mountedInZoneId: o.fallbackZoneId } : {}),
+    parentGroup: o.parent,
+    ledInitiallyOn: true,
+    ...(o.ledMaterialForGang ? { ledMaterialForGang: o.ledMaterialForGang } : {}),
+    ...(o.extraUserDataForGang ? { extraUserDataForGang: o.extraUserDataForGang } : {}),
+    ...(o.cutawayWall ? { cutawayWall: o.cutawayWall } : {}),
+  });
+  return handle.group;
 }
 
-function buildCorstonDoubleToggleUnit(
-  unitName: string,
-  x: number,
-  y: number,
-  z: number,
-  rotY: number,
-  brassPlateMat: THREE.Material,
-  darkBronzeMat: THREE.Material,
-  leftLedMat: THREE.Material,
-  rightLedMat: THREE.Material,
-  leftUserData: InteractiveUserData,
-  rightUserData: InteractiveUserData,
-  interactiveMeshes: THREE.Object3D[]
-): THREE.Group {
-  const switchGroup = new THREE.Group();
-  switchGroup.name = unitName;
-  switchGroup.position.set(x, y, z);
-  switchGroup.rotation.y = rotY;
-
-  const backplate = new THREE.Mesh(sharedDoubleGangBackplateGeo, brassPlateMat);
-  backplate.name = `${unitName}.backplate`;
-  backplate.position.set(0, 0, 0.0025);
-  switchGroup.add(backplate);
-
-  // Gang 1 (Left toggle at -0.032m): Kitchen Scene Toggle
-  addCorstonToggleMechanismToPlate(
-    switchGroup,
-    `${unitName}.gang1Kitchen`,
-    -0.032,
-    0.064,
-    brassPlateMat,
-    darkBronzeMat,
-    leftLedMat,
-    leftUserData,
-    interactiveMeshes
-  );
-
-  // Gang 2 (Right toggle at +0.032m): Courtyard Outdoor Lighting Toggle
-  addCorstonToggleMechanismToPlate(
-    switchGroup,
-    `${unitName}.gang2Courtyard`,
-    0.032,
-    0.064,
-    brassPlateMat,
-    darkBronzeMat,
-    rightLedMat,
-    rightUserData,
-    interactiveMeshes
-  );
-
-  return switchGroup;
+function createLegacyLedMat(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color: 0xffb84d,
+    emissive: new THREE.Color(0xff9d2e),
+    emissiveIntensity: 3.0,
+  });
 }
 
 export interface WallSwitchMaterials {
@@ -222,31 +93,15 @@ export interface WallSwitchMaterials {
 }
 
 export function buildWallKNXSwitch(ctx: SceneBuilderContext): WallSwitchMaterials {
-  const { interactiveMeshes, cutawayWallGroups } = ctx;
+  const { cutawayWallGroups } = ctx;
+  const wallSwitchLedMat = createLegacyLedMat();
+  const courtyardSwitchLedMat = createLegacyLedMat();
 
-  const corstonBrassMat = new THREE.MeshStandardMaterial({
-    color: 0xc59b58,
-    roughness: 0.25,
-    metalness: 0.88,
-  });
-  const corstonCollarMat = new THREE.MeshStandardMaterial({
-    color: 0x3a3228,
-    roughness: 0.35,
-    metalness: 0.78,
-  });
-  const wallSwitchLedMat = new THREE.MeshStandardMaterial({
-    color: 0xffb84d,
-    emissive: new THREE.Color(0xff9d2e),
-    emissiveIntensity: 3.0,
-  });
-  const courtyardSwitchLedMat = new THREE.MeshStandardMaterial({
-    color: 0xffb84d,
-    emissive: new THREE.Color(0xff9d2e),
-    emissiveIntensity: 3.0,
-  });
-
-  const singleGangSwitches: ReadonlyArray<{
+  // Kitchen plates (east-wing frame). Gang 1 of each drives the kitchen (legacy central scene
+  // table), so it keeps the shared kitchen LED; the bifold plate's gang 2 drives the courtyard.
+  const kitchenPlates: ReadonlyArray<{
     readonly name: string;
+    readonly pa: string;
     readonly x: number;
     readonly y: number;
     readonly z: number;
@@ -254,67 +109,33 @@ export function buildWallKNXSwitch(ctx: SceneBuilderContext): WallSwitchMaterial
     readonly label: string;
     readonly groupKey: 'southWest' | 'west' | 'north' | 'east';
   }> = [
-    {
-      name: 'kitchen.knx.switch.entrance',
-      x: -4.12,
-      y: 1.28,
-      z: 1.987,
-      rotY: Math.PI,
-      label: 'Entrance',
-      groupKey: 'southWest',
-    },
-    {
-      name: 'kitchen.knx.switch.leftOfAga',
-      x: -3.18,
-      y: 1.22,
-      z: -2.497,
-      rotY: 0,
-      label: 'Left of AGA',
-      groupKey: 'north',
-    },
-    {
-      name: 'kitchen.knx.switch.sittingArea',
-      x: 4.997,
-      y: 1.28,
-      z: 1.82,
-      rotY: -Math.PI / 2,
-      label: 'Sitting Area',
-      groupKey: 'east',
-    },
+    { name: 'kitchen.knx.switch.entrance', pa: '1.1.10', x: -4.12, y: 1.28, z: 1.987, rotY: Math.PI, label: 'Entrance', groupKey: 'southWest' },
+    { name: 'kitchen.knx.switch.leftOfAga', pa: '1.1.30', x: -3.18, y: 1.22, z: -2.497, rotY: 0, label: 'Left of AGA', groupKey: 'north' },
+    { name: 'kitchen.knx.switch.sittingArea', pa: '1.1.31', x: 4.997, y: 1.28, z: 1.82, rotY: -Math.PI / 2, label: 'Sitting Area', groupKey: 'east' },
+    { name: 'kitchen.knx.switch.bifoldTwoGang', pa: '1.1.14', x: 1.25, y: 1.28, z: 1.987, rotY: Math.PI, label: 'Bifold 2-Gang', groupKey: 'southWest' },
   ];
 
-  for (const sw of singleGangSwitches) {
-    const unit = buildCorstonSingleToggleUnit(
-      sw.name,
-      sw.x,
-      sw.y,
-      sw.z,
-      sw.rotY,
-      corstonBrassMat,
-      corstonCollarMat,
-      wallSwitchLedMat,
-      { isKNXSwitch: true, switchLocation: sw.label },
-      interactiveMeshes
-    );
-    cutawayWallGroups[sw.groupKey].add(unit);
+  for (const plate of kitchenPlates) {
+    buildCroxPlate(ctx, {
+      name: plate.name,
+      pa: plate.pa,
+      location: plate.label,
+      x: plate.x,
+      y: plate.y,
+      z: plate.z,
+      rotY: plate.rotY,
+      parent: cutawayWallGroups[plate.groupKey],
+      fallbackZoneId: 'kitchen',
+      ledMaterialForGang: (gang) => {
+        const zoneId = croxPushButton(plate.pa)?.gangs.find((g) => g.gang === gang)?.zoneId;
+        return zoneId === 'courtyard' ? courtyardSwitchLedMat : zoneId === 'kitchen' ? wallSwitchLedMat : undefined;
+      },
+      extraUserDataForGang: (gang) => {
+        const zoneId = croxPushButton(plate.pa)?.gangs.find((g) => g.gang === gang)?.zoneId;
+        return zoneId === 'courtyard' ? { isCourtyardSwitch: true } : undefined;
+      },
+    });
   }
-
-  // Switch #3 on the Wall Next to the Bifolds (South Bifold Left Pier at X = +1.25m, Z = +1.987m)
-  const bifoldTwoGangUnit = buildCorstonDoubleToggleUnit(
-    'kitchen.knx.switch.bifoldTwoGang',
-    1.25,
-    1.28,
-    1.987,
-    Math.PI,
-    corstonBrassMat,
-    corstonCollarMat,
-    wallSwitchLedMat,
-    courtyardSwitchLedMat,
-    { isKNXSwitch: true, switchLocation: 'Bifold 2-Gang (G1 Kitchen)' },
-    { isCourtyardSwitch: true, switchLocation: 'Bifold 2-Gang (G2 Courtyard)' },
-    interactiveMeshes
-  );
-  cutawayWallGroups.southWest.add(bifoldTwoGangUnit);
 
   // Kitchen KNX Bus NTC Temperature Probe in the South-West Bifold Pier Switch Backbox
   const tempSensorGroup = buildRoomKnxTempSensor(ctx, {
@@ -348,42 +169,27 @@ export function buildWallKNXSwitch(ctx: SceneBuilderContext): WallSwitchMaterial
 export function buildUtilityKNXSwitch(
   ctx: SceneBuilderContext
 ): THREE.MeshStandardMaterial {
-  const { scene, interactiveMeshes } = ctx;
+  const utilitySwitchLedMat = createLegacyLedMat();
 
-  const corstonBrassMat = new THREE.MeshStandardMaterial({
-    color: 0xc59b58,
-    roughness: 0.25,
-    metalness: 0.88,
-  });
-  const corstonCollarMat = new THREE.MeshStandardMaterial({
-    color: 0x3a3228,
-    roughness: 0.35,
-    metalness: 0.78,
-  });
-  const utilitySwitchLedMat = new THREE.MeshStandardMaterial({
-    color: 0xffb84d,
-    emissive: new THREE.Color(0xff9d2e),
-    emissiveIntensity: 3.0,
-  });
-
-  // Matching Corston Single-Toggle Switch by the Utility Room doorway (X = +3.28m, Y = 1.28m) on both sides of the Z = -0.775m wall
-  for (const [side, sideTag] of [
-    [1, 'kitchenSide'],
-    [-1, 'utilitySide'],
+  // Plates either side of the utility doorway (X = +3.28m, Y = 1.28m) on the Z = -0.775m wall:
+  // 1.1.11 on the kitchen side, 1.1.32 on the utility side.
+  for (const [side, sideTag, pa] of [
+    [1, 'kitchenSide', '1.1.11'],
+    [-1, 'utilitySide', '1.1.32'],
   ] as const) {
-    const unit = buildCorstonSingleToggleUnit(
-      `utility.knx.switch.doorway_${sideTag}`,
-      3.28,
-      1.28,
-      -0.775 + side * 0.076,
-      side === 1 ? 0 : Math.PI,
-      corstonBrassMat,
-      corstonCollarMat,
-      utilitySwitchLedMat,
-      { isUtilitySwitch: true, switchLocation: 'Utility Door' },
-      interactiveMeshes
-    );
-    scene.add(unit);
+    buildCroxPlate(ctx, {
+      name: `utility.knx.switch.doorway_${sideTag}`,
+      pa,
+      location: 'Utility Door',
+      x: 3.28,
+      y: 1.28,
+      z: -0.775 + side * 0.076,
+      rotY: side === 1 ? 0 : Math.PI,
+      parent: ctx.scene,
+      fallbackZoneId: 'utility',
+      ledMaterialForGang: () => utilitySwitchLedMat,
+      extraUserDataForGang: () => ({ isUtilitySwitch: true }),
+    });
   }
 
   return utilitySwitchLedMat;
@@ -453,14 +259,14 @@ export function buildKitchenAndUtilityMotionSensors(
       x: 0.67,
       z: 0.65,
       ledMat: kitchenSensorLedMat,
-      userData: { isKitchenMotionSensor: true },
+      userData: { isKitchenMotionSensor: true, presenceDetectorPa: '1.1.12', zoneId: 'kitchen' },
     },
     {
       name: 'utility.knx.motionSensor',
       x: 3.5,
       z: -1.45,
       ledMat: utilitySensorLedMat,
-      userData: { isUtilityMotionSensor: true },
+      userData: { isUtilityMotionSensor: true, presenceDetectorPa: '1.1.13', zoneId: 'utility' },
     },
   ];
 
@@ -468,6 +274,7 @@ export function buildKitchenAndUtilityMotionSensors(
     const group = new THREE.Group();
     group.name = cfg.name;
     group.position.set(cfg.x, 2.98, cfg.z);
+    group.userData.presenceDetectorPa = cfg.userData.presenceDetectorPa;
 
     const bezel = new THREE.Mesh(sharedSensorBezelGeo, housingMat);
     bezel.name = `${cfg.name}.bezel`;
@@ -521,6 +328,8 @@ export interface RoomCorstonToggleSwitchOptions {
   readonly zoneSceneSwitchZoneId?: RoomZoneId;
   readonly customUnitName?: string;
   readonly switchPa: string;
+  /** Push-button device PA when it differs from `switchPa` (second plate on the same line). */
+  readonly devicePa?: string;
   readonly switchLocation?: string;
   readonly location?: string;
   readonly x: number;
@@ -535,77 +344,33 @@ export interface RoomCorstonToggleSwitchOptions {
 let roomSwitchCounter = 0;
 
 /**
- * Builds an interactive 3D Corston Architectural Antique Brass 1-Gang Toggle Switch
- * in any Ground Floor or First Floor room and binds it to the room's KNX circuit & Physical Address.
+ * Builds an interactive Corston antique-brass KNX push-button plate in any room. The gangs come
+ * from `CROX_PUSH_BUTTONS` (by `devicePa ?? switchPa`); unknown PAs fall back to a single gang on
+ * the circuit's zone.
  */
 export function buildRoomCorstonToggleSwitch(
   ctx: SceneBuilderContext,
   options: RoomCorstonToggleSwitchOptions
 ): THREE.Group {
-  const {
-    circuitId,
-    zoneSceneSwitchZoneId,
-    customUnitName,
-    switchPa,
-    switchLocation,
+  const { circuitId, switchPa, x, y, z } = options;
+  const pa = options.devicePa ?? switchPa;
+  const location = options.switchLocation ?? options.location ?? 'Room Switch';
+  const domainPrefix = circuitId === 'utilitySpotlights' ? 'utility' : 'kitchen';
+  const name = options.customUnitName ?? `${domainPrefix}.knx.corstonSwitch.${circuitId}_${roomSwitchCounter++}`;
+  const fallbackZoneId = options.zoneSceneSwitchZoneId ?? croxPushButton(pa)?.mountedInZoneId;
+  const fallbackCircuitId = fallbackZoneId ? croxZoneFirstCircuit(fallbackZoneId) ?? circuitId : circuitId;
+
+  return buildCroxPlate(ctx, {
+    name,
+    pa,
     location,
     x,
     y,
     z,
-    rotY,
-    facing = 'south',
-    parentGroup,
-    cutawayWall,
-  } = options;
-
-  const resolvedLocation = switchLocation ?? location ?? 'Room Switch';
-  const resolvedRotY =
-    rotY ??
-    (facing === 'south'
-      ? 0
-      : facing === 'north'
-        ? Math.PI
-        : facing === 'east'
-          ? Math.PI / 2
-          : -Math.PI / 2);
-
-  const ledMat = new THREE.MeshStandardMaterial({
-    color: 0xffb84d,
-    emissive: new THREE.Color(0xff9d2e),
-    emissiveIntensity: 3.0,
+    rotY: options.rotY ?? facingToRotY(options.facing ?? 'south'),
+    parent: options.parentGroup ?? ctx.scene,
+    ...(fallbackZoneId ? { fallbackZoneId } : {}),
+    fallbackCircuitId,
+    ...(options.cutawayWall ? { cutawayWall: options.cutawayWall } : {}),
   });
-  ctx.registerSwitchLedMaterial?.(circuitId, ledMat);
-
-  const domainPrefix = circuitId === 'utilitySpotlights' ? 'utility' : 'kitchen';
-  const unitName = customUnitName ?? `${domainPrefix}.knx.corstonSwitch.${circuitId}_${roomSwitchCounter++}`;
-
-  const unit = buildCorstonSingleToggleUnit(
-    unitName,
-    x,
-    y,
-    z,
-    resolvedRotY,
-    sharedRoomBrassMat,
-    sharedRoomCollarMat,
-    ledMat,
-    {
-      circuitId,
-      zoneSceneSwitchZoneId:
-        zoneSceneSwitchZoneId ?? CIRCUITS.find((c) => c.id === circuitId)?.zoneId,
-      switchPa,
-      switchLocation: resolvedLocation,
-    },
-    ctx.interactiveMeshes
-  );
-
-  if (cutawayWall) {
-    unit.userData = {
-      ...unit.userData,
-      isCutawayWall: true,
-      cutawayWall,
-    };
-  }
-
-  (parentGroup ?? ctx.scene).add(unit);
-  return unit;
 }
