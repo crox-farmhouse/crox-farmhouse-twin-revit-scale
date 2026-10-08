@@ -79,6 +79,7 @@ const ROOM_ZONE_IDS: Readonly<Record<RoomZoneId, true>> = {
   outbuildingBarn: true,
   outbuildingMezzanine: true,
   outbuildingStableOffice: true,
+  outbuildingStore: true,
   outbuildingStableSuite: true,
 };
 
