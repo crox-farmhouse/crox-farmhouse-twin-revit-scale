@@ -13,6 +13,8 @@ import type { GraphicsMode, TradeView } from '../core/types/twin-ux.ts';
 export type DisplayUnits = 'm' | 'ftin';
 export type ShellViewMode = '3d' | 'plan' | 'walk';
 export type ShellTool = 'orbit' | 'measure' | 'note';
+export type TouchNavMode = 'orbit' | 'pan';
+export type RoomSheetSnap = 'peek' | 'half' | 'full';
 export type NoteTrade = 'architect' | 'builder' | 'electrician' | 'plumber';
 export type DevTab = 'smart-home' | 'usd' | 'diagnostics';
 
@@ -23,7 +25,16 @@ const LS_UNITS = 'crox.ui.units';
 const LS_HELP_SEEN = 'crox.ui.helpSeen.v1';
 const LS_NOTE_META = 'crox.ui.noteMeta.v1';
 
-export const MOBILE_BREAKPOINT_PX = 900;
+/**
+ * Below 1040 px (tablets in portrait/square, Pixel Fold unfolded ~760-840 px, phones),
+ * side panels behave as mutually-exclusive drawers/sheets instead of docking both sides.
+ */
+export const MOBILE_BREAKPOINT_PX = 1040;
+/**
+ * Below 640 px (phones and Pixel Fold cover display ~384-412 px),
+ * RoomPanel renders as a bottom sheet so the 3D viewport stays visible above it.
+ */
+export const COMPACT_PHONE_BREAKPOINT_PX = 640;
 
 function readLocal(key: string): string | null {
   try {
@@ -44,6 +55,18 @@ function writeLocal(key: string, value: string | null): void {
 
 function isMobileViewport(): boolean {
   return typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT_PX;
+}
+
+function isCompactPhoneViewport(): boolean {
+  return typeof window !== 'undefined' && window.innerWidth <= COMPACT_PHONE_BREAKPOINT_PX;
+}
+
+function detectCoarsePointer(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.matchMedia?.('(pointer: coarse)').matches === true ||
+    (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0 && window.innerWidth < 1280)
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -78,6 +101,10 @@ export function markHelpSeen(): void {
 // ---------------------------------------------------------------------------
 
 export const isMobile: Signal<boolean> = signal(isMobileViewport());
+export const isCompactPhone: Signal<boolean> = signal(isCompactPhoneViewport());
+export const isCoarsePointer: Signal<boolean> = signal(detectCoarsePointer());
+export const touchNavMode: Signal<TouchNavMode> = signal<TouchNavMode>('orbit');
+export const roomSheetSnap: Signal<RoomSheetSnap> = signal<RoomSheetSnap>('half');
 export const navigatorOpen: Signal<boolean> = signal(!isMobileViewport());
 export const roomPanelOpen: Signal<boolean> = signal(!isMobileViewport());
 export const settingsOpen: Signal<boolean> = signal(false);
@@ -86,15 +113,48 @@ export const helpStep: Signal<number> = signal(0);
 export const devDrawerOpen: Signal<boolean> = signal(false);
 export const devTab: Signal<DevTab> = signal<DevTab>('smart-home');
 
+export function toggleNavigator(): void {
+  const next = !navigatorOpen.value;
+  navigatorOpen.value = next;
+  if (next && isMobile.value) {
+    roomPanelOpen.value = false;
+  }
+}
+
+export function toggleRoomPanel(): void {
+  const next = !roomPanelOpen.value;
+  roomPanelOpen.value = next;
+  if (next && isMobile.value) {
+    navigatorOpen.value = false;
+    if (roomSheetSnap.value === 'peek') roomSheetSnap.value = 'half';
+  }
+}
+
+export function cycleRoomSheetSnap(): void {
+  const cur = roomSheetSnap.value;
+  roomSheetSnap.value = cur === 'peek' ? 'half' : cur === 'half' ? 'full' : 'peek';
+}
+
 if (typeof window !== 'undefined') {
-  window.addEventListener('resize', () => {
+  const syncViewportFlags = (): void => {
     const mobile = isMobileViewport();
-    if (mobile === isMobile.value) return;
-    isMobile.value = mobile;
-    // Desktop shows both panels docked; mobile starts with drawers closed.
-    navigatorOpen.value = !mobile;
-    roomPanelOpen.value = !mobile;
-  });
+    const compact = isCompactPhoneViewport();
+    const coarse = detectCoarsePointer();
+    if (compact !== isCompactPhone.value) isCompactPhone.value = compact;
+    if (coarse !== isCoarsePointer.value) isCoarsePointer.value = coarse;
+    if (mobile !== isMobile.value) {
+      isMobile.value = mobile;
+      // Desktop shows both panels docked; mobile/foldable starts with drawers closed or mutually exclusive.
+      navigatorOpen.value = !mobile;
+      roomPanelOpen.value = !mobile;
+    } else if (mobile && navigatorOpen.value && roomPanelOpen.value) {
+      // Enforce mutual exclusion when folding from desktop-like width into tablet/foldable width.
+      navigatorOpen.value = false;
+    }
+  };
+  window.addEventListener('resize', syncViewportFlags);
+  window.addEventListener('orientationchange', syncViewportFlags);
+  window.visualViewport?.addEventListener('resize', syncViewportFlags);
 }
 
 /** Closes the top-most overlay. Returns true if something was closed. */

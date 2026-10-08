@@ -46,6 +46,8 @@ export class PointerInput {
   private pointerDownPos = { x: 0, y: 0 };
   private pointerDownMs = 0;
   private lastHoverRaycastMs = 0;
+  private lastTouchTapMs = 0;
+  private lastTouchTapPos = { x: 0, y: 0 };
 
   public constructor(host: PointerInputHost) {
     this.host = host;
@@ -122,8 +124,9 @@ export class PointerInput {
     const { host } = this;
     if (e.button !== 0) return;
     if (host.annotations.isGizmoBusy()) return;
+    const slop = e.pointerType === 'touch' ? 14 : CLICK_SLOP_PX;
     const dist = Math.hypot(e.clientX - this.pointerDownPos.x, e.clientY - this.pointerDownPos.y);
-    if (dist > CLICK_SLOP_PX) return;
+    if (dist > slop) return;
 
     const raycaster = host.camera.setRayFromClient(e.clientX, e.clientY);
 
@@ -133,8 +136,22 @@ export class PointerInput {
     // 3. Normal interactive object click (doors, switches, lights, gates, etc.)
     const firstHit = this.firstVisibleDeviceHit(raycaster);
     if (firstHit) {
+      this.lastTouchTapMs = 0;
       this.triggerInteractiveObject(firstHit.object, performance.now() - this.pointerDownMs);
       return;
+    }
+
+    // Touch double-tap surface focus / walkthrough glide (since touch-action: none suppresses native dblclick)
+    if (e.pointerType === 'touch') {
+      const now = performance.now();
+      const tapDist = Math.hypot(e.clientX - this.lastTouchTapPos.x, e.clientY - this.lastTouchTapPos.y);
+      if (now - this.lastTouchTapMs <= 340 && tapDist <= 32) {
+        this.lastTouchTapMs = 0;
+        this.handleDoubleTapAt(e.clientX, e.clientY, false);
+        return;
+      }
+      this.lastTouchTapMs = now;
+      this.lastTouchTapPos = { x: e.clientX, y: e.clientY };
     }
 
     // 4. OpenUSD Stage Prim Inspection pick on any visible architectural / furniture mesh
@@ -152,9 +169,13 @@ export class PointerInput {
   }
 
   private onDoubleClick(e: MouseEvent): void {
+    this.handleDoubleTapAt(e.clientX, e.clientY, e.shiftKey);
+  }
+
+  private handleDoubleTapAt(clientX: number, clientY: number, shiftKey: boolean): void {
     const { host } = this;
-    if (host.annotations.isAnnotationMode() || e.shiftKey) return;
-    const point = host.camera.pickVisibleSurfacePoint(e.clientX, e.clientY);
+    if (host.annotations.isAnnotationMode() || shiftKey) return;
+    const point = host.camera.pickVisibleSurfacePoint(clientX, clientY);
     // Devices (switches, doors, gates…) already act on single click; don't also refocus.
     const onDevice = this.firstVisibleDeviceHit(host.camera.raycaster) !== undefined;
     if (!point || onDevice) return;

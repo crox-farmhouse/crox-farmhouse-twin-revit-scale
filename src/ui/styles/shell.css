@@ -1467,34 +1467,196 @@ body.is-annotating .shell-toast {
 }
 
 /* ---------------------------------------------------------------------------
-   Responsive: compact top bar; side panels become drawers below 900px
+   Bottom sheet grabber & touch walkthrough controls
    --------------------------------------------------------------------------- */
 
-@media (max-width: 1180px) {
+.shell-sheet-grabber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 24px;
+  padding: 6px 0 2px;
+  background: transparent;
+  border: 0;
+  cursor: ns-resize;
+  touch-action: none;
+  flex-shrink: 0;
+}
+
+.shell-sheet-pill {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.shell-walk-joystick {
+  position: fixed;
+  left: calc(18px + env(safe-area-inset-left, 0px));
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background: rgba(14, 18, 26, 0.58);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
+}
+
+.shell-walk-joystick.is-sprint {
+  border-color: var(--shell-accent);
+  box-shadow: 0 0 18px rgba(245, 184, 81, 0.32), 0 10px 28px rgba(0, 0, 0, 0.42);
+}
+
+.shell-walk-joystick-ring {
+  position: absolute;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  pointer-events: none;
+}
+
+.shell-walk-joystick-knob {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.92), rgba(215, 224, 240, 0.72));
+  border: 1.5px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  transition: background 0.12s ease;
+}
+
+.shell-walk-joystick.is-sprint .shell-walk-joystick-knob {
+  background: radial-gradient(circle at 35% 30%, #ffe3a8, var(--shell-accent));
+  border-color: #fff2d1;
+}
+
+.shell-walk-joystick-label {
+  position: absolute;
+  bottom: 7px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--shell-fg-faint);
+  pointer-events: none;
+}
+
+.shell-walk-touch-actions {
+  position: fixed;
+  right: calc(18px + env(safe-area-inset-right, 0px));
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  touch-action: manipulation;
+}
+
+.shell-walk-touch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shell-walk-touch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--shell-fg);
+  border: 1px solid var(--shell-line-strong);
+  box-shadow: var(--shell-shadow);
+}
+
+.shell-walk-touch-btn.is-primary {
+  background: var(--shell-accent);
+  border-color: var(--shell-accent);
+  color: var(--shell-accent-ink);
+}
+
+.shell-walk-touch-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--shell-fg-muted);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
+}
+
+.shell-walk-touch-circle.is-active,
+.shell-walk-touch-circle.is-target {
+  color: var(--shell-accent);
+  border-color: var(--shell-accent);
+  background: rgba(245, 184, 81, 0.16);
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive: tablets, Google Pixel Fold (folded & unfolded), and phones
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 1240px) {
   .shell-viewas-label,
   .shell-seg-label {
     display: none;
   }
 }
 
-@media (max-width: 900px) {
-  :root {
-    --shell-topbar-h: 96px;
+@media (pointer: coarse) {
+  .shell-icon-btn,
+  .shell-seg-btn,
+  .shell-chip-lg {
+    min-height: 36px;
   }
 
-  .shell-topbar {
-    grid-template-columns: 1fr auto;
-    grid-template-rows: 48px 40px;
-    row-gap: 0;
-    padding-bottom: 6px;
+  .shell-slider {
+    height: 8px;
   }
 
-  .shell-topbar-center {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-content: center;
+  .shell-slider::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
   }
 
+  .shell-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+  }
+
+  .shell-switch {
+    width: 42px;
+    height: 24px;
+  }
+
+  .shell-switch-knob {
+    width: 18px;
+    height: 18px;
+  }
+
+  .shell-switch.is-on .shell-switch-knob {
+    transform: translateX(18px);
+  }
+}
+
+/* Tablet & Pixel Fold Unfolded (~641px .. 1040px): single overlay drawer at a time */
+@media (max-width: 1040px) {
   .shell-btn-label,
   .shell-brand .shell-badge {
     display: none;
@@ -1506,36 +1668,70 @@ body.is-annotating .shell-toast {
 
   .shell-nav.is-drawer,
   .shell-panel.is-drawer {
-    top: 0;
-    bottom: 0;
+    top: calc(var(--shell-topbar-h) + 8px);
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     z-index: 70;
-    border-radius: 0;
+    border-radius: var(--shell-radius);
   }
 
   .shell-nav.is-drawer {
-    left: 0;
-    width: min(300px, 86vw);
+    left: 10px;
+    width: min(300px, 44vw);
   }
 
   .shell-panel.is-drawer {
-    right: 0;
-    width: min(380px, 92vw);
+    right: 10px;
+    width: min(340px, 46vw);
+  }
+
+  .shell-scrim {
+    background: rgba(5, 8, 13, 0.22);
   }
 
   .shell-dev {
     top: var(--shell-topbar-h);
     bottom: 0;
     right: 0;
-    width: 100vw;
+    width: min(440px, 100vw);
     border-radius: 0;
   }
 
   .shell-dock-btn {
-    min-width: 52px;
-    padding: 6px 6px 5px;
+    min-width: 54px;
+    padding: 7px 8px 6px;
   }
 
   .shell-dock-hint {
+    font-size: 11.5px;
+    max-width: calc(100vw - 32px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 860px) {
+  :root {
+    --shell-topbar-h: 92px;
+  }
+
+  .shell-topbar {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: 46px 40px;
+    row-gap: 0;
+    padding-bottom: 6px;
+  }
+
+  .shell-topbar-center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+
+  .shell-topbar-center::-webkit-scrollbar {
     display: none;
   }
 
@@ -1545,23 +1741,79 @@ body.is-annotating .shell-toast {
   }
 }
 
-@media (max-width: 520px) {
+/* Compact Phone & Pixel Fold Cover Display (<= 640px): RoomPanel becomes a multi-snap bottom sheet */
+@media (max-width: 640px) {
+  .shell-brand-name {
+    max-width: 138px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .shell-viewas {
     display: none;
   }
 
-  .shell-dock-btn span {
+  .shell-nav.is-drawer {
+    top: var(--shell-topbar-h);
+    left: 0;
+    bottom: 0;
+    width: min(300px, 86vw);
+    border-radius: 0 16px 0 0;
+  }
+
+  .shell-panel.is-drawer.is-bottom-sheet {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 54dvh;
+    max-height: calc(100dvh - var(--shell-topbar-h) - 8px);
+    border-radius: 18px 18px 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom, 8px);
+    transform: translateY(105%);
+    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), height 0.22s ease;
+  }
+
+  .shell-panel.is-drawer.is-bottom-sheet.is-open {
+    transform: translateY(0);
+  }
+
+  .shell-panel.is-drawer.is-bottom-sheet.snap-peek {
+    height: 28dvh;
+  }
+
+  .shell-panel.is-drawer.is-bottom-sheet.snap-half {
+    height: 54dvh;
+  }
+
+  .shell-panel.is-drawer.is-bottom-sheet.snap-full {
+    height: calc(100dvh - var(--shell-topbar-h) - 8px);
+  }
+
+  .shell-dock-wrap {
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .shell-dock-hint {
     display: none;
   }
 
   .shell-dock-btn {
-    min-width: 44px;
-    padding: 10px;
+    min-width: 48px;
+    padding: 8px 9px;
+  }
+
+  .shell-dock-btn span {
+    font-size: 10.5px;
   }
 
   .shell-inspector,
   .shell-toast {
-    bottom: 76px;
+    bottom: 78px;
   }
 }
 

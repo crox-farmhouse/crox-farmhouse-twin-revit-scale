@@ -116,8 +116,8 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
       getOrbitTarget: () => rig.controls.target,
       getOrbitPivot: () => rig.getPivot(),
       getFloorViewMode: () => this.cutaways.getFloorViewMode(),
-      onCurrentRoomChanged: (zoneId) => {
-        if (this.staticScene.batchOptimizer.setBudgetAnchorZone(zoneId)) renderer.requestRender();
+      onCurrentRoomChanged: () => {
+        // Lighting is invariant to room/camera panning; never re-rank or fade lights on room change.
       },
     });
 
@@ -257,6 +257,12 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
       onObjectInteraction,
     });
     window.addEventListener('resize', () => this.handleResize());
+    window.addEventListener('orientationchange', () => this.handleResize());
+    window.visualViewport?.addEventListener('resize', () => this.handleResize());
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => this.handleResize());
+      ro.observe(canvas);
+    }
 
     // Navigation: anchor pans / orbits / zooms on the visible surface under the cursor.
     rig.setSurfacePicker((ndcX, ndcY) => this.camera.pickVisibleSurfacePointNdc(ndcX, ndcY));

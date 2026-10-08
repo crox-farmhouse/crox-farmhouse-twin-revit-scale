@@ -114,6 +114,14 @@ export class CameraRig {
     this.grabPan.setSurfacePicker(picker);
   }
 
+  public setSingleFingerPan(enabled: boolean): void {
+    this.grabPan.setSingleFingerPan(enabled);
+  }
+
+  public isSingleFingerPan(): boolean {
+    return this.grabPan.isSingleFingerPan();
+  }
+
   /**
    * Switches to the orthographic or perspective camera (carrying over the
    * current position). No-op if that camera is already active.
@@ -124,6 +132,8 @@ export class CameraRig {
     next.position.copy(this.activeCamera.position);
     this.activeCamera = next;
     this.controls.object = next;
+    this.controls.enableRotate = !orthographic;
+    this.controls.touches.ONE = orthographic || this.grabPan.isSingleFingerPan() ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
     this.onActiveCameraChanged(next);
   }
 

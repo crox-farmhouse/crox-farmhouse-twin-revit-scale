@@ -1072,13 +1072,24 @@ export class SceneBatchOptimizer {
 
       const nextCutaway = (u.cutawayWall as CutawaySpec | undefined) ?? inheritedCutaway;
 
-      const nextTier: 1 | 2 | undefined =
+      let nextTier: 1 | 2 | undefined =
         u.lodTier === 1 || u.lodTier === 2 ? (u.lodTier as 1 | 2) : inheritedTier;
       const nextZone: RoomZoneId | undefined =
         ((u.zoneId ?? u.zone) as RoomZoneId | undefined) ?? inheritedZone;
 
-      let nextRuntimeMaxDist = inheritedRuntimeMaxDist;
-      if (u.lodTier === 'high' || nextTier === 2) {
+      const isLightingNode =
+        u.circuitId !== undefined ||
+        Boolean(u.isFittingFx) ||
+        Boolean(u.isLightGlowPool) ||
+        (node instanceof THREE.Mesh &&
+          (Array.isArray(node.material)
+            ? node.material.some((m) => mutableMaterials.has(m))
+            : mutableMaterials.has(node.material)));
+      if (isLightingNode) {
+        nextTier = undefined;
+      }
+      let nextRuntimeMaxDist = isLightingNode ? 0 : inheritedRuntimeMaxDist;
+      if (!isLightingNode && (u.lodTier === 'high' || nextTier === 2)) {
         nextRuntimeMaxDist = 28;
       }
 

@@ -49,6 +49,8 @@ export class GrabPanController {
   private picker: SurfacePicker | null = null;
   private pan: PanState | null = null;
   private readonly touches = new Map<number, ScreenPoint>();
+  private singleFingerPan = false;
+  private lastTouchSpread = 0;
   private lastWheelPickMs = Number.NEGATIVE_INFINITY;
   private lastWheelPoint: ScreenPoint = { x: Number.NaN, y: Number.NaN };
 
@@ -74,6 +76,18 @@ export class GrabPanController {
 
   public isPanning(): boolean {
     return this.pan !== null;
+  }
+
+  public setSingleFingerPan(enabled: boolean): void {
+    this.singleFingerPan = enabled;
+    this.host.controls.touches.ONE = enabled ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+    if (this.pan && this.pan.mousePointerId !== null && this.touches.has(this.pan.mousePointerId) && !enabled) {
+      this.endPan();
+    }
+  }
+
+  public isSingleFingerPan(): boolean {
+    return this.singleFingerPan;
   }
 
   public dispose(): void {
@@ -115,12 +129,17 @@ export class GrabPanController {
     if (e.pointerType === 'touch') {
       this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       this.host.cancelTween();
+      const isOrtho = this.host.getActiveCamera() instanceof THREE.OrthographicCamera;
       if (this.touches.size === 1) {
-        if (controls.touches.ONE === THREE.TOUCH.ROTATE && controls.enableRotate) {
+        if (this.singleFingerPan || isOrtho || controls.touches.ONE === THREE.TOUCH.PAN) {
+          controls.touches.ONE = THREE.TOUCH.PAN;
+          this.beginPan({ x: e.clientX, y: e.clientY }, e.pointerId);
+        } else if (controls.touches.ONE === THREE.TOUCH.ROTATE && controls.enableRotate) {
           this.retargetPivot(e.clientX, e.clientY);
         }
       } else if (this.touches.size === 2) {
         const two = controls.touches.TWO;
+        this.lastTouchSpread = this.touchSpread();
         if (two === THREE.TOUCH.DOLLY_PAN || two === THREE.TOUCH.PAN) {
           this.beginPan(this.touchMidpoint(), null);
         }
@@ -159,14 +178,35 @@ export class GrabPanController {
       if (e.pointerId !== pan.mousePointerId) return;
       this.applyPan(pan.anchor, { x: e.clientX, y: e.clientY });
     } else if (this.touches.size >= 2) {
-      this.applyPan(pan.anchor, this.touchMidpoint());
+      const mid = this.touchMidpoint();
+      const spread = this.touchSpread();
+      // If user is actively pinching (changing finger spread), re-seed the world anchor at midpoint
+      // so OrbitControls' pinch dolly and GrabPanController don't fight each other.
+      if (Math.abs(spread - this.lastTouchSpread) > 2.2) {
+        this.lastTouchSpread = spread;
+        const ndc = this.toNdc(mid);
+        pan.anchor.copy(this.pickWorldPoint(ndc.x, ndc.y));
+      } else {
+        this.lastTouchSpread = spread;
+        this.applyPan(pan.anchor, mid);
+      }
     }
   };
 
   private readonly onPointerUp = (e: PointerEvent): void => {
     if (e.pointerType === 'touch') {
       this.touches.delete(e.pointerId);
-      if (this.pan && this.pan.mousePointerId === null && this.touches.size < 2) this.endPan();
+      if (this.touches.size === 0) {
+        this.endPan();
+      } else if (this.touches.size === 1) {
+        const isOrtho = this.host.getActiveCamera() instanceof THREE.OrthographicCamera;
+        if (this.singleFingerPan || isOrtho) {
+          const [remId, remPt] = this.touches.entries().next().value!;
+          this.beginPan(remPt, remId);
+        } else {
+          this.endPan();
+        }
+      }
       return;
     }
     if (this.pan && this.pan.mousePointerId === e.pointerId) {
@@ -227,6 +267,12 @@ export class GrabPanController {
       if (++n === 2) break;
     }
     return n === 0 ? { x: 0, y: 0 } : { x: x / n, y: y / n };
+  }
+
+  private touchSpread(): number {
+    const pts = Array.from(this.touches.values());
+    if (pts.length < 2) return 0;
+    return Math.hypot(pts[0]!.x - pts[1]!.x, pts[0]!.y - pts[1]!.y);
   }
 
   private beginPan(screen: ScreenPoint, mousePointerId: number | null): void {

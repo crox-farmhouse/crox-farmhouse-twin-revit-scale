@@ -113,6 +113,11 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
   const courtyardSwitchPa = opts.courtyardSwitchPa ?? '1.1.14';
 
   const knownCircuits = new Set<string>(knx.getCircuits().map((c) => c.id));
+  const DAYTIME_ACTIVE_ZONES: ReadonlySet<RoomZoneId> = new Set<RoomZoneId>([
+    'outbuildingGarage',
+    'outbuildingGym',
+  ]);
+  let savedEveningLevels: CircuitLevels | null = null;
   const isKnownCircuit = (id: string): id is CircuitId => knownCircuits.has(id);
   const levelListeners = new Set<(levels: Readonly<CircuitLevels>) => void>();
   const deviceListeners = new Set<() => void>();
@@ -245,6 +250,8 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       onViewChanged: (listener) => scene.onViewChanged(() => listener(viewState())),
       onSurfaceDoubleClick: (listener) => scene.onSurfaceDoubleClick((p) => listener(toTuple(p))),
       projectToScreen: (p) => scene.projectToScreen(p[0], p[1], p[2]),
+      setSingleFingerPan: (enabled) => scene.setSingleFingerPan(enabled),
+      isSingleFingerPan: () => scene.isSingleFingerPan(),
     },
 
     floors: {
@@ -308,8 +315,48 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       },
       getTimeOfDay: () => luxToTimeOfDay(knx.getAmbientLux()),
       setTimeOfDay: (tod) => {
+        const prevTod = luxToTimeOfDay(knx.getAmbientLux());
         scene.setTimeOfDay(tod);
         knx.setAmbientLux(TIME_OF_DAY_LUX[tod], true);
+        if (tod === 'day') {
+          const targets = knx.getTargetLevels();
+          const hasNonDaytimeLightsOn = zones
+            .list()
+            .some(
+              (z) =>
+                !DAYTIME_ACTIVE_ZONES.has(z.id) &&
+                z.circuitIds.some((cid) => (targets[cid] ?? 0) > 0),
+            );
+          if (hasNonDaytimeLightsOn) {
+            savedEveningLevels = { ...targets };
+          }
+          const daytimeCircuitSet = new Set<CircuitId>();
+          for (const z of zones.list()) {
+            if (DAYTIME_ACTIVE_ZONES.has(z.id)) {
+              for (const cid of z.circuitIds) daytimeCircuitSet.add(cid);
+              if (zones.getState(z.id).mode === 'off') {
+                zones.recallScene(z.id, 0);
+              }
+            } else {
+              zones.setOff(z.id);
+            }
+          }
+          for (const c of knx.getCircuits()) {
+            if (!daytimeCircuitSet.has(c.id) && (targets[c.id] ?? 0) > 0) {
+              knx.setCircuitLevel(c.id, 0);
+            }
+          }
+        } else if (prevTod === 'day') {
+          if (savedEveningLevels) {
+            applyLevels(savedEveningLevels);
+          } else {
+            for (const z of zones.list()) {
+              if (!DAYTIME_ACTIVE_ZONES.has(z.id) && zones.getState(z.id).mode === 'off') {
+                zones.recallScene(z.id, 0);
+              }
+            }
+          }
+        }
       },
       getAmbientLux: () => knx.getAmbientLux(),
       setAmbientLux: (lux) => knx.setAmbientLux(lux, true),
@@ -385,6 +432,8 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       onStateChanged: (listener) => scene.getWalkthrough().subscribe(() => listener(walkState())),
       interact: () => scene.getWalkthrough().triggerTargetedInteraction(),
       toggleCrouch: () => scene.getWalkthrough().toggleCrouched(),
+      setTouchMove: (strafe, forward, sprint = false) =>
+        scene.getWalkthrough().setTouchMoveVector(strafe, forward, sprint),
       requestMouseLook: () => scene.getWalkthrough().requestMouseLock(),
       enter: (spawnId) => {
         scene.setWalkthroughMode(true, spawnId);

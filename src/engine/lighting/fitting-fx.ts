@@ -71,7 +71,7 @@ const FILL_SKIP_RADIUS = 3.2;
 const FILL_SKIP_VERTICAL = 1.6;
 
 /** Furthest a wash surface may be from its LED source. */
-const WASH_MAX_DISTANCE = 2.8;
+const WASH_MAX_DISTANCE = 0.38;
 
 interface ClassifiedMesh {
   readonly mesh: THREE.Mesh;
@@ -435,15 +435,29 @@ export class FittingEffects {
 
     for (const c of classified) {
       if (c.kind !== 'led' || !c.mesh.parent) continue;
-      c.box.getCenter(centre);
-      c.box.getSize(size);
+      // Exclude luminaire face diffusers and portal rings that are not grazing wall/cabinetry strips
+      if (/pictureLight|portalInner|taskBarDiffuser|ledLightBar|mirrorLedHalo/i.test(c.mesh.name)) continue;
+      if (!c.mesh.geometry.boundingBox) c.mesh.geometry.computeBoundingBox();
+      const localBox = c.mesh.geometry.boundingBox;
+      if (localBox) {
+        localBox.getCenter(centre).applyMatrix4(c.mesh.matrixWorld);
+        localBox.getSize(size);
+      } else {
+        c.box.getCenter(centre);
+        c.box.getSize(size);
+      }
+      const worldScale = new THREE.Vector3();
+      const worldQuat = new THREE.Quaternion();
+      c.mesh.matrixWorld.decompose(new THREE.Vector3(), worldQuat, worldScale);
       const axes = [
-        { axis: new THREE.Vector3(1, 0, 0), len: size.x },
-        { axis: new THREE.Vector3(0, 1, 0), len: size.y },
-        { axis: new THREE.Vector3(0, 0, 1), len: size.z },
+        { axis: new THREE.Vector3(1, 0, 0).applyQuaternion(worldQuat).normalize(), len: Math.abs(size.x * worldScale.x) },
+        { axis: new THREE.Vector3(0, 1, 0).applyQuaternion(worldQuat).normalize(), len: Math.abs(size.y * worldScale.y) },
+        { axis: new THREE.Vector3(0, 0, 1).applyQuaternion(worldQuat).normalize(), len: Math.abs(size.z * worldScale.z) },
       ].sort((a, b) => a.len - b.len);
       const thin = axes[0]!;
+      const mid = axes[1]!;
       const long = axes[2]!;
+      if (mid.len > 0.24) continue;
       const half = thin.len * 0.5;
       const plus = castFrom(centre, thin.axis.clone(), c.mesh);
       const minus = castFrom(centre, thin.axis.clone().negate(), c.mesh);
@@ -481,7 +495,7 @@ export class FittingEffects {
       const yAxis = new THREE.Vector3().crossVectors(normal, xAxis).normalize();
       const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, normal);
       const quat = new THREE.Quaternion().setFromRotationMatrix(basis);
-      const spread = THREE.MathUtils.clamp(0.22 + distance * 0.9, 0.22, 1.3);
+      const spread = THREE.MathUtils.clamp(0.18 + distance * 0.75, 0.18, 0.42);
       const length = long.len + spread * 0.7;
       const pos = hit.point.clone().addScaledVector(normal, 0.006);
 

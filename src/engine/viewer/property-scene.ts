@@ -70,6 +70,8 @@ export class PropertyScene<
   public getViewState(): PropertySceneViewState { return this.camera.getViewState(); }
   public onViewChanged(cb: (view: PropertySceneViewState) => void): Unsubscribe { return this.camera.viewChanged.add(cb); }
   public projectToScreen(x: number, y: number, z: number): ScreenPoint { return this.camera.projectToScreen(x, y, z); }
+  public setSingleFingerPan(enabled: boolean): void { this.camera.rig.setSingleFingerPan(enabled); }
+  public isSingleFingerPan(): boolean { return this.camera.rig.isSingleFingerPan(); }
   public onSurfaceDoubleClick(cb: (point: THREE.Vector3) => void): Unsubscribe { return this.input.surfaceDoubleClick.add(cb); }
   /** @deprecated use `onSurfaceDoubleClick` (multi-listener). */
   public setOnSurfaceDoubleClick(cb: ((point: THREE.Vector3) => void) | null): void { this.input.surfaceDoubleClick.setSlot(cb); }

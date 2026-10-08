@@ -68,12 +68,12 @@ export const ENV_PRESETS: Readonly<Record<TimeOfDay, EnvPresetConfig>> = {
     groundBounce: 0x2c381e,
     sunOrbColor: 0xfff8e8,
     sunOrbPeak: 6.5,
-    // Sun-to-sky ratio ~5:1 so shade reads clearly against sunlit surfaces.
-    envIntensity: 0.65,
-    bgIntensity: 1.0,
-    bgBlurriness: 0.03,
-    hdrMaxClampEnv: 6.0,
-    hdrMaxClampBg: 24.0,
+    // Sun-to-sky ratio ~8:1 so shade reads crisply against sunlit surfaces without HDR ambient wash.
+    envIntensity: 0.45,
+    bgIntensity: 0.95,
+    bgBlurriness: 0.02,
+    hdrMaxClampEnv: 3.6,
+    hdrMaxClampBg: 18.0,
     zenithDarkening: 0,
     // Mid-afternoon sun in the west-south-west, ~38° high: the west facades that face the default
     // north-west views are sunlit and roofs / chimneys / pergola rake crisp shadows across the
@@ -81,13 +81,13 @@ export const ENV_PRESETS: Readonly<Record<TimeOfDay, EnvPresetConfig>> = {
     sunDirection: [0.68, 0.62, -0.39],
     // ~5800 K daylight.
     sunColor: 0xfff2e6,
-    sunIntensity: 3.6,
+    sunIntensity: 3.8,
     hemiSkyColor: 0xdfeaf7,
-    hemiGroundColor: 0x55603f,
-    hemiIntensity: 0.1,
-    exposure: 1.0,
+    hemiGroundColor: 0x4b5636,
+    hemiIntensity: 0.06,
+    exposure: 0.94,
     fogColor: 0xcad9e8,
-    fogDensity: 0.0042,
+    fogDensity: 0.0018,
   },
   dusk: {
     // Poly Haven "spruit_sunrise" (CC0): low golden sun ~8° above a hazy field horizon.

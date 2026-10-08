@@ -15,10 +15,10 @@ const TOD_INDOOR_LIGHT_SCALE: Readonly<
   >
 > = {
   day: {
-    lightScale: 0.25,
-    emissiveScale: 0.85,
-    coneScale: 0.15,
-    poolScale: 0.18,
+    lightScale: 0.68,
+    emissiveScale: 0.95,
+    coneScale: 0.45,
+    poolScale: 0.50,
   },
   dusk: {
     lightScale: 0.62,

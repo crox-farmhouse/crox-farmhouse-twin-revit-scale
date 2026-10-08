@@ -81,6 +81,9 @@ export interface TwinCameraApi {
    * walkthrough) to CSS pixels relative to the viewport canvas.
    */
   projectToScreen(point: Vec3Tuple): TwinScreenPoint;
+  /** Enables 1-finger touch pan instead of 1-finger orbit (ideal for mobile/tablet thumb panning). */
+  setSingleFingerPan(enabled: boolean): void;
+  isSingleFingerPan(): boolean;
 }
 
 export interface TwinScreenPoint {
@@ -368,6 +371,8 @@ export interface TwinWalkthroughApi {
   /** Uses the object under the crosshair (same as the F key). */
   interact(): boolean;
   toggleCrouch(): boolean;
+  /** Sets the virtual thumbstick movement vector (-1..1 strafe & forward) for touch walkthrough. */
+  setTouchMove(strafe: number, forward: number, sprint?: boolean): void;
   /** Requests pointer lock for free mouse look (must be called from a user gesture). */
   requestMouseLook(): void;
   enter(spawnId?: string): void;

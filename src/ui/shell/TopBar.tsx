@@ -8,14 +8,19 @@ import {
   openHelp,
   roomPanelOpen,
   settingsOpen,
+  timeOfDay,
+  toggleNavigator,
+  toggleRoomPanel,
   tradeView,
   viewMode,
   type ShellViewMode,
 } from '../../state/shell-store.ts';
-import type { FloorViewMode } from '../../core/types/scene.ts';
+import type { FloorViewMode, TimeOfDay } from '../../core/types/scene.ts';
 import { TRADE_VIEW_LABELS, type TradeView } from '../../core/types/twin-ux.ts';
-import { Icon, type IconName } from './icons.tsx';
+
+const TRADE_VIEWS: readonly TradeView[] = ['owner', 'architect', 'builder', 'electrician', 'plumber'];
 import { PROPERTY_NAME } from './room-data.ts';
+import { Icon, type IconName } from './icons.tsx';
 import { useShell } from './shell-context.ts';
 
 const FLOORS: readonly { readonly id: FloorViewMode; readonly label: string; readonly key: string }[] = [
@@ -30,12 +35,16 @@ const VIEWS: readonly {
   readonly icon: IconName;
   readonly hint: string;
 }[] = [
-  { id: '3d', label: '3D', icon: 'cube', hint: 'Orbit around the model' },
+  { id: '3d', label: '3D', icon: 'cube', hint: 'Perspective 3D view' },
   { id: 'plan', label: 'Plan', icon: 'plan', hint: 'Top-down floor plan' },
   { id: 'walk', label: 'Walk', icon: 'walk', hint: 'Walk through at eye level (W)' },
 ];
 
-const TRADE_VIEWS: readonly TradeView[] = ['owner', 'architect', 'builder', 'electrician', 'plumber'];
+const TODS: readonly { readonly id: TimeOfDay; readonly label: string; readonly icon: IconName }[] = [
+  { id: 'day', label: 'Day', icon: 'sun' },
+  { id: 'dusk', label: 'Dusk', icon: 'sunset' },
+  { id: 'night', label: 'Night', icon: 'moon' },
+];
 
 function isTradeView(value: string): value is TradeView {
   return TRADE_VIEWS.some((v) => v === value);
@@ -46,6 +55,7 @@ export function TopBar(): JSX.Element {
   const floor = floorMode.value;
   const view = viewMode.value;
   const trade = tradeView.value;
+  const tod = timeOfDay.value;
 
   return (
     <header class="shell-topbar" role="banner">
@@ -56,9 +66,7 @@ export function TopBar(): JSX.Element {
           title="Rooms"
           aria-label="Toggle room list"
           aria-pressed={navigatorOpen.value}
-          onClick={() => {
-            navigatorOpen.value = !navigatorOpen.value;
-          }}
+          onClick={() => toggleNavigator()}
         >
           <Icon name="menu" />
         </button>
@@ -96,6 +104,21 @@ export function TopBar(): JSX.Element {
             >
               <Icon name={v.icon} size={15} />
               <span class="shell-seg-label">{v.label}</span>
+            </button>
+          ))}
+        </div>
+        <div class="shell-seg shell-topbar-tod" role="group" aria-label="Time of day">
+          {TODS.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              class={`shell-seg-btn${tod === o.id ? ' is-active' : ''}`}
+              aria-pressed={tod === o.id}
+              title={`${o.label} lighting`}
+              onClick={() => ctl.setTimeOfDay(o.id)}
+            >
+              <Icon name={o.icon} size={14} />
+              <span class="shell-seg-label">{o.label}</span>
             </button>
           ))}
         </div>
@@ -183,9 +206,7 @@ export function TopBar(): JSX.Element {
           title="Room controls"
           aria-label="Toggle room controls"
           aria-pressed={roomPanelOpen.value}
-          onClick={() => {
-            roomPanelOpen.value = !roomPanelOpen.value;
-          }}
+          onClick={() => toggleRoomPanel()}
         >
           <Icon name="panel" />
         </button>

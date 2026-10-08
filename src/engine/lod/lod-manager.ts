@@ -409,7 +409,10 @@ export class RoomLodController {
         u?.isBifoldDoor ||
         u?.isCarGate ||
         u?.isUniFiCamera ||
-        u?.isUniFiAccessReader
+        u?.isUniFiAccessReader ||
+        u?.circuitId !== undefined ||
+        u?.isFittingFx ||
+        u?.isLightGlowPool
       ) {
         found = true;
       }

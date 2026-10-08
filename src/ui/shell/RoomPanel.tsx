@@ -1,10 +1,14 @@
 import type { JSX } from 'preact';
+import { useRef } from 'preact/hooks';
 import {
   currentRoomId,
+  cycleRoomSheetSnap,
   deviceRevision,
+  isCompactPhone,
   isMobile,
   liveLevels,
   roomPanelOpen,
+  roomSheetSnap,
   timeOfDay,
   tradeView,
 } from '../../state/shell-store.ts';
@@ -219,13 +223,45 @@ export function RoomPanel(): JSX.Element {
   const trade = tradeView.value;
   const sections = TRADE_SECTIONS[trade];
   const open = roomPanelOpen.value;
+  const compactSheet = isCompactPhone.value;
+  const snap = roomSheetSnap.value;
+  const dragStartY = useRef<number | null>(null);
 
   return (
     <aside
-      class={`shell-panel shell-glass${open ? ' is-open' : ''}${isMobile.value ? ' is-drawer' : ''}`}
+      class={`shell-panel shell-glass${open ? ' is-open' : ''}${isMobile.value ? ' is-drawer' : ''}${
+        compactSheet ? ` is-bottom-sheet snap-${snap}` : ''
+      }`}
       aria-label="Room controls"
       aria-hidden={!open}
     >
+      {compactSheet && (
+        <button
+          type="button"
+          class="shell-sheet-grabber"
+          aria-label={`Resize room sheet (${snap})`}
+          title="Tap or drag to resize sheet"
+          onClick={() => cycleRoomSheetSnap()}
+          onPointerDown={(e) => {
+            dragStartY.current = e.clientY;
+          }}
+          onPointerUp={(e) => {
+            if (dragStartY.current === null) return;
+            const dy = e.clientY - dragStartY.current;
+            dragStartY.current = null;
+            if (Math.abs(dy) < 22) return;
+            if (dy < -22) {
+              roomSheetSnap.value = snap === 'peek' ? 'half' : 'full';
+            } else if (dy > 22) {
+              if (snap === 'full') roomSheetSnap.value = 'half';
+              else if (snap === 'half') roomSheetSnap.value = 'peek';
+              else roomPanelOpen.value = false;
+            }
+          }}
+        >
+          <span class="shell-sheet-pill" />
+        </button>
+      )}
       <div class="shell-panel-head">
         <div class="shell-panel-heading">
           <span class="shell-panel-eyebrow">

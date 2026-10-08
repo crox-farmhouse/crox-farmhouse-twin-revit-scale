@@ -10,12 +10,16 @@ import {
   graphicsMode,
   graphicsTierLabel,
   guestMode,
+  isCompactPhone,
   isMobile,
   liveLevels,
   navigatorOpen,
   noteMeta,
   pruneNoteMeta,
   roomPanelOpen,
+  roomSheetSnap,
+  touchNavMode,
+  type TouchNavMode,
   sectionCut,
   showToast,
   timeOfDay,
@@ -212,6 +216,9 @@ export class ShellController {
     if (isMobile.value) {
       navigatorOpen.value = false;
       roomPanelOpen.value = true;
+      if (isCompactPhone.value) {
+        roomSheetSnap.value = 'peek';
+      }
     }
   }
 
@@ -229,8 +236,12 @@ export class ShellController {
       if (api.walkthrough.isActive()) api.walkthrough.exit();
       const keepFloor = api.floors.getMode();
       if (mode === 'plan') {
+        api.camera.setSingleFingerPan(true);
+        touchNavMode.value = 'pan';
         api.camera.flyToPreset('top');
       } else if (viewMode.value === 'plan') {
+        api.camera.setSingleFingerPan(false);
+        touchNavMode.value = 'orbit';
         const room = currentRoomId.value;
         const bounds = room ? api.rooms.getBounds(room) : null;
         if (bounds) api.camera.flyToBounds(bounds, keepFloor);
@@ -245,6 +256,16 @@ export class ShellController {
   public recenter(): void {
     if (this.api.walkthrough.isActive()) return;
     this.api.camera.recenter();
+  }
+
+  public setTouchNavMode(mode: TouchNavMode): void {
+    this.api.camera.setSingleFingerPan(mode === 'pan');
+    touchNavMode.value = mode;
+  }
+
+  public toggleTouchNavMode(): void {
+    const next: TouchNavMode = touchNavMode.value === 'pan' ? 'orbit' : 'pan';
+    this.setTouchNavMode(next);
   }
 
   public isWalking(): boolean {

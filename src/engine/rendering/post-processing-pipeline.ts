@@ -156,6 +156,12 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
     color = (color - AgxMinEv) / (AgxMaxEv - AgxMinEv);
     color = clamp(color, 0.0, 1.0);
     color = agxDefaultContrastApprox(color);
+    // AgX Punchy look transform: restore crisp midtone contrast and natural colour saturation
+    // that base AgX's wide log range + inset matrix compress, while keeping highlight rolloff.
+    const vec3 agxLumaWeights = vec3(0.2126, 0.7152, 0.0722);
+    color = pow(max(color, vec3(0.0)), vec3(1.22));
+    float agxLuma = dot(color, agxLumaWeights);
+    color = clamp(agxLuma + (color - agxLuma) * 1.24, 0.0, 1.0);
     color = AgXOutsetMatrix * color;
     color = pow(max(vec3(0.0), color), vec3(2.2));
     color = LINEAR_REC2020_TO_LINEAR_SRGB * color;

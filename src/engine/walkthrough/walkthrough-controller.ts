@@ -110,9 +110,13 @@ export class WalkthroughController {
   private isCurrentlySprinting = false;
   private pointerLocked = false;
   private isDraggingLook = false;
+  private dragLookPointerId: number | null = null;
   private lookDirty = false;
   private lastDragClientX = 0;
   private lastDragClientY = 0;
+  private touchForwardInput = 0;
+  private touchStrafeInput = 0;
+  private touchSprint = false;
 
   private baseFov: number = DEFAULT_WALKTHROUGH_FOV;
   private currentFov: number = DEFAULT_WALKTHROUGH_FOV;
@@ -229,6 +233,12 @@ export class WalkthroughController {
     this.crouched = crouched;
     this.saveSessionState(true);
     this.emit();
+  }
+
+  public setTouchMoveVector(strafe: number, forward: number, sprint = false): void {
+    this.touchStrafeInput = THREE.MathUtils.clamp(strafe, -1, 1);
+    this.touchForwardInput = THREE.MathUtils.clamp(forward, -1, 1);
+    this.touchSprint = sprint;
   }
 
   public toggleCrouched(): boolean {
@@ -430,6 +440,10 @@ export class WalkthroughController {
     this.glideTargetFoot = null;
     this.ladderClimb.reset();
     this.isDraggingLook = false;
+    this.dragLookPointerId = null;
+    this.touchForwardInput = 0;
+    this.touchStrafeInput = 0;
+    this.touchSprint = false;
     this.lookDirty = false;
     this.targetedMesh = null;
     this.targetedPrompt = null;
@@ -815,18 +829,24 @@ export class WalkthroughController {
 
 
 
-    let forwardInput = 0;
-    let strafeInput = 0;
+    let forwardInput = this.touchForwardInput;
+    let strafeInput = this.touchStrafeInput;
     if (this.keysDown.has('KeyW') || this.keysDown.has('ArrowUp')) forwardInput += 1;
     if (this.keysDown.has('KeyS') || this.keysDown.has('ArrowDown')) forwardInput -= 1;
     if (this.keysDown.has('KeyD') || this.keysDown.has('ArrowRight')) strafeInput += 1;
     if (this.keysDown.has('KeyA') || this.keysDown.has('ArrowLeft')) strafeInput -= 1;
+    forwardInput = THREE.MathUtils.clamp(forwardInput, -1, 1);
+    strafeInput = THREE.MathUtils.clamp(strafeInput, -1, 1);
 
-    const isMoving = forwardInput !== 0 || strafeInput !== 0;
+    const inputMag = Math.min(1, Math.hypot(forwardInput, strafeInput));
+    const isMoving = inputMag > 0.02;
     const isSprinting =
-      isMoving && !this.crouched && (this.keysDown.has('ShiftLeft') || this.keysDown.has('ShiftRight'));
+      isMoving &&
+      !this.crouched &&
+      (this.touchSprint || this.keysDown.has('ShiftLeft') || this.keysDown.has('ShiftRight'));
     this.isCurrentlySprinting = isSprinting;
-    const speed = this.crouched ? CROUCH_SPEED_MPS : isSprinting ? SPRINT_SPEED_MPS : WALK_SPEED_MPS;
+    const baseSpeed = this.crouched ? CROUCH_SPEED_MPS : isSprinting ? SPRINT_SPEED_MPS : WALK_SPEED_MPS;
+    const speed = baseSpeed * inputMag;
 
     const targetFov = this.baseFov + (isSprinting ? SPRINT_FOV_BOOST : 0);
     if (Math.abs(this.currentFov - targetFov) > 0.05) {
@@ -971,12 +991,15 @@ export class WalkthroughController {
         this.triggerTargetedInteraction();
         return;
       }
-      try {
-        this.canvas.requestPointerLock?.();
-      } catch {
-        // Fallback to drag look
+      if (e.pointerType !== 'touch') {
+        try {
+          this.canvas.requestPointerLock?.();
+        } catch {
+          // Fallback to drag look
+        }
       }
       this.isDraggingLook = true;
+      this.dragLookPointerId = e.pointerId;
       this.lastDragClientX = e.clientX;
       this.lastDragClientY = e.clientY;
     });
@@ -995,14 +1018,19 @@ export class WalkthroughController {
           this.lookDirty = true;
           return;
         }
-        if (this.isDraggingLook && (e.buttons & 1) !== 0) {
+        if (
+          this.isDraggingLook &&
+          e.pointerId === this.dragLookPointerId &&
+          (e.pointerType === 'touch' || (e.buttons & 1) !== 0)
+        ) {
           const dx = e.clientX - this.lastDragClientX;
           const dy = e.clientY - this.lastDragClientY;
           this.lastDragClientX = e.clientX;
           this.lastDragClientY = e.clientY;
-          this.targetYawRad -= dx * DRAG_SENSITIVITY;
+          const sens = e.pointerType === 'touch' ? DRAG_SENSITIVITY * 1.15 : DRAG_SENSITIVITY;
+          this.targetYawRad -= dx * sens;
           this.targetPitchRad = THREE.MathUtils.clamp(
-            this.targetPitchRad - dy * DRAG_SENSITIVITY,
+            this.targetPitchRad - dy * sens,
             -MAX_PITCH_RAD,
             MAX_PITCH_RAD
           );
@@ -1012,9 +1040,14 @@ export class WalkthroughController {
       { passive: true }
     );
 
-    window.addEventListener('pointerup', () => {
-      this.isDraggingLook = false;
-    });
+    const endDragLook = (e: PointerEvent): void => {
+      if (this.dragLookPointerId === null || e.pointerId === this.dragLookPointerId) {
+        this.isDraggingLook = false;
+        this.dragLookPointerId = null;
+      }
+    };
+    window.addEventListener('pointerup', endDragLook);
+    window.addEventListener('pointercancel', endDragLook);
 
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       const activeEl = document.activeElement;
