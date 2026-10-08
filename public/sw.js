@@ -1,5 +1,5 @@
 // Crox Farmhouse Digital Twin — Progressive Web App Service Worker
-const CACHE_NAME = 'crox-farmhouse-twin-v4';
+const CACHE_NAME = 'crox-farmhouse-twin-v5';
 const PRECACHE_URLS = [
   './',
   './index.html',
