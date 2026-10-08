@@ -4,10 +4,13 @@ import type { TwinApi } from './twin-api.ts';
 import {
   KNXPropertyBusController,
   LoopbackSimulationTransport,
+  MotionPresenceBridge,
   WebSocketKNXGatewayTransport,
 } from '../integrations/knx/index.ts';
 import { SceneAnnotationStore } from '../engine/annotation/annotation-system.ts';
 import { CroxPropertyScene } from '../homes/crox-farmhouse/crox-property-scene.ts';
+import { CROX_DEMO_PRESENCE_HOLD_TIME_SEC } from '../homes/crox-farmhouse/knx/devices.ts';
+import { CROX_KNX_PROJECT } from '../homes/crox-farmhouse/knx/project.ts';
 import { CROX_FARMHOUSE_USD_OVERRIDE_LAYER } from '../homes/crox-farmhouse/usd/layout-overrides.ts';
 import type { InboundKNXFrame } from '../core/types/knx.ts';
 import type { InteractiveUserData } from '../core/types/scene.ts';
@@ -61,8 +64,13 @@ export async function bootstrap(): Promise<void> {
   // Connect to a live KNXnet/IP WebSocket gateway when ?knxWs=ws://... is provided.
   const liveGatewayUrl = new URLSearchParams(window.location.search).get('knxWs');
   const knx = new KNXPropertyBusController(
+    CROX_KNX_PROJECT,
     liveGatewayUrl ? new WebSocketKNXGatewayTransport(liveGatewayUrl) : new LoopbackSimulationTransport()
   );
+  // Demo: short PIR hold time so night → off after vacancy is visible within a walkthrough.
+  knx.setPresenceHoldTimeOverride(CROX_DEMO_PRESENCE_HOLD_TIME_SEC);
+  // Walkthrough feet position → ceiling PIR coverage → emulator presence telegrams.
+  const presenceBridge = new MotionPresenceBridge(knx, knx.getPresenceDetectors());
   const hub = new SmartHomeHub(knx);
   const annotations = new SceneAnnotationStore();
 
@@ -72,8 +80,22 @@ export async function bootstrap(): Promise<void> {
     scene.syncUniFiSecurity3D(hub.protect.getCameras(), hub.access.getAccessPoints());
   };
 
-  const onObjectInteraction = (userData: InteractiveUserData): void => {
-    if (userData.isKNXSwitch) {
+  const onObjectInteraction = (
+    userData: InteractiveUserData,
+    details?: { readonly pressDurationMs: number }
+  ): void => {
+    if (userData.zoneSceneSwitchZoneId) {
+      // Every Corston toggle gang: short ▲/▼ steps zone scenes, hold ▲ full, hold ▼ night.
+      knx.handleZoneSwitchGesture(
+        userData.zoneSceneSwitchZoneId,
+        userData.switchDirection ?? 'up',
+        details?.pressDurationMs ?? 0,
+        userData.switchPa,
+        userData.switchLocation
+      );
+    } else if (userData.presenceDetectorPa) {
+      knx.togglePresence(userData.presenceDetectorPa);
+    } else if (userData.isKNXSwitch) {
       knx.handleSwitchShortPress(userData.switchDirection ?? 'up', userData.switchLocation);
     } else if (userData.isCourtyardSwitch) {
       knx.handleCourtyardSwitchShortPress(userData.switchDirection ?? 'up', userData.switchPa ?? COURTYARD_SWITCH_PA);
@@ -114,6 +136,9 @@ export async function bootstrap(): Promise<void> {
     gatePa: GATE_PA,
     kitchenScenePa: KITCHEN_SWITCH_PA,
     courtyardSwitchPa: COURTYARD_SWITCH_PA,
+    onWalkthroughPresence: (pos) => {
+      presenceBridge.update(pos);
+    },
   });
   const { api } = runtime;
 

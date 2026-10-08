@@ -6,7 +6,6 @@ import {
   VoiceRecognitionController,
   type ExecutedToolCallRecord,
 } from '../../../integrations/knx/ai-assistant.ts';
-import { CIRCUITS } from '../../../integrations/knx/constants.ts';
 import type { KNXPropertyBusController } from '../../../integrations/knx/emulator.ts';
 import { devStore } from '../dev-store.ts';
 import type { KNXTelegram, ShortPressMode, WakeBehavior } from '../../../core/types/knx.ts';
@@ -91,7 +90,18 @@ export class HudKnxControlsController {
     this.knx = knx;
     this.scene = scene;
     this.hub = hub;
-    this.aiAssistant = new KNXAIAssistant(knx, scene, onEnvironmentChanged);
+    this.aiAssistant = new KNXAIAssistant(
+      knx,
+      knx.getProject(),
+      {
+        setTimeOfDay: (timeOfDay) => scene.setTimeOfDay(timeOfDay),
+        isBifoldsOpen: () => scene.isBifoldsOpen(),
+        toggleBifolds: () => {
+          scene.toggleBifolds();
+        },
+      },
+      onEnvironmentChanged
+    );
 
     this.toggleUpBtn = requireElement<HTMLButtonElement>('knx-toggle-up-btn');
     this.toggleDownBtn = requireElement<HTMLButtonElement>('knx-toggle-down-btn');
@@ -187,7 +197,7 @@ export class HudKnxControlsController {
     this.circuitListEl.innerHTML = '';
     const targetLevels = this.knx.getTargetLevels();
 
-    for (const c of CIRCUITS) {
+    for (const c of this.knx.getCircuits()) {
       const pct = Math.round(targetLevels[c.id] ?? 0);
       const isOn = pct > 0;
 
@@ -247,7 +257,7 @@ export class HudKnxControlsController {
 
   public updateCircuitControlsValues(): void {
     const targetLevels = this.knx.getTargetLevels();
-    for (const c of CIRCUITS) {
+    for (const c of this.knx.getCircuits()) {
       const pct = Math.round(targetLevels[c.id] ?? 0);
       const isOn = pct > 0;
       const card = document.getElementById(`circuit-card-${c.id}`);

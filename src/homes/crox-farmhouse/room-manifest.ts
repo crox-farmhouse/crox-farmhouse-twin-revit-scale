@@ -1,4 +1,6 @@
-import { CIRCUITS, DEFAULT_SCENES } from '../../integrations/knx/constants.ts';
+import { CROX_CENTRAL_SCENES } from './knx/central-scenes.ts';
+import { CROX_CIRCUITS } from './knx/circuits.ts';
+import { CROX_LIGHTING_ZONES } from './knx/zones.ts';
 import type { CircuitId, ScenePreset } from '../../core/types/knx.ts';
 import type { RoomZoneId } from '../../core/types/topology.ts';
 import type {
@@ -11,7 +13,8 @@ import type {
 /**
  * Declarative room manifest for the Crox Farmhouse room context panel.
  *
- * Joins the KNX circuit map (`CIRCUITS`), the KNX scene table (`DEFAULT_SCENES`), the
+ * Joins the KNX lighting zones (`CROX_LIGHTING_ZONES`), the central scene table
+ * (`CROX_CENTRAL_SCENES`), the
  * interactable ids registered by the room builders and the UFH zone map
  * (`ROOM_THERMAL_PROFILES`) by `RoomZoneId`, so the panel can show "what can I control in
  * the room I'm looking at" without knowing anything about the underlying systems.
@@ -49,70 +52,109 @@ const LEGACY_ZONE_ALIASES: Readonly<Record<LegacyRoomZoneId, CanonicalRoomZoneId
  * a circuit to `CircuitId` without a label is a compile error.
  *
  * Every channel sits on a dimming actuator (1.1.20 / 1.2.20 / 2.1.20, DPT 5.001 value GA), so
- * circuits are dimmable except the outbuilding channels that drive only the switched 5V/5A lamp
- * sockets on actuator 2.1.20 ("switched 5A/5V lamp socket actuator").
+ * circuits are dimmable except switched-only channels: 5A lamp-socket circuits, the wine-cellar and
+ * cloakroom PIR relays and the garage LED battens (mirrors `dimmable` in knx/circuits.ts).
  */
 const CIRCUIT_PRESENTATION: Readonly<
   Record<CircuitId, { readonly label: string; readonly dimmable: boolean }>
 > = {
-  // Kitchen (scene group, actuator 1.1.20)
+  // Kitchen
   islandPendants: { label: 'Island pendants', dimmable: true },
-  spotlights: { label: 'Ceiling spots', dimmable: true },
-  underCabinet: { label: 'Under-cabinet & hood lights', dimmable: true },
-  aboveCabinet: { label: 'Above-cabinet LED strip', dimmable: true },
+  spotlights: { label: 'Ceiling downlights', dimmable: true },
+  underCabinet: { label: 'Under-cabinet & hood task lights', dimmable: true },
+  aboveCabinet: { label: 'Above-cabinet plinth LED strip', dimmable: true },
   // Kitchen sitting area
-  sittingPendants: { label: 'Sitting area pendants', dimmable: true },
+  sittingPendants: { label: 'Filament pendants', dimmable: true },
   bifoldUplights: { label: 'Bifold floor uplights', dimmable: true },
   // Utility
-  utilitySpotlights: { label: 'Ceiling spots', dimmable: true },
-  // Courtyard
+  utilitySpotlights: { label: 'Ceiling downlights', dimmable: true },
+  // Courtyard & garden
   courtyardFestoons: { label: 'Festoon lights', dimmable: true },
   reclaimedLampPost: { label: 'Lamp post', dimmable: true },
+  pergolaFestoons: { label: 'Grape-vine pergola festoons', dimmable: true },
+  stableExternalWallLights: { label: 'Stable external wall lights', dimmable: true },
   // Dining room (familyRoom zone)
   familyRoomSpots: { label: 'Ceiling downlights', dimmable: true },
   diningPendant: { label: 'Table pendant', dimmable: true },
   diningPictureLight: { label: 'Picture light', dimmable: true },
   diningFairyLights: { label: 'Plant fairy lights', dimmable: true },
+  walkInCupboardLeds: { label: 'Walk-in cupboard coat-rail LEDs', dimmable: true },
   // Boot lobby, wine cellar & cloakroom WC
   bootLobbyPendant: { label: 'Wall lights', dimmable: true },
-  wineCellarLeds: { label: 'Wine cellar shelf LEDs', dimmable: true },
-  cloakroomWcLights: { label: 'Cloakroom WC lights', dimmable: true },
-  // Main staircase hall
-  hallPendant: { label: 'Wall, stair & beam lights', dimmable: true },
-  // Living room (front room)
-  frontRoomPendant: { label: 'Wall lights & shelf LEDs', dimmable: true },
+  wineCellarLeds: { label: 'Wine cellar shelf LEDs', dimmable: false },
+  cloakroomWcLights: { label: 'Cloakroom WC lights', dimmable: false },
+  // Staircase hall
+  hallPendant: { label: 'Wall lights', dimmable: true },
+  hallStairLeds: { label: 'Stair tread step lights', dimmable: true },
+  hallBeamLeds: { label: 'Fireplace beam LED strip', dimmable: true },
+  hallLamps5A: { label: 'Floor lamp (5A)', dimmable: false },
+  // Living room / cinema (circuit id predates the room rename)
+  frontRoomPendant: { label: 'Picture lights', dimmable: true },
+  livingRoomShelfLeds: { label: 'Alcove shelf LEDs', dimmable: true },
+  livingRoomTvBacklight: { label: 'TV bias light', dimmable: true },
   // Entrance hall
   entranceHallPendant: { label: 'Glass lantern pendant', dimmable: true },
   entranceHallUplights: { label: 'Floor uplights', dimmable: true },
   // Sitting room (circuit id predates the room rename)
-  livingRoomPendant: { label: 'Ceiling pendant & lamps', dimmable: true },
-  // Study
-  studyPendant: { label: 'Ceiling pendant', dimmable: true },
+  livingRoomPendant: { label: 'Wall sconces', dimmable: true },
+  sittingRoomShelfLeds: { label: 'Alcove shelf LEDs', dimmable: true },
+  sittingRoomLamps5A: { label: 'Table & floor lamps (5A)', dimmable: false },
+  // Plant room (zone id `study`)
+  studyPendant: { label: 'LED battens', dimmable: true },
   // First floor (actuator 1.2.20)
   mainBedroomPendant: { label: 'Ceiling pendant', dimmable: true },
   familyBathroomPendant: { label: 'Glass pendant', dimmable: true },
   upperLandingPendant: { label: 'Stairwell & landing pendants', dimmable: true },
+  upperLandingSconces: { label: 'Landing wall sconces', dimmable: true },
   bedroom2Pendant: { label: 'Ceiling pendant', dimmable: true },
   bedroom3Pendant: { label: 'Pendant (bedroom & shower room)', dimmable: true },
   bedroom4Pendant: { label: 'Ceiling pendant', dimmable: true },
-  // Outbuildings (actuator 2.1.20)
-  gymSpotsAndBattens: { label: 'LED battens & mirror backlights', dimmable: true },
-  gymWallAndCoveLights: { label: 'Wall sconces & eave coves', dimmable: true },
-  garageHighBayLights: { label: 'High-bay lights', dimmable: true },
-  garageBenchAndShower: { label: 'Workbench, shower & corridor lights', dimmable: true },
-  barnTrussAndSimHalo: { label: 'Truss spots & golf sim halo', dimmable: true },
-  barnBarsAndLamps5A: { label: 'Bars & lamp sockets', dimmable: true },
-  mezzanineSconcesAndAmbient: { label: 'Wall sconces & downlights', dimmable: true },
-  mezzanineLamps5A: { label: 'Lamp sockets', dimmable: false },
-  stableOfficeSpotlights: { label: 'Ceiling spots & WC', dimmable: true },
-  stableOfficeWallsAndLamps5A: { label: 'Wall lights & lamp sockets', dimmable: true },
-  stableSuiteDownlights: { label: 'Downlights, ensuite & balcony', dimmable: true },
-  stableSuiteLamps5A: { label: 'Lamp sockets', dimmable: false },
+  // Gym
+  gymSpotsAndBattens: { label: 'LED battens', dimmable: true },
+  gymTrussSpots: { label: 'Truss spotlights', dimmable: true },
+  gymWallAndCoveLights: { label: 'Wall sconces', dimmable: true },
+  gymCoveLeds: { label: 'Eave cove LEDs', dimmable: true },
+  gymMirrorBacklights: { label: 'Mirror backlights', dimmable: true },
+  // Garage & workshop
+  garageHighBayLights: { label: 'LED battens', dimmable: false },
+  garageTrussSpots: { label: 'Truss spotlights', dimmable: true },
+  garageBenchAndShower: { label: 'Workbench task lights', dimmable: true },
+  garageShowerLights: { label: 'Shower room lights', dimmable: true },
+  // Store
+  storeLoftLeds: { label: 'Loft LED strips', dimmable: true },
+  // Barn & golf sim
+  barnTrussAndSimHalo: { label: 'Truss spots & downlights', dimmable: true },
+  golfSimHalo: { label: 'Golf simulator LED halo', dimmable: true },
+  barnCoveLeds: { label: 'Bressummer & wall cove LEDs', dimmable: true },
+  barnWallSconces: { label: 'Wall sconces', dimmable: true },
+  barnPictureLights: { label: 'Picture lights', dimmable: true },
+  barnPoolTableLight: { label: 'Pool table canopy light', dimmable: true },
+  barnStairLeds: { label: 'Spiral stair tread LEDs', dimmable: true },
+  barnBarsAndLamps5A: { label: 'Bar lamps (5A)', dimmable: false },
+  // Mezzanine retro lounge
+  mezzanineDownlights: { label: 'Downlights & ceiling light', dimmable: true },
+  mezzanineSconcesAndAmbient: { label: 'Wall sconces', dimmable: true },
+  mezzanineBookcaseLight: { label: 'Bookcase light', dimmable: true },
+  mezzanineLamps5A: { label: 'Lamps (5A)', dimmable: false },
+  // Office
+  stableOfficeSpotlights: { label: 'Ceiling downlights', dimmable: true },
+  stableOfficeWallsAndLamps5A: { label: 'Wall sconces', dimmable: true },
+  stableOfficeLamps5A: { label: 'Desk & floor lamps (5A)', dimmable: false },
+  stableCloakroomLights: { label: 'Cloakroom WC lights', dimmable: true },
+  // Guest suite
+  stableSuiteDownlights: { label: 'Vaulted downlights', dimmable: true },
+  stableSuiteLamps5A: { label: 'Bedside & dressing lamps (5A)', dimmable: false },
+  stableEnsuiteLights: { label: 'Ensuite lights', dimmable: true },
+  stableBalconyLights: { label: 'Balcony wall lights', dimmable: true },
 };
 
-/** Lights for a zone, in KNX channel order, straight from the circuit map. */
+/** Lights for a zone in the zone's layer order (falls back to the circuits' own zone). */
 function lightsFor(zoneId: CanonicalRoomZoneId): readonly RoomLightControl[] {
-  return CIRCUITS.filter((c) => c.zoneId === zoneId).map((c) => ({
+  const zone = CROX_LIGHTING_ZONES.find((z) => z.id === zoneId);
+  const circuits = zone
+    ? zone.circuits.flatMap((id) => CROX_CIRCUITS.filter((c) => c.id === id))
+    : CROX_CIRCUITS.filter((c) => c.zoneId === zoneId);
+  return circuits.map((c) => ({
     circuitId: c.id,
     label: CIRCUIT_PRESENTATION[c.id].label,
     dimmable: CIRCUIT_PRESENTATION[c.id].dimmable,
@@ -121,7 +163,7 @@ function lightsFor(zoneId: CanonicalRoomZoneId): readonly RoomLightControl[] {
 
 /**
  * KNX scenes (group 1/0/1, DPT 17.001). `sceneNumber` is the 0-based scene value that
- * `KNXPropertyBusController.recallScene(sceneNumber, pa)` expects (it indexes `DEFAULT_SCENES`
+ * `KNXPropertyBusController.recallScene(sceneNumber, pa)` expects (it indexes `CROX_CENTRAL_SCENES`
  * and is written to the bus as-is). Switch scenes come from the Corston switch (1.1.10);
  * extended scenes from the AI/UI gateway (1.1.2) — same convention as `hud-knx-controls.ts`.
  */
@@ -135,10 +177,10 @@ function toSceneControl(scene: ScenePreset): RoomSceneControl {
 }
 
 /** All KNX scenes drive the kitchen + sitting area scene circuits. */
-const KITCHEN_SCENES: readonly RoomSceneControl[] = DEFAULT_SCENES.map(toSceneControl);
+const KITCHEN_SCENES: readonly RoomSceneControl[] = CROX_CENTRAL_SCENES.map(toSceneControl);
 
 /** Scenes that also set the courtyard festoons / lamp post (`outdoorLevels` with lights on). */
-const COURTYARD_SCENES: readonly RoomSceneControl[] = DEFAULT_SCENES.filter(
+const COURTYARD_SCENES: readonly RoomSceneControl[] = CROX_CENTRAL_SCENES.filter(
   (s) =>
     s.outdoorLevels !== undefined &&
     (s.outdoorLevels.courtyardFestoons > 0 || s.outdoorLevels.reclaimedLampPost > 0)
@@ -183,7 +225,7 @@ const ROOM_SPECS: Readonly<Record<CanonicalRoomZoneId, RoomSpec>> = {
     floor: 'ground',
     ufhZoneId: 'ufhZone2',
   },
-  study: { label: 'Study', group: 'house-ground', floor: 'ground' },
+  study: { label: 'Plant room', group: 'house-ground', floor: 'ground' },
   hall: { label: 'Staircase hall', group: 'house-ground', floor: 'ground', ufhZoneId: 'ufhZone3' },
   bootLobby: {
     label: 'Boot lobby & WC',
@@ -281,7 +323,8 @@ const ROOM_SPECS: Readonly<Record<CanonicalRoomZoneId, RoomSpec>> = {
     floor: 'ground',
     devices: [{ interactableId: 'garage-door', label: 'Garage doors' }],
   },
-  outbuildingStableOffice: { label: 'Stable office', group: 'outbuildings', floor: 'ground' },
+  outbuildingStore: { label: 'Store', group: 'outbuildings', floor: 'ground' },
+  outbuildingStableOffice: { label: 'Office', group: 'outbuildings', floor: 'ground' },
   outbuildingStableSuite: { label: 'Stable guest suite', group: 'outbuildings', floor: 'first' },
   // --- Garden & courtyard --------------------------------------------------------------
   courtyard: {
@@ -320,6 +363,7 @@ const NAV_ORDER: Readonly<Record<RoomGroup, readonly CanonicalRoomZoneId[]>> = {
     'outbuildingMezzanine',
     'outbuildingGym',
     'outbuildingGarage',
+    'outbuildingStore',
     'outbuildingStableOffice',
     'outbuildingStableSuite',
   ],

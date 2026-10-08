@@ -46,12 +46,14 @@ export function buildRoomCeilingPirSensor(
   const userData: InteractiveUserData = {
     roomMotionSensorId: options.sensorId,
     zoneId: options.zone,
+    presenceDetectorPa: options.knxPa,
   };
 
   const group = new THREE.Group();
   group.name = options.name;
   group.userData.zone = options.zone;
   group.userData.knxPa = options.knxPa;
+  group.userData.presenceDetectorPa = options.knxPa;
   group.position.set(options.x, options.ceilingY, options.z);
 
   const ledMat = new THREE.MeshStandardMaterial({

@@ -1,5 +1,5 @@
 import type { DeviceParameters, ScenePreset } from '../../core/types/knx.ts';
-import { SCENE_CIRCUIT_IDS } from './constants.ts';
+import { SCENE_CIRCUIT_IDS } from './scene-table.ts';
 
 export function encodePhysicalAddress(paStr: string): readonly [number, number] {
   const parts = paStr.split('.').map(Number);

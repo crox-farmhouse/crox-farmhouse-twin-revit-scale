@@ -473,6 +473,27 @@ export function buildLivingRoomCinemaWall(
   lg83Screen.position.set(0, 0, lg83D * 0.5 + 0.003);
   lg83Group.add(lg83Screen);
 
+  // Bias light: warm LED tape on the back of the panel washing the wall behind it
+  // (KNX circuit `livingRoomTvBacklight`, emissive-only — no extra PointLight).
+  const tvBiasGlowMat = new THREE.MeshStandardMaterial({
+    color: 0x000000,
+    emissive: 0xffdcae,
+    emissiveIntensity: 0.9,
+    transparent: true,
+    opacity: 0.4,
+    depthWrite: false,
+  });
+  tvBiasGlowMat.userData = { ...tvBiasGlowMat.userData, baseEmissiveIntensity: 0.9 };
+  ctx.lightGroups.livingRoomTvBacklight.emissives.push(tvBiasGlowMat);
+  const tvBiasGlow = new THREE.Mesh(
+    createSharedGeo(new THREE.PlaneGeometry(lg83W + 0.2, lg83H + 0.2)),
+    tvBiasGlowMat
+  );
+  tvBiasGlow.name = 'livingRoom.lg83GalleryOled.biasLight';
+  tvBiasGlow.position.set(0, 0, -lg83D * 0.5 - 0.004);
+  tvBiasGlow.renderOrder = -1;
+  lg83Group.add(tvBiasGlow);
+
   livingRoomNorthWallFrame.placeObject(
     scene,
     lg83Group,

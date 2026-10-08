@@ -23,8 +23,11 @@ export interface PointerInputHost {
   isPickExcluded(mesh: THREE.Mesh): boolean;
   handleInteractable(interactableId: string): boolean;
   toggleUfhZone(zoneId: UfhZoneId): void;
-  /** Home / integration hook for every device click (KNX switches, sensors, …). */
-  onObjectInteraction(data: InteractiveUserData): void;
+  /**
+   * Home / integration hook for every device click (KNX switches, sensors, …).
+   * `pressDurationMs` is how long the pointer was held (0 for walkthrough "E").
+   */
+  onObjectInteraction(data: InteractiveUserData, details?: { readonly pressDurationMs: number }): void;
 }
 
 /** Max pointer travel between down / up that still counts as a click (px). */
@@ -41,6 +44,7 @@ export class PointerInput {
   public readonly usdPrimPick = new Emitter<[info: UsdIndexedPrimInfo]>();
   private readonly host: PointerInputHost;
   private pointerDownPos = { x: 0, y: 0 };
+  private pointerDownMs = 0;
   private lastHoverRaycastMs = 0;
 
   public constructor(host: PointerInputHost) {
@@ -48,6 +52,7 @@ export class PointerInput {
     const { canvas } = host;
     canvas.addEventListener('pointerdown', (e) => {
       this.pointerDownPos = { x: e.clientX, y: e.clientY };
+      this.pointerDownMs = performance.now();
     });
     canvas.addEventListener('pointermove', (e) => this.onPointerMove(e));
     canvas.addEventListener('pointerup', (e) => this.onPointerUp(e));
@@ -55,7 +60,7 @@ export class PointerInput {
   }
 
   /** Activates a device mesh (click or walkthrough "E" interaction). */
-  public triggerInteractiveObject(mesh: THREE.Object3D): void {
+  public triggerInteractiveObject(mesh: THREE.Object3D, pressDurationMs = 0): void {
     const { host } = this;
     const walkthrough = host.getWalkthrough();
     if (this.usdPrimPick.hasListeners()) {
@@ -70,7 +75,7 @@ export class PointerInput {
     }
     if (data.interactableId) host.handleInteractable(data.interactableId);
     if (data.ufhZoneId) host.toggleUfhZone(data.ufhZoneId);
-    host.onObjectInteraction(data);
+    host.onObjectInteraction(data, { pressDurationMs });
     if (walkthrough.isActive()) walkthrough.refreshPrompt();
     host.invalidator.requestRender();
   }
@@ -128,7 +133,7 @@ export class PointerInput {
     // 3. Normal interactive object click (doors, switches, lights, gates, etc.)
     const firstHit = this.firstVisibleDeviceHit(raycaster);
     if (firstHit) {
-      this.triggerInteractiveObject(firstHit.object);
+      this.triggerInteractiveObject(firstHit.object, performance.now() - this.pointerDownMs);
       return;
     }
 

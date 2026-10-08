@@ -70,6 +70,7 @@ export function buildGroundFloorPendantsAndSwitches(
   buildRoomCorstonToggleSwitch(eastWingCtx, {
     circuitId: 'familyRoomSpots',
     switchPa: '1.1.15',
+    devicePa: '1.1.33',
     location: 'Dining Room — West Wall (by Boot Lobby Door)',
     x: -9.56,
     y: 1.19,
@@ -784,7 +785,7 @@ export function buildGroundFloorPendantsAndSwitches(
   buildRoomCorstonToggleSwitch(ctx, {
     circuitId: 'studyPendant',
     switchPa: '1.1.23',
-    location: 'Study — Partition Wall (by Open Doorway)',
+    location: 'Plant room — Partition Wall (by Open Doorway)',
     x: -18.99,
     y: tier2FloorY + 1.18,
     z: 9.95,
@@ -798,6 +799,7 @@ export function buildGroundFloorPendantsAndSwitches(
     motionSensorGroup.name = 'plantRoom.knxMotionSensor';
     motionSensorGroup.userData.zone = 'study';
     motionSensorGroup.userData.knxPa = '1.1.24';
+    motionSensorGroup.userData.presenceDetectorPa = '1.1.24';
     motionSensorGroup.userData.location = 'Plant Room — East Wall (Motion Sensor by Courtyard Door)';
     const sensorWallX = getEastCourtyardWallCenterX(9.92) - 0.145;
     motionSensorGroup.position.set(sensorWallX, tier2FloorY + 1.92, 9.92);
@@ -866,6 +868,10 @@ export function buildGroundFloorPendantsAndSwitches(
     statusLed.position.set(-0.017, -0.032, 0);
     motionSensorGroup.add(statusLed);
 
+    for (const part of [wallMountBase, pirDome, statusLed]) {
+      part.userData.presenceDetectorPa = '1.1.24';
+      part.userData.zoneId = 'study';
+    }
     scene.add(motionSensorGroup);
     interactions.registerLightFixture(motionSensorGroup, 'studyPendant');
   }

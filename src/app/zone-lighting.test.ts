@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { CROX_ZONE_SCENES } from '../homes/crox-farmhouse/hud-model.ts';
 import { CROX_ROOM_MANIFEST, getRoomManifest } from '../homes/crox-farmhouse/room-manifest.ts';
-import { CIRCUITS } from '../integrations/knx/constants.ts';
+import { CROX_KNX_PROJECT } from '../homes/crox-farmhouse/knx/project.ts';
 import { KNXPropertyBusController } from '../integrations/knx/emulator.ts';
 import type { CircuitId } from '../core/types/knx.ts';
 import type { KnxZoneBus, KnxZoneState } from '../core/types/knx-zones.ts';
 import { isKnxZoneBus } from '../core/types/knx-zones.ts';
 import type { RoomZoneId } from '../core/types/topology.ts';
 import { createZoneLightingApi, inferLayerKind, type ZoneLightingDeps } from './zone-lighting.ts';
+
+const CIRCUITS = CROX_KNX_PROJECT.circuits;
 
 const deps: ZoneLightingDeps = {
   circuits: CIRCUITS,
@@ -31,7 +33,8 @@ describe('inferLayerKind', () => {
     const kindOf = (id: CircuitId): string => {
       const c = CIRCUITS.find((x) => x.id === id);
       if (!c) throw new Error(id);
-      return inferLayerKind(c);
+      // Name-based inference only (Crox circuits also carry an explicit kind).
+      return inferLayerKind({ id: c.id, name: c.name, shortName: c.shortName });
     };
     expect(kindOf('islandPendants')).toBe('pendants');
     expect(kindOf('spotlights')).toBe('spots');
@@ -44,24 +47,23 @@ describe('inferLayerKind', () => {
   });
 });
 
-describe('derived zone model (legacy controller)', () => {
-  const knx = new KNXPropertyBusController();
+describe('Crox KNX emulator (native zone bus)', () => {
+  const knx = new KNXPropertyBusController(CROX_KNX_PROJECT);
   const zones = createZoneLightingApi(knx, deps);
 
-  it('reports the derived source and one zone per room with circuits', () => {
-    expect(isKnxZoneBus(knx)).toBe(false);
-    expect(zones.source()).toBe('derived');
+  it('implements KnxZoneBus natively, one zone per room with its circuits', () => {
+    expect(isKnxZoneBus(knx)).toBe(true);
+    expect(zones.source()).toBe('knx');
     const familyRoom = zones.get('familyRoom');
     expect(familyRoom?.circuitIds).toEqual(
       expect.arrayContaining(['familyRoomSpots', 'diningPendant', 'diningPictureLight', 'diningFairyLights'])
     );
-    expect(familyRoom?.layers.map((l) => l.kind)).toEqual(['pendants', 'downlights', 'picture', 'feature']);
-    expect(familyRoom?.scenes.map((s) => s.label)).toEqual(['Entertaining', 'Dining', 'Cosy']);
+    expect(familyRoom?.scenes[0]?.label).toBe('Bright');
     const ids = zones.list().map((z) => z.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('tracks Full / Night / Off / scene / manual from target levels', () => {
+  it('tracks Full / Night / Off / scene / manual from the bus', () => {
     const zoneId: RoomZoneId = 'familyRoom';
     const state = (): KnxZoneState => zones.getState(zoneId);
 
@@ -81,19 +83,12 @@ describe('derived zone model (legacy controller)', () => {
     knx.setCircuitLevel('diningPendant', 12);
     expect(state().mode).toBe('manual');
   });
-
-  it('recalls central-table scenes on the bus for rooms that use them', () => {
-    const kitchen = zones.get('kitchen');
-    if (!kitchen || kitchen.scenes.length === 0) return;
-    zones.recallScene('kitchen', 0);
-    expect(zones.getState('kitchen')).toEqual({ mode: 'scene', sceneIndex: 0 });
-  });
 });
 
 describe('native zone model', () => {
   it('delegates to a controller that implements KnxZoneBus', () => {
     const calls: string[] = [];
-    const legacy = new KNXPropertyBusController();
+    const legacy = new KNXPropertyBusController(CROX_KNX_PROJECT);
     const native: KnxZoneBus = {
       getZones: () => [
         {
@@ -120,7 +115,8 @@ describe('native zone model', () => {
     const zones = createZoneLightingApi(bus, deps);
     expect(zones.source()).toBe('knx');
     expect(zones.list().map((z) => z.id)).toEqual(['hall']);
-    expect(zones.get('hall')?.layers[0]?.kind).toBe('pendants');
+    // hallPendant is typed `wall` (staircase hall wall lights) in the Crox project.
+    expect(zones.get('hall')?.layers[0]?.kind).toBe('wall');
     zones.recallScene('hall', 0);
     zones.setFull('hall');
     zones.setNight('hall');

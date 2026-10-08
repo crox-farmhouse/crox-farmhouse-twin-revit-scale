@@ -1,0 +1,385 @@
+Address,Name,DPT,Main group,Middle group,Description
+1/0/0,Master off (night mode),1.001,House ground floor,Central objects,Open-plan + utility + dining + courtyard night mode
+1/0/1,Central scene,18.001,House ground floor,Central objects,Legacy 8-slot open-plan scene table (actuator 1.1.20)
+1/0/2,Master full,5.001,House ground floor,Central objects,Open-plan kitchen full brightness
+1/1/1,Island Pendants switch,1.001,House ground floor,Switching,Blue Island Pendants (Set 1) (1.1.20 ch1)
+1/1/2,Sitting Pendants switch,1.001,House ground floor,Switching,Sitting Area Pendants (Set 2) (1.1.20 ch2)
+1/1/3,Bifold Uplights switch,1.001,House ground floor,Switching,Bifold Floor Uplights (1.1.20 ch3)
+1/1/4,Kitchen Spots switch,1.001,House ground floor,Switching,Kitchen Ceiling Spotlights (1.1.20 ch4)
+1/1/5,Under-Cabinet switch,1.001,House ground floor,Switching,Under-Cabinet & Cooker Hood (1.1.20 ch5)
+1/1/6,Utility Spots switch,1.001,House ground floor,Switching,Utility Room Spotlights (1.1.20 ch6)
+1/1/7,Courtyard Festoons switch,1.001,House ground floor,Switching,Courtyard Festoon Lighting (1.1.20 ch7)
+1/1/8,Reclaimed Lamp Post switch,1.001,House ground floor,Switching,Reclaimed Courtyard Lamp Post (1.1.20 ch8)
+1/1/9,Above-Cabinet LEDs switch,1.001,House ground floor,Switching,Above-Cabinet Plinth Strip LEDs (1.1.20 ch9)
+1/1/10,Dining Spots switch,1.001,House ground floor,Switching,Dining Room Recessed Downlights (1.1.20 ch10)
+1/1/11,Boot Lobby switch,1.001,House ground floor,Switching,Boot Lobby Wall Lights (1.1.20 ch11)
+1/1/12,Hall Wall Lights switch,1.001,House ground floor,Switching,Staircase Hall Wall Lights (1.1.20 ch12)
+1/1/13,Picture Lights switch,1.001,House ground floor,Switching,Living Room Picture Lights (1.1.20 ch13)
+1/1/14,Entrance Hall switch,1.001,House ground floor,Switching,Front Entrance Hall Glass Lantern Pendant (1.1.20 ch14)
+1/1/15,Sitting Sconces switch,1.001,House ground floor,Switching,Sitting Room Wall Sconces (1.1.20 ch15)
+1/1/16,Plant Room Battens switch,1.001,House ground floor,Switching,Plant Room LED Battens (1.1.20 ch16)
+1/1/17,Wine Cellar LEDs switch,1.001,House ground floor,Switching,Wine Cellar Shelf LED Strips (1.1.20 ch23)
+1/1/18,Cloakroom WC switch,1.001,House ground floor,Switching,Cloakroom WC Wall Lights & Mirror LED (1.1.20 ch24)
+1/1/19,Hallway Uplights switch,1.001,House ground floor,Switching,Front Entrance Hallway Floor Uplights (1.1.20 ch25)
+1/1/20,Dining Pendant switch,1.001,House ground floor,Switching,Dining Table Ceiling Pendant (1.1.20 ch26)
+1/1/21,Picture Light switch,1.001,House ground floor,Switching,Dining Room Fluted Brass Picture Light (1.1.20 ch27)
+1/1/22,Fairy Lights switch,1.001,House ground floor,Switching,Dining Room Corner Plant Fairy Lights (1.1.20 ch28)
+1/1/23,Stair Step Lights switch,1.001,House ground floor,Switching,Staircase Tread Step Lights (1.1.28 ch1)
+1/1/24,Beam LED switch,1.001,House ground floor,Switching,Hall Fireplace Beam LED Strip (1.1.28 ch2)
+1/1/25,Hall Lamp switch,1.001,House ground floor,Switching,Hall Floor Lamp (5A) (1.1.28 ch3)
+1/1/26,Cupboard LEDs switch,1.001,House ground floor,Switching,Walk-in Cupboard Coat-Rail LEDs (1.1.28 ch4)
+1/1/27,Alcove LEDs switch,1.001,House ground floor,Switching,Living Room Alcove Shelf LEDs (1.1.28 ch5)
+1/1/28,TV Bias Light switch,1.001,House ground floor,Switching,Cinema TV Bias Light (1.1.28 ch6)
+1/1/29,Sitting Lamps switch,1.001,House ground floor,Switching,Sitting Room Lamps (5A) (1.1.28 ch7)
+1/1/30,Sitting Alcove LEDs switch,1.001,House ground floor,Switching,Sitting Room Alcove Shelf LEDs (1.1.28 ch8)
+1/2/1,Island Pendants brightness,5.001,House ground floor,Brightness value,Blue Island Pendants (Set 1) (1.1.20 ch1)
+1/2/2,Sitting Pendants brightness,5.001,House ground floor,Brightness value,Sitting Area Pendants (Set 2) (1.1.20 ch2)
+1/2/3,Bifold Uplights brightness,5.001,House ground floor,Brightness value,Bifold Floor Uplights (1.1.20 ch3)
+1/2/4,Kitchen Spots brightness,5.001,House ground floor,Brightness value,Kitchen Ceiling Spotlights (1.1.20 ch4)
+1/2/5,Under-Cabinet brightness,5.001,House ground floor,Brightness value,Under-Cabinet & Cooker Hood (1.1.20 ch5)
+1/2/6,Utility Spots brightness,5.001,House ground floor,Brightness value,Utility Room Spotlights (1.1.20 ch6)
+1/2/7,Courtyard Festoons brightness,5.001,House ground floor,Brightness value,Courtyard Festoon Lighting (1.1.20 ch7)
+1/2/8,Reclaimed Lamp Post brightness,5.001,House ground floor,Brightness value,Reclaimed Courtyard Lamp Post (1.1.20 ch8)
+1/2/9,Above-Cabinet LEDs brightness,5.001,House ground floor,Brightness value,Above-Cabinet Plinth Strip LEDs (1.1.20 ch9)
+1/2/10,Dining Spots brightness,5.001,House ground floor,Brightness value,Dining Room Recessed Downlights (1.1.20 ch10)
+1/2/11,Boot Lobby brightness,5.001,House ground floor,Brightness value,Boot Lobby Wall Lights (1.1.20 ch11)
+1/2/12,Hall Wall Lights brightness,5.001,House ground floor,Brightness value,Staircase Hall Wall Lights (1.1.20 ch12)
+1/2/13,Picture Lights brightness,5.001,House ground floor,Brightness value,Living Room Picture Lights (1.1.20 ch13)
+1/2/14,Entrance Hall brightness,5.001,House ground floor,Brightness value,Front Entrance Hall Glass Lantern Pendant (1.1.20 ch14)
+1/2/15,Sitting Sconces brightness,5.001,House ground floor,Brightness value,Sitting Room Wall Sconces (1.1.20 ch15)
+1/2/16,Plant Room Battens brightness,5.001,House ground floor,Brightness value,Plant Room LED Battens (1.1.20 ch16)
+1/2/17,Wine Cellar LEDs brightness,5.001,House ground floor,Brightness value,Wine Cellar Shelf LED Strips (1.1.20 ch23)
+1/2/18,Cloakroom WC brightness,5.001,House ground floor,Brightness value,Cloakroom WC Wall Lights & Mirror LED (1.1.20 ch24)
+1/2/19,Hallway Uplights brightness,5.001,House ground floor,Brightness value,Front Entrance Hallway Floor Uplights (1.1.20 ch25)
+1/2/20,Dining Pendant brightness,5.001,House ground floor,Brightness value,Dining Table Ceiling Pendant (1.1.20 ch26)
+1/2/21,Picture Light brightness,5.001,House ground floor,Brightness value,Dining Room Fluted Brass Picture Light (1.1.20 ch27)
+1/2/22,Fairy Lights brightness,5.001,House ground floor,Brightness value,Dining Room Corner Plant Fairy Lights (1.1.20 ch28)
+1/2/23,Stair Step Lights brightness,5.001,House ground floor,Brightness value,Staircase Tread Step Lights (1.1.28 ch1)
+1/2/24,Beam LED brightness,5.001,House ground floor,Brightness value,Hall Fireplace Beam LED Strip (1.1.28 ch2)
+1/2/25,Hall Lamp brightness,5.001,House ground floor,Brightness value,Hall Floor Lamp (5A) (1.1.28 ch3)
+1/2/26,Cupboard LEDs brightness,5.001,House ground floor,Brightness value,Walk-in Cupboard Coat-Rail LEDs (1.1.28 ch4)
+1/2/27,Alcove LEDs brightness,5.001,House ground floor,Brightness value,Living Room Alcove Shelf LEDs (1.1.28 ch5)
+1/2/28,TV Bias Light brightness,5.001,House ground floor,Brightness value,Cinema TV Bias Light (1.1.28 ch6)
+1/2/29,Sitting Lamps brightness,5.001,House ground floor,Brightness value,Sitting Room Lamps (5A) (1.1.28 ch7)
+1/2/30,Sitting Alcove LEDs brightness,5.001,House ground floor,Brightness value,Sitting Room Alcove Shelf LEDs (1.1.28 ch8)
+1/3/1,Island Pendants status,5.001,House ground floor,Brightness status,Blue Island Pendants (Set 1) feedback (1.1.20 ch1)
+1/3/2,Sitting Pendants status,5.001,House ground floor,Brightness status,Sitting Area Pendants (Set 2) feedback (1.1.20 ch2)
+1/3/3,Bifold Uplights status,5.001,House ground floor,Brightness status,Bifold Floor Uplights feedback (1.1.20 ch3)
+1/3/4,Kitchen Spots status,5.001,House ground floor,Brightness status,Kitchen Ceiling Spotlights feedback (1.1.20 ch4)
+1/3/5,Under-Cabinet status,5.001,House ground floor,Brightness status,Under-Cabinet & Cooker Hood feedback (1.1.20 ch5)
+1/3/6,Utility Spots status,5.001,House ground floor,Brightness status,Utility Room Spotlights feedback (1.1.20 ch6)
+1/3/7,Courtyard Festoons status,5.001,House ground floor,Brightness status,Courtyard Festoon Lighting feedback (1.1.20 ch7)
+1/3/8,Reclaimed Lamp Post status,5.001,House ground floor,Brightness status,Reclaimed Courtyard Lamp Post feedback (1.1.20 ch8)
+1/3/9,Above-Cabinet LEDs status,5.001,House ground floor,Brightness status,Above-Cabinet Plinth Strip LEDs feedback (1.1.20 ch9)
+1/3/10,Dining Spots status,5.001,House ground floor,Brightness status,Dining Room Recessed Downlights feedback (1.1.20 ch10)
+1/3/11,Boot Lobby status,5.001,House ground floor,Brightness status,Boot Lobby Wall Lights feedback (1.1.20 ch11)
+1/3/12,Hall Wall Lights status,5.001,House ground floor,Brightness status,Staircase Hall Wall Lights feedback (1.1.20 ch12)
+1/3/13,Picture Lights status,5.001,House ground floor,Brightness status,Living Room Picture Lights feedback (1.1.20 ch13)
+1/3/14,Entrance Hall status,5.001,House ground floor,Brightness status,Front Entrance Hall Glass Lantern Pendant feedback (1.1.20 ch14)
+1/3/15,Sitting Sconces status,5.001,House ground floor,Brightness status,Sitting Room Wall Sconces feedback (1.1.20 ch15)
+1/3/16,Plant Room Battens status,5.001,House ground floor,Brightness status,Plant Room LED Battens feedback (1.1.20 ch16)
+1/3/17,Wine Cellar LEDs status,5.001,House ground floor,Brightness status,Wine Cellar Shelf LED Strips feedback (1.1.20 ch23)
+1/3/18,Cloakroom WC status,5.001,House ground floor,Brightness status,Cloakroom WC Wall Lights & Mirror LED feedback (1.1.20 ch24)
+1/3/19,Hallway Uplights status,5.001,House ground floor,Brightness status,Front Entrance Hallway Floor Uplights feedback (1.1.20 ch25)
+1/3/20,Dining Pendant status,5.001,House ground floor,Brightness status,Dining Table Ceiling Pendant feedback (1.1.20 ch26)
+1/3/21,Picture Light status,5.001,House ground floor,Brightness status,Dining Room Fluted Brass Picture Light feedback (1.1.20 ch27)
+1/3/22,Fairy Lights status,5.001,House ground floor,Brightness status,Dining Room Corner Plant Fairy Lights feedback (1.1.20 ch28)
+1/3/23,Stair Step Lights status,5.001,House ground floor,Brightness status,Staircase Tread Step Lights feedback (1.1.28 ch1)
+1/3/24,Beam LED status,5.001,House ground floor,Brightness status,Hall Fireplace Beam LED Strip feedback (1.1.28 ch2)
+1/3/25,Hall Lamp status,5.001,House ground floor,Brightness status,Hall Floor Lamp (5A) feedback (1.1.28 ch3)
+1/3/26,Cupboard LEDs status,5.001,House ground floor,Brightness status,Walk-in Cupboard Coat-Rail LEDs feedback (1.1.28 ch4)
+1/3/27,Alcove LEDs status,5.001,House ground floor,Brightness status,Living Room Alcove Shelf LEDs feedback (1.1.28 ch5)
+1/3/28,TV Bias Light status,5.001,House ground floor,Brightness status,Cinema TV Bias Light feedback (1.1.28 ch6)
+1/3/29,Sitting Lamps status,5.001,House ground floor,Brightness status,Sitting Room Lamps (5A) feedback (1.1.28 ch7)
+1/3/30,Sitting Alcove LEDs status,5.001,House ground floor,Brightness status,Sitting Room Alcove Shelf LEDs feedback (1.1.28 ch8)
+1/4/1,Kitchen PIR & lux presence,1.018,House ground floor,Sensors,"1.1.12, zone kitchen"
+1/4/2,Ambient lux,9.004,House ground floor,Sensors,Kitchen PIR lux sensor (night-mode threshold)
+1/4/3,Utility PIR presence,1.018,House ground floor,Sensors,"1.1.13, zone utility"
+1/4/4,Frame TV art index,17.001,House ground floor,Sensors,Kitchen Frame TV art mode
+1/4/5,Wine cellar PIR presence,1.018,House ground floor,Sensors,"1.1.25, zone bootLobby"
+1/4/6,Cloakroom WC PIR presence,1.018,House ground floor,Sensors,"1.1.26, zone bootLobby"
+1/4/22,Sitting area PIR presence,1.018,House ground floor,Sensors,"1.1.61, zone sitting"
+1/4/24,Dining room PIR presence,1.018,House ground floor,Sensors,"1.1.62, zone familyRoom"
+1/4/25,Boot lobby PIR presence,1.018,House ground floor,Sensors,"1.1.63, zone bootLobby"
+1/4/26,Staircase hall PIR presence,1.018,House ground floor,Sensors,"1.1.64, zone hall"
+1/4/27,Living room PIR presence,1.018,House ground floor,Sensors,"1.1.65, zone livingRoom"
+1/4/28,Entrance hall PIR presence,1.018,House ground floor,Sensors,"1.1.66, zone entranceHall"
+1/4/29,Sitting room PIR presence,1.018,House ground floor,Sensors,"1.1.67, zone sittingRoom"
+1/4/30,Plant room PIR (wall) presence,1.018,House ground floor,Sensors,"1.1.24, zone study"
+1/5/1,Car gates open/close,1.001,House ground floor,Gates & media,Front car gates (1.1.22)
+1/5/2,Car gates position,5.001,House ground floor,Gates & media,Front car gates status
+1/6/4,Kitchen scene,17.001,House ground floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Cook, 3=Dine, 4=Relax, 5=Movie, 6=Night"
+1/6/5,Kitchen night mode,1.001,House ground floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+1/6/6,Kitchen full / off,1.001,House ground floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+1/6/7,Kitchen relative dim,3.007,House ground floor,Zone control (scene / night / full / dim),Zone relative dimming
+1/6/8,Kitchen sitting area scene,17.001,House ground floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Evening, 3=TV, 4=Glow"
+1/6/9,Kitchen sitting area night mode,1.001,House ground floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+1/6/10,Kitchen sitting area full / off,1.001,House ground floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+1/6/11,Kitchen sitting area relative dim,3.007,House ground floor,Zone control (scene / night / full / dim),Zone relative dimming
+1/6/12,Utility room scene,17.001,House ground floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Task, 3=Low"
+1/6/13,Utility room night mode,1.001,House ground floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+1/6/14,Utility room full / off,1.001,House ground floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+1/6/15,Utility room relative dim,3.007,House ground floor,Zone control (scene / night / full / dim),Zone relative dimming
+1/6/16,Dining room scene,17.001,House ground floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Entertaining, 3=Dine, 4=Cosy"
+1/6/17,Dining room night mode,1.001,House ground floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+1/6/18,Dining room full / off,1.001,House ground floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+1/6/19,Dining room relative dim,3.007,House ground floor,Zone control (scene / night / full / dim),Zone relative dimming
+1/6/20,Boot lobby & cloakroom scene,17.001,House ground floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Welcome, 3=Night glow"
+1/6/21,Boot lobby & cloakroom night mode,1.001,House ground floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+1/6/22,Boot lobby & cloakroom full / off,1.001,House ground floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+1/6/23,Boot lobby & cloakroom relative dim,3.007,House ground floor,Zone control (scene / night / full / dim),Zone relative dimming
+1/6/24,Staircase hall scene,17.001,House ground floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Evening, 3=Night"
+1/6/25,Staircase hall night mode,1.001,House ground floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+1/6/26,Staircase hall full / off,1.001,House ground floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+1/6/27,Staircase hall relative dim,3.007,House ground floor,Zone control (scene / night / full / dim),Zone relative dimming
+1/6/28,Living room scene,17.001,House ground floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Evening, 3=Relax, 4=Movie"
+1/6/29,Living room night mode,1.001,House ground floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+1/6/30,Living room full / off,1.001,House ground floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+1/6/31,Living room relative dim,3.007,House ground floor,Zone control (scene / night / full / dim),Zone relative dimming
+1/6/32,Entrance hall scene,17.001,House ground floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Welcome, 2=Evening, 3=Uplights only"
+1/6/33,Entrance hall night mode,1.001,House ground floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+1/6/34,Entrance hall full / off,1.001,House ground floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+1/6/35,Entrance hall relative dim,3.007,House ground floor,Zone control (scene / night / full / dim),Zone relative dimming
+1/6/36,Sitting room scene,17.001,House ground floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Reading, 3=Fireside, 4=Cosy"
+1/6/37,Sitting room night mode,1.001,House ground floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+1/6/38,Sitting room full / off,1.001,House ground floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+1/6/39,Sitting room relative dim,3.007,House ground floor,Zone control (scene / night / full / dim),Zone relative dimming
+1/6/40,Plant room scene,17.001,House ground floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Service, 3=Low"
+1/6/41,Plant room night mode,1.001,House ground floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+1/6/42,Plant room full / off,1.001,House ground floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+1/6/43,Plant room relative dim,3.007,House ground floor,Zone control (scene / night / full / dim),Zone relative dimming
+1/7/2,Kitchen scene status,17.001,House ground floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+1/7/3,Kitchen on/off status,1.001,House ground floor,Zone feedback (scene status / on-off status),Any zone channel on
+1/7/4,Kitchen sitting area scene status,17.001,House ground floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+1/7/5,Kitchen sitting area on/off status,1.001,House ground floor,Zone feedback (scene status / on-off status),Any zone channel on
+1/7/6,Utility room scene status,17.001,House ground floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+1/7/7,Utility room on/off status,1.001,House ground floor,Zone feedback (scene status / on-off status),Any zone channel on
+1/7/8,Dining room scene status,17.001,House ground floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+1/7/9,Dining room on/off status,1.001,House ground floor,Zone feedback (scene status / on-off status),Any zone channel on
+1/7/10,Boot lobby & cloakroom scene status,17.001,House ground floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+1/7/11,Boot lobby & cloakroom on/off status,1.001,House ground floor,Zone feedback (scene status / on-off status),Any zone channel on
+1/7/12,Staircase hall scene status,17.001,House ground floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+1/7/13,Staircase hall on/off status,1.001,House ground floor,Zone feedback (scene status / on-off status),Any zone channel on
+1/7/14,Living room scene status,17.001,House ground floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+1/7/15,Living room on/off status,1.001,House ground floor,Zone feedback (scene status / on-off status),Any zone channel on
+1/7/16,Entrance hall scene status,17.001,House ground floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+1/7/17,Entrance hall on/off status,1.001,House ground floor,Zone feedback (scene status / on-off status),Any zone channel on
+1/7/18,Sitting room scene status,17.001,House ground floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+1/7/19,Sitting room on/off status,1.001,House ground floor,Zone feedback (scene status / on-off status),Any zone channel on
+1/7/20,Plant room scene status,17.001,House ground floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+1/7/21,Plant room on/off status,1.001,House ground floor,Zone feedback (scene status / on-off status),Any zone channel on
+2/1/1,Main Bedroom switch,1.001,House first floor,Switching,Main Bedroom Ceiling Pendant (1.2.20 ch17)
+2/1/2,Bathroom switch,1.001,House first floor,Switching,Family Bathroom IP44 Glass Pendant (1.2.20 ch18)
+2/1/3,Upper Landing switch,1.001,House first floor,Switching,First Floor Stairwell & Landing Pendants (1.2.20 ch19)
+2/1/4,Bedroom 2 switch,1.001,House first floor,Switching,Bedroom 2 Ceiling Pendant (1.2.20 ch20)
+2/1/5,Bedroom 3 switch,1.001,House first floor,Switching,Bedroom 3 & Shower Room Pendant (1.2.20 ch21)
+2/1/6,Bedroom 4 switch,1.001,House first floor,Switching,Bedroom 4 Ceiling Pendant (1.2.20 ch22)
+2/1/7,Landing Sconces switch,1.001,House first floor,Switching,Landing Wall Sconces (1.2.20 ch23)
+2/2/1,Main Bedroom brightness,5.001,House first floor,Brightness value,Main Bedroom Ceiling Pendant (1.2.20 ch17)
+2/2/2,Bathroom brightness,5.001,House first floor,Brightness value,Family Bathroom IP44 Glass Pendant (1.2.20 ch18)
+2/2/3,Upper Landing brightness,5.001,House first floor,Brightness value,First Floor Stairwell & Landing Pendants (1.2.20 ch19)
+2/2/4,Bedroom 2 brightness,5.001,House first floor,Brightness value,Bedroom 2 Ceiling Pendant (1.2.20 ch20)
+2/2/5,Bedroom 3 brightness,5.001,House first floor,Brightness value,Bedroom 3 & Shower Room Pendant (1.2.20 ch21)
+2/2/6,Bedroom 4 brightness,5.001,House first floor,Brightness value,Bedroom 4 Ceiling Pendant (1.2.20 ch22)
+2/2/7,Landing Sconces brightness,5.001,House first floor,Brightness value,Landing Wall Sconces (1.2.20 ch23)
+2/3/1,Main Bedroom status,5.001,House first floor,Brightness status,Main Bedroom Ceiling Pendant feedback (1.2.20 ch17)
+2/3/2,Bathroom status,5.001,House first floor,Brightness status,Family Bathroom IP44 Glass Pendant feedback (1.2.20 ch18)
+2/3/3,Upper Landing status,5.001,House first floor,Brightness status,First Floor Stairwell & Landing Pendants feedback (1.2.20 ch19)
+2/3/4,Bedroom 2 status,5.001,House first floor,Brightness status,Bedroom 2 Ceiling Pendant feedback (1.2.20 ch20)
+2/3/5,Bedroom 3 status,5.001,House first floor,Brightness status,Bedroom 3 & Shower Room Pendant feedback (1.2.20 ch21)
+2/3/6,Bedroom 4 status,5.001,House first floor,Brightness status,Bedroom 4 Ceiling Pendant feedback (1.2.20 ch22)
+2/3/7,Landing Sconces status,5.001,House first floor,Brightness status,Landing Wall Sconces feedback (1.2.20 ch23)
+2/4/21,Main bedroom PIR presence,1.018,House first floor,Sensors,"1.2.60, zone mainBedroom"
+2/4/22,Family bathroom PIR presence,1.018,House first floor,Sensors,"1.2.61, zone familyBathroom"
+2/4/23,Landing PIR presence,1.018,House first floor,Sensors,"1.2.62, zone upperLanding"
+2/4/24,Bedroom 2 PIR presence,1.018,House first floor,Sensors,"1.2.63, zone bedroom2"
+2/4/25,Bedroom 3 PIR presence,1.018,House first floor,Sensors,"1.2.64, zone bedroom3"
+2/4/26,Bedroom 4 PIR presence,1.018,House first floor,Sensors,"1.2.65, zone bedroom4"
+2/6/4,Main bedroom scene,17.001,House first floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Relax, 3=Bedtime"
+2/6/5,Main bedroom night mode,1.001,House first floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+2/6/6,Main bedroom full / off,1.001,House first floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+2/6/7,Main bedroom relative dim,3.007,House first floor,Zone control (scene / night / full / dim),Zone relative dimming
+2/6/8,Family bathroom scene,17.001,House first floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Morning, 2=Soak, 3=Night"
+2/6/9,Family bathroom night mode,1.001,House first floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+2/6/10,Family bathroom full / off,1.001,House first floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+2/6/11,Family bathroom relative dim,3.007,House first floor,Zone control (scene / night / full / dim),Zone relative dimming
+2/6/12,Landing scene,17.001,House first floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Evening, 3=Night"
+2/6/13,Landing night mode,1.001,House first floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+2/6/14,Landing full / off,1.001,House first floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+2/6/15,Landing relative dim,3.007,House first floor,Zone control (scene / night / full / dim),Zone relative dimming
+2/6/16,Bedroom 2 scene,17.001,House first floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Evening, 3=Bedtime"
+2/6/17,Bedroom 2 night mode,1.001,House first floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+2/6/18,Bedroom 2 full / off,1.001,House first floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+2/6/19,Bedroom 2 relative dim,3.007,House first floor,Zone control (scene / night / full / dim),Zone relative dimming
+2/6/20,Bedroom 3 scene,17.001,House first floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Evening, 3=Bedtime"
+2/6/21,Bedroom 3 night mode,1.001,House first floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+2/6/22,Bedroom 3 full / off,1.001,House first floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+2/6/23,Bedroom 3 relative dim,3.007,House first floor,Zone control (scene / night / full / dim),Zone relative dimming
+2/6/24,Bedroom 4 scene,17.001,House first floor,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Evening, 3=Bedtime"
+2/6/25,Bedroom 4 night mode,1.001,House first floor,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+2/6/26,Bedroom 4 full / off,1.001,House first floor,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+2/6/27,Bedroom 4 relative dim,3.007,House first floor,Zone control (scene / night / full / dim),Zone relative dimming
+2/7/2,Main bedroom scene status,17.001,House first floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+2/7/3,Main bedroom on/off status,1.001,House first floor,Zone feedback (scene status / on-off status),Any zone channel on
+2/7/4,Family bathroom scene status,17.001,House first floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+2/7/5,Family bathroom on/off status,1.001,House first floor,Zone feedback (scene status / on-off status),Any zone channel on
+2/7/6,Landing scene status,17.001,House first floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+2/7/7,Landing on/off status,1.001,House first floor,Zone feedback (scene status / on-off status),Any zone channel on
+2/7/8,Bedroom 2 scene status,17.001,House first floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+2/7/9,Bedroom 2 on/off status,1.001,House first floor,Zone feedback (scene status / on-off status),Any zone channel on
+2/7/10,Bedroom 3 scene status,17.001,House first floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+2/7/11,Bedroom 3 on/off status,1.001,House first floor,Zone feedback (scene status / on-off status),Any zone channel on
+2/7/12,Bedroom 4 scene status,17.001,House first floor,Zone feedback (scene status / on-off status),Active zone scene feedback
+2/7/13,Bedroom 4 on/off status,1.001,House first floor,Zone feedback (scene status / on-off status),Any zone channel on
+3/1/1,Gym Battens switch,1.001,Outbuildings,Switching,Gym Ceiling LED Battens (2.1.20 ch29)
+3/1/2,Gym Sconces switch,1.001,Outbuildings,Switching,Gym Wall Sconces (2.1.20 ch30)
+3/1/3,Garage Battens switch,1.001,Outbuildings,Switching,Garage LED Battens (2.1.20 ch31)
+3/1/4,Workbench Task switch,1.001,Outbuildings,Switching,Garage Workbench Task Lights (2.1.20 ch32)
+3/1/5,Barn Downlights switch,1.001,Outbuildings,Switching,Barn Truss Spotlights & Downlights (2.1.20 ch33)
+3/1/6,Bar Lights switch,1.001,Outbuildings,Switching,Barn Bar Lights & Bar Lamp (5A) (2.1.20 ch34)
+3/1/7,Mezz Sconces switch,1.001,Outbuildings,Switching,Mezzanine Wall Sconces (2.1.20 ch35)
+3/1/8,Mezz Lamps switch,1.001,Outbuildings,Switching,Mezzanine Lamps (5A Sockets) (2.1.20 ch36)
+3/1/9,Office Spots switch,1.001,Outbuildings,Switching,Office Recessed Spotlights (2.1.20 ch37)
+3/1/10,Office Sconces switch,1.001,Outbuildings,Switching,Office Wall Sconces (2.1.20 ch38)
+3/1/11,Suite Downlights switch,1.001,Outbuildings,Switching,Guest Suite Vaulted Downlights (2.1.20 ch39)
+3/1/12,Suite Lamps switch,1.001,Outbuildings,Switching,Guest Suite Bedside & Dressing Lamps (5A) (2.1.20 ch40)
+3/1/13,Mirror Backlights switch,1.001,Outbuildings,Switching,Gym Mirror Backlights (2.1.21 ch1)
+3/1/14,Gym Coves switch,1.001,Outbuildings,Switching,Gym Eave Cove LEDs (2.1.21 ch2)
+3/1/15,Gym Truss Spots switch,1.001,Outbuildings,Switching,Gym Truss Spotlights (2.1.21 ch3)
+3/1/16,Shower Room switch,1.001,Outbuildings,Switching,Garage Shower Room Lights (2.1.21 ch4)
+3/1/17,Garage Truss Spots switch,1.001,Outbuildings,Switching,Garage Truss Spotlights (2.1.21 ch5)
+3/1/18,Store LEDs switch,1.001,Outbuildings,Switching,Store Loft LED Strips & Truss Spot (2.1.21 ch6)
+3/1/19,Golf Sim Halo switch,1.001,Outbuildings,Switching,Golf Simulator LED Halo (2.1.21 ch7)
+3/1/20,Barn Coves switch,1.001,Outbuildings,Switching,Barn Bressummer & Wall Cove LEDs (2.1.21 ch8)
+3/1/21,Barn Sconces switch,1.001,Outbuildings,Switching,Barn Wall Sconces (2.1.21 ch9)
+3/1/22,Spiral Stair LEDs switch,1.001,Outbuildings,Switching,Barn Spiral Stair Tread LEDs (2.1.21 ch10)
+3/1/23,Pool Table switch,1.001,Outbuildings,Switching,Pool Table Canopy Light (2.1.21 ch11)
+3/1/24,Barn Picture Lights switch,1.001,Outbuildings,Switching,Barn Picture Lights (2.1.21 ch12)
+3/1/25,Mezz Downlights switch,1.001,Outbuildings,Switching,Mezzanine Downlights & Ceiling Light (2.1.21 ch13)
+3/1/26,Bookcase Light switch,1.001,Outbuildings,Switching,Mezzanine Bookcase Light (2.1.21 ch14)
+3/1/27,Office WC switch,1.001,Outbuildings,Switching,Office Cloakroom WC Lights (2.1.21 ch15)
+3/1/28,Office Lamps switch,1.001,Outbuildings,Switching,Office Lamps (5A) (2.1.21 ch16)
+3/1/29,Ensuite switch,1.001,Outbuildings,Switching,Guest Suite Ensuite Lights (2.1.21 ch17)
+3/1/30,Balcony Lights switch,1.001,Outbuildings,Switching,Guest Suite Balcony Wall Lights (2.1.21 ch18)
+3/2/1,Gym Battens brightness,5.001,Outbuildings,Brightness value,Gym Ceiling LED Battens (2.1.20 ch29)
+3/2/2,Gym Sconces brightness,5.001,Outbuildings,Brightness value,Gym Wall Sconces (2.1.20 ch30)
+3/2/3,Garage Battens brightness,5.001,Outbuildings,Brightness value,Garage LED Battens (2.1.20 ch31)
+3/2/4,Workbench Task brightness,5.001,Outbuildings,Brightness value,Garage Workbench Task Lights (2.1.20 ch32)
+3/2/5,Barn Downlights brightness,5.001,Outbuildings,Brightness value,Barn Truss Spotlights & Downlights (2.1.20 ch33)
+3/2/6,Bar Lights brightness,5.001,Outbuildings,Brightness value,Barn Bar Lights & Bar Lamp (5A) (2.1.20 ch34)
+3/2/7,Mezz Sconces brightness,5.001,Outbuildings,Brightness value,Mezzanine Wall Sconces (2.1.20 ch35)
+3/2/8,Mezz Lamps brightness,5.001,Outbuildings,Brightness value,Mezzanine Lamps (5A Sockets) (2.1.20 ch36)
+3/2/9,Office Spots brightness,5.001,Outbuildings,Brightness value,Office Recessed Spotlights (2.1.20 ch37)
+3/2/10,Office Sconces brightness,5.001,Outbuildings,Brightness value,Office Wall Sconces (2.1.20 ch38)
+3/2/11,Suite Downlights brightness,5.001,Outbuildings,Brightness value,Guest Suite Vaulted Downlights (2.1.20 ch39)
+3/2/12,Suite Lamps brightness,5.001,Outbuildings,Brightness value,Guest Suite Bedside & Dressing Lamps (5A) (2.1.20 ch40)
+3/2/13,Mirror Backlights brightness,5.001,Outbuildings,Brightness value,Gym Mirror Backlights (2.1.21 ch1)
+3/2/14,Gym Coves brightness,5.001,Outbuildings,Brightness value,Gym Eave Cove LEDs (2.1.21 ch2)
+3/2/15,Gym Truss Spots brightness,5.001,Outbuildings,Brightness value,Gym Truss Spotlights (2.1.21 ch3)
+3/2/16,Shower Room brightness,5.001,Outbuildings,Brightness value,Garage Shower Room Lights (2.1.21 ch4)
+3/2/17,Garage Truss Spots brightness,5.001,Outbuildings,Brightness value,Garage Truss Spotlights (2.1.21 ch5)
+3/2/18,Store LEDs brightness,5.001,Outbuildings,Brightness value,Store Loft LED Strips & Truss Spot (2.1.21 ch6)
+3/2/19,Golf Sim Halo brightness,5.001,Outbuildings,Brightness value,Golf Simulator LED Halo (2.1.21 ch7)
+3/2/20,Barn Coves brightness,5.001,Outbuildings,Brightness value,Barn Bressummer & Wall Cove LEDs (2.1.21 ch8)
+3/2/21,Barn Sconces brightness,5.001,Outbuildings,Brightness value,Barn Wall Sconces (2.1.21 ch9)
+3/2/22,Spiral Stair LEDs brightness,5.001,Outbuildings,Brightness value,Barn Spiral Stair Tread LEDs (2.1.21 ch10)
+3/2/23,Pool Table brightness,5.001,Outbuildings,Brightness value,Pool Table Canopy Light (2.1.21 ch11)
+3/2/24,Barn Picture Lights brightness,5.001,Outbuildings,Brightness value,Barn Picture Lights (2.1.21 ch12)
+3/2/25,Mezz Downlights brightness,5.001,Outbuildings,Brightness value,Mezzanine Downlights & Ceiling Light (2.1.21 ch13)
+3/2/26,Bookcase Light brightness,5.001,Outbuildings,Brightness value,Mezzanine Bookcase Light (2.1.21 ch14)
+3/2/27,Office WC brightness,5.001,Outbuildings,Brightness value,Office Cloakroom WC Lights (2.1.21 ch15)
+3/2/28,Office Lamps brightness,5.001,Outbuildings,Brightness value,Office Lamps (5A) (2.1.21 ch16)
+3/2/29,Ensuite brightness,5.001,Outbuildings,Brightness value,Guest Suite Ensuite Lights (2.1.21 ch17)
+3/2/30,Balcony Lights brightness,5.001,Outbuildings,Brightness value,Guest Suite Balcony Wall Lights (2.1.21 ch18)
+3/3/1,Gym Battens status,5.001,Outbuildings,Brightness status,Gym Ceiling LED Battens feedback (2.1.20 ch29)
+3/3/2,Gym Sconces status,5.001,Outbuildings,Brightness status,Gym Wall Sconces feedback (2.1.20 ch30)
+3/3/3,Garage Battens status,5.001,Outbuildings,Brightness status,Garage LED Battens feedback (2.1.20 ch31)
+3/3/4,Workbench Task status,5.001,Outbuildings,Brightness status,Garage Workbench Task Lights feedback (2.1.20 ch32)
+3/3/5,Barn Downlights status,5.001,Outbuildings,Brightness status,Barn Truss Spotlights & Downlights feedback (2.1.20 ch33)
+3/3/6,Bar Lights status,5.001,Outbuildings,Brightness status,Barn Bar Lights & Bar Lamp (5A) feedback (2.1.20 ch34)
+3/3/7,Mezz Sconces status,5.001,Outbuildings,Brightness status,Mezzanine Wall Sconces feedback (2.1.20 ch35)
+3/3/8,Mezz Lamps status,5.001,Outbuildings,Brightness status,Mezzanine Lamps (5A Sockets) feedback (2.1.20 ch36)
+3/3/9,Office Spots status,5.001,Outbuildings,Brightness status,Office Recessed Spotlights feedback (2.1.20 ch37)
+3/3/10,Office Sconces status,5.001,Outbuildings,Brightness status,Office Wall Sconces feedback (2.1.20 ch38)
+3/3/11,Suite Downlights status,5.001,Outbuildings,Brightness status,Guest Suite Vaulted Downlights feedback (2.1.20 ch39)
+3/3/12,Suite Lamps status,5.001,Outbuildings,Brightness status,Guest Suite Bedside & Dressing Lamps (5A) feedback (2.1.20 ch40)
+3/3/13,Mirror Backlights status,5.001,Outbuildings,Brightness status,Gym Mirror Backlights feedback (2.1.21 ch1)
+3/3/14,Gym Coves status,5.001,Outbuildings,Brightness status,Gym Eave Cove LEDs feedback (2.1.21 ch2)
+3/3/15,Gym Truss Spots status,5.001,Outbuildings,Brightness status,Gym Truss Spotlights feedback (2.1.21 ch3)
+3/3/16,Shower Room status,5.001,Outbuildings,Brightness status,Garage Shower Room Lights feedback (2.1.21 ch4)
+3/3/17,Garage Truss Spots status,5.001,Outbuildings,Brightness status,Garage Truss Spotlights feedback (2.1.21 ch5)
+3/3/18,Store LEDs status,5.001,Outbuildings,Brightness status,Store Loft LED Strips & Truss Spot feedback (2.1.21 ch6)
+3/3/19,Golf Sim Halo status,5.001,Outbuildings,Brightness status,Golf Simulator LED Halo feedback (2.1.21 ch7)
+3/3/20,Barn Coves status,5.001,Outbuildings,Brightness status,Barn Bressummer & Wall Cove LEDs feedback (2.1.21 ch8)
+3/3/21,Barn Sconces status,5.001,Outbuildings,Brightness status,Barn Wall Sconces feedback (2.1.21 ch9)
+3/3/22,Spiral Stair LEDs status,5.001,Outbuildings,Brightness status,Barn Spiral Stair Tread LEDs feedback (2.1.21 ch10)
+3/3/23,Pool Table status,5.001,Outbuildings,Brightness status,Pool Table Canopy Light feedback (2.1.21 ch11)
+3/3/24,Barn Picture Lights status,5.001,Outbuildings,Brightness status,Barn Picture Lights feedback (2.1.21 ch12)
+3/3/25,Mezz Downlights status,5.001,Outbuildings,Brightness status,Mezzanine Downlights & Ceiling Light feedback (2.1.21 ch13)
+3/3/26,Bookcase Light status,5.001,Outbuildings,Brightness status,Mezzanine Bookcase Light feedback (2.1.21 ch14)
+3/3/27,Office WC status,5.001,Outbuildings,Brightness status,Office Cloakroom WC Lights feedback (2.1.21 ch15)
+3/3/28,Office Lamps status,5.001,Outbuildings,Brightness status,Office Lamps (5A) feedback (2.1.21 ch16)
+3/3/29,Ensuite status,5.001,Outbuildings,Brightness status,Guest Suite Ensuite Lights feedback (2.1.21 ch17)
+3/3/30,Balcony Lights status,5.001,Outbuildings,Brightness status,Guest Suite Balcony Wall Lights feedback (2.1.21 ch18)
+3/4/21,Gym PIR presence,1.018,Outbuildings,Sensors,"2.1.80, zone outbuildingGym"
+3/4/22,Garage PIR presence,1.018,Outbuildings,Sensors,"2.1.81, zone outbuildingGarage"
+3/4/23,Store PIR presence,1.018,Outbuildings,Sensors,"2.1.82, zone outbuildingStore"
+3/4/24,Barn PIR (golf & bar) presence,1.018,Outbuildings,Sensors,"2.1.83, zone outbuildingBarn"
+3/4/25,Mezzanine PIR presence,1.018,Outbuildings,Sensors,"2.1.84, zone outbuildingMezzanine"
+3/4/26,Office PIR presence,1.018,Outbuildings,Sensors,"2.1.85, zone outbuildingStableOffice"
+3/4/27,Guest suite PIR presence,1.018,Outbuildings,Sensors,"2.1.86, zone outbuildingStableSuite"
+3/6/4,Gym scene,17.001,Outbuildings,Zone control (scene / night / full / dim),"Zone scenes: 1=Workout, 2=Yoga, 3=Recovery"
+3/6/5,Gym night mode,1.001,Outbuildings,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+3/6/6,Gym full / off,1.001,Outbuildings,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+3/6/7,Gym relative dim,3.007,Outbuildings,Zone control (scene / night / full / dim),Zone relative dimming
+3/6/8,Garage scene,17.001,Outbuildings,Zone control (scene / night / full / dim),"Zone scenes: 1=Workshop, 2=Bays only, 3=Bench, 4=Security"
+3/6/9,Garage night mode,1.001,Outbuildings,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+3/6/10,Garage full / off,1.001,Outbuildings,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+3/6/11,Garage relative dim,3.007,Outbuildings,Zone control (scene / night / full / dim),Zone relative dimming
+3/6/12,Store scene,17.001,Outbuildings,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Low, 3=Glow"
+3/6/13,Store night mode,1.001,Outbuildings,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+3/6/14,Store full / off,1.001,Outbuildings,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+3/6/15,Store relative dim,3.007,Outbuildings,Zone control (scene / night / full / dim),Zone relative dimming
+3/6/16,Barn scene,17.001,Outbuildings,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Golf, 3=Social, 4=Pool & lounge, 5=Movie"
+3/6/17,Barn night mode,1.001,Outbuildings,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+3/6/18,Barn full / off,1.001,Outbuildings,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+3/6/19,Barn relative dim,3.007,Outbuildings,Zone control (scene / night / full / dim),Zone relative dimming
+3/6/20,Mezzanine lounge scene,17.001,Outbuildings,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Reading, 3=Game, 4=Movie, 5=Lamps only"
+3/6/21,Mezzanine lounge night mode,1.001,Outbuildings,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+3/6/22,Mezzanine lounge full / off,1.001,Outbuildings,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+3/6/23,Mezzanine lounge relative dim,3.007,Outbuildings,Zone control (scene / night / full / dim),Zone relative dimming
+3/6/24,Office scene,17.001,Outbuildings,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Work, 3=Focus, 4=Evening"
+3/6/25,Office night mode,1.001,Outbuildings,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+3/6/26,Office full / off,1.001,Outbuildings,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+3/6/27,Office relative dim,3.007,Outbuildings,Zone control (scene / night / full / dim),Zone relative dimming
+3/6/28,Guest suite scene,17.001,Outbuildings,Zone control (scene / night / full / dim),"Zone scenes: 1=Bright, 2=Relax & balcony, 3=Bedtime"
+3/6/29,Guest suite night mode,1.001,Outbuildings,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+3/6/30,Guest suite full / off,1.001,Outbuildings,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+3/6/31,Guest suite relative dim,3.007,Outbuildings,Zone control (scene / night / full / dim),Zone relative dimming
+3/7/2,Gym scene status,17.001,Outbuildings,Zone feedback (scene status / on-off status),Active zone scene feedback
+3/7/3,Gym on/off status,1.001,Outbuildings,Zone feedback (scene status / on-off status),Any zone channel on
+3/7/4,Garage scene status,17.001,Outbuildings,Zone feedback (scene status / on-off status),Active zone scene feedback
+3/7/5,Garage on/off status,1.001,Outbuildings,Zone feedback (scene status / on-off status),Any zone channel on
+3/7/6,Store scene status,17.001,Outbuildings,Zone feedback (scene status / on-off status),Active zone scene feedback
+3/7/7,Store on/off status,1.001,Outbuildings,Zone feedback (scene status / on-off status),Any zone channel on
+3/7/8,Barn scene status,17.001,Outbuildings,Zone feedback (scene status / on-off status),Active zone scene feedback
+3/7/9,Barn on/off status,1.001,Outbuildings,Zone feedback (scene status / on-off status),Any zone channel on
+3/7/10,Mezzanine lounge scene status,17.001,Outbuildings,Zone feedback (scene status / on-off status),Active zone scene feedback
+3/7/11,Mezzanine lounge on/off status,1.001,Outbuildings,Zone feedback (scene status / on-off status),Any zone channel on
+3/7/12,Office scene status,17.001,Outbuildings,Zone feedback (scene status / on-off status),Active zone scene feedback
+3/7/13,Office on/off status,1.001,Outbuildings,Zone feedback (scene status / on-off status),Any zone channel on
+3/7/14,Guest suite scene status,17.001,Outbuildings,Zone feedback (scene status / on-off status),Active zone scene feedback
+3/7/15,Guest suite on/off status,1.001,Outbuildings,Zone feedback (scene status / on-off status),Any zone channel on
+5/1/1,Pergola Festoons switch,1.001,Exterior,Switching,Grape-Vine Pergola Festoons (1.1.28 ch9)
+5/1/2,Stable Wall Lights switch,1.001,Exterior,Switching,Stable External Wall Lights (2.1.21 ch19)
+5/2/1,Pergola Festoons brightness,5.001,Exterior,Brightness value,Grape-Vine Pergola Festoons (1.1.28 ch9)
+5/2/2,Stable Wall Lights brightness,5.001,Exterior,Brightness value,Stable External Wall Lights (2.1.21 ch19)
+5/3/1,Pergola Festoons status,5.001,Exterior,Brightness status,Grape-Vine Pergola Festoons feedback (1.1.28 ch9)
+5/3/2,Stable Wall Lights status,5.001,Exterior,Brightness status,Stable External Wall Lights feedback (2.1.21 ch19)
+5/4/21,Courtyard external PIR presence,1.018,Exterior,Sensors,"1.1.68, zone courtyard"
+5/6/4,Courtyard scene,17.001,Exterior,Zone control (scene / night / full / dim),"Zone scenes: 1=Warm welcome, 2=Party, 3=Festoons only, 4=Lamp post only"
+5/6/5,Courtyard night mode,1.001,Exterior,Zone control (scene / night / full / dim),"Hold ▼ — night levels 3–5 % when dark, off on vacancy"
+5/6/6,Courtyard full / off,1.001,Exterior,Zone control (scene / night / full / dim),Hold ▲ — all zone channels 100 % (0 = zone off)
+5/6/7,Courtyard relative dim,3.007,Exterior,Zone control (scene / night / full / dim),Zone relative dimming
+5/7/2,Courtyard scene status,17.001,Exterior,Zone feedback (scene status / on-off status),Active zone scene feedback
+5/7/3,Courtyard on/off status,1.001,Exterior,Zone feedback (scene status / on-off status),Any zone channel on

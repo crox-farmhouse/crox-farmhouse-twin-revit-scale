@@ -433,6 +433,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     // 2 Cool-White (`5600K`, `0xe4f3ff`) PointLights illuminating the Porsche 992.2 Turbo S and East Workshop Bay
     for (const lu of [7.45, 10.35] as const) {
       const coolLight = new THREE.PointLight(0xe4f3ff, 3.6, 10.5, 1.35);
+      coolLight.name = `outbuildings.garage.ledLighting.coolLight.${lu}`;
       coolLight.position.set(lu, 1.78, 2.85);
       garageLedGroup.add(coolLight);
     }

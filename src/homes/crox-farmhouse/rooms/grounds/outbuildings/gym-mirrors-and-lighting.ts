@@ -484,14 +484,17 @@ export function buildGymMirrorsLightingAndPlants(
 
   // 2D. Task & Warm Ambient PointLights inside the Gym
   const westTaskLight = new THREE.PointLight(0xfff4e2, 2.6, 8.5, 1.4);
+  westTaskLight.name = 'outbuildings.gym.lighting.taskLight.west';
   westTaskLight.position.set(1.52, 1.75, 2.65);
   lightingGroup.add(westTaskLight);
 
   const eastTaskLight = new THREE.PointLight(0xfff4e2, 2.6, 8.5, 1.4);
+  eastTaskLight.name = 'outbuildings.gym.lighting.taskLight.east';
   eastTaskLight.position.set(4.15, 1.75, 3.15);
   lightingGroup.add(eastTaskLight);
 
   const warmAmbientLight = new THREE.PointLight(0xffc680, 1.5, 6.5, 1.5);
+  warmAmbientLight.name = 'outbuildings.gym.lighting.wallSconceFill';
   warmAmbientLight.position.set(2.86, 1.25, 4.65);
   lightingGroup.add(warmAmbientLight);
 

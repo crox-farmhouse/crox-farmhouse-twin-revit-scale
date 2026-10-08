@@ -465,7 +465,7 @@ export function buildLivingRoom(
       transparent: true,
       opacity: 0.42,
     });
-    lightGroups.frontRoomPendant.emissives.push(emberGlowMat, flameGlowMat);
+    // The wood-burner glow is not on a lighting circuit — it stays lit whatever the KNX scene.
 
     // 1. Four sculpted cast-iron bracket legs (Y = 0.00m..0.095m)
     const stoveLegGeo = createSharedGeo(new THREE.BoxGeometry(0.052, 0.095, 0.052));
@@ -813,7 +813,7 @@ export function buildLivingRoom(
     emissiveIntensity: 2.8,
     roughness: 0.18,
   });
-  lightGroups.frontRoomPendant.emissives.push(frAlcoveLedStripMat);
+  lightGroups.livingRoomShelfLeds.emissives.push(frAlcoveLedStripMat);
   const frAlcoveBookColors = [0x6e3b28, 0x8c6228, 0x3b4836, 0xa89272, 0x4d3829, 0x7a5430] as const;
   const frAlcoveBookMats = frAlcoveBookColors.map(
     (color) =>
@@ -1039,7 +1039,7 @@ export function buildLivingRoom(
       ledDiffuser.name = `livingRoom.alcove.${sideKey}.ledStrip.${sIdx + 1}`;
       ledDiffuser.position.set(acx, tier2FloorY + sy - 0.03, 1.6);
       alcoveGroup.add(ledDiffuser);
-      interactions.registerLightFixture(ledDiffuser, 'frontRoomPendant');
+      interactions.registerLightFixture(ledDiffuser, 'livingRoomShelfLeds');
     }
 
     // Warm yellow gloomy alcove glow pool (no PointLight needed — keeps shader PointLight count low)
@@ -1048,7 +1048,7 @@ export function buildLivingRoom(
       tier2FloorY + 0.99,
       1.66 - 1.97
     );
-    ctx.addGlowPool('frontRoomPendant', alcovePoolPos.x, alcovePoolPos.y, alcovePoolPos.z, 0.75, 0.22);
+    ctx.addGlowPool('livingRoomShelfLeds', alcovePoolPos.x, alcovePoolPos.y, alcovePoolPos.z, 0.75, 0.22);
 
     // Curated Hardcover Books on the counter & middle shelves of each open bookcase
     for (const [shelfIdx, baseSy] of [

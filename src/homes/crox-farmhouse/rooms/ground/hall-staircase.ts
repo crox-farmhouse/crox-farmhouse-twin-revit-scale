@@ -93,7 +93,7 @@ export function buildHallStaircase(
     roughness: 0.35,
   });
   stepLightLensMat.userData.baseEmissiveIntensity = 1.5;
-  lightGroups.hallPendant.emissives.push(stepLightLensMat);
+  lightGroups.hallStairLeds.emissives.push(stepLightLensMat);
 
   const stepLightBezelGeo = createSharedGeo(new THREE.BoxGeometry(0.058, 0.042, 0.008));
   const stepLightHoodGeo = createSharedGeo(new THREE.BoxGeometry(0.052, 0.014, 0.014));
@@ -129,7 +129,7 @@ export function buildHallStaircase(
     lens.position.set(0, -0.004, outSign * 0.003);
     unit.add(lens);
 
-    ctx.interactions.registerLightFixture(unit, 'hallPendant');
+    ctx.interactions.registerLightFixture(unit, 'hallStairLeds');
     return unit;
   };
 
@@ -717,7 +717,7 @@ export function buildHallStaircase(
       const poolCenter = new THREE.Vector3(uLight, treadTopY, -0.142 - 0.2).applyMatrix4(
         westWallStringerGroup.matrix
       );
-      ctx.addGlowPool('hallPendant', poolCenter.x, treadTopY + 0.004, poolCenter.z, 0.17, 0.34);
+      ctx.addGlowPool('hallStairLeds', poolCenter.x, treadTopY + 0.004, poolCenter.z, 0.17, 0.34);
     }
 
     stairGroup.add(westWallStringerGroup);
@@ -1082,7 +1082,7 @@ export function buildHallStaircase(
       )
     );
     ctx.addGlowPool(
-      'hallPendant',
+      'hallStairLeds',
       landingLightX,
       quarterLandingY + 0.004,
       northBoardFaceZ + 0.2,
@@ -1102,7 +1102,7 @@ export function buildHallStaircase(
         )
       );
       ctx.addGlowPool(
-        'hallPendant',
+        'hallStairLeds',
         treadCenterX,
         treadTopY + 0.004,
         northBoardFaceZ + 0.2,

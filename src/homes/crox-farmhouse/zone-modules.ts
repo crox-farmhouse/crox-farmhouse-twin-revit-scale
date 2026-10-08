@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ROOM_ZONES } from '../../integrations/knx/topology.ts';
+import { ROOM_ZONES } from './knx/rooms.ts';
 import type {
   CameraPresetDefinition,
   SceneBuilderContext,
@@ -25,6 +25,7 @@ import {
 } from './rooms/ground/kitchen-knx-lighting.ts';
 import { buildArchitecturalShellAndUtilityRoom } from './rooms/ground/kitchen-shell-and-utility.ts';
 import { buildSittingAreaAndOakBifolds } from './rooms/ground/kitchen-sitting-and-bifolds.ts';
+import { buildCroxKnxPresenceDetectors } from './knx/devices-placement.ts';
 
 /**
  * Default Camera Presets for the Crox Farmhouse East Wing (Kitchen, Sitting, Utility & Courtyard).
@@ -115,7 +116,7 @@ export const DEFAULT_CAMERA_PRESETS: readonly CameraPresetDefinition[] = [
   },
   {
     id: 'sittingRoom',
-    label: 'Sitting & Study',
+    label: 'Sitting Room',
     buildingId: 'mainHouse',
     zoneId: 'sittingRoom',
     floorViewMode: 'ground',
@@ -181,7 +182,7 @@ export const ArchitecturalShellAndUtilityZoneModule: SceneZoneModule = {
  */
 export const MainHouseGroundFloorRoomsZoneModule: SceneZoneModule = {
   id: 'mainHouse.ground.additionalRooms',
-  name: 'Main House Ground Floor Rooms (Dining, Hall, Living, Sitting, Study)',
+  name: 'Main House Ground Floor Rooms (Dining, Hall, Living, Sitting, Plant room)',
   buildingId: 'mainHouse',
   floorId: 'ground',
   zoneIds: [
@@ -310,6 +311,8 @@ export const KNXLightingAndDevicesZoneModule: SceneZoneModule = {
     const wallSwitchMats = buildWallKNXSwitch(eastWingCtx);
     const utilitySwitchLedMat = buildUtilityKNXSwitch(eastWingCtx);
     const sensorMats = buildKitchenAndUtilityMotionSensors(eastWingCtx);
+    // Every other presence detector of the KNX project (world frame).
+    buildCroxKnxPresenceDetectors(ctx);
     return {
       wallSwitchLedMat: wallSwitchMats.wallSwitchLedMat,
       courtyardSwitchLedMat: wallSwitchMats.courtyardSwitchLedMat,
