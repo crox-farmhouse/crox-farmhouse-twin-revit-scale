@@ -55,11 +55,24 @@ export type KnxAssistantBus = Pick<
     getTargetLevels(): Readonly<Partial<Record<CircuitId, number>>>;
   };
 
-/** Non-KNX simulator state the assistant may change (sky preset, bifold doors). */
+/** A non-KNX scene device the assistant can trigger by name (e.g. the barn pool-table break). */
+export interface KnxAssistantDevice {
+  /** Interactable id passed to {@link KnxAssistantEnvironment.triggerDevice}. */
+  readonly id: string;
+  readonly name: string;
+  /** Phrases that trigger it ("play pool", "rack the balls"). */
+  readonly aliases: readonly string[];
+}
+
+/** Non-KNX simulator state the assistant may change (sky preset, bifold doors, scene devices). */
 export interface KnxAssistantEnvironment {
   setTimeOfDay(timeOfDay: TimeOfDay): void;
   isBifoldsOpen(): boolean;
   toggleBifolds(): void;
+  /** Scene devices with natural-language aliases (read lazily: they register as the scene builds). */
+  listDevices?(): readonly KnxAssistantDevice[];
+  /** Triggers a device's action (click equivalent). Returns false if it ignored the request. */
+  triggerDevice?(id: string): boolean;
 }
 
 /** The parts of a {@link KnxProject} the assistant reads (a full project satisfies it). */
@@ -139,6 +152,10 @@ export type KNXToolCall =
         readonly bifoldsOpen?: boolean;
         readonly carGatesOpen?: boolean;
       };
+    }
+  | {
+      readonly name: 'trigger_device';
+      readonly args: { readonly device: string; readonly reason?: string };
     };
 
 export interface ExecutedToolCallRecord {
@@ -438,9 +455,61 @@ export class KNXAIAssistant {
     this.selectedModel = model;
   }
 
-  /** The generated function declarations sent to the model. */
+  /** The generated function declarations sent to the model (plus `trigger_device` when devices exist). */
   public getTools(): readonly KNXFunctionDeclaration[] {
-    return this.tools;
+    const devices = this.listDevices();
+    if (devices.length === 0) return this.tools;
+    return [
+      ...this.tools,
+      {
+        name: 'trigger_device',
+        description: `Trigger a scene device's action (like clicking it): ${devices
+          .map((d) => `${d.id} = ${d.name}${d.aliases.length > 0 ? ` (${d.aliases.join(', ')})` : ''}`)
+          .join('; ')}.`,
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            device: { type: 'STRING', enum: devices.map((d) => d.id), description: 'Device id.' },
+            reason: { type: 'STRING', description: 'Short friendly 1-sentence explanation of the choice.' },
+          },
+          required: ['device'],
+        },
+      },
+    ];
+  }
+
+  private listDevices(): readonly KnxAssistantDevice[] {
+    return this.env.triggerDevice ? (this.env.listDevices?.() ?? []) : [];
+  }
+
+  /** Device whose id, name or alias matches `raw` exactly (case-insensitive). */
+  private resolveDevice(raw: unknown): KnxAssistantDevice | null {
+    if (typeof raw !== 'string') return null;
+    const q = raw.trim().toLowerCase();
+    if (!q) return null;
+    return (
+      this.listDevices().find(
+        (d) => d.id === raw || d.name.toLowerCase() === q || d.aliases.some((a) => a.toLowerCase() === q)
+      ) ?? null
+    );
+  }
+
+  /** Longest device alias / name that appears as whole words in `lower`. */
+  private matchDeviceInPrompt(lower: string): KnxAssistantDevice | null {
+    let best: KnxAssistantDevice | null = null;
+    let bestLen = 0;
+    for (const d of this.listDevices()) {
+      for (const phrase of [d.name, ...d.aliases]) {
+        const p = phrase.trim().toLowerCase();
+        if (p.length <= bestLen) continue;
+        const escaped = p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+        if (new RegExp(`(?:^|\\b)${escaped}(?:\\b|$)`).test(lower)) {
+          best = d;
+          bestLen = p.length;
+        }
+      }
+    }
+    return best;
   }
 
   public getResolver(): KnxNameResolver {
@@ -539,7 +608,7 @@ export class KNXAIAssistant {
           vertexRequest: {
             systemInstruction: { parts: [{ text: this.buildSystemPrompt() }] },
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            tools: [{ functionDeclarations: this.tools }],
+            tools: [{ functionDeclarations: this.getTools() }],
             generationConfig: { temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } },
           },
         }),
@@ -739,6 +808,11 @@ export class KNXAIAssistant {
         return { name: 'set_environment', args };
       }
 
+      case 'trigger_device': {
+        const device = this.resolveDevice(rawArgs.device ?? rawArgs.id ?? rawArgs.name);
+        return device ? { name: 'trigger_device', args: { device: device.id, ...reasonArg } } : null;
+      }
+
       default:
         return null;
     }
@@ -854,6 +928,13 @@ export class KNXAIAssistant {
         this.onEnvironmentChanged?.();
         return notes.join(', ');
       }
+
+      case 'trigger_device': {
+        const device = this.resolveDevice(call.args.device);
+        const name = device?.name ?? call.args.device;
+        const ok = this.env.triggerDevice?.(call.args.device) ?? false;
+        return ok ? `${name} → triggered` : `${name} is busy`;
+      }
     }
   }
 
@@ -865,6 +946,11 @@ export class KNXAIAssistant {
     const has = (re: RegExp): boolean => re.test(lower);
     const calls: KNXToolCall[] = [];
 
+    const device = this.matchDeviceInPrompt(lower);
+    if (device) {
+      calls.push({ name: 'trigger_device', args: { device: device.id } });
+      return calls;
+    }
     if (has(/\b(?:gate|gates|driveway)\b/)) {
       calls.push({ name: 'set_environment', args: { carGatesOpen: !has(/\b(?:close|shut|lock)\b/) } });
       return calls;

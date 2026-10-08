@@ -400,3 +400,46 @@ describe('executeCommand with model output', () => {
     expect(sent.vertexRequest.tools[0].functionDeclarations.map((d) => d.name)).toContain('recall_zone_scene');
   });
 });
+
+describe('scene devices (trigger_device)', () => {
+  class DeviceEnv extends FakeEnv {
+    public readonly triggered: string[] = [];
+    public listDevices(): readonly { id: string; name: string; aliases: readonly string[] }[] {
+      return [{ id: 'pool-table-break', name: 'Pool table', aliases: ['break', 'play pool', 'rack the balls'] }];
+    }
+    public triggerDevice(id: string): boolean {
+      this.triggered.push(id);
+      return true;
+    }
+  }
+
+  it('adds a trigger_device tool only when the environment has devices', () => {
+    expect(assistant.getTools().map((t) => t.name)).not.toContain('trigger_device');
+    const a = new KNXAIAssistant(bus, PROJECT, new DeviceEnv());
+    const tool = a.getTools().find((t) => t.name === 'trigger_device');
+    expect(tool?.parameters.properties.device?.enum).toEqual(['pool-table-break']);
+  });
+
+  it.each(['play pool', 'Break!', 'rack the balls please', 'pool table'])('offline parser: "%s" triggers the pool table', (prompt) => {
+    const devEnv = new DeviceEnv();
+    const a = new KNXAIAssistant(bus, PROJECT, devEnv);
+    const calls = a.parseLocally(prompt);
+    expect(calls).toEqual([{ name: 'trigger_device', args: { device: 'pool-table-break' } }]);
+    expect(a.invokeToolCall(calls[0]!)).toBe('Pool table → triggered');
+    expect(devEnv.triggered).toEqual(['pool-table-break']);
+  });
+
+  it('does not hijack lighting prompts', () => {
+    const a = new KNXAIAssistant(bus, PROJECT, new DeviceEnv());
+    expect(a.parseLocally('barn downlights 40%').map((c) => c.name)).not.toContain('trigger_device');
+  });
+
+  it('coerces model calls by alias', () => {
+    const a = new KNXAIAssistant(bus, PROJECT, new DeviceEnv());
+    expect(a.coerceRawFunctionCall('trigger_device', { device: 'play pool' })).toEqual({
+      name: 'trigger_device',
+      args: { device: 'pool-table-break' },
+    });
+    expect(a.coerceRawFunctionCall('trigger_device', { device: 'jukebox' })).toBeNull();
+  });
+});

@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { createProfiledSkirtingCapGeometry } from '../../../../../engine/geometry/index.ts';
+import type { SceneBuilderContext } from '../../../../../engine/viewer/scene-types.ts';
+import { PoolTableBreakController } from '../../../../../objects/games/pool-table-break.ts';
+import { createSixPocketTableSpec } from '../../../../../objects/games/pool-table-physics.ts';
 
 // ============================================================================
 // ISSUE #10: CORNER BAR WITH BEER ON TAP & MASTER-BEDROOM-STYLE MINI-FRIDGE
@@ -519,7 +522,8 @@ function createPoolTableBaizeTexture(): THREE.CanvasTexture {
 export function buildBarnPoolTable(
   groundGroup: THREE.Group,
   barnCarpetTopY: number,
-  lightJoineryOakMat: THREE.Material
+  lightJoineryOakMat: THREE.Material,
+  interactions?: SceneBuilderContext['interactions']
 ): void {
   const poolGroup = new THREE.Group();
   poolGroup.name = 'outbuildings.barn.poolTable';
@@ -702,9 +706,11 @@ export function buildBarnPoolTable(
   const blackBallMat = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.10, metalness: 0.12 });
   const cueBallMat = new THREE.MeshStandardMaterial({ color: 0xfaf8f2, roughness: 0.10, metalness: 0.08 });
 
-  // White Cue Ball on the head string / D-zone (`x = -0.48m, z = +0.06m`)
+  // White Cue Ball (`ball.0`) on the head string / D-zone (`x = -0.48m, z = +0.06m`)
+  const balls: THREE.Mesh[] = [];
   const cueBall = new THREE.Mesh(new THREE.SphereGeometry(ballR, 16, 14), cueBallMat);
-  cueBall.name = 'outbuildings.barn.poolTable.cueBall';
+  cueBall.name = 'outbuildings.barn.poolTable.ball.0';
+  balls.push(cueBall);
   cueBall.userData = { lodTier: 'high', lodMaxDistance: 12 };
   cueBall.position.set(-0.48, ballY, 0.06);
   cueBall.castShadow = true;
@@ -729,25 +735,32 @@ export function buildBarnPoolTable(
       ball.position.set(bx, ballY, bz);
       ball.castShadow = true;
       poolGroup.add(ball);
+      balls.push(ball);
     }
   }
 
-  // 2 Tapered Ash & Ebony Pool Cues resting across the table
+  // 2 Tapered Ash & Ebony Pool Cues resting along the outer edge of the long rails (clear of the
+  // baize so broken balls never roll through them). `cue.1` is the one picked up for the break.
   const ashCueMat = new THREE.MeshStandardMaterial({ color: 0xdcb98a, roughness: 0.32 });
-  for (const [cIdx, cx, cz, cRotY] of [
-    [1, -0.14, -0.22, 0.18],
-    [2, -0.10, 0.24, -0.24],
+  const cueLength = 1.36;
+  const cueRadius = 0.012;
+  const railTopY = railCenterY + railH * 0.5;
+  const cues: THREE.Mesh[] = [];
+  for (const [cIdx, cx, sideZ] of [
+    [1, -0.12, -1],
+    [2, 0.08, 1],
   ] as const) {
     const cueShaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0048, 0.012, 1.36, 12),
+      new THREE.CylinderGeometry(0.0048, cueRadius, cueLength, 12),
       ashCueMat
     );
     cueShaft.name = `outbuildings.barn.poolTable.cue.${cIdx}`;
-    cueShaft.rotation.z = Math.PI / 2 - 0.025;
-    cueShaft.rotation.y = cRotY;
-    cueShaft.position.set(cx, bedY + 0.032, cz);
+    cueShaft.rotation.z = sideZ * (Math.PI / 2);
+    // +7mm so the shaft clears the raised brass middle-pocket plates it passes over.
+    cueShaft.position.set(cx, railTopY + cueRadius + 0.007, sideZ * (tableW * 0.5 - 0.025));
     cueShaft.castShadow = true;
     poolGroup.add(cueShaft);
+    cues.push(cueShaft);
   }
 
   // 2 Blue Billiards Chalk Cubes on the North & South rails
@@ -762,6 +775,23 @@ export function buildBarnPoolTable(
     chalk.position.set(cx, tableH + 0.015, cz);
     chalk.rotation.y = 0.35;
     poolGroup.add(chalk);
+  }
+
+  // Click / walkthrough-F to break; click again to re-rack (see `objects/games/pool-table-break.ts`).
+  const strikingCue = cues[0];
+  if (interactions && strikingCue) {
+    const cushionInset = 0.025; // cushion face sits 25mm inside the pocket line
+    interactions.registerAnimatedInteractable(
+      new PoolTableBreakController({
+        balls,
+        cue: strikingCue,
+        cueLength,
+        clickableTargets: [poolGroup],
+        spec: createSixPocketTableSpec(playL * 0.5 - cushionInset, playW * 0.5 - cushionInset, ballR),
+        label: 'Pool table',
+        aliases: ['pool table', 'pool', 'break', 'play pool', 'rack the balls', 're-rack', 'rerack'],
+      })
+    );
   }
 }
 

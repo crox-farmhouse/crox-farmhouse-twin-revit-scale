@@ -63,6 +63,8 @@ export const CROX_FARMHOUSE_CIRCUIT_MAX_INTENSITY: Readonly<Record<CircuitId, nu
   walkInCupboardLeds: 1.5,
   livingRoomShelfLeds: 2.5,
   livingRoomTvBacklight: 1.5,
+  livingRoomWallLights: 2.5,
+  livingRoomDownlights: 3.0,
   sittingRoomLamps5A: 4.5,
   sittingRoomShelfLeds: 2.5,
   pergolaFestoons: 3.0,

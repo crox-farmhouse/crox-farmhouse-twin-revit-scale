@@ -13,6 +13,7 @@ import {
 } from './env/env-state.ts';
 import { bakeProceduralSky, prepareHdrPanorama } from './env/hdr-processing.ts';
 import { installOrthoSafeBackground } from './env/background-projection.ts';
+import { createSiteGround, type SiteGround } from './env/site-ground.ts';
 import { installSiteHazeFog } from './env/site-haze-fog.ts';
 
 const TIMES_OF_DAY: readonly TimeOfDay[] = ['day', 'dusk', 'night'];
@@ -29,6 +30,7 @@ const TRANSITION_MS = 900;
  * - The environment is rotated so the HDR's sun disc sits on the directional light's azimuth.
  * - The sun's shadow camera is fitted to the whole site for the current sun direction.
  * - This class owns `renderer.toneMappingExposure` (per time of day; the post pipeline reads it).
+ * - A shadow-receiving meadow disc grounds the estate and fades into the panorama's horizon ground.
  * - Haze is world-space (beyond the site footprint), so orthographic and perspective views match,
  *   and the skybox also renders under orthographic cameras (see background-projection.ts).
  *
@@ -40,6 +42,14 @@ export class EnvironmentLighting {
   private readonly sunLight: THREE.DirectionalLight;
   private readonly envMaps: Partial<Record<TimeOfDay, THREE.Texture>> = {};
   private readonly bgMaps: Partial<Record<TimeOfDay, THREE.Texture>> = {};
+  /** Linear radiance of each panorama's horizon ground band (what the 3D meadow fades into). */
+  private readonly horizonGround: Record<TimeOfDay, THREE.Color> = {
+    day: new THREE.Color(ENV_PRESETS.day.groundPasture),
+    dusk: new THREE.Color(ENV_PRESETS.dusk.groundPasture),
+    night: new THREE.Color(ENV_PRESETS.night.groundPasture),
+  };
+  private readonly ground?: SiteGround;
+  private readonly horizonScratch = new THREE.Color();
   private readonly onEnvUpdated?: () => void;
   private readonly renderer?: THREE.WebGLRenderer;
   private currentMode: TimeOfDay = 'dusk';
@@ -75,6 +85,8 @@ export class EnvironmentLighting {
       // Shader chunks are read at program compile time, so swap in the haze before the first render.
       installSiteHazeFog();
       installOrthoSafeBackground();
+      this.ground = createSiteGround();
+      scene.add(this.ground.mesh);
       this.bakeProceduralEnvironments(renderer);
       this.loadHdrFiles(renderer);
     }
@@ -112,6 +124,7 @@ export class EnvironmentLighting {
           const prevEnv = this.envMaps[mode];
           this.bgMaps[mode] = prepared.background;
           this.envMaps[mode] = pmremTarget.texture;
+          this.horizonGround[mode].copy(prepared.horizonGround);
           prevBg?.dispose();
           prevEnv?.dispose();
 
@@ -182,6 +195,10 @@ export class EnvironmentLighting {
     this.scene.environmentIntensity = this.state.envIntensity;
     this.scene.backgroundIntensity = this.state.bgIntensity;
     this.scene.backgroundBlurriness = this.state.bgBlurriness;
+    if (this.ground) {
+      const horizon = this.horizonScratch.copy(this.horizonGround[this.currentMode]);
+      this.ground.setHorizonColor(horizon.multiplyScalar(this.state.bgIntensity));
+    }
   }
 
   /** Positions the sun for a direction and fits its shadow camera around the whole site. */

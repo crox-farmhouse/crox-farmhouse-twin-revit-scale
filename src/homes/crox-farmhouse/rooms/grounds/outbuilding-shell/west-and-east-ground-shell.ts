@@ -1496,7 +1496,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   // & Issue #12 ("Pool table" at `[-1.537, -0.675, 16.19]`):
   buildBarnCornerBar(groundGroup, barnCarpetTopY, lightJoineryOakMat, windowGlassMat);
   buildBarnGolfViewingBar(groundGroup, barnCarpetTopY, lightJoineryOakMat);
-  buildBarnPoolTable(groundGroup, barnCarpetTopY, lightJoineryOakMat);
+  buildBarnPoolTable(groundGroup, barnCarpetTopY, lightJoineryOakMat, ctx.interactions);
 
   // Internal Cross-Wall at u = 23.02m..23.22m (Barn/Stable Step #2):
   // - Issue #11 ("Glass door through to the next room" at `[0.63, 0.255, 15.941]` -> `(u = 23.02m, y = 0.255m, v = 1.919m)`) &

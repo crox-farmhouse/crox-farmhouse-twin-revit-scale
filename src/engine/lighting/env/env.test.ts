@@ -11,6 +11,7 @@ import {
 } from './env-state.ts';
 import { buildOrthoSafeBackgroundVertexShader } from './background-projection.ts';
 import { buildSiteHazeFogVertexChunk } from './site-haze-fog.ts';
+import { buildMeadowTextureData } from './site-ground.ts';
 
 /** World azimuth at which three.js shows a panorama column `u` under environment rotation `theta`. */
 function worldAzimuthOfPanoramaColumn(u: number, theta: number): number {
@@ -124,5 +125,25 @@ describe('ortho-safe background', () => {
     expect(once).toContain('projectionMatrix[ 3 ][ 3 ] == 1.0 ? 1.0e4 : 1.0');
     expect(once).not.toContain('#include <begin_vertex>');
     expect(buildOrthoSafeBackgroundVertexShader(once)).toBe(once);
+  });
+});
+
+describe('site ground meadow texture', () => {
+  it('is deterministic, opaque and pasture-green', () => {
+    const a = buildMeadowTextureData(32, 7);
+    const b = buildMeadowTextureData(32, 7);
+    expect(a).toEqual(b);
+    expect(a.length).toBe(32 * 32 * 4);
+    let r = 0;
+    let g = 0;
+    let bl = 0;
+    for (let i = 0; i < a.length; i += 4) {
+      r += a[i]!;
+      g += a[i + 1]!;
+      bl += a[i + 2]!;
+      expect(a[i + 3]).toBe(255);
+    }
+    expect(g).toBeGreaterThan(r);
+    expect(g).toBeGreaterThan(bl);
   });
 });

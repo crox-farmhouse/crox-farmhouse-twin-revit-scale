@@ -31,7 +31,7 @@ Middle groups: 1 switch (1.001) · 2 brightness (5.001) · 3 status (5.001) · 4
 
 ## Summary per zone
 
-Totals: 69 circuits, 24 zones, 48 push-button plates, 26 presence detectors, 51 PointLights in the scene.
+Totals: 71 circuits, 24 zones, 48 push-button plates, 26 presence detectors, 52 PointLights in the scene.
 
 | Zone | Circuits | Scenes | Plates | Gangs | Detectors |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -41,7 +41,7 @@ Totals: 69 circuits, 24 zones, 48 push-button plates, 26 presence detectors, 51 
 | Dining room (`familyRoom`) | 5 | 4 | 2 | 2 | 1 |
 | Boot lobby & cloakroom (`bootLobby`) | 3 | 3 | 1 | 1 | 3 |
 | Staircase hall (`hall`) | 4 | 3 | 2 | 2 | 1 |
-| Living room (`livingRoom`) | 3 | 4 | 1 | 1 | 1 |
+| Living room (`livingRoom`) | 5 | 4 | 1 | 1 | 1 |
 | Entrance hall (`entranceHall`) | 2 | 3 | 1 | 1 | 1 |
 | Sitting room (`sittingRoom`) | 3 | 4 | 1 | 1 | 1 |
 | Plant room (`study`) | 1 | 3 | 1 | 1 | 1 |
@@ -234,16 +234,18 @@ Zone GAs: scene 1/6/28 · night 1/6/29 · full/off 1/6/30 · dim 1/6/31 · scene
 
 | Circuit | Type | Actuator / ch | GA value | Dimmable | Bound fittings (L lights · E emissives · P pools) |
 | --- | --- | --- | --- | --- | --- |
+| Downlights (`livingRoomDownlights`) | downlights | 1.1.28 / 11 | 1/2/32 | yes | L1 E1 P4 — livingRoom.ceilingDownlight.emitter ×4; livingRoom.ceilingDownlight.fillLight |
+| Wall Lights (`livingRoomWallLights`) | wall | 1.1.28 / 10 | 1/2/31 | yes | L0 E2 P0 — livingRoom.wallLight.left.lens.up; livingRoom.wallLight.left.lens.down; livingRoom.wallLight.right.lens.up; livingRoom.wallLight.right.lens.down |
 | Picture Lights (`frontRoomPendant`) | picture | 1.1.20 / 13 | 1/2/13 | yes | L1 E1 P3 — livingRoom.eastWallLight.bulb ×3; livingRoom.eastWallPictureLightWash |
 | Alcove LEDs (`livingRoomShelfLeds`) | shelf | 1.1.28 / 5 | 1/2/27 | yes | L0 E1 P2 — livingRoom.alcove.left.ledStrip ×3; livingRoom.alcove.right.ledStrip ×3 |
 | TV Bias Light (`livingRoomTvBacklight`) | strip | 1.1.28 / 6 | 1/2/28 | yes | L0 E1 P0 — livingRoom.lg83GalleryOled.biasLight |
 
 | # | Scene | Levels |
 | ---: | --- | --- |
-| 1 | Bright | Picture Lights 100%, Alcove LEDs 70%, TV Bias Light 0% |
-| 2 | Evening | Picture Lights 80%, Alcove LEDs 70%, TV Bias Light 0% |
-| 3 | Relax | Picture Lights 55%, Alcove LEDs 50%, TV Bias Light 20% |
-| 4 | Movie | Picture Lights 15%, Alcove LEDs 25%, TV Bias Light 60% |
+| 1 | Bright | Downlights 100%, Wall Lights 100%, Picture Lights 100%, Alcove LEDs 70%, TV Bias Light 0% |
+| 2 | Evening | Downlights 0%, Wall Lights 75%, Picture Lights 80%, Alcove LEDs 70%, TV Bias Light 0% |
+| 3 | Relax | Downlights 0%, Wall Lights 40%, Picture Lights 55%, Alcove LEDs 50%, TV Bias Light 20% |
+| 4 | Movie | Downlights 0%, Wall Lights 0%, Picture Lights 15%, Alcove LEDs 25%, TV Bias Light 60% |
 | — | Night mode | Alcove LEDs 4% |
 
 | Switch PA | Plate | Location | Gangs | World position |

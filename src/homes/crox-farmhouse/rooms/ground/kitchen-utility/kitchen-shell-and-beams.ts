@@ -595,14 +595,16 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   floorMesh.receiveShadow = true;
   scene.add(floorMesh);
 
+  // Weathered stone / gravel tone so the plinth reads as yard and foundation against the meadow ground.
   const plinthMat = new THREE.MeshStandardMaterial({
-    color: 0x1b2028,
-    roughness: 0.85,
+    color: 0x6e6758,
+    roughness: 0.9,
   });
-  // Property-wide dark architectural sub-base plinth spanning the entire Main House Ground Floor & Courtyard
+  // Property-wide architectural sub-base plinth spanning the entire Main House Ground Floor & Courtyard
   const plinth = new THREE.Mesh(prepGeo(new THREE.BoxGeometry(34.5, 0.18, 19.5)), plinthMat);
   plinth.name = 'kitchen.foundation.subBasePlinth';
   plinth.position.set(-10.2, -0.78, 6.2);
+  plinth.receiveShadow = true;
   scene.add(plinth);
 
   const eastPlinthCollar = new THREE.Mesh(
@@ -611,6 +613,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   );
   eastPlinthCollar.name = 'kitchen.foundation.eastPlinthCollar';
   eastPlinthCollar.position.set(1.05, -0.39, 2.09);
+  eastPlinthCollar.receiveShadow = true;
   scene.add(eastPlinthCollar);
 
   const wallMat = new THREE.MeshStandardMaterial({

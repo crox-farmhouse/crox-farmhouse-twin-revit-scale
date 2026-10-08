@@ -13,6 +13,7 @@ import {
   type MotorizedCarGatePairState,
 } from './handlers/car-gates.ts';
 import { EMPTY_DOOR_POLICY, type DoorPolicy } from './handlers/door-policy.ts';
+import type { AnimatedInteractable } from './handlers/animated-interactable.ts';
 import { describeFlagInteractable } from './handlers/flag-prompts.ts';
 import {
   applySlidingGolfMatKinematics,
@@ -70,7 +71,8 @@ export type InteractableKind =
   | 'bifold-cupboard'
   | 'toggle'
   | 'pulley-maid'
-  | 'golf-simulator-shot';
+  | 'golf-simulator-shot'
+  | 'animated';
 
 export interface InteractableInfo {
   /** Stable id (preferred for persistence / manifests). */
@@ -78,6 +80,10 @@ export interface InteractableInfo {
   /** Build-order id written into mesh userData (still accepted everywhere). */
   readonly legacyId: string;
   readonly kind: InteractableKind;
+  /** Display label (animated props only). */
+  readonly label?: string;
+  /** Natural-language aliases (animated props only). */
+  readonly aliases?: readonly string[];
 }
 
 interface ToggleCallbackEntry {
@@ -111,6 +117,8 @@ export class InteractionRegistry {
   #doorPolicy: DoorPolicy = EMPTY_DOOR_POLICY;
   #stableIds: { byLegacy: Map<string, string>; byStable: Map<string, string> } | null = null;
   readonly #manualCloseMs = new Map<string, number>();
+  /** Runtime-only (`#private` keeps the snapshot fingerprint of this registry unchanged). */
+  readonly #animated = new Map<string, AnimatedInteractable>();
   readonly #bargeContext: DoorBargeContext;
 
   public constructor(interactiveMeshes: THREE.Object3D[]) {
@@ -224,6 +232,9 @@ export class InteractionRegistry {
     for (const id of this.toggleCallbacks.keys()) add(id, 'toggle');
     if (this.pulleyMaid) add(this.pulleyMaid.id, 'pulley-maid');
     if (this.golfSimulatorShot) add(this.golfSimulatorShot.id, 'golf-simulator-shot');
+    for (const device of this.#animated.values()) {
+      out.push({ id: device.id, legacyId: device.id, kind: 'animated', label: device.label, aliases: device.aliases });
+    }
     return out;
   }
 
@@ -474,6 +485,19 @@ export class InteractionRegistry {
     return id;
   }
 
+  /**
+   * Registers a self-contained animated prop (see `AnimatedInteractable`): its click targets get
+   * `interactableId = device.id`, and clicks, prompts, per-frame steps and dynamic-object
+   * collection are routed to it.
+   */
+  public registerAnimatedInteractable(device: AnimatedInteractable): string {
+    for (const target of device.clickableTargets) {
+      this.registerClickableObject(target, { interactableId: device.id });
+    }
+    this.#animated.set(device.id, device);
+    return device.id;
+  }
+
   // ---------------------------------------------------------------------------
   // Car gates
   // ---------------------------------------------------------------------------
@@ -621,6 +645,11 @@ export class InteractionRegistry {
 
     if (this.golfSimulatorShot && this.golfSimulatorShot.id === id) {
       return this.triggerGolfSimulatorShot();
+    }
+
+    const animated = this.#animated.get(id);
+    if (animated) {
+      return animated.trigger();
     }
 
     const toggleCb = this.toggleCallbacks.get(id);
@@ -775,6 +804,10 @@ export class InteractionRegistry {
       if (this.golfSimulatorShot && this.golfSimulatorShot.id === id) {
         return this.getGolfSimulatorPromptLabel();
       }
+      const animated = this.#animated.get(id);
+      if (animated) {
+        return animated.describe();
+      }
     }
     return describeFlagInteractable(data, {
       isBifoldsOpen,
@@ -898,6 +931,9 @@ export class InteractionRegistry {
     if (this.golfSimulatorShot) {
       collectGolfShotDynamicObjects(this.golfSimulatorShot, outSet);
     }
+    for (const device of this.#animated.values()) {
+      device.collectDynamicObjects(outSet);
+    }
   }
 
   /** Steps all active animations. Returns true if any animation moved this frame. */
@@ -926,6 +962,10 @@ export class InteractionRegistry {
 
     if (this.golfSimulatorShot && stepGolfSimulatorShot(this.golfSimulatorShot, dtSeconds)) {
       anyChanged = true;
+    }
+
+    for (const device of this.#animated.values()) {
+      if (device.step(dtSeconds)) anyChanged = true;
     }
 
     return anyChanged;

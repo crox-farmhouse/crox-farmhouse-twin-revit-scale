@@ -293,7 +293,10 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
     // Tween + damping in one step (controls 'change' refreshes cutaways for damped motion).
     const wasTweening = rig.isTweening();
     if (!this.walkthrough.isActive() && rig.update(dtSeconds)) {
-      if (wasTweening) this.refreshView(false);
+      if (wasTweening) {
+        this.rooms.rebaseExplicitAnchor(rig.controls.target);
+        this.refreshView(false);
+      }
       this.renderer.requestRender();
       cameraMoved = true;
     }

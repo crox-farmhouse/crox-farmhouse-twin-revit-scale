@@ -35,6 +35,8 @@ export type RoomPendantCircuitId =
   | 'walkInCupboardLeds'
   | 'livingRoomShelfLeds'
   | 'livingRoomTvBacklight'
+  | 'livingRoomWallLights'
+  | 'livingRoomDownlights'
   | 'sittingRoomLamps5A'
   | 'sittingRoomShelfLeds'
   | 'upperLandingSconces';

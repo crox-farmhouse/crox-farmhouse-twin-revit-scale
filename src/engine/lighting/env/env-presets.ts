@@ -68,21 +68,23 @@ export const ENV_PRESETS: Readonly<Record<TimeOfDay, EnvPresetConfig>> = {
     groundBounce: 0x2c381e,
     sunOrbColor: 0xfff8e8,
     sunOrbPeak: 6.5,
-    envIntensity: 0.9,
+    // Sun-to-sky ratio ~5:1 so shade reads clearly against sunlit surfaces.
+    envIntensity: 0.65,
     bgIntensity: 1.0,
     bgBlurriness: 0.03,
     hdrMaxClampEnv: 6.0,
     hdrMaxClampBg: 24.0,
     zenithDarkening: 0,
-    // Late-morning sun in the south-south-west, ~40° high, over the main house onto the north garden
-    // and the south-facing courtyard facade of the outbuildings.
-    sunDirection: [0.29, 0.64, -0.71],
+    // Mid-afternoon sun in the west-south-west, ~38° high: the west facades that face the default
+    // north-west views are sunlit and roofs / chimneys / pergola rake crisp shadows across the
+    // courtyard and garden towards the east.
+    sunDirection: [0.68, 0.62, -0.39],
     // ~5800 K daylight.
     sunColor: 0xfff2e6,
-    sunIntensity: 3.2,
+    sunIntensity: 3.6,
     hemiSkyColor: 0xdfeaf7,
     hemiGroundColor: 0x55603f,
-    hemiIntensity: 0.18,
+    hemiIntensity: 0.1,
     exposure: 1.0,
     fogColor: 0xcad9e8,
     fogDensity: 0.0042,

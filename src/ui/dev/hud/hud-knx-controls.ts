@@ -99,6 +99,11 @@ export class HudKnxControlsController {
         toggleBifolds: () => {
           scene.toggleBifolds();
         },
+        listDevices: () =>
+          scene.devices.interactions
+            .listInteractables()
+            .flatMap((d) => (d.label && d.aliases ? [{ id: d.id, name: d.label, aliases: d.aliases }] : [])),
+        triggerDevice: (id) => scene.handleInteractableClick(id),
       },
       onEnvironmentChanged
     );

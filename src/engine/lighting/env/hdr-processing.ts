@@ -90,6 +90,8 @@ export function bakeProceduralSky(cfg: EnvPresetConfig, width = 512, height = 25
 export interface PreparedHdr {
   readonly background: THREE.Texture;
   readonly envSource: THREE.DataTexture;
+  /** Average linear radiance of the meadow band just below the horizon (what the 3D ground fades into). */
+  readonly horizonGround: THREE.Color;
 }
 
 /**
@@ -213,5 +215,5 @@ export function prepareHdrPanorama(loadedTex: THREE.DataTexture, cfg: EnvPresetC
   configureEquirect(loadedTex);
   const envSource = new THREE.DataTexture(envData, W, H, THREE.RGBAFormat, THREE.FloatType);
   configureEquirect(envSource);
-  return { background: loadedTex, envSource };
+  return { background: loadedTex, envSource, horizonGround: new THREE.Color(avgR, avgG, avgB) };
 }

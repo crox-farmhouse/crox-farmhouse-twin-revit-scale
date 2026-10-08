@@ -32,6 +32,8 @@ Address,Name,DPT,Main group,Middle group,Description
 1/1/28,TV Bias Light switch,1.001,House ground floor,Switching,Cinema TV Bias Light (1.1.28 ch6)
 1/1/29,Sitting Lamps switch,1.001,House ground floor,Switching,Sitting Room Lamps (5A) (1.1.28 ch7)
 1/1/30,Sitting Alcove LEDs switch,1.001,House ground floor,Switching,Sitting Room Alcove Shelf LEDs (1.1.28 ch8)
+1/1/31,Wall Lights switch,1.001,House ground floor,Switching,Living Room Wall Lights (1.1.28 ch10)
+1/1/32,Downlights switch,1.001,House ground floor,Switching,Living Room Ceiling Downlights (1.1.28 ch11)
 1/2/1,Island Pendants brightness,5.001,House ground floor,Brightness value,Blue Island Pendants (Set 1) (1.1.20 ch1)
 1/2/2,Sitting Pendants brightness,5.001,House ground floor,Brightness value,Sitting Area Pendants (Set 2) (1.1.20 ch2)
 1/2/3,Bifold Uplights brightness,5.001,House ground floor,Brightness value,Bifold Floor Uplights (1.1.20 ch3)
@@ -62,6 +64,8 @@ Address,Name,DPT,Main group,Middle group,Description
 1/2/28,TV Bias Light brightness,5.001,House ground floor,Brightness value,Cinema TV Bias Light (1.1.28 ch6)
 1/2/29,Sitting Lamps brightness,5.001,House ground floor,Brightness value,Sitting Room Lamps (5A) (1.1.28 ch7)
 1/2/30,Sitting Alcove LEDs brightness,5.001,House ground floor,Brightness value,Sitting Room Alcove Shelf LEDs (1.1.28 ch8)
+1/2/31,Wall Lights brightness,5.001,House ground floor,Brightness value,Living Room Wall Lights (1.1.28 ch10)
+1/2/32,Downlights brightness,5.001,House ground floor,Brightness value,Living Room Ceiling Downlights (1.1.28 ch11)
 1/3/1,Island Pendants status,5.001,House ground floor,Brightness status,Blue Island Pendants (Set 1) feedback (1.1.20 ch1)
 1/3/2,Sitting Pendants status,5.001,House ground floor,Brightness status,Sitting Area Pendants (Set 2) feedback (1.1.20 ch2)
 1/3/3,Bifold Uplights status,5.001,House ground floor,Brightness status,Bifold Floor Uplights feedback (1.1.20 ch3)
@@ -92,6 +96,8 @@ Address,Name,DPT,Main group,Middle group,Description
 1/3/28,TV Bias Light status,5.001,House ground floor,Brightness status,Cinema TV Bias Light feedback (1.1.28 ch6)
 1/3/29,Sitting Lamps status,5.001,House ground floor,Brightness status,Sitting Room Lamps (5A) feedback (1.1.28 ch7)
 1/3/30,Sitting Alcove LEDs status,5.001,House ground floor,Brightness status,Sitting Room Alcove Shelf LEDs feedback (1.1.28 ch8)
+1/3/31,Wall Lights status,5.001,House ground floor,Brightness status,Living Room Wall Lights feedback (1.1.28 ch10)
+1/3/32,Downlights status,5.001,House ground floor,Brightness status,Living Room Ceiling Downlights feedback (1.1.28 ch11)
 1/4/1,Kitchen PIR & lux presence,1.018,House ground floor,Sensors,"1.1.12, zone kitchen"
 1/4/2,Ambient lux,9.004,House ground floor,Sensors,Kitchen PIR lux sensor (night-mode threshold)
 1/4/3,Utility PIR presence,1.018,House ground floor,Sensors,"1.1.13, zone utility"

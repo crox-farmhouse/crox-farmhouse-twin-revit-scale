@@ -617,6 +617,110 @@ export function buildLivingRoomCinemaWall(
     true
   );
 
+  // 2B. Wall-light and ceiling layers (KNX `livingRoomWallLights` / `livingRoomDownlights`).
+  //     Brass up/down cylinder wall lights either side of the OLED, outboard of the L/R speakers
+  //     (speakers span centre ±1.32..1.54 m, wall ends at ±2.68 m), and four recessed downlights in
+  //     the flat 1.601 m ceiling (measured) for the "Bright" / cleaning layer.
+  {
+    const wallLightBrassMat = new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.32, metalness: 0.82 });
+    const wallLightLensMat = new THREE.MeshStandardMaterial({
+      color: 0xfff1d6,
+      emissive: 0xffb866,
+      emissiveIntensity: 2.4,
+      roughness: 0.2,
+    });
+    wallLightLensMat.userData = { ...wallLightLensMat.userData, baseEmissiveIntensity: 2.4 };
+    const wallWashMat = new THREE.MeshStandardMaterial({
+      color: 0x000000,
+      emissive: 0xffc27a,
+      emissiveIntensity: 0.8,
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false,
+    });
+    wallWashMat.userData = { ...wallWashMat.userData, baseEmissiveIntensity: 0.8 };
+    ctx.lightGroups.livingRoomWallLights.emissives.push(wallLightLensMat, wallWashMat);
+
+    const backplateGeo = createSharedGeo(new THREE.BoxGeometry(0.075, 0.17, 0.012));
+    const bodyGeo = createSharedGeo(new THREE.CylinderGeometry(0.036, 0.036, 0.17, 20));
+    const lensGeo = createSharedGeo(new THREE.CircleGeometry(0.03, 20));
+    const washGeo = createSharedGeo(new THREE.PlaneGeometry(0.2, 0.42));
+
+    for (const [side, du] of [['left', -2.0], ['right', 2.0]] as const) {
+      const name = `livingRoom.wallLight.${side}`;
+      const fitting = new THREE.Group();
+      fitting.name = name;
+      fitting.userData = { zone: 'livingRoom', cutawayWall: frNorthCutawayDescriptor };
+
+      const backplate = new THREE.Mesh(backplateGeo, wallLightBrassMat);
+      backplate.name = `${name}.backplate`;
+      backplate.position.z = 0.006;
+      fitting.add(backplate);
+      const body = new THREE.Mesh(bodyGeo, wallLightBrassMat);
+      body.name = `${name}.body`;
+      body.position.z = 0.058;
+      body.castShadow = true;
+      fitting.add(body);
+      for (const [tag, y, rx] of [['up', 0.0855, -Math.PI / 2], ['down', -0.0855, Math.PI / 2]] as const) {
+        const lens = new THREE.Mesh(lensGeo, wallLightLensMat);
+        lens.name = `${name}.lens.${tag}`;
+        lens.rotation.x = rx;
+        lens.position.set(0, y, 0.058);
+        fitting.add(lens);
+        // Scallop of light grazing the plaster above / below the fitting.
+        const wash = new THREE.Mesh(washGeo, wallWashMat);
+        wash.name = `${name}.wash.${tag}`;
+        wash.position.set(0, y + Math.sign(y) * 0.22, 0.003);
+        wash.renderOrder = 1;
+        fitting.add(wash);
+      }
+      livingRoomNorthWallFrame.placeObject(scene, fitting, northWallCenterU + du, tier2FloorY + 1.78, 0.0);
+      ctx.interactions.registerLightFixture(fitting, 'livingRoomWallLights');
+    }
+
+    const downlightBezelGeo = createSharedGeo(new THREE.CylinderGeometry(0.05, 0.05, 0.008, 20));
+    const downlightLensGeo = createSharedGeo(new THREE.CylinderGeometry(0.032, 0.032, 0.004, 16));
+    const downlightLensMat = new THREE.MeshStandardMaterial({
+      color: 0xfff6e8,
+      emissive: 0xffcf94,
+      emissiveIntensity: 2.2,
+      roughness: 0.18,
+    });
+    downlightLensMat.userData = { ...downlightLensMat.userData, baseEmissiveIntensity: 2.2 };
+    ctx.lightGroups.livingRoomDownlights.emissives.push(downlightLensMat);
+    const LIVING_CEILING_Y = 1.601;
+    const downlights: ReadonlyArray<readonly [number, number]> = [
+      [-21.0, -1.6],
+      [-18.6, -1.3],
+      [-21.0, 0.9],
+      [-18.9, 1.2],
+    ];
+    downlights.forEach(([x, z], i) => {
+      const name = `livingRoom.ceilingDownlight.${i + 1}`;
+      const fitting = new THREE.Group();
+      fitting.name = name;
+      fitting.userData = { zone: 'livingRoom' };
+      fitting.position.set(x, LIVING_CEILING_Y - 0.004, z);
+      const bezel = new THREE.Mesh(downlightBezelGeo, wallLightBrassMat);
+      bezel.name = `${name}.bezel`;
+      fitting.add(bezel);
+      const lens = new THREE.Mesh(downlightLensGeo, downlightLensMat);
+      lens.name = `${name}.emitter`;
+      lens.position.y = -0.005;
+      fitting.add(lens);
+      groundFloorCeilingGroup.add(fitting);
+      ctx.interactions.registerLightFixture(fitting, 'livingRoomDownlights');
+      ctx.addGlowPool('livingRoomDownlights', x, tier2FloorY + 0.006, z, 0.7, 0.18);
+    });
+    // One shared fill for the general layer (the picture-light wash stays the accent light).
+    const downlightFill = new THREE.PointLight(0xffd8a8, 6.0, 7.5, 1.6);
+    downlightFill.name = 'livingRoom.ceilingDownlight.fillLight';
+    downlightFill.userData = { ...downlightFill.userData, baseIntensity: 6.0 };
+    downlightFill.position.set(-19.9, LIVING_CEILING_Y - 0.25, -0.2);
+    scene.add(downlightFill);
+    ctx.lightGroups.livingRoomDownlights.lights.push(downlightFill);
+  }
+
   // 3. Issue #2: Actual Ruggable "Vesper Olive & Gold Tufted Rug" (size 185x275 -> 2.75m W × 1.85m D, `livingRoom.persianRug`)
   //    & Issue #3: Loaf "Cuddlemuffin" Chaise Cinema Sofa in Treacle Tart Yellow Clever Velvet (`livingRoom.chaiseSofa`)
   {

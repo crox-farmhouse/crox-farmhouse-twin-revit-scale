@@ -92,6 +92,8 @@ const CIRCUIT_PRESENTATION: Readonly<
   frontRoomPendant: { label: 'Picture lights', dimmable: true },
   livingRoomShelfLeds: { label: 'Alcove shelf LEDs', dimmable: true },
   livingRoomTvBacklight: { label: 'TV bias light', dimmable: true },
+  livingRoomWallLights: { label: 'Wall lights', dimmable: true },
+  livingRoomDownlights: { label: 'Ceiling downlights', dimmable: true },
   // Entrance hall
   entranceHallPendant: { label: 'Glass lantern pendant', dimmable: true },
   entranceHallUplights: { label: 'Floor uplights', dimmable: true },
@@ -200,7 +202,7 @@ interface RoomSpec {
  * - stable ids derived from scene-graph names by the interaction registry
  *   (`door:<name>`, `toggle:<name>`, see `engine/interaction/device-ids.ts`); never use the
  *   build-order `door-N` ids here, they shift whenever a zone adds or removes a door
- * - fixed ids `pulley-maid`, `golf-simulator-shot` and the `garage-door` group
+ * - fixed ids `pulley-maid`, `golf-simulator-shot`, `pool-table-break` and the `garage-door` group
  * - KNX-backed pseudo-devices `car-gates`, `kitchen-bifolds`, `frame-tv` (routed through the
  *   same path as clicking the device, so the KNX bus state stays in sync)
  */
@@ -309,6 +311,7 @@ const ROOM_SPECS: Readonly<Record<CanonicalRoomZoneId, RoomSpec>> = {
     floor: 'ground',
     devices: [
       { interactableId: 'golf-simulator-shot', label: 'Golf simulator: take a shot' },
+      { interactableId: 'pool-table-break', label: 'Pool table: break / re-rack' },
       {
         interactableId: 'door:outbuildings.barn.golfSimulator.turfMat.foldingLeaf',
         label: 'Golf simulator: stow / roll out mat',
