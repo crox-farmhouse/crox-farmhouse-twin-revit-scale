@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { RigCamera } from '../camera/camera-rig.ts';
 import type { GraphicsTier, GraphicsTierSettings } from '../../core/types/twin-ux.ts';
 import { getTierSettings, isGraphicsTier } from '../perf/tier-settings.ts';
+import { BloomPass } from './bloom-pass.ts';
 
 /** Legacy 3-step preset kept for the existing HUD; each preset maps onto a {@link GraphicsTier}. */
 export type GraphicsQualityPreset = 'ultra' | 'balanced' | 'performance';
@@ -46,6 +47,7 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
 
   uniform sampler2D tColor;
   uniform sampler2D tDepth;
+  uniform sampler2D tBloom;
 
   uniform vec2 uResolution;
   uniform vec2 uTexelSize;
@@ -153,35 +155,19 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
     return clamp(ao, 0.52, 1.0);
   }
 
-  vec3 extractBrightHighlightColor(vec3 c) {
-    float peak = max(c.r, max(c.g, c.b));
-    float knee = smoothstep(0.92, 1.85, peak);
-    return c * knee;
-  }
-
-  vec3 extractBrightHighlight(vec2 uv) {
-    return extractBrightHighlightColor(texture2D(tColor, clamp(uv, 0.0, 1.0)).rgb);
-  }
-
-  vec3 computeWarmBloom(vec2 uv, vec3 centerColor) {
+  // Selective HDR bloom (threshold + mip chain computed by BloomPass at half resolution).
+  vec3 computeBloom(vec2 uv) {
     if (uBloomIntensity <= 0.001) {
       return vec3(0.0);
     }
-    vec2 r1 = uTexelSize * 4.5;
-
-    vec3 sum = extractBrightHighlightColor(centerColor) * 0.24;
-    sum += extractBrightHighlight(uv + vec2( r1.x,  r1.y)) * 0.19;
-    sum += extractBrightHighlight(uv + vec2(-r1.x,  r1.y)) * 0.19;
-    sum += extractBrightHighlight(uv + vec2( r1.x, -r1.y)) * 0.19;
-    sum += extractBrightHighlight(uv + vec2(-r1.x, -r1.y)) * 0.19;
-    return sum * uBloomIntensity;
+    return texture2D(tBloom, uv).rgb * uBloomIntensity;
   }
 
   void main() {
     float rawDepth = texture2D(tDepth, vUv).r;
     vec3 centerColor = texture2D(tColor, vUv).rgb;
     if (rawDepth >= 0.9999) {
-      vec3 skyLdr = acesFilmicToneMapping(centerColor + computeWarmBloom(vUv, centerColor), uExposure);
+      vec3 skyLdr = acesFilmicToneMapping(centerColor + computeBloom(vUv), uExposure);
       gl_FragColor = vec4(linearToSrgb(skyLdr), 1.0);
       return;
     }
@@ -256,8 +242,8 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
     float ao = mix(1.0, computeContactAO(vUv, centerLinZ, noise), motionFade);
     hdrColor *= ao;
 
-    // 4. Add warm HDR optical bloom around glowing bulbs, sconces, and sunlit windows
-    hdrColor += computeWarmBloom(vUv, centerColor);
+    // 4. Add selective HDR bloom around glowing bulbs, LED diffusers and halos
+    hdrColor += computeBloom(vUv);
 
     // 5. ACES Filmic Tone Mapping + sRGB output encoding
     vec3 ldrColor = acesFilmicToneMapping(hdrColor, uExposure);
@@ -267,7 +253,7 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
 
 const STORAGE_KEY = 'crox_graphics_settings_v2';
 const AO_INTENSITY = 0.42;
-const BLOOM_INTENSITY = 0.18;
+const BLOOM_INTENSITY = 0.12;
 const SHARPEN_INTENSITY = 0.26;
 
 function currentDevicePixelRatio(): number {
@@ -281,6 +267,7 @@ export class PostProcessingPipeline {
   private readonly postCamera: THREE.OrthographicCamera;
   private readonly postMaterial: THREE.ShaderMaterial;
   private readonly quad: THREE.Mesh;
+  private readonly bloom = new BloomPass();
 
   private readonly currViewProj = new THREE.Matrix4();
   private readonly currInvViewProj = new THREE.Matrix4();
@@ -342,6 +329,7 @@ export class PostProcessingPipeline {
       uniforms: {
         tColor: { value: this.renderTarget.texture },
         tDepth: { value: depthTexture },
+        tBloom: { value: null },
         uResolution: { value: new THREE.Vector2(rtWidth, rtHeight) },
         uTexelSize: { value: new THREE.Vector2(1 / rtWidth, 1 / rtHeight) },
         uNear: { value: 0.1 },
@@ -530,6 +518,9 @@ export class PostProcessingPipeline {
     // 1. Render scene into linear HalfFloat HDR target + hardware DepthTexture
     this.renderer.setRenderTarget(this.renderTarget);
     this.renderer.render(scene, camera);
+    if (this.bloomEnabled) {
+      this.bloom.render(this.renderer, this.renderTarget.texture, this.renderTarget.width, this.renderTarget.height);
+    }
     this.renderer.setRenderTarget(null);
 
     // 2. Update post-processing uniforms
@@ -562,7 +553,8 @@ export class PostProcessingPipeline {
     uniforms.uShutterScale.value = this.motionBlurStrength * fpsNorm;
     // AO is identical for ortho and perspective (shader scales by apparent on-screen size).
     uniforms.uAoIntensity.value = this.ambientOcclusionEnabled ? AO_INTENSITY : 0.0;
-    uniforms.uBloomIntensity.value = this.bloomEnabled ? BLOOM_INTENSITY : 0.0;
+    uniforms.uBloomIntensity.value = this.bloomEnabled && this.bloom.texture ? BLOOM_INTENSITY : 0.0;
+    uniforms.tBloom.value = this.bloom.texture;
     uniforms.uSharpenIntensity.value = this.sharpenEnabled ? SHARPEN_INTENSITY : 0.0;
 
     // 3. Draw single-pass composite quad to screen

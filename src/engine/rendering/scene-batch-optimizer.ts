@@ -37,6 +37,12 @@ export type PointLightBudgetAnchor = RoomZoneId | THREE.Vector3;
 /** Seconds taken to fade a point light in/out when it enters or leaves the light budget. */
 const POINT_LIGHT_BUDGET_FADE_S = 0.25;
 
+/** Max intensity boost for a circuit's surviving lights when the budget drops some of them. */
+const BUDGET_MAX_BOOST = 1.6;
+
+/** Weight of vertical (floor-to-floor) distance when ranking lights against the budget anchor. */
+const BUDGET_VERTICAL_WEIGHT = 3;
+
 /** `userData` key holding a managed light's current budget fade weight (0..1). */
 export const POINT_LIGHT_BUDGET_WEIGHT_KEY = 'budgetWeight';
 
@@ -45,6 +51,12 @@ export function getPointLightBudgetWeight(light: THREE.Light): number {
   const w = light.userData?.[POINT_LIGHT_BUDGET_WEIGHT_KEY];
   return typeof w === 'number' ? w : 1;
 }
+
+/**
+ * Userdata flag for runtime-added lights (e.g. synthetic fitting fill lights) whose parent may be
+ * hidden by room LOD / floor modes: they are always hoisted to the scene root like 1F lights.
+ */
+export const ALWAYS_HOIST_LIGHT_FLAG = 'alwaysHoistLight';
 
 /** Userdata flag for helper meshes that must never be batched, deduplicated or shadow-culled. */
 export const SHADOW_PASS_HOOK_FLAG = 'isShadowPassHook';
@@ -99,6 +111,8 @@ export class SceneBatchOptimizer {
   private readonly budgetWeights: number[] = [];
   /** Per managed light: target fade weight (0 = outside budget, 1 = inside). */
   private readonly budgetTargets: number[] = [];
+  /** ON/OFF signature of the managed lights when the budget targets were last computed. */
+  private budgetActivityKey = '';
 
   private getStandaloneLightTodScale(): number {
     // Outbuilding / Barn / Gym / Garage / Mezzanine / Stable interiors have deep footprints and minimal
@@ -181,23 +195,84 @@ export class SceneBatchOptimizer {
     return this.options.lodController.getRoomCenter(anchor) ?? null;
   }
 
-  /** Recomputes which managed lights are inside the budget. Returns true if any target changed. */
+  /**
+   * Recomputes which managed lights are inside the budget. Returns true if any target changed.
+   *
+   * Policy (camera-independent; depends only on KNX state, time of day, budget and anchor room):
+   * 1. Only lights that are actually ON (target intensity > 0) compete for slots; OFF lights
+   *    contribute nothing, so they never steal a slot from a lit room.
+   * 2. First pass gives the nearest light of every ON circuit / standalone room its own slot
+   *    (nearest rooms to the anchor first), so a switched-on circuit near the anchor is never
+   *    left dark — one strong light per room beats several weak ones in a single room.
+   * 3. Remaining slots go to the remaining ON lights by distance to the anchor.
+   * 4. When a circuit keeps only some of its ON lights, those are boosted (≤ BUDGET_MAX_BOOST)
+   *    so the room's total light output is roughly preserved.
+   */
   private recomputeBudgetTargets(): boolean {
     const n = this.managedPointLights.length;
     const budget = this.pointLightBudget;
     const nextTargets = new Array<number>(n).fill(1);
+    this.budgetActivityKey = this.computeBudgetActivityKey();
     if (Number.isFinite(budget) && budget < n) {
       const anchorPos = this.resolveBudgetAnchorPosition();
       const order: number[] = [];
       for (let i = 0; i < n; i++) order.push(i);
       if (anchorPos) {
-        const dist = order.map((i) => this.managedPointLights[i]!.worldPos.distanceToSquared(anchorPos));
+        // Vertical separation counts 3× so lights on the anchor's own floor win over the floor
+        // above/below at a similar plan distance.
+        const dist = order.map((i) => {
+          const p = this.managedPointLights[i]!.worldPos;
+          const dx = p.x - anchorPos.x;
+          const dy = (p.y - anchorPos.y) * BUDGET_VERTICAL_WEIGHT;
+          const dz = p.z - anchorPos.z;
+          return dx * dx + dy * dy + dz * dz;
+        });
         // Stable sort by distance to the anchor room; ties keep registration order.
         order.sort((a, b) => dist[a]! - dist[b]! || a - b);
       }
+      const keys = this.computeBudgetGroupKeys();
+      const isOn = order.map(() => false);
+      for (let i = 0; i < n; i++) isOn[i] = this.isManagedLightOn(i);
+
+      const picked: number[] = [];
+      const pickedSet = new Set<number>();
+      const seenGroups = new Set<string>();
+      for (const i of order) {
+        if (!isOn[i] || seenGroups.has(keys[i]!)) continue;
+        seenGroups.add(keys[i]!);
+        picked.push(i);
+        pickedSet.add(i);
+      }
+      for (const i of order) {
+        if (isOn[i] && !pickedSet.has(i)) {
+          picked.push(i);
+          pickedSet.add(i);
+        }
+      }
+      for (const i of order) {
+        if (!pickedSet.has(i)) {
+          picked.push(i);
+          pickedSet.add(i);
+        }
+      }
+
       nextTargets.fill(0);
-      for (let k = 0; k < budget; k++) {
-        nextTargets[order[k]!] = 1;
+      const onTotal = new Map<string, number>();
+      const onActive = new Map<string, number>();
+      for (let k = 0; k < n; k++) {
+        const i = picked[k]!;
+        if (k < budget) nextTargets[i] = 1;
+        if (!isOn[i]) continue;
+        const key = keys[i]!;
+        onTotal.set(key, (onTotal.get(key) ?? 0) + 1);
+        if (k < budget) onActive.set(key, (onActive.get(key) ?? 0) + 1);
+      }
+      for (let i = 0; i < n; i++) {
+        if (nextTargets[i] !== 1 || !isOn[i]) continue;
+        const key = keys[i]!;
+        const total = onTotal.get(key) ?? 1;
+        const active = onActive.get(key) ?? 1;
+        if (active < total) nextTargets[i] = Math.min(BUDGET_MAX_BOOST, total / active);
       }
     }
     let changed = false;
@@ -210,19 +285,56 @@ export class SceneBatchOptimizer {
     return changed;
   }
 
+  private isManagedLightOn(i: number): boolean {
+    const entry = this.managedPointLights[i];
+    return entry !== undefined && this.getManagedLightTargetIntensity(entry) > 1e-4;
+  }
+
+  /** One char per managed light: '1' when ON. Budget targets are recomputed when it changes. */
+  private computeBudgetActivityKey(): string {
+    let key = '';
+    for (let i = 0; i < this.managedPointLights.length; i++) key += this.isManagedLightOn(i) ? '1' : '0';
+    return key;
+  }
+
   /**
-   * Advances budget fades (~250 ms) and writes the resulting intensities.
+   * Room/circuit grouping used by the one-light-per-room pass: the KNX circuit id for circuit
+   * lights; the `<building>.<room>` name prefix (or a 6 m cell) for standalone lights.
+   */
+  private computeBudgetGroupKeys(): string[] {
+    const circuitByLight = new Map<THREE.Light, string>();
+    for (const [circuitId, grp] of Object.entries(this.options.lightGroups)) {
+      if (!grp) continue;
+      for (const l of grp.lights) circuitByLight.set(l, circuitId);
+    }
+    return this.managedPointLights.map((entry) => {
+      const circuitId = circuitByLight.get(entry.light);
+      if (circuitId) return `circuit:${circuitId}`;
+      const parts = entry.light.name.split('.');
+      if (parts.length >= 3) return `room:${parts[0]}.${parts[1]}`;
+      return `cell:${entry.isFirstFloor ? 1 : 0}:${Math.floor(entry.worldPos.x / 6)}:${Math.floor(entry.worldPos.z / 6)}`;
+    });
+  }
+
+  /**
+   * Advances budget fades (~250 ms) and writes the resulting intensities. Re-evaluates the active
+   * set whenever a light is switched on/off (KNX), never on camera movement.
    * Returns true while any light intensity changed this step (caller should re-render).
    */
   public stepFades(dtSeconds: number): boolean {
     const n = this.managedPointLights.length;
     if (n === 0) return false;
-    const step = dtSeconds > 0 ? dtSeconds / POINT_LIGHT_BUDGET_FADE_S : 1;
+    if (Number.isFinite(this.pointLightBudget) && this.computeBudgetActivityKey() !== this.budgetActivityKey) {
+      this.recomputeBudgetTargets();
+    }
+    const baseStep = dtSeconds > 0 ? dtSeconds / POINT_LIGHT_BUDGET_FADE_S : Number.POSITIVE_INFINITY;
     let anyWeightChanged = false;
     for (let i = 0; i < n; i++) {
       const cur = this.budgetWeights[i] ?? 1;
       const target = this.budgetTargets[i] ?? 1;
       if (cur === target) continue;
+      // Scale by the larger endpoint so boosted (>1) targets still fade in ~250 ms.
+      const step = baseStep * Math.max(1, cur, target);
       const next = target > cur ? Math.min(target, cur + step) : Math.max(target, cur - step);
       this.budgetWeights[i] = next;
       const light = this.managedPointLights[i]!.light;
@@ -1389,7 +1501,7 @@ export class SceneBatchOptimizer {
       const worldPos = new THREE.Vector3();
       light.getWorldPosition(worldPos);
       const is1F = isInsideFirstFloor(light);
-      const hoist = is1F || isInsideCutawayLayer(light);
+      const hoist = is1F || isInsideCutawayLayer(light) || light.userData?.[ALWAYS_HOIST_LIGHT_FLAG] === true;
 
       if (knxLights.has(light)) {
         if (hoist) {

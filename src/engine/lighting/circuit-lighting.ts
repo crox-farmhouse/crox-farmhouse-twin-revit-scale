@@ -40,6 +40,7 @@ import type {
 } from '../viewer/property-scene-profile.ts';
 import type { RoomSwitchLedBinding } from '../viewer/scene-content.ts';
 import { getPointLightBudgetWeight } from '../rendering/scene-batch-optimizer.ts';
+import { FittingEffects } from './fitting-fx.ts';
 
 const SWITCH_LED_ON = 3.0;
 const SWITCH_LED_OFF = 0.15;
@@ -53,6 +54,11 @@ export interface CircuitLightingOptions {
   readonly fixtureAppearanceOverrides: Readonly<Partial<Record<CircuitId, CircuitFixtureAppearance>>>;
   readonly tvArtTextures: readonly THREE.CanvasTexture[];
   readonly tvOffTexture: THREE.CanvasTexture;
+  /**
+   * Root searched for fitting meshes when building runtime fitting effects (halos, LED washes,
+   * fill lights). Defaults to the root ancestor of the circuit lights.
+   */
+  readonly sceneRoot?: THREE.Object3D;
 }
 
 /**
@@ -73,6 +79,7 @@ export class CircuitLightingController {
   private readonly tvScreenMat: THREE.MeshStandardMaterial;
   private readonly tvArtTextures: readonly THREE.CanvasTexture[];
   private readonly tvOffTexture: THREE.CanvasTexture;
+  private readonly fittingEffects: FittingEffects;
   private timeOfDay: TimeOfDay = 'dusk';
   private lastLevels: Readonly<CircuitLevels> | null = null;
 
@@ -84,6 +91,11 @@ export class CircuitLightingController {
     this.fixtureAppearanceOverrides = options.fixtureAppearanceOverrides;
     this.tvArtTextures = options.tvArtTextures;
     this.tvOffTexture = options.tvOffTexture;
+    // Must run before SceneBatchOptimizer.optimize() so synthetic fill lights join the budget.
+    this.fittingEffects = new FittingEffects({
+      lightGroups: options.lightGroups,
+      sceneRoot: options.sceneRoot,
+    });
 
     // Missing indicators all share one detached fallback material so writes are harmless.
     const indicatorMats = options.indicatorMats;
@@ -135,7 +147,9 @@ export class CircuitLightingController {
           typeof mat.userData?.baseEmissiveIntensity === 'number'
             ? (mat.userData.baseEmissiveIntensity as number)
             : appearance.emissiveMax;
-        mat.emissiveIntensity = customEmissiveMax * pct * todScale.emissiveScale;
+        // Bulb cores / LED diffusers get a high HDR gain so they saturate to near-white and bloom.
+        const gain = this.fittingEffects.getEmissiveGain(mat);
+        mat.emissiveIntensity = customEmissiveMax * gain * pct * todScale.emissiveScale;
       }
       for (const coneMat of group.cones) {
         const nextOpacity = appearance.coneOpacity * pct * todScale.coneScale;
@@ -148,6 +162,11 @@ export class CircuitLightingController {
         pool.mat.visible = nextOpacity > 0.002;
       }
     }
+
+    this.fittingEffects.applyLevels(
+      (circuitId) => (liveLevels[circuitId] ?? 0) / 100,
+      todScale.emissiveScale
+    );
 
     for (const rule of this.switchLedRules) {
       const anyOn = rule.circuits.some((circuitId) => (liveLevels[circuitId] ?? 0) > 1);
