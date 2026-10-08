@@ -52,6 +52,18 @@ export function getPointLightBudgetWeight(light: THREE.Light): number {
   return typeof w === 'number' ? w : 1;
 }
 
+/** Budget re-rank listeners keyed by the shared light-group map (one optimizer per scene). */
+const levelChangeListeners = new WeakMap<LightGroupMap, () => void>();
+
+/**
+ * Called by the circuit lighting controller after it writes new KNX target intensities so the
+ * light budget re-ranks immediately (outside the frame loop): newly switched-on circuits get a
+ * slot at once instead of waiting for the next `stepFades`.
+ */
+export function notifyCircuitLevelsChanged(lightGroups: LightGroupMap): void {
+  levelChangeListeners.get(lightGroups)?.();
+}
+
 /**
  * Userdata flag for runtime-added lights (e.g. synthetic fitting fill lights) whose parent may be
  * hidden by room LOD / floor modes: they are always hoisted to the scene root like 1F lights.
@@ -113,6 +125,13 @@ export class SceneBatchOptimizer {
   private readonly budgetTargets: number[] = [];
   /** ON/OFF signature of the managed lights when the budget targets were last computed. */
   private budgetActivityKey = '';
+  /**
+   * KNX switch-on order per budget group (`circuit:<id>`): bumped whenever a circuit goes from OFF
+   * to ON after boot. Recently switched-on circuits outrank older ones for budget slots, so the
+   * room the user just lit never stays dark. Depends only on KNX history, never on the camera.
+   */
+  private readonly budgetGroupActivation = new Map<string, number>();
+  private budgetActivationCounter = 0;
 
   private getStandaloneLightTodScale(): number {
     // Outbuilding / Barn / Gym / Garage / Mezzanine / Stable interiors have deep footprints and minimal
@@ -201,8 +220,8 @@ export class SceneBatchOptimizer {
    * Policy (camera-independent; depends only on KNX state, time of day, budget and anchor room):
    * 1. Only lights that are actually ON (target intensity > 0) compete for slots; OFF lights
    *    contribute nothing, so they never steal a slot from a lit room.
-   * 2. First pass gives the nearest light of every ON circuit / standalone room its own slot
-   *    (nearest rooms to the anchor first), so a switched-on circuit near the anchor is never
+   * 2. First pass gives the nearest light of every ON KNX circuit its own slot (nearest to the
+   *    anchor first), then one per always-on standalone room, so a switched-on circuit is never
    *    left dark — one strong light per room beats several weak ones in a single room.
    * 3. Remaining slots go to the remaining ON lights by distance to the anchor.
    * 4. When a circuit keeps only some of its ON lights, those are boosted (≤ BUDGET_MAX_BOOST)
@@ -212,7 +231,9 @@ export class SceneBatchOptimizer {
     const n = this.managedPointLights.length;
     const budget = this.pointLightBudget;
     const nextTargets = new Array<number>(n).fill(1);
+    const prevActivityKey = this.budgetActivityKey;
     this.budgetActivityKey = this.computeBudgetActivityKey();
+    if (prevActivityKey.length === n) this.stampSwitchedOnGroups(prevActivityKey, this.budgetActivityKey);
     if (Number.isFinite(budget) && budget < n) {
       const anchorPos = this.resolveBudgetAnchorPosition();
       const order: number[] = [];
@@ -237,11 +258,29 @@ export class SceneBatchOptimizer {
       const picked: number[] = [];
       const pickedSet = new Set<number>();
       const seenGroups = new Set<string>();
-      for (const i of order) {
-        if (!isOn[i] || seenGroups.has(keys[i]!)) continue;
-        seenGroups.add(keys[i]!);
-        picked.push(i);
-        pickedSet.add(i);
+      // KNX circuits the user switched on outrank always-on standalone ambience; among KNX
+      // circuits the most recently switched-on go first (ties: nearest to the anchor).
+      const recency = (i: number): number => this.budgetGroupActivation.get(keys[i]!) ?? 0;
+      const knxOrder = [...order].sort((a, b) => recency(b) - recency(a));
+      // The circuit switched on last keeps every one of its lights (it is what the user is
+      // looking at); with ≤ 3 lights per circuit this costs at most a couple of slots.
+      const newestKey = this.budgetActivationCounter > 0 ? keys[knxOrder[0] ?? -1] : undefined;
+      if (newestKey !== undefined && recency(knxOrder[0]!) > 0) {
+        for (const i of knxOrder) {
+          if (keys[i] !== newestKey || !isOn[i]) continue;
+          picked.push(i);
+          pickedSet.add(i);
+        }
+        seenGroups.add(newestKey);
+      }
+      for (const knxPass of [true, false]) {
+        for (const i of knxPass ? knxOrder : order) {
+          const key = keys[i]!;
+          if (!isOn[i] || seenGroups.has(key) || key.startsWith('circuit:') !== knxPass) continue;
+          seenGroups.add(key);
+          picked.push(i);
+          pickedSet.add(i);
+        }
       }
       for (const i of order) {
         if (isOn[i] && !pickedSet.has(i)) {
@@ -283,6 +322,17 @@ export class SceneBatchOptimizer {
       }
     }
     return changed;
+  }
+
+  /** Bumps the activation stamp of every budget group with a light that just went OFF → ON. */
+  private stampSwitchedOnGroups(prevKey: string, nextKey: string): void {
+    let groupKeys: string[] | null = null;
+    for (let i = 0; i < nextKey.length; i++) {
+      if (nextKey[i] !== '1' || prevKey[i] === '1') continue;
+      groupKeys ??= this.computeBudgetGroupKeys();
+      const key = groupKeys[i]!;
+      if (key.startsWith('circuit:')) this.budgetGroupActivation.set(key, ++this.budgetActivationCounter);
+    }
   }
 
   private isManagedLightOn(i: number): boolean {
@@ -355,6 +405,28 @@ export class SceneBatchOptimizer {
 
   public constructor(options: SceneBatchOptimizerOptions) {
     this.options = options;
+    levelChangeListeners.set(options.lightGroups, () => this.handleCircuitLevelsChanged());
+  }
+
+  /**
+   * Re-ranks the budget right after a KNX level change. Lights that were OFF before and are now
+   * inside the budget snap straight to their target weight (they were dark, so there is no pop);
+   * lights losing their slot still fade out via `stepFades`.
+   */
+  private handleCircuitLevelsChanged(): void {
+    if (!Number.isFinite(this.pointLightBudget) || this.managedPointLights.length === 0) return;
+    const prevKey = this.budgetActivityKey;
+    if (this.computeBudgetActivityKey() === prevKey) return;
+    this.recomputeBudgetTargets();
+    for (let i = 0; i < this.managedPointLights.length; i++) {
+      const wasOn = prevKey[i] === '1';
+      if (wasOn || !this.isManagedLightOn(i)) continue;
+      const target = this.budgetTargets[i] ?? 1;
+      this.budgetWeights[i] = target;
+      const light = this.managedPointLights[i]!.light;
+      light.userData = { ...light.userData, [POINT_LIGHT_BUDGET_WEIGHT_KEY]: target };
+    }
+    this.applyManagedLightIntensities();
   }
 
   public getManagedPointLights(): readonly ManagedPointLightEntry[] {

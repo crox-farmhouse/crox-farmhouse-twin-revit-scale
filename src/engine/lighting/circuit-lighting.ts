@@ -39,7 +39,10 @@ import type {
   SwitchLedIndicatorRule,
 } from '../viewer/property-scene-profile.ts';
 import type { RoomSwitchLedBinding } from '../viewer/scene-content.ts';
-import { getPointLightBudgetWeight } from '../rendering/scene-batch-optimizer.ts';
+import {
+  getPointLightBudgetWeight,
+  notifyCircuitLevelsChanged,
+} from '../rendering/scene-batch-optimizer.ts';
 import { FittingEffects } from './fitting-fx.ts';
 
 const SWITCH_LED_ON = 3.0;
@@ -59,6 +62,31 @@ export interface CircuitLightingOptions {
    * fill lights). Defaults to the root ancestor of the circuit lights.
    */
   readonly sceneRoot?: THREE.Object3D;
+}
+
+/** Inverse-square falloff for KNX circuit lights: tight pools under fittings, darker room edges. */
+const CIRCUIT_LIGHT_DECAY = 2;
+
+/**
+ * Distance (m) at which a light keeps its authored brightness when switching to inverse-square
+ * decay (≈ ceiling fitting → worktop/floor). Closer surfaces get brighter, farther ones darker.
+ */
+const DECAY_REFERENCE_DISTANCE_M = 2.0;
+
+/** `userData` key: intensity gain compensating an authored decay < 2 at the reference distance. */
+const DECAY_GAIN_KEY = 'knxDecayGain';
+
+/** Switches every KNX circuit light to inverse-square decay, preserving brightness at ~2 m. */
+function adoptPhysicalDecay(lightGroups: LightGroupMap): void {
+  for (const group of Object.values(lightGroups)) {
+    if (!group) continue;
+    for (const light of group.lights) {
+      if (typeof light.userData?.[DECAY_GAIN_KEY] === 'number') continue;
+      const gain = Math.pow(DECAY_REFERENCE_DISTANCE_M, CIRCUIT_LIGHT_DECAY - light.decay);
+      light.decay = CIRCUIT_LIGHT_DECAY;
+      light.userData = { ...light.userData, [DECAY_GAIN_KEY]: gain };
+    }
+  }
 }
 
 /**
@@ -96,6 +124,8 @@ export class CircuitLightingController {
       lightGroups: options.lightGroups,
       sceneRoot: options.sceneRoot,
     });
+
+    adoptPhysicalDecay(options.lightGroups);
 
     // Missing indicators all share one detached fallback material so writes are harmless.
     const indicatorMats = options.indicatorMats;
@@ -136,7 +166,11 @@ export class CircuitLightingController {
           typeof light.userData?.baseIntensity === 'number'
             ? (light.userData.baseIntensity as number)
             : group.maxIntensity;
-        const targetIntensity = customMax * curved * todScale.lightScale;
+        const decayGain =
+          typeof light.userData?.[DECAY_GAIN_KEY] === 'number'
+            ? (light.userData[DECAY_GAIN_KEY] as number)
+            : 1;
+        const targetIntensity = customMax * decayGain * curved * todScale.lightScale;
         light.userData = { ...light.userData, knxTargetIntensity: targetIntensity };
         // Pure function of KNX level × time of day (× the fixed, room-anchored light-budget fade
         // weight). Never depends on camera position, zoom or floor/cutaway mode.
@@ -162,6 +196,9 @@ export class CircuitLightingController {
         pool.mat.visible = nextOpacity > 0.002;
       }
     }
+
+    // Re-rank the point-light budget now so a newly switched-on circuit is never left dark.
+    notifyCircuitLevelsChanged(this.lightGroups);
 
     this.fittingEffects.applyLevels(
       (circuitId) => (liveLevels[circuitId] ?? 0) / 100,

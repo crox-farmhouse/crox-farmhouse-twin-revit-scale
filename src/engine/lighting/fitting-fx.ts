@@ -30,6 +30,12 @@ const INDICATOR_NAME_RE = /statusLed|indicator|wiringLed|fuelGauge|pip\b/i;
 const CORE_NAME_RE = /bulb|filament|globe|lens|puck|mantle|emitter|candle|spot(?!light\b)|lamp$/i;
 const SHADE_NAME_RE = /shade|cage|lantern|glass|diffuser|drum|bell|dome|cone|lining|innerGlow/i;
 const UPWARD_NAME_RE = /above|cove|uplight|top|ceiling|pelmet/i;
+/** Recessed / directional lamp cores: halo only visible from the side they emit towards. */
+const DIRECTIONAL_CORE_RE = /lens|puck|spot|downlight|uplight/i;
+const UPLIGHT_NAME_RE = /uplight/i;
+/** Wall-mounted lamp cores (step lights, sconces): emission axis unknown, keep omni. */
+const WALL_CORE_RE = /stepLight|wallLight|sconce|pictureLight/i;
+const CLEAR_SHADE_RE = /glass|envelope|globe|cage|lantern/i;
 
 /**
  * Single tuning knob for how hot lamp cores (bulbs, filaments, globes, lenses) look when ON:
@@ -58,6 +64,12 @@ const WARM_WHITE = new THREE.Color(0xfff0d8);
 const HALO_STRENGTH = 2.4 * BULB_GLOW_STRENGTH;
 /** LED wash brightness multiplier (HDR) at 100 % level. */
 const WASH_STRENGTH = 1.25;
+/** Accent fittings that never get a synthetic fill light. */
+const ACCENT_FITTING_RE = /picture|step|festoon|fairy|plinth|cove|shelf|strip|led|lampPost|lantern|wallWash|uplight/i;
+/** A real PointLight within this plan radius / height of a fill position means the spot is lit. */
+const FILL_SKIP_RADIUS = 3.2;
+const FILL_SKIP_VERTICAL = 1.6;
+
 /** Furthest a wash surface may be from its LED source. */
 const WASH_MAX_DISTANCE = 2.8;
 
@@ -89,6 +101,10 @@ export interface FittingEffectsOptions {
 const HALO_VERTEX_SHADER = /* glsl */ `
   attribute float aSize;
   attribute vec3 aColor;
+  // Emission axis (object space) and the cos threshold where the halo starts to show;
+  // a zero axis means an omnidirectional halo (bare bulbs, globes, glass shades).
+  attribute vec3 aDir;
+  attribute float aCone;
   uniform float uViewportHeight;
   varying vec3 vColor;
   void main() {
@@ -96,9 +112,15 @@ const HALO_VERTEX_SHADER = /* glsl */ `
     gl_Position = projectionMatrix * mvPosition;
     float projScale = projectionMatrix[1][1] * 0.5 * uViewportHeight;
     bool isOrtho = projectionMatrix[2][3] == 0.0;
+    float facing = 1.0;
+    if (dot(aDir, aDir) > 0.0) {
+      vec3 axis = normalize(normalMatrix * aDir);
+      vec3 toCamera = isOrtho ? vec3(0.0, 0.0, 1.0) : normalize(-mvPosition.xyz);
+      facing = smoothstep(aCone, aCone + 0.35, dot(toCamera, axis));
+    }
     float size = isOrtho ? aSize * projScale : aSize * projScale / max(0.05, -mvPosition.z);
-    gl_PointSize = clamp(size, 0.0, 1024.0);
-    vColor = aColor;
+    gl_PointSize = facing > 0.001 ? clamp(size, 0.0, 1024.0) : 0.0;
+    vColor = aColor * facing;
   }
 `;
 
@@ -260,7 +282,7 @@ export class FittingEffects {
 
     this.buildHalos(classified);
     this.buildWashes(classified, surfaceCandidates);
-    this.buildFillLights(options.lightGroups, classified);
+    this.buildFillLights(options.lightGroups, classified, root);
   }
 
   /** Emissive multiplier for a circuit material (1 for unclassified materials). */
@@ -303,14 +325,28 @@ export class FittingEffects {
       }
       entry.items.push(c);
     }
+    // Opaque shades per parent: a bulb inside one is only visible from below the shade opening.
+    const opaqueShadeParents = new Set<THREE.Object3D>();
+    for (const c of classified) {
+      if (c.kind === 'shade' && c.mesh.parent && !CLEAR_SHADE_RE.test(c.mesh.name)) {
+        opaqueShadeParents.add(c.mesh.parent);
+      }
+    }
     const centre = new THREE.Vector3();
     const size = new THREE.Vector3();
+    const down = new THREE.Vector3(0, -1, 0);
+    const up = new THREE.Vector3(0, 1, 0);
+    const dir = new THREE.Vector3();
+    const parentQuatInv = new THREE.Quaternion();
     for (const { parent, circuitId, items } of byKey.values()) {
       parent.updateWorldMatrix(true, false);
       const inv = new THREE.Matrix4().copy(parent.matrixWorld).invert();
+      parent.getWorldQuaternion(parentQuatInv).invert();
       const positions: number[] = [];
       const sizes: number[] = [];
       const colors: number[] = [];
+      const dirs: number[] = [];
+      const cones: number[] = [];
       for (const c of items) {
         c.box.getCenter(centre);
         c.box.getSize(size);
@@ -319,11 +355,28 @@ export class FittingEffects {
         positions.push(centre.x, centre.y, centre.z);
         sizes.push(THREE.MathUtils.clamp(maxDim * 4, 0.14, 0.55));
         colors.push(c.mat.emissive.r, c.mat.emissive.g, c.mat.emissive.b);
+        let cone = 0;
+        if (WALL_CORE_RE.test(c.mesh.name)) {
+          dir.set(0, 0, 0);
+        } else if (DIRECTIONAL_CORE_RE.test(c.mesh.name)) {
+          dir.copy(UPLIGHT_NAME_RE.test(c.mesh.name) ? up : down);
+          cone = 0.12;
+        } else if (opaqueShadeParents.has(parent)) {
+          dir.copy(down);
+          cone = -0.25;
+        } else {
+          dir.set(0, 0, 0);
+        }
+        if (dir.lengthSq() > 0) dir.applyQuaternion(parentQuatInv);
+        dirs.push(dir.x, dir.y, dir.z);
+        cones.push(cone);
       }
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
       geometry.setAttribute('aSize', new THREE.Float32BufferAttribute(sizes, 1));
       geometry.setAttribute('aColor', new THREE.Float32BufferAttribute(colors, 3));
+      geometry.setAttribute('aDir', new THREE.Float32BufferAttribute(dirs, 3));
+      geometry.setAttribute('aCone', new THREE.Float32BufferAttribute(cones, 1));
       const material = new THREE.ShaderMaterial({
         vertexShader: HALO_VERTEX_SHADER,
         fragmentShader: HALO_FRAGMENT_SHADER,
@@ -454,7 +507,18 @@ export class FittingEffects {
     }
   }
 
-  private buildFillLights(groups: LightGroupMap, classified: readonly ClassifiedMesh[]): void {
+  private buildFillLights(
+    groups: LightGroupMap,
+    classified: readonly ClassifiedMesh[],
+    root: THREE.Object3D
+  ): void {
+    // Real lights already in the scene: a fill is skipped when one already lights that spot.
+    const realLights: THREE.Vector3[] = [];
+    root.traverse((obj) => {
+      if (obj instanceof THREE.PointLight && !obj.userData[FITTING_FX_FLAG]) {
+        realLights.push(obj.getWorldPosition(new THREE.Vector3()));
+      }
+    });
     const byCircuit = new Map<CircuitId, ClassifiedMesh[]>();
     for (const c of classified) {
       const list = byCircuit.get(c.circuitId) ?? [];
@@ -465,8 +529,12 @@ export class FittingEffects {
     for (const [circuitId, items] of byCircuit) {
       const group = groups[circuitId];
       if (!group || group.lights.length > 0) continue;
-      const lamps = items.filter((c) => c.kind === 'core' || c.kind === 'shade');
-      const sources = lamps.length > 0 ? lamps : items.filter((c) => c.kind === 'led');
+      // Only lamp-type circuits (pendants, lamps, downlights) get a stand-in light; accent kinds
+      // (LED strips, coves, shelves, step / picture lights, festoons) stay emissive-only.
+      const lamps = items.filter(
+        (c) => (c.kind === 'core' || c.kind === 'shade') && !ACCENT_FITTING_RE.test(c.mesh.name)
+      );
+      const sources = lamps;
       const anchor = sources[0]?.mesh.parent;
       if (!anchor) continue;
       const sum = new THREE.Vector3();
@@ -479,6 +547,10 @@ export class FittingEffects {
       sum.divideScalar(sources.length);
       // Just below the fittings so pendants light the room below rather than the ceiling.
       sum.y = Math.min(sum.y, minY) - 0.2;
+      const alreadyLit = realLights.some(
+        (p) => Math.abs(p.y - sum.y) < FILL_SKIP_VERTICAL && Math.hypot(p.x - sum.x, p.z - sum.z) < FILL_SKIP_RADIUS
+      );
+      if (alreadyLit) continue;
       const light = new THREE.PointLight(
         sources[0]!.mat.emissive.clone().lerp(WARM_WHITE, 0.3),
         0,
@@ -489,7 +561,8 @@ export class FittingEffects {
       light.castShadow = false;
       light.userData[FITTING_FX_FLAG] = true;
       light.userData[ALWAYS_HOIST_LIGHT_FLAG] = true;
-      light.userData.baseIntensity = group.maxIntensity * 0.8;
+      // Modest: a stand-in for the fittings' own light, never a second room fill.
+      light.userData.baseIntensity = group.maxIntensity * (lamps.length > 0 ? 0.65 : 0.4);
       attachWithWorldTransform(light, anchor, sum, new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
       group.lights.push(light);
       this.fillLights.push(light);

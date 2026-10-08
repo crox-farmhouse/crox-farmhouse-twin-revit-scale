@@ -34,6 +34,17 @@ function tierToPreset(tier: GraphicsTier): GraphicsQualityPreset {
 /** Vertical projection scale (`P[1][1]`) of the rig's 42° perspective camera; used until one is seen. */
 const DEFAULT_PERSPECTIVE_PROJ_Y = 1 / Math.tan(THREE.MathUtils.degToRad(21));
 
+/**
+ * Display transform used by the post pipeline and by the renderer's direct-to-canvas path.
+ * AgX keeps hue and desaturates gracefully toward white in bright light pools, where ACES pushes
+ * warm interiors to flat saturated yellow. Flip to `'aces'` to revert in one line.
+ */
+export const POST_TONE_MAPPER: 'agx' | 'aces' = 'agx';
+
+/** Matching built-in tone mapping for frames rendered straight to the canvas (post disabled). */
+export const RENDERER_TONE_MAPPING: THREE.ToneMapping =
+  POST_TONE_MAPPER === 'agx' ? THREE.AgXToneMapping : THREE.ACESFilmicToneMapping;
+
 const POST_VERTEX_SHADER = /* glsl */ `
   varying vec2 vUv;
   void main() {
@@ -44,6 +55,7 @@ const POST_VERTEX_SHADER = /* glsl */ `
 
 const POST_FRAGMENT_SHADER = /* glsl */ `
   precision highp float;
+  ${POST_TONE_MAPPER === 'agx' ? '#define POST_TONE_MAPPER_AGX 1' : ''}
 
   uniform sampler2D tColor;
   uniform sampler2D tDepth;
@@ -103,6 +115,59 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
     color = a / b;
     color = ACESOutputMat * color;
     return clamp(color, 0.0, 1.0);
+  }
+
+  // AgX (Blender / Filament fit), ported verbatim from three's tonemapping_pars_fragment.
+  vec3 agxDefaultContrastApprox(vec3 x) {
+    vec3 x2 = x * x;
+    vec3 x4 = x2 * x2;
+    return 15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x + 0.4298 * x2
+      + 0.1191 * x - 0.00232;
+  }
+
+  vec3 agxToneMapping(vec3 color, float exposure) {
+    const mat3 LINEAR_REC2020_TO_LINEAR_SRGB = mat3(
+      vec3(1.6605, -0.1246, -0.0182),
+      vec3(-0.5876, 1.1329, -0.1006),
+      vec3(-0.0728, -0.0083, 1.1187)
+    );
+    const mat3 LINEAR_SRGB_TO_LINEAR_REC2020 = mat3(
+      vec3(0.6274, 0.0691, 0.0164),
+      vec3(0.3293, 0.9195, 0.0880),
+      vec3(0.0433, 0.0113, 0.8956)
+    );
+    const mat3 AgXInsetMatrix = mat3(
+      vec3(0.856627153315983, 0.137318972929847, 0.11189821299995),
+      vec3(0.0951212405381588, 0.761241990602591, 0.0767994186031903),
+      vec3(0.0482516061458583, 0.101439036467562, 0.811302368396859)
+    );
+    const mat3 AgXOutsetMatrix = mat3(
+      vec3(1.1271005818144368, -0.1413297634984383, -0.14132976349843826),
+      vec3(-0.11060664309660323, 1.157823702216272, -0.11060664309660294),
+      vec3(-0.016493938717834573, -0.016493938717834257, 1.2519364065950405)
+    );
+    const float AgxMinEv = -12.47393;
+    const float AgxMaxEv = 4.026069;
+    color *= exposure;
+    color = LINEAR_SRGB_TO_LINEAR_REC2020 * color;
+    color = AgXInsetMatrix * color;
+    color = max(color, 1e-10);
+    color = log2(color);
+    color = (color - AgxMinEv) / (AgxMaxEv - AgxMinEv);
+    color = clamp(color, 0.0, 1.0);
+    color = agxDefaultContrastApprox(color);
+    color = AgXOutsetMatrix * color;
+    color = pow(max(vec3(0.0), color), vec3(2.2));
+    color = LINEAR_REC2020_TO_LINEAR_SRGB * color;
+    return clamp(color, 0.0, 1.0);
+  }
+
+  vec3 toneMap(vec3 color, float exposure) {
+  #ifdef POST_TONE_MAPPER_AGX
+    return agxToneMapping(color, exposure);
+  #else
+    return acesFilmicToneMapping(color, exposure);
+  #endif
   }
 
   vec3 linearToSrgb(vec3 value) {
@@ -167,7 +232,7 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
     float rawDepth = texture2D(tDepth, vUv).r;
     vec3 centerColor = texture2D(tColor, vUv).rgb;
     if (rawDepth >= 0.9999) {
-      vec3 skyLdr = acesFilmicToneMapping(centerColor + computeBloom(vUv), uExposure);
+      vec3 skyLdr = toneMap(centerColor + computeBloom(vUv), uExposure);
       gl_FragColor = vec4(linearToSrgb(skyLdr), 1.0);
       return;
     }
@@ -245,8 +310,8 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
     // 4. Add selective HDR bloom around glowing bulbs, LED diffusers and halos
     hdrColor += computeBloom(vUv);
 
-    // 5. ACES Filmic Tone Mapping + sRGB output encoding
-    vec3 ldrColor = acesFilmicToneMapping(hdrColor, uExposure);
+    // 5. Tone mapping (AgX or ACES, see POST_TONE_MAPPER) + sRGB output encoding
+    vec3 ldrColor = toneMap(hdrColor, uExposure);
     gl_FragColor = vec4(linearToSrgb(ldrColor), 1.0);
   }
 `;

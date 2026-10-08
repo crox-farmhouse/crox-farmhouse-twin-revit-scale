@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import type { RigCamera } from '../../camera/camera-rig.ts';
-import { PostProcessingPipeline } from '../../rendering/post-processing-pipeline.ts';
+import {
+  PostProcessingPipeline,
+  RENDERER_TONE_MAPPING,
+} from '../../rendering/post-processing-pipeline.ts';
 import type { RenderInvalidator } from './viewer-types.ts';
 
 /**
@@ -25,7 +28,7 @@ export class ViewerRenderer implements RenderInvalidator {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.shadowMap.autoUpdate = false;
     this.renderer.shadowMap.needsUpdate = true;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMapping = RENDERER_TONE_MAPPING;
     this.renderer.toneMappingExposure = 1.12;
 
     this.post = new PostProcessingPipeline(this.renderer, canvas.clientWidth, canvas.clientHeight);
