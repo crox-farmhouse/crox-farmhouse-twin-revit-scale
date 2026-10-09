@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import type { SceneInteractionManager } from '../../../../../engine/interaction/interaction-manager.ts';
+import {
+  GymBenchPressController,
+  type JCupMeshEntry,
+} from '../../../../../objects/gym/bench-press-interaction.ts';
 /**
  * Generates a high-resolution (`512x512`) solid-color **Nike Pro Bumper Plate** face texture
  * (`450mm` IWF competition/training specification) with solid vibrant urethane color, raised outer
@@ -176,8 +181,9 @@ export function createNikeUprightStencilTexture(): THREE.CanvasTexture {
  */
 export function buildGymNikeSquatRack(
   groundGroup: THREE.Group,
-  gymFloorY: number
-): void {
+  gymFloorY: number,
+  interactions?: SceneInteractionManager
+): GymBenchPressController | null {
   const rackGroup = new THREE.Group();
   rackGroup.name = 'outbuildings.gym.nikeSquatRack';
   rackGroup.userData.zone = 'courtyard';
@@ -559,6 +565,7 @@ export function buildGymNikeSquatRack(
   // ---------------------------------------------------------------------------
   const barY = 1.29;
   const barZ = zFrontUpright + uprightSize * 0.5 + 0.048;
+  const jCupMeshes: JCupMeshEntry[] = [];
 
   for (const sideX of [-1, 1] as const) {
     const sideTag = sideX < 0 ? 'left' : 'right';
@@ -573,6 +580,7 @@ export function buildGymNikeSquatRack(
     jBack.userData.lodMaxDistance = 12;
     jBack.position.set(ux, barY + 0.02, zFrontUpright + uprightSize * 0.5 + 0.008);
     rackGroup.add(jBack);
+    jCupMeshes.push({ mesh: jBack, restY: jBack.position.y });
 
     const jBottom = new THREE.Mesh(
       new THREE.BoxGeometry(0.082, 0.018, 0.082),
@@ -583,6 +591,7 @@ export function buildGymNikeSquatRack(
     jBottom.userData.lodMaxDistance = 12;
     jBottom.position.set(ux, barY - 0.028, barZ);
     rackGroup.add(jBottom);
+    jCupMeshes.push({ mesh: jBottom, restY: jBottom.position.y });
 
     const jFrontLip = new THREE.Mesh(
       new THREE.BoxGeometry(0.082, 0.052, 0.016),
@@ -593,6 +602,7 @@ export function buildGymNikeSquatRack(
     jFrontLip.userData.lodMaxDistance = 12;
     jFrontLip.position.set(ux, barY - 0.01, barZ + 0.038);
     rackGroup.add(jFrontLip);
+    jCupMeshes.push({ mesh: jFrontLip, restY: jFrontLip.position.y });
   }
 
   // Crimson-Red Cerakote 20kg Nike Olympic Barbell (`2.20m` total length)
@@ -824,4 +834,17 @@ export function buildGymNikeSquatRack(
     handleBracket.position.set(0, hy, 0.495);
     benchGroup.add(handleBracket);
   }
+
+  const controller = new GymBenchPressController({
+    rackGroup,
+    barbellGroup,
+    benchGroup,
+    jCupMeshes,
+    gymFloorY,
+    clickableTargets: [rackGroup],
+  });
+  if (interactions) {
+    interactions.registerAnimatedInteractable(controller);
+  }
+  return controller;
 }

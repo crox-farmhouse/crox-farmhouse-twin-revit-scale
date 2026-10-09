@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { SceneCameraPoseSnapshot } from '../../core/types/scene.ts';
+import type { FirstPersonPoseSample } from '../interaction/handlers/animated-interactable.ts';
 import { isObjectVisibleInHierarchy } from '../util/object-utils.ts';
 import type { CameraRig } from '../camera/camera-rig.ts';
 import {
@@ -100,6 +101,13 @@ export class WalkthroughController {
   private readonly onTriggerGolfSimulatorShot?: () => boolean;
   private readonly getGolfSimulatorShotElapsedSec?: () => number | null;
   private readonly getGolfSimulatorPrompt?: () => string | null;
+  private readonly getActiveFirstPersonPose?: () => FirstPersonPoseSample | null;
+  private readonly cancelActiveFirstPerson?: () => boolean;
+  private readonly getProximityAnimatedInteractable?: (
+    footX: number,
+    footY: number,
+    footZ: number
+  ) => { readonly id: string; readonly prompt: string; readonly trigger: () => boolean } | null;
   private readonly onStateChanged: (active: boolean) => void;
   private readonly onPoseUpdated: () => void;
   private readonly collisionAndBarge: WalkthroughDoorBargeAndCollisionSolver;
@@ -134,6 +142,8 @@ export class WalkthroughController {
   private pitchRad = 0;
   private targetYawRad = 0;
   private targetPitchRad = 0;
+  private groundVelX = 0;
+  private groundVelZ = 0;
   private bobPhase = 0;
   private smoothedFps = 120;
 
@@ -163,6 +173,13 @@ export class WalkthroughController {
     readonly onTriggerGolfSimulatorShot?: () => boolean;
     readonly getGolfSimulatorShotElapsedSec?: () => number | null;
     readonly getGolfSimulatorPrompt?: () => string | null;
+    readonly getActiveFirstPersonPose?: () => FirstPersonPoseSample | null;
+    readonly cancelActiveFirstPerson?: () => boolean;
+    readonly getProximityAnimatedInteractable?: (
+      footX: number,
+      footY: number,
+      footZ: number
+    ) => { readonly id: string; readonly prompt: string; readonly trigger: () => boolean } | null;
     readonly onBargeWalkthroughDoor?: WalkthroughDoorBargeHandler;
     readonly onProximityBargeDoors?: WalkthroughProximityDoorBargeHandler;
     readonly onStateChanged: (active: boolean) => void;
@@ -177,6 +194,9 @@ export class WalkthroughController {
     this.onTriggerGolfSimulatorShot = options.onTriggerGolfSimulatorShot;
     this.getGolfSimulatorShotElapsedSec = options.getGolfSimulatorShotElapsedSec;
     this.getGolfSimulatorPrompt = options.getGolfSimulatorPrompt;
+    this.getActiveFirstPersonPose = options.getActiveFirstPersonPose;
+    this.cancelActiveFirstPerson = options.cancelActiveFirstPerson;
+    this.getProximityAnimatedInteractable = options.getProximityAnimatedInteractable;
     this.onStateChanged = options.onStateChanged;
     this.onPoseUpdated = options.onPoseUpdated;
 
@@ -260,6 +280,11 @@ export class WalkthroughController {
 
   public jump(): void {
     if (!this.active) return;
+    if ((this.getActiveFirstPersonPose?.() ?? null) !== null) {
+      this.cancelActiveFirstPerson?.();
+      this.refreshTargetedInteractable(true);
+      return;
+    }
     const ladderJump = this.ladderClimb.tryHandleSpaceJump(
       this.footPos,
       this.yawRad,
@@ -341,6 +366,11 @@ export class WalkthroughController {
 
   public triggerTargetedInteraction(): boolean {
     if (!this.active) return false;
+    if ((this.getActiveFirstPersonPose?.() ?? null) !== null) {
+      const cancelled = this.cancelActiveFirstPerson?.() ?? false;
+      this.refreshTargetedInteractable(true);
+      return cancelled;
+    }
     this.refreshTargetedInteractable(true);
     if (this.interactWithClimbableLadder()) {
       return true;
@@ -356,6 +386,13 @@ export class WalkthroughController {
         }
       }
       this.onInteractWithMesh(this.targetedMesh);
+      this.refreshTargetedInteractable(true);
+      return true;
+    }
+    const proxAnim =
+      this.getProximityAnimatedInteractable?.(this.footPos.x, this.footPos.y, this.footPos.z) ??
+      null;
+    if (proxAnim && proxAnim.trigger()) {
       this.refreshTargetedInteractable(true);
       return true;
     }
@@ -554,6 +591,19 @@ export class WalkthroughController {
     const nextMesh = firstHit?.object ?? null;
     const ladderPrompt = this.ladderClimb.getProximityLadderPrompt(this.footPos, nextMesh);
     const rawPrompt = nextMesh ? this.describeInteractable(nextMesh) : null;
+    const proxAnim =
+      this.getProximityAnimatedInteractable?.(this.footPos.x, this.footPos.y, this.footPos.z) ??
+      null;
+    const activeFpPose = this.getActiveFirstPersonPose?.() ?? null;
+    if (activeFpPose !== null) {
+      const activePrompt = proxAnim?.prompt ?? (rawPrompt && rawPrompt.length > 0 ? rawPrompt : null);
+      if (nextMesh !== this.targetedMesh || activePrompt !== this.targetedPrompt) {
+        this.targetedMesh = nextMesh;
+        this.targetedPrompt = activePrompt;
+        this.emit();
+      }
+      return;
+    }
     const { inPlayZone } = this.getGolfSimulatorZoneStatus(this.footPos);
     const rawGolfPrompt =
       inPlayZone && (!rawPrompt || rawPrompt.includes('Golf Simulator Mat'))
@@ -562,7 +612,9 @@ export class WalkthroughController {
     const golfProximityPrompt =
       rawGolfPrompt && rawGolfPrompt.length > 0 ? rawGolfPrompt : null;
     const nextPrompt =
-      ladderPrompt ?? golfProximityPrompt ?? (rawPrompt ? rawPrompt : null);
+      ladderPrompt ??
+      golfProximityPrompt ??
+      (rawPrompt && rawPrompt.length > 0 ? rawPrompt : (proxAnim?.prompt ?? null));
     if (nextMesh !== this.targetedMesh || nextPrompt !== this.targetedPrompt) {
       this.targetedMesh = nextMesh;
       this.targetedPrompt = nextPrompt;
@@ -830,6 +882,42 @@ export class WalkthroughController {
       this.wasInGolfAutoSwingStance = true;
     }
 
+    const fpSample = this.getActiveFirstPersonPose?.() ?? null;
+    if (fpSample !== null) {
+      this.lookDirty = false;
+      this.glideTargetFoot = null;
+      this.jumpOffsetY = 0;
+      this.verticalVelocity = 0;
+      this.groundVelX = 0;
+      this.groundVelZ = 0;
+      const [fx, fy, fz] = fpSample.footPosition;
+      const [ex, ey, ez] = fpSample.eyePosition;
+      this.footPos.set(fx, fy, fz);
+      this.yawRad = fpSample.yawRad;
+      this.pitchRad = fpSample.pitchRad;
+      this.targetYawRad = fpSample.yawRad;
+      this.targetPitchRad = fpSample.pitchRad;
+      this.currentEyeHeight = Math.max(0.25, ey - fy);
+
+      const desiredFpFov = this.baseFov + (fpSample.fovBoostDeg ?? 0);
+      if (Math.abs(this.currentFov - desiredFpFov) > 0.02) {
+        this.currentFov = THREE.MathUtils.lerp(
+          this.currentFov,
+          desiredFpFov,
+          1 - Math.exp(-12 * dtSeconds)
+        );
+        this.rig.perspCamera.fov = this.currentFov;
+        this.rig.perspCamera.updateProjectionMatrix();
+      }
+
+      this.syncCameraFromFootAndAngles(0, fpSample.rollRad ?? 0, 0);
+      this.rig.perspCamera.position.set(ex, ey, ez);
+      this.refreshTargetedInteractable();
+      this.onPoseUpdated();
+      this.saveSessionState(false);
+      return true;
+    }
+
     let movedOrRotated = false;
     if (this.lookDirty) {
       this.lookDirty = false;
@@ -906,20 +994,32 @@ export class WalkthroughController {
       movedOrRotated = true;
     }
 
-    if (isMoving) {
+    const forwardX = -Math.sin(this.yawRad);
+    const forwardZ = -Math.cos(this.yawRad);
+    const rightX = Math.cos(this.yawRad);
+    const rightZ = -Math.sin(this.yawRad);
+    const rawMoveX = forwardX * forwardInput + rightX * strafeInput;
+    const rawMoveZ = forwardZ * forwardInput + rightZ * strafeInput;
+    const rawMoveLen = Math.hypot(rawMoveX, rawMoveZ);
+    const desiredVx = rawMoveLen > 1e-4 ? (rawMoveX / rawMoveLen) * speed : 0;
+    const desiredVz = rawMoveLen > 1e-4 ? (rawMoveZ / rawMoveLen) * speed : 0;
+    const velRate = isMoving ? 22 : 26;
+    const velAlpha = 1 - Math.exp(-velRate * dtSeconds);
+    this.groundVelX = THREE.MathUtils.lerp(this.groundVelX, desiredVx, velAlpha);
+    this.groundVelZ = THREE.MathUtils.lerp(this.groundVelZ, desiredVz, velAlpha);
+    const groundSpeed = Math.hypot(this.groundVelX, this.groundVelZ);
+    if (!isMoving && groundSpeed < 0.03) {
+      this.groundVelX = 0;
+      this.groundVelZ = 0;
+    }
+
+    if (isMoving || groundSpeed >= 0.03) {
       this.glideTargetFoot = null;
-      const forwardX = -Math.sin(this.yawRad);
-      const forwardZ = -Math.cos(this.yawRad);
-      const rightX = Math.cos(this.yawRad);
-      const rightZ = -Math.sin(this.yawRad);
-      const moveVec = new THREE.Vector3(
-        forwardX * forwardInput + rightX * strafeInput,
-        0,
-        forwardZ * forwardInput + rightZ * strafeInput
-      );
+      const moveVec = new THREE.Vector3(this.groundVelX, 0, this.groundVelZ);
       if (moveVec.lengthSq() > 1e-5) {
         moveVec.normalize();
         if (
+          isMoving &&
           this.ladderClimb.checkAutoMountOnMovement(
             this.footPos,
             moveVec,
@@ -933,19 +1033,44 @@ export class WalkthroughController {
         ) {
           this.jumpOffsetY = 0;
           this.verticalVelocity = 0;
+          this.groundVelX = 0;
+          this.groundVelZ = 0;
           movedOrRotated = true;
         } else {
+          const stepDist = groundSpeed * dtSeconds;
           this.targetYawRad = this.collisionAndBarge.stepHorizontalMovement(
             this.footPos,
             moveVec,
             forwardInput,
             this.targetYawRad,
-            speed * dtSeconds,
+            stepDist,
             this.currentEyeHeight,
             this.isCurrentlySprinting,
             dtSeconds
           );
-          this.bobPhase += dtSeconds * (isSprinting ? 13.0 : 9.0);
+          const actualMoved = this.collisionAndBarge.getLastMovedDistance();
+          const movedRatio = THREE.MathUtils.clamp(
+            actualMoved / Math.max(1e-4, stepDist),
+            0,
+            1
+          );
+          if (movedRatio < 0.08) {
+            // Blocked head-on by a wall or corner: damp velocity and settle head-bob to rest
+            this.groundVelX *= 0.25;
+            this.groundVelZ *= 0.25;
+            if (Math.abs(Math.sin(this.bobPhase)) > 1e-3) {
+              const nearestZeroPhase = Math.round(this.bobPhase / Math.PI) * Math.PI;
+              this.bobPhase = THREE.MathUtils.lerp(
+                this.bobPhase,
+                nearestZeroPhase,
+                1 - Math.exp(-18 * dtSeconds)
+              );
+            }
+          } else {
+            const speedScale = THREE.MathUtils.clamp(groundSpeed / WALK_SPEED_MPS, 0.35, 1.45);
+            this.bobPhase +=
+              dtSeconds * (isSprinting ? 13.0 : 9.0) * movedRatio * Math.min(1, speedScale);
+          }
           movedOrRotated = true;
         }
       }
@@ -1173,6 +1298,14 @@ export class WalkthroughController {
     window.addEventListener('blur', () => {
       this.keysDown.clear();
       this.isDraggingLook = false;
+      this.dragLookPointerId = null;
+      this.touchForwardInput = 0;
+      this.touchStrafeInput = 0;
+      this.touchSprint = false;
+      this.touchLookYaw = 0;
+      this.touchLookPitch = 0;
+      this.groundVelX = 0;
+      this.groundVelZ = 0;
     });
   }
 }

@@ -44,6 +44,51 @@ const KITCHEN_SWITCH_PA = '1.1.10';
 const UTILITY_SWITCH_PA = '1.1.11';
 const FRAME_TV_PA = '1.1.12';
 
+/**
+ * Prevents accidental mobile browser page pinch-zoom and double-tap zoom (especially on
+ * iOS Safari and Android Chrome when using dual floating thumbsticks or multi-touch on the HUD)
+ * so `visualViewport.scale` never drifts away from 1.0 and breaks fixed UI layout.
+ */
+function installMobileViewportZoomGuard(): void {
+  const preventEvent = (e: Event): void => {
+    e.preventDefault();
+  };
+  document.addEventListener('gesturestart', preventEvent, { passive: false });
+  document.addEventListener('gesturechange', preventEvent, { passive: false });
+  document.addEventListener('gestureend', preventEvent, { passive: false });
+
+  document.addEventListener(
+    'touchmove',
+    (e: TouchEvent) => {
+      const scaledEvent = e as TouchEvent & { readonly scale?: number };
+      if (scaledEvent.scale !== undefined && scaledEvent.scale !== 1) {
+        e.preventDefault();
+        return;
+      }
+      if (e.touches.length > 1) {
+        const target = e.target as HTMLElement | null;
+        if (!target || target.id !== 'three-canvas') {
+          e.preventDefault();
+        }
+      }
+    },
+    { passive: false }
+  );
+
+  window.addEventListener(
+    'wheel',
+    (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        const target = e.target as HTMLElement | null;
+        if (!target || target.id !== 'three-canvas') {
+          e.preventDefault();
+        }
+      }
+    },
+    { passive: false }
+  );
+}
+
 function requireElement<T extends HTMLElement>(id: string, ctor: new () => T): T {
   const el = document.getElementById(id);
   if (!(el instanceof ctor)) throw new Error(`Element #${id} not found`);
@@ -56,6 +101,7 @@ function requireElement<T extends HTMLElement>(id: string, ctor: new () => T): T
  * frame loop.
  */
 export async function bootstrap(): Promise<void> {
+  installMobileViewportZoomGuard();
   const loading = getLoadingScreen();
   const canvasEl = requireElement('three-canvas', HTMLCanvasElement);
   const shellRoot = requireElement('shell-root', HTMLElement);

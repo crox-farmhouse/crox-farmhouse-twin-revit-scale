@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import type { SceneInteractionManager } from '../../../../../engine/interaction/interaction-manager.ts';
+import { GymTreadmillRunController } from '../../../../../objects/gym/treadmill-run-interaction.ts';
 
 /**
  * Generates the metallic silver & charcoal `TECHNOGYM` brand badge texture
@@ -350,8 +352,9 @@ export function createTechnogymLiveScreenTexture(): THREE.CanvasTexture {
  */
 export function buildGymTechnogymRunPersonal(
   groundGroup: THREE.Group,
-  gymFloorY: number
-): void {
+  gymFloorY: number,
+  interactions?: SceneInteractionManager
+): GymTreadmillRunController | null {
   const runGroup = new THREE.Group();
   runGroup.name = 'outbuildings.gym.technogymRunPersonal';
   runGroup.userData.zone = 'courtyard';
@@ -400,8 +403,9 @@ export function buildGymTechnogymRunPersonal(
     roughness: 0.3,
     metalness: 0.1,
   });
+  const beltTexture = createTechnogymBeltTexture();
   const runningBeltMat = new THREE.MeshStandardMaterial({
-    map: createTechnogymBeltTexture(),
+    map: beltTexture,
     roughness: 0.68,
     metalness: 0.06,
   });
@@ -497,6 +501,8 @@ export function buildGymTechnogymRunPersonal(
   beltDeck.receiveShadow = true;
   runGroup.add(beltDeck);
 
+  let rearRoller!: THREE.Mesh;
+  let frontRoller!: THREE.Mesh;
   for (const rz of [-0.955, 0.475] as const) {
     const roller = new THREE.Mesh(
       new THREE.CylinderGeometry(0.043, 0.043, 0.518, 20),
@@ -506,6 +512,11 @@ export function buildGymTechnogymRunPersonal(
     roller.rotation.z = Math.PI / 2;
     roller.position.set(0, 0.152, rz);
     runGroup.add(roller);
+    if (rz < 0) {
+      rearRoller = roller;
+    } else {
+      frontRoller = roller;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -897,5 +908,22 @@ export function buildGymTechnogymRunPersonal(
   screenMesh.rotation.y = Math.PI; // Face `-Z` toward the runner on the belt!
   screenMesh.position.set(0, 0, -consoleD * 0.5 - 0.006);
   consoleGroup.add(screenMesh);
+
+  if (!interactions) {
+    return null;
+  }
+
+  const controller = new GymTreadmillRunController({
+    runGroup,
+    beltDeck,
+    frontRoller,
+    rearRoller,
+    beltTexture,
+    screenMesh,
+    gymFloorY,
+    clickableTargets: [runGroup],
+  });
+  interactions.registerAnimatedInteractable(controller);
+  return controller;
 }
 

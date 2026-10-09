@@ -224,7 +224,15 @@ export function describeHingedDoor(
   ]
     .join(' ')
     .toLowerCase();
-  if (chainNames.includes('lid')) return `${verb} AGA Simmering/Boiling Lid`;
+  if (
+    chainNames.includes('domelid') ||
+    (chainNames.includes('aga') && /\blid\b/.test(chainNames))
+  ) {
+    return `${verb} AGA Simmering/Boiling Lid`;
+  }
+  if (chainNames.includes('balcony')) {
+    return `${verb} Balcony Doors`;
+  }
   if (
     chainNames.includes('aga') ||
     chainNames.includes('roasting') ||

@@ -2216,3 +2216,23 @@ body.is-annotating .shell-toast {
     left: var(--shell-gap);
   }
 }
+
+/* Prevent accidental browser pinch-zoom on shell chrome while keeping vertical drawer scrolling */
+.shell-root,
+.shell-topbar,
+.shell-dock,
+.shell-walk,
+.shell-walk-room-chip,
+.shell-walk-prompt,
+.shell-walk-touch-actions,
+.shell-walk-touch-btn,
+.shell-walk-touch-circle {
+  touch-action: none;
+}
+
+.shell-nav-body,
+.shell-panel-body,
+.shell-modal-body,
+.shell-dev-body {
+  touch-action: pan-y;
+}

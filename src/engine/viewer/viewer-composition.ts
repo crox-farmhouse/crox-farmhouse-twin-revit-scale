@@ -183,6 +183,8 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
       profile,
       invalidator: renderer,
       startGolfSimulatorShot: () => this.startGolfSimulatorShot(),
+      startFirstPersonInteractable: (interactableId) =>
+        this.startFirstPersonInteractable(interactableId),
       onObjectInteraction,
     });
     this.trades = new TradeViewService(scene, renderer);
@@ -352,6 +354,17 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
       this.walkthrough.enter(this.camera.getPoseSnapshot(), GOLF_SHOT_SPAWN);
     }
     this.walkthrough.beginFirstPersonGolfShot();
+  }
+
+  private startFirstPersonInteractable(_interactableId: string): void {
+    const sample = this.devices.interactions.getActiveFirstPersonPose();
+    if (!this.walkthrough.isActive() && sample) {
+      if (this.annotations.isActive()) this.annotations.controller.setAnnotationMode(false);
+      this.walkthrough.enter(this.camera.getPoseSnapshot(), {
+        position: sample.footPosition,
+        yawDeg: THREE.MathUtils.radToDeg(sample.yawRad),
+      });
+    }
   }
 
   // --- Composite operations ------------------------------------------------------

@@ -39,6 +39,17 @@ export function createViewerWalkthrough(host: ViewerWalkthroughHost): Walkthroug
     onTriggerGolfSimulatorShot: () => rendered(host.getInteractions().triggerGolfSimulatorShot()),
     getGolfSimulatorShotElapsedSec: () => host.getInteractions().getGolfSimulatorShotElapsedSec(),
     getGolfSimulatorPrompt: () => host.getInteractions().getGolfSimulatorPromptLabel(),
+    getActiveFirstPersonPose: () => host.getInteractions().getActiveFirstPersonPose(),
+    cancelActiveFirstPerson: () => rendered(host.getInteractions().cancelActiveFirstPerson()),
+    getProximityAnimatedInteractable: (footX, footY, footZ) => {
+      const hit = host.getInteractions().getProximityAnimatedInteractable(footX, footY, footZ);
+      if (!hit) return null;
+      return {
+        id: hit.id,
+        prompt: hit.prompt,
+        trigger: () => rendered(host.getInteractions().handleInteractableClick(hit.id)),
+      };
+    },
     onBargeWalkthroughDoor: (interactableId, isSprinting, footX, footY, footZ, moveDirX, moveDirZ) =>
       rendered(
         host

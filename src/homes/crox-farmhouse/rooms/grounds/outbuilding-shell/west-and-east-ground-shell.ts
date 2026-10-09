@@ -336,10 +336,10 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   buildNikeGrindDumbbellRack(groundGroup, baseY0 + 0.012);
 
   // Technogym Run Personal (Antonio Citterio design) in the GYM (`outbuildings.gym.technogymRunPersonal`)
-  buildGymTechnogymRunPersonal(groundGroup, baseY0 + 0.012);
+  buildGymTechnogymRunPersonal(groundGroup, baseY0 + 0.012, ctx.interactions);
 
   // Nike Strength Squat Cage, Flat Bench, Crimson Barbell & Solid-Color Nike Pro Bumper Plates (`outbuildings.gym.nikeSquatRack`)
-  buildGymNikeSquatRack(groundGroup, baseY0 + 0.012);
+  buildGymNikeSquatRack(groundGroup, baseY0 + 0.012, ctx.interactions);
 
   // Full-Height Backlit Gym Mirrors, Layered Task & Warm Ambient Lighting, and Sculpted Indoor Plants
   buildGymMirrorsLightingAndPlants(groundGroup, groundCeilingGroup, baseY0 + 0.012);

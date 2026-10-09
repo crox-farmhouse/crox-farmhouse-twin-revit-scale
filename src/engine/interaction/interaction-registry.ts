@@ -13,7 +13,7 @@ import {
   type MotorizedCarGatePairState,
 } from './handlers/car-gates.ts';
 import { EMPTY_DOOR_POLICY, type DoorPolicy } from './handlers/door-policy.ts';
-import type { AnimatedInteractable } from './handlers/animated-interactable.ts';
+import type { AnimatedInteractable, FirstPersonPoseSample } from './handlers/animated-interactable.ts';
 import { describeFlagInteractable } from './handlers/flag-prompts.ts';
 import {
   applySlidingGolfMatKinematics,
@@ -934,6 +934,59 @@ export class InteractionRegistry {
     for (const device of this.#animated.values()) {
       device.collectDynamicObjects(outSet);
     }
+  }
+
+  /**
+   * Returns the active first-person camera/body pose sample if any registered
+   * `AnimatedInteractable` (e.g. gym treadmill run or bench press) is currently
+   * driving a first-person sequence.
+   */
+  public getActiveFirstPersonPose(): FirstPersonPoseSample | null {
+    for (const device of this.#animated.values()) {
+      if (device.isFirstPersonActive?.()) {
+        const pose = device.sampleFirstPersonPose?.() ?? null;
+        if (pose) return pose;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Cancels any active first-person sequence on registered `AnimatedInteractable` devices.
+   */
+  public cancelActiveFirstPerson(): boolean {
+    let cancelled = false;
+    for (const device of this.#animated.values()) {
+      if (device.isFirstPersonActive?.()) {
+        device.cancelFirstPerson?.();
+        cancelled = true;
+      }
+    }
+    return cancelled;
+  }
+
+  /**
+   * Checks if the player's feet `(footX, footY, footZ)` are inside the proximity trigger zone
+   * of any registered `AnimatedInteractable` (such as the gym treadmill or squat rack).
+   */
+  public getProximityAnimatedInteractable(
+    footX: number,
+    footY: number,
+    footZ: number
+  ): { readonly id: string; readonly prompt: string; readonly targetMesh: THREE.Object3D | null } | null {
+    for (const device of this.#animated.values()) {
+      if (device.isPlayerInProximityZone?.(footX, footY, footZ)) {
+        const prompt = device.describe();
+        if (prompt.length > 0) {
+          return {
+            id: device.id,
+            prompt,
+            targetMesh: device.clickableTargets[0] ?? null,
+          };
+        }
+      }
+    }
+    return null;
   }
 
   /** Steps all active animations. Returns true if any animation moved this frame. */

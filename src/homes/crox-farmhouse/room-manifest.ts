@@ -319,7 +319,15 @@ const ROOM_SPECS: Readonly<Record<CanonicalRoomZoneId, RoomSpec>> = {
     ],
   },
   outbuildingMezzanine: { label: 'Barn mezzanine', group: 'outbuildings', floor: 'first' },
-  outbuildingGym: { label: 'Gym', group: 'outbuildings', floor: 'ground' },
+  outbuildingGym: {
+    label: 'Gym',
+    group: 'outbuildings',
+    floor: 'ground',
+    devices: [
+      { interactableId: 'gym-treadmill-run', label: 'Treadmill: 1P interval run' },
+      { interactableId: 'gym-bench-press', label: 'Squat rack: 1P bench press' },
+    ],
+  },
   outbuildingGarage: {
     label: 'Garage & workshop',
     group: 'outbuildings',

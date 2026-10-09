@@ -79,7 +79,12 @@ export class WalkthroughDoorBargeAndCollisionSolver {
   private readonly tmpCorner = new THREE.Vector3();
   private readonly tmpOrigin = new THREE.Vector3();
   private readonly tmpNormal = new THREE.Vector3();
+  private readonly tmpRayDir = new THREE.Vector3();
+  private readonly tmpHitNormal1 = new THREE.Vector3();
+  private readonly tmpHitNormal2 = new THREE.Vector3();
+  private readonly tmpSlideDir = new THREE.Vector3();
   private readonly wallRaycaster = new THREE.Raycaster();
+  private lastMovedDistance = 0;
 
   public constructor(options: {
     readonly scene: THREE.Scene;
@@ -524,14 +529,20 @@ export class WalkthroughDoorBargeAndCollisionSolver {
     return list;
   }
 
+  public getLastMovedDistance(): number {
+    return this.lastMovedDistance;
+  }
+
   public isBlockedByWallOrCabinet(
     fromFoot: THREE.Vector3,
     moveDirXZ: THREE.Vector3,
     stepDist: number,
     currentEyeHeight: number,
     allowDoorBarge: boolean,
-    isSprinting: boolean
+    isSprinting: boolean,
+    outNormal?: THREE.Vector3
   ): boolean {
+    if (outNormal) outNormal.set(0, 0, 0);
     const nextX = fromFoot.x + moveDirXZ.x * stepDist;
     const nextZ = fromFoot.z + moveDirXZ.z * stepDist;
 
@@ -572,13 +583,36 @@ export class WalkthroughDoorBargeAndCollisionSolver {
       const nextDistSq = nextDu * nextDu + nextDv * nextDv;
 
       if (nextDistSq < furnPadSq) {
-        if (curDistSq >= furnPadSq || nextDistSq < curDistSq - 1e-5) return true;
-        if (curDistSq === 0) {
+        let blockedByFurn = false;
+        if (curDistSq >= furnPadSq || nextDistSq < curDistSq - 1e-5) {
+          blockedByFurn = true;
+        } else if (curDistSq === 0) {
           const midU = (f.minU + f.maxU) * 0.5;
           const midV = (f.minV + f.maxV) * 0.5;
           const curCenterSq = (curU - midU) ** 2 + (curV - midV) ** 2;
           const nextCenterSq = (nextU - midU) ** 2 + (nextV - midV) ** 2;
-          if (nextCenterSq < curCenterSq) return true;
+          if (nextCenterSq < curCenterSq) blockedByFurn = true;
+        }
+        if (blockedByFurn) {
+          if (outNormal) {
+            const clampedU = Math.max(f.minU, Math.min(f.maxU, nextU));
+            const clampedV = Math.max(f.minV, Math.min(f.maxV, nextV));
+            let ou = nextU - clampedU;
+            let ov = nextV - clampedV;
+            if (Math.hypot(ou, ov) < 1e-4) {
+              const midU = (f.minU + f.maxU) * 0.5;
+              const midV = (f.minV + f.maxV) * 0.5;
+              ou = Math.abs(curU - midU) >= Math.abs(curV - midV) ? Math.sign(curU - midU) : 0;
+              ov = ou === 0 ? Math.sign(curV - midV) || 1 : 0;
+            }
+            const nx = ou * f.ux + ov * vx;
+            const nz = ou * f.uz + ov * vz;
+            const nLen = Math.hypot(nx, nz);
+            if (nLen > 1e-4) {
+              outNormal.set(nx / nLen, 0, nz / nLen);
+            }
+          }
+          return true;
         }
       }
     }
@@ -626,6 +660,9 @@ export class WalkthroughDoorBargeAndCollisionSolver {
     const perpZ = moveDirXZ.x;
     const upperRayY = Math.min(1.28, Math.max(0.85, currentEyeHeight - 0.12));
 
+    let bestHitDist = Number.POSITIVE_INFINITY;
+    let foundHit = false;
+
     for (const rayOffsetY of [0.52, upperRayY] as const) {
       for (const latOffset of [0, -0.15, 0.15] as const) {
         this.tmpOrigin.set(
@@ -643,16 +680,85 @@ export class WalkthroughDoorBargeAndCollisionSolver {
               continue;
             }
             this.tmpNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
-            if (Math.abs(this.tmpNormal.y) < 0.45 && this.tmpNormal.dot(moveDirXZ) < -0.01) {
-              return true;
+            if (Math.abs(this.tmpNormal.y) < 0.45) {
+              const horizLen = Math.hypot(this.tmpNormal.x, this.tmpNormal.z);
+              if (horizLen > 1e-4) {
+                let nx = this.tmpNormal.x / horizLen;
+                let nz = this.tmpNormal.z / horizLen;
+                const dotMove = nx * moveDirXZ.x + nz * moveDirXZ.z;
+                if (dotMove > 0.01) {
+                  // Double-sided or inward-wound wall face: flip outward normal to oppose approach
+                  nx = -nx;
+                  nz = -nz;
+                }
+                if (nx * moveDirXZ.x + nz * moveDirXZ.z < -0.01) {
+                  if (!outNormal) return true;
+                  if (hit.distance < bestHitDist) {
+                    bestHitDist = hit.distance;
+                    outNormal.set(nx, 0, nz);
+                    foundHit = true;
+                  }
+                }
+              }
             }
           }
         }
       }
     }
-    return false;
+
+    // Capsule shoulder whisker rays (±26 deg) so sliding nearly parallel to a wall maintains capsule skin clearance
+    if (!foundHit) {
+      const cosA = 0.8988;
+      const sinA = 0.4384;
+      const shoulderMaxDist = stepDist + 0.29;
+      this.wallRaycaster.far = shoulderMaxDist + 0.04;
+      this.tmpOrigin.set(fromFoot.x, fromFoot.y + 0.52, fromFoot.z);
+      for (const sign of [-1, 1] as const) {
+        this.tmpRayDir.set(
+          moveDirXZ.x * cosA - sign * moveDirXZ.z * sinA,
+          0,
+          moveDirXZ.x * sign * sinA + moveDirXZ.z * cosA
+        );
+        this.wallRaycaster.set(this.tmpOrigin, this.tmpRayDir);
+        const hits = this.wallRaycaster.intersectObjects(this.nearbyObstacleMeshes, false);
+        for (let i = 0; i < hits.length; i++) {
+          const hit = hits[i];
+          if (hit.distance >= 0.01 && hit.distance <= shoulderMaxDist && hit.face) {
+            this.tmpNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
+            if (Math.abs(this.tmpNormal.y) < 0.45) {
+              const horizLen = Math.hypot(this.tmpNormal.x, this.tmpNormal.z);
+              if (horizLen > 1e-4) {
+                let nx = this.tmpNormal.x / horizLen;
+                let nz = this.tmpNormal.z / horizLen;
+                if (nx * this.tmpRayDir.x + nz * this.tmpRayDir.z > 0) {
+                  nx = -nx;
+                  nz = -nz;
+                }
+                if (nx * moveDirXZ.x + nz * moveDirXZ.z < -0.08) {
+                  if (outNormal) outNormal.set(nx, 0, nz);
+                  return true;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return foundHit;
   }
 
+  /**
+   * FPS Collide-and-Slide (`PM_ClipVelocity` / `UCharacterMovementComponent::SlideAlongSurface`):
+   * 1. Attempts primary step along `moveVec`.
+   * 2. If blocked by a surface with horizontal outward unit normal `n1`:
+   *    - Head-on deadzone (`moveVec · n1 <= -0.94`, within ~20° of perpendicular): stops cleanly
+   *      against the wall rather than drifting sideways from a slight camera angle.
+   *    - Angled contact: projects the movement vector onto the wall tangent plane
+   *      (`v_slide = v - (v · n1) * n1`) with wall friction (`0.90`).
+   *    - 2-plane corner crease check: if the slid vector hits a second wall `n2`, comes to a
+   *      clean stop in the corner without oscillating.
+   */
   public stepHorizontalMovement(
     footPos: THREE.Vector3,
     moveVec: THREE.Vector3,
@@ -663,6 +769,9 @@ export class WalkthroughDoorBargeAndCollisionSolver {
     isSprinting: boolean,
     dtSeconds: number
   ): number {
+    const startX = footPos.x;
+    const startZ = footPos.z;
+
     this.checkProximityDoorBarge(footPos, moveVec.x, moveVec.z, isSprinting);
     const updatedYaw = applySpiralStaircaseHelicalGuidance(footPos, moveVec, forwardInput, targetYawRad, dtSeconds);
     const preStairState = evaluateActiveStaircaseRiserState(footPos.x, footPos.y, footPos.z);
@@ -676,28 +785,60 @@ export class WalkthroughDoorBargeAndCollisionSolver {
       effectiveStepDist,
       currentEyeHeight,
       true,
-      isSprinting
+      isSprinting,
+      this.tmpHitNormal1
     );
     if (!primaryBlocked) {
       footPos.x += moveVec.x * effectiveStepDist;
       footPos.z += moveVec.z * effectiveStepDist;
+    } else if (this.tmpHitNormal1.lengthSq() > 0.5) {
+      const n1x = this.tmpHitNormal1.x;
+      const n1z = this.tmpHitNormal1.z;
+      const inwardDot = moveVec.x * n1x + moveVec.z * n1z;
+      // Head-on deadzone: if walking nearly perpendicular into a wall (within ~20 deg),
+      // stop cleanly instead of sliding sideways.
+      if (inwardDot > -0.94 && inwardDot < 0) {
+        const slideX = moveVec.x - inwardDot * n1x;
+        const slideZ = moveVec.z - inwardDot * n1z;
+        const slideMag = Math.hypot(slideX, slideZ);
+        const wallFriction = 0.90;
+        const slideStepDist = effectiveStepDist * slideMag * wallFriction;
+        if (slideMag > 0.22 && slideStepDist > 1e-4) {
+          this.tmpSlideDir.set(slideX / slideMag, 0, slideZ / slideMag);
+          const secondBlocked = this.isBlockedByWallOrCabinet(
+            footPos,
+            this.tmpSlideDir,
+            slideStepDist,
+            currentEyeHeight,
+            false,
+            isSprinting,
+            this.tmpHitNormal2
+          );
+          if (!secondBlocked) {
+            footPos.x += this.tmpSlideDir.x * slideStepDist;
+            footPos.z += this.tmpSlideDir.z * slideStepDist;
+          }
+        }
+      }
     } else {
+      // Analytical walkway boundary fallback (only slide when angled > 20 deg from perpendicular)
       const { projU, projV, slideU, slideV } = computeWingWallSlideAxes(footPos.x, footPos.z, moveVec);
       if (
-        Math.abs(projU) > 0.1 &&
-        !this.isBlockedByWallOrCabinet(footPos, slideU, Math.abs(projU) * effectiveStepDist, currentEyeHeight, false, isSprinting)
+        Math.abs(projU) >= 0.34 &&
+        !this.isBlockedByWallOrCabinet(footPos, slideU, Math.abs(projU) * effectiveStepDist * 0.9, currentEyeHeight, false, isSprinting)
       ) {
-        footPos.x += slideU.x * Math.abs(projU) * effectiveStepDist;
-        footPos.z += slideU.z * Math.abs(projU) * effectiveStepDist;
+        footPos.x += slideU.x * Math.abs(projU) * effectiveStepDist * 0.9;
+        footPos.z += slideU.z * Math.abs(projU) * effectiveStepDist * 0.9;
       } else if (
-        Math.abs(projV) > 0.1 &&
-        !this.isBlockedByWallOrCabinet(footPos, slideV, Math.abs(projV) * effectiveStepDist, currentEyeHeight, false, isSprinting)
+        Math.abs(projV) >= 0.34 &&
+        !this.isBlockedByWallOrCabinet(footPos, slideV, Math.abs(projV) * effectiveStepDist * 0.9, currentEyeHeight, false, isSprinting)
       ) {
-        footPos.x += slideV.x * Math.abs(projV) * effectiveStepDist;
-        footPos.z += slideV.z * Math.abs(projV) * effectiveStepDist;
+        footPos.x += slideV.x * Math.abs(projV) * effectiveStepDist * 0.9;
+        footPos.z += slideV.z * Math.abs(projV) * effectiveStepDist * 0.9;
       }
     }
     this.depenetrateFootPosition(footPos, currentEyeHeight);
+    this.lastMovedDistance = Math.hypot(footPos.x - startX, footPos.z - startZ);
     const targetFloorY = sampleFloorElevation(footPos.x, footPos.y, footPos.z);
     const onStairsNow =
       preStairState !== null ||

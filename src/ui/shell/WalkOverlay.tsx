@@ -252,6 +252,36 @@ function WalkFloatingJoystick({
     }
   };
 
+  useEffect(() => {
+    const onGlobalPointerEnd = (e: PointerEvent): void => {
+      if (activePointerId.current !== null && e.pointerId === activePointerId.current) {
+        resetStick();
+      }
+    };
+    const onGlobalTouchEnd = (e: TouchEvent): void => {
+      if (activePointerId.current !== null && e.touches.length === 0) {
+        resetStick();
+      }
+    };
+    const onWindowBlur = (): void => {
+      if (activePointerId.current !== null) {
+        resetStick();
+      }
+    };
+    window.addEventListener('pointerup', onGlobalPointerEnd, true);
+    window.addEventListener('pointercancel', onGlobalPointerEnd, true);
+    window.addEventListener('touchend', onGlobalTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', onGlobalTouchEnd, { passive: true });
+    window.addEventListener('blur', onWindowBlur);
+    return () => {
+      window.removeEventListener('pointerup', onGlobalPointerEnd, true);
+      window.removeEventListener('pointercancel', onGlobalPointerEnd, true);
+      window.removeEventListener('touchend', onGlobalTouchEnd);
+      window.removeEventListener('touchcancel', onGlobalTouchEnd);
+      window.removeEventListener('blur', onWindowBlur);
+    };
+  }, [ctl, side]);
+
   const label =
     side === 'left' ? (stick.sprinting ? 'RUN' : 'MOVE') : 'LOOK';
   const ariaLabel =
@@ -339,6 +369,10 @@ function WalkFloatingJoystick({
       onPointerCancel={(e) => {
         if (activePointerId.current !== e.pointerId) return;
         e.stopPropagation();
+        resetStick();
+      }}
+      onLostPointerCapture={(e) => {
+        if (activePointerId.current !== e.pointerId) return;
         resetStick();
       }}
     >
