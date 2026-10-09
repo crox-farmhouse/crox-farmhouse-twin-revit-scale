@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { CircuitId, CircuitLevels } from '../../core/types/knx.ts';
-import type { TimeOfDay } from '../../core/types/scene.ts';
+import type { RoomZoneLodRegistration, TimeOfDay } from '../../core/types/scene.ts';
+import { BakedLightVolumeController } from './baked-light-volume.ts';
 import type { LightGroupMap, ZoneIndicatorMaterials } from '../viewer/scene-types.ts';
 
 const TOD_INDOOR_LIGHT_SCALE: Readonly<
@@ -62,6 +63,7 @@ export interface CircuitLightingOptions {
    * fill lights). Defaults to the root ancestor of the circuit lights.
    */
   readonly sceneRoot?: THREE.Object3D;
+  readonly lodRegistrations?: readonly RoomZoneLodRegistration[];
 }
 
 /** Inverse-square falloff for KNX circuit lights: tight pools under fittings, darker room edges. */
@@ -111,6 +113,7 @@ export class CircuitLightingController {
   private readonly tvArtTextures: readonly THREE.CanvasTexture[];
   private readonly tvOffTexture: THREE.CanvasTexture;
   private readonly fittingEffects: FittingEffects;
+  public readonly bakedVolume: BakedLightVolumeController;
   private timeOfDay: TimeOfDay = 'dusk';
   private lastLevels: Readonly<CircuitLevels> | null = null;
 
@@ -129,6 +132,7 @@ export class CircuitLightingController {
     });
 
     adoptPhysicalDecay(options.lightGroups);
+    this.bakedVolume = new BakedLightVolumeController(options.lightGroups, options.lodRegistrations ?? []);
 
     // Missing indicators all share one detached fallback material so writes are harmless.
     const indicatorMats = options.indicatorMats;
@@ -202,6 +206,7 @@ export class CircuitLightingController {
 
     // Re-rank the point-light budget now so a newly switched-on circuit is never left dark.
     notifyCircuitLevelsChanged(this.lightGroups);
+    this.bakedVolume.updateFromCircuitLevels(liveLevels, this.timeOfDay);
 
     this.fittingEffects.applyLevels(
       (circuitId) => (liveLevels[circuitId] ?? 0) / 100,

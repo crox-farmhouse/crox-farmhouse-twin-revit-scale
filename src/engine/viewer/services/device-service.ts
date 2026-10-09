@@ -57,6 +57,7 @@ export class DeviceService<TSecurity extends SecurityOverlay3D = SecurityOverlay
       fixtureAppearanceOverrides: profile.fixtureAppearanceOverrides,
       tvArtTextures: content.tvArtTextures,
       tvOffTexture: content.tvOffTexture,
+      lodRegistrations: profile.lodRegistrations,
     });
     this.bifolds = new BifoldDoorAnimator(content.bifoldPanels, profile.bifoldTrack);
     content.ufhSystem?.subscribe(() => host.invalidator.requestRender());

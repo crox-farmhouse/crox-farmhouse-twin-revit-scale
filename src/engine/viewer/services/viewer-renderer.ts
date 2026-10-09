@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { RigCamera } from '../../camera/camera-rig.ts';
+import { syncBakedLightCameraMatrix } from '../../lighting/baked-light-volume.ts';
 import {
   PostProcessingPipeline,
   RENDERER_TONE_MAPPING,
@@ -75,6 +76,7 @@ export class ViewerRenderer implements RenderInvalidator {
     }
     if (!this.dirty) return false;
     camera.updateMatrixWorld();
+    syncBakedLightCameraMatrix(camera);
     beforeRender();
     this.post.render(scene, camera, dtSeconds);
     this.dirty = false;

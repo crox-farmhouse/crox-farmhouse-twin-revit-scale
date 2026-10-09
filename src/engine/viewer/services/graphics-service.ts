@@ -1,4 +1,5 @@
 import type { GraphicsMode, GraphicsTierSettings } from '../../../core/types/twin-ux.ts';
+import { setBakedLightTierDirectCutoff } from '../../lighting/baked-light-volume.ts';
 import type { EnvironmentLighting } from '../../lighting/environment-lighting.ts';
 import type { RoomLodController } from '../../lod/lod-manager.ts';
 import {
@@ -110,6 +111,7 @@ export class GraphicsService {
 
   private applyTier(settings: GraphicsTierSettings): void {
     const { renderer, environment, lodController, batchOptimizer } = this.host;
+    setBakedLightTierDirectCutoff(settings.tier);
     renderer.post.applyTierSettings(settings);
     environment.setShadowMapSize(settings.shadowMapSize);
     lodController.setDistanceScale(settings.lodDistanceScale);
