@@ -111,7 +111,6 @@ export class GymTreadmillRunController implements AnimatedInteractable {
   ] as const;
   public readonly clickableTargets: readonly THREE.Object3D[];
 
-  readonly #runGroup: THREE.Group;
   readonly #beltDeck: THREE.Mesh;
   readonly #frontRoller: THREE.Mesh;
   readonly #rearRoller: THREE.Mesh;
@@ -127,7 +126,6 @@ export class GymTreadmillRunController implements AnimatedInteractable {
   #liveCanvas: HTMLCanvasElement | null = null;
 
   public constructor(config: GymTreadmillRunConfig) {
-    this.#runGroup = config.runGroup;
     this.#beltDeck = config.beltDeck;
     this.#frontRoller = config.frontRoller;
     this.#rearRoller = config.rearRoller;
@@ -204,7 +202,6 @@ export class GymTreadmillRunController implements AnimatedInteractable {
     out.add(this.#frontRoller);
     out.add(this.#rearRoller);
     out.add(this.#screenMesh);
-    this.#runGroup.traverse((c) => out.add(c));
   }
 
   public step(dtSeconds: number): boolean {

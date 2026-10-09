@@ -499,21 +499,48 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
     }
 
     await onProgress?.('Compiling shaders & shadow maps…', 0.90);
-    const prevFirstFloorVis = this.layers.firstFloorMeshGroup.visible;
-    const prevCeilingVis = this.layers.ceilingMeshGroup.visible;
-
-    this.layers.firstFloorMeshGroup.visible = true;
-    this.layers.ceilingMeshGroup.visible = true;
+    // Temporarily force every scene object/mesh visible and un-frustum-culled and render one
+    // full pass through `this.renderer.renderNow` (which runs both ShadowNode and PostProcessing
+    // `scenePass` with its exact RenderTarget, sampleCount, and toneMapping) so 100% of WGSL
+    // shaders, RenderObjects, and GPURenderPipelines across the entire estate are compiled upfront.
+    const savedVisibility: Array<{ readonly obj: THREE.Object3D; readonly visible: boolean }> = [];
+    const savedFrustumCulled: Array<{ readonly mesh: THREE.Mesh; readonly frustumCulled: boolean }> = [];
+    this.scene.traverse((obj) => {
+      if (obj.userData?.isShadowPassHook || obj.userData?.isAnnotationGroup) return;
+      if (!obj.visible) {
+        savedVisibility.push({ obj, visible: false });
+        obj.visible = true;
+      }
+      if (obj instanceof THREE.Mesh && obj.frustumCulled) {
+        savedFrustumCulled.push({ mesh: obj, frustumCulled: true });
+        obj.frustumCulled = false;
+      }
+    });
     this.scene.updateMatrixWorld(true);
 
     try {
       await glRenderer.compileAsync(this.scene, this.camera.rig.perspCamera);
+      this.renderer.invalidateShadows();
+      this.renderer.requestRender();
+      this.renderer.renderIfNeeded(
+        this.scene,
+        this.camera.rig.perspCamera,
+        0.016,
+        false,
+        () => this.annotations.controller.prepareForRender()
+      );
     } catch {
       // Ignore shader compile warmup errors in non-standard WebGPU/WebGL contexts
     }
 
-    this.layers.firstFloorMeshGroup.visible = prevFirstFloorVis;
-    this.layers.ceilingMeshGroup.visible = prevCeilingVis;
+    for (let i = 0; i < savedVisibility.length; i++) {
+      const entry = savedVisibility[i]!;
+      entry.obj.visible = entry.visible;
+    }
+    for (let i = 0; i < savedFrustumCulled.length; i++) {
+      const entry = savedFrustumCulled[i]!;
+      entry.mesh.frustumCulled = entry.frustumCulled;
+    }
 
     this.refreshView(true);
     this.renderer.invalidateShadows();

@@ -491,6 +491,7 @@ export class RoomLodController {
     forceNotify = false
   ): boolean {
     let anyChanged = false;
+    let roomTierChanged = false;
     let shadowsDirty = false;
 
     // Determine if the camera target is inside a specific interior room
@@ -527,6 +528,7 @@ export class RoomLodController {
       if (room.currentTier !== desiredTier || forceNotify) {
         if (room.currentTier !== desiredTier) {
           anyChanged = true;
+          roomTierChanged = true;
           // LOD2 hero props never cast shadows, so only a tier-1 (primary furniture) visibility
           // change alters the shadow-caster set. In `auto` mode that boundary depends solely on
           // the floor view mode (never on camera distance or focus), see computeDesiredTierForRoom.
@@ -589,7 +591,7 @@ export class RoomLodController {
 
     this.lastEvalShadowsDirty = shadowsDirty;
 
-    if ((anyChanged || forceNotify) && this.onLodChangeCallback) {
+    if ((roomTierChanged || forceNotify) && this.onLodChangeCallback) {
       this.onLodChangeCallback(this.getDiagnostics());
     }
 

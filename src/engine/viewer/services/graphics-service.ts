@@ -7,7 +7,6 @@ import {
   detectDeviceProfile,
   estimateInitialTier,
   getDeviceCacheKey,
-  getPointLightBudget,
   readCachedPerf,
   updateCachedTier,
   type PerformanceGovernorStats,
@@ -146,8 +145,9 @@ export class GraphicsService {
     environment.setShadowMapSize(settings.shadowMapSize);
     lodController.setDistanceScale(settings.lodDistanceScale);
     lodController.setHighDetailMaxDistance(settings.highDetailMaxDistance);
-    const budget = settings.tier === 'ultra' ? Infinity : getPointLightBudget(settings.tier);
-    batchOptimizer.setPointLightBudget(budget);
+    // GPU shader distance culling (`setBakedLightTierDirectCutoff` + `PointLightNode.setupDirect`)
+    // handles tier point-light cutoffs on the GPU with zero CPU fade churn on room switches.
+    batchOptimizer.setPointLightBudget(Infinity);
     this.host.refreshView();
     renderer.invalidateShadows();
     renderer.requestRender();

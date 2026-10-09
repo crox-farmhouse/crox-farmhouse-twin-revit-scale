@@ -33,6 +33,10 @@ export function syncFloorModeUI(scene: PropertyScene): void {
 }
 
 export function syncLodReadoutUI(diag: RoomLodDiagnostics): void {
+  devStore.syncViewportState({
+    activeRoomId: diag.focusedZoneId,
+  });
+  if (!document.body.classList.contains('is-dev-mode')) return;
   const lodReadout = document.getElementById('lod-status-readout');
   if (lodReadout) {
     const focusedRoom = diag.rooms.find((r) => r.zoneId === diag.focusedZoneId);
@@ -51,9 +55,6 @@ export function syncLodReadoutUI(diag: RoomLodDiagnostics): void {
   }
   document.querySelectorAll<HTMLButtonElement>('.lod-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.lod === diag.policyMode);
-  });
-  devStore.syncViewportState({
-    activeRoomId: diag.focusedZoneId,
   });
 }
 

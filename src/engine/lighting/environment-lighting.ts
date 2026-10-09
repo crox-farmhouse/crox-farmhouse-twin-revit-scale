@@ -302,9 +302,12 @@ export class EnvironmentLighting {
     if (size === this.shadowMapSize) return;
     this.shadowMapSize = size;
     const shadow = this.sunLight.shadow;
-    shadow.map?.dispose();
-    shadow.map = null;
-    shadow.mapSize.set(size, size);
+    // Never dispose or null an already-allocated WebGPU ShadowNode render target at runtime:
+    // ShadowNode retains a reference to `this.shadowMap` and its depth texture across compiled
+    // mesh bind groups, so destroying it mid-session causes a WebGPU device loss / tab crash.
+    if (shadow.map === null) {
+      shadow.mapSize.set(size, size);
+    }
     shadow.needsUpdate = true;
     this.updateNormalBias();
     if (this.renderer && 'needsUpdate' in this.renderer.shadowMap) {

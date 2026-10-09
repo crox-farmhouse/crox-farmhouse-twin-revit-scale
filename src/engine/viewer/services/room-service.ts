@@ -72,7 +72,9 @@ export class RoomService {
       this.host.getFloorViewMode()
     );
     if (changed) {
-      this.host.invalidator.invalidateShadows();
+      if (this.host.lodController.didLastEvalChangeShadows()) {
+        this.host.invalidator.invalidateShadows();
+      }
       this.host.invalidator.requestRender();
     }
   }
@@ -89,7 +91,9 @@ export class RoomService {
       this.host.getFloorViewMode()
     );
     if (changed) {
-      this.host.invalidator.invalidateShadows();
+      if (this.host.lodController.didLastEvalChangeShadows()) {
+        this.host.invalidator.invalidateShadows();
+      }
       this.host.invalidator.requestRender();
     }
   }

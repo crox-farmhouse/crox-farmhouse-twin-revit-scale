@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { InteractiveUserData } from '../../../core/types/scene.ts';
 import type { SceneAnnotationController } from '../../annotation/annotation-controller.ts';
 import type { UsdIndexedPrimInfo, UsdStageRuntimeController } from '../../usd/stage-runtime.ts';
-import { isObjectVisibleInHierarchy } from '../../util/object-utils.ts';
+import { intersectVisibleObjects } from '../../util/object-utils.ts';
 import { Emitter } from '../../util/emitter.ts';
 import type { WalkthroughController } from '../../walkthrough/walkthrough-controller.ts';
 import type { UfhZoneId } from '../property-scene-profile.ts';
@@ -83,9 +83,7 @@ export class PointerInput {
   }
 
   private firstVisibleDeviceHit(raycaster: THREE.Raycaster): THREE.Intersection | undefined {
-    return raycaster
-      .intersectObjects(this.host.interactiveMeshes, false)
-      .find((hit) => isObjectVisibleInHierarchy(hit.object));
+    return intersectVisibleObjects(raycaster, this.host.interactiveMeshes, false)[0];
   }
 
   private onPointerMove(e: PointerEvent): void {
@@ -156,12 +154,11 @@ export class PointerInput {
 
     // 4. OpenUSD Stage Prim Inspection pick on any visible architectural / furniture mesh
     if (!this.usdPrimPick.hasListeners()) return;
-    const sceneHits = raycaster.intersectObjects([host.scene, host.firstFloorMeshGroup], true);
+    const sceneHits = intersectVisibleObjects(raycaster, [host.scene, host.firstFloorMeshGroup], true);
     const visibleSceneHit = sceneHits.find(
       (hit) =>
         hit.object instanceof THREE.Mesh &&
-        !host.isPickExcluded(hit.object) &&
-        isObjectVisibleInHierarchy(hit.object)
+        !host.isPickExcluded(hit.object)
     );
     if (!visibleSceneHit) return;
     const primInfo = host.getUsdRuntime().getPrimInfoByMesh(visibleSceneHit.object);

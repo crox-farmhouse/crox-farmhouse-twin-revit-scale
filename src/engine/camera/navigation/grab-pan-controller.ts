@@ -19,9 +19,6 @@ export interface GrabPanHost {
 const FALLBACK_RAY_DISTANCE = 8;
 /** Ignore floor-plane hits further than this (grazing angles near the horizon). */
 const MAX_PLANE_HIT_DISTANCE = 80;
-/** Minimum time between wheel-driven surface picks. */
-const WHEEL_PICK_INTERVAL_MS = 120;
-
 interface ScreenPoint {
   x: number;
   y: number;
@@ -49,8 +46,6 @@ export class GrabPanController {
   private picker: SurfacePicker | null = null;
   private pan: PanState | null = null;
   private singleFingerPan = false;
-  private lastWheelPickMs = Number.NEGATIVE_INFINITY;
-  private lastWheelPoint: ScreenPoint = { x: Number.NaN, y: Number.NaN };
 
   private readonly raycaster = new THREE.Raycaster();
   private readonly plane = new THREE.Plane();
@@ -173,22 +168,12 @@ export class GrabPanController {
     }
   };
 
-  private readonly onWheel = (e: WheelEvent): void => {
+  private readonly onWheel = (): void => {
     const controls = this.host.controls;
     if (!controls.enabled || !controls.enableZoom || this.pan) return;
     this.host.cancelTween();
-    // Ortho zoom-to-cursor is independent of pivot depth.
-    if (this.host.getActiveCamera() instanceof THREE.OrthographicCamera) return;
-    const now = performance.now();
-    const moved =
-      Math.abs(e.clientX - this.lastWheelPoint.x) > 4 ||
-      Math.abs(e.clientY - this.lastWheelPoint.y) > 4;
-    if (!moved && now - this.lastWheelPickMs < WHEEL_PICK_INTERVAL_MS) return;
-    this.lastWheelPickMs = now;
-    this.lastWheelPoint = { x: e.clientX, y: e.clientY };
-    // Runs after OrbitControls' wheel handler but before its next update(), so the
-    // dolly step is computed against the new pivot depth (zoom speed ~ surface distance).
-    this.retargetPivot(e.clientX, e.clientY);
+    // OrbitControls natively handles cursor-directed dolly (`controls.zoomToCursor = true`)
+    // without needing a full-scene CPU raycast or mid-scroll target depth jump.
   };
 
   // ---------------------------------------------------------------------------

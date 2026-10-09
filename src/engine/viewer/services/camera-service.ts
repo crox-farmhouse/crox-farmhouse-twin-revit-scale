@@ -4,7 +4,7 @@ import { round3 } from '../../annotation/annotation-system.ts';
 import { CameraRig, type RigCamera } from '../../camera/camera-rig.ts';
 import type { CutawayController } from '../../cutaway/cutaway-controller.ts';
 import type { RoomLodController } from '../../lod/lod-manager.ts';
-import { isObjectVisibleInHierarchy } from '../../util/object-utils.ts';
+import { intersectVisibleObjects } from '../../util/object-utils.ts';
 import { Emitter } from '../../util/emitter.ts';
 import type { WalkthroughController } from '../../walkthrough/walkthrough-controller.ts';
 import type { SceneZoneRegistry } from '../scene-zone-registry.ts';
@@ -238,11 +238,10 @@ export class CameraService {
   }
 
   private firstVisibleSurfaceHit(raycaster: THREE.Raycaster): THREE.Vector3 | null {
-    const hits = raycaster.intersectObjects(this.host.scene.children, true);
+    const hits = intersectVisibleObjects(raycaster, this.host.scene.children, true);
     const hit = hits.find(
       (h) =>
         h.object instanceof THREE.Mesh &&
-        isObjectVisibleInHierarchy(h.object) &&
         !this.host.isPickExcluded(h.object) &&
         !h.object.userData?.isAnnotationGroup
     );

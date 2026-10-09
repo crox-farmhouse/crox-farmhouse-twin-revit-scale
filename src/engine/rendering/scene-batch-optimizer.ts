@@ -624,12 +624,22 @@ export class SceneBatchOptimizer {
       mutableMaterials
     );
 
-    // 8. Sync `interactiveMeshes`: keep unbatched interactive meshes + append merged interactive batch meshes
+    // 8. Sync `interactiveMeshes`: keep unbatched interactive meshes + append merged interactive batch meshes,
+    //    excluding ultra-high-poly decorative sub-meshes (5,844-vert golf club iron blades and 6,096-vert inner
+    //    treadmill tube cores) whose parent interactable already has primary low-poly clickable targets.
     const updatedInteractive: THREE.Object3D[] = [];
     for (const obj of interactiveMeshes) {
-      if (!batchedOriginalMeshes.has(obj)) {
-        updatedInteractive.push(obj);
+      if (batchedOriginalMeshes.has(obj)) continue;
+      if (
+        obj instanceof THREE.Mesh &&
+        (obj.name === 'outbuildings.barn.golfSimulator.callawayTourBag.iron' ||
+          obj.name === 'outbuildings.barn.golfSimulator.hittingStrip.activeClub.headBlade' ||
+          obj.name === 'outbuildings.gym.technogymRunPersonal.polishedFrame' ||
+          obj.name.startsWith('outbuildings.gym.technogymRunPersonal.polishedFrameInnerCore'))
+      ) {
+        continue;
       }
+      updatedInteractive.push(obj);
     }
     for (const merged of newInteractiveMeshes) {
       updatedInteractive.push(merged);
@@ -822,6 +832,12 @@ export class SceneBatchOptimizer {
             castShadow: node.castShadow,
           });
         }
+        if (!node.geometry.boundingBox) {
+          node.geometry.computeBoundingBox();
+        }
+        if (!node.geometry.boundingSphere) {
+          node.geometry.computeBoundingSphere();
+        }
 
         if (node.castShadow) {
           if (isHighLod || isLeafOrPlant) {
@@ -851,6 +867,9 @@ export class SceneBatchOptimizer {
 
         if (!Array.isArray(node.material) && node.material) {
           const mat = node.material as THREE.MeshStandardMaterial;
+          if (mat.blending === THREE.AdditiveBlending && mat.depthWrite === false) {
+            node.raycast = (): void => {};
+          }
           const matU = mat.userData as Record<string, unknown> | undefined;
           const isDynamicMat =
             mutableMaterials.has(mat) ||
@@ -1140,7 +1159,6 @@ export class SceneBatchOptimizer {
               interactiveSet.has(node) ||
               Boolean(nextUserData.interactableId) ||
               Boolean(nextUserData.circuitId) ||
-              Boolean(nextUserData.ufhZoneId) ||
               Boolean(nextUserData.applianceId) ||
               Boolean(nextUserData.isClimbableLadder);
 
@@ -1298,6 +1316,7 @@ export class SceneBatchOptimizer {
       }
 
       const mergedMesh = new THREE.Mesh(mergedGeo, template.material);
+      accelerateMergedMeshRaycast(mergedMesh);
       const baseName = firstItem.groupPrefix || container.name || 'scene';
       mergedMesh.name = `${baseName}.batch`;
       mergedMesh.castShadow = anyCastShadow;
@@ -1418,7 +1437,9 @@ export class SceneBatchOptimizer {
         typeof obj.name === 'string' &&
         (obj.name.startsWith('familyRoom.neptuneWycombeDiningTable.chair.') ||
           obj.name.startsWith('familyRoom.neptuneWycombeDiningTable.placeSetting.') ||
-          obj.name === 'familyRoom.neptuneWycombeDiningTable.extendedSeats')
+          obj.name === 'familyRoom.neptuneWycombeDiningTable.extendedSeats' ||
+          obj.name === 'outbuildings.gym.nikeSquatRack.barbell' ||
+          obj.name === 'outbuildings.gym.nikeSquatRack.bench')
       ) {
         rigidRootsSet.add(obj);
       }
@@ -1469,6 +1490,7 @@ export class SceneBatchOptimizer {
         if (!mergedGeo) continue;
 
         const mergedMesh = new THREE.Mesh(mergedGeo, first.mesh.material);
+        accelerateMergedMeshRaycast(mergedMesh);
         mergedMesh.name = root.name ? `${root.name}.batch` : 'rigid.batch';
         mergedMesh.castShadow = first.mesh.castShadow;
         mergedMesh.receiveShadow = first.mesh.receiveShadow;
@@ -1726,6 +1748,9 @@ export class SceneBatchOptimizer {
     let maxY = Number.NEGATIVE_INFINITY;
     let maxZ = Number.NEGATIVE_INFINITY;
 
+    const subBounds = new Float32Array(list.length * 6);
+    const subRanges = new Uint32Array(list.length * 2);
+
     let vOffset = 0;
     let iOffset = 0;
 
@@ -1771,6 +1796,13 @@ export class SceneBatchOptimizer {
       const uvArr = uvAttr && uvAttr.itemSize === 2 ? uvAttr.array : undefined;
       const count = posAttr.count;
 
+      let sMinX = Number.POSITIVE_INFINITY;
+      let sMinY = Number.POSITIVE_INFINITY;
+      let sMinZ = Number.POSITIVE_INFINITY;
+      let sMaxX = Number.NEGATIVE_INFINITY;
+      let sMaxY = Number.NEGATIVE_INFINITY;
+      let sMaxZ = Number.NEGATIVE_INFINITY;
+
       for (let v = 0; v < count; v++) {
         const v3 = v * 3;
         const out3 = (vOffset + v) * 3;
@@ -1786,12 +1818,12 @@ export class SceneBatchOptimizer {
         posOut[out3 + 1] = wy;
         posOut[out3 + 2] = wz;
 
-        if (wx < minX) minX = wx;
-        if (wx > maxX) maxX = wx;
-        if (wy < minY) minY = wy;
-        if (wy > maxY) maxY = wy;
-        if (wz < minZ) minZ = wz;
-        if (wz > maxZ) maxZ = wz;
+        if (wx < sMinX) sMinX = wx;
+        if (wx > sMaxX) sMaxX = wx;
+        if (wy < sMinY) sMinY = wy;
+        if (wy > sMaxY) sMaxY = wy;
+        if (wz < sMinZ) sMinZ = wz;
+        if (wz > sMaxZ) sMaxZ = wz;
 
         if (normArr) {
           const nx = normArr[v3]!;
@@ -1816,9 +1848,27 @@ export class SceneBatchOptimizer {
         }
       }
 
+      if (sMinX < minX) minX = sMinX;
+      if (sMaxX > maxX) maxX = sMaxX;
+      if (sMinY < minY) minY = sMinY;
+      if (sMaxY > maxY) maxY = sMaxY;
+      if (sMinZ < minZ) minZ = sMinZ;
+      if (sMaxZ > maxZ) maxZ = sMaxZ;
+
+      const b6 = i * 6;
+      subBounds[b6] = sMinX;
+      subBounds[b6 + 1] = sMinY;
+      subBounds[b6 + 2] = sMinZ;
+      subBounds[b6 + 3] = sMaxX;
+      subBounds[b6 + 4] = sMaxY;
+      subBounds[b6 + 5] = sMaxZ;
+
+      const subStart = iOffset;
+      let subIdxCount = count;
       if (g.index) {
         const idxArr = g.index.array;
         const idxCount = g.index.count;
+        subIdxCount = idxCount;
         for (let k = 0; k < idxCount; k++) {
           idxOut[iOffset + k] = idxArr[k]! + vOffset;
         }
@@ -1829,6 +1879,10 @@ export class SceneBatchOptimizer {
         }
         iOffset += count;
       }
+
+      const r2 = i * 2;
+      subRanges[r2] = subStart;
+      subRanges[r2 + 1] = subIdxCount;
 
       vOffset += count;
     }
@@ -1845,8 +1899,84 @@ export class SceneBatchOptimizer {
     );
     merged.boundingBox = bbox;
     merged.boundingSphere = bbox.getBoundingSphere(new THREE.Sphere());
+    merged.userData = { subBounds, subRanges };
     return merged;
   }
+}
+
+const _raycastInverseMatrix = new THREE.Matrix4();
+const _raycastLocalRay = new THREE.Ray();
+const _raycastWorldSphere = new THREE.Sphere();
+const _raycastSphereHit = new THREE.Vector3();
+const _raycastSubBox = new THREE.Box3();
+
+/**
+ * Accelerates CPU raycasting against merged static batch meshes by testing each constituent
+ * sub-mesh's tight local AABB first and only running triangle intersection on hit sub-mesh index ranges.
+ */
+function accelerateMergedMeshRaycast(mesh: THREE.Mesh): void {
+  const geoUserData = mesh.geometry.userData as {
+    readonly subBounds?: Float32Array;
+    readonly subRanges?: Uint32Array;
+  } | undefined;
+  const subBounds = geoUserData?.subBounds;
+  const subRanges = geoUserData?.subRanges;
+  if (!subBounds || !subRanges) return;
+  const subCount = subRanges.length >>> 1;
+  if (subCount < 2) return;
+
+  mesh.raycast = function (
+    this: THREE.Mesh,
+    raycaster: THREE.Raycaster,
+    intersects: THREE.Intersection[]
+  ): void {
+    const geometry = this.geometry;
+    const material = this.material;
+    if (!material || !this.visible) return;
+
+    if (geometry.boundingSphere === null) geometry.computeBoundingSphere();
+    _raycastWorldSphere.copy(geometry.boundingSphere!).applyMatrix4(this.matrixWorld);
+
+    _raycastLocalRay.copy(raycaster.ray).recast(raycaster.near);
+    if (!_raycastWorldSphere.containsPoint(_raycastLocalRay.origin)) {
+      if (_raycastLocalRay.intersectSphere(_raycastWorldSphere, _raycastSphereHit) === null) {
+        return;
+      }
+      if (
+        _raycastLocalRay.origin.distanceToSquared(_raycastSphereHit) >
+        (raycaster.far - raycaster.near) ** 2
+      ) {
+        return;
+      }
+    }
+
+    _raycastInverseMatrix.copy(this.matrixWorld).invert();
+    _raycastLocalRay.copy(raycaster.ray).applyMatrix4(_raycastInverseMatrix);
+
+    if (geometry.boundingBox !== null && !_raycastLocalRay.intersectsBox(geometry.boundingBox)) {
+      return;
+    }
+
+    const selfWithCompute = this as unknown as {
+      _computeIntersections(
+        rc: THREE.Raycaster,
+        out: THREE.Intersection[],
+        localRay: THREE.Ray
+      ): void;
+    };
+
+    for (let s = 0; s < subCount; s++) {
+      const b6 = s * 6;
+      _raycastSubBox.min.set(subBounds[b6]!, subBounds[b6 + 1]!, subBounds[b6 + 2]!);
+      _raycastSubBox.max.set(subBounds[b6 + 3]!, subBounds[b6 + 4]!, subBounds[b6 + 5]!);
+      if (_raycastLocalRay.intersectsBox(_raycastSubBox)) {
+        const r2 = s * 2;
+        geometry.setDrawRange(subRanges[r2]!, subRanges[r2 + 1]!);
+        selfWithCompute._computeIntersections(raycaster, intersects, _raycastLocalRay);
+      }
+    }
+    geometry.setDrawRange(0, Infinity);
+  };
 }
 
 /** Trade category tag (set by `classifyScene`) so merged batches never mix trade categories. */

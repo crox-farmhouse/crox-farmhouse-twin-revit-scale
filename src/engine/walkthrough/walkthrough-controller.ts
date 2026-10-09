@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { SceneCameraPoseSnapshot } from '../../core/types/scene.ts';
 import type { FirstPersonPoseSample } from '../interaction/handlers/animated-interactable.ts';
-import { isObjectVisibleInHierarchy } from '../util/object-utils.ts';
+import { intersectVisibleObjects } from '../util/object-utils.ts';
 import type { CameraRig } from '../camera/camera-rig.ts';
 import {
   WalkthroughDoorBargeAndCollisionSolver,
@@ -579,22 +579,31 @@ export class WalkthroughController {
     if (!force && now - this.lastRaycastMs < 90) return;
     this.lastRaycastMs = now;
 
-    this.interactRaycaster.setFromCamera(this.centerNdc, this.rig.perspCamera);
-    const hits = this.interactRaycaster.intersectObjects(
-      this.getInteractiveMeshes() as THREE.Object3D[],
-      false
-    );
-    const firstHit = hits.find(
-      (h) => h.distance <= INTERACT_MAX_DISTANCE && isObjectVisibleInHierarchy(h.object)
-    );
-
-    const nextMesh = firstHit?.object ?? null;
-    const ladderPrompt = this.ladderClimb.getProximityLadderPrompt(this.footPos, nextMesh);
-    const rawPrompt = nextMesh ? this.describeInteractable(nextMesh) : null;
     const proxAnim =
       this.getProximityAnimatedInteractable?.(this.footPos.x, this.footPos.y, this.footPos.z) ??
       null;
     const activeFpPose = this.getActiveFirstPersonPose?.() ?? null;
+    if (activeFpPose !== null && proxAnim !== null) {
+      const activePrompt = proxAnim.prompt;
+      if (this.targetedMesh !== null || activePrompt !== this.targetedPrompt) {
+        this.targetedMesh = null;
+        this.targetedPrompt = activePrompt;
+        this.emit();
+      }
+      return;
+    }
+
+    this.interactRaycaster.setFromCamera(this.centerNdc, this.rig.perspCamera);
+    const hits = intersectVisibleObjects(
+      this.interactRaycaster,
+      this.getInteractiveMeshes(),
+      false
+    );
+    const firstHit = hits.find((h) => h.distance <= INTERACT_MAX_DISTANCE);
+
+    const nextMesh = firstHit?.object ?? null;
+    const ladderPrompt = this.ladderClimb.getProximityLadderPrompt(this.footPos, nextMesh);
+    const rawPrompt = nextMesh ? this.describeInteractable(nextMesh) : null;
     if (activeFpPose !== null) {
       const activePrompt = proxAnim?.prompt ?? (rawPrompt && rawPrompt.length > 0 ? rawPrompt : null);
       if (nextMesh !== this.targetedMesh || activePrompt !== this.targetedPrompt) {

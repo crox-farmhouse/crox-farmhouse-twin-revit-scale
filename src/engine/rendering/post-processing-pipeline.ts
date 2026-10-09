@@ -351,6 +351,34 @@ export class PostProcessingPipeline {
     }
 
     const scenePass = pass(scene, camera);
+    // Ensure PassNode renderTarget dimensions are always exact integers (preventing fractional
+    // viewport/scissor validation errors on fractional DPRs like 0.75, 0.85, 1.25, or 1.5).
+    const passInternal = scenePass as unknown as {
+      _width: number;
+      _height: number;
+      _pixelRatio: number;
+      _resolution: number;
+      renderTarget: THREE.RenderTarget;
+      setSize: (width: number, height: number) => void;
+    };
+    passInternal.setSize = function (width: number, height: number): void {
+      this._width = width;
+      this._height = height;
+      const effectiveWidth = Math.max(1, Math.floor(this._width * this._pixelRatio * this._resolution));
+      const effectiveHeight = Math.max(1, Math.floor(this._height * this._pixelRatio * this._resolution));
+      this.renderTarget.setSize(effectiveWidth, effectiveHeight);
+    };
+    // Work around Three.js r180 WebGPU RenderTarget.setSize bug: when `renderTarget.setSize`
+    // disposes the underlying GPU textures, increment `.version` on color and depth attachments
+    // so `NodeSampledTexture.update()` rebuilds the composite quad bind group with the new views.
+    scenePass.renderTarget.addEventListener('dispose', () => {
+      for (const tex of scenePass.renderTarget.textures) {
+        tex.version++;
+      }
+      if (scenePass.renderTarget.depthTexture) {
+        scenePass.renderTarget.depthTexture.version++;
+      }
+    });
     this.scenePass = scenePass;
 
     const colorNode = scenePass.getTextureNode('output');
@@ -716,14 +744,11 @@ export class PostProcessingPipeline {
    * or directly to the canvas when the active tier or feature flags disable post-processing.
    */
   public render(scene: THREE.Scene, camera: RigCamera | THREE.Camera, dtSeconds: number): void {
-    const anyEffectActive =
-      this.ambientOcclusionEnabled ||
-      this.bloomEnabled ||
-      this.sharpenEnabled ||
-      this.fxaaEnabled ||
-      this.motionBlurEnabled;
-
-    if (!this.postEnabled || !anyEffectActive || !isWebGpuCapableRenderer(this.renderer)) {
+    // Always render through `this.postProcessing` on WebGPURenderer across all graphics tiers
+    // (including Low tier where post effects are 0) so the scene pass keeps a constant
+    // RenderTarget, sampleCount, and toneMapping — preventing WebGPURenderer from rebuilding
+    // 4,300+ RenderObjects and recompiling 1,400+ WGSL shaders when switching graphics modes.
+    if (!isWebGpuCapableRenderer(this.renderer)) {
       this.renderer.setRenderTarget(null);
       this.renderer.render(scene, camera);
       this.hasPrevMatrix = false;
@@ -778,14 +803,15 @@ export class PostProcessingPipeline {
 
     // Normalize shutter exposure scale across variable refresh rates (60Hz–144Hz)
     const fpsNorm = THREE.MathUtils.clamp(1.0 / (Math.max(0.004, dtSeconds) * 60.0), 0.45, 1.65);
+    const postActive = this.postEnabled;
     this.uMotionBlurEnabled.value =
-      this.motionBlurEnabled && !isOrtho && cameraMoved ? 1.0 : 0.0;
+      postActive && this.motionBlurEnabled && !isOrtho && cameraMoved ? 1.0 : 0.0;
     this.uShutterScale.value = this.motionBlurStrength * fpsNorm;
     // AO is identical for ortho and perspective (shader scales by apparent on-screen size).
-    this.uAoIntensity.value = this.ambientOcclusionEnabled ? AO_INTENSITY : 0.0;
-    this.bloom.setIntensity(this.bloomEnabled ? BLOOM_INTENSITY : 0.0);
-    this.uSharpenIntensity.value = this.sharpenEnabled ? SHARPEN_INTENSITY : 0.0;
-    this.uFxaaEnabled.value = this.fxaaEnabled ? 1.0 : 0.0;
+    this.uAoIntensity.value = postActive && this.ambientOcclusionEnabled ? AO_INTENSITY : 0.0;
+    this.bloom.setIntensity(postActive && this.bloomEnabled ? BLOOM_INTENSITY : 0.0);
+    this.uSharpenIntensity.value = postActive && this.sharpenEnabled ? SHARPEN_INTENSITY : 0.0;
+    this.uFxaaEnabled.value = postActive && this.fxaaEnabled ? 1.0 : 0.0;
 
     // Render scene pass + single-pass WebGPU TSL composite to screen
     const postProcessing = this.ensurePostProcessing(this.renderer, scene, camera);
