@@ -601,13 +601,13 @@ export function buildLivingRoomCinemaWall(
   tvBiasGlow.renderOrder = -1;
   projectorScreenGroup.add(tvBiasGlow);
 
-  // Centered on the North Cinema Wall at cy = tier2FloorY + 1.27m = +0.67m
-  // (bottom of frame at y = -0.122m [47.8cm above floor], top of frame at y = +1.462m below the +1.485m ceiling joists)
+  // Centered vertically between top of 14.6cm oak baseboard (y = -0.454m) and underside of ceiling beams (y = +1.485m):
+  // cy = tier2FloorY + 1.115m = +0.515m -> equal 17.8cm clearance above baseboard (bottom at y = -0.277m) and below beams (top at y = +1.307m)
   livingRoomNorthWallFrame.placeObject(
     scene,
     projectorScreenGroup,
     northWallCenterU,
-    tier2FloorY + 1.27,
+    tier2FloorY + 1.115,
     0.0
   );
 
@@ -700,11 +700,11 @@ export function buildLivingRoomCinemaWall(
     livingRoomNorthWallFrame.placeObject(scene, spkGroup, uWall, cy, nWall);
   };
 
-  // Left, Center & Right In-Wall LCR Speakers behind the 120" acoustically transparent screen at ear/screen-center height (tier2FloorY + 1.27m)
+  // Left, Center & Right In-Wall LCR Speakers behind the 120" acoustically transparent screen at ear/screen-center height (tier2FloorY + 1.115m)
   buildArchitecturalInWallSpeaker(
     'livingRoom.inWallSpeaker.left',
     northWallCenterU - 1.02,
-    tier2FloorY + 1.27,
+    tier2FloorY + 1.115,
     0.008,
     0.22,
     0.56,
@@ -713,7 +713,7 @@ export function buildLivingRoomCinemaWall(
   buildArchitecturalInWallSpeaker(
     'livingRoom.inWallSpeaker.right',
     northWallCenterU + 1.02,
-    tier2FloorY + 1.27,
+    tier2FloorY + 1.115,
     0.008,
     0.22,
     0.56,
@@ -722,14 +722,14 @@ export function buildLivingRoomCinemaWall(
   buildArchitecturalInWallSpeaker(
     'livingRoom.inWallSpeaker.center',
     northWallCenterU,
-    tier2FloorY + 1.27,
+    tier2FloorY + 1.115,
     0.008,
     0.62,
     0.19,
     true
   );
 
-  // Dual Architectural In-Wall 10" Cinema Subwoofers behind the 120" acoustically transparent screen (`du = ±0.52m`, `cy = tier2FloorY + 1.06m`)
+  // Dual Architectural In-Wall 10" Cinema Subwoofers behind the 120" acoustically transparent screen (`du = ±0.52m`, `cy = tier2FloorY + 0.905m`)
   const subBezelGeo = createSharedGeo(new THREE.BoxGeometry(0.34, 0.34, 0.012));
   const subBaffleGeo = createSharedGeo(new THREE.BoxGeometry(0.31, 0.31, 0.014));
   const subRingGeo = createSharedGeo(new THREE.TorusGeometry(0.122, 0.006, 10, 24));
@@ -768,7 +768,7 @@ export function buildLivingRoomCinemaWall(
       scene,
       subGroup,
       northWallCenterU + subDu,
-      tier2FloorY + 1.06,
+      tier2FloorY + 0.905,
       0.008
     );
   }
