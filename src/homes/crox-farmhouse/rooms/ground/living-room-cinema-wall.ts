@@ -1684,129 +1684,193 @@ export function buildLivingRoomCinemaWall(
     groundFloorCeilingGroup.add(darkJoist);
   }
 
-  // Ceiling-Mounted 4K RGB Triple-Laser Short-Throw (0.93:1) Cinema Projector (`livingRoom.ceilingProjector` — Issue #15)
+  // Ceiling-Mounted Valerion VisionMaster Max 4K RGB Triple-Laser Projector (`livingRoom.ceilingProjector` — Issue #15)
+  // Authentic 260mm W × 186mm H × 234mm D chassis featuring 14 wrap-around metallic fin ribs,
+  // volcanic black tempered-glass front fascia, 6-blade mechanical iris, and OpticFlex bayonet short-throw lens.
   // Mounted in the center of the Living Room directly in front of (North of) `livingRoom.spineBeam`
-  // at world (-19.827, frontWallH - 0.145, -0.625), centered between ceiling joists (fjx = -19.95m and -19.55m)
-  // with lens-to-screen throw distance D = 2.05m onto the 100" (2.214m W × 1.245m H) acoustic screen.
+  // at world (-19.818, frontWallH - 0.125, -0.575), centered between ceiling joists (fjx = -19.95m and -19.55m).
   {
     const projectorGroup = new THREE.Group();
     projectorGroup.name = 'livingRoom.ceilingProjector';
-    projectorGroup.userData = { zone: 'livingRoom' };
-    projectorGroup.position.set(-19.827, frontWallH - 0.145, -0.625);
+    projectorGroup.userData = {
+      zone: 'livingRoom',
+      make: 'Valerion',
+      model: 'VisionMaster Max',
+    };
+    projectorGroup.position.set(-19.818, frontWallH - 0.125, -0.575);
     projectorGroup.rotation.y = -Math.atan2(0.705, 5.27);
 
-    const projObsidianMat = new THREE.MeshStandardMaterial({
-      color: 0x17191e, // Matte-obsidian anodized aluminium chassis
-      roughness: 0.46,
-      metalness: 0.58,
+    const valerionCoreMat = new THREE.MeshStandardMaterial({
+      color: 0x0f1115, // Deep matte volcanic obsidian inner body between the 14 ribs
+      roughness: 0.62,
+      metalness: 0.32,
     });
-    const projBronzeTrimMat = new THREE.MeshStandardMaterial({
-      color: 0x7d6242, // Brushed architectural bronze trim & lens ring
-      roughness: 0.34,
-      metalness: 0.78,
+    const valerionRibMat = new THREE.MeshStandardMaterial({
+      color: 0x262930, // Electroplated dark gunmetal-titanium wrap-around metallic fin ribs
+      roughness: 0.26,
+      metalness: 0.84,
     });
-    const projLouvreMat = new THREE.MeshStandardMaterial({
-      color: 0x0d0f13, // Deep charcoal acoustic-damped intake/exhaust cooling louvres
-      roughness: 0.65,
-      metalness: 0.35,
+    const valerionGoldAccentMat = new THREE.MeshStandardMaterial({
+      color: 0x9e7a4c, // Signature Valerion champagne-bronze/gold accent rib & OpticFlex bayonet ring
+      roughness: 0.28,
+      metalness: 0.86,
+    });
+    const volcanicGlassMat = new THREE.MeshStandardMaterial({
+      color: 0x08090c, // Glossy volcanic black tempered-glass front & rear panels
+      roughness: 0.12,
+      metalness: 0.22,
     });
     const projOpticalLensMat = new THREE.MeshStandardMaterial({
       color: 0xd8f0ff,
       emissive: 0x8ec8ff,
-      emissiveIntensity: 0.85, // Softly glowing multi-coated short-throw (0.93:1) laser projection optics
-      roughness: 0.12,
+      emissiveIntensity: 0.85, // Multi-coated aspherical RGB triple-laser projection optics
+      roughness: 0.1,
       metalness: 0.25,
     });
 
-    // Ceiling mounting plate (0.16m × 0.012m × 0.16m) attached flush to `livingRoom.ceilingBacking` between the joists
+    // 1. Official Valerion Ceiling Mount (CM-CC-01): circular ceiling rose plate, telescoping column & gimbal ball head
     const ceilingPlate = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(0.16, 0.012, 0.16)),
-      projObsidianMat
+      createSharedGeo(new THREE.CylinderGeometry(0.072, 0.076, 0.012, 24)),
+      valerionCoreMat
     );
     ceilingPlate.name = 'livingRoom.ceilingProjector.ceilingPlate';
-    ceilingPlate.position.set(0, 0.115, 0);
+    ceilingPlate.position.set(0, 0.095, 0);
     ceilingPlate.castShadow = true;
     projectorGroup.add(ceilingPlate);
 
-    // Short telescoping precision gimbal drop column (r = 0.024m, h = 0.095m)
     const dropColumn = new THREE.Mesh(
-      createSharedGeo(new THREE.CylinderGeometry(0.024, 0.024, 0.095, 20)),
-      projObsidianMat
+      createSharedGeo(new THREE.CylinderGeometry(0.018, 0.018, 0.068, 20)),
+      valerionCoreMat
     );
     dropColumn.name = 'livingRoom.ceilingProjector.dropColumn';
-    dropColumn.position.set(0, 0.062, 0);
+    dropColumn.position.set(0, 0.056, 0);
     dropColumn.castShadow = true;
     projectorGroup.add(dropColumn);
 
-    // Precision brushed-bronze gimbal articulation collar
     const gimbalCollar = new THREE.Mesh(
-      createSharedGeo(new THREE.CylinderGeometry(0.036, 0.042, 0.02, 20)),
-      projBronzeTrimMat
+      createSharedGeo(new THREE.CylinderGeometry(0.026, 0.032, 0.018, 20)),
+      valerionGoldAccentMat
     );
     gimbalCollar.name = 'livingRoom.ceilingProjector.gimbalCollar';
-    gimbalCollar.position.set(0, 0.01, 0);
+    gimbalCollar.position.set(0, 0.016, 0);
     projectorGroup.add(gimbalCollar);
 
-    // Sleek Matte-Obsidian 4K RGB Triple-Laser Cinema Projector chassis (0.42m W × 0.145m H × 0.36m D)
+    const topControlPanel = new THREE.Mesh(
+      createSharedGeo(new THREE.BoxGeometry(0.18, 0.008, 0.16)),
+      valerionCoreMat
+    );
+    topControlPanel.name = 'livingRoom.ceilingProjector.topControlPanel';
+    topControlPanel.position.set(0, 0.004, 0);
+    projectorGroup.add(topControlPanel);
+
+    // 2. Valerion VisionMaster Max Core Chassis (exact 260mm W × 186mm H × 234mm D envelope, centered at y = -0.093m)
+    const bodyCenterY = -0.093;
     const chassis = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(0.42, 0.145, 0.36)),
-      projObsidianMat
+      createSharedGeo(new THREE.BoxGeometry(0.246, 0.174, 0.228)),
+      valerionCoreMat
     );
     chassis.name = 'livingRoom.ceilingProjector.chassis';
-    chassis.position.set(0, -0.068, 0.02);
+    chassis.position.set(0, bodyCenterY, 0);
     chassis.castShadow = true;
     chassis.receiveShadow = true;
     projectorGroup.add(chassis);
 
-    // Brushed-bronze architectural top control / trim panel
-    const topControlPanel = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(0.38, 0.008, 0.32)),
-      projBronzeTrimMat
-    );
-    topControlPanel.name = 'livingRoom.ceilingProjector.topControlPanel';
-    topControlPanel.position.set(0, 0.006, 0.02);
-    projectorGroup.add(topControlPanel);
+    // 3. 14 Signature Wrap-Around Electroplated Metal Fin Ribs (260mm W × 186mm H × 7.5mm D each across the 234mm depth)
+    const ribGeo = createSharedGeo(new THREE.BoxGeometry(0.26, 0.186, 0.0075));
+    for (let rIdx = 0; rIdx < 14; rIdx++) {
+      const rz = -0.111 + (rIdx / 13) * 0.222;
+      const isFrontOrRearAccent = rIdx === 0 || rIdx === 13;
+      const ribMesh = tagHighLod(
+        new THREE.Mesh(ribGeo, isFrontOrRearAccent ? valerionGoldAccentMat : valerionRibMat),
+        16
+      );
+      ribMesh.name = `livingRoom.ceilingProjector.rib.${rIdx + 1}`;
+      ribMesh.position.set(0, bodyCenterY, rz);
+      ribMesh.castShadow = true;
+      ribMesh.receiveShadow = true;
+      projectorGroup.add(ribMesh);
+    }
 
-    // Left & Right acoustic-damped thermal cooling louvres
-    const louvreGeo = createSharedGeo(new THREE.BoxGeometry(0.012, 0.105, 0.28));
-    const coolingLouvresLeft = new THREE.Mesh(louvreGeo, projLouvreMat);
+    // Side acoustic/thermal intake louvre shadow strips recessed between the ribs on Left & Right flanks
+    const louvreGeo = createSharedGeo(new THREE.BoxGeometry(0.004, 0.142, 0.214));
+    const coolingLouvresLeft = new THREE.Mesh(louvreGeo, valerionCoreMat);
     coolingLouvresLeft.name = 'livingRoom.ceilingProjector.coolingLouvresLeft';
-    coolingLouvresLeft.position.set(-0.208, -0.068, 0.02);
+    coolingLouvresLeft.position.set(-0.124, bodyCenterY, 0);
     projectorGroup.add(coolingLouvresLeft);
 
-    const coolingLouvresRight = new THREE.Mesh(louvreGeo, projLouvreMat);
+    const coolingLouvresRight = new THREE.Mesh(louvreGeo, valerionCoreMat);
     coolingLouvresRight.name = 'livingRoom.ceilingProjector.coolingLouvresRight';
-    coolingLouvresRight.position.set(0.208, -0.068, 0.02);
+    coolingLouvresRight.position.set(0.124, bodyCenterY, 0);
     projectorGroup.add(coolingLouvresRight);
 
-    // Recessed motorized short-throw (0.93:1) multi-element glass projection lens barrel (r = 0.048m) facing North (-Z)
-    const lensBarrelGeo = new THREE.CylinderGeometry(0.048, 0.052, 0.044, 28);
+    // 4. Volcanic Black Tempered-Glass Front Fascia (Z = -0.115m) & Rear Panel (Z = +0.115m)
+    const glassPanelGeo = createSharedGeo(new THREE.BoxGeometry(0.244, 0.172, 0.004));
+    const frontGlass = new THREE.Mesh(glassPanelGeo, volcanicGlassMat);
+    frontGlass.name = 'livingRoom.ceilingProjector.frontGlass';
+    frontGlass.position.set(0, bodyCenterY, -0.115);
+    projectorGroup.add(frontGlass);
+
+    const rearGlass = tagHighLod(new THREE.Mesh(glassPanelGeo, volcanicGlassMat));
+    rearGlass.name = 'livingRoom.ceilingProjector.rearGlass';
+    rearGlass.position.set(0, bodyCenterY, 0.115);
+    projectorGroup.add(rearGlass);
+
+    // 5. OpticFlex Motorized Zoom + External Bayonet Short-Throw Conversion Lens & 6-Blade Mechanical Iris
+    //    Positioned on the upper-left quadrant of the inverted front fascia (X = -0.044m, Y = bodyCenterY - 0.012m)
+    const lensX = -0.044;
+    const lensY = bodyCenterY - 0.012;
+
+    // Stepped bayonet short-throw optical barrel protruding North (-Z) from the volcanic glass front fascia
+    const lensBarrelGeo = new THREE.CylinderGeometry(0.044, 0.049, 0.042, 28);
     lensBarrelGeo.rotateX(Math.PI / 2);
     lensBarrelGeo.computeBoundingSphere();
-    const lensBarrel = new THREE.Mesh(lensBarrelGeo, projLouvreMat);
+    const lensBarrel = new THREE.Mesh(lensBarrelGeo, valerionRibMat);
     lensBarrel.name = 'livingRoom.ceilingProjector.lensBarrel';
-    lensBarrel.position.set(0, -0.068, -0.162);
+    lensBarrel.position.set(lensX, lensY, -0.136);
     lensBarrel.castShadow = true;
     projectorGroup.add(lensBarrel);
 
-    // Brushed-bronze motorized zoom/focus ring around the front lens barrel
+    // Signature Valerion champagne-bronze/gold bayonet mount & focus ring
     const lensRing = new THREE.Mesh(
-      createSharedGeo(new THREE.TorusGeometry(0.048, 0.0045, 12, 28)),
-      projBronzeTrimMat
+      createSharedGeo(new THREE.TorusGeometry(0.045, 0.0042, 12, 28)),
+      valerionGoldAccentMat
     );
     lensRing.name = 'livingRoom.ceilingProjector.lensRing';
-    lensRing.position.set(0, -0.068, -0.182);
+    lensRing.position.set(lensX, lensY, -0.156);
     projectorGroup.add(lensRing);
 
-    // Softly glowing multi-element glass front optical element facing North toward the 100" screen at D = 2.05m
+    // 6-blade mechanical iris aperture ring inside the front optical element
+    const mechanicalIris = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.RingGeometry(0.022, 0.041, 6)),
+        valerionCoreMat
+      )
+    );
+    mechanicalIris.name = 'livingRoom.ceilingProjector.mechanicalIris';
+    mechanicalIris.rotation.y = Math.PI;
+    mechanicalIris.position.set(lensX, lensY, -0.1575);
+    projectorGroup.add(mechanicalIris);
+
+    // Multi-element aspherical glass front optical element facing North toward the 120" THX screen
     const opticalElement = new THREE.Mesh(
-      createSharedGeo(new THREE.CircleGeometry(0.044, 28)),
+      createSharedGeo(new THREE.CircleGeometry(0.041, 28)),
       projOpticalLensMat
     );
     opticalElement.name = 'livingRoom.ceilingProjector.opticalElement';
     opticalElement.rotation.y = Math.PI;
-    opticalElement.position.set(0, -0.068, -0.184);
+    opticalElement.position.set(lensX, lensY, -0.158);
     projectorGroup.add(opticalElement);
+
+    // ToF + CMOS laser autofocus sensor window on the opposite side of the front volcanic glass fascia
+    const tofSensor = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.056, 0.026, 0.004)),
+        valerionRibMat
+      )
+    );
+    tofSensor.name = 'livingRoom.ceilingProjector.tofSensor';
+    tofSensor.position.set(0.056, lensY, -0.1165);
+    projectorGroup.add(tofSensor);
 
     groundFloorCeilingGroup.add(projectorGroup);
   }
