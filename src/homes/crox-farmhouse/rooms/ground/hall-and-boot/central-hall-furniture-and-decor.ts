@@ -631,68 +631,35 @@ export function buildCentralHallFurnitureAndDecor(
     rugCanvas.height = 512;
     const rCtx = rugCanvas.getContext('2d');
     if (rCtx) {
-      // Exact Louis De Poortere "Berber Ksar 9653" Round Flatweave Jacquard Palette
-      const ivoryCream = '#ede3d1';
-      const warmLinen = '#dfd1ba';
-      const terracotta = '#b55635';
-      const rustRed = '#9b3c27';
-      const ochreMustard = '#d19234';
-      const tealBlue = '#3b6d7c';
-      const sageGreen = '#5e7a62';
-      const charcoalUmber = '#26211e';
-
-      const motifPalette = [
-        terracotta,
-        ochreMustard,
-        tealBlue,
-        rustRed,
-        ivoryCream,
-        sageGreen,
-        warmLinen,
-      ] as const;
-
-      // Base dark charcoal-umber warp ground (visible as vertical column dividers & horizontal band borders)
-      rCtx.fillStyle = charcoalUmber;
+      // Warm cream / natural ecru cotton chenille ground
+      rCtx.fillStyle = '#e3d6c5';
       rCtx.fillRect(0, 0, 512, 512);
 
-      // Helper to paint an authentic distressed Berber Ksar woven block with inner diamond/eye or stepped motif
+      // Helper to draw organic hand-woven Berber rectangle blocks with slightly irregular edges & abrashed tone
       const drawBerberBlock = (
-        bx: number,
-        by: number,
-        bw: number,
-        bh: number,
+        x: number,
+        y: number,
+        w: number,
+        h: number,
         seed: number
       ): void => {
-        const bgCol = motifPalette[seed % motifPalette.length]!;
-        const innerCol = motifPalette[(seed * 3 + 2) % motifPalette.length]!;
-        const coreCol = seed % 2 === 0 ? ivoryCream : charcoalUmber;
+        const shade = ((seed * 37) % 19) - 9;
+        const r = Math.max(0, Math.min(255, 134 + shade));
+        const g = Math.max(0, Math.min(255, 83 + Math.round(shade * 0.7)));
+        const b = Math.max(0, Math.min(255, 62 + Math.round(shade * 0.55)));
+        rCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
 
-        rCtx.fillStyle = bgCol;
-        rCtx.fillRect(bx, by, bw, bh);
-
-        if (bw >= 12 && bh >= 10) {
-          const mx = bx + bw * 0.5;
-          const my = by + bh * 0.5;
-          const rx = bw * 0.34;
-          const ry = bh * 0.34;
-
-          // Stepped Berber lozenge / diamond
-          rCtx.fillStyle = innerCol;
-          rCtx.beginPath();
-          rCtx.moveTo(mx, my - ry);
-          rCtx.lineTo(mx + rx, my);
-          rCtx.lineTo(mx, my + ry);
-          rCtx.lineTo(mx - rx, my);
-          rCtx.closePath();
-          rCtx.fill();
-
-          // Central tribal eye dot
-          rCtx.fillStyle = coreCol;
-          rCtx.fillRect(mx - 2.5, my - 2, 5, 4);
+        // Slight organic woven weft jitter along vertical edges
+        const slices = Math.max(2, Math.round(h / 4));
+        const sliceH = h / slices;
+        for (let s = 0; s < slices; s++) {
+          const jx = Math.sin(seed * 1.7 + s * 1.3) * 1.4;
+          const jw = Math.cos(seed * 2.3 + s * 0.9) * 1.2;
+          rCtx.fillRect(x + jx, y + s * sliceH, Math.max(2, w + jw), sliceH + 0.6);
         }
       };
 
-      // Helper to paint a geometric Berber checkerboard zone (upper-left & upper-right panels in Ksar 9653)
+      // Helper for irregular Berber checkerboard zones
       const drawCheckerZone = (
         x0: number,
         y0: number,
@@ -700,77 +667,73 @@ export function buildCentralHallFurnitureAndDecor(
         y1: number,
         cellW: number,
         cellH: number,
-        seedOffset: number
+        seedBase: number
       ): void => {
-        const cols = Math.floor((x1 - x0) / cellW);
-        const rows = Math.floor((y1 - y0) / cellH);
+        const cols = Math.ceil((x1 - x0) / cellW);
+        const rows = Math.ceil((y1 - y0) / cellH);
         for (let r = 0; r < rows; r++) {
+          const rowShift = Math.sin(r * 1.5 + seedBase) * 1.5;
           for (let c = 0; c < cols; c++) {
-            const isLight = (r + c) % 2 === 0;
-            rCtx.fillStyle = isLight
-              ? (r + seedOffset) % 4 === 0
-                ? warmLinen
-                : ivoryCream
-              : motifPalette[(r * 5 + c * 3 + seedOffset) % motifPalette.length]!;
-            rCtx.fillRect(x0 + c * cellW + 0.5, y0 + r * cellH + 0.5, cellW - 1, cellH - 1);
-
-            if (!isLight && cellW >= 14 && (r + c) % 3 === 0) {
-              rCtx.fillStyle = ivoryCream;
-              rCtx.fillRect(
-                x0 + (c + 0.35) * cellW,
-                y0 + (r + 0.35) * cellH,
-                cellW * 0.3,
-                cellH * 0.3
-              );
+            if ((r + c) % 2 === 0) {
+              const bx = x0 + c * cellW + rowShift;
+              const by = y0 + r * cellH;
+              if (bx < x1 && by < y1) {
+                drawBerberBlock(
+                  bx,
+                  by,
+                  Math.min(cellW * 0.96, x1 - bx),
+                  Math.min(cellH * 0.95, y1 - by),
+                  seedBase + r * 31 + c * 17
+                );
+              }
             }
           }
         }
       };
 
-      // Asymmetric 3-Column Moroccan Tribal Patchwork Grid (matching Louis De Poortere Ksar 9653):
       // 1. Left Column (x = 0..178):
-      //    - Upper-left checkerboard panel (y = 0..168)
-      drawCheckerZone(0, 0, 178, 168, 16, 15, 1);
-      //    - Lower-left horizontal tribal bands with vertical Berber lozenges & chevrons (y = 172..512)
+      //    - Top-left fine checkerboard (y = 0..130)
+      drawCheckerZone(0, 0, 178, 130, 13.5, 13.5, 11);
+      //    - Upper-mid medium checkerboard (y = 130..194)
+      drawCheckerZone(0, 130, 178, 194, 21, 16, 47);
+      //    - Mid-left wide vertical Berber stripes in two registers (y = 194..272 and y = 276..354)
       for (const [bandIdx, by0, by1] of [
-        [0, 172, 252],
-        [1, 256, 344],
-        [2, 348, 430],
-        [3, 434, 512],
+        [0, 194, 268],
+        [1, 274, 352],
       ] as const) {
-        const stripePitch = bandIdx % 2 === 0 ? 22 : 18;
+        const stripePitch = 28;
         for (let sx = 6 + bandIdx * 4; sx < 176; sx += stripePitch) {
+          drawBerberBlock(sx, by0, 15, by1 - by0, 103 + sx + bandIdx * 29);
+        }
+      }
+      //    - Bottom-left medium checkerboard (y = 354..512)
+      drawCheckerZone(0, 354, 178, 512, 18.5, 16.5, 89);
+
+      // 2. Central Main Field (x = 178..444):
+      //    - 10 horizontal registers of broken vertical Berber bars (y = 0..412)
+      const bandEdges = [0, 36, 78, 114, 154, 198, 242, 282, 326, 370, 412] as const;
+      for (let b = 0; b < bandEdges.length - 1; b++) {
+        const by0 = bandEdges[b]! + 1.5;
+        const by1 = bandEdges[b + 1]! - 1.5;
+        const bh = by1 - by0;
+        const phaseX = ((b * 7) % 5) - 2;
+        const pitchX = 19.2;
+        let colIdx = 0;
+        for (let sx = 181 + phaseX; sx < 441; sx += pitchX) {
+          const barW = 9.8 + ((b + colIdx) % 3) * 0.9;
+          const yOff = Math.sin(b * 1.9 + colIdx * 1.1) * 1.2;
           drawBerberBlock(
             sx,
-            by0 + 2,
-            stripePitch - 3,
-            by1 - by0 - 4,
-            bandIdx * 17 + sx
+            by0 + yOff,
+            barW,
+            bh - Math.abs(yOff),
+            211 + b * 41 + colIdx * 13
           );
+          colIdx++;
         }
       }
-
-      // 2. Central Main Field (x = 181..441):
-      //    - 9 horizontal Moroccan tribal tapestry registers with staggered colorful vertical blocks
-      const bandEdges = [0, 56, 114, 170, 228, 286, 346, 404, 458, 512] as const;
-      for (let b = 0; b < bandEdges.length - 1; b++) {
-        const yTop = bandEdges[b]! + 2;
-        const yBot = bandEdges[b + 1]! - 2;
-        const bh = yBot - yTop;
-        const pitchX = b % 3 === 0 ? 26 : b % 2 === 0 ? 20 : 32;
-        const phaseX = (b * 9) % 14;
-        let idx = 0;
-        for (let sx = 181 + phaseX; sx < 441; sx += pitchX) {
-          const bw = Math.min(pitchX - 3, 441 - sx);
-          if (bw > 5) {
-            drawBerberBlock(sx, yTop, bw, bh, b * 31 + idx * 7);
-          }
-          idx++;
-        }
-        // Thin horizontal ivory/ochre chain-stitch divider line between registers
-        rCtx.fillStyle = b % 2 === 0 ? ivoryCream : ochreMustard;
-        rCtx.fillRect(181, bandEdges[b + 1]! - 1.5, 260, 1.5);
-      }
+      //    - Bottom central fine checkerboard band (y = 412..512)
+      drawCheckerZone(178, 412, 444, 512, 14.5, 14.5, 313);
 
       // 3. Right Column (x = 444..512):
       //    - Upper-right small checkerboard (y = 0..234)
