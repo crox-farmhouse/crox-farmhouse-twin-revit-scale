@@ -40,13 +40,13 @@ export function buildLivingRoomCinemaWall(
     warmRoomPlasterMat,
   } = kit;
   // =========================================================================
-  // FRONT ROOM (livingRoom) NORTH WALL HOME CINEMA (Issue #15):
-  // - 100-inch (16:9, 2.214m × 1.245m active image, 2.324m × 1.355m × 0.038m velvet frame)
+  // FRONT ROOM (livingRoom) NORTH WALL HOME CINEMA (Issue #15 — 130" Max-Fit Upgrade):
+  // - 130-inch (16:9, 2.878m × 1.619m active image, 2.954m × 1.695m × 0.038m slim velvet frame)
   //   Acoustically Transparent Woven Fixed-Frame Projector Screen (`livingRoom.projectorScreen`)
-  // - Recessed Behind-Screen Architectural In-Wall LCR Speakers (`du = -0.82m, 0.0m, +0.82m` at ear/screen-center
-  //   height `tier2FloorY + 1.38m`) + Dual 10" In-Wall Cinema Subwoofers (`du = ±0.42m`, `tier2FloorY + 1.16m`)
-  // - Ceiling-Mounted 4K RGB Triple-Laser Short-Throw (0.93:1) Projector (`livingRoom.ceilingProjector`)
-  //   mounted in the center of the room directly in front of `livingRoom.spineBeam` at D = 2.05m throw distance
+  // - Recessed Behind-Screen Architectural In-Wall LCR Speakers (`du = -1.12m, 0.0m, +1.12m` at ear/screen-center
+  //   height `tier2FloorY + 1.22m`) + Dual 10" In-Wall Cinema Subwoofers (`du = ±0.56m`, `tier2FloorY + 1.02m`)
+  // - Ceiling-Mounted 4K Short-Throw (0.72:1) Laser Projector (`livingRoom.ceilingProjector`)
+  //   mounted in the center of the room directly in front of `livingRoom.spineBeam` at D = 2.08m throw distance
   // - Ruggable Vesper Olive & Gold Tufted Rug (185x275) + Loaf Cuddlemuffin Chaise Cinema Sofa in Treacle Tart Yellow Clever Velvet
   // =========================================================================
   const frNorthCutawayDescriptor: CutawayWallDescriptor = {
@@ -58,9 +58,9 @@ export function buildLivingRoomCinemaWall(
   };
   const northWallCenterU = livingRoomNorthWallFrame.length * 0.5;
 
-  // 1. 100-inch Acoustically Transparent Woven Fixed-Frame Projector Screen (Issue #15)
-  //    Active 16:9 image: 2.214m W × 1.245m H (100.0" diagonal, 0.93:1 throw ratio from D = 2.05m)
-  //    Outer 55mm black velvet-flocked aluminium frame: 2.324m W × 1.355m H × 0.038m D
+  // 1. 130-inch Acoustically Transparent Woven Fixed-Frame Projector Screen (Issue #15)
+  //    Active 16:9 image: 2.878m W × 1.619m H (130.0" diagonal — 2.45× the area of an 83" TV, 0.72:1 throw from D = 2.08m)
+  //    Outer 38mm slim black velvet-flocked aluminium frame: 2.954m W × 1.695m H × 0.038m D
   const projectorScreenGroup = new THREE.Group();
   projectorScreenGroup.name = 'livingRoom.projectorScreen';
   projectorScreenGroup.userData = { zone: 'livingRoom', cutawayWall: frNorthCutawayDescriptor };
@@ -446,25 +446,25 @@ export function buildLivingRoomCinemaWall(
     lCtx.save();
     lCtx.strokeStyle = 'rgba(255, 255, 255, 0.042)';
     lCtx.lineWidth = 1.2;
-    // Left (-0.82m), Center (0.0m), Right (+0.82m) behind-screen LCR speaker silhouettes at screen center Y = 288
+    // Left (-1.02m), Center (0.0m), Right (+1.02m) behind-screen LCR speaker silhouettes at screen center Y = 288
     for (const [spkX, isHoriz] of [
-      [133, false],
+      [119, false],
       [512, true],
-      [891, false],
+      [905, false],
     ] as const) {
-      const bw = isHoriz ? 286 : 102;
-      const bh = isHoriz ? 88 : 258;
+      const bw = isHoriz ? 238 : 85;
+      const bh = isHoriz ? 73 : 215;
       lCtx.strokeRect(spkX - bw * 0.5, 288 - bh * 0.5, bw, bh);
       const offsets: ReadonlyArray<readonly [number, number, number]> = isHoriz
         ? [
-            [-78, 0, 31],
-            [0, 0, 13],
-            [78, 0, 31],
+            [-65, 0, 26],
+            [0, 0, 11],
+            [65, 0, 26],
           ]
         : [
-            [0, -69, 31],
-            [0, 0, 13],
-            [0, 69, 31],
+            [0, -58, 26],
+            [0, 0, 11],
+            [0, 58, 26],
           ];
       for (const [dx, dy, rad] of offsets) {
         lCtx.beginPath();
@@ -475,18 +475,18 @@ export function buildLivingRoomCinemaWall(
         lCtx.stroke();
       }
     }
-    // Dual 10" in-wall cinema subwoofers at du = ±0.42m (canvas X = 318, 706; Y = 390)
-    for (const subX of [318, 706] as const) {
-      lCtx.strokeRect(subX - 78, 390 - 78, 156, 156);
+    // Dual 10" in-wall cinema subwoofers at du = ±0.52m (canvas X = 312, 712; Y = 369)
+    for (const subX of [312, 712] as const) {
+      lCtx.strokeRect(subX - 65, 369 - 65, 130, 130);
       lCtx.beginPath();
-      lCtx.arc(subX, 390, 56, 0, Math.PI * 2);
+      lCtx.arc(subX, 369, 47, 0, Math.PI * 2);
       lCtx.stroke();
       lCtx.beginPath();
-      lCtx.arc(subX, 390, 22, 0, Math.PI * 2);
+      lCtx.arc(subX, 369, 18, 0, Math.PI * 2);
       lCtx.stroke();
     }
 
-    // Fine micro-perforated acoustic weave pattern across the 100" projection surface
+    // Fine micro-perforated acoustic weave pattern across the 120" projection surface
     lCtx.fillStyle = 'rgba(0, 0, 0, 0.14)';
     for (let wy = 0; wy < 576; wy += 4) {
       lCtx.fillRect(0, wy, 1024, 1);
@@ -506,28 +506,28 @@ export function buildLivingRoomCinemaWall(
     map: lotrScreenTex,
     emissive: 0xffffff,
     emissiveMap: lotrScreenTex,
-    emissiveIntensity: 0.56, // 4K RGB Triple-Laser projected luminance on 1.0-gain acoustic weave
+    emissiveIntensity: 0.56, // 4K Laser projected luminance on 1.0-gain acoustic weave
     roughness: 0.72, // Matte micro-woven acoustically transparent front-projection fabric
     metalness: 0.02,
   });
 
-  // 100" 16:9 Fixed-Frame Acoustically Transparent Screen Dimensions:
-  // Active 16:9 image: 2.214m W × 1.245m H (100.0" diagonal)
-  // Outer 55mm velvet-flocked aluminium frame: 2.324m W × 1.355m H × 0.038m D
-  const screenActiveW = 2.214;
-  const screenActiveH = 1.245;
-  const frameBezelW = 0.055;
-  const screenOuterW = screenActiveW + frameBezelW * 2; // 2.324m
-  const screenOuterH = screenActiveH + frameBezelW * 2; // 1.355m
+  // 130" 16:9 Fixed-Frame Acoustically Transparent Screen Dimensions:
+  // Active 16:9 image: 2.878m W × 1.619m H (130.0" diagonal — 2.45× the area of an 83" TV!)
+  // Outer 38mm slim velvet-flocked aluminium frame: 2.954m W × 1.695m H × 0.038m D
+  const screenActiveW = 2.878;
+  const screenActiveH = 1.619;
+  const frameBezelW = 0.038;
+  const screenOuterW = screenActiveW + frameBezelW * 2; // 2.954m
+  const screenOuterH = screenActiveH + frameBezelW * 2; // 1.695m
   const frameDepth = 0.038;
 
   // Recessed acoustic speaker wall cavity backing behind the woven screen
   const acousticSpeakerCavity = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(2.04, 0.92, 0.006)),
+    createSharedGeo(new THREE.BoxGeometry(2.66, 1.12, 0.006)),
     acousticCavityMat
   );
   acousticSpeakerCavity.name = 'livingRoom.projectorScreen.acousticSpeakerCavity';
-  acousticSpeakerCavity.position.set(0, -0.06, 0.003);
+  acousticSpeakerCavity.position.set(0, -0.05, 0.003);
   projectorScreenGroup.add(acousticSpeakerCavity);
 
   // 4 mitred perimeter matte-black velvet-wrapped aluminium frame rails
@@ -562,7 +562,7 @@ export function buildLivingRoomCinemaWall(
   frameRight.castShadow = true;
   projectorScreenGroup.add(frameRight);
 
-  // Inner chamfered shadow bezel framing the 100" active image
+  // Inner chamfered shadow bezel framing the 130" active image
   const innerBezel = new THREE.Mesh(
     createSharedGeo(new THREE.BoxGeometry(screenActiveW + 0.016, screenActiveH + 0.016, 0.008)),
     innerChamferBezelMat
@@ -571,7 +571,7 @@ export function buildLivingRoomCinemaWall(
   innerBezel.position.set(0, 0, 0.023);
   projectorScreenGroup.add(innerBezel);
 
-  // Active 100" (2.214m × 1.245m) acoustically transparent micro-woven projection surface at nWall = 0.028m
+  // Active 130" (2.878m × 1.619m) acoustically transparent micro-woven projection surface at nWall = 0.028m
   const projectorScreenSurface = new THREE.Mesh(
     createSharedGeo(new THREE.BoxGeometry(screenActiveW, screenActiveH, 0.003)),
     projectorScreenMat
@@ -601,18 +601,18 @@ export function buildLivingRoomCinemaWall(
   tvBiasGlow.renderOrder = -1;
   projectorScreenGroup.add(tvBiasGlow);
 
-  // Centered on the North Cinema Wall at cy = tier2FloorY + 1.38m = +0.78m
-  // (bottom of frame at y = +0.1025m, top of frame at y = +1.4575m below the +1.505m ceiling joists)
+  // Centered on the North Cinema Wall at cy = tier2FloorY + 1.22m = +0.62m
+  // (bottom of frame at y = -0.2275m [37.25cm above floor, 22.25cm above skirting], top of frame at y = +1.4675m below the +1.485m ceiling joists)
   livingRoomNorthWallFrame.placeObject(
     scene,
     projectorScreenGroup,
     northWallCenterU,
-    tier2FloorY + 1.38,
+    tier2FloorY + 1.22,
     0.0
   );
 
   // 2. Behind-Screen Architectural In-Wall LCR Speakers & Dual 10" Cinema Subwoofers (Issue #15)
-  //    Recessed flush into the North wall (nWall = 0.008m) directly behind the 100" acoustically
+  //    Recessed flush into the North wall (nWall = 0.008m) directly behind the 130" acoustically
   //    transparent woven projector screen (`livingRoom.projectorScreen.screen` at nWall = 0.028m).
   const inWallBezelMat = new THREE.MeshStandardMaterial({
     color: 0x1e242b,
@@ -700,11 +700,11 @@ export function buildLivingRoomCinemaWall(
     livingRoomNorthWallFrame.placeObject(scene, spkGroup, uWall, cy, nWall);
   };
 
-  // Left, Center & Right In-Wall LCR Speakers behind the acoustically transparent screen at ear/screen-center height (tier2FloorY + 1.38m)
+  // Left, Center & Right In-Wall LCR Speakers behind the 130" acoustically transparent screen at ear/screen-center height (tier2FloorY + 1.22m)
   buildArchitecturalInWallSpeaker(
     'livingRoom.inWallSpeaker.left',
-    northWallCenterU - 0.82,
-    tier2FloorY + 1.38,
+    northWallCenterU - 1.12,
+    tier2FloorY + 1.22,
     0.008,
     0.22,
     0.56,
@@ -712,8 +712,8 @@ export function buildLivingRoomCinemaWall(
   );
   buildArchitecturalInWallSpeaker(
     'livingRoom.inWallSpeaker.right',
-    northWallCenterU + 0.82,
-    tier2FloorY + 1.38,
+    northWallCenterU + 1.12,
+    tier2FloorY + 1.22,
     0.008,
     0.22,
     0.56,
@@ -722,22 +722,22 @@ export function buildLivingRoomCinemaWall(
   buildArchitecturalInWallSpeaker(
     'livingRoom.inWallSpeaker.center',
     northWallCenterU,
-    tier2FloorY + 1.38,
+    tier2FloorY + 1.22,
     0.008,
     0.62,
     0.19,
     true
   );
 
-  // Dual Architectural In-Wall 10" Cinema Subwoofers behind the acoustically transparent screen (`du = ±0.42m`, `cy = tier2FloorY + 1.16m`)
+  // Dual Architectural In-Wall 10" Cinema Subwoofers behind the 130" acoustically transparent screen (`du = ±0.56m`, `cy = tier2FloorY + 1.02m`)
   const subBezelGeo = createSharedGeo(new THREE.BoxGeometry(0.34, 0.34, 0.012));
   const subBaffleGeo = createSharedGeo(new THREE.BoxGeometry(0.31, 0.31, 0.014));
   const subRingGeo = createSharedGeo(new THREE.TorusGeometry(0.122, 0.006, 10, 24));
   const subConeGeo = createSharedGeo(new THREE.CylinderGeometry(0.118, 0.052, 0.01, 20));
 
   for (const [subSide, subDu] of [
-    ['left', -0.42],
-    ['right', 0.42],
+    ['left', -0.56],
+    ['right', 0.56],
   ] as const) {
     const subName = `livingRoom.inWallSubwoofer.${subSide}`;
     const subGroup = new THREE.Group();
@@ -768,14 +768,14 @@ export function buildLivingRoomCinemaWall(
       scene,
       subGroup,
       northWallCenterU + subDu,
-      tier2FloorY + 1.16,
+      tier2FloorY + 1.02,
       0.008
     );
   }
 
   // 2B. Wall-light and ceiling layers (KNX `livingRoomWallLights` / `livingRoomDownlights`).
-  //     Brass up/down cylinder wall lights either side of the 100" projector screen at du = ±1.48m,
-  //     cleanly flanking the 2.324m velvet frame, and four recessed downlights in
+  //     Brass up/down cylinder wall lights either side of the 130" projector screen at du = ±1.68m,
+  //     cleanly flanking the 2.954m velvet frame, and four recessed downlights in
   //     the flat 1.601 m ceiling (measured) for the "Bright" / cleaning layer.
   {
     const wallLightBrassMat = new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.32, metalness: 0.82 });
@@ -802,7 +802,7 @@ export function buildLivingRoomCinemaWall(
     const lensGeo = createSharedGeo(new THREE.CircleGeometry(0.03, 20));
     const washGeo = createSharedGeo(new THREE.PlaneGeometry(0.2, 0.42));
 
-    for (const [side, du] of [['left', -1.48], ['right', 1.48]] as const) {
+    for (const [side, du] of [['left', -1.68], ['right', 1.68]] as const) {
       const name = `livingRoom.wallLight.${side}`;
       const fitting = new THREE.Group();
       fitting.name = name;
