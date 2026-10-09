@@ -1,5 +1,8 @@
 import * as THREE from 'three';
-import type { AnimatedInteractable } from '../../engine/interaction/handlers/animated-interactable.ts';
+import type {
+  AnimatedInteractable,
+  FirstPersonPoseSample,
+} from '../../engine/interaction/handlers/animated-interactable.ts';
 import {
   planBreakShot,
   samplePoolBreak,
@@ -46,6 +49,7 @@ const POCKET_DROP_DEPTH = 0.07;
 const RACK_SEC = 0.9;
 const RACK_LIFT = 0.04;
 const MAX_STEP_SEC = 0.05;
+const STANDING_EYE_HEIGHT = 1.68;
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -57,11 +61,20 @@ function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const u = clamp01((x - edge0) / Math.max(1e-5, edge1 - edge0));
+  return u * u * (3 - 2 * u);
+}
+
 /**
- * Click-to-break animation for a pool table: the cue addresses the cue ball, draws back and
- * strikes; the balls then follow a pre-simulated deterministic trajectory
- * ({@link simulatePoolBreak}) and pocketed balls drop out of sight. The next click re-racks every
- * ball into its build position; the click after that breaks again.
+ * First-person and 3D click-to-break animation for the 7ft Barn pool table:
+ * - When triggered in `racked` state, transitions the 1PV camera into a low shooter bridge stance
+ *   over the polished oak head rail sighting down the tapered ash cue at the white cue ball and
+ *   15-ball red/yellow triangle rack, feathers & draws the cue back, delivers an explosive break
+ *   stroke with an impact FOV punch, and rises to watch the balls scatter and drop into the
+ *   saddle-leather pockets.
+ * - When triggered in `broken` state, leans in toward the table as the pocketed and scattered
+ *   balls re-assemble into the 5-row triangle rack and D-zone, ready for the next break.
  */
 export class PoolTableBreakController implements AnimatedInteractable {
   public readonly id = POOL_TABLE_BREAK_ID;
@@ -84,11 +97,17 @@ export class PoolTableBreakController implements AnimatedInteractable {
   readonly #rackFrom: THREE.Vector3[];
   readonly #samples: PoolPoint[] = [];
   readonly #tmp = new THREE.Vector3();
+  readonly #tmpWorldFoot = new THREE.Vector3();
+  readonly #tmpWorldEye = new THREE.Vector3();
+  readonly #tmpWorldLook = new THREE.Vector3();
+  readonly #tmpLocalFoot = new THREE.Vector3();
+  readonly #invTableMatrix = new THREE.Matrix4();
 
   #phase: Phase = 'racked';
   #elapsed = 0;
   #breakNumber = 0;
   #sim: PoolSimResult | null = null;
+  #activeShot: ReturnType<typeof planBreakShot> = { dirX: 1, dirZ: 0, speedMps: 5.2 };
   /** Pocket drop per ball for the current break (sim time + pocket centre), or null. */
   #drops: ({ readonly timeSec: number; readonly x: number; readonly z: number } | null)[] = [];
 
@@ -122,20 +141,246 @@ export class PoolTableBreakController implements AnimatedInteractable {
       this.#startRack();
       return true;
     }
+    if (this.#phase === 'breaking' || this.#phase === 'racking') {
+      this.cancelFirstPerson();
+      return true;
+    }
     return false;
   }
 
   public describe(): string {
     switch (this.#phase) {
       case 'racked':
-        return 'Break';
+        return 'Break Pool Table';
       case 'broken':
-        return 'Re-rack';
+        return 'Re-Rack Pool Balls';
       case 'breaking':
-        return '';
+        return 'Finish Break Shot';
       case 'racking':
-        return '';
+        return 'Finish Re-Racking';
     }
+  }
+
+  public isFirstPersonActive(): boolean {
+    return this.#phase === 'breaking' || this.#phase === 'racking';
+  }
+
+  public cancelFirstPerson(): void {
+    if (this.#phase === 'breaking') {
+      const sim = this.#sim;
+      if (sim) {
+        const finalPositions = samplePoolBreak(sim, sim.restTimeSec + POCKET_DROP_SEC, this.#samples);
+        for (let i = 0; i < this.#balls.length; i++) {
+          const ball = this.#balls[i]!;
+          const p = finalPositions[i];
+          const drop = this.#drops[i];
+          if (drop) {
+            ball.visible = false;
+          } else if (p) {
+            ball.visible = true;
+            ball.position.set(p.x, this.#ballY, p.z);
+          }
+          ball.updateMatrixWorld(true);
+        }
+      }
+      this.#cue.position.copy(this.#cueRestPos);
+      this.#cue.quaternion.copy(this.#cueRestQuat);
+      this.#cue.updateMatrixWorld(true);
+      this.#phase = 'broken';
+    } else if (this.#phase === 'racking') {
+      for (let i = 0; i < this.#balls.length; i++) {
+        const ball = this.#balls[i]!;
+        const to = this.#rack[i]!;
+        ball.visible = true;
+        ball.position.set(to.x, this.#ballY, to.z);
+        ball.updateMatrixWorld(true);
+      }
+      this.#sim = null;
+      this.#phase = 'racked';
+    }
+  }
+
+  public isPlayerInProximityZone(footX: number, footY: number, footZ: number): boolean {
+    const tableGroup = this.#cue.parent ?? this.#balls[0]?.parent ?? null;
+    if (tableGroup) {
+      tableGroup.updateWorldMatrix(true, false);
+      this.#invTableMatrix.copy(tableGroup.matrixWorld).invert();
+      this.#tmpLocalFoot.set(footX, footY, footZ).applyMatrix4(this.#invTableMatrix);
+    } else {
+      this.#tmpLocalFoot.set(footX, footY, footZ);
+    }
+    return (
+      Math.abs(this.#tmpLocalFoot.y) <= 0.65 &&
+      this.#tmpLocalFoot.x >= -2.15 &&
+      this.#tmpLocalFoot.x <= 1.95 &&
+      this.#tmpLocalFoot.z >= -1.55 &&
+      this.#tmpLocalFoot.z <= 1.55
+    );
+  }
+
+  public sampleFirstPersonPose(): FirstPersonPoseSample | null {
+    if (!this.isFirstPersonActive()) return null;
+
+    const cueBallRack = this.#rack[0] ?? { x: -0.48, z: 0.06 };
+    const shot = this.#activeShot;
+    const dirX = shot.dirX;
+    const dirZ = shot.dirZ;
+    // Right-hand perpendicular in table local XZ
+    const perpX = -dirZ;
+    const perpZ = dirX;
+
+    let footLocalX = -1.45;
+    let footLocalZ = cueBallRack.z - dirZ * 0.95;
+    let eyeLocalX = -1.45;
+    let eyeLocalY = STANDING_EYE_HEIGHT;
+    let eyeLocalZ = footLocalZ;
+    let lookLocalX = 0.25;
+    let lookLocalY = this.#ballY;
+    let lookLocalZ = 0;
+    let rollRad = 0;
+    let fovBoostDeg = 0;
+
+    if (this.#phase === 'breaking') {
+      const t = this.#elapsed;
+      const totalDur = this.#getBreakDurationSec();
+      const standFootX = cueBallRack.x - dirX * 1.02;
+      const standFootZ = cueBallRack.z - dirZ * 1.02;
+      const bridgeFootX = cueBallRack.x - dirX * 0.92;
+      const bridgeFootZ = cueBallRack.z - dirZ * 0.92;
+      // Sight right over the ash cue shaft behind the bridge hand (`~0.66m` behind cue ball)
+      const bridgeEyeX = cueBallRack.x - dirX * 0.66 + perpX * 0.015;
+      const bridgeEyeZ = cueBallRack.z - dirZ * 0.66 + perpZ * 0.015;
+      const bridgeEyeY = this.#ballY + 0.18;
+      const aimLookX = cueBallRack.x + dirX * 0.62;
+      const aimLookZ = cueBallRack.z + dirZ * 0.62;
+
+      if (t <= CUE_ADDRESS_END) {
+        // Stage 1 (0.00s -> 0.60s): Step into shooter stance behind head rail & lean down onto bridge hand
+        const u = easeInOutCubic(clamp01(t / CUE_ADDRESS_END));
+        footLocalX = THREE.MathUtils.lerp(standFootX - dirX * 0.14, bridgeFootX, u);
+        footLocalZ = THREE.MathUtils.lerp(standFootZ - perpZ * 0.12, bridgeFootZ, u);
+        eyeLocalX = THREE.MathUtils.lerp(standFootX, bridgeEyeX, u);
+        eyeLocalZ = THREE.MathUtils.lerp(standFootZ, bridgeEyeZ, u);
+        eyeLocalY = THREE.MathUtils.lerp(STANDING_EYE_HEIGHT, bridgeEyeY, u);
+        lookLocalX = THREE.MathUtils.lerp(0.15, aimLookX, u);
+        lookLocalZ = THREE.MathUtils.lerp(0, aimLookZ, u);
+        lookLocalY = this.#ballY;
+        rollRad = 0.016 * u;
+        fovBoostDeg = -1.2 * u;
+      } else if (t <= CUE_DRAW_END) {
+        // Stage 2 (0.60s -> 1.00s): Smooth cue draw-back & razor-sharp aim down the shaft
+        const u = easeInOutCubic(clamp01((t - CUE_ADDRESS_END) / (CUE_DRAW_END - CUE_ADDRESS_END)));
+        footLocalX = bridgeFootX;
+        footLocalZ = bridgeFootZ;
+        eyeLocalX = bridgeEyeX - dirX * (0.012 * u);
+        eyeLocalZ = bridgeEyeZ - dirZ * (0.012 * u);
+        eyeLocalY = bridgeEyeY - 0.012 * u;
+        lookLocalX = aimLookX;
+        lookLocalZ = aimLookZ;
+        lookLocalY = this.#ballY - 0.004 * u;
+        rollRad = 0.016 + 0.004 * u;
+        fovBoostDeg = -1.2 - 1.4 * u; // -2.6 deg focused aim zoom at full draw
+      } else if (t <= CUE_FOLLOW_END) {
+        // Stage 3 (1.00s -> 1.20s): Explosive forward break stroke & cue-ball impact at 1.08s
+        const strokeU = clamp01((t - CUE_DRAW_END) / (CUE_FOLLOW_END - CUE_DRAW_END));
+        const impactPulse = t >= CUE_IMPACT
+          ? Math.sin(clamp01((t - CUE_IMPACT) / (CUE_FOLLOW_END - CUE_IMPACT)) * Math.PI * 0.5)
+          : 0;
+        footLocalX = bridgeFootX;
+        footLocalZ = bridgeFootZ;
+        eyeLocalX = bridgeEyeX + dirX * (0.022 * strokeU);
+        eyeLocalZ = bridgeEyeZ + dirZ * (0.022 * strokeU);
+        eyeLocalY = bridgeEyeY - 0.012 + 0.018 * impactPulse;
+        lookLocalX = THREE.MathUtils.lerp(aimLookX, 0.46, impactPulse);
+        lookLocalZ = THREE.MathUtils.lerp(aimLookZ, 0, impactPulse);
+        lookLocalY = this.#ballY + 0.014 * impactPulse;
+        rollRad = 0.020 * (1 - 0.35 * impactPulse);
+        fovBoostDeg = THREE.MathUtils.lerp(-2.6, 3.8, strokeU);
+      } else {
+        // Stage 4 (1.20s -> end): Rise smoothly from low bridge stance and watch the pack scatter across the baize
+        const riseU = easeInOutCubic(clamp01((t - CUE_FOLLOW_END) / 0.78));
+        const settleU = smoothstep(Math.max(CUE_FOLLOW_END + 0.8, totalDur - 0.65), totalDur, t);
+        footLocalX = THREE.MathUtils.lerp(bridgeFootX, standFootX, riseU);
+        footLocalZ = THREE.MathUtils.lerp(bridgeFootZ, standFootZ * (1 - settleU), riseU);
+
+        const watchEyeX = THREE.MathUtils.lerp(bridgeEyeX + dirX * 0.022, standFootX + 0.08, riseU);
+        const watchEyeZ = THREE.MathUtils.lerp(bridgeEyeZ + dirZ * 0.022, standFootZ * (1 - settleU), riseU);
+        eyeLocalX = THREE.MathUtils.lerp(watchEyeX, standFootX, settleU);
+        eyeLocalZ = watchEyeZ;
+        eyeLocalY = THREE.MathUtils.lerp(
+          bridgeEyeY + 0.006,
+          STANDING_EYE_HEIGHT,
+          easeInOutCubic(clamp01((t - CUE_FOLLOW_END) / 0.95))
+        );
+
+        // Track the live center of action of the scattering balls on the table
+        let sumX = 0;
+        let sumZ = 0;
+        let count = 0;
+        for (let i = 0; i < this.#balls.length; i++) {
+          const b = this.#balls[i]!;
+          if (b.visible) {
+            const weight = i === 0 ? 1.5 : 1.0;
+            sumX += b.position.x * weight;
+            sumZ += b.position.z * weight;
+            count += weight;
+          }
+        }
+        const packX = count > 0 ? sumX / count : 0.22;
+        const packZ = count > 0 ? sumZ / count : 0;
+        const trackedLookX = THREE.MathUtils.lerp(0.46, packX * 0.65 + 0.12, riseU);
+        const trackedLookZ = THREE.MathUtils.lerp(0, packZ * 0.55, riseU);
+
+        lookLocalX = THREE.MathUtils.lerp(trackedLookX, 0.18, settleU);
+        lookLocalZ = THREE.MathUtils.lerp(trackedLookZ, 0, settleU);
+        lookLocalY = this.#ballY;
+        rollRad = 0.013 * (1 - riseU);
+        fovBoostDeg = 3.8 * (1 - riseU);
+      }
+    } else {
+      // Phase === 'racking' (0.00s -> 0.90s): Lean in to watch the 15-ball triangle re-rack, then step back to head of table
+      const u = clamp01(this.#elapsed / RACK_SEC);
+      const arch = Math.sin(u * Math.PI);
+      const standX = cueBallRack.x - 1.02;
+      footLocalX = THREE.MathUtils.lerp(standX, -0.95, arch);
+      footLocalZ = THREE.MathUtils.lerp(0, -0.32, arch);
+      eyeLocalX = THREE.MathUtils.lerp(standX, -0.72, arch);
+      eyeLocalZ = THREE.MathUtils.lerp(0, -0.26, arch);
+      eyeLocalY = THREE.MathUtils.lerp(STANDING_EYE_HEIGHT, 1.38, arch);
+      lookLocalX = THREE.MathUtils.lerp(0.18, 0.42, arch);
+      lookLocalZ = 0;
+      lookLocalY = this.#ballY;
+      rollRad = -0.012 * arch;
+      fovBoostDeg = 1.2 * arch;
+    }
+
+    const tableGroup = this.#cue.parent ?? this.#balls[0]?.parent ?? null;
+    if (tableGroup) {
+      tableGroup.updateWorldMatrix(true, false);
+      this.#tmpWorldFoot.set(footLocalX, 0, footLocalZ).applyMatrix4(tableGroup.matrixWorld);
+      this.#tmpWorldEye.set(eyeLocalX, eyeLocalY, eyeLocalZ).applyMatrix4(tableGroup.matrixWorld);
+      this.#tmpWorldLook.set(lookLocalX, lookLocalY, lookLocalZ).applyMatrix4(tableGroup.matrixWorld);
+    } else {
+      this.#tmpWorldFoot.set(footLocalX, 0, footLocalZ);
+      this.#tmpWorldEye.set(eyeLocalX, eyeLocalY, eyeLocalZ);
+      this.#tmpWorldLook.set(lookLocalX, lookLocalY, lookLocalZ);
+    }
+
+    const dx = this.#tmpWorldLook.x - this.#tmpWorldEye.x;
+    const dy = this.#tmpWorldLook.y - this.#tmpWorldEye.y;
+    const dz = this.#tmpWorldLook.z - this.#tmpWorldEye.z;
+    const horizDist = Math.max(1e-4, Math.hypot(dx, dz));
+    const yawRad = Math.atan2(-dx, -dz);
+    const pitchRad = THREE.MathUtils.clamp(Math.atan2(dy, horizDist), -1.2, 1.2);
+
+    return {
+      eyePosition: [this.#tmpWorldEye.x, this.#tmpWorldEye.y, this.#tmpWorldEye.z],
+      footPosition: [this.#tmpWorldFoot.x, this.#tmpWorldFoot.y, this.#tmpWorldFoot.z],
+      yawRad,
+      pitchRad,
+      rollRad,
+      fovBoostDeg,
+    };
   }
 
   public collectDynamicObjects(out: Set<THREE.Object3D>): void {
@@ -149,6 +394,11 @@ export class PoolTableBreakController implements AnimatedInteractable {
     if (this.#phase === 'breaking') this.#stepBreak(this.#elapsed);
     else this.#stepRack(this.#elapsed);
     return true;
+  }
+
+  #getBreakDurationSec(): number {
+    const simRest = this.#sim ? CUE_IMPACT + this.#sim.restTimeSec + POCKET_DROP_SEC : CUE_RETURN_END;
+    return Math.max(CUE_RETURN_END, simRest);
   }
 
   // --- Break -------------------------------------------------------------------------------
@@ -167,6 +417,7 @@ export class PoolTableBreakController implements AnimatedInteractable {
       }
     }
     const shot = planBreakShot(0, cueBall, apex, this.#seed, this.#breakNumber);
+    this.#activeShot = shot;
     this.#breakNumber += 1;
     this.#sim = simulatePoolBreak(this.#spec, this.#rack, shot);
     this.#drops = this.#balls.map(() => null);
@@ -180,7 +431,12 @@ export class PoolTableBreakController implements AnimatedInteractable {
     const cosE = Math.cos(CUE_ELEVATION_RAD);
     this.#cueAxis.set(shot.dirX * cosE, -Math.sin(CUE_ELEVATION_RAD), shot.dirZ * cosE).normalize();
     this.#cueAddressQuat.setFromUnitVectors(UP, this.#cueAxis);
-    this.#tipToCentre(cueBall.x - shot.dirX * (r + CUE_TIP_GAP), cueBall.z - shot.dirZ * (r + CUE_TIP_GAP), 0, this.#cueAddressPos);
+    this.#tipToCentre(
+      cueBall.x - shot.dirX * (r + CUE_TIP_GAP),
+      cueBall.z - shot.dirZ * (r + CUE_TIP_GAP),
+      0,
+      this.#cueAddressPos
+    );
 
     this.#phase = 'breaking';
     this.#elapsed = 0;
