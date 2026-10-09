@@ -167,6 +167,8 @@ export function prepareHdrPanorama(loadedTex: THREE.DataTexture, cfg: EnvPresetC
   const yNadirFull = Math.floor(H * 0.66);
   const kneeBg = cfg.hdrMaxClampBg;
   const kneeEnv = cfg.hdrMaxClampEnv;
+  const sunCol = new THREE.Color(cfg.sunOrbColor);
+  const relocateDaySun = cfg.hdrSunV <= 0.18;
 
   for (let y = 0; y < H; y++) {
     const vTop = y / (H - 1);
@@ -175,11 +177,40 @@ export function prepareHdrPanorama(loadedTex: THREE.DataTexture, cfg: EnvPresetC
     const zenithFactor =
       cfg.zenithDarkening > 0 && vTop < 0.48 ? smoothstep(0.48, 0.05, vTop) * cfg.zenithDarkening : 0;
 
+    // Sample clean ambient sky away from the photographed sun column on this row for inpainting
+    const cleanX = Math.floor(((cfg.hdrSunU + 0.32) % 1.0) * W);
+    const cleanIdx = (y * W + cleanX) * 4;
+    const rowCleanR = Math.min(bgData[cleanIdx]!, 2.2);
+    const rowCleanG = Math.min(bgData[cleanIdx + 1]!, 2.2);
+    const rowCleanB = Math.min(bgData[cleanIdx + 2]!, 2.4);
+
     for (let x = 0; x < W; x++) {
       const i = (y * W + x) * 4;
       let r = bgData[i]!;
       let g = bgData[i + 1]!;
       let b = bgData[i + 2]!;
+
+      if (relocateDaySun && vTop < 0.46) {
+        const u = x / W;
+        const du = Math.min(Math.abs(u - cfg.hdrSunU), 1 - Math.abs(u - cfg.hdrSunU));
+        // Soft-heal the low photographed ~27° sun orb at v ≈ 0.35 into the surrounding sky
+        const oldDv = vTop - 0.35;
+        const oldDist = Math.hypot(du * 1.8, oldDv);
+        if (oldDist < 0.14) {
+          const heal = 1 - smoothstep(0.02, 0.14, oldDist);
+          r = r * (1 - heal * 0.88) + rowCleanR * (heal * 0.88);
+          g = g * (1 - heal * 0.88) + rowCleanG * (heal * 0.88);
+          b = b * (1 - heal * 0.88) + rowCleanB * (heal * 0.88);
+        }
+        // Paint the high overhead sun disc + corona at (cfg.hdrSunU, cfg.hdrSunV)
+        const newDv = vTop - cfg.hdrSunV;
+        const newDist = Math.hypot(du * 1.35, newDv);
+        const disc = Math.exp(-newDist * newDist * 1400.0) * cfg.sunOrbPeak;
+        const corona = Math.exp(-newDist * 11.0) * (cfg.sunOrbPeak * 0.15);
+        r += sunCol.r * (disc + corona);
+        g += sunCol.g * (disc + corona);
+        b += sunCol.b * (disc + corona);
+      }
 
       if (zenithFactor > 0) {
         // Deeper indigo dome: pull red/green down more than blue.

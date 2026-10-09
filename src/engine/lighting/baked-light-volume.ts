@@ -41,9 +41,9 @@ export const BAKED_VOLUME_SIZE = new THREE.Vector3().subVectors(BAKED_VOLUME_MAX
 const HDR_IRRADIANCE_RANGE = 3.5;
 
 const TOD_LIGHT_SCALE: Readonly<Record<TimeOfDay, number>> = {
-  day: 0.18,
-  dusk: 0.62,
-  night: 0.92,
+  day: 0.24,
+  dusk: 0.84,
+  night: 0.95,
 };
 
 interface SparseCircuitBake {
@@ -118,7 +118,7 @@ export const SHARED_VOLUME_INV_SIZE: THREE.Vector3 = makeNonCloning(
  * w = direct PointLight GGX BRDF cutoff distance (m)
  */
 export const SHARED_VOLUME_PARAMS: THREE.Vector4 = makeNonCloning(
-  new THREE.Vector4(0.0, 0.52, 0.38, 4.6)
+  new THREE.Vector4(0.0, 1.35, 0.20, 8.5)
 );
 
 export function syncBakedLightCameraMatrix(camera: THREE.Camera): void {
@@ -127,16 +127,16 @@ export function syncBakedLightCameraMatrix(camera: THREE.Camera): void {
 
 export function setBakedLightTierDirectCutoff(tier: GraphicsTier): void {
   const cutoffByTier: Readonly<Record<GraphicsTier, number>> = {
-    low: 3.4,
-    medium: 4.0,
-    high: 5.0,
-    ultra: 12.0,
+    low: 6.0,
+    medium: 7.5,
+    high: 9.5,
+    ultra: 14.0,
   };
   const aoStrengthByTier: Readonly<Record<GraphicsTier, number>> = {
-    low: 0.44,
-    medium: 0.42,
-    high: 0.32,
-    ultra: 0.28,
+    low: 0.24,
+    medium: 0.22,
+    high: 0.16,
+    ultra: 0.14,
   };
   SHARED_VOLUME_PARAMS.z = aoStrengthByTier[tier];
   SHARED_VOLUME_PARAMS.w = cutoffByTier[tier];

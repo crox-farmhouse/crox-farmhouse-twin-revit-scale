@@ -365,8 +365,8 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
     }
 
     float distanceFade = 1.0 - smoothstep(13.0, 20.0, scaleZ);
-    float ao = 1.0 - (occlusion * 0.25) * uAoIntensity * distanceFade;
-    return clamp(ao, 0.52, 1.0);
+    float ao = 1.0 - (occlusion * 0.18) * uAoIntensity * distanceFade;
+    return clamp(ao, 0.68, 1.0);
   }
 
   // Selective HDR bloom (threshold + mip chain computed by BloomPass at half resolution).

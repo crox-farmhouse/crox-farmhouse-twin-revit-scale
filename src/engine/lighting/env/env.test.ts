@@ -49,7 +49,8 @@ describe('presets', () => {
     // Night IBL and hemi fill stay low so interiors are lit by the fittings.
     expect(night.envIntensity).toBeLessThanOrEqual(0.1);
     expect(night.hemiIntensity).toBeLessThanOrEqual(0.1);
-    expect(dusk.hemiIntensity).toBeLessThanOrEqual(0.1);
+    expect(day.hemiIntensity).toBeGreaterThan(dusk.hemiIntensity);
+    expect(dusk.hemiIntensity).toBeGreaterThan(night.hemiIntensity);
   });
 
   it('keeps the sun above the horizon', () => {

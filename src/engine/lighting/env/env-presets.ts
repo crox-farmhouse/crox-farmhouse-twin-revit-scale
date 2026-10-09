@@ -57,68 +57,69 @@ const HDR_BASE = `${import.meta.env?.BASE_URL ?? '/'}textures/hdr/`;
  */
 export const ENV_PRESETS: Readonly<Record<TimeOfDay, EnvPresetConfig>> = {
   day: {
-    // Poly Haven "meadow_2" (CC0): clear blue sky, hedgerow trees, sun ~27° high.
+    // Poly Haven "meadow_2" (CC0): clear blue sky, hedgerow trees, sun ~72° high overhead.
     hdrUrl: `${HDR_BASE}english_countryside_day_2k.hdr`,
     hdrSunU: 0.6,
-    hdrSunV: 0.35,
+    hdrSunV: 0.10,
     skyZenith: 0x3b73b8,
     skyHorizon: 0xcbe0f2,
     horizonGlow: 0xf6efe2,
     groundPasture: 0x3c4d28,
     groundBounce: 0x2c381e,
     sunOrbColor: 0xfff8e8,
-    sunOrbPeak: 6.5,
+    sunOrbPeak: 7.5,
     // Generous sky IBL + hemisphere fill so daytime shadows in the courtyard and rooms read as
     // open sunlit daylight rather than dark gloom.
-    envIntensity: 0.88,
-    bgIntensity: 1.12,
+    envIntensity: 1.18,
+    bgIntensity: 1.15,
     bgBlurriness: 0.02,
     hdrMaxClampEnv: 4.5,
     hdrMaxClampBg: 18.0,
     zenithDarkening: 0,
-    // High summer sun (~51° elevation) from the open west-north-west (+X, +Z) side of the estate
-    // so the courtyard, patio, pergola, main house rear facade, and outbuilding fronts are bathed
-    // in direct sunlight rather than shadowed by the two-storey main house roof.
-    sunDirection: [0.52, 0.78, 0.35],
+    // High overhead summer midday sun (~74.3° elevation) so roof shadows are short (~1.7m) and
+    // the entire courtyard, driveway, patio, pergola, and lawns are bathed in direct sunlight.
+    sunDirection: [0.18, 0.96, -0.20],
     // ~5800 K daylight.
     sunColor: 0xfff4e8,
-    sunIntensity: 4.4,
-    hemiSkyColor: 0xe6f0fa,
-    hemiGroundColor: 0x626e48,
-    hemiIntensity: 0.42,
-    exposure: 1.08,
+    sunIntensity: 4.6,
+    hemiSkyColor: 0xeaf4ff,
+    hemiGroundColor: 0x7e8864,
+    hemiIntensity: 0.72,
+    exposure: 1.15,
     fogColor: 0xcad9e8,
-    fogDensity: 0.0018,
+    fogDensity: 0.0016,
   },
   dusk: {
-    // Poly Haven "spruit_sunrise" (CC0): low golden sun ~8° above a hazy field horizon.
+    // Poly Haven "spruit_sunrise" (CC0): warm golden-hour sun ~29° above the horizon.
     hdrUrl: `${HDR_BASE}english_countryside_dusk_2k.hdr`,
     hdrSunU: 0.6,
-    hdrSunV: 0.455,
-    skyZenith: 0x1d2c4a,
-    skyHorizon: 0xa8704a,
-    horizonGlow: 0xf0a060,
-    groundPasture: 0x2a2c18,
-    groundBounce: 0x1a1c10,
-    sunOrbColor: 0xffb070,
-    sunOrbPeak: 5.0,
-    envIntensity: 0.32,
-    bgIntensity: 0.62,
+    hdrSunV: 0.34,
+    skyZenith: 0x283c62,
+    skyHorizon: 0xb87e56,
+    horizonGlow: 0xf4a868,
+    groundPasture: 0x363822,
+    groundBounce: 0x28261a,
+    sunOrbColor: 0xffb878,
+    sunOrbPeak: 5.5,
+    // Boosted twilight IBL + warm hemisphere fill so shadowed areas during dusk stay clear,
+    // luminous, and readable rather than crushing to dark shadows.
+    envIntensity: 0.68,
+    bgIntensity: 0.82,
     bgBlurriness: 0.03,
-    hdrMaxClampEnv: 4.0,
+    hdrMaxClampEnv: 4.2,
     hdrMaxClampBg: 16.0,
-    zenithDarkening: 0.55,
-    // Setting sun in the west-north-west, ~11° high, raking warm light across the garden and pergola.
-    sunDirection: [0.85, 0.2, 0.49],
-    // ~2900 K golden hour.
-    sunColor: 0xffb46e,
-    sunIntensity: 1.55,
-    hemiSkyColor: 0x6a7392,
-    hemiGroundColor: 0x2a2018,
-    hemiIntensity: 0.06,
-    exposure: 1.1,
-    fogColor: 0x9c8574,
-    fogDensity: 0.0055,
+    zenithDarkening: 0.16,
+    // Golden-hour sun (~29° high) so warm rays reach right into the courtyard and across the patio.
+    sunDirection: [0.72, 0.48, 0.50],
+    // ~3100 K golden hour.
+    sunColor: 0xffbe7a,
+    sunIntensity: 2.4,
+    hemiSkyColor: 0x9eb0d4,
+    hemiGroundColor: 0x5c4c3e,
+    hemiIntensity: 0.46,
+    exposure: 1.20,
+    fogColor: 0xa68e7c,
+    fogDensity: 0.0045,
   },
   night: {
     // Poly Haven "kloppenheim_02" (CC0): moonlit field with distant village glow.
