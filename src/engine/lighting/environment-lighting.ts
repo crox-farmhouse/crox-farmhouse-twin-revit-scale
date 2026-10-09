@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
+import { float, fog, length, max, positionWorld, uniform, vec2 } from 'three/tsl';
+import { PMREMGenerator, type WebGPURenderer } from 'three/webgpu';
 import type { TimeOfDay } from '../../core/types/scene.ts';
 import { ENV_PRESETS, environmentRotationForSun } from './env/env-presets.ts';
 import {
@@ -14,12 +16,48 @@ import {
 import { bakeProceduralSky, prepareHdrPanorama } from './env/hdr-processing.ts';
 import { installOrthoSafeBackground } from './env/background-projection.ts';
 import { createSiteGround, type SiteGround } from './env/site-ground.ts';
-import { installSiteHazeFog } from './env/site-haze-fog.ts';
+import { DEFAULT_SITE_HAZE_FOOTPRINT, installSiteHazeFog } from './env/site-haze-fog.ts';
 
 const TIMES_OF_DAY: readonly TimeOfDay[] = ['day', 'dusk', 'night'];
 
+const MODE_TO_MINUTES: Readonly<Record<TimeOfDay, number>> = {
+  day: 12 * 60,
+  dusk: 19 * 60 + 30,
+  night: 23 * 60,
+};
+
 /** Duration (ms) of the eased cross-fade between time-of-day presets. */
 const TRANSITION_MS = 900;
+
+interface WebGpuPmremGenerator extends PMREMGenerator {
+  fromEquirectangular(
+    equirectangular: THREE.Texture,
+    renderTarget?: THREE.RenderTarget | null
+  ): THREE.RenderTarget;
+}
+
+function isWebGPURendererInstance(
+  renderer: WebGPURenderer | THREE.WebGLRenderer
+): renderer is WebGPURenderer {
+  return 'isWebGPURenderer' in renderer && renderer.isWebGPURenderer === true;
+}
+
+function bakeEquirectPmrem(
+  renderer: WebGPURenderer | THREE.WebGLRenderer,
+  equirect: THREE.Texture
+): THREE.Texture {
+  if (isWebGPURendererInstance(renderer)) {
+    const pmrem = new PMREMGenerator(renderer) as WebGpuPmremGenerator;
+    const target = pmrem.fromEquirectangular(equirect);
+    pmrem.dispose();
+    return target.texture;
+  }
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  const target = pmrem.fromEquirectangular(equirect);
+  pmrem.dispose();
+  return target.texture;
+}
 
 /**
  * Sky / sun / IBL / exposure / haze for the property scene in `day`, `dusk` and `night` modes.
@@ -37,6 +75,7 @@ const TRANSITION_MS = 900;
  * Nothing here depends on the camera; changes between presets fade smoothly.
  */
 export class EnvironmentLighting {
+  public currentMinutes: number = MODE_TO_MINUTES.dusk;
   private readonly scene: THREE.Scene;
   private readonly hemiLight: THREE.HemisphereLight;
   private readonly sunLight: THREE.DirectionalLight;
@@ -51,20 +90,23 @@ export class EnvironmentLighting {
   private readonly ground?: SiteGround;
   private readonly horizonScratch = new THREE.Color();
   private readonly onEnvUpdated?: () => void;
-  private readonly renderer?: THREE.WebGLRenderer;
+  private readonly renderer?: WebGPURenderer | THREE.WebGLRenderer;
+  private readonly uFogColor = uniform(new THREE.Color(ENV_PRESETS.dusk.fogColor));
+  private readonly uFogDensity = uniform(ENV_PRESETS.dusk.fogDensity);
   private currentMode: TimeOfDay = 'dusk';
   private shadowMapSize: 1024 | 2048 | 4096 = 2048;
   private hasAppliedMode = false;
+  private hasBakedProceduralEnvironments = false;
   private readonly state: EnvLightingState = stateFromPreset(ENV_PRESETS.dusk);
   private readonly transitionFrom: EnvLightingState = stateFromPreset(ENV_PRESETS.dusk);
   private readonly transitionTo: EnvLightingState = stateFromPreset(ENV_PRESETS.dusk);
   private transitionStart = 0;
   private transitionFrame = 0;
 
-  /** Creates the hemisphere + shadow-casting sun lights + HDR skybox & IBL maps. */
+  /** Creates the hemisphere + shadow-casting sun lights + site ground & haze. */
   public constructor(
     scene: THREE.Scene,
-    renderer?: THREE.WebGLRenderer,
+    renderer?: WebGPURenderer | THREE.WebGLRenderer,
     onEnvUpdated?: () => void
   ) {
     this.scene = scene;
@@ -77,6 +119,8 @@ export class EnvironmentLighting {
     this.sunLight = new THREE.DirectionalLight(0xffdfba, 1.0);
     scene.add(this.sunLight.target);
     this.sunLight.castShadow = true;
+    this.sunLight.shadow.autoUpdate = false;
+    this.sunLight.shadow.needsUpdate = true;
     this.sunLight.shadow.mapSize.set(this.shadowMapSize, this.shadowMapSize);
     this.sunLight.shadow.bias = -0.0002;
     scene.add(this.sunLight);
@@ -85,27 +129,47 @@ export class EnvironmentLighting {
       // Shader chunks are read at program compile time, so swap in the haze before the first render.
       installSiteHazeFog();
       installOrthoSafeBackground();
+      const fogOffset = positionWorld.xz.sub(
+        vec2(DEFAULT_SITE_HAZE_FOOTPRINT.centerX, DEFAULT_SITE_HAZE_FOOTPRINT.centerZ)
+      );
+      const fogDepth = max(
+        float(0),
+        length(fogOffset).sub(float(DEFAULT_SITE_HAZE_FOOTPRINT.radius))
+      );
+      const fogFactor = this.uFogDensity
+        .mul(this.uFogDensity)
+        .mul(fogDepth)
+        .mul(fogDepth)
+        .negate()
+        .exp()
+        .oneMinus();
+      scene.fogNode = fog(this.uFogColor, fogFactor);
       this.ground = createSiteGround();
       scene.add(this.ground.mesh);
-      this.bakeProceduralEnvironments(renderer);
-      this.loadHdrFiles(renderer);
     }
   }
 
-  /** Frame-0 procedural skies + PMREM IBL so the scene is lit before the 2K `.hdr` files arrive. */
-  private bakeProceduralEnvironments(renderer: THREE.WebGLRenderer): void {
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    pmrem.compileEquirectangularShader();
+  /**
+   * Frame-0 procedural skies + PMREM IBL so the scene is lit before the 2K `.hdr` files arrive.
+   * Must be called after `await renderer.init()` has resolved on `WebGPURenderer`.
+   */
+  public bakeProceduralEnvironments(
+    renderer: WebGPURenderer | THREE.WebGLRenderer | undefined = this.renderer
+  ): void {
+    if (this.hasBakedProceduralEnvironments || !renderer) return;
+    this.hasBakedProceduralEnvironments = true;
     for (const mode of TIMES_OF_DAY) {
       const sky = bakeProceduralSky(ENV_PRESETS[mode]);
       this.bgMaps[mode] = sky;
-      this.envMaps[mode] = pmrem.fromEquirectangular(sky).texture;
+      this.envMaps[mode] = bakeEquirectPmrem(renderer, sky);
     }
-    pmrem.dispose();
+    this.applyEnvironmentTextures(this.currentMode);
+    this.applyState();
+    this.loadHdrFiles(renderer);
   }
 
   /** Streams the 2K HDR panoramas, prepares them and swaps them in as each finishes. */
-  private loadHdrFiles(renderer: THREE.WebGLRenderer): void {
+  private loadHdrFiles(renderer: WebGPURenderer | THREE.WebGLRenderer): void {
     const loader = new HDRLoader().setDataType(THREE.FloatType);
     for (const mode of TIMES_OF_DAY) {
       const cfg = ENV_PRESETS[mode];
@@ -114,16 +178,13 @@ export class EnvironmentLighting {
         (loadedTex) => {
           const prepared = prepareHdrPanorama(loadedTex, cfg);
           if (!prepared) return;
-          const pmrem = new THREE.PMREMGenerator(renderer);
-          pmrem.compileEquirectangularShader();
-          const pmremTarget = pmrem.fromEquirectangular(prepared.envSource);
+          const envTexture = bakeEquirectPmrem(renderer, prepared.envSource);
           prepared.envSource.dispose();
-          pmrem.dispose();
 
           const prevBg = this.bgMaps[mode];
           const prevEnv = this.envMaps[mode];
           this.bgMaps[mode] = prepared.background;
-          this.envMaps[mode] = pmremTarget.texture;
+          this.envMaps[mode] = envTexture;
           this.horizonGround[mode].copy(prepared.horizonGround);
           prevBg?.dispose();
           prevEnv?.dispose();
@@ -174,13 +235,15 @@ export class EnvironmentLighting {
     this.sunLight.color.copy(s.sunColor);
     this.placeSun(s.sunDirection);
 
-    const fog = this.scene.fog;
-    if (fog instanceof THREE.FogExp2) {
-      fog.color.copy(s.fogColor);
-      fog.density = s.fogDensity;
-    } else if (fog instanceof THREE.Fog) {
-      fog.color.copy(s.fogColor);
+    const fogObj = this.scene.fog;
+    if (fogObj instanceof THREE.FogExp2) {
+      fogObj.color.copy(s.fogColor);
+      fogObj.density = s.fogDensity;
+    } else if (fogObj instanceof THREE.Fog) {
+      fogObj.color.copy(s.fogColor);
     }
+    this.uFogColor.value.copy(s.fogColor);
+    this.uFogDensity.value = s.fogDensity;
     if (this.scene.background instanceof THREE.Color) {
       this.scene.background.copy(s.fogColor);
     }
@@ -216,6 +279,7 @@ export class EnvironmentLighting {
     cam.near = f.near;
     cam.far = f.far;
     cam.updateProjectionMatrix();
+    this.sunLight.shadow.needsUpdate = true;
     this.updateNormalBias();
   }
 
@@ -243,7 +307,7 @@ export class EnvironmentLighting {
     shadow.mapSize.set(size, size);
     shadow.needsUpdate = true;
     this.updateNormalBias();
-    if (this.renderer) {
+    if (this.renderer && 'needsUpdate' in this.renderer.shadowMap) {
       this.renderer.shadowMap.needsUpdate = true;
     }
   }
@@ -253,6 +317,23 @@ export class EnvironmentLighting {
     return this.currentMode;
   }
 
+  /** Immediately applies the current or specified time-of-day textures and state without transition. */
+  public applyTimeOfDay(modeOrMinutes?: TimeOfDay | number, _scene?: THREE.Scene): void {
+    let mode: TimeOfDay = this.currentMode;
+    if (modeOrMinutes === 'day' || modeOrMinutes === 'dusk' || modeOrMinutes === 'night') {
+      mode = modeOrMinutes;
+    } else if (typeof modeOrMinutes === 'number' && Number.isFinite(modeOrMinutes)) {
+      this.currentMinutes = modeOrMinutes;
+    }
+    this.currentMode = mode;
+    this.currentMinutes = MODE_TO_MINUTES[mode];
+    this.hasAppliedMode = true;
+    this.cancelTransition();
+    copyEnvState(stateFromPreset(ENV_PRESETS[mode]), this.state);
+    this.applyEnvironmentTextures(mode);
+    this.applyState();
+  }
+
   /**
    * Switches to a time-of-day preset. The first call (and any call without a renderer / rAF) applies
    * immediately; later calls swap the sky textures and ease the lights, IBL, exposure and haze over
@@ -260,6 +341,7 @@ export class EnvironmentLighting {
    */
   public setTimeOfDay(mode: TimeOfDay): void {
     this.currentMode = mode;
+    this.currentMinutes = MODE_TO_MINUTES[mode];
     const target = stateFromPreset(ENV_PRESETS[mode]);
     const canAnimate =
       this.hasAppliedMode && !!this.renderer && typeof requestAnimationFrame === 'function';

@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import type { WebGPURenderer } from 'three/webgpu';
 import type { GraphicsTier } from '../../core/types/twin-ux.ts';
 import {
   detectDeviceProfile,
@@ -181,7 +182,7 @@ export interface InitialTierResolution {
 }
 
 export interface ResolveInitialTierOptions {
-  readonly renderer: THREE.WebGLRenderer;
+  readonly renderer: WebGPURenderer | THREE.WebGLRenderer;
   /**
    * Optional benchmark frame callback. Called with the heuristic tier first so the caller can apply
    * those settings before rendering. Omit to skip the benchmark and use heuristics only.

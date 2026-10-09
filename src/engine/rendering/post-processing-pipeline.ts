@@ -1,4 +1,44 @@
 import * as THREE from 'three';
+import {
+  PostProcessing,
+  type Node,
+  type PassNode,
+  type TextureNode,
+  type UniformNode,
+  type WebGPURenderer,
+} from 'three/webgpu';
+import {
+  Fn,
+  If,
+  abs,
+  acesFilmicToneMapping,
+  agxToneMapping,
+  clamp,
+  cos,
+  dot,
+  exp2,
+  float,
+  fract,
+  length,
+  log2,
+  max,
+  min,
+  mix,
+  pass,
+  pow,
+  screenCoordinate,
+  select,
+  type ShaderNodeObject,
+  sin,
+  smoothstep,
+  sqrt,
+  sRGBTransferOETF,
+  uniform,
+  uv,
+  vec2,
+  vec3,
+  vec4,
+} from 'three/tsl';
 import type { RigCamera } from '../camera/camera-rig.ts';
 import type { GraphicsTier, GraphicsTierSettings } from '../../core/types/twin-ux.ts';
 import { getTierSettings, isGraphicsTier } from '../perf/tier-settings.ts';
@@ -6,6 +46,7 @@ import { BloomPass } from './bloom-pass.ts';
 
 /** Legacy 3-step preset kept for the existing HUD; each preset maps onto a {@link GraphicsTier}. */
 export type GraphicsQualityPreset = 'ultra' | 'balanced' | 'performance';
+export type PostProcessingQualityPreset = GraphicsQualityPreset;
 
 export interface GraphicsSettingsState {
   readonly quality: GraphicsQualityPreset;
@@ -19,6 +60,7 @@ export interface GraphicsSettingsState {
   readonly sharpenEnabled: boolean;
   readonly pixelRatio: number;
 }
+export type PostProcessingSettings = GraphicsSettingsState;
 
 const PRESET_TO_TIER: Readonly<Record<GraphicsQualityPreset, GraphicsTier>> = {
   ultra: 'ultra',
@@ -46,412 +88,6 @@ export const POST_TONE_MAPPER: 'agx' | 'aces' = 'agx';
 export const RENDERER_TONE_MAPPING: THREE.ToneMapping =
   POST_TONE_MAPPER === 'agx' ? THREE.AgXToneMapping : THREE.ACESFilmicToneMapping;
 
-const POST_VERTEX_SHADER = /* glsl */ `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = vec4(position.xy, 0.0, 1.0);
-  }
-`;
-
-const POST_FRAGMENT_SHADER = /* glsl */ `
-  precision highp float;
-  ${POST_TONE_MAPPER === 'agx' ? '#define POST_TONE_MAPPER_AGX 1' : ''}
-
-  uniform sampler2D tColor;
-  uniform sampler2D tDepth;
-  uniform sampler2D tBloom;
-
-  uniform vec2 uResolution;
-  uniform vec2 uTexelSize;
-  uniform float uNear;
-  uniform float uFar;
-  uniform float uIsOrtho;
-  // Perspective-equivalent view distance for the orthographic camera (same world-units-per-pixel).
-  uniform float uOrthoEquivDepth;
-  uniform float uExposure;
-
-  uniform mat4 uCurrInvViewProj;
-  uniform mat4 uPrevViewProj;
-  uniform float uMotionBlurEnabled;
-  uniform float uShutterScale;
-  uniform float uAoIntensity;
-  uniform float uBloomIntensity;
-  uniform float uSharpenIntensity;
-  uniform float uFxaaEnabled;
-
-  varying vec2 vUv;
-
-  float interleavedGradientNoise(vec2 screenPos) {
-    vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
-    return fract(magic.z * fract(dot(screenPos, magic.xy)));
-  }
-
-  float linearizeDepth(float d) {
-    if (uIsOrtho > 0.5) {
-      return mix(uNear, uFar, d);
-    }
-    float zNdc = d * 2.0 - 1.0;
-    return (2.0 * uNear * uFar) / max(1e-5, uFar + uNear - zNdc * (uFar - uNear));
-  }
-
-  float readLinearDepth(vec2 uv) {
-    return linearizeDepth(texture2D(tDepth, clamp(uv, 0.0, 1.0)).r);
-  }
-
-  vec3 acesFilmicToneMapping(vec3 color, float exposure) {
-    const mat3 ACESInputMat = mat3(
-      vec3(0.59719, 0.07600, 0.02840),
-      vec3(0.35458, 0.90834, 0.13383),
-      vec3(0.04823, 0.01566, 0.83777)
-    );
-    const mat3 ACESOutputMat = mat3(
-      vec3( 1.60475, -0.10208, -0.00327),
-      vec3(-0.53108,  1.10813, -0.07276),
-      vec3(-0.07367, -0.00605,  1.07602)
-    );
-    color *= exposure / 0.6;
-    color = ACESInputMat * color;
-    vec3 a = color * (color + 0.0245786) - 0.000090537;
-    vec3 b = color * (0.983729 * color + 0.4329510) + 0.238081;
-    color = a / b;
-    color = ACESOutputMat * color;
-    return clamp(color, 0.0, 1.0);
-  }
-
-  // AgX (Blender / Filament fit), ported verbatim from three's tonemapping_pars_fragment.
-  vec3 agxDefaultContrastApprox(vec3 x) {
-    vec3 x2 = x * x;
-    vec3 x4 = x2 * x2;
-    return 15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x + 0.4298 * x2
-      + 0.1191 * x - 0.00232;
-  }
-
-  vec3 agxToneMapping(vec3 color, float exposure) {
-    const mat3 LINEAR_REC2020_TO_LINEAR_SRGB = mat3(
-      vec3(1.6605, -0.1246, -0.0182),
-      vec3(-0.5876, 1.1329, -0.1006),
-      vec3(-0.0728, -0.0083, 1.1187)
-    );
-    const mat3 LINEAR_SRGB_TO_LINEAR_REC2020 = mat3(
-      vec3(0.6274, 0.0691, 0.0164),
-      vec3(0.3293, 0.9195, 0.0880),
-      vec3(0.0433, 0.0113, 0.8956)
-    );
-    const mat3 AgXInsetMatrix = mat3(
-      vec3(0.856627153315983, 0.137318972929847, 0.11189821299995),
-      vec3(0.0951212405381588, 0.761241990602591, 0.0767994186031903),
-      vec3(0.0482516061458583, 0.101439036467562, 0.811302368396859)
-    );
-    const mat3 AgXOutsetMatrix = mat3(
-      vec3(1.1271005818144368, -0.1413297634984383, -0.14132976349843826),
-      vec3(-0.11060664309660323, 1.157823702216272, -0.11060664309660294),
-      vec3(-0.016493938717834573, -0.016493938717834257, 1.2519364065950405)
-    );
-    const float AgxMinEv = -12.47393;
-    const float AgxMaxEv = 4.026069;
-    color *= exposure;
-    color = LINEAR_SRGB_TO_LINEAR_REC2020 * color;
-    color = AgXInsetMatrix * color;
-    color = max(color, 1e-10);
-    color = log2(color);
-    color = (color - AgxMinEv) / (AgxMaxEv - AgxMinEv);
-    color = clamp(color, 0.0, 1.0);
-    color = agxDefaultContrastApprox(color);
-    // AgX Punchy look transform: restore crisp midtone contrast and natural colour saturation
-    // that base AgX's wide log range + inset matrix compress, while keeping highlight rolloff.
-    const vec3 agxLumaWeights = vec3(0.2126, 0.7152, 0.0722);
-    color = pow(max(color, vec3(0.0)), vec3(1.22));
-    float agxLuma = dot(color, agxLumaWeights);
-    color = clamp(agxLuma + (color - agxLuma) * 1.24, 0.0, 1.0);
-    color = AgXOutsetMatrix * color;
-    color = pow(max(vec3(0.0), color), vec3(2.2));
-    color = LINEAR_REC2020_TO_LINEAR_SRGB * color;
-    return clamp(color, 0.0, 1.0);
-  }
-
-  vec3 toneMap(vec3 color, float exposure) {
-  #ifdef POST_TONE_MAPPER_AGX
-    return agxToneMapping(color, exposure);
-  #else
-    return acesFilmicToneMapping(color, exposure);
-  #endif
-  }
-
-  vec3 linearToSrgb(vec3 value) {
-    return mix(
-      pow(max(value, vec3(0.0)), vec3(0.41666)) * 1.055 - vec3(0.055),
-      value * 12.92,
-      vec3(lessThanEqual(value, vec3(0.0031308)))
-    );
-  }
-
-  float perceptualLuma(vec3 rgb) {
-    return sqrt(max(0.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
-  }
-
-  // Directional FXAA 3.11 (3x3 neighborhood edge orientation + 6-step tangent span search
-  // + sub-pixel aliasing filter) fused with Contrast-Adaptive Sharpening (CAS).
-  vec3 computeFxaaAndCas(vec2 uv, vec3 centerColor) {
-    vec3 rgbN = texture2D(tColor, uv + vec2(0.0, uTexelSize.y)).rgb;
-    vec3 rgbS = texture2D(tColor, uv - vec2(0.0, uTexelSize.y)).rgb;
-    vec3 rgbE = texture2D(tColor, uv + vec2(uTexelSize.x, 0.0)).rgb;
-    vec3 rgbW = texture2D(tColor, uv - vec2(uTexelSize.x, 0.0)).rgb;
-
-    float lumaM = perceptualLuma(centerColor);
-    float lumaN = perceptualLuma(rgbN);
-    float lumaS = perceptualLuma(rgbS);
-    float lumaE = perceptualLuma(rgbE);
-    float lumaW = perceptualLuma(rgbW);
-
-    float lumaMin = min(lumaM, min(min(lumaN, lumaS), min(lumaE, lumaW)));
-    float lumaMax = max(lumaM, max(max(lumaN, lumaS), max(lumaE, lumaW)));
-    float lumaRange = lumaMax - lumaMin;
-
-    vec3 resultColor = centerColor;
-
-    if (uFxaaEnabled > 0.5 && lumaRange >= max(0.0312, lumaMax * 0.125)) {
-      vec3 rgbNW = texture2D(tColor, uv + vec2(-uTexelSize.x,  uTexelSize.y)).rgb;
-      vec3 rgbNE = texture2D(tColor, uv + vec2( uTexelSize.x,  uTexelSize.y)).rgb;
-      vec3 rgbSW = texture2D(tColor, uv + vec2(-uTexelSize.x, -uTexelSize.y)).rgb;
-      vec3 rgbSE = texture2D(tColor, uv + vec2( uTexelSize.x, -uTexelSize.y)).rgb;
-
-      float lumaNW = perceptualLuma(rgbNW);
-      float lumaNE = perceptualLuma(rgbNE);
-      float lumaSW = perceptualLuma(rgbSW);
-      float lumaSE = perceptualLuma(rgbSE);
-
-      float lumaDownUp = lumaS + lumaN;
-      float lumaLeftRight = lumaW + lumaE;
-      float lumaLeftCorners = lumaSW + lumaNW;
-      float lumaDownCorners = lumaSW + lumaSE;
-      float lumaRightCorners = lumaSE + lumaNE;
-      float lumaUpCorners = lumaNE + lumaNW;
-
-      float edgeHorizontal =
-        abs(-2.0 * lumaW + lumaLeftCorners) +
-        abs(-2.0 * lumaM + lumaDownUp) * 2.0 +
-        abs(-2.0 * lumaE + lumaRightCorners);
-      float edgeVertical =
-        abs(-2.0 * lumaN + lumaUpCorners) +
-        abs(-2.0 * lumaM + lumaLeftRight) * 2.0 +
-        abs(-2.0 * lumaS + lumaDownCorners);
-
-      bool isHorizontal = (edgeHorizontal >= edgeVertical);
-      float luma1 = isHorizontal ? lumaS : lumaW;
-      float luma2 = isHorizontal ? lumaN : lumaE;
-      float gradient1 = luma1 - lumaM;
-      float gradient2 = luma2 - lumaM;
-      bool is1Steepest = abs(gradient1) >= abs(gradient2);
-      float gradientScaled = 0.25 * max(abs(gradient1), abs(gradient2));
-
-      float stepLength = isHorizontal ? uTexelSize.y : uTexelSize.x;
-      float lumaLocalAverage = 0.0;
-      if (is1Steepest) {
-        stepLength = -stepLength;
-        lumaLocalAverage = 0.5 * (luma1 + lumaM);
-      } else {
-        lumaLocalAverage = 0.5 * (luma2 + lumaM);
-      }
-
-      vec2 currentUv = uv;
-      if (isHorizontal) {
-        currentUv.y += stepLength * 0.5;
-      } else {
-        currentUv.x += stepLength * 0.5;
-      }
-
-      vec2 offset = isHorizontal ? vec2(uTexelSize.x, 0.0) : vec2(0.0, uTexelSize.y);
-      vec2 uv1 = currentUv - offset;
-      vec2 uv2 = currentUv + offset;
-
-      float lumaEnd1 = perceptualLuma(texture2D(tColor, uv1).rgb) - lumaLocalAverage;
-      float lumaEnd2 = perceptualLuma(texture2D(tColor, uv2).rgb) - lumaLocalAverage;
-      bool reached1 = abs(lumaEnd1) >= gradientScaled;
-      bool reached2 = abs(lumaEnd2) >= gradientScaled;
-      bool reachedBoth = reached1 && reached2;
-
-      if (!reached1) uv1 -= offset * 1.5;
-      if (!reached2) uv2 += offset * 1.5;
-
-      if (!reachedBoth) {
-        for (int i = 0; i < 4; i++) {
-          if (!reached1) {
-            lumaEnd1 = perceptualLuma(texture2D(tColor, uv1).rgb) - lumaLocalAverage;
-          }
-          if (!reached2) {
-            lumaEnd2 = perceptualLuma(texture2D(tColor, uv2).rgb) - lumaLocalAverage;
-          }
-          reached1 = abs(lumaEnd1) >= gradientScaled;
-          reached2 = abs(lumaEnd2) >= gradientScaled;
-          reachedBoth = reached1 && reached2;
-          if (reachedBoth) break;
-          float stepMul = (i == 0) ? 2.0 : ((i == 1) ? 2.0 : ((i == 2) ? 4.0 : 8.0));
-          if (!reached1) uv1 -= offset * stepMul;
-          if (!reached2) uv2 += offset * stepMul;
-        }
-      }
-
-      float distance1 = isHorizontal ? (uv.x - uv1.x) : (uv.y - uv1.y);
-      float distance2 = isHorizontal ? (uv2.x - uv.x) : (uv2.y - uv.y);
-      bool isDirection1 = distance1 < distance2;
-      float distanceFinal = min(distance1, distance2);
-      float edgeThickness = max(1e-5, distance1 + distance2);
-      float pixelOffset = -distanceFinal / edgeThickness + 0.5;
-
-      bool isLumaCenterSmaller = lumaM < lumaLocalAverage;
-      bool correctVariation = ((isDirection1 ? lumaEnd1 : lumaEnd2) < 0.0) != isLumaCenterSmaller;
-      float finalOffset = correctVariation ? pixelOffset : 0.0;
-
-      float lumaAverage = (1.0 / 12.0) * (2.0 * (lumaDownUp + lumaLeftRight) + lumaLeftCorners + lumaRightCorners);
-      float subPixelOffset1 = clamp(abs(lumaAverage - lumaM) / max(1e-5, lumaRange), 0.0, 1.0);
-      float subPixelOffset2 = (-2.0 * subPixelOffset1 + 3.0) * subPixelOffset1 * subPixelOffset1;
-      float subPixelOffsetFinal = subPixelOffset2 * subPixelOffset2 * 0.75;
-
-      finalOffset = max(finalOffset, subPixelOffsetFinal);
-      vec2 finalUv = uv;
-      if (isHorizontal) {
-        finalUv.y += finalOffset * stepLength;
-      } else {
-        finalUv.x += finalOffset * stepLength;
-      }
-      resultColor = texture2D(tColor, finalUv).rgb;
-    }
-
-    if (uSharpenIntensity > 0.001) {
-      vec3 neighborAvg = 0.25 * (rgbN + rgbS + rgbE + rgbW);
-      float detailWeight = (1.0 - smoothstep(0.25, 0.85, lumaRange)) * uSharpenIntensity;
-      resultColor = max(vec3(0.0), resultColor + (centerColor - neighborAvg) * detailWeight);
-    }
-
-    return resultColor;
-  }
-
-  // Bilateral Screen-Space Ambient Occlusion (SSAO): 4 rotated symmetric pairs (8 depth taps total).
-  // Radius and distance fade are driven by the on-screen scale (world units per pixel), so an
-  // orthographic view produces the same AO as a perspective view at the same apparent zoom.
-  float computeContactAO(vec2 uv, float centerLinZ, float noise) {
-    float scaleZ = uIsOrtho > 0.5 ? uOrthoEquivDepth : centerLinZ;
-    if (uAoIntensity <= 0.001 || scaleZ >= 20.0) {
-      return 1.0;
-    }
-
-    float radiusPx = clamp(21.0 / max(1.2, scaleZ), 2.5, 14.5);
-    vec2 aspectStep = uTexelSize * radiusPx;
-    float baseAngle = noise * 6.2831853;
-    float c0 = cos(baseAngle);
-    float s0 = sin(baseAngle);
-    vec2 rot0 = vec2(c0, s0);
-    vec2 rot1 = vec2(-s0, c0);
-    vec2 rot2 = vec2(c0 - s0, c0 + s0) * 0.70710678;
-    vec2 rot3 = vec2(-c0 - s0, c0 - s0) * 0.70710678;
-
-    float occlusion = 0.0;
-    for (int i = 0; i < 4; i++) {
-      vec2 unitDir = (i == 0) ? rot0 : ((i == 1) ? rot1 : ((i == 2) ? rot2 : rot3));
-      float ringScale = (i == 0) ? 0.42 : ((i == 1) ? 0.65 : ((i == 2) ? 0.85 : 1.0));
-      vec2 dir = unitDir * aspectStep * ringScale;
-
-      float zPlus = readLinearDepth(uv + dir);
-      float zMinus = readLinearDepth(uv - dir);
-
-      float pairAvgZ = 0.5 * (zPlus + zMinus);
-      float delta = centerLinZ - pairAvgZ;
-      float maxSpan = max(abs(zPlus - centerLinZ), abs(zMinus - centerLinZ));
-
-      float rangeCheck = smoothstep(0.55, 0.08, maxSpan);
-      float crease = smoothstep(0.004, 0.14, delta) * rangeCheck;
-      occlusion += crease;
-    }
-
-    float distanceFade = 1.0 - smoothstep(13.0, 20.0, scaleZ);
-    float ao = 1.0 - (occlusion * 0.18) * uAoIntensity * distanceFade;
-    return clamp(ao, 0.68, 1.0);
-  }
-
-  // Selective HDR bloom (threshold + mip chain computed by BloomPass at half resolution).
-  vec3 computeBloom(vec2 uv) {
-    if (uBloomIntensity <= 0.001) {
-      return vec3(0.0);
-    }
-    return texture2D(tBloom, uv).rgb * uBloomIntensity;
-  }
-
-  void main() {
-    float rawDepth = texture2D(tDepth, vUv).r;
-    vec3 centerColor = texture2D(tColor, vUv).rgb;
-    if (rawDepth >= 0.9999) {
-      vec3 skyLdr = toneMap(centerColor + computeBloom(vUv), uExposure);
-      gl_FragColor = vec4(linearToSrgb(skyLdr), 1.0);
-      return;
-    }
-
-    float noise = interleavedGradientNoise(gl_FragCoord.xy);
-    float centerLinZ = linearizeDepth(rawDepth);
-
-    // 1. Compute per-pixel 3D camera velocity vector in screen UV space (only when camera moved)
-    vec2 velocity = vec2(0.0);
-    if (uMotionBlurEnabled > 0.5) {
-      vec4 clipPos = vec4(vUv * 2.0 - 1.0, rawDepth * 2.0 - 1.0, 1.0);
-      vec4 worldPos = uCurrInvViewProj * clipPos;
-      worldPos /= max(1e-6, worldPos.w);
-
-      vec4 prevClipPos = uPrevViewProj * worldPos;
-      if (prevClipPos.w > 1e-4) {
-        vec2 prevUv = (prevClipPos.xy / prevClipPos.w) * 0.5 + 0.5;
-        velocity = (vUv - prevUv) * uShutterScale;
-
-        float velMag = length(velocity);
-        float maxRadius = 0.028;
-        if (velMag > maxRadius) {
-          velocity *= maxRadius / velMag;
-        }
-      }
-    }
-
-    float speedPx = length(velocity * uResolution);
-    vec3 hdrColor = centerColor;
-
-    // 2. Apply 6-tap depth-aware directional shutter motion blur when moving/turning rapidly,
-    //    or Contrast-Adaptive Sharpening (CAS) when stationary/slow-moving.
-    if (uMotionBlurEnabled > 0.5 && speedPx > 1.25) {
-      vec3 accumColor = centerColor * 1.25;
-      float totalWeight = 1.25;
-
-      const int SAMPLES = 6;
-      for (int i = 0; i < SAMPLES; i++) {
-        float fi = (float(i) + noise) / float(SAMPLES) - 0.5;
-        vec2 sampleUv = clamp(vUv + velocity * fi, 0.001, 0.999);
-        vec3 sampleCol = texture2D(tColor, sampleUv).rgb;
-        float sampleLinZ = readLinearDepth(sampleUv);
-
-        float depthDiff = abs(sampleLinZ - centerLinZ);
-        float depthWeight = smoothstep(1.2, 0.08, depthDiff) * 0.75 + 0.25;
-        float windowWeight = 1.0 - abs(fi) * 0.65;
-        float w = depthWeight * windowWeight;
-
-        accumColor += sampleCol * w;
-        totalWeight += w;
-      }
-      hdrColor = accumColor / totalWeight;
-    } else if (uFxaaEnabled > 0.5 || uSharpenIntensity > 0.001) {
-      hdrColor = computeFxaaAndCas(vUv, centerColor);
-    }
-
-    // 3. Apply Screen-Space Contact Ambient Occlusion (fades out during rapid whip-pans)
-    float motionFade = 1.0 - clamp((speedPx - 4.0) / 18.0, 0.0, 0.65);
-    float ao = mix(1.0, computeContactAO(vUv, centerLinZ, noise), motionFade);
-    hdrColor *= ao;
-
-    // 4. Add selective HDR bloom around glowing bulbs, LED diffusers and halos
-    hdrColor += computeBloom(vUv);
-
-    // 5. Tone mapping (AgX or ACES, see POST_TONE_MAPPER) + sRGB output encoding
-    vec3 ldrColor = toneMap(hdrColor, uExposure);
-    gl_FragColor = vec4(linearToSrgb(ldrColor), 1.0);
-  }
-`;
-
 const STORAGE_KEY = 'crox_graphics_settings_v2';
 const AO_INTENSITY = 0.42;
 const BLOOM_INTENSITY = 0.12;
@@ -461,14 +97,35 @@ function currentDevicePixelRatio(): number {
   return typeof window !== 'undefined' && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
 }
 
+function isWebGpuCapableRenderer(
+  renderer: WebGPURenderer | THREE.WebGLRenderer
+): renderer is WebGPURenderer {
+  return 'isWebGPURenderer' in renderer && renderer.isWebGPURenderer === true;
+}
+
 export class PostProcessingPipeline {
-  private readonly renderer: THREE.WebGLRenderer;
-  private renderTarget: THREE.WebGLRenderTarget;
-  private readonly postScene: THREE.Scene;
-  private readonly postCamera: THREE.OrthographicCamera;
-  private readonly postMaterial: THREE.ShaderMaterial;
-  private readonly quad: THREE.Mesh;
+  private readonly renderer: WebGPURenderer | THREE.WebGLRenderer;
+  private postProcessing: PostProcessing | null = null;
+  private scenePass: ShaderNodeObject<PassNode> | null = null;
   private readonly bloom = new BloomPass();
+
+  // Live TSL Uniforms driving the WGSL post-processing node graph
+  private readonly uResolution: ShaderNodeObject<UniformNode<THREE.Vector2>>;
+  private readonly uTexelSize: ShaderNodeObject<UniformNode<THREE.Vector2>>;
+  private readonly uNear = uniform(0.1);
+  private readonly uFar = uniform(120.0);
+  private readonly uIsOrtho = uniform(0.0);
+  private readonly uIsLogDepth = uniform(0.0);
+  private readonly uOrthoEquivDepth = uniform(10.0);
+  private readonly uExposure: ShaderNodeObject<UniformNode<number>>;
+  private readonly uProjZ = uniform(new THREE.Vector2(-1.0, -0.2));
+  private readonly uCurrInvViewProj = uniform(new THREE.Matrix4());
+  private readonly uPrevViewProj = uniform(new THREE.Matrix4());
+  private readonly uMotionBlurEnabled = uniform(0.0);
+  private readonly uShutterScale = uniform(0.55);
+  private readonly uAoIntensity = uniform(AO_INTENSITY);
+  private readonly uSharpenIntensity = uniform(SHARPEN_INTENSITY);
+  private readonly uFxaaEnabled = uniform(1.0);
 
   private readonly currViewProj = new THREE.Matrix4();
   private readonly currInvViewProj = new THREE.Matrix4();
@@ -490,7 +147,11 @@ export class PostProcessingPipeline {
   private currentPixelRatio = 1.0;
   private lastPerspectiveProjY = DEFAULT_PERSPECTIVE_PROJ_Y;
 
-  public constructor(renderer: THREE.WebGLRenderer, initialWidth: number, initialHeight: number) {
+  public constructor(
+    renderer: WebGPURenderer | THREE.WebGLRenderer,
+    initialWidth = 1,
+    initialHeight = 1
+  ) {
     this.renderer = renderer;
     this.cssWidth = Math.max(1, initialWidth);
     this.cssHeight = Math.max(1, initialHeight);
@@ -502,58 +163,10 @@ export class PostProcessingPipeline {
     const rtWidth = Math.max(1, Math.round(this.cssWidth * this.currentPixelRatio));
     const rtHeight = Math.max(1, Math.round(this.cssHeight * this.currentPixelRatio));
 
-    const depthTexture = new THREE.DepthTexture(rtWidth, rtHeight);
-    depthTexture.format = THREE.DepthFormat;
-    depthTexture.type = THREE.UnsignedIntType;
-    depthTexture.minFilter = THREE.NearestFilter;
-    depthTexture.magFilter = THREE.NearestFilter;
-
-    this.renderTarget = new THREE.WebGLRenderTarget(rtWidth, rtHeight, {
-      type: THREE.HalfFloatType,
-      format: THREE.RGBAFormat,
-      minFilter: THREE.LinearFilter,
-      magFilter: THREE.LinearFilter,
-      generateMipmaps: false,
-      depthBuffer: true,
-      stencilBuffer: false,
-    });
-    this.renderTarget.depthTexture = depthTexture;
-
-    this.postScene = new THREE.Scene();
-    this.postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-
-    this.postMaterial = new THREE.ShaderMaterial({
-      vertexShader: POST_VERTEX_SHADER,
-      fragmentShader: POST_FRAGMENT_SHADER,
-      depthWrite: false,
-      depthTest: false,
-      toneMapped: false,
-      uniforms: {
-        tColor: { value: this.renderTarget.texture },
-        tDepth: { value: depthTexture },
-        tBloom: { value: null },
-        uResolution: { value: new THREE.Vector2(rtWidth, rtHeight) },
-        uTexelSize: { value: new THREE.Vector2(1 / rtWidth, 1 / rtHeight) },
-        uNear: { value: 0.1 },
-        uFar: { value: 120.0 },
-        uIsOrtho: { value: 0.0 },
-        uOrthoEquivDepth: { value: 10.0 },
-        uExposure: { value: renderer.toneMappingExposure },
-        uCurrInvViewProj: { value: new THREE.Matrix4() },
-        uPrevViewProj: { value: new THREE.Matrix4() },
-        uMotionBlurEnabled: { value: 0.0 },
-        uShutterScale: { value: 0.55 },
-        uAoIntensity: { value: AO_INTENSITY },
-        uBloomIntensity: { value: BLOOM_INTENSITY },
-        uSharpenIntensity: { value: SHARPEN_INTENSITY },
-        uFxaaEnabled: { value: 1.0 },
-      },
-    });
-
-    const quadGeo = new THREE.PlaneGeometry(2, 2);
-    this.quad = new THREE.Mesh(quadGeo, this.postMaterial);
-    this.quad.frustumCulled = false;
-    this.postScene.add(this.quad);
+    this.uResolution = uniform(new THREE.Vector2(rtWidth, rtHeight));
+    this.uTexelSize = uniform(new THREE.Vector2(1 / rtWidth, 1 / rtHeight));
+    this.uExposure = uniform(renderer.toneMappingExposure);
+    this.bloom.setSize(rtWidth, rtHeight);
 
     this.syncRendererPixelRatio();
   }
@@ -575,14 +188,17 @@ export class PostProcessingPipeline {
 
     const rtWidth = Math.max(1, Math.round(this.cssWidth * this.currentPixelRatio));
     const rtHeight = Math.max(1, Math.round(this.cssHeight * this.currentPixelRatio));
-    this.renderTarget.setSize(rtWidth, rtHeight);
-    (this.postMaterial.uniforms.uResolution.value as THREE.Vector2).set(rtWidth, rtHeight);
-    (this.postMaterial.uniforms.uTexelSize.value as THREE.Vector2).set(1 / rtWidth, 1 / rtHeight);
+    this.uResolution.value.set(rtWidth, rtHeight);
+    this.uTexelSize.value.set(1 / rtWidth, 1 / rtHeight);
+    this.bloom.setSize(rtWidth, rtHeight);
   }
 
-  public resize(cssWidth: number, cssHeight: number): void {
+  public resize(cssWidth: number, cssHeight: number, pixelRatio?: number): void {
     this.cssWidth = Math.max(1, cssWidth);
     this.cssHeight = Math.max(1, cssHeight);
+    if (typeof pixelRatio === 'number' && Number.isFinite(pixelRatio) && pixelRatio > 0) {
+      this.targetPixelRatio = Math.max(0.5, pixelRatio);
+    }
     this.syncRendererPixelRatio();
     this.hasPrevMatrix = false;
   }
@@ -608,13 +224,16 @@ export class PostProcessingPipeline {
 
   /**
    * Applies a graphics tier (pixel ratio, AO, bloom, sharpen, post on/off). With post disabled the
-   * scene renders straight to the canvas using the renderer's built-in ACES tone mapping, which uses
+   * scene renders straight to the canvas using the renderer's built-in tone mapping, which uses
    * the same exposure curve as the post shader so lighting looks identical either way.
    */
   public applyTierSettings(settings: GraphicsTierSettings): void {
     const prevRatio = this.targetPixelRatio;
     this.assignTierSettings(settings);
-    if (Math.abs(prevRatio - this.targetPixelRatio) > 1e-4 || this.currentPixelRatio !== this.targetPixelRatio) {
+    if (
+      Math.abs(prevRatio - this.targetPixelRatio) > 1e-4 ||
+      this.currentPixelRatio !== this.targetPixelRatio
+    ) {
       this.syncRendererPixelRatio();
     }
     this.hasPrevMatrix = false;
@@ -719,12 +338,391 @@ export class PostProcessingPipeline {
     }
   }
 
+  private ensurePostProcessing(
+    renderer: WebGPURenderer,
+    scene: THREE.Scene,
+    camera: THREE.Camera
+  ): PostProcessing {
+    if (this.postProcessing && this.scenePass) {
+      this.scenePass.scene = scene;
+      this.scenePass.camera = camera;
+      return this.postProcessing;
+    }
+
+    const scenePass = pass(scene, camera);
+    this.scenePass = scenePass;
+
+    const colorNode = scenePass.getTextureNode('output');
+    const depthNode = scenePass.getTextureNode('depth');
+
+    const postProcessing = new PostProcessing(renderer);
+    postProcessing.outputColorTransform = false;
+    postProcessing.outputNode = this.buildCompositeNode(colorNode, depthNode);
+    this.postProcessing = postProcessing;
+    return postProcessing;
+  }
+
+  private buildCompositeNode(
+    colorNode: ShaderNodeObject<TextureNode>,
+    depthNode: ShaderNodeObject<TextureNode>
+  ): ShaderNodeObject<Node> {
+    const sampleHdr = (sampleUv: ShaderNodeObject<Node>): ShaderNodeObject<Node> =>
+      (colorNode.sample(clamp(sampleUv, 0.001, 0.999)) as unknown as ShaderNodeObject<TextureNode>).level(float(0)).rgb;
+
+    const perceptualLuma = (rgb: ShaderNodeObject<Node>): ShaderNodeObject<Node> =>
+      sqrt(max(0.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+
+    const linearizeDepth = (d: ShaderNodeObject<Node>): ShaderNodeObject<Node> => {
+      const orthoLinZ = mix(this.uNear, this.uFar, d);
+      const logLinZ = this.uNear.mul(exp2(d.mul(log2(this.uFar.div(max(1e-6, this.uNear))))));
+      const zNdc = d.mul(2.0).sub(1.0);
+      const perspLinZ = this.uNear
+        .mul(this.uFar)
+        .mul(2.0)
+        .div(max(1e-5, this.uFar.add(this.uNear).sub(zNdc.mul(this.uFar.sub(this.uNear)))));
+      return select(
+        this.uIsOrtho.greaterThan(0.5),
+        orthoLinZ,
+        select(this.uIsLogDepth.greaterThan(0.5), logLinZ, perspLinZ)
+      );
+    };
+
+    const readLinearDepth = (sampleUv: ShaderNodeObject<Node>): ShaderNodeObject<Node> =>
+      linearizeDepth(depthNode.sample(clamp(sampleUv, 0.001, 0.999)).r);
+
+    const toneMap = (hdrColor: ShaderNodeObject<Node>): ShaderNodeObject<Node> => {
+      if (POST_TONE_MAPPER === 'agx') {
+        const base = agxToneMapping(hdrColor, this.uExposure);
+        // AgX Punchy midtone contrast & natural colour saturation preservation
+        const contrasted = pow(max(base, vec3(0.0)), vec3(1.12));
+        const agxLuma = dot(contrasted, vec3(0.2126, 0.7152, 0.0722));
+        return clamp(vec3(agxLuma).add(contrasted.sub(agxLuma).mul(1.16)), 0.0, 1.0);
+      }
+      return clamp(acesFilmicToneMapping(hdrColor, this.uExposure), 0.0, 1.0);
+    };
+
+    // Directional FXAA 3.11 (3x3 neighborhood edge orientation + tangent span search
+    // + sub-pixel aliasing filter) fused with Contrast-Adaptive Sharpening (CAS).
+    const computeFxaaAndCas = (
+      vUv: ShaderNodeObject<Node>,
+      centerColor: ShaderNodeObject<Node>
+    ): ShaderNodeObject<Node> => {
+      const rgbN = sampleHdr(vUv.add(vec2(0.0, this.uTexelSize.y))).toVar();
+      const rgbS = sampleHdr(vUv.sub(vec2(0.0, this.uTexelSize.y))).toVar();
+      const rgbE = sampleHdr(vUv.add(vec2(this.uTexelSize.x, 0.0))).toVar();
+      const rgbW = sampleHdr(vUv.sub(vec2(this.uTexelSize.x, 0.0))).toVar();
+
+      const lumaM = perceptualLuma(centerColor).toVar();
+      const lumaN = perceptualLuma(rgbN).toVar();
+      const lumaS = perceptualLuma(rgbS).toVar();
+      const lumaE = perceptualLuma(rgbE).toVar();
+      const lumaW = perceptualLuma(rgbW).toVar();
+
+      const lumaMin = min(lumaM, min(min(lumaN, lumaS), min(lumaE, lumaW))).toVar();
+      const lumaMax = max(lumaM, max(max(lumaN, lumaS), max(lumaE, lumaW))).toVar();
+      const lumaRange = lumaMax.sub(lumaMin).toVar();
+
+      const resultColor = vec3(centerColor).toVar();
+
+      If(
+        this.uFxaaEnabled
+          .greaterThan(0.5)
+          .and(lumaRange.greaterThanEqual(max(0.0312, lumaMax.mul(0.125)))),
+        () => {
+          const rgbNW = sampleHdr(vUv.add(vec2(this.uTexelSize.x.negate(), this.uTexelSize.y)));
+          const rgbNE = sampleHdr(vUv.add(vec2(this.uTexelSize.x, this.uTexelSize.y)));
+          const rgbSW = sampleHdr(
+            vUv.add(vec2(this.uTexelSize.x.negate(), this.uTexelSize.y.negate()))
+          );
+          const rgbSE = sampleHdr(vUv.add(vec2(this.uTexelSize.x, this.uTexelSize.y.negate())));
+
+          const lumaNW = perceptualLuma(rgbNW);
+          const lumaNE = perceptualLuma(rgbNE);
+          const lumaSW = perceptualLuma(rgbSW);
+          const lumaSE = perceptualLuma(rgbSE);
+
+          const lumaDownUp = lumaS.add(lumaN);
+          const lumaLeftRight = lumaW.add(lumaE);
+          const lumaLeftCorners = lumaSW.add(lumaNW);
+          const lumaDownCorners = lumaSW.add(lumaSE);
+          const lumaRightCorners = lumaSE.add(lumaNE);
+          const lumaUpCorners = lumaNE.add(lumaNW);
+
+          const edgeHorizontal = abs(lumaW.mul(-2.0).add(lumaLeftCorners))
+            .add(abs(lumaM.mul(-2.0).add(lumaDownUp)).mul(2.0))
+            .add(abs(lumaE.mul(-2.0).add(lumaRightCorners)));
+          const edgeVertical = abs(lumaN.mul(-2.0).add(lumaUpCorners))
+            .add(abs(lumaM.mul(-2.0).add(lumaLeftRight)).mul(2.0))
+            .add(abs(lumaS.mul(-2.0).add(lumaDownCorners)));
+
+          const isHorizontal = edgeHorizontal.greaterThanEqual(edgeVertical).toVar();
+          const luma1 = select(isHorizontal, lumaS, lumaW);
+          const luma2 = select(isHorizontal, lumaN, lumaE);
+          const gradient1 = luma1.sub(lumaM);
+          const gradient2 = luma2.sub(lumaM);
+          const is1Steepest = abs(gradient1).greaterThanEqual(abs(gradient2));
+          const gradientScaled = max(abs(gradient1), abs(gradient2)).mul(0.25).toVar();
+
+          const baseStep = select(isHorizontal, this.uTexelSize.y, this.uTexelSize.x);
+          const stepLength = select(is1Steepest, baseStep.negate(), baseStep).toVar();
+          const lumaLocalAverage = select(
+            is1Steepest,
+            luma1.add(lumaM).mul(0.5),
+            luma2.add(lumaM).mul(0.5)
+          ).toVar();
+
+          const currentUv = vec2(
+            select(isHorizontal, vUv.x, vUv.x.add(stepLength.mul(0.5))),
+            select(isHorizontal, vUv.y.add(stepLength.mul(0.5)), vUv.y)
+          );
+
+          const offset = select(
+            isHorizontal,
+            vec2(this.uTexelSize.x, 0.0),
+            vec2(0.0, this.uTexelSize.y)
+          ).toVar();
+          const uv1 = currentUv.sub(offset).toVar();
+          const uv2 = currentUv.add(offset).toVar();
+
+          const lumaEnd1 = perceptualLuma(sampleHdr(uv1)).sub(lumaLocalAverage).toVar();
+          const lumaEnd2 = perceptualLuma(sampleHdr(uv2)).sub(lumaLocalAverage).toVar();
+          const reached1 = abs(lumaEnd1).greaterThanEqual(gradientScaled).toVar();
+          const reached2 = abs(lumaEnd2).greaterThanEqual(gradientScaled).toVar();
+
+          uv1.assign(select(reached1, uv1, uv1.sub(offset.mul(1.5))));
+          uv2.assign(select(reached2, uv2, uv2.add(offset.mul(1.5))));
+
+          const stepMultipliers: readonly number[] = [2.0, 2.0, 4.0, 8.0];
+          for (const stepMul of stepMultipliers) {
+            If(reached1.and(reached2).not(), () => {
+              If(reached1.not(), () => {
+                lumaEnd1.assign(perceptualLuma(sampleHdr(uv1)).sub(lumaLocalAverage));
+              });
+              If(reached2.not(), () => {
+                lumaEnd2.assign(perceptualLuma(sampleHdr(uv2)).sub(lumaLocalAverage));
+              });
+              reached1.assign(abs(lumaEnd1).greaterThanEqual(gradientScaled));
+              reached2.assign(abs(lumaEnd2).greaterThanEqual(gradientScaled));
+              uv1.assign(select(reached1, uv1, uv1.sub(offset.mul(stepMul))));
+              uv2.assign(select(reached2, uv2, uv2.add(offset.mul(stepMul))));
+            });
+          }
+
+          const distance1 = select(isHorizontal, vUv.x.sub(uv1.x), vUv.y.sub(uv1.y));
+          const distance2 = select(isHorizontal, uv2.x.sub(vUv.x), uv2.y.sub(vUv.y));
+          const isDirection1 = distance1.lessThan(distance2);
+          const distanceFinal = min(distance1, distance2);
+          const edgeThickness = max(1e-5, distance1.add(distance2));
+          const pixelOffset = distanceFinal.negate().div(edgeThickness).add(0.5);
+
+          const isLumaCenterSmaller = lumaM.lessThan(lumaLocalAverage);
+          const chosenEndLuma = select(isDirection1, lumaEnd1, lumaEnd2);
+          const correctVariation = chosenEndLuma.lessThan(0.0).notEqual(isLumaCenterSmaller);
+          const finalOffset = select(correctVariation, pixelOffset, float(0.0)).toVar();
+
+          const lumaAverage = lumaDownUp
+            .add(lumaLeftRight)
+            .mul(2.0)
+            .add(lumaLeftCorners)
+            .add(lumaRightCorners)
+            .mul(1.0 / 12.0);
+          const subPixelOffset1 = clamp(
+            abs(lumaAverage.sub(lumaM)).div(max(1e-5, lumaRange)),
+            0.0,
+            1.0
+          );
+          const subPixelOffset2 = subPixelOffset1
+            .mul(-2.0)
+            .add(3.0)
+            .mul(subPixelOffset1)
+            .mul(subPixelOffset1);
+          const subPixelOffsetFinal = subPixelOffset2.mul(subPixelOffset2).mul(0.75);
+
+          finalOffset.assign(max(finalOffset, subPixelOffsetFinal));
+          const finalUv = vec2(
+            select(isHorizontal, vUv.x, vUv.x.add(finalOffset.mul(stepLength))),
+            select(isHorizontal, vUv.y.add(finalOffset.mul(stepLength)), vUv.y)
+          );
+          resultColor.assign(sampleHdr(finalUv));
+        }
+      );
+
+      If(this.uSharpenIntensity.greaterThan(0.001), () => {
+        const neighborAvg = rgbN.add(rgbS).add(rgbE).add(rgbW).mul(0.25);
+        const detailWeight = float(1.0)
+          .sub(smoothstep(0.25, 0.85, lumaRange))
+          .mul(this.uSharpenIntensity);
+        resultColor.assign(
+          max(vec3(0.0), resultColor.add(centerColor.sub(neighborAvg).mul(detailWeight)))
+        );
+      });
+
+      return resultColor;
+    };
+
+    // Bilateral Screen-Space Ambient Occlusion (SSAO): 4 rotated symmetric pairs (8 depth taps total).
+    // Radius and distance fade are driven by the on-screen scale (world units per pixel), so an
+    // orthographic view produces the same AO as a perspective view at the same apparent zoom.
+    const computeContactAO = (
+      vUv: ShaderNodeObject<Node>,
+      centerLinZ: ShaderNodeObject<Node>,
+      noise: ShaderNodeObject<Node>
+    ): ShaderNodeObject<Node> => {
+      const scaleZ = select(
+        this.uIsOrtho.greaterThan(0.5),
+        this.uOrthoEquivDepth,
+        centerLinZ
+      ).toVar();
+      const aoResult = float(1.0).toVar();
+
+      If(this.uAoIntensity.greaterThan(0.001).and(scaleZ.lessThan(20.0)), () => {
+        const radiusPx = clamp(float(21.0).div(max(1.2, scaleZ)), 2.5, 14.5);
+        const aspectStep = this.uTexelSize.mul(radiusPx).toVar();
+        const baseAngle = noise.mul(6.2831853);
+        const c0 = cos(baseAngle).toVar();
+        const s0 = sin(baseAngle).toVar();
+
+        const rotDirs: readonly [ShaderNodeObject<Node>, number][] = [
+          [vec2(c0, s0), 0.42],
+          [vec2(s0.negate(), c0), 0.65],
+          [vec2(c0.sub(s0), c0.add(s0)).mul(0.70710678), 0.85],
+          [vec2(c0.negate().sub(s0), c0.sub(s0)).mul(0.70710678), 1.0],
+        ];
+
+        const occlusion = float(0.0).toVar();
+        for (const [unitDir, ringScale] of rotDirs) {
+          const dir = unitDir.mul(aspectStep).mul(ringScale);
+          const zPlus = readLinearDepth(vUv.add(dir));
+          const zMinus = readLinearDepth(vUv.sub(dir));
+
+          const pairAvgZ = zPlus.add(zMinus).mul(0.5);
+          const delta = centerLinZ.sub(pairAvgZ);
+          const maxSpan = max(abs(zPlus.sub(centerLinZ)), abs(zMinus.sub(centerLinZ)));
+
+          const rangeCheck = smoothstep(0.55, 0.08, maxSpan);
+          const crease = smoothstep(0.004, 0.14, delta).mul(rangeCheck);
+          occlusion.addAssign(crease);
+        }
+
+        const distanceFade = float(1.0).sub(smoothstep(13.0, 20.0, scaleZ));
+        const ao = float(1.0).sub(
+          occlusion.mul(0.18).mul(this.uAoIntensity).mul(distanceFade)
+        );
+        aoResult.assign(clamp(ao, 0.68, 1.0));
+      });
+
+      return aoResult;
+    };
+
+    const compositeShader = Fn(() => {
+      const vUv = uv();
+      // Sample base color and depth in outer scope so WGSL textureDimensions vars are top-level
+      const rawDepth = depthNode.sample(vUv).r.toVar();
+      const centerColor = sampleHdr(vUv).toVar();
+      const bloomColor = this.bloom.buildNode(colorNode, vUv).toVar();
+      const ldrOut = vec3(0.0).toVar();
+
+      If(rawDepth.greaterThanEqual(0.9999), () => {
+        ldrOut.assign(toneMap(centerColor.add(bloomColor)));
+      });
+
+      If(rawDepth.lessThan(0.9999), () => {
+        const magicXY = vec2(0.06711056, 0.00583715);
+        const noise = fract(float(52.9829189).mul(fract(dot(screenCoordinate.xy, magicXY)))).toVar();
+        const centerLinZ = linearizeDepth(rawDepth).toVar();
+
+        // 1. Compute per-pixel 3D camera velocity vector in screen UV space (only when camera moved)
+        const velocity = vec2(0.0).toVar();
+        If(this.uMotionBlurEnabled.greaterThan(0.5), () => {
+          const ndcZ = this.uProjZ.x.negate().add(this.uProjZ.y.div(max(1e-5, centerLinZ)));
+          const clipPos = vec4(vUv.mul(2.0).sub(1.0), ndcZ, 1.0);
+          const worldPos = this.uCurrInvViewProj.mul(clipPos).toVar();
+          worldPos.divAssign(max(1e-6, worldPos.w));
+
+          const prevClipPos = this.uPrevViewProj.mul(worldPos).toVar();
+          If(prevClipPos.w.greaterThan(1e-4), () => {
+            const prevUv = prevClipPos.xy.div(prevClipPos.w).mul(0.5).add(0.5);
+            const rawVel = vUv.sub(prevUv).mul(this.uShutterScale).toVar();
+            const velMag = length(rawVel);
+            const maxRadius = float(0.028);
+            velocity.assign(
+              select(
+                velMag.greaterThan(maxRadius),
+                rawVel.mul(maxRadius.div(max(1e-6, velMag))),
+                rawVel
+              )
+            );
+          });
+        });
+
+        const speedPx = length(velocity.mul(this.uResolution)).toVar();
+        const hdrColor = vec3(centerColor).toVar();
+        const applyBlur = this.uMotionBlurEnabled.greaterThan(0.5).and(speedPx.greaterThan(1.25));
+
+        // 2. Apply 6-tap depth-aware directional shutter motion blur when moving/turning rapidly,
+        //    or FXAA + Contrast-Adaptive Sharpening (CAS) when stationary/slow-moving.
+        If(applyBlur, () => {
+          const accumColor = centerColor.mul(1.25).toVar();
+          const totalWeight = float(1.25).toVar();
+
+          const sampleCount = 6;
+          for (let i = 0; i < sampleCount; i++) {
+            const fi = float(i).add(noise).div(float(sampleCount)).sub(0.5);
+            const sampleUv = clamp(vUv.add(velocity.mul(fi)), 0.001, 0.999);
+            const sampleCol = sampleHdr(sampleUv);
+            const sampleLinZ = readLinearDepth(sampleUv);
+
+            const depthDiff = abs(sampleLinZ.sub(centerLinZ));
+            const depthWeight = smoothstep(1.2, 0.08, depthDiff).mul(0.75).add(0.25);
+            const windowWeight = float(1.0).sub(abs(fi).mul(0.65));
+            const w = depthWeight.mul(windowWeight);
+
+            accumColor.addAssign(sampleCol.mul(w));
+            totalWeight.addAssign(w);
+          }
+          hdrColor.assign(accumColor.div(totalWeight));
+        });
+
+        If(
+          applyBlur
+            .not()
+            .and(this.uFxaaEnabled.greaterThan(0.5).or(this.uSharpenIntensity.greaterThan(0.001))),
+          () => {
+            hdrColor.assign(computeFxaaAndCas(vUv, centerColor));
+          }
+        );
+
+        // 3. Apply Screen-Space Contact Ambient Occlusion (fades out during rapid whip-pans)
+        const motionFade = float(1.0).sub(clamp(speedPx.sub(4.0).div(18.0), 0.0, 0.65));
+        const ao = mix(float(1.0), computeContactAO(vUv, centerLinZ, noise), motionFade);
+        hdrColor.mulAssign(ao);
+
+        // 4. Add selective HDR bloom around glowing bulbs, LED diffusers and halos
+        hdrColor.addAssign(bloomColor);
+
+        // 5. Tone mapping (AgX or ACES, see POST_TONE_MAPPER)
+        ldrOut.assign(toneMap(hdrColor));
+      });
+
+      return sRGBTransferOETF(vec4(ldrOut, 1.0));
+    });
+
+    return compositeShader();
+  }
+
   /**
-   * Renders the 3D scene through the HDR velocity-motion-blur + contact-AO + bloom pipeline,
-   * or directly to the canvas when the active tier disables post-processing.
+   * Renders the 3D scene through the WebGPU TSL HDR velocity-motion-blur + contact-AO + bloom pipeline,
+   * or directly to the canvas when the active tier or feature flags disable post-processing.
    */
-  public render(scene: THREE.Scene, camera: RigCamera, dtSeconds: number): void {
-    if (!this.postEnabled) {
+  public render(scene: THREE.Scene, camera: RigCamera | THREE.Camera, dtSeconds: number): void {
+    const anyEffectActive =
+      this.ambientOcclusionEnabled ||
+      this.bloomEnabled ||
+      this.sharpenEnabled ||
+      this.fxaaEnabled ||
+      this.motionBlurEnabled;
+
+    if (!this.postEnabled || !anyEffectActive || !isWebGpuCapableRenderer(this.renderer)) {
       this.renderer.setRenderTarget(null);
       this.renderer.render(scene, camera);
       this.hasPrevMatrix = false;
@@ -750,53 +748,61 @@ export class PostProcessingPipeline {
     }
     const cameraMoved = maxMatrixDelta > 1e-4;
 
-    // 1. Render scene into linear HalfFloat HDR target + hardware DepthTexture
-    this.renderer.setRenderTarget(this.renderTarget);
-    this.renderer.render(scene, camera);
-    if (this.bloomEnabled) {
-      this.bloom.render(this.renderer, this.renderTarget.texture, this.renderTarget.width, this.renderTarget.height);
-    }
-    this.renderer.setRenderTarget(null);
-
-    // 2. Update post-processing uniforms
     const isOrtho = (camera as THREE.OrthographicCamera).isOrthographicCamera === true;
-    const projY = camera.projectionMatrix.elements[5]!;
+    const near = (camera as THREE.PerspectiveCamera | THREE.OrthographicCamera).near ?? 0.1;
+    const far = (camera as THREE.PerspectiveCamera | THREE.OrthographicCamera).far ?? 120.0;
+    const projElements = camera.projectionMatrix.elements;
+    const projY = projElements[5]!;
     if (!isOrtho && projY > 1e-6) {
       this.lastPerspectiveProjY = projY;
     }
-    const uniforms = this.postMaterial.uniforms;
-    uniforms.uNear.value = camera.near;
-    uniforms.uFar.value = camera.far;
-    uniforms.uIsOrtho.value = isOrtho ? 1.0 : 0.0;
+
+    this.uNear.value = near;
+    this.uFar.value = far;
+    this.uIsOrtho.value = isOrtho ? 1.0 : 0.0;
+    this.uIsLogDepth.value = !isOrtho && this.renderer.logarithmicDepthBuffer === true ? 1.0 : 0.0;
     // Distance at which the perspective camera would show the same world-units-per-pixel as the
     // ortho camera: perspective scale = P11 / z, ortho scale = P11_ortho.
-    uniforms.uOrthoEquivDepth.value = isOrtho
+    this.uOrthoEquivDepth.value = isOrtho
       ? this.lastPerspectiveProjY / Math.max(1e-6, projY)
       : 0.0;
     // Exposure comes only from the renderer (never from the camera type, zoom or position).
-    uniforms.uExposure.value = this.renderer.toneMappingExposure;
+    this.uExposure.value = this.renderer.toneMappingExposure;
+    this.uProjZ.value.set(projElements[10]!, projElements[14]!);
 
     if (cameraMoved) {
-      (uniforms.uCurrInvViewProj.value as THREE.Matrix4).copy(this.currInvViewProj);
-      (uniforms.uPrevViewProj.value as THREE.Matrix4).copy(this.prevViewProj);
+      this.uCurrInvViewProj.value.copy(this.currInvViewProj);
+      this.uPrevViewProj.value.copy(this.prevViewProj);
     }
 
     // Normalize shutter exposure scale across variable refresh rates (60Hz–144Hz)
     const fpsNorm = THREE.MathUtils.clamp(1.0 / (Math.max(0.004, dtSeconds) * 60.0), 0.45, 1.65);
-    uniforms.uMotionBlurEnabled.value =
+    this.uMotionBlurEnabled.value =
       this.motionBlurEnabled && !isOrtho && cameraMoved ? 1.0 : 0.0;
-    uniforms.uShutterScale.value = this.motionBlurStrength * fpsNorm;
+    this.uShutterScale.value = this.motionBlurStrength * fpsNorm;
     // AO is identical for ortho and perspective (shader scales by apparent on-screen size).
-    uniforms.uAoIntensity.value = this.ambientOcclusionEnabled ? AO_INTENSITY : 0.0;
-    uniforms.uBloomIntensity.value = this.bloomEnabled && this.bloom.texture ? BLOOM_INTENSITY : 0.0;
-    uniforms.tBloom.value = this.bloom.texture;
-    uniforms.uSharpenIntensity.value = this.sharpenEnabled ? SHARPEN_INTENSITY : 0.0;
-    uniforms.uFxaaEnabled.value = this.fxaaEnabled ? 1.0 : 0.0;
+    this.uAoIntensity.value = this.ambientOcclusionEnabled ? AO_INTENSITY : 0.0;
+    this.bloom.setIntensity(this.bloomEnabled ? BLOOM_INTENSITY : 0.0);
+    this.uSharpenIntensity.value = this.sharpenEnabled ? SHARPEN_INTENSITY : 0.0;
+    this.uFxaaEnabled.value = this.fxaaEnabled ? 1.0 : 0.0;
 
-    // 3. Draw single-pass composite quad to screen
-    this.renderer.render(this.postScene, this.postCamera);
+    // Render scene pass + single-pass WebGPU TSL composite to screen
+    const postProcessing = this.ensurePostProcessing(this.renderer, scene, camera);
+    postProcessing.render();
 
-    // 4. Store current ViewProj matrix for next frame's velocity vectors
+    // Store current ViewProj matrix for next frame's velocity vectors
     this.prevViewProj.copy(this.currViewProj);
+  }
+
+  public dispose(): void {
+    this.bloom.dispose();
+    if (this.scenePass) {
+      this.scenePass.dispose();
+      this.scenePass = null;
+    }
+    if (this.postProcessing) {
+      this.postProcessing.dispose();
+      this.postProcessing = null;
+    }
   }
 }

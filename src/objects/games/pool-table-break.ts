@@ -107,7 +107,7 @@ export class PoolTableBreakController implements AnimatedInteractable {
   #elapsed = 0;
   #breakNumber = 0;
   #sim: PoolSimResult | null = null;
-  #activeShot: ReturnType<typeof planBreakShot> = { dirX: 1, dirZ: 0, speedMps: 5.2 };
+  #activeShot: ReturnType<typeof planBreakShot> = { cueBallIndex: 0, dirX: 1, dirZ: 0, speed: 5.2 };
   /** Pocket drop per ball for the current break (sim time + pocket centre), or null. */
   #drops: ({ readonly timeSec: number; readonly x: number; readonly z: number } | null)[] = [];
 

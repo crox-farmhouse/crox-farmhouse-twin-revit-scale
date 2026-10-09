@@ -1,4 +1,16 @@
 import * as THREE from 'three';
+import {
+  Fn,
+  color,
+  length,
+  mix,
+  positionWorld,
+  smoothstep,
+  texture,
+  uniform,
+  uv,
+  vec2,
+} from 'three/tsl';
 import { DEFAULT_SITE_HAZE_FOOTPRINT, type SiteHazeFootprint } from './site-haze-fog.ts';
 
 /** Top of the property's sub-base plinth is −0.69 m; the meadow sits just below it. */
@@ -10,6 +22,10 @@ const FADE_END = 210;
 const TEXTURE_SIZE = 128;
 /** World metres covered by one tile of the grass texture. */
 const TILE_METRES = 3.5;
+
+interface TslCapableStandardMaterial {
+  colorNode?: unknown;
+}
 
 /** Small seeded PRNG (mulberry32) so the grass texture is identical on every load. */
 function mulberry32(seed: number): () => number {
@@ -96,7 +112,8 @@ export function createSiteGround(footprint: SiteHazeFootprint = DEFAULT_SITE_HAZ
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.generateMipmaps = true;
   tex.anisotropy = 4;
-  tex.repeat.set((GROUND_RADIUS * 2) / TILE_METRES, (GROUND_RADIUS * 2) / TILE_METRES);
+  const tileRepeat = (GROUND_RADIUS * 2) / TILE_METRES;
+  tex.repeat.set(tileRepeat, tileRepeat);
   tex.needsUpdate = true;
 
   const material = new THREE.MeshStandardMaterial({
@@ -113,6 +130,20 @@ export function createSiteGround(footprint: SiteHazeFootprint = DEFAULT_SITE_HAZ
     uCroxSiteCenter: { value: new THREE.Vector2(footprint.centerX, footprint.centerZ) },
     uCroxFade: { value: new THREE.Vector2(FADE_START, FADE_END) },
   };
+
+  const uHorizonNode = uniform(uniforms.uCroxHorizon.value);
+  const uSiteCenterNode = vec2(footprint.centerX, footprint.centerZ);
+  const baseHorizonTint = color(0x3c4d28);
+
+  const tslMaterial = material as unknown as TslCapableStandardMaterial;
+  tslMaterial.colorNode = Fn(() => {
+    const grassAlbedo = texture(tex, uv().mul(tileRepeat)).rgb;
+    const distFromCenter = length(positionWorld.xz.sub(uSiteCenterNode));
+    const horizonBlend = smoothstep(FADE_START, FADE_END, distFromCenter).mul(0.88);
+    const horizonTarget = mix(baseHorizonTint, uHorizonNode, 1.0);
+    return mix(grassAlbedo, horizonTarget, horizonBlend);
+  })();
+
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
@@ -147,8 +178,8 @@ export function createSiteGround(footprint: SiteHazeFootprint = DEFAULT_SITE_HAZ
 
   return {
     mesh,
-    setHorizonColor: (color) => {
-      uniforms.uCroxHorizon.value.copy(color);
+    setHorizonColor: (nextColor) => {
+      uniforms.uCroxHorizon.value.copy(nextColor);
     },
     dispose: () => {
       geometry.dispose();

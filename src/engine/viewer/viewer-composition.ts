@@ -2,7 +2,11 @@ import * as THREE from 'three';
 import type { FloorViewMode, InteractiveUserData, TimeOfDay } from '../../core/types/scene.ts';
 import { CutawayController } from '../cutaway/cutaway-controller.ts';
 import { EnvironmentLighting } from '../lighting/environment-lighting.ts';
-import { installShaderLightCulling } from '../lighting/shader-light-culling.ts';
+import {
+  applyWebGpuLightVolumeToScene,
+  installShaderLightCulling,
+} from '../lighting/shader-light-culling.ts';
+import { detectDeviceProfile } from '../perf/index.ts';
 import { RoomLodController } from '../lod/lod-manager.ts';
 import { applySelectiveBevelModifier } from '../rendering/bevel-modifier.ts';
 import { classifyScene } from '../trade-views/index.ts';
@@ -430,6 +434,13 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
   public async warmUpForStartup(
     onProgress?: (label: string, fraction: number) => Promise<void> | void
   ): Promise<void> {
+    await this.renderer.init();
+    const refreshedProfile = detectDeviceProfile(this.renderer.renderer);
+    this.graphics.setDevicePixelRatio(refreshedProfile.devicePixelRatio);
+    this.environment.bakeProceduralEnvironments(this.renderer.renderer);
+    this.environment.applyTimeOfDay(this.environment.currentMinutes, this.scene);
+    applyWebGpuLightVolumeToScene(this.scene);
+
     await onProgress?.('Indexing geometry & textures…', 0.65);
 
     const textures = new Set<THREE.Texture>();
@@ -479,7 +490,9 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
     const glRenderer = this.renderer.renderer;
     for (const tex of textures) {
       try {
-        glRenderer.initTexture(tex);
+        if (tex.image) {
+          glRenderer.initTexture(tex);
+        }
       } catch {
         // Ignore textures without valid image data in headless contexts
       }
@@ -494,9 +507,9 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
     this.scene.updateMatrixWorld(true);
 
     try {
-      glRenderer.compile(this.scene, this.camera.rig.perspCamera);
+      await glRenderer.compileAsync(this.scene, this.camera.rig.perspCamera);
     } catch {
-      // Ignore shader compile warmup errors in non-standard WebGL contexts
+      // Ignore shader compile warmup errors in non-standard WebGPU/WebGL contexts
     }
 
     this.layers.firstFloorMeshGroup.visible = prevFirstFloorVis;
@@ -515,10 +528,9 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
     }
 
     try {
-      const gl = glRenderer.getContext();
-      gl?.flush?.();
+      await glRenderer.waitForGPU();
     } catch {
-      // Ignore context flush errors
+      // Ignore GPU sync errors in headless contexts
     }
   }
 }

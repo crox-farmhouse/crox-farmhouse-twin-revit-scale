@@ -1,4 +1,26 @@
 import * as THREE from 'three';
+import { PointsNodeMaterial } from 'three/webgpu';
+import {
+  cameraProjectionMatrix,
+  clamp,
+  dot,
+  exp,
+  float,
+  instancedBufferAttribute,
+  int,
+  max,
+  modelViewMatrix,
+  normalize,
+  screenDPR,
+  select,
+  smoothstep,
+  uniform,
+  uv,
+  varying,
+  vec3,
+  vec4,
+  viewportSize,
+} from 'three/tsl';
 import type { CircuitId } from '../../core/types/knx.ts';
 import type { LightGroupMap } from '../viewer/scene-types.ts';
 import { ALWAYS_HOIST_LIGHT_FLAG, SHADOW_PASS_HOOK_FLAG } from '../rendering/scene-batch-optimizer.ts';
@@ -83,7 +105,8 @@ interface ClassifiedMesh {
 
 interface HaloBatch {
   readonly circuitId: CircuitId;
-  readonly material: THREE.ShaderMaterial;
+  readonly material: PointsNodeMaterial;
+  readonly intensityUniform: ReturnType<typeof uniform<number>>;
 }
 
 interface WashDecal {
@@ -98,46 +121,69 @@ export interface FittingEffectsOptions {
   readonly sceneRoot?: THREE.Object3D;
 }
 
-const HALO_VERTEX_SHADER = /* glsl */ `
-  attribute float aSize;
-  attribute vec3 aColor;
-  // Emission axis (object space) and the cos threshold where the halo starts to show;
-  // a zero axis means an omnidirectional halo (bare bulbs, globes, glass shades).
-  attribute vec3 aDir;
-  attribute float aCone;
-  uniform float uViewportHeight;
-  varying vec3 vColor;
-  void main() {
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_Position = projectionMatrix * mvPosition;
-    float projScale = projectionMatrix[1][1] * 0.5 * uViewportHeight;
-    bool isOrtho = projectionMatrix[2][3] == 0.0;
-    float facing = 1.0;
-    if (dot(aDir, aDir) > 0.0) {
-      vec3 axis = normalize(normalMatrix * aDir);
-      vec3 toCamera = isOrtho ? vec3(0.0, 0.0, 1.0) : normalize(-mvPosition.xyz);
-      facing = smoothstep(aCone, aCone + 0.35, dot(toCamera, axis));
-    }
-    float size = isOrtho ? aSize * projScale : aSize * projScale / max(0.05, -mvPosition.z);
-    gl_PointSize = facing > 0.001 ? clamp(size, 0.0, 1024.0) : 0.0;
-    vColor = aColor * facing;
-  }
-`;
+/**
+ * Builds an instanced WebGPU/TSL `PointsNodeMaterial` for a batch of lamp-core halos.
+ * Rendered via `THREE.Sprite` with `sprite.count = instanceCount` so WebGPU draws
+ * screen-aligned billboarded point quads (WebGPU `point-list` primitives are fixed at 1 px).
+ */
+function createHaloNodeMaterial(
+  positions: readonly number[],
+  sizes: readonly number[],
+  colors: readonly number[],
+  dirs: readonly number[],
+  cones: readonly number[]
+): {
+  readonly material: PointsNodeMaterial;
+  readonly intensityUniform: ReturnType<typeof uniform<number>>;
+} {
+  const aCenter = instancedBufferAttribute(new Float32Array(positions), 'vec3');
+  const aSize = instancedBufferAttribute(new Float32Array(sizes), 'float');
+  const aColor = instancedBufferAttribute(new Float32Array(colors), 'vec3');
+  const aDir = instancedBufferAttribute(new Float32Array(dirs), 'vec3');
+  const aCone = instancedBufferAttribute(new Float32Array(cones), 'float');
+  const uIntensity = uniform(0);
 
-const HALO_FRAGMENT_SHADER = /* glsl */ `
-  uniform float uIntensity;
-  varying vec3 vColor;
-  void main() {
-    vec2 p = gl_PointCoord * 2.0 - 1.0;
-    float d2 = dot(p, p);
-    if (d2 >= 1.0) discard;
-    float core = exp(-d2 * 26.0);
-    float glow = exp(-d2 * 5.5) * (1.0 - d2);
-    gl_FragColor = vec4(vColor * uIntensity * (core * 1.6 + glow * 0.45), 1.0);
-    #include <tonemapping_fragment>
-    #include <colorspace_fragment>
-  }
-`;
+  const mvPos = modelViewMatrix.mul(vec4(aCenter, 1.0)).xyz;
+  const isOrtho = cameraProjectionMatrix.element(int(2)).element(int(3)).equal(0.0);
+  const axis = normalize(modelViewMatrix.mul(vec4(aDir, 0.0)).xyz);
+  const toCamera = select(isOrtho, vec3(0.0, 0.0, 1.0), normalize(mvPos.negate()));
+  const coneFacing = smoothstep(aCone, aCone.add(0.35), dot(toCamera, axis));
+  const facing = select(dot(aDir, aDir).greaterThan(0.0001), coneFacing, float(1.0));
+
+  const projScale = cameraProjectionMatrix.element(int(1)).element(int(1)).mul(0.5).mul(viewportSize.y);
+  const rawSize = select(
+    isOrtho,
+    aSize.mul(projScale),
+    aSize.mul(projScale).div(max(float(0.05), mvPos.z.negate()))
+  );
+  const pixelSize = select(facing.greaterThan(0.001), clamp(rawSize, 0.0, 1024.0), float(0.0));
+  const sizeNode = pixelSize.div(screenDPR);
+
+  const vColor = varying(aColor.mul(facing), 'vHaloColor');
+  const p = uv().mul(2.0).sub(1.0);
+  const d2 = dot(p, p);
+  const core = exp(d2.mul(-26.0));
+  const glow = exp(d2.mul(-5.5)).mul(float(1.0).sub(d2));
+  const radialProfile = core.mul(1.6).add(glow.mul(0.45));
+
+  const material = new PointsNodeMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    blending: THREE.AdditiveBlending,
+    toneMapped: true,
+    fog: false,
+  });
+  material.sizeAttenuation = false;
+  material.alphaToCoverage = false;
+  material.positionNode = aCenter;
+  material.sizeNode = sizeNode;
+  material.colorNode = vColor.mul(uIntensity).mul(radialProfile);
+  material.opacityNode = select(d2.lessThan(1.0), float(1.0), float(0.0));
+  material.visible = false;
+
+  return { material, intensityUniform: uIntensity };
+}
 
 let sharedWashTexture: THREE.DataTexture | null = null;
 
@@ -303,7 +349,7 @@ export class FittingEffects {
   public applyLevels(levelFor: (circuitId: CircuitId) => number, emissiveScale: number): void {
     for (const halo of this.halos) {
       const k = levelFor(halo.circuitId) * emissiveScale;
-      halo.material.uniforms.uIntensity!.value = HALO_STRENGTH * k;
+      halo.intensityUniform.value = HALO_STRENGTH * k;
       halo.material.visible = k > 0.002;
     }
     for (const wash of this.washes) {
@@ -371,35 +417,22 @@ export class FittingEffects {
         dirs.push(dir.x, dir.y, dir.z);
         cones.push(cone);
       }
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      geometry.setAttribute('aSize', new THREE.Float32BufferAttribute(sizes, 1));
-      geometry.setAttribute('aColor', new THREE.Float32BufferAttribute(colors, 3));
-      geometry.setAttribute('aDir', new THREE.Float32BufferAttribute(dirs, 3));
-      geometry.setAttribute('aCone', new THREE.Float32BufferAttribute(cones, 1));
-      const material = new THREE.ShaderMaterial({
-        vertexShader: HALO_VERTEX_SHADER,
-        fragmentShader: HALO_FRAGMENT_SHADER,
-        uniforms: { uIntensity: { value: 0 }, uViewportHeight: { value: 800 } },
-        transparent: true,
-        depthWrite: false,
-        depthTest: true,
-        blending: THREE.AdditiveBlending,
-        toneMapped: true,
-      });
-      material.visible = false;
-      const points = new THREE.Points(geometry, material);
+      const { material, intensityUniform } = createHaloNodeMaterial(
+        positions,
+        sizes,
+        colors,
+        dirs,
+        cones
+      );
+      const points = new THREE.Sprite(material);
+      points.count = items.length;
       points.name = `fx.halo.${circuitId}`;
+      points.userData.isFittingHaloCloud = true;
       points.frustumCulled = false;
       points.renderOrder = 10;
-      const viewport = new THREE.Vector4();
-      points.onBeforeRender = (renderer) => {
-        renderer.getCurrentViewport(viewport);
-        material.uniforms.uViewportHeight!.value = viewport.w;
-      };
       markFx(points);
       parent.add(points);
-      this.halos.push({ circuitId, material });
+      this.halos.push({ circuitId, material, intensityUniform });
     }
   }
 

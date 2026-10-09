@@ -1,5 +1,21 @@
 import * as THREE from 'three';
 import {
+  Fn,
+  clamp,
+  float,
+  min,
+  mix,
+  normalWorld,
+  positionWorld,
+  select,
+  step,
+  texture3D,
+  uniform,
+  vec3,
+  vec4,
+} from 'three/tsl';
+import { type NodeBuilder, PhysicalLightingModel, PointLightNode } from 'three/webgpu';
+import {
   SHARED_BAKED_VOLUME_TEXTURE,
   SHARED_CAMERA_WORLD_MATRIX,
   SHARED_VOLUME_INV_SIZE,
@@ -7,21 +23,127 @@ import {
   SHARED_VOLUME_PARAMS,
 } from './baked-light-volume.ts';
 
-let shaderLightCullingInstalled = false;
+export {
+  SHARED_BAKED_VOLUME_TEXTURE,
+  SHARED_CAMERA_WORLD_MATRIX,
+  SHARED_VOLUME_INV_SIZE,
+  SHARED_VOLUME_MIN,
+  SHARED_VOLUME_PARAMS,
+};
+
+export const SHARED_LIGHT_VOLUME_UNIFORMS = {
+  uBakedLightVolume: { value: SHARED_BAKED_VOLUME_TEXTURE },
+  uCameraWorldMatrix: { value: SHARED_CAMERA_WORLD_MATRIX },
+  uBakedVolumeMin: { value: SHARED_VOLUME_MIN },
+  uBakedVolumeInvSize: { value: SHARED_VOLUME_INV_SIZE },
+  uBakedVolumeParams: { value: SHARED_VOLUME_PARAMS },
+} as const;
+
+/** TSL uniform nodes backed directly by the shared Vector3 / Vector4 singletons. */
+export const uBakedVolumeMinNode = uniform(SHARED_VOLUME_MIN);
+export const uBakedVolumeInvSizeNode = uniform(SHARED_VOLUME_INV_SIZE);
+export const uBakedVolumeParamsNode = uniform(SHARED_VOLUME_PARAMS);
 
 /**
- * Patches Three.js's built-in PBR light chunks (`lights_pars_begin`, `lights_fragment_begin`,
- * and `lights_fragment_maps`) and registers shared uniforms on `ShaderLib.standard` /
- * `ShaderLib.physical` so that:
- * 1. `getPointLightInfo` performs a fast distance-squared cutoff (`dot(lVector, lVector) >= cutoff * cutoff`)
- *    and tightens the expensive per-pixel Cook-Torrance GGX microfacet loop to near-field highlights
- *    (`min(pointLight.distance, uBakedVolumeParams.w)`) when the 3D Baked Light Volume is active.
- * 2. `lights_fragment_begin` guards `RE_Direct(...)` behind `if ( directLight.visible )`.
- * 3. `lights_fragment_maps` samples the hardware-trilinear 3D Baked Light & AO Volume
+ * TSL node that samples the hardware-trilinear 3D Baked Light & AO Volume (`SHARED_BAKED_VOLUME_TEXTURE`)
+ * using world-space position and normal, returning `vec4(bakedIrradiance.rgb, bakedAo)`.
+ */
+export const sampleBakedLightVolumeNode = Fn(() => {
+  const enabled = step(0.5, uBakedVolumeParamsNode.x);
+  const biasedPos = positionWorld.add(normalWorld.mul(0.22));
+  const bakedUvw = clamp(
+    biasedPos.sub(uBakedVolumeMinNode).mul(uBakedVolumeInvSizeNode),
+    vec3(0.005),
+    vec3(0.995)
+  );
+  const bakedTexel = texture3D(SHARED_BAKED_VOLUME_TEXTURE, bakedUvw, 0).toVar('croxBakedTexel');
+  const bakedIrradiance = bakedTexel.rgb
+    .mul(bakedTexel.rgb)
+    .mul(uBakedVolumeParamsNode.y.mul(3.5).mul(enabled));
+  const bakedAo = mix(float(1.0), bakedTexel.a, uBakedVolumeParamsNode.z.mul(enabled));
+  return vec4(bakedIrradiance, bakedAo);
+});
+
+let shaderLightCullingInstalled = false;
+let webGpuLightVolumeInstalled = false;
+
+interface TslIrradianceNode {
+  assign(value: unknown): void;
+  add(value: unknown): { mul(factor: unknown): unknown };
+}
+
+function installWebGpuLightVolumeHooks(): void {
+  if (webGpuLightVolumeInstalled) return;
+  webGpuLightVolumeInstalled = true;
+
+  const lightingProto = PhysicalLightingModel.prototype as unknown as {
+    indirectDiffuse?: (this: PhysicalLightingModel, builder: NodeBuilder) => void;
+  };
+  const origIndirectDiffuse = lightingProto.indirectDiffuse;
+  if (typeof origIndirectDiffuse === 'function') {
+    lightingProto.indirectDiffuse = function (
+      this: PhysicalLightingModel,
+      builder: NodeBuilder
+    ): void {
+      const ctx = (builder as unknown as { context?: { irradiance?: TslIrradianceNode } }).context;
+      if (ctx?.irradiance) {
+        const enabled = step(0.5, uBakedVolumeParamsNode.x);
+        const biasedPos = positionWorld.add(normalWorld.mul(0.22));
+        const bakedUvw = clamp(
+          biasedPos.sub(uBakedVolumeMinNode).mul(uBakedVolumeInvSizeNode),
+          vec3(0.005),
+          vec3(0.995)
+        );
+        const bakedTexel = texture3D(SHARED_BAKED_VOLUME_TEXTURE, bakedUvw, 0).toVar(
+          'croxBakedTexel'
+        );
+        const bakedIrradiance = bakedTexel.rgb
+          .mul(bakedTexel.rgb)
+          .mul(uBakedVolumeParamsNode.y.mul(3.5).mul(enabled));
+        const bakedAo = mix(float(1.0), bakedTexel.a, uBakedVolumeParamsNode.z.mul(enabled));
+        ctx.irradiance.assign(ctx.irradiance.add(bakedIrradiance).mul(bakedAo));
+      }
+      origIndirectDiffuse.call(this, builder);
+    };
+  }
+
+  const pointLightProto = PointLightNode.prototype as unknown as {
+    setupDirect?: (this: PointLightNode, builder: NodeBuilder) => unknown;
+  };
+  const origSetupDirect = pointLightProto.setupDirect;
+  if (typeof origSetupDirect === 'function') {
+    pointLightProto.setupDirect = function (this: PointLightNode, builder: NodeBuilder): unknown {
+      const rawCutoff = float(this.cutoffDistanceNode);
+      const effectiveCutoff = select(
+        uBakedVolumeParamsNode.x.greaterThan(0.5).and(rawCutoff.greaterThan(0.0)),
+        min(rawCutoff, uBakedVolumeParamsNode.w),
+        rawCutoff
+      );
+      const savedCutoffNode = this.cutoffDistanceNode;
+      this.cutoffDistanceNode = effectiveCutoff;
+      try {
+        return origSetupDirect.call(this, builder);
+      } finally {
+        this.cutoffDistanceNode = savedCutoffNode;
+      }
+    };
+  }
+}
+
+/**
+ * Installs both the WebGPU/TSL `PhysicalLightingModel` + `PointLightNode` hooks and the legacy
+ * WebGL PBR light chunks (`lights_pars_begin`, `lights_fragment_begin`, `lights_fragment_maps`) so
+ * that:
+ * 1. `PointLight` evaluation tightens the expensive per-pixel Cook-Torrance GGX microfacet loop to
+ *    near-field highlights (`min(pointLight.distance, uBakedVolumeParams.w)`) when the 3D Baked
+ *    Light Volume is active.
+ * 2. Indirect diffuse evaluation samples the hardware-trilinear 3D Baked Light & AO Volume
  *    (`uBakedLightVolume`), injecting per-circuit KNX diffuse + 1-bounce GI (`RGB`) and static
  *    architectural Ambient Occlusion (`A`) in a single 3D texture fetch per pixel.
  */
 export function installShaderLightCulling(): void {
+  installWebGpuLightVolumeHooks();
+
   if (shaderLightCullingInstalled) return;
   shaderLightCullingInstalled = true;
 
@@ -95,4 +217,20 @@ uniform vec4 uBakedVolumeParams;
 	}`
     );
   }
+}
+
+export const installCroxLightVolumeShader = installShaderLightCulling;
+
+/**
+ * Ensures the WebGPU / TSL 3D Baked Light Volume lighting hooks are active for `scene`.
+ * Because the hook is installed on `PhysicalLightingModel.prototype` and `PointLightNode.prototype`,
+ * all `MeshStandardMaterial` and `MeshPhysicalMaterial` instances in `scene` automatically sample
+ * the 3D light volume without mutating per-material properties in `.snapshots/scene.snap`.
+ */
+export function applyWebGpuLightVolumeToScene(_scene?: THREE.Scene): void {
+  installShaderLightCulling();
+}
+
+export function updateBakedLightVolumeUniforms(): void {
+  SHARED_BAKED_VOLUME_TEXTURE.needsUpdate = true;
 }

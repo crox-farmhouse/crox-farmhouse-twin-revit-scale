@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import type { WebGPURenderer } from 'three/webgpu';
 import type { GraphicsTier } from '../../core/types/twin-ux.ts';
 import { compareTiers } from './tier-settings.ts';
 
@@ -26,6 +27,38 @@ type ExtendedNavigator = Navigator & {
   readonly deviceMemory?: number;
   readonly userAgentData?: NavigatorUaData;
 };
+
+interface WebGpuAdapterInfoLike {
+  readonly description?: string;
+  readonly device?: string;
+  readonly vendor?: string;
+  readonly architecture?: string;
+}
+
+interface WebGpuDeviceLike {
+  readonly adapterInfo?: WebGpuAdapterInfoLike;
+  readonly limits?: {
+    readonly maxTextureDimension2D?: number;
+  };
+}
+
+interface RendererBackendLike {
+  readonly isWebGPUBackend?: boolean;
+  readonly isWebGLBackend?: boolean;
+  readonly device?: WebGpuDeviceLike | null;
+  readonly gl?: WebGLRenderingContext | WebGL2RenderingContext | null;
+}
+
+function isWebGlContext(ctx: unknown): ctx is WebGLRenderingContext | WebGL2RenderingContext {
+  return (
+    typeof ctx === 'object' &&
+    ctx !== null &&
+    'getParameter' in ctx &&
+    typeof (ctx as WebGLRenderingContext).getParameter === 'function' &&
+    'getExtension' in ctx &&
+    typeof (ctx as WebGLRenderingContext).getExtension === 'function'
+  );
+}
 
 function readStringParam(gl: WebGLRenderingContext | WebGL2RenderingContext, param: number): string {
   try {
@@ -55,18 +88,58 @@ function detectMobile(nav: ExtendedNavigator | null): boolean {
 }
 
 /** Collects GPU and device signals used to pick an initial graphics tier. */
-export function detectDeviceProfile(renderer: THREE.WebGLRenderer): DeviceProfile {
-  const gl = renderer.getContext();
+export function detectDeviceProfile(
+  renderer: WebGPURenderer | THREE.WebGLRenderer
+): DeviceProfile {
+  const backend = (renderer as { readonly backend?: RendererBackendLike }).backend;
+  let gl: WebGLRenderingContext | WebGL2RenderingContext | null = backend?.gl ?? null;
+  if (!gl && !backend?.isWebGPUBackend) {
+    try {
+      const ctx: unknown = renderer.getContext();
+      if (isWebGlContext(ctx)) {
+        gl = ctx;
+      }
+    } catch {
+      gl = null;
+    }
+  }
+
   let gpuRenderer = '';
   let gpuVendor = '';
-  const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-  if (debugInfo) {
-    gpuRenderer = readStringParam(gl, debugInfo.UNMASKED_RENDERER_WEBGL);
-    gpuVendor = readStringParam(gl, debugInfo.UNMASKED_VENDOR_WEBGL);
+  let maxTextureSize = 8192;
+  let isWebGL2 = true;
+
+  if (gl) {
+    try {
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      if (debugInfo) {
+        gpuRenderer = readStringParam(gl, debugInfo.UNMASKED_RENDERER_WEBGL);
+        gpuVendor = readStringParam(gl, debugInfo.UNMASKED_VENDOR_WEBGL);
+      }
+    } catch {
+      // Extension unavailable; fall back to standard parameters below.
+    }
+    // Firefox deprecates the extension but returns the sanitized renderer from RENDERER directly.
+    if (!gpuRenderer) gpuRenderer = readStringParam(gl, gl.RENDERER);
+    if (!gpuVendor) gpuVendor = readStringParam(gl, gl.VENDOR);
+    maxTextureSize = readNumberParam(gl, gl.MAX_TEXTURE_SIZE) || 8192;
+    if ('capabilities' in renderer && renderer.capabilities) {
+      isWebGL2 = Boolean(renderer.capabilities.isWebGL2);
+    }
+  } else {
+    const info = backend?.device?.adapterInfo;
+    const parts = [info?.description, info?.device, info?.architecture].filter(
+      (part): part is string => typeof part === 'string' && part.trim().length > 0
+    );
+    gpuRenderer = parts.join(' ').trim() || 'WebGPU Hardware Adapter';
+    gpuVendor =
+      typeof info?.vendor === 'string' && info.vendor.trim().length > 0
+        ? info.vendor.trim()
+        : 'WebGPU';
+    const limitTex = backend?.device?.limits?.maxTextureDimension2D;
+    maxTextureSize = typeof limitTex === 'number' && limitTex > 0 ? limitTex : 8192;
+    isWebGL2 = true;
   }
-  // Firefox deprecates the extension but returns the sanitized renderer from RENDERER directly.
-  if (!gpuRenderer) gpuRenderer = readStringParam(gl, gl.RENDERER);
-  if (!gpuVendor) gpuVendor = readStringParam(gl, gl.VENDOR);
 
   const nav: ExtendedNavigator | null = typeof navigator !== 'undefined' ? navigator : null;
   const deviceMemory = nav?.deviceMemory;
@@ -83,8 +156,8 @@ export function detectDeviceProfile(renderer: THREE.WebGLRenderer): DeviceProfil
       typeof window !== 'undefined' && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1,
     isMobile: detectMobile(nav),
     isTouch,
-    maxTextureSize: readNumberParam(gl, gl.MAX_TEXTURE_SIZE),
-    isWebGL2: renderer.capabilities.isWebGL2,
+    maxTextureSize,
+    isWebGL2,
   };
 }
 

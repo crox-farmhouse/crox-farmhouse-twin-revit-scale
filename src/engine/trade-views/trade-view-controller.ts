@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { NodeMaterial, PointsNodeMaterial, SpriteNodeMaterial } from 'three/webgpu';
 import type { TradeView } from '../../core/types/twin-ux.ts';
 import { classifyObject, isRenderableObject, type TradeCategory } from './trade-classifier.ts';
 import { TRADE_CATEGORY_COLORS, TRADE_VIEW_PROFILES, type TradeDisplayMode } from './trade-view-profiles.ts';
@@ -38,8 +39,63 @@ function hasColor(m: THREE.Material): m is ColorMaterial {
   return (m as Partial<ColorMaterial>).color instanceof THREE.Color;
 }
 
+interface CustomNodeShaderMaterial extends THREE.Material {
+  readonly isShaderMaterial?: boolean;
+  readonly isPointsNodeMaterial?: boolean;
+  readonly isSpriteNodeMaterial?: boolean;
+  fragmentNode?: unknown;
+  outputNode?: unknown;
+  vertexNode?: unknown;
+  positionNode?: unknown;
+  aoNode?: unknown;
+  envNode?: unknown;
+  lightsNode?: unknown;
+  normalNode?: unknown;
+  roughnessNode?: unknown;
+  metalnessNode?: unknown;
+  colorNode?: unknown;
+  emissiveNode?: unknown;
+}
+
 function isCustomShader(m: THREE.Material): boolean {
-  return m instanceof THREE.ShaderMaterial;
+  if (m instanceof PointsNodeMaterial || m instanceof SpriteNodeMaterial) {
+    return true;
+  }
+  const n = m as CustomNodeShaderMaterial;
+  if (n.isShaderMaterial || n.isPointsNodeMaterial || n.isSpriteNodeMaterial) {
+    return true;
+  }
+  if (
+    n.fragmentNode != null ||
+    n.outputNode != null ||
+    n.vertexNode != null ||
+    n.positionNode != null
+  ) {
+    return true;
+  }
+  if (m instanceof NodeMaterial && !hasColor(m) && !hasEmissive(m)) {
+    return true;
+  }
+  return false;
+}
+
+function copyTslMaterialNodes(
+  source: THREE.Material,
+  target: THREE.Material,
+  includeColorAndEmissive: boolean
+): void {
+  const src = source as CustomNodeShaderMaterial;
+  const dst = target as CustomNodeShaderMaterial;
+  if (src.aoNode !== undefined) dst.aoNode = src.aoNode;
+  if (src.envNode !== undefined) dst.envNode = src.envNode;
+  if (src.lightsNode !== undefined) dst.lightsNode = src.lightsNode;
+  if (src.normalNode !== undefined) dst.normalNode = src.normalNode;
+  if (src.roughnessNode !== undefined) dst.roughnessNode = src.roughnessNode;
+  if (src.metalnessNode !== undefined) dst.metalnessNode = src.metalnessNode;
+  if (includeColorAndEmissive) {
+    if (src.colorNode !== undefined) dst.colorNode = src.colorNode;
+    if (src.emissiveNode !== undefined) dst.emissiveNode = src.emissiveNode;
+  }
 }
 
 interface RenderableRecord {
@@ -106,8 +162,17 @@ export class TradeViewController {
     this.categoryCounts.clear();
 
     const visit = (node: THREE.Object3D): void => {
+      if (node.name === '__crox_fitting_halos__') return;
       const u = node.userData as Record<string, unknown> | undefined;
-      if (u && (u['isAnnotationGroup'] || u['isSecurityFovCone'] || u['tradeViewIgnore'])) return;
+      if (
+        u &&
+        (u['isAnnotationGroup'] ||
+          u['isSecurityFovCone'] ||
+          u['tradeViewIgnore'] ||
+          u['isFittingHaloCloud'])
+      ) {
+        return;
+      }
       if (isRenderableObject(node) && !(node instanceof THREE.Sprite)) {
         const category = classifyObject(node);
         const original = this.toSourceSlot(node.material as MaterialSlot);
@@ -320,10 +385,16 @@ export class TradeViewController {
     let ghost = this.ghostBySource.get(source);
     if (!ghost) {
       ghost = source.clone();
+      copyTslMaterialNodes(source, ghost, true);
       ghost.transparent = true;
       ghost.opacity = Math.min(1, source.opacity) * TRADE_GHOST_OPACITY;
       ghost.depthWrite = false;
-      if (ghost instanceof THREE.MeshPhysicalMaterial) ghost.transmission = 0;
+      if (
+        ghost instanceof THREE.MeshPhysicalMaterial ||
+        (ghost as { isMeshPhysicalMaterial?: boolean }).isMeshPhysicalMaterial
+      ) {
+        (ghost as THREE.MeshPhysicalMaterial).transmission = 0;
+      }
       ghost.userData = { ...source.userData, isTradeViewGhost: true };
       this.ghostBySource.set(source, ghost);
       this.sourceByClone.set(ghost, source);
@@ -350,6 +421,7 @@ export class TradeViewController {
           return source;
         }
         const clone = source.clone() as EmissiveMaterial;
+        copyTslMaterialNodes(source, clone, false);
         clone.emissive.copy(tint);
         clone.emissiveIntensity = TRADE_HIGHLIGHT_EMISSIVE_INTENSITY;
         clone.emissiveMap = null;
@@ -357,6 +429,7 @@ export class TradeViewController {
         hl = clone;
       } else if (hasColor(source)) {
         const clone = source.clone() as ColorMaterial;
+        copyTslMaterialNodes(source, clone, false);
         clone.color.lerp(tint, 0.6);
         hl = clone;
       } else {
