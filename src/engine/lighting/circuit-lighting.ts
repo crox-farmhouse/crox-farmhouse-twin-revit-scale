@@ -82,7 +82,10 @@ function adoptPhysicalDecay(lightGroups: LightGroupMap): void {
     if (!group) continue;
     for (const light of group.lights) {
       if (typeof light.userData?.[DECAY_GAIN_KEY] === 'number') continue;
-      const gain = Math.pow(DECAY_REFERENCE_DISTANCE_M, CIRCUIT_LIGHT_DECAY - light.decay);
+      const isOutbuilding = light.name.startsWith('outbuildings.');
+      const refDist = isOutbuilding ? 3.2 : DECAY_REFERENCE_DISTANCE_M;
+      const outbuildingBoost = isOutbuilding ? 2.4 : 1.0;
+      const gain = Math.pow(refDist, CIRCUIT_LIGHT_DECAY - light.decay) * outbuildingBoost;
       light.decay = CIRCUIT_LIGHT_DECAY;
       light.userData = { ...light.userData, [DECAY_GAIN_KEY]: gain };
     }

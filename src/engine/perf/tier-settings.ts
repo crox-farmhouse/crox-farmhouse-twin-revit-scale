@@ -97,7 +97,7 @@ const TIER_TABLE: Readonly<Record<GraphicsTier, TierFeatureRow>> = {
     shadowMapSize: 1024,
     lodDistanceScale: 0.6,
     highDetailMaxDistance: 6,
-    pointLightBudget: 12,
+    pointLightBudget: 64,
   },
   medium: {
     postProcessing: true,
@@ -107,7 +107,7 @@ const TIER_TABLE: Readonly<Record<GraphicsTier, TierFeatureRow>> = {
     shadowMapSize: 2048,
     lodDistanceScale: 0.85,
     highDetailMaxDistance: 10,
-    pointLightBudget: 20,
+    pointLightBudget: 72,
   },
   high: {
     postProcessing: true,
@@ -117,7 +117,7 @@ const TIER_TABLE: Readonly<Record<GraphicsTier, TierFeatureRow>> = {
     shadowMapSize: 2048,
     lodDistanceScale: 1.0,
     highDetailMaxDistance: 12,
-    pointLightBudget: 28,
+    pointLightBudget: 80,
   },
   ultra: {
     postProcessing: true,
@@ -127,7 +127,7 @@ const TIER_TABLE: Readonly<Record<GraphicsTier, TierFeatureRow>> = {
     shadowMapSize: 4096,
     lodDistanceScale: 1.3,
     highDetailMaxDistance: 18,
-    pointLightBudget: 32,
+    pointLightBudget: 96,
   },
 };
 

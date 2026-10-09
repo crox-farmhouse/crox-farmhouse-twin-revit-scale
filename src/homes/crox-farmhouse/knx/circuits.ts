@@ -902,7 +902,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'exterior',
     dimmable: true,
-    defaultLevel: 0,
+    defaultLevel: 75,
     aliases: ['pergola lights', 'pergola festoons', 'vine lights'],
   },
   {
@@ -997,7 +997,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'downlights',
     dimmable: true,
-    defaultLevel: 0,
+    defaultLevel: 75,
     aliases: ['shower room lights', 'garage shower light'],
   },
   {
@@ -1035,7 +1035,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'strip',
     dimmable: true,
-    defaultLevel: 0,
+    defaultLevel: 85,
     aliases: ['store lights', 'store leds', 'garden store lights'],
   },
   {
@@ -1054,7 +1054,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'feature',
     dimmable: true,
-    defaultLevel: 60,
+    defaultLevel: 85,
     aliases: ['golf sim', 'golf sim lights', 'simulator halo', 'golf room lights'],
   },
   {
@@ -1073,7 +1073,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'cove',
     dimmable: true,
-    defaultLevel: 70,
+    defaultLevel: 85,
     aliases: ['barn coves', 'cove lights', 'barn cove leds'],
   },
   {
@@ -1092,7 +1092,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'wall',
     dimmable: true,
-    defaultLevel: 70,
+    defaultLevel: 85,
     aliases: ['barn sconces', 'barn wall lights'],
   },
   {
@@ -1111,7 +1111,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'step',
     dimmable: true,
-    defaultLevel: 50,
+    defaultLevel: 85,
     aliases: ['spiral stair lights', 'barn stair lights'],
   },
   {
@@ -1130,7 +1130,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'pendants',
     dimmable: true,
-    defaultLevel: 70,
+    defaultLevel: 85,
     aliases: ['pool table light', 'pool light', 'snooker light'],
   },
   {
@@ -1149,7 +1149,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'picture',
     dimmable: true,
-    defaultLevel: 60,
+    defaultLevel: 85,
     aliases: ['barn picture lights', 'barn art lights'],
   },
   {
@@ -1168,7 +1168,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'downlights',
     dimmable: true,
-    defaultLevel: 70,
+    defaultLevel: 85,
     aliases: ['mezzanine downlights', 'mezz downlights', 'mezzanine ceiling lights'],
   },
   {
@@ -1187,7 +1187,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'shelf',
     dimmable: true,
-    defaultLevel: 70,
+    defaultLevel: 85,
     aliases: ['bookcase light', 'bookshelf light'],
   },
   {
@@ -1206,7 +1206,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'wall',
     dimmable: true,
-    defaultLevel: 0,
+    defaultLevel: 75,
     aliases: ['office wc light', 'office cloakroom light'],
   },
   {
@@ -1244,7 +1244,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'downlights',
     dimmable: true,
-    defaultLevel: 0,
+    defaultLevel: 80,
     aliases: ['ensuite lights', 'ensuite', 'shower lights'],
   },
   {
@@ -1263,7 +1263,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'exterior',
     dimmable: true,
-    defaultLevel: 0,
+    defaultLevel: 75,
     aliases: ['balcony lights', 'balcony wall lights'],
   },
   {
@@ -1282,7 +1282,7 @@ export const CROX_CIRCUITS: readonly CircuitConfig[] = [
     isSceneMember: false,
     kind: 'exterior',
     dimmable: true,
-    defaultLevel: 0,
+    defaultLevel: 75,
     aliases: ['stable wall lights', 'coach lights', 'outside stable lights'],
   },
 ];

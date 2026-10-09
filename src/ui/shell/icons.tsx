@@ -36,7 +36,8 @@ export type IconName =
   | 'check'
   | 'eye'
   | 'move'
-  | 'crouch';
+  | 'crouch'
+  | 'jump';
 
 const PATHS: Readonly<Record<IconName, readonly string[]>> = {
   cube: ['M12 2 3 7v10l9 5 9-5V7z', 'M3 7l9 5 9-5', 'M12 12v10'],
@@ -81,6 +82,7 @@ const PATHS: Readonly<Record<IconName, readonly string[]>> = {
   check: ['M20 6 9 17l-5-5'],
   eye: ['M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
   move: ['M5 9l-3 3 3 3', 'M9 5l3-3 3 3', 'M15 19l-3 3-3-3', 'M19 9l3 3-3 3', 'M2 12h20', 'M12 2v20'],
+  jump: ['M12 19V5', 'M6 11l6-6 6 6', 'M5 21h14'],
   crouch: ['M12 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4z', 'M7 21l3-6 4 2v4', 'M10 11l4-2 3 3'],
 };
 

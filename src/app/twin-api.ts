@@ -371,6 +371,8 @@ export interface TwinWalkthroughApi {
   /** Uses the object under the crosshair (same as the F key). */
   interact(): boolean;
   toggleCrouch(): boolean;
+  /** Trigger a jump or stair/ledge climb in 1PV walkthrough mode. */
+  jump(): void;
   /** Sets the virtual thumbstick movement vector (-1..1 strafe & forward) for touch walkthrough. */
   setTouchMove(strafe: number, forward: number, sprint?: boolean): void;
   /** Requests pointer lock for free mouse look (must be called from a user gesture). */

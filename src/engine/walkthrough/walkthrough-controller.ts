@@ -114,6 +114,9 @@ export class WalkthroughController {
   private lookDirty = false;
   private lastDragClientX = 0;
   private lastDragClientY = 0;
+  private dragLookStartX = 0;
+  private dragLookStartY = 0;
+  private dragLookStartTimeMs = 0;
   private touchForwardInput = 0;
   private touchStrafeInput = 0;
   private touchSprint = false;
@@ -246,6 +249,25 @@ export class WalkthroughController {
     this.saveSessionState(true);
     this.emit();
     return this.crouched;
+  }
+
+  public jump(): void {
+    if (!this.active) return;
+    const ladderJump = this.ladderClimb.tryHandleSpaceJump(
+      this.footPos,
+      this.yawRad,
+      this.pitchRad,
+      this.currentEyeHeight
+    );
+    if (ladderJump.handled) {
+      this.verticalVelocity = ladderJump.kickBackVelocityY;
+      return;
+    }
+    if (this.crouched) {
+      this.setCrouched(false);
+    } else if (this.jumpOffsetY <= 0.01) {
+      this.verticalVelocity = JUMP_IMPULSE_MPS;
+    }
   }
 
   public requestMouseLock(): void {
@@ -991,7 +1013,16 @@ export class WalkthroughController {
         this.triggerTargetedInteraction();
         return;
       }
-      if (e.pointerType !== 'touch') {
+      if (e.pointerType === 'touch') {
+        // Multi-touch guard: if a finger is already looking around on the canvas,
+        // ignore any secondary finger touching the canvas so walking + looking never conflict.
+        if (this.dragLookPointerId !== null) return;
+        try {
+          this.canvas.setPointerCapture(e.pointerId);
+        } catch {
+          // Ignore synthetic pointer capture errors
+        }
+      } else {
         try {
           this.canvas.requestPointerLock?.();
         } catch {
@@ -1002,6 +1033,9 @@ export class WalkthroughController {
       this.dragLookPointerId = e.pointerId;
       this.lastDragClientX = e.clientX;
       this.lastDragClientY = e.clientY;
+      this.dragLookStartX = e.clientX;
+      this.dragLookStartY = e.clientY;
+      this.dragLookStartTimeMs = performance.now();
     });
 
     window.addEventListener(
@@ -1027,13 +1061,25 @@ export class WalkthroughController {
           const dy = e.clientY - this.lastDragClientY;
           this.lastDragClientX = e.clientX;
           this.lastDragClientY = e.clientY;
-          const sens = e.pointerType === 'touch' ? DRAG_SENSITIVITY * 1.15 : DRAG_SENSITIVITY;
-          this.targetYawRad -= dx * sens;
-          this.targetPitchRad = THREE.MathUtils.clamp(
-            this.targetPitchRad - dy * sens,
-            -MAX_PITCH_RAD,
-            MAX_PITCH_RAD
-          );
+          if (e.pointerType === 'touch') {
+            const speedPx = Math.hypot(dx, dy);
+            const accel = 1 + Math.min(0.65, speedPx * 0.018);
+            const yawSens = 0.0088 * accel;
+            const pitchSens = 0.0072 * accel;
+            this.targetYawRad -= dx * yawSens;
+            this.targetPitchRad = THREE.MathUtils.clamp(
+              this.targetPitchRad - dy * pitchSens,
+              -MAX_PITCH_RAD,
+              MAX_PITCH_RAD
+            );
+          } else {
+            this.targetYawRad -= dx * DRAG_SENSITIVITY;
+            this.targetPitchRad = THREE.MathUtils.clamp(
+              this.targetPitchRad - dy * DRAG_SENSITIVITY,
+              -MAX_PITCH_RAD,
+              MAX_PITCH_RAD
+            );
+          }
           this.lookDirty = true;
         }
       },
@@ -1041,9 +1087,24 @@ export class WalkthroughController {
     );
 
     const endDragLook = (e: PointerEvent): void => {
-      if (this.dragLookPointerId === null || e.pointerId === this.dragLookPointerId) {
+      if (this.dragLookPointerId !== null && e.pointerId === this.dragLookPointerId) {
+        const wasTap =
+          e.type === 'pointerup' &&
+          e.pointerType === 'touch' &&
+          Math.hypot(e.clientX - this.dragLookStartX, e.clientY - this.dragLookStartY) < 10 &&
+          performance.now() - this.dragLookStartTimeMs < 260;
         this.isDraggingLook = false;
         this.dragLookPointerId = null;
+        try {
+          if (this.canvas.hasPointerCapture(e.pointerId)) {
+            this.canvas.releasePointerCapture(e.pointerId);
+          }
+        } catch {
+          // Ignore pointer capture release errors
+        }
+        if (wasTap && this.targetedPrompt !== null) {
+          this.triggerTargetedInteraction();
+        }
       }
     };
     window.addEventListener('pointerup', endDragLook);
@@ -1067,21 +1128,7 @@ export class WalkthroughController {
       }
       if (e.code === 'Space' && !e.repeat) {
         e.preventDefault();
-        const ladderJump = this.ladderClimb.tryHandleSpaceJump(
-          this.footPos,
-          this.yawRad,
-          this.pitchRad,
-          this.currentEyeHeight
-        );
-        if (ladderJump.handled) {
-          this.verticalVelocity = ladderJump.kickBackVelocityY;
-          return;
-        }
-        if (this.crouched) {
-          this.setCrouched(false);
-        } else if (this.jumpOffsetY <= 0.01) {
-          this.verticalVelocity = JUMP_IMPULSE_MPS;
-        }
+        this.jump();
         return;
       }
       if (WALKTHROUGH_MOVEMENT_KEYS.has(e.code)) {

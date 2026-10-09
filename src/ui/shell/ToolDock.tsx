@@ -4,7 +4,6 @@ import {
   isCoarsePointer,
   isMobile,
   sectionCut,
-  touchNavMode,
   viewMode,
   type ShellTool,
 } from '../../state/shell-store.ts';
@@ -28,15 +27,12 @@ const TOOLS: readonly DockTool[] = [
 export function ToolDock(): JSX.Element | null {
   const ctl = useShell();
   const tool = activeTool.value;
-  const navMode = touchNavMode.value;
   const isTouch = isCoarsePointer.value || isMobile.value;
   // Walk mode has its own overlay (crosshair, key hints, room chip).
   if (viewMode.value === 'walk') return null;
   const activeHint =
     tool === 'orbit' && isTouch
-      ? navMode === 'pan'
-        ? '1-finger pan · 2-finger pinch zoom · double-tap room'
-        : '1-finger orbit · 2-finger pan & pinch zoom · double-tap room'
+      ? '1-finger orbit · 2-finger pan & pinch zoom · double-tap room'
       : (TOOLS.find((t) => t.id === tool)?.hint ?? '');
 
   return (
@@ -45,40 +41,14 @@ export function ToolDock(): JSX.Element | null {
         {activeHint}
       </div>
       <nav class="shell-dock" aria-label="Tools">
-        <button
-          type="button"
-          class={`shell-dock-btn${tool === 'orbit' && navMode === 'orbit' ? ' is-active' : ''}`}
-          aria-pressed={tool === 'orbit' && navMode === 'orbit'}
-          title="1-finger Orbit (Esc)"
-          onClick={() => {
-            ctl.setTool('orbit');
-            ctl.setTouchNavMode('orbit');
-          }}
-        >
-          <Icon name="hand" size={18} />
-          <span>Orbit</span>
-        </button>
-        <button
-          type="button"
-          class={`shell-dock-btn${tool === 'orbit' && navMode === 'pan' ? ' is-active' : ''}`}
-          aria-pressed={tool === 'orbit' && navMode === 'pan'}
-          title="1-finger Pan (drag with one finger to pan across the property)"
-          onClick={() => {
-            ctl.setTool('orbit');
-            ctl.setTouchNavMode(navMode === 'pan' ? 'orbit' : 'pan');
-          }}
-        >
-          <Icon name="move" size={18} />
-          <span>Pan</span>
-        </button>
-        {TOOLS.slice(1).map((t) => (
+        {TOOLS.map((t) => (
           <button
             key={t.id}
             type="button"
             class={`shell-dock-btn${tool === t.id ? ' is-active' : ''}`}
             aria-pressed={tool === t.id}
             title={`${t.label} (${t.key})`}
-            onClick={() => ctl.toggleTool(t.id as Exclude<ShellTool, 'orbit'>)}
+            onClick={() => (t.id === 'orbit' ? ctl.setTool('orbit') : ctl.toggleTool(t.id))}
           >
             <Icon name={t.icon} size={18} />
             <span>{t.label}</span>

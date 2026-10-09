@@ -432,6 +432,7 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       onStateChanged: (listener) => scene.getWalkthrough().subscribe(() => listener(walkState())),
       interact: () => scene.getWalkthrough().triggerTargetedInteraction(),
       toggleCrouch: () => scene.getWalkthrough().toggleCrouched(),
+      jump: () => scene.getWalkthrough().jump(),
       setTouchMove: (strafe, forward, sprint = false) =>
         scene.getWalkthrough().setTouchMoveVector(strafe, forward, sprint),
       requestMouseLook: () => scene.getWalkthrough().requestMouseLock(),
