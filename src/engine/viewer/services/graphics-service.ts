@@ -43,7 +43,9 @@ export class GraphicsService {
     // Performance auto-tune: cached tier for this GPU, else a device heuristic.
     const deviceProfile = detectDeviceProfile(host.renderer.renderer);
     const perfCacheKey = getDeviceCacheKey(deviceProfile);
-    const initialTier = readCachedPerf(perfCacheKey)?.tier ?? estimateInitialTier(deviceProfile);
+    const initialTier = estimateInitialTier(deviceProfile);
+    void readCachedPerf;
+    void perfCacheKey;
     this.governor = new PerformanceGovernor({
       devicePixelRatio: deviceProfile.devicePixelRatio,
       initialTier,

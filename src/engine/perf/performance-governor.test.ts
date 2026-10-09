@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GraphicsTier, GraphicsTierSettings } from '../../core/types/twin-ux.ts';
-import { PerformanceGovernor, QUALITY_REDUCED_TOAST } from './performance-governor.ts';
+import { PerformanceGovernor } from './performance-governor.ts';
 
 interface Harness {
   readonly governor: PerformanceGovernor;
@@ -51,34 +51,21 @@ describe('PerformanceGovernor', () => {
     expect(h.governor.getMode()).toBe('auto');
   });
 
-  it('steps resolution down after sustained slow frames, only once the camera is idle', () => {
+  it('holds the startup-estimated tier and pixel ratio constant across slow and fast frames', () => {
     const h = createHarness('high', 2);
     h.frames(200, 30);
-    expect(h.governor.hasPendingChange()).toBe(true);
-    expect(h.applied).toHaveLength(1); // never mid-drag
+    expect(h.governor.hasPendingChange()).toBe(false);
     h.governor.notifyCameraIdle();
-    expect(h.applied).toHaveLength(2);
-    expect(h.applied[1]).toMatchObject({ tier: 'high', pixelRatio: 1.4 });
-    expect(h.toasts).toEqual([QUALITY_REDUCED_TOAST]);
-    expect(h.autoTiers).toEqual([]);
-  });
-
-  it('drops a whole tier on severe slowness', () => {
-    const h = createHarness('high', 2);
-    h.frames(120, 50);
-    h.governor.notifyCameraIdle();
-    expect(h.governor.getActiveTier()).toBe('medium');
-    expect(h.autoTiers).toEqual(['medium']);
-  });
-
-  it('steps up after sustained fast frames, entering the higher tier at its minimum ratio', () => {
-    const h = createHarness('medium', 2);
-    expect(h.governor.getActiveSettings().pixelRatio).toBe(1);
-    h.frames(1400, 8);
-    expect(h.governor.hasPendingChange()).toBe(true);
-    h.governor.notifyCameraIdle();
-    expect(h.governor.getActiveSettings()).toMatchObject({ tier: 'high', pixelRatio: 1 });
+    expect(h.applied).toHaveLength(1);
+    expect(h.governor.getActiveSettings()).toMatchObject({ tier: 'high', pixelRatio: 1.5 });
     expect(h.toasts).toEqual([]);
+    expect(h.autoTiers).toEqual([]);
+
+    h.frames(1400, 8);
+    expect(h.governor.hasPendingChange()).toBe(false);
+    h.governor.notifyCameraIdle();
+    expect(h.applied).toHaveLength(1);
+    expect(h.governor.getActiveSettings()).toMatchObject({ tier: 'high', pixelRatio: 1.5 });
   });
 
   it('ignores frames while the camera is idle and hitch frames', () => {
