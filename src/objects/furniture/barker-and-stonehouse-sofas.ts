@@ -16,10 +16,11 @@ export function createSculptedCushionGeometry(
   knifeEdge = false,
   loungeCrease = 0
 ): THREE.BufferGeometry {
-  const effSegX = Math.max(4, Math.round(segX * 0.55));
-  const effSegY = Math.max(4, Math.round(segY * 0.55));
-  const effSegZ = Math.max(4, Math.round(segZ * 0.55));
+  const effSegX = Math.max(10, Math.round(segX * 0.85));
+  const effSegY = Math.max(8, Math.round(segY * 0.85));
+  const effSegZ = Math.max(10, Math.round(segZ * 0.85));
   const geo = new THREE.BoxGeometry(widthX, heightY, depthZ, effSegX, effSegY, effSegZ);
+  geo.userData.isSculpted = true;
   const pos = geo.attributes.position as THREE.BufferAttribute;
   const norm = geo.attributes.normal as THREE.BufferAttribute;
   const uv = geo.attributes.uv as THREE.BufferAttribute;
@@ -29,10 +30,10 @@ export function createSculptedCushionGeometry(
   const hz = depthZ * 0.5;
   const stripeScale = 1.25;
 
-  // Superellipsoid exponent: lower exponent = rounder edges/corners
+  // Superellipsoid exponent: lower exponent = rounder, more pillowed edges and corners (Issue #5)
   const exp = knifeEdge
-    ? 2.35
-    : Math.max(2.4, 5.2 - Math.min(2.4, crownPower * 2.2));
+    ? 2.15
+    : Math.max(2.2, 3.25 - Math.min(1.05, crownPower * 1.15));
 
   for (let i = 0; i < pos.count; i++) {
     const x0 = pos.getX(i);
@@ -51,14 +52,16 @@ export function createSculptedCushionGeometry(
     const ay = Math.min(1, Math.abs(uy));
     const az = Math.min(1, Math.abs(uz));
 
-    // Smooth superellipsoid radial factor that rounds the 12 edges and 8 corners of the box
+    // Smooth superellipsoid radial factor that rounds the 12 edges and 8 corners of the cushion
     const superNorm = Math.pow(
       Math.pow(ax, exp) + Math.pow(ay, exp) + Math.pow(az, exp),
       1 / exp
     );
     const edgeRoundScale = superNorm > 1e-5 ? 1 / superNorm : 1;
-    // Blend between raw box and superellipsoid so interior stays full-sized
-    const roundBlend = Math.min(1, Math.max(0.15, crownPower * 0.85));
+    // Strong superellipsoid blend so cushions have genuinely rounded bolsters instead of sharp box corners
+    const roundBlend = knifeEdge
+      ? 0.92
+      : Math.min(0.92, Math.max(0.68, 0.58 + crownPower * 0.52));
     const baseScale = 1 - roundBlend * (1 - edgeRoundScale);
 
     // Sinusoidal pillow-crown dome across each face
@@ -73,15 +76,15 @@ export function createSculptedCushionGeometry(
     if (knifeEdge) {
       // Taper thickness (X) toward the perimeter edges in Y and Z to create a true tailored knife-edge seam
       const perimeterPinch =
-        (1 - 0.52 * Math.pow(ay, 2.2)) * (1 - 0.48 * Math.pow(az, 2.2));
-      x = x0 * perimeterPinch + Math.sign(ux) * hx * crownPower * 0.34 * domeX;
-      y += Math.sign(uy) * hy * crownPower * 0.14 * domeY;
-      z += Math.sign(uz) * hz * crownPower * 0.12 * domeZ;
+        (1 - 0.56 * Math.pow(ay, 2.1)) * (1 - 0.52 * Math.pow(az, 2.1));
+      x = x0 * perimeterPinch + Math.sign(ux) * hx * crownPower * 0.38 * domeX;
+      y += Math.sign(uy) * hy * crownPower * 0.16 * domeY;
+      z += Math.sign(uz) * hz * crownPower * 0.14 * domeZ;
     } else {
-      // Plump box-edge cushion with crowned top/bottom and softly bullnosed front/back/side cheeks
-      x += Math.sign(ux) * hx * crownPower * 0.22 * domeX;
-      y += Math.sign(uy) * hy * crownPower * 0.32 * domeY;
-      z += Math.sign(uz) * hz * crownPower * 0.16 * domeZ;
+      // Plump feather-wrapped cushion with rich top/bottom crown and bullnosed front/back/side cheeks
+      x += Math.sign(ux) * hx * crownPower * 0.26 * domeX;
+      y += Math.sign(uy) * hy * crownPower * 0.42 * domeY;
+      z += Math.sign(uz) * hz * crownPower * 0.22 * domeZ;
     }
 
     // Optional subtle central lounge indentation for back cushions

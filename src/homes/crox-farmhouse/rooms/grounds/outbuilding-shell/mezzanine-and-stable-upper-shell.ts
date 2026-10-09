@@ -448,7 +448,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
   addOutbuildingBrickWallWithWindows(
     firstFloorGroup,
     uBarnEnd - partT,
-    uStableEnd,
+    uStableEnd - wallT,
     stableGroundTopY,
     stableUpperTopY,
     vEastRangeNorth,
@@ -464,7 +464,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
   addOutbuildingBrickWallWithWindows(
     firstFloorGroup,
     uBarnEnd - partT,
-    uStableEnd,
+    uStableEnd - wallT,
     stableGroundTopY,
     stableUpperTopY,
     vEastRangeSouth - wallT,
@@ -544,7 +544,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     uStableEnd,
     stableGroundTopY,
     stableUpperTopY,
-    vEastRangeNorth + wallT,
+    vEastRangeNorth,
     balDoorV0,
     ['-x'],
     exteriorBrickMat,
@@ -557,7 +557,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     stableGroundTopY,
     stableUpperTopY,
     balDoorV1,
-    vEastRangeSouth - wallT,
+    vEastRangeSouth,
     ['-x'],
     exteriorBrickMat,
     cromartyWallMat

@@ -993,11 +993,22 @@ export function createOutbuildingShellContext(
     const iwiT = 0.06; // 60mm Breathable Wood-Fibre Board
     const limeT = 0.015; // 15mm Breathable NHL 3.5 Lime Plaster
 
+    // Corner mitre extensions where North/South walls meet West (`uMin ≈ wallT = 0.28m`) or East (`uMax ≈ 31.57m` or `28.77m`) end walls:
+    // Extend outer brick wythe by `iwiT + limeT` (`0.075m`) and wood-fibre core by `limeT` (`0.015m`) so the 3 layers mitre cleanly with zero corner notch!
+    const atWestEndInnerFace = Math.abs(uMin - wallT) < 0.012;
+    const atEastEndInnerFace =
+      Math.abs(uMax - (31.85 - wallT)) < 0.012 ||
+      Math.abs(uMax - (29.05 - wallT)) < 0.012;
+
     // 1. North Exterior Wall (`v = 0.00..0.28m`)
     const isUnheatedGarageNorth = isNorthExt && uMin >= 5.95 && uMax <= 12.08;
     if (isNorthExt && !isUnheatedGarageNorth) {
       const brickVMax = vMax - iwiT - limeT; // 0.205m
       const iwiVMax = vMax - limeT; // 0.265m
+      const brickUMin = atWestEndInnerFace ? uMin - (iwiT + limeT) : uMin;
+      const brickUMax = atEastEndInnerFace ? uMax + (iwiT + limeT) : uMax;
+      const iwiUMin = atWestEndInnerFace ? uMin - limeT : uMin;
+      const iwiUMax = atEastEndInnerFace ? uMax + limeT : uMax;
       const brickMats: THREE.Material[] = [
         pSet.has('+x') ? overridePlasterMat : overrideExteriorMat,
         pSet.has('-x') ? overridePlasterMat : overrideExteriorMat,
@@ -1006,8 +1017,8 @@ export function createOutbuildingShellContext(
         overrideExteriorMat,
         overrideExteriorMat,
       ];
-      const primary = buildBoxPart(uMin, uMax, yMin, yMax, vMin, brickVMax, brickMats, '', true);
-      buildBoxPart(uMin, uMax, yMin, yMax + 0.0015, brickVMax, iwiVMax, woodFibreCoreMat, '.woodFibreInsulation', false);
+      const primary = buildBoxPart(brickUMin, brickUMax, yMin, yMax, vMin, brickVMax, brickMats, '', true);
+      buildBoxPart(iwiUMin, iwiUMax, yMin, yMax + 0.0015, brickVMax, iwiVMax, woodFibreCoreMat, '.woodFibreInsulation', false);
       buildBoxPart(uMin, uMax, yMin, yMax, iwiVMax, vMax, overridePlasterMat, '.limePlaster', false);
       return primary;
     }
@@ -1017,6 +1028,10 @@ export function createOutbuildingShellContext(
     if (isSouthExt && !isUnheatedGarageSouth) {
       const limeVMax = vMin + limeT; // 5.445m
       const iwiVMax = vMin + limeT + iwiT; // 5.505m
+      const brickUMin = atWestEndInnerFace ? uMin - (iwiT + limeT) : uMin;
+      const brickUMax = atEastEndInnerFace ? uMax + (iwiT + limeT) : uMax;
+      const iwiUMin = atWestEndInnerFace ? uMin - limeT : uMin;
+      const iwiUMax = atEastEndInnerFace ? uMax + limeT : uMax;
       const innerFinishMat = pSet.has('-z') ? overridePlasterMat : overrideExteriorMat;
       const brickMats: THREE.Material[] = [
         pSet.has('+x') ? overridePlasterMat : overrideExteriorMat,
@@ -1026,8 +1041,8 @@ export function createOutbuildingShellContext(
         overrideExteriorMat,
         overrideExteriorMat,
       ];
-      const primary = buildBoxPart(uMin, uMax, yMin, yMax, iwiVMax, vMax, brickMats, '', true);
-      buildBoxPart(uMin, uMax, yMin, yMax + 0.0015, limeVMax, iwiVMax, woodFibreCoreMat, '.woodFibreInsulation', false);
+      const primary = buildBoxPart(brickUMin, brickUMax, yMin, yMax, iwiVMax, vMax, brickMats, '', true);
+      buildBoxPart(iwiUMin, iwiUMax, yMin, yMax + 0.0015, limeVMax, iwiVMax, woodFibreCoreMat, '.woodFibreInsulation', false);
       buildBoxPart(uMin, uMax, yMin, yMax, vMin, limeVMax, innerFinishMat, '.limePlaster', innerFinishMat === overrideExteriorMat);
       return primary;
     }

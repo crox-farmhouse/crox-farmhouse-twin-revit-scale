@@ -112,7 +112,7 @@ export function buildWallKNXSwitch(ctx: SceneBuilderContext): WallSwitchMaterial
     { name: 'kitchen.knx.switch.entrance', pa: '1.1.10', x: -4.12, y: 1.28, z: 1.987, rotY: Math.PI, label: 'Entrance', groupKey: 'southWest' },
     { name: 'kitchen.knx.switch.leftOfAga', pa: '1.1.30', x: -3.18, y: 1.22, z: -2.497, rotY: 0, label: 'Left of AGA', groupKey: 'north' },
     { name: 'kitchen.knx.switch.sittingArea', pa: '1.1.31', x: 4.997, y: 1.28, z: 1.82, rotY: -Math.PI / 2, label: 'Sitting Area', groupKey: 'east' },
-    { name: 'kitchen.knx.switch.bifoldTwoGang', pa: '1.1.14', x: 1.25, y: 1.28, z: 1.987, rotY: Math.PI, label: 'Bifold 2-Gang', groupKey: 'southWest' },
+    { name: 'kitchen.knx.switch.bifoldTwoGang', pa: '1.1.14', x: 1.05, y: 1.28, z: 1.987, rotY: Math.PI, label: 'Bifold 2-Gang', groupKey: 'southWest' },
   ];
 
   for (const plate of kitchenPlates) {
@@ -147,7 +147,7 @@ export function buildWallKNXSwitch(ctx: SceneBuilderContext): WallSwitchMaterial
     location: 'Kitchen — South Bifold Pier Switch Backbox',
     roomLabel: 'Kitchen',
     defaultTempC: 20.5,
-    x: 1.25,
+    x: 1.05,
     y: 1.28,
     z: 1.987,
     facing: 'north',

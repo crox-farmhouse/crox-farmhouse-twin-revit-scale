@@ -348,7 +348,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
   storeRoofLid.position.set(localLoftX, wallBoxH + loftSubfloorH * 0.5, localLoftZ);
   storeRoofLid.castShadow = true;
   storeRoofLid.receiveShadow = true;
-  simCeilingGroup.add(storeRoofLid);
+  simGroup.add(storeRoofLid);
 
   const { colorTex: pineColorTex, bumpTex: pineBumpTex } =
     getPlainUnvarnishedPineFloorTextures(loftLenU, loftSpanV);
@@ -385,7 +385,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
   );
   loftOakFloorDeck.castShadow = true;
   loftOakFloorDeck.receiveShadow = true;
-  simCeilingGroup.add(loftOakFloorDeck);
+  simGroup.add(loftOakFloorDeck);
 
   const northLoftEdgeZ = 1.24 - simCenterV; // -1.94m
   const loftNorthFascia = new THREE.Mesh(
@@ -399,7 +399,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     northLoftEdgeZ + 0.008
   );
   loftNorthFascia.castShadow = true;
-  simCeilingGroup.add(loftNorthFascia);
+  simGroup.add(loftNorthFascia);
 
   const loftTopLocalY = wallBoxH + loftSubfloorH + loftOakDeckH; // 2.95m (world y = 2.61m)
   const guardRailH = 0.91; // Part K compliant >= 900mm internal loft guardrail height
@@ -417,7 +417,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     topRail.name = `outbuildings.store.loftGuardrail.${segName}`;
     topRail.position.set(segMidX, loftTopLocalY + guardRailH, guardZ);
     topRail.castShadow = true;
-    simCeilingGroup.add(topRail);
+    simGroup.add(topRail);
 
     const midKneeRail = new THREE.Mesh(
       new THREE.CylinderGeometry(0.01, 0.01, segLen, 10),
@@ -426,7 +426,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     midKneeRail.name = `outbuildings.store.loftGuardrail.${segName}.kneeRail`;
     midKneeRail.rotation.z = Math.PI / 2;
     midKneeRail.position.set(segMidX, loftTopLocalY + guardRailH * 0.52, guardZ);
-    simCeilingGroup.add(midKneeRail);
+    simGroup.add(midKneeRail);
 
     const postXList =
       segName === 'west'
@@ -440,7 +440,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
       post.name = `outbuildings.store.loftGuardrail.${segName}.post.${postIdx + 1}`;
       post.position.set(px, loftTopLocalY + guardRailH * 0.5, guardZ);
       post.castShadow = true;
-      simCeilingGroup.add(post);
+      simGroup.add(post);
     }
   }
 
@@ -542,7 +542,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
   const loftStorageGroup = new THREE.Group();
   loftStorageGroup.name = 'outbuildings.store.loftStorageBoxes';
   loftStorageGroup.position.set(0, loftTopLocalY, 0);
-  simCeilingGroup.add(loftStorageGroup);
+  simGroup.add(loftStorageGroup);
 
   const clearToteTubMat = new THREE.MeshStandardMaterial({
     color: 0xeaf2f8,
@@ -1305,9 +1305,10 @@ export function buildBarnGolfSimulatorPropsAndLoft(
   }
 
   // Wall-Mounted TrackMan Golf Simulator Control Computer Monitor & Console (`outbuildings.barn.golfSimulator.controlMonitor`)
+  // Moved slightly to the right (`u = 17.22m`, `-u` when facing the South wall) per Issue #4!
   const controlGroup = new THREE.Group();
   controlGroup.name = 'outbuildings.barn.golfSimulator.controlMonitor';
-  controlGroup.position.set(17.60, 0, 5.415);
+  controlGroup.position.set(17.22, 0, 5.415);
   controlGroup.rotation.y = Math.PI;
   groundGroup.add(controlGroup);
 

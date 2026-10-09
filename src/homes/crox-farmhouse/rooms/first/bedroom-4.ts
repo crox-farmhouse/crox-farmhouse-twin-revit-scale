@@ -65,6 +65,7 @@ export function buildBedroom4(
     oakFloorMat,
     tagUpperCutawayWall,
     upperWallTopY,
+    wallCapMat,
     wardrobeMat,
     warmRoomPlasterMat,
   } = kit;
@@ -249,7 +250,7 @@ export function buildBedroom4(
       maxSpan: -17.097,
       floor: 'first' as const,
     };
-    const seCornerMesh = new THREE.Mesh(seCornerGeo, exteriorBrickMat);
+    const seCornerMesh = new THREE.Mesh(seCornerGeo, [wallCapMat, exteriorBrickMat]);
     seCornerMesh.name = 'bedroom4.southEastRoundedBrickCorner';
     seCornerMesh.userData.isArchitecturalShell = true;
     seCornerMesh.castShadow = true;

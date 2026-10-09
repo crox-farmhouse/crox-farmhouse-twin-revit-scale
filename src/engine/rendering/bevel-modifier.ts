@@ -70,18 +70,37 @@ export function applySelectiveBevelModifier(layers: PropertySceneLayers): void {
       return;
     }
 
-    const params = (obj.geometry as THREE.BoxGeometry).parameters;
+    const params = (obj.geometry as THREE.BoxGeometry).parameters as
+      | {
+          width?: number;
+          height?: number;
+          depth?: number;
+          widthSegments?: number;
+          heightSegments?: number;
+          depthSegments?: number;
+        }
+      | undefined;
     if (!params) return;
     const w = params.width ?? 1;
     const h = params.height ?? 1;
     const d = params.depth ?? 1;
 
-    // Never overwrite BoxGeometries whose vertices were sheared, tapered, or translated in-place!
-    if (obj.geometry.userData?.isSheared) {
+    // Never overwrite BoxGeometries that are subdivided, sculpted (e.g. sofa cushions, pillows, beds),
+    // or whose vertices were sheared, tapered, or translated in-place!
+    if (
+      obj.geometry.userData?.isSheared ||
+      obj.geometry.userData?.isSculpted ||
+      (params.widthSegments ?? 1) !== 1 ||
+      (params.heightSegments ?? 1) !== 1 ||
+      (params.depthSegments ?? 1) !== 1
+    ) {
       return;
     }
     const posAttr = obj.geometry.getAttribute('position');
-    if (posAttr && posAttr.count === 24) {
+    if (!posAttr || posAttr.count !== 24) {
+      return;
+    }
+    {
       const hw = w * 0.5;
       const hh = h * 0.5;
       const hd = d * 0.5;

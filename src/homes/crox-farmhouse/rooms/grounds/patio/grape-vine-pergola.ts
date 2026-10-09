@@ -585,13 +585,13 @@ export function buildGrapeVinePergola(
     [pergMinX, pergMaxZ, 0.38, 0.38],
   ] as const) {
     const pier = new THREE.Mesh(
-      applyDryStoneWallUVs(
+      applyCourtyardBrickUVs(
         new THREE.BoxGeometry(pw, pergWallTotalH, pd),
         px,
         pergWallTotalH * 0.5,
         pz
       ),
-      dryStoneWallMat
+      brickWallMat
     );
     if (!pier.name) pier.name = 'courtyard.grapeVinePergola.pier';
     pier.position.set(px, pergWallTotalH * 0.5, pz);

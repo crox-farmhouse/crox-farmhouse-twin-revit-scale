@@ -7,6 +7,7 @@ import {
   createGraniteSettLPathTextures,
 } from '../../../../engine/textures/procedural-textures.ts';
 import { buildPatioAndGrapeVinePergola } from '../grounds/patio-and-grape-vine-pergola.ts';
+import { createSculptedCushionGeometry } from '../../../../objects/furniture/sitting-room-sofas-and-art.ts';
 
 function prepGeo<T extends THREE.BufferGeometry>(geo: T): T {
   geo.computeBoundingSphere();
@@ -21,10 +22,16 @@ function tagHighLod(obj: THREE.Object3D, maxDistance = 14): void {
 // ============================================================================
 // Shared BufferGeometries for Sitting Area, Bifolds, Trophy Urns & Grindstone
 // ============================================================================
-const sharedChairSeatGeo = prepGeo(new THREE.BoxGeometry(0.78, 0.16, 0.76));
+const sharedChairSeatGeo = prepGeo(
+  createSculptedCushionGeometry(0.78, 0.16, 0.76, 16, 10, 16, 0.56, 'standard')
+);
 const sharedChairBaseFrameGeo = prepGeo(new THREE.BoxGeometry(0.82, 0.05, 0.8));
-const sharedChairBackGeo = prepGeo(new THREE.BoxGeometry(0.76, 0.48, 0.16));
-const sharedChairPillowGeo = prepGeo(new THREE.BoxGeometry(0.38, 0.26, 0.1));
+const sharedChairBackGeo = prepGeo(
+  createSculptedCushionGeometry(0.76, 0.48, 0.16, 16, 14, 10, 0.58, 'standard', false, 0.12)
+);
+const sharedChairPillowGeo = prepGeo(
+  createSculptedCushionGeometry(0.38, 0.26, 0.1, 14, 12, 10, 0.64, 'standard', true)
+);
 const sharedChairArmGeo = prepGeo(new THREE.BoxGeometry(0.078, 0.044, 0.78));
 const sharedChairFrontLegGeo = prepGeo(new THREE.CylinderGeometry(0.025, 0.019, 0.62, 10));
 const sharedChairBackLegGeo = prepGeo(new THREE.CylinderGeometry(0.025, 0.019, 0.58, 10));
@@ -353,9 +360,9 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   southWallGroup.add(sill);
 
   // =========================================================================
-  // LARGE 2.5M-WIDE 3-PANE FULL-HEIGHT WINDOW NEXT TO THE BIFOLDS (X = -1.68m to +0.82m, center X = -0.43m)
+  // LARGE 2.5M-WIDE 3-PANE FULL-HEIGHT WINDOW NEXT TO THE BIFOLDS (shifted 40cm West to X = -2.08m..+0.42m, center X = -0.83m — Issue #6!)
   // =========================================================================
-  const southWinCenterX = -0.43;
+  const southWinCenterX = -0.83;
 
   // Matching thick structural Oak Mantel (lintel beam) above the 3-pane full-height window
   const southWinOakMantle = new THREE.Mesh(

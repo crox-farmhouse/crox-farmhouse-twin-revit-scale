@@ -264,8 +264,10 @@ function buildGarageSubDistributionAndKnxBoard(groundGroup: THREE.Group): void {
   const boardGroup = new THREE.Group();
   boardGroup.name = 'outbuildings.garage.mepSubBoard';
   boardGroup.userData = { zone: 'outbuildingGarage' };
-  boardGroup.position.set(13.65, 0.92, 1.168);
-  boardGroup.rotation.y = Math.PI; // Facing North (-v) into the Store service corridor
+  // Mounted inside the Garage on the East exterior wall of the Shower Room (`u = 8.922m, v = 4.45m`, facing East `+u`)
+  // rather than in the Store corridor where it clipped the loft ladder (Issue #9)!
+  boardGroup.position.set(8.922, 0.85, 4.45);
+  boardGroup.rotation.y = Math.PI / 2; // Facing East (+u) into the Garage workshop bay
 
 
   const steelEnclosureMat = new THREE.MeshStandardMaterial({
@@ -451,7 +453,7 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
   }> = [
     { idx: 1, u: 25.4, v: 0.292, rotY: 0, label: 'Office North-West Wall Light' },
     { idx: 2, u: 29.1, v: 0.292, rotY: 0, label: 'Office North-East Wall Light' },
-    { idx: 3, u: 27.8, v: 5.418, rotY: Math.PI, label: 'Office South Wall Light' },
+    { idx: 3, u: 28.45, v: 5.418, rotY: Math.PI, label: 'Office South Wall Light' },
     { idx: 4, u: 24.865, v: 4.68, rotY: Math.PI / 2, label: 'Office Cloakroom Partition Wall Light' },
   ];
 
@@ -1456,10 +1458,10 @@ export function buildOutbuildingMepAndKnx(s: OutbuildingShellContext): void {
   groundGroup.add(
     buildIndoorAirToAirAcUnit(
       'outbuildings.barn.acUnit',
-      17.65,
-      2.28,
-      5.41,
-      Math.PI,
+      17.35,
+      2.48,
+      0.29,
+      0,
       'outbuildingBarn'
     )
   );
@@ -1476,7 +1478,7 @@ export function buildOutbuildingMepAndKnx(s: OutbuildingShellContext): void {
   groundGroup.add(
     buildIndoorAirToAirAcUnit(
       'outbuildings.stable.office.acUnit',
-      28.2,
+      29.55,
       1.62,
       5.41,
       Math.PI,

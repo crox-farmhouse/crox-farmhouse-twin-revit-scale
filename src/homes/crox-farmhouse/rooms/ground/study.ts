@@ -28,7 +28,7 @@ function tagHighLod<T extends THREE.Object3D>(obj: T, maxDistance = 12): T {
  */
 export function buildStudy(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'antiqueOakSkirtingMat' | 'exteriorBrickMat' | 'tagCutawayWall' | 'wallH' | 'warmRoomPlasterMat'> &
+  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'antiqueOakSkirtingMat' | 'exteriorBrickMat' | 'tagCutawayWall' | 'wallCapMat' | 'wallH' | 'warmRoomPlasterMat'> &
     Pick<ReturnType<typeof createGroundFloorShellKit>, 'addBrickWallAlongXWithWindow' | 'addBrickWallAlongZWithCourtyardDoor' | 'addExteriorBrickWall' | 'addInteriorWall'> &
     Pick<ReturnType<typeof defineTier2Levels>, 'tier2FloorY' | 'tier2WallH' | 'tier2WallMidY'>
 ): void {
@@ -44,6 +44,7 @@ export function buildStudy(
     tier2FloorY,
     tier2WallH,
     tier2WallMidY,
+    wallCapMat,
     wallH,
     warmRoomPlasterMat,
   } = kit;
@@ -261,7 +262,7 @@ export function buildStudy(
       maxSpan: -17.097,
       floor: 'ground' as const,
     };
-    const seCornerMesh = new THREE.Mesh(seCornerGeo, exteriorBrickMat);
+    const seCornerMesh = new THREE.Mesh(seCornerGeo, [wallCapMat, exteriorBrickMat]);
     seCornerMesh.name = 'study.southEastRoundedBrickCorner';
     seCornerMesh.userData.isArchitecturalShell = true;
     seCornerMesh.castShadow = true;

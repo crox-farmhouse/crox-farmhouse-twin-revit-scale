@@ -1058,10 +1058,10 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
 
   const southLowCutaway = createExteriorBrickWallBox(
     'kitchen.southWall.westLowCutaway',
-    2.48,
+    2.08,
     0.18,
     extWallThick,
-    -3.16,
+    -3.36,
     0.09,
     southWallCenterZ,
     ['-z', '-x']
@@ -1070,10 +1070,10 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
 
   const southWestFullWall = createExteriorBrickWallBox(
     'kitchen.southWall.westFullWall',
-    2.48,
+    2.08,
     wallHeight - 0.18,
     extWallThick,
-    -3.16,
+    -3.36,
     0.18 + (wallHeight - 0.18) / 2,
     southWallCenterZ,
     ['-z', '-x']
@@ -1086,7 +1086,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
     2.98,
     0.26,
     extWallThick,
-    -0.43,
+    -0.83,
     2.87,
     southWallCenterZ,
     ['-z']
@@ -1108,10 +1108,10 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
 
   const bifoldLeftPier = createExteriorBrickWallBox(
     'kitchen.southWall.bifoldLeftPier',
-    0.38,
+    0.78,
     wallHeight,
     extWallThick,
-    1.25,
+    1.05,
     wallHeight / 2,
     southWallCenterZ,
     ['-z']
@@ -1153,12 +1153,12 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   };
 
   addMitredKitchenSkirting('kitchen.skirting.southWestWall', scene, [
-    [-1.92, 1.99],
+    [-2.32, 1.99],
     [-4.4, 1.99],
   ]);
   addMitredKitchenSkirting('kitchen.skirting.southCentralPier', cutawayWallGroups.southWest, [
     [1.44, 1.99],
-    [1.06, 1.99],
+    [0.66, 1.99],
   ]);
   addMitredKitchenSkirting('kitchen.skirting.sittingNorthEastCorner', scene, [
     [3.15, -0.7],
