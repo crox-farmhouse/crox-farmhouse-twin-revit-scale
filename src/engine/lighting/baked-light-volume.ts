@@ -1,7 +1,17 @@
 import * as THREE from 'three';
 import type { CircuitId, CircuitLevels } from '../../core/types/knx.ts';
 import type { TimeOfDay } from '../../core/types/scene.ts';
-import type { RoomZoneLodRegistration } from '../../core/entities.ts';
+export interface BakedRoomVolumeBounds {
+  readonly zoneId?: string;
+  readonly bounds: {
+    readonly minX: number;
+    readonly maxX: number;
+    readonly minY: number;
+    readonly maxY: number;
+    readonly minZ: number;
+    readonly maxZ: number;
+  };
+}
 import type { GraphicsTier } from '../../core/types/twin-ux.ts';
 import type { LightGroupMap } from '../viewer/scene-types.ts';
 
@@ -143,7 +153,7 @@ export class BakedLightVolumeController {
 
   public constructor(
     lightGroups: LightGroupMap,
-    lodRegistrations: readonly RoomZoneLodRegistration[] = []
+    lodRegistrations: readonly BakedRoomVolumeBounds[] = []
   ) {
     this.bakeFromScene(lightGroups, lodRegistrations);
   }
@@ -163,7 +173,7 @@ export class BakedLightVolumeController {
    */
   public bakeFromScene(
     lightGroups: LightGroupMap,
-    lodRegistrations: readonly RoomZoneLodRegistration[] = []
+    lodRegistrations: readonly BakedRoomVolumeBounds[] = []
   ): void {
     this.circuitBakes.length = 0;
     const rooms: RoomBoundsBox[] = lodRegistrations.map((reg) => {

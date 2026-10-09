@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import type { CircuitLevels } from '../../core/types/knx.ts';
-import type { RoomZoneLodRegistration } from '../../core/entities.ts';
+import { BakedLightVolumeController, type BakedRoomVolumeBounds } from './baked-light-volume.ts';
 import type { LightGroupMap } from '../viewer/scene-types.ts';
-import { BakedLightVolumeController } from './baked-light-volume.ts';
 
 function createTestLightGroups(): LightGroupMap {
   const kitchenLight = new THREE.PointLight(0xffdfba, 4.0, 7.5, 2);
@@ -34,16 +33,14 @@ function createTestLightGroups(): LightGroupMap {
   } as unknown as LightGroupMap;
 }
 
-const TEST_ROOMS: readonly RoomZoneLodRegistration[] = [
+const TEST_ROOMS: readonly BakedRoomVolumeBounds[] = [
   {
     zoneId: 'kitchen',
     bounds: { minX: -4, maxX: 4, minY: 0, maxY: 2.8, minZ: -4, maxZ: 4 },
-    maxDistanceM: 22,
   },
   {
     zoneId: 'outbuildingBarn',
     bounds: { minX: -7, maxX: 1, minY: 0, maxY: 3.5, minZ: 14, maxZ: 20 },
-    maxDistanceM: 25,
   },
 ];
 
