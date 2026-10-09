@@ -26,6 +26,7 @@ import {
   mix,
   pass,
   pow,
+  renderGroup,
   screenCoordinate,
   select,
   type ShaderNodeObject,
@@ -112,20 +113,20 @@ export class PostProcessingPipeline {
   // Live TSL Uniforms driving the WGSL post-processing node graph
   private readonly uResolution: ShaderNodeObject<UniformNode<THREE.Vector2>>;
   private readonly uTexelSize: ShaderNodeObject<UniformNode<THREE.Vector2>>;
-  private readonly uNear = uniform(0.1);
-  private readonly uFar = uniform(120.0);
-  private readonly uIsOrtho = uniform(0.0);
-  private readonly uIsLogDepth = uniform(0.0);
-  private readonly uOrthoEquivDepth = uniform(10.0);
+  private readonly uNear = uniform(0.1).setGroup(renderGroup);
+  private readonly uFar = uniform(120.0).setGroup(renderGroup);
+  private readonly uIsOrtho = uniform(0.0).setGroup(renderGroup);
+  private readonly uIsLogDepth = uniform(0.0).setGroup(renderGroup);
+  private readonly uOrthoEquivDepth = uniform(10.0).setGroup(renderGroup);
   private readonly uExposure: ShaderNodeObject<UniformNode<number>>;
-  private readonly uProjZ = uniform(new THREE.Vector2(-1.0, -0.2));
-  private readonly uCurrInvViewProj = uniform(new THREE.Matrix4());
-  private readonly uPrevViewProj = uniform(new THREE.Matrix4());
-  private readonly uMotionBlurEnabled = uniform(0.0);
-  private readonly uShutterScale = uniform(0.55);
-  private readonly uAoIntensity = uniform(AO_INTENSITY);
-  private readonly uSharpenIntensity = uniform(SHARPEN_INTENSITY);
-  private readonly uFxaaEnabled = uniform(1.0);
+  private readonly uProjZ = uniform(new THREE.Vector2(-1.0, -0.2)).setGroup(renderGroup);
+  private readonly uCurrInvViewProj = uniform(new THREE.Matrix4()).setGroup(renderGroup);
+  private readonly uPrevViewProj = uniform(new THREE.Matrix4()).setGroup(renderGroup);
+  private readonly uMotionBlurEnabled = uniform(0.0).setGroup(renderGroup);
+  private readonly uShutterScale = uniform(0.55).setGroup(renderGroup);
+  private readonly uAoIntensity = uniform(AO_INTENSITY).setGroup(renderGroup);
+  private readonly uSharpenIntensity = uniform(SHARPEN_INTENSITY).setGroup(renderGroup);
+  private readonly uFxaaEnabled = uniform(0.0).setGroup(renderGroup);
 
   private readonly currViewProj = new THREE.Matrix4();
   private readonly currInvViewProj = new THREE.Matrix4();
@@ -138,7 +139,7 @@ export class PostProcessingPipeline {
   private motionBlurStrength = 0.68;
   private postEnabled = true;
   private ambientOcclusionEnabled = true;
-  private fxaaEnabled = true;
+  private fxaaEnabled = false;
   private bloomEnabled = false;
   private sharpenEnabled = true;
   private targetPixelRatio = 1.0;
@@ -163,9 +164,9 @@ export class PostProcessingPipeline {
     const rtWidth = Math.max(1, Math.round(this.cssWidth * this.currentPixelRatio));
     const rtHeight = Math.max(1, Math.round(this.cssHeight * this.currentPixelRatio));
 
-    this.uResolution = uniform(new THREE.Vector2(rtWidth, rtHeight));
-    this.uTexelSize = uniform(new THREE.Vector2(1 / rtWidth, 1 / rtHeight));
-    this.uExposure = uniform(renderer.toneMappingExposure);
+    this.uResolution = uniform(new THREE.Vector2(rtWidth, rtHeight)).setGroup(renderGroup);
+    this.uTexelSize = uniform(new THREE.Vector2(1 / rtWidth, 1 / rtHeight)).setGroup(renderGroup);
+    this.uExposure = uniform(renderer.toneMappingExposure).setGroup(renderGroup);
     this.bloom.setSize(rtWidth, rtHeight);
 
     this.syncRendererPixelRatio();
@@ -176,7 +177,7 @@ export class PostProcessingPipeline {
     this.targetPixelRatio = Math.max(0.5, settings.pixelRatio);
     this.postEnabled = settings.postProcessing;
     this.ambientOcclusionEnabled = settings.postProcessing && settings.ambientOcclusion;
-    this.fxaaEnabled = settings.postProcessing;
+    this.fxaaEnabled = false;
     this.bloomEnabled = settings.postProcessing && settings.bloom;
     this.sharpenEnabled = settings.postProcessing && settings.sharpen;
   }

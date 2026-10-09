@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { float, fog, length, max, positionWorld, uniform, vec2 } from 'three/tsl';
+import { float, fog, length, max, positionWorld, renderGroup, uniform, vec2 } from 'three/tsl';
 import { PMREMGenerator, type WebGPURenderer } from 'three/webgpu';
 import type { TimeOfDay } from '../../core/types/scene.ts';
 import { ENV_PRESETS, environmentRotationForSun } from './env/env-presets.ts';
@@ -91,8 +91,8 @@ export class EnvironmentLighting {
   private readonly horizonScratch = new THREE.Color();
   private readonly onEnvUpdated?: () => void;
   private readonly renderer?: WebGPURenderer | THREE.WebGLRenderer;
-  private readonly uFogColor = uniform(new THREE.Color(ENV_PRESETS.dusk.fogColor));
-  private readonly uFogDensity = uniform(ENV_PRESETS.dusk.fogDensity);
+  private readonly uFogColor = uniform(new THREE.Color(ENV_PRESETS.dusk.fogColor)).setGroup(renderGroup);
+  private readonly uFogDensity = uniform(ENV_PRESETS.dusk.fogDensity).setGroup(renderGroup);
   private currentMode: TimeOfDay = 'dusk';
   private shadowMapSize: 1024 | 2048 | 4096 = 2048;
   private hasAppliedMode = false;

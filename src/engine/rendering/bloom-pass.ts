@@ -6,7 +6,8 @@ import {
   float,
   max,
   min,
-   type ShaderNodeObject,
+  renderGroup,
+  type ShaderNodeObject,
   uniform,
   vec2,
   vec3,
@@ -15,7 +16,7 @@ import {
 /**
  * Selective HDR bloom in TSL (Three.js Shading Language) for WebGPU:
  * A soft-knee luminance threshold prefilter (`BLOOM_THRESHOLD = 4.0`, `BLOOM_KNEE = 1.8`)
- * followed by a multi-scale dual-ring tent/Kawase filter kernel in screen UV space.
+ * followed by a fast 5-tap tent/Kawase filter kernel in screen UV space.
  * Only pixels well above the threshold — emissive bulb cores (~10–20), LED diffusers, halos —
  * contribute, so lit white walls (< 3) do not glow.
  */
@@ -33,10 +34,10 @@ export class BloomPass {
   private height = 0;
 
   public constructor() {
-    this.uTexelSize = uniform(new THREE.Vector2(1 / 1920, 1 / 1080));
-    this.uThreshold = uniform(BLOOM_THRESHOLD);
-    this.uKnee = uniform(BLOOM_KNEE);
-    this.uIntensity = uniform(0.0);
+    this.uTexelSize = uniform(new THREE.Vector2(1 / 1920, 1 / 1080)).setGroup(renderGroup);
+    this.uThreshold = uniform(BLOOM_THRESHOLD).setGroup(renderGroup);
+    this.uKnee = uniform(BLOOM_KNEE).setGroup(renderGroup);
+    this.uIntensity = uniform(0.0).setGroup(renderGroup);
   }
 
   public setSize(fullWidth: number, fullHeight: number): void {
@@ -68,7 +69,7 @@ export class BloomPass {
   }
 
   /**
-   * Builds the TSL node that evaluates multi-scale warm architectural bloom at `uvNode`.
+   * Builds the TSL node that evaluates a fast 5-tap warm architectural bloom at `uvNode`.
    */
   public buildNode(
     colorNode: ShaderNodeObject<TextureNode>,
@@ -82,44 +83,20 @@ export class BloomPass {
         0.001,
         0.999
       );
-      return this.prefilter((colorNode.sample(sampleUv) as unknown as ShaderNodeObject<TextureNode>).level(float(0)).rgb);
+      return this.prefilter(
+        (colorNode.sample(sampleUv) as unknown as ShaderNodeObject<TextureNode>).level(float(0)).rgb
+      );
     };
 
     If(this.uIntensity.greaterThan(0.001), () => {
-      // Center + 3 concentric multi-scale Kawase/tent rings (r = 1.5, 4.5, 11.0, 22.0 texels)
       const center = samplePrefiltered(0.0, 0.0);
-
-      const ring1 = samplePrefiltered(-1.5, -1.5)
-        .add(samplePrefiltered(1.5, -1.5))
-        .add(samplePrefiltered(-1.5, 1.5))
-        .add(samplePrefiltered(1.5, 1.5))
+      const diag = samplePrefiltered(-3.5, -3.5)
+        .add(samplePrefiltered(3.5, -3.5))
+        .add(samplePrefiltered(-3.5, 3.5))
+        .add(samplePrefiltered(3.5, 3.5))
         .mul(0.25);
 
-      const ring2 = samplePrefiltered(-4.5, 0.0)
-        .add(samplePrefiltered(4.5, 0.0))
-        .add(samplePrefiltered(0.0, -4.5))
-        .add(samplePrefiltered(0.0, 4.5))
-        .mul(0.25);
-
-      const ring3 = samplePrefiltered(-8.5, -8.5)
-        .add(samplePrefiltered(8.5, -8.5))
-        .add(samplePrefiltered(-8.5, 8.5))
-        .add(samplePrefiltered(8.5, 8.5))
-        .mul(0.25);
-
-      const ring4 = samplePrefiltered(-18.0, 0.0)
-        .add(samplePrefiltered(18.0, 0.0))
-        .add(samplePrefiltered(0.0, -18.0))
-        .add(samplePrefiltered(0.0, 18.0))
-        .mul(0.25);
-
-      const combined = center
-        .mul(0.18)
-        .add(ring1.mul(0.30))
-        .add(ring2.mul(0.24))
-        .add(ring3.mul(0.16))
-        .add(ring4.mul(0.12));
-
+      const combined = center.mul(0.36).add(diag.mul(0.64));
       bloomOut.assign(combined.mul(this.uIntensity));
     });
 

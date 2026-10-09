@@ -1,20 +1,29 @@
 import * as THREE from 'three';
 import {
   Fn,
+  If,
   clamp,
+  clearcoatNormalView,
+  dot,
   float,
+  max,
   min,
   mix,
+  normalView,
   normalWorld,
+  positionViewDirection,
   positionWorld,
+  renderGroup,
   select,
+  type ShaderNodeObject,
+  sqrt,
   step,
   texture3D,
   uniform,
   vec3,
   vec4,
 } from 'three/tsl';
-import { type NodeBuilder, PhysicalLightingModel, PointLightNode } from 'three/webgpu';
+import { type Node, type NodeBuilder, PhysicalLightingModel, PointLightNode } from 'three/webgpu';
 import {
   SHARED_BAKED_VOLUME_TEXTURE,
   SHARED_CAMERA_WORLD_MATRIX,
@@ -39,10 +48,10 @@ export const SHARED_LIGHT_VOLUME_UNIFORMS = {
   uBakedVolumeParams: { value: SHARED_VOLUME_PARAMS },
 } as const;
 
-/** TSL uniform nodes backed directly by the shared Vector3 / Vector4 singletons. */
-export const uBakedVolumeMinNode = uniform(SHARED_VOLUME_MIN);
-export const uBakedVolumeInvSizeNode = uniform(SHARED_VOLUME_INV_SIZE);
-export const uBakedVolumeParamsNode = uniform(SHARED_VOLUME_PARAMS);
+/** TSL uniform nodes backed directly by the shared Vector3 / Vector4 singletons in renderGroup. */
+export const uBakedVolumeMinNode = uniform(SHARED_VOLUME_MIN).setGroup(renderGroup);
+export const uBakedVolumeInvSizeNode = uniform(SHARED_VOLUME_INV_SIZE).setGroup(renderGroup);
+export const uBakedVolumeParamsNode = uniform(SHARED_VOLUME_PARAMS).setGroup(renderGroup);
 
 /**
  * TSL node that samples the hardware-trilinear 3D Baked Light & AO Volume (`SHARED_BAKED_VOLUME_TEXTURE`)
@@ -56,7 +65,9 @@ export const sampleBakedLightVolumeNode = Fn(() => {
     vec3(0.005),
     vec3(0.995)
   );
-  const bakedTexel = texture3D(SHARED_BAKED_VOLUME_TEXTURE, bakedUvw, 0).toVar('croxBakedTexel');
+  const bakedTexel = texture3D(SHARED_BAKED_VOLUME_TEXTURE, bakedUvw, 0)
+    .setGroup(renderGroup)
+    .toVar('croxBakedTexel');
   const bakedIrradiance = bakedTexel.rgb
     .mul(bakedTexel.rgb)
     .mul(uBakedVolumeParamsNode.y.mul(3.5).mul(enabled));
@@ -72,13 +83,57 @@ interface TslIrradianceNode {
   add(value: unknown): { mul(factor: unknown): unknown };
 }
 
+interface DirectLightInput {
+  readonly lightDirection: Node;
+  readonly lightColor: Node;
+  readonly reflectedLight: unknown;
+  readonly lightNode?: unknown;
+}
+
 function installWebGpuLightVolumeHooks(): void {
   if (webGpuLightVolumeInstalled) return;
   webGpuLightVolumeInstalled = true;
 
   const lightingProto = PhysicalLightingModel.prototype as unknown as {
+    clearcoat?: boolean;
+    start?: (this: PhysicalLightingModel, builder: NodeBuilder) => void;
+    direct?: (this: PhysicalLightingModel, input: DirectLightInput, builder: NodeBuilder) => void;
     indirectDiffuse?: (this: PhysicalLightingModel, builder: NodeBuilder) => void;
   };
+
+  const origStart = lightingProto.start;
+  if (typeof origStart === 'function') {
+    lightingProto.start = function (this: PhysicalLightingModel, builder: NodeBuilder): void {
+      const stack = (builder as unknown as { stack?: { add(node: unknown): void } }).stack;
+      if (stack) {
+        stack.add(normalView);
+        stack.add(positionViewDirection);
+        if ((this as unknown as { clearcoat?: boolean }).clearcoat === true) {
+          stack.add(clearcoatNormalView);
+        }
+      }
+      origStart.call(this, builder);
+    };
+  }
+
+  const origDirect = lightingProto.direct;
+  if (typeof origDirect === 'function') {
+    lightingProto.direct = function (
+      this: PhysicalLightingModel,
+      input: DirectLightInput,
+      builder: NodeBuilder
+    ): void {
+      if (input.lightNode instanceof PointLightNode) {
+        const lc = input.lightColor as unknown as ShaderNodeObject<Node>;
+        If(max(lc.r, max(lc.g, lc.b)).greaterThan(1e-4), () => {
+          origDirect.call(this, input, builder);
+        });
+        return;
+      }
+      origDirect.call(this, input, builder);
+    };
+  }
+
   const origIndirectDiffuse = lightingProto.indirectDiffuse;
   if (typeof origIndirectDiffuse === 'function') {
     lightingProto.indirectDiffuse = function (
@@ -94,9 +149,9 @@ function installWebGpuLightVolumeHooks(): void {
           vec3(0.005),
           vec3(0.995)
         );
-        const bakedTexel = texture3D(SHARED_BAKED_VOLUME_TEXTURE, bakedUvw, 0).toVar(
-          'croxBakedTexel'
-        );
+        const bakedTexel = texture3D(SHARED_BAKED_VOLUME_TEXTURE, bakedUvw, 0)
+          .setGroup(renderGroup)
+          .toVar('croxBakedTexel');
         const bakedIrradiance = bakedTexel.rgb
           .mul(bakedTexel.rgb)
           .mul(uBakedVolumeParamsNode.y.mul(3.5).mul(enabled));
@@ -113,19 +168,43 @@ function installWebGpuLightVolumeHooks(): void {
   const origSetupDirect = pointLightProto.setupDirect;
   if (typeof origSetupDirect === 'function') {
     pointLightProto.setupDirect = function (this: PointLightNode, builder: NodeBuilder): unknown {
+      const lVector = (
+        this as unknown as { getLightVector(b: NodeBuilder): ShaderNodeObject<Node> }
+      )
+        .getLightVector(builder)
+        .toVar();
+      const distSq = dot(lVector, lVector).toVar();
       const rawCutoff = float(this.cutoffDistanceNode);
       const effectiveCutoff = select(
         uBakedVolumeParamsNode.x.greaterThan(0.5).and(rawCutoff.greaterThan(0.0)),
         min(rawCutoff, uBakedVolumeParamsNode.w),
         rawCutoff
-      );
-      const savedCutoffNode = this.cutoffDistanceNode;
-      this.cutoffDistanceNode = effectiveCutoff;
-      try {
-        return origSetupDirect.call(this, builder);
-      } finally {
-        this.cutoffDistanceNode = savedCutoffNode;
-      }
+      ).toVar();
+      const c = (this as unknown as { colorNode: ShaderNodeObject<Node> }).colorNode;
+      const decay = float(this.decayExponentNode);
+      const hasColor = max(c.r, max(c.g, c.b)).greaterThan(1e-4);
+      const inRange = effectiveCutoff
+        .lessThanEqual(0.0)
+        .or(distSq.lessThan(effectiveCutoff.mul(effectiveCutoff)));
+
+      const lightDirection = vec3(0.0, 1.0, 0.0).toVar();
+      const lightColor = vec3(0.0).toVar();
+
+      If(hasColor.and(inRange), () => {
+        const lightDistance = max(sqrt(distSq), 1e-4).toVar();
+        lightDirection.assign(lVector.div(lightDistance));
+        const distanceFalloff = lightDistance.pow(decay).max(0.01).reciprocal();
+        const cutoffRatio = lightDistance.div(max(effectiveCutoff, 1e-4));
+        const windowFactor = clamp(float(1.0).sub(cutoffRatio.pow4()), 0.0, 1.0).pow2();
+        const attenuation = select(
+          effectiveCutoff.greaterThan(0.0),
+          distanceFalloff.mul(windowFactor),
+          distanceFalloff
+        );
+        lightColor.assign(c.mul(attenuation));
+      });
+
+      return { lightDirection, lightColor };
     };
   }
 }
@@ -136,7 +215,7 @@ function installWebGpuLightVolumeHooks(): void {
  * that:
  * 1. `PointLight` evaluation tightens the expensive per-pixel Cook-Torrance GGX microfacet loop to
  *    near-field highlights (`min(pointLight.distance, uBakedVolumeParams.w)`) when the 3D Baked
- *    Light Volume is active.
+ *    Light Volume is active, and skips `BRDF_GGX` / `BRDF_Lambert` completely when out of range.
  * 2. Indirect diffuse evaluation samples the hardware-trilinear 3D Baked Light & AO Volume
  *    (`uBakedLightVolume`), injecting per-circuit KNX diffuse + 1-bounce GI (`RGB`) and static
  *    architectural Ambient Occlusion (`A`) in a single 3D texture fetch per pixel.
@@ -221,12 +300,6 @@ uniform vec4 uBakedVolumeParams;
 
 export const installCroxLightVolumeShader = installShaderLightCulling;
 
-/**
- * Ensures the WebGPU / TSL 3D Baked Light Volume lighting hooks are active for `scene`.
- * Because the hook is installed on `PhysicalLightingModel.prototype` and `PointLightNode.prototype`,
- * all `MeshStandardMaterial` and `MeshPhysicalMaterial` instances in `scene` automatically sample
- * the 3D light volume without mutating per-material properties in `.snapshots/scene.snap`.
- */
 export function applyWebGpuLightVolumeToScene(_scene?: THREE.Scene): void {
   installShaderLightCulling();
 }

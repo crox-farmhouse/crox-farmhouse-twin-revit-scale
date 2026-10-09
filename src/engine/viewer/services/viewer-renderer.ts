@@ -27,7 +27,7 @@ export class ViewerRenderer implements RenderInvalidator {
       canvas,
       antialias: true,
       powerPreference: 'high-performance',
-      logarithmicDepthBuffer: true,
+      logarithmicDepthBuffer: false,
     });
     this.renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
     this.renderer.setPixelRatio(1);
@@ -115,6 +115,11 @@ export class ViewerRenderer implements RenderInvalidator {
     syncBakedLightCameraMatrix(camera);
     beforeRender();
     this.post.render(scene, camera, dtSeconds);
+    for (const child of scene.children) {
+      if (child instanceof THREE.Light && child.castShadow && child.shadow) {
+        child.shadow.needsUpdate = false;
+      }
+    }
     this.needsRender = false;
     return true;
   }

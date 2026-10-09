@@ -194,6 +194,30 @@ export class CutawayController {
     }
     start.castShadow = true;
     end.castShadow = true;
+
+    const hookedScene = scene as THREE.Scene & { __cutawayShadowSceneHooked?: boolean };
+    if (!hookedScene.__cutawayShadowSceneHooked) {
+      hookedScene.__cutawayShadowSceneHooked = true;
+      const prevBefore = scene.onBeforeRender;
+      const prevAfter = scene.onAfterRender;
+      scene.onBeforeRender = (...args) => {
+        if (typeof prevBefore === 'function') {
+          prevBefore.apply(scene, args);
+        }
+        const overrideMat = scene.overrideMaterial as { isShadowPassMaterial?: boolean } | null;
+        if (overrideMat?.isShadowPassMaterial === true) {
+          this.revealCutawayGeometryForShadowPass();
+        }
+      };
+      scene.onAfterRender = (...args) => {
+        if (this.shadowPassRevealed.length > 0) {
+          this.restoreCutawayGeometryAfterShadowPass();
+        }
+        if (typeof prevAfter === 'function') {
+          prevAfter.apply(scene, args);
+        }
+      };
+    }
   }
 
   public getFloorViewMode(): FloorViewMode {
