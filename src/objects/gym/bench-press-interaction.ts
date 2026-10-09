@@ -17,8 +17,8 @@ const OB_ORIGIN_Z = 16.0;
 const RACK_OB_U = 1.52;
 const RACK_OB_V = 4.02;
 
-const STAND_OB_U = 1.34;
-const STAND_OB_V = 2.85;
+export const STAND_OB_U = 2.05;
+export const STAND_OB_V = 2.65;
 const STAND_EYE_HEIGHT = 1.6;
 const STAND_PITCH_RAD = -0.12;
 

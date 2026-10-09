@@ -4,8 +4,11 @@ import {
   BENCH_RACK_Y,
   GYM_BENCH_PRESS_ID,
   GymBenchPressController,
+  STAND_OB_U,
+  STAND_OB_V,
   TOTAL_BENCH_DURATION_SEC,
 } from './bench-press-interaction.ts';
+import { findNearestWalkthroughSpawn } from '../../engine/walkthrough/parts/walkthrough-spawns.ts';
 
 const GYM_FLOOR_Y = -0.488;
 const OB_ROT = Math.atan2(2.49, 28.98);
@@ -240,5 +243,34 @@ describe('GymBenchPressController', () => {
       expect(fovStep).toBeLessThan(0.36);
       prev = cur;
     }
+  });
+
+  it('dismounts onto open gym floor outside the resting bench collider and never teleports to the plant room', () => {
+    const { controller } = createTestSquatRackRig();
+    // Resting bench spans obU ≈ 1.11..1.57, obV ≈ 2.49..3.68; squat rack spans obV ≈ 3.68..4.36.
+    // Standing dismount pose (STAND_OB_U, STAND_OB_V) must have >0.45m clearance from both.
+    expect(STAND_OB_U).toBeGreaterThan(1.85);
+    expect(STAND_OB_U).toBeLessThan(3.0);
+    expect(STAND_OB_V).toBeGreaterThan(1.8);
+    expect(STAND_OB_V).toBeLessThan(3.0);
+
+    controller.trigger();
+    controller.step(TOTAL_BENCH_DURATION_SEC - 0.01);
+    const finalPose = controller.sampleFirstPersonPose()!;
+    expect(finalPose).not.toBeNull();
+
+    const [fx, fy, fz] = finalPose.footPosition;
+    const dx = fx - -22.47;
+    const dz = fz - 16.0;
+    const obU = dx * OB_COS - dz * OB_SIN;
+    const obV = dx * OB_SIN + dz * OB_COS;
+    expect(obU).toBeCloseTo(STAND_OB_U, 2);
+    expect(obV).toBeCloseTo(STAND_OB_V, 2);
+    expect(fy).toBeCloseTo(GYM_FLOOR_Y, 4);
+
+    // Even if emergency spawn lookup is queried from the Gym, it resolves to outbuildingGym, never study (Plant room)
+    const nearestSpawn = findNearestWalkthroughSpawn(fx, fy, fz);
+    expect(nearestSpawn.zoneId).toBe('outbuildingGym');
+    expect(nearestSpawn.id).not.toBe('study');
   });
 });

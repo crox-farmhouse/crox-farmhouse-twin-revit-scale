@@ -1006,6 +1006,32 @@ export class WalkthroughController {
       this.fpEntryBlend = null;
       this.lastActiveFpPose = null;
 
+      let exitTargetYaw = prev.yaw;
+      // If exiting a Gym 1PV interactable (Bench Press or Treadmill) while footPos is still
+      // on the equipment (e.g. early cancel) or inside its frame, step cleanly onto the open
+      // rubber gym floor beside the equipment instead of colliding with the equipment mesh.
+      if (Math.abs(this.footPos.y - -0.488) < 0.65) {
+        const obRot = Math.atan2(2.49, 28.98);
+        const obCos = Math.cos(obRot);
+        const obSin = Math.sin(obRot);
+        const dx = this.footPos.x - -22.47;
+        const dz = this.footPos.z - 16.0;
+        const obU = dx * obCos - dz * obSin;
+        const obV = dx * obSin + dz * obCos;
+        if (obU >= 0.7 && obU <= 2.3 && obV >= 2.45 && obV <= 4.55 && (obU < 1.85 || obV > 3.0)) {
+          const dismountU = 2.05;
+          const dismountV = 2.65;
+          this.footPos.x = -22.47 + dismountU * obCos + dismountV * obSin;
+          this.footPos.z = 16.0 - dismountU * obSin + dismountV * obCos;
+          exitTargetYaw = Math.atan2(obSin, obCos) + Math.PI;
+        } else if (obU >= 3.15 && obU <= 4.25 && obV >= 3.3 && obV <= 5.25) {
+          const dismountU = 3.7;
+          const dismountV = 3.12;
+          this.footPos.x = -22.47 + dismountU * obCos + dismountV * obSin;
+          this.footPos.z = 16.0 - dismountU * obSin + dismountV * obCos;
+        }
+      }
+
       const floorY = sampleFloorElevation(this.footPos.x, this.footPos.y, this.footPos.z);
       this.footPos.y = floorY;
       const targetEyeH = getWalkthroughTargetEyeHeight(
@@ -1014,7 +1040,7 @@ export class WalkthroughController {
         this.footPos.z,
         this.crouched
       );
-      this.collisionAndBarge.ensureFootPositionUnblocked(this.footPos, targetEyeH);
+      this.collisionAndBarge.depenetrateFootPosition(this.footPos, targetEyeH);
       const targetEyeY = this.footPos.y + targetEyeH;
       const targetPitch = THREE.MathUtils.clamp(prev.pitch, -0.35, 0.15);
       const eyeDelta = Math.hypot(
@@ -1035,7 +1061,7 @@ export class WalkthroughController {
           startRoll: prev.roll,
           targetFoot: [this.footPos.x, this.footPos.y, this.footPos.z],
           targetEyeH,
-          targetYaw: prev.yaw,
+          targetYaw: exitTargetYaw,
           targetPitch,
           elapsedSec: 0,
         };

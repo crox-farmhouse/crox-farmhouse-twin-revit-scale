@@ -108,6 +108,34 @@ export const DEFAULT_WALKTHROUGH_SPAWNS: readonly WalkthroughSpawnPoint[] = [
     position: ewSpawnPos(1.5, 0.0, 6.2),
     yawDeg: 8,
   },
+  {
+    id: 'outbuildingGym',
+    label: 'Gym',
+    zoneId: 'outbuildingGym',
+    position: [-20.321, -0.488, 18.141],
+    yawDeg: 175,
+  },
+  {
+    id: 'outbuildingGarage',
+    label: 'Garage',
+    zoneId: 'outbuildingGarage',
+    position: [-15.142, -0.485, 17.177],
+    yawDeg: 175,
+  },
+  {
+    id: 'outbuildingBarn',
+    label: 'Barn & Golf Sim',
+    zoneId: 'outbuildingBarn',
+    position: [-0.81, 0.25, 16.953],
+    yawDeg: -95,
+  },
+  {
+    id: 'outbuildingMezzanine',
+    label: 'Mezzanine Lounge',
+    zoneId: 'outbuildingMezzanine',
+    position: [-3.101, 2.91, 17.15],
+    yawDeg: 85,
+  },
 ];
 
 export const STANDING_EYE_HEIGHT = 1.60;
