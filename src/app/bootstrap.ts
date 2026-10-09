@@ -143,7 +143,7 @@ export async function bootstrap(): Promise<void> {
   });
   const { api } = runtime;
 
-  await loading.setProgress('Preparing controls…', 0.8);
+  await loading.setProgress('Preparing controls…', 0.52);
 
   mountDevTools({ scene, knx, hub, api, usdOverrideLayer: CROX_FARMHOUSE_USD_OVERRIDE_LAYER });
   mountAppShell({ api, devDrawer: DevDrawer }, shellRoot);
@@ -163,8 +163,13 @@ export async function bootstrap(): Promise<void> {
     injectTelegram: (frameOrHex: string | InboundKNXFrame) => knx.ingestExternalFrame(frameOrHex),
   };
 
-  // Warm up one render frame (shader compile + GPU upload) while loading screen is still visible
+  // Warm up all geometry bounds, GPU textures, all-floor shaders, shadow maps,
+  // and initial post-processing passes while #loading-screen is still opaque.
+  await scene.warmUpForStartup((label, fraction) => loading.setProgress(label, fraction));
   runtime.tick(0.016);
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
   await loading.setProgress('Ready', 1);
   loading.finish();
   if (!hasSeenHelp()) {

@@ -120,6 +120,8 @@ export class WalkthroughController {
   private touchForwardInput = 0;
   private touchStrafeInput = 0;
   private touchSprint = false;
+  private touchLookYaw = 0;
+  private touchLookPitch = 0;
 
   private baseFov: number = DEFAULT_WALKTHROUGH_FOV;
   private currentFov: number = DEFAULT_WALKTHROUGH_FOV;
@@ -242,6 +244,11 @@ export class WalkthroughController {
     this.touchStrafeInput = THREE.MathUtils.clamp(strafe, -1, 1);
     this.touchForwardInput = THREE.MathUtils.clamp(forward, -1, 1);
     this.touchSprint = sprint;
+  }
+
+  public setTouchLookVector(yawInput: number, pitchInput: number): void {
+    this.touchLookYaw = THREE.MathUtils.clamp(yawInput, -1, 1);
+    this.touchLookPitch = THREE.MathUtils.clamp(pitchInput, -1, 1);
   }
 
   public toggleCrouched(): boolean {
@@ -466,6 +473,8 @@ export class WalkthroughController {
     this.touchForwardInput = 0;
     this.touchStrafeInput = 0;
     this.touchSprint = false;
+    this.touchLookYaw = 0;
+    this.touchLookPitch = 0;
     this.lookDirty = false;
     this.targetedMesh = null;
     this.targetedPrompt = null;
@@ -745,6 +754,22 @@ export class WalkthroughController {
       this.targetYawRad += turnInput * KEY_TURN_SPEED_RAD * dtSeconds;
     }
 
+    if (Math.abs(this.touchLookYaw) > 1e-4 || Math.abs(this.touchLookPitch) > 1e-4) {
+      const curvedYaw =
+        Math.sign(this.touchLookYaw) * Math.pow(Math.abs(this.touchLookYaw), 1.35);
+      const curvedPitch =
+        Math.sign(this.touchLookPitch) * Math.pow(Math.abs(this.touchLookPitch), 1.35);
+      const TOUCH_LOOK_YAW_SPEED_RAD = 2.45;
+      const TOUCH_LOOK_PITCH_SPEED_RAD = 1.65;
+      this.targetYawRad -= curvedYaw * TOUCH_LOOK_YAW_SPEED_RAD * dtSeconds;
+      this.targetPitchRad = THREE.MathUtils.clamp(
+        this.targetPitchRad + curvedPitch * TOUCH_LOOK_PITCH_SPEED_RAD * dtSeconds,
+        -MAX_PITCH_RAD,
+        MAX_PITCH_RAD
+      );
+      this.lookDirty = true;
+    }
+
     if (this.ladderClimb.isActive()) {
       this.lookDirty = false;
       this.glideTargetFoot = null;
@@ -759,7 +784,10 @@ export class WalkthroughController {
         this.targetPitchRad,
         this.currentEyeHeight,
         this.crouched,
-        this.keysDown
+        this.keysDown,
+        this.touchForwardInput,
+        this.touchStrafeInput,
+        this.touchSprint
       );
       this.yawRad = ladderStep.yawRad;
       this.pitchRad = ladderStep.pitchRad;
@@ -899,7 +927,8 @@ export class WalkthroughController {
             this.yawRad,
             this.pitchRad,
             this.currentEyeHeight,
-            this.keysDown
+            this.keysDown,
+            this.touchForwardInput
           )
         ) {
           this.jumpOffsetY = 0;

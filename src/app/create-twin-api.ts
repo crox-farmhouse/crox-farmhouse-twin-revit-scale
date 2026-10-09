@@ -439,6 +439,8 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       jump: () => scene.getWalkthrough().jump(),
       setTouchMove: (strafe, forward, sprint = false) =>
         scene.getWalkthrough().setTouchMoveVector(strafe, forward, sprint),
+      setTouchLook: (yaw, pitch) =>
+        scene.getWalkthrough().setTouchLookVector(yaw, pitch),
       requestMouseLook: () => scene.getWalkthrough().requestMouseLock(),
       enter: (spawnId) => {
         scene.setWalkthroughMode(true, spawnId);

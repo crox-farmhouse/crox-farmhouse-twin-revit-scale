@@ -14,7 +14,9 @@ import { useShell } from './shell-context.ts';
 
 const HINT_AUTO_HIDE_MS = 6000;
 const JOYSTICK_RADIUS_PX = 48;
-const JOYSTICK_DEADZONE_PX = 6;
+const JOYSTICK_DEADZONE_PX = 5;
+const JOYSTICK_FOLLOW_SLACK_PX = 14;
+const JOYSTICK_EDGE_PAD_PX = 64;
 
 const HINTS: readonly { readonly keys: readonly string[]; readonly label: string }[] = [
   { keys: ['W', 'A', 'S', 'D'], label: 'Walk' },
@@ -93,27 +95,45 @@ function WalkRoomChip({ showTouchControls }: { readonly showTouchControls: boole
   );
 }
 
+interface FloatingJoystickState {
+  readonly active: boolean;
+  /** Floating base center inside the half-screen touch zone (px), or null when resting at home. */
+  readonly baseX: number | null;
+  readonly baseY: number | null;
+  readonly knobX: number;
+  readonly knobY: number;
+  readonly sprinting: boolean;
+}
+
 /**
- * Floating-origin virtual left thumbstick for mobile, tablet, and Pixel Fold.
- * Touching anywhere inside the generous bottom-left touch zone anchors the stick
- * center at the finger's initial touch point so touching down never lurches.
+ * Floating-origin virtual thumbstick for mobile, tablet, and Pixel Fold.
+ * Used as a dual-stick pair:
+ *  - `side="left"`  → Move / Strafe / Sprint (`ctl.api.walkthrough.setTouchMove`)
+ *  - `side="right"` → Look / Turn / Pitch (`ctl.api.walkthrough.setTouchLook`)
+ * Touching anywhere inside the half-screen zone teleports the floating stick
+ * base directly under the thumb and follows the thumb if dragged past the rim.
  */
-function WalkTouchJoystick(): JSX.Element {
+function WalkFloatingJoystick({
+  side,
+  hasPrompt,
+}: {
+  readonly side: 'left' | 'right';
+  readonly hasPrompt?: boolean;
+}): JSX.Element {
   const ctl = useShell();
   const zoneRef = useRef<HTMLDivElement>(null);
   const activePointerId = useRef<number | null>(null);
   const originClientRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [stick, setStick] = useState<{
-    active: boolean;
-    baseOffsetX: number;
-    baseOffsetY: number;
-    knobX: number;
-    knobY: number;
-    sprinting: boolean;
-  }>({
+  const downStartRef = useRef<{ x: number; y: number; timeMs: number; maxDist: number }>({
+    x: 0,
+    y: 0,
+    timeMs: 0,
+    maxDist: 0,
+  });
+  const [stick, setStick] = useState<FloatingJoystickState>({
     active: false,
-    baseOffsetX: 0,
-    baseOffsetY: 0,
+    baseX: null,
+    baseY: null,
     knobX: 0,
     knobY: 0,
     sprinting: false,
@@ -121,26 +141,73 @@ function WalkTouchJoystick(): JSX.Element {
 
   useEffect(() => {
     return () => {
-      ctl.api.walkthrough.setTouchMove(0, 0, false);
+      if (side === 'left') {
+        ctl.api.walkthrough.setTouchMove(0, 0, false);
+      } else {
+        ctl.api.walkthrough.setTouchLook(0, 0);
+      }
     };
-  }, [ctl]);
+  }, [ctl, side]);
 
-  const updateFromMove = (clientX: number, clientY: number, baseOffsetX: number, baseOffsetY: number): void => {
-    const rawDx = clientX - originClientRef.current.x;
-    const rawDy = clientY - originClientRef.current.y;
-    const dist = Math.hypot(rawDx, rawDy);
+  const clampBaseToZone = (clientX: number, clientY: number): { baseX: number; baseY: number } => {
+    const zone = zoneRef.current;
+    if (!zone) return { baseX: 80, baseY: 80 };
+    const rect = zone.getBoundingClientRect();
+    const minX = Math.min(JOYSTICK_EDGE_PAD_PX, rect.width * 0.5);
+    const maxX = Math.max(minX, rect.width - JOYSTICK_EDGE_PAD_PX);
+    const minY = Math.min(JOYSTICK_EDGE_PAD_PX, rect.height * 0.5);
+    const maxY = Math.max(minY, rect.height - JOYSTICK_EDGE_PAD_PX);
+    const baseX = Math.max(minX, Math.min(maxX, clientX - rect.left));
+    const baseY = Math.max(minY, Math.min(maxY, clientY - rect.top));
+    return { baseX, baseY };
+  };
+
+  const updateFromMove = (clientX: number, clientY: number): void => {
+    let originX = originClientRef.current.x;
+    let originY = originClientRef.current.y;
+    let rawDx = clientX - originX;
+    let rawDy = clientY - originY;
+    let dist = Math.hypot(rawDx, rawDy);
+
+    const travelFromInitial = Math.hypot(
+      clientX - downStartRef.current.x,
+      clientY - downStartRef.current.y
+    );
+    if (travelFromInitial > downStartRef.current.maxDist) {
+      downStartRef.current.maxDist = travelFromInitial;
+    }
+
+    // Dynamic floating base follow when dragged beyond the outer rim + slack
+    const maxReach = JOYSTICK_RADIUS_PX + JOYSTICK_FOLLOW_SLACK_PX;
+    if (dist > maxReach && dist > 1e-4) {
+      const pull = dist - maxReach;
+      originX += (rawDx / dist) * pull;
+      originY += (rawDy / dist) * pull;
+      originClientRef.current = { x: originX, y: originY };
+      rawDx = clientX - originX;
+      rawDy = clientY - originY;
+      dist = Math.hypot(rawDx, rawDy);
+    }
+
+    const { baseX, baseY } = clampBaseToZone(originX, originY);
+
     if (dist <= JOYSTICK_DEADZONE_PX) {
       setStick({
         active: true,
-        baseOffsetX,
-        baseOffsetY,
+        baseX,
+        baseY,
         knobX: 0,
         knobY: 0,
         sprinting: false,
       });
-      ctl.api.walkthrough.setTouchMove(0, 0, false);
+      if (side === 'left') {
+        ctl.api.walkthrough.setTouchMove(0, 0, false);
+      } else {
+        ctl.api.walkthrough.setTouchLook(0, 0);
+      }
       return;
     }
+
     const clampedDist = Math.min(JOYSTICK_RADIUS_PX, dist);
     const dirX = rawDx / dist;
     const dirY = rawDy / dist;
@@ -150,49 +217,87 @@ function WalkTouchJoystick(): JSX.Element {
       (clampedDist - JOYSTICK_DEADZONE_PX) / (JOYSTICK_RADIUS_PX - JOYSTICK_DEADZONE_PX);
     const normX = dirX * effectiveMag;
     const normY = -dirY * effectiveMag;
-    const sprinting = effectiveMag > 0.78;
+    const sprinting = side === 'left' && effectiveMag > 0.78;
+
     setStick({
       active: true,
-      baseOffsetX,
-      baseOffsetY,
+      baseX,
+      baseY,
       knobX,
       knobY,
       sprinting,
     });
-    ctl.api.walkthrough.setTouchMove(normX, normY, sprinting);
+
+    if (side === 'left') {
+      ctl.api.walkthrough.setTouchMove(normX, normY, sprinting);
+    } else {
+      ctl.api.walkthrough.setTouchLook(normX, normY);
+    }
   };
 
   const resetStick = (): void => {
     activePointerId.current = null;
     setStick({
       active: false,
-      baseOffsetX: 0,
-      baseOffsetY: 0,
+      baseX: null,
+      baseY: null,
       knobX: 0,
       knobY: 0,
       sprinting: false,
     });
-    ctl.api.walkthrough.setTouchMove(0, 0, false);
+    if (side === 'left') {
+      ctl.api.walkthrough.setTouchMove(0, 0, false);
+    } else {
+      ctl.api.walkthrough.setTouchLook(0, 0);
+    }
   };
+
+  const label =
+    side === 'left' ? (stick.sprinting ? 'RUN' : 'MOVE') : 'LOOK';
+  const ariaLabel =
+    side === 'left' ? 'Left floating movement joystick' : 'Right floating look joystick';
+  const ariaValue =
+    side === 'left'
+      ? stick.sprinting
+        ? 'Running'
+        : stick.active
+          ? 'Walking'
+          : 'Idle'
+      : stick.active
+        ? 'Looking'
+        : 'Idle';
+
+  const floatingStyle =
+    stick.active && stick.baseX !== null && stick.baseY !== null
+      ? {
+          left: `${(stick.baseX - 58).toFixed(1)}px`,
+          top: `${(stick.baseY - 58).toFixed(1)}px`,
+          right: 'auto',
+          bottom: 'auto',
+        }
+      : undefined;
 
   return (
     <div
       ref={zoneRef}
-      class="shell-walk-joystick-zone"
+      class={`shell-walk-joystick-zone is-${side}`}
       role="slider"
-      aria-label="Walk movement thumbstick"
-      aria-valuetext={stick.sprinting ? 'Running' : stick.active ? 'Walking' : 'Idle'}
+      aria-label={ariaLabel}
+      aria-valuetext={ariaValue}
       onPointerDown={(e) => {
         if (activePointerId.current !== null) return;
         e.stopPropagation();
         const zone = zoneRef.current;
         if (!zone) return;
+        const { baseX, baseY } = clampBaseToZone(e.clientX, e.clientY);
         const rect = zone.getBoundingClientRect();
-        const defaultCenterX = rect.left + 78;
-        const defaultCenterY = rect.bottom - 78;
-        const baseOffsetX = Math.max(-44, Math.min(54, e.clientX - defaultCenterX));
-        const baseOffsetY = Math.max(-54, Math.min(44, e.clientY - defaultCenterY));
-        originClientRef.current = { x: e.clientX, y: e.clientY };
+        originClientRef.current = { x: rect.left + baseX, y: rect.top + baseY };
+        downStartRef.current = {
+          x: e.clientX,
+          y: e.clientY,
+          timeMs: performance.now(),
+          maxDist: 0,
+        };
         activePointerId.current = e.pointerId;
         try {
           zone.setPointerCapture(e.pointerId);
@@ -201,23 +306,35 @@ function WalkTouchJoystick(): JSX.Element {
         }
         setStick({
           active: true,
-          baseOffsetX,
-          baseOffsetY,
+          baseX,
+          baseY,
           knobX: 0,
           knobY: 0,
           sprinting: false,
         });
-        ctl.api.walkthrough.setTouchMove(0, 0, false);
+        if (side === 'left') {
+          ctl.api.walkthrough.setTouchMove(0, 0, false);
+        } else {
+          ctl.api.walkthrough.setTouchLook(0, 0);
+        }
       }}
       onPointerMove={(e) => {
         if (activePointerId.current !== e.pointerId) return;
         e.stopPropagation();
-        updateFromMove(e.clientX, e.clientY, stick.baseOffsetX, stick.baseOffsetY);
+        updateFromMove(e.clientX, e.clientY);
       }}
       onPointerUp={(e) => {
         if (activePointerId.current !== e.pointerId) return;
         e.stopPropagation();
+        const wasQuickTap =
+          side === 'right' &&
+          Boolean(hasPrompt) &&
+          downStartRef.current.maxDist < 10 &&
+          performance.now() - downStartRef.current.timeMs < 250;
         resetStick();
+        if (wasQuickTap) {
+          ctl.api.walkthrough.interact();
+        }
       }}
       onPointerCancel={(e) => {
         if (activePointerId.current !== e.pointerId) return;
@@ -226,10 +343,8 @@ function WalkTouchJoystick(): JSX.Element {
       }}
     >
       <div
-        class={`shell-walk-joystick shell-glass${stick.active ? ' is-active' : ''}${stick.sprinting ? ' is-sprint' : ''}`}
-        style={{
-          transform: `translate3d(${stick.baseOffsetX.toFixed(1)}px, ${stick.baseOffsetY.toFixed(1)}px, 0)`,
-        }}
+        class={`shell-walk-joystick is-${side} shell-glass${stick.active ? ' is-active' : ''}${stick.sprinting ? ' is-sprint' : ''}`}
+        style={floatingStyle}
       >
         <div class="shell-walk-joystick-ring" aria-hidden="true" />
         <div
@@ -239,13 +354,13 @@ function WalkTouchJoystick(): JSX.Element {
           }}
           aria-hidden="true"
         />
-        <span class="shell-walk-joystick-label">{stick.sprinting ? 'RUN' : 'MOVE'}</span>
+        <span class="shell-walk-joystick-label">{label}</span>
       </div>
     </div>
   );
 }
 
-/** Right-side touch action buttons (Jump, Crouch, Use/Interact) for mobile, tablet & Pixel Fold. */
+/** Right-side touch action buttons (Jump, Crouch, Use/Interact) positioned above the right joystick. */
 function WalkTouchActions({ state }: { readonly state: TwinWalkthroughState }): JSX.Element {
   const ctl = useShell();
   return (
@@ -330,8 +445,9 @@ function WalkHints(): JSX.Element {
 
 /**
  * First-person walkthrough overlay: minimal crosshair, interaction pill next
- * to it, room chip top-left, floating-origin virtual thumbstick + action pad
- * on touch/mobile/foldable devices, and an auto-hiding desktop hint bar.
+ * to it, room chip top-left, dual floating-origin virtual thumbsticks (Left = Move,
+ * Right = Look) + action pad on touch/mobile/foldable devices, and an auto-hiding
+ * desktop hint bar.
  */
 export function WalkOverlay(): JSX.Element | null {
   const ctl = useShell();
@@ -356,7 +472,8 @@ export function WalkOverlay(): JSX.Element | null {
         </button>
       )}
       <WalkRoomChip showTouchControls={showTouchControls} />
-      {showTouchControls && <WalkTouchJoystick />}
+      {showTouchControls && <WalkFloatingJoystick side="left" />}
+      {showTouchControls && <WalkFloatingJoystick side="right" hasPrompt={Boolean(state.prompt)} />}
       {showTouchControls && <WalkTouchActions state={state} />}
       {!showTouchControls && <WalkHints />}
       {state.crouched && !showTouchControls && <span class="shell-walk-status shell-glass">Crouching</span>}

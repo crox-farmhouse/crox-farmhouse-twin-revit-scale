@@ -386,27 +386,67 @@ export class WalkthroughLadderClimbController {
     };
   }
 
+  private isClimbableLadderObject(obj: THREE.Object3D | null): boolean {
+    let cur: THREE.Object3D | null = obj;
+    while (cur) {
+      if (cur.userData?.isClimbableLadder === true) return true;
+      if (typeof cur.name === "string" && cur.name.startsWith("outbuildings.store.loftLadder")) {
+        return true;
+      }
+      cur = cur.parent;
+    }
+    return false;
+  }
+
   /**
-   * Ladders and staircases are 100% contextual via movement (WASD) — never show a 'Press [F]' prompt.
+   * Returns a contextual climb prompt when looking at or standing right beside the Store Loft ladder.
    */
   public getProximityLadderPrompt(
-    _footPos: THREE.Vector3,
-    _targetedMesh: THREE.Object3D | null
+    footPos: THREE.Vector3,
+    targetedMesh: THREE.Object3D | null
   ): string | null {
+    if (this.phase !== "idle") return null;
+    const { obU, obV } = worldToOutbuildingLocal(footPos.x, footPos.z);
+    const inBottomZone =
+      footPos.y <= 0.45 && obU >= 13.65 && obU <= 14.75 && obV >= 0.25 && obV <= 1.38;
+    const inTopZone =
+      footPos.y >= 2.35 && obU >= 13.65 && obU <= 14.75 && obV >= 1.02 && obV <= 1.78;
+    if (this.isClimbableLadderObject(targetedMesh) && (inBottomZone || inTopZone || Math.hypot(obU - LADDER_CENTER_U, obV - LADDER_CLIMB_STAND_V) <= 2.2)) {
+      return footPos.y < 1.2 ? "Climb Store Loft Ladder" : "Descend Store Loft Ladder";
+    }
+    if (inBottomZone || inTopZone) {
+      return footPos.y < 1.2 ? "Climb Store Loft Ladder" : "Descend Store Loft Ladder";
+    }
     return null;
   }
 
   /**
-   * Ladders and staircases mount/dismount contextually by walking onto them rather than pressing `[F]`.
+   * Mounts and auto-climbs the Store Loft ladder when triggered via Use / tap / [F].
    */
   public tryTriggerInteraction(
-    _footPos: THREE.Vector3,
-    _yawRad: number,
-    _pitchRad: number,
-    _currentEyeHeight: number,
-    _targetedMesh: THREE.Object3D | null
+    footPos: THREE.Vector3,
+    yawRad: number,
+    pitchRad: number,
+    currentEyeHeight: number,
+    targetedMesh: THREE.Object3D | null
   ): boolean {
-    return false;
+    if (this.phase === "climbing") {
+      this.autoClimbDir = footPos.y < 1.2 ? 1 : -1;
+      return true;
+    }
+    if (this.phase !== "idle") return false;
+    const { obU, obV } = worldToOutbuildingLocal(footPos.x, footPos.z);
+    const distToLadder = Math.hypot(obU - LADDER_CENTER_U, obV - LADDER_CLIMB_STAND_V);
+    const nearLadder =
+      (obU >= 13.55 && obU <= 14.85 && obV >= 0.20 && obV <= 1.85) ||
+      (this.isClimbableLadderObject(targetedMesh) && distToLadder <= 2.35);
+    if (!nearLadder) return false;
+    if (footPos.y < 1.2) {
+      this.beginBottomMount(footPos, yawRad, pitchRad, currentEyeHeight, 1);
+      return true;
+    }
+    this.beginTopMount(footPos, yawRad, pitchRad, currentEyeHeight, -1, false);
+    return true;
   }
 
   /**
@@ -482,7 +522,8 @@ export class WalkthroughLadderClimbController {
     yawRad: number,
     pitchRad: number,
     currentEyeHeight: number,
-    keysDown: ReadonlySet<string>
+    keysDown: ReadonlySet<string>,
+    touchForwardInput = 0
   ): boolean {
     if (this.phase !== 'idle') return true;
 
@@ -490,34 +531,35 @@ export class WalkthroughLadderClimbController {
     const moveU = moveVec.x * OB_COS - moveVec.z * OB_SIN;
     const moveV = moveVec.x * OB_SIN + moveVec.z * OB_COS;
 
-    // 1. Bottom Corridor Ladder Auto-Mount (`obU = 13.90..14.52m, obV = 0.72..1.25m, footY <= 0.35m`)
+    // 1. Bottom Corridor Ladder Auto-Mount (`obU = 13.80..14.62m, obV = 0.65..1.32m, footY <= 0.35m`)
     if (
       footPos.y <= 0.35 &&
-      forwardInput > 0 &&
-      obU >= 13.90 &&
-      obU <= 14.52 &&
-      obV >= 0.72 &&
-      obV <= 1.25 &&
-      moveV > 0.38 &&
-      Math.abs(moveU) < 0.85
+      forwardInput > 0.08 &&
+      obU >= 13.80 &&
+      obU <= 14.62 &&
+      obV >= 0.65 &&
+      obV <= 1.32 &&
+      moveV > 0.25 &&
+      Math.abs(moveU) < 0.88
     ) {
       const lookDelta = Math.abs(shortestAngleDelta(yawRad, LADDER_FACE_SOUTH_YAW));
-      if (lookDelta <= Math.PI * 0.44) {
+      if (lookDelta <= Math.PI * 0.62) {
         this.beginBottomMount(footPos, yawRad, pitchRad, currentEyeHeight, 0);
         return true;
       }
     }
 
-    // 2. Top Store Loft Ladder Auto-Mount (`obU = 13.90..14.52m, obV = 1.12..1.56m, footY >= 2.45m`)
+    // 2. Top Store Loft Ladder Auto-Mount (`obU = 13.80..14.62m, obV = 1.08..1.62m, footY >= 2.40m`)
     if (
-      footPos.y >= 2.45 &&
-      obU >= 13.90 &&
-      obU <= 14.52 &&
-      obV >= 1.12 &&
-      obV <= 1.56 &&
-      moveV < -0.34
+      footPos.y >= 2.40 &&
+      obU >= 13.80 &&
+      obU <= 14.62 &&
+      obV >= 1.08 &&
+      obV <= 1.62 &&
+      moveV < -0.25
     ) {
-      const forwardHeld = keysDown.has('KeyW') || keysDown.has('ArrowUp');
+      const forwardHeld =
+        keysDown.has('KeyW') || keysDown.has('ArrowUp') || touchForwardInput > 0.15;
       this.beginTopMount(footPos, yawRad, pitchRad, currentEyeHeight, -1, forwardHeld);
       return true;
     }
@@ -652,7 +694,10 @@ export class WalkthroughLadderClimbController {
     targetPitchRad: number,
     currentEyeHeight: number,
     crouched: boolean,
-    keysDown: ReadonlySet<string>
+    keysDown: ReadonlySet<string>,
+    touchForwardInput = 0,
+    touchStrafeInput = 0,
+    touchSprint = false
   ): LadderStepResult {
     if (this.phase === 'idle') {
       const settleAlpha = 1 - Math.exp(-16 * dtSeconds);
@@ -697,22 +742,27 @@ export class WalkthroughLadderClimbController {
       const sHeld = keysDown.has('KeyS') || keysDown.has('ArrowDown');
       const aHeld = keysDown.has('KeyA') || keysDown.has('ArrowLeft');
       const dHeld = keysDown.has('KeyD') || keysDown.has('ArrowRight');
-      const shiftHeld = keysDown.has('ShiftLeft') || keysDown.has('ShiftRight');
+      const shiftHeld =
+        keysDown.has('ShiftLeft') || keysDown.has('ShiftRight') || touchSprint;
       const slowHeld =
         crouched ||
         keysDown.has('ControlLeft') ||
         keysDown.has('ControlRight') ||
         keysDown.has('AltLeft') ||
         keysDown.has('AltRight');
+      const hasTouchMove =
+        Math.abs(touchForwardInput) > 0.10 || Math.abs(touchStrafeInput) > 0.12;
 
-      // Any manual WASD input immediately switches from initial click auto-glide to manual control
-      if (wHeld || sHeld || aHeld || dHeld) {
+      // Any manual WASD or touch joystick input immediately switches from auto-glide to manual control
+      if (wHeld || sHeld || aHeld || dHeld || hasTouchMove) {
         this.autoClimbDir = 0;
       }
 
-      let forwardInput = 0;
+      let forwardInput = touchForwardInput;
       if (wHeld) forwardInput += 1;
       if (sHeld) forwardInput -= 1;
+      forwardInput = THREE.MathUtils.clamp(forwardInput, -1, 1);
+      if (Math.abs(forwardInput) < 0.08) forwardInput = 0;
 
       const prevS = this.spiralProgress;
       const prevUpTang = sampleSpiralStairUpTangent(spec, prevS);
@@ -784,9 +834,11 @@ export class WalkthroughLadderClimbController {
       const deltaCurveYaw = shortestAngleDelta(prevUpTang.upYawRad, newUpTang.upYawRad);
       let nextTargetYaw = targetYawRad + deltaCurveYaw;
 
-      // Optional A/D strafe-turn assistance while on spiral stairs
-      if (aHeld) nextTargetYaw += 1.45 * dtSeconds;
-      if (dHeld) nextTargetYaw -= 1.45 * dtSeconds;
+      // Optional A/D or touch-strafe turn assistance while on spiral stairs
+      const strafeTurn = (aHeld ? 1 : 0) - (dHeld ? 1 : 0) - touchStrafeInput * 0.65;
+      if (Math.abs(strafeTurn) > 0.05) {
+        nextTargetYaw += strafeTurn * 1.45 * dtSeconds;
+      }
 
       // If auto-climbing via [F]/Click without manual look override, gently align gaze with travel tangent
       if (this.autoClimbDir !== 0) {
@@ -924,7 +976,11 @@ export class WalkthroughLadderClimbController {
       const t = THREE.MathUtils.clamp(this.phaseElapsed / duration, 0, 1);
       const ease = smoothstep(0, 1, t);
 
-      if (!keysDown.has('KeyW') && !keysDown.has('ArrowUp')) {
+      if (
+        !keysDown.has('KeyW') &&
+        !keysDown.has('ArrowUp') &&
+        touchForwardInput <= 0.15
+      ) {
         this.topMountForwardKeyHeld = false;
       }
 
@@ -985,7 +1041,8 @@ export class WalkthroughLadderClimbController {
     if (this.phase === 'climbing') {
       const wHeld = keysDown.has('KeyW') || keysDown.has('ArrowUp');
       const sHeld = keysDown.has('KeyS') || keysDown.has('ArrowDown');
-      const shiftHeld = keysDown.has('ShiftLeft') || keysDown.has('ShiftRight');
+      const shiftHeld =
+        keysDown.has('ShiftLeft') || keysDown.has('ShiftRight') || touchSprint;
       const slowHeld =
         crouched ||
         keysDown.has('ControlLeft') ||
@@ -993,21 +1050,28 @@ export class WalkthroughLadderClimbController {
         keysDown.has('AltLeft') ||
         keysDown.has('AltRight');
 
-      if (!wHeld) {
+      const rawForward = THREE.MathUtils.clamp(
+        (wHeld ? 1 : 0) - (sHeld ? 1 : 0) + touchForwardInput,
+        -1,
+        1
+      );
+      if (!wHeld && touchForwardInput <= 0.15) {
         this.topMountForwardKeyHeld = false;
       }
 
       // Check if player turned their camera > 100 deg away from the ladder or is looking sharply down
       const yawFromLadder = Math.abs(shortestAngleDelta(LADDER_FACE_SOUTH_YAW, yawRad));
       let climbInput = 0;
-      if (sHeld) {
-        climbInput = yawFromLadder > Math.PI * 0.62 ? 1 : -1;
+      if (rawForward < -0.10) {
+        const mag = Math.min(1, Math.abs(rawForward) * 1.15);
+        climbInput = (yawFromLadder > Math.PI * 0.62 ? 1 : -1) * mag;
         this.autoClimbDir = 0;
-      } else if (wHeld) {
+      } else if (rawForward > 0.10) {
+        const mag = Math.min(1, Math.abs(rawForward) * 1.15);
         if (this.topMountForwardKeyHeld || pitchRad < -0.68 || yawFromLadder > Math.PI * 0.62) {
-          climbInput = -1;
+          climbInput = -mag;
         } else {
-          climbInput = 1;
+          climbInput = mag;
           this.autoClimbDir = 0;
         }
       } else if (this.autoClimbDir !== 0) {
@@ -1120,9 +1184,16 @@ export class WalkthroughLadderClimbController {
         THREE.MathUtils.lerp(currentEyeHeight, desiredEyeH, 1 - Math.exp(-18 * dtSeconds))
       );
 
+      const wantsSideStepOffBottom =
+        Math.abs(touchStrafeInput) > 0.72 &&
+        Math.abs(rawForward) < 0.25 &&
+        footPos.y <= LADDER_FIRST_RUNG_FOOT_Y + 0.35;
       if (climbInput > 0 && footPos.y >= LADDER_MANTLE_START_FOOT_Y - 1e-3) {
         this.beginTopMantle(footPos, nextYaw, nextPitch, nextEyeH);
-      } else if (climbInput < 0 && footPos.y <= LADDER_BOTTOM_FOOT_Y + 0.08) {
+      } else if (
+        (climbInput < 0 && footPos.y <= LADDER_FIRST_RUNG_FOOT_Y + 0.06) ||
+        wantsSideStepOffBottom
+      ) {
         this.beginBottomDismount(footPos, nextYaw, nextPitch, nextEyeH);
       }
 

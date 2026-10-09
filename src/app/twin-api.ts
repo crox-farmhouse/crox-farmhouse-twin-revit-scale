@@ -377,8 +377,10 @@ export interface TwinWalkthroughApi {
   toggleCrouch(): boolean;
   /** Trigger a jump or stair/ledge climb in 1PV walkthrough mode. */
   jump(): void;
-  /** Sets the virtual thumbstick movement vector (-1..1 strafe & forward) for touch walkthrough. */
+  /** Sets the virtual left thumbstick movement vector (-1..1 strafe & forward) for touch walkthrough. */
   setTouchMove(strafe: number, forward: number, sprint?: boolean): void;
+  /** Sets the virtual right thumbstick look vector (-1..1 yaw & pitch) for touch walkthrough. */
+  setTouchLook(yaw: number, pitch: number): void;
   /** Requests pointer lock for free mouse look (must be called from a user gesture). */
   requestMouseLook(): void;
   enter(spawnId?: string): void;

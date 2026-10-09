@@ -407,4 +407,105 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
     this.renderer.invalidateShadows();
     this.renderer.requestRender();
   }
+
+  /**
+   * Pre-computes all geometry bounding volumes, uploads all procedural textures
+   * to GPU VRAM, compiles shaders across all floor/roof layers, and flushes the
+   * initial render pass while `#loading-screen` is still visible so there is
+   * zero lag when the viewport becomes interactive.
+   */
+  public async warmUpForStartup(
+    onProgress?: (label: string, fraction: number) => Promise<void> | void
+  ): Promise<void> {
+    await onProgress?.('Indexing geometry & textures…', 0.65);
+
+    const textures = new Set<THREE.Texture>();
+    if (this.scene.environment) textures.add(this.scene.environment);
+
+    const collectMaterialTextures = (mat: THREE.Material): void => {
+      const m = mat as unknown as Record<string, unknown>;
+      const texKeys = [
+        'map',
+        'alphaMap',
+        'bumpMap',
+        'normalMap',
+        'roughnessMap',
+        'metalnessMap',
+        'emissiveMap',
+        'aoMap',
+        'lightMap',
+        'envMap',
+      ];
+      for (const k of texKeys) {
+        const val = m[k];
+        if (val instanceof THREE.Texture) {
+          textures.add(val);
+        }
+      }
+    };
+
+    this.scene.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        const geom = obj.geometry;
+        if (geom instanceof THREE.BufferGeometry) {
+          if (!geom.boundingSphere) geom.computeBoundingSphere();
+          if (!geom.boundingBox) geom.computeBoundingBox();
+        }
+        const mat = obj.material;
+        if (Array.isArray(mat)) {
+          for (const item of mat) {
+            if (item) collectMaterialTextures(item);
+          }
+        } else if (mat) {
+          collectMaterialTextures(mat);
+        }
+      }
+    });
+
+    await onProgress?.('Uploading textures to GPU…', 0.78);
+    const glRenderer = this.renderer.renderer;
+    for (const tex of textures) {
+      try {
+        glRenderer.initTexture(tex);
+      } catch {
+        // Ignore textures without valid image data in headless contexts
+      }
+    }
+
+    await onProgress?.('Compiling shaders & shadow maps…', 0.90);
+    const prevFirstFloorVis = this.layers.firstFloorMeshGroup.visible;
+    const prevCeilingVis = this.layers.ceilingMeshGroup.visible;
+
+    this.layers.firstFloorMeshGroup.visible = true;
+    this.layers.ceilingMeshGroup.visible = true;
+    this.scene.updateMatrixWorld(true);
+
+    try {
+      glRenderer.compile(this.scene, this.camera.rig.perspCamera);
+    } catch {
+      // Ignore shader compile warmup errors in non-standard WebGL contexts
+    }
+
+    this.layers.firstFloorMeshGroup.visible = prevFirstFloorVis;
+    this.layers.ceilingMeshGroup.visible = prevCeilingVis;
+
+    this.refreshView(true);
+    this.renderer.invalidateShadows();
+    this.renderer.requestRender();
+    this.update(0.016);
+
+    // Warm up surface-picker raycast so the first pointerdown/orbit has zero lazy setup
+    try {
+      this.camera.pickVisibleSurfacePointNdc(0, 0);
+    } catch {
+      // Ignore if canvas has zero dimensions in headless tests
+    }
+
+    try {
+      const gl = glRenderer.getContext();
+      gl?.flush?.();
+    } catch {
+      // Ignore context flush errors
+    }
+  }
 }

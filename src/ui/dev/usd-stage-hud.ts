@@ -159,15 +159,17 @@ export class UsdStageHudController {
       this.render();
     });
 
-    this.scene.setOnUsdPrimPick((info) => {
-      this.selectedPrim = info;
-      this.renderPrimInspector();
-    });
-
     mountUsdQuickStats(this.statsGridEl);
     let initializedDevHud = false;
     effect(() => {
-      if (!devMode.value) return;
+      if (!devMode.value) {
+        this.scene.setOnUsdPrimPick(null);
+        return;
+      }
+      this.scene.setOnUsdPrimPick((info) => {
+        this.selectedPrim = info;
+        this.renderPrimInspector();
+      });
       if (!initializedDevHud) {
         initializedDevHud = true;
         const initialCandidates = this.runtime.searchPrims('kitchen', 5);
