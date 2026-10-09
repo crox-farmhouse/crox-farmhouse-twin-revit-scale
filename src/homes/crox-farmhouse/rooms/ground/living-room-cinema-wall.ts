@@ -856,16 +856,15 @@ export function buildLivingRoomCinemaWall(
         const z = pos.getZ(i);
         const nx = hw > 1e-5 ? x / hw : 0;
         const ny = hh > 1e-5 ? y / hh : 0;
-        // Corner ear flare: corners (|nx| -> 1 and |ny| -> 1) pinch thin in Z and flare slightly outward in X/Y
-        const cornerFactor = Math.pow(nx * nx * ny * ny, 0.85);
-        // Subtle top-center slouch crease
+        // Subtle tailored corner pinch without bubbly ear flare
+        const cornerFactor = Math.pow(nx * nx * ny * ny, 1.1);
         const topSlouch =
-          ny > 0.2 ? Math.exp(-nx * nx * 4.5) * (ny - 0.2) * 0.028 : 0;
+          ny > 0.25 ? Math.exp(-nx * nx * 5.0) * (ny - 0.25) * 0.008 : 0;
         pos.setXYZ(
           i,
-          x * (1 + cornerFactor * 0.065),
-          y * (1 + cornerFactor * 0.055) - topSlouch,
-          z * (1 - cornerFactor * 0.35)
+          x * (1 + cornerFactor * 0.012),
+          y * (1 + cornerFactor * 0.01) - topSlouch,
+          z * (1 - cornerFactor * 0.12)
         );
       }
       pos.needsUpdate = true;
@@ -978,10 +977,10 @@ export function buildLivingRoomCinemaWall(
     // 4. Low, Wide, Pillow-Top Bolster Arms on West (X = -1.35m) and East (X = +1.35m)
     //    Each arm has a full-to-floor upholstered lower block + a super-rounded pillow-top bolster cap curving over the top!
     const armLowerGeo = createSharedGeo(
-      createSculptedCushionGeometry(0.24, 0.44, 0.94, 14, 12, 16, 0.42, 'standard')
+      createSculptedCushionGeometry(0.24, 0.44, 0.94, 14, 12, 16, 0.36, 'standard')
     );
     const armBolsterTopGeo = createSharedGeo(
-      createSculptedCushionGeometry(0.28, 0.16, 0.96, 16, 12, 16, 0.62, 'standard')
+      createSculptedCushionGeometry(0.25, 0.09, 0.94, 14, 10, 14, 0.38, 'standard')
     );
     for (const [armSide, armX, armName] of [
       [-1, -1.35, 'livingRoom.chaiseSofa.westArm'],
@@ -997,14 +996,14 @@ export function buildLivingRoomCinemaWall(
       armLower.receiveShadow = true;
       chaiseSofaGroup.add(armLower);
 
-      // Squidgy pillow-top bolster arm cushion curving over the top of the arm (characteristic of Loaf Cuddlemuffin!)
+      // Clean tailored bolster arm pad on top of the arm
       const armBolsterTop = new THREE.Mesh(
         armBolsterTopGeo,
         treacleVelvetMat
       );
       armBolsterTop.name = `${armName}.bolsterTop`;
-      armBolsterTop.position.set(armX - armSide * 0.015, 0.49, -0.02);
-      armBolsterTop.rotation.z = armSide * -0.08;
+      armBolsterTop.position.set(armX - armSide * 0.005, 0.475, -0.02);
+      armBolsterTop.rotation.z = armSide * -0.02;
       armBolsterTop.castShadow = true;
       armBolsterTop.receiveShadow = true;
       chaiseSofaGroup.add(armBolsterTop);

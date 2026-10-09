@@ -169,17 +169,17 @@ export function createEngineeredOakFloorTextures(): {
       size,
       size,
       (cCtx, bCtx) => {
-      // Knot & Grain "Old Farmhouse" natural oiled Heritage oak palette — shifted slightly darker & richer
-      // so under Three.js room/sun lighting it reads as warm aged farmhouse oak rather than pale blonde
+      // Natural raw-effect matte-oiled European oak palette (matching reference photo media_1791557597873_0dec7400.jpg):
+      // Muted warm sandy-taupe / biscuit oak without orange Danish-oil saturation
       const oakPlankPalette: ReadonlyArray<readonly [number, number, number]> = [
-        [172, 132, 93],  // Rich Old Farmhouse honeyed oak (#ac845d)
-        [164, 125, 87],  // Warm weathered taupe-amber oak (#a47d57)
-        [178, 138, 98],  // Natural oiled farmhouse oak (#b28a62)
-        [158, 119, 82],  // Deeper heartwood Heritage oak (#9e7752)
-        [182, 143, 103], // Warm sunlit oiled oak (#b68f67)
-        [168, 129, 90],  // Balanced aged farmhouse oak (#a8815a)
-        [161, 122, 84],  // Warm rustic medium-dark oak (#a17a54)
-        [175, 135, 96],  // Golden-umber brushed oak (#af8760)
+        [184, 157, 126], // Natural raw-oiled European oak (#b89d7e)
+        [176, 149, 118], // Warm muted taupe-biscuit oak (#b09576)
+        [190, 163, 132], // Pale sandy heartwood oak (#bea384)
+        [170, 143, 112], // Medium weathered taupe oak (#aa8f70)
+        [194, 168, 137], // Light sunlit natural European oak (#c2a889)
+        [180, 153, 122], // Balanced matte-oiled farmhouse oak (#b4997a)
+        [173, 146, 115], // Muted warm umber-taupe oak (#ad9273)
+        [187, 160, 129], // Soft biscuit-oak plank (#bba081)
       ];
 
       const clampByte = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
@@ -412,6 +412,112 @@ export function createEngineeredOakFloorTextures(): {
         bCtx.fillStyle = '#404040';
         bCtx.fillRect(0, y0, size, 1.9);
       }
+      }
+    );
+
+    const colorMap = new THREE.CanvasTexture(colorCanvas);
+    colorMap.wrapS = THREE.RepeatWrapping;
+    colorMap.wrapT = THREE.RepeatWrapping;
+    colorMap.colorSpace = THREE.SRGBColorSpace;
+    colorMap.anisotropy = 8;
+
+    const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+    bumpMap.wrapS = THREE.RepeatWrapping;
+    bumpMap.wrapT = THREE.RepeatWrapping;
+    bumpMap.anisotropy = 8;
+
+    return { colorMap, bumpMap };
+  });
+}
+
+export function createNaturalOakJoineryTextures(): {
+  readonly colorMap: THREE.CanvasTexture;
+  readonly bumpMap: THREE.CanvasTexture;
+} {
+  return getOrCreateCachedTexture('natural-oak-joinery', () => {
+    const size = 512;
+    const [colorCanvas, bumpCanvas] = getOrCreateCachedCanvasPair(
+      'natural-oak-joinery',
+      size,
+      size,
+      (cCtx, bCtx) => {
+        const clampByte = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
+
+        // Pale, desaturated natural matte European oak base (matching skirting/joinery photo media_1791557597873_0dec7400.jpg)
+        const baseR = 192;
+        const baseG = 167;
+        const baseB = 138;
+        cCtx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
+        cCtx.fillRect(0, 0, size, size);
+
+        bCtx.fillStyle = 'rgb(196, 196, 196)';
+        bCtx.fillRect(0, 0, size, size);
+
+        // Subtle cross-board tonal variation (rift/quarter-sawn European white oak)
+        const bgGrad = cCtx.createLinearGradient(0, 0, 0, size);
+        bgGrad.addColorStop(0, 'rgba(202, 178, 149, 0.35)');
+        bgGrad.addColorStop(0.35, 'rgba(186, 161, 132, 0.25)');
+        bgGrad.addColorStop(0.7, 'rgba(198, 174, 145, 0.30)');
+        bgGrad.addColorStop(1, 'rgba(202, 178, 149, 0.35)');
+        cCtx.fillStyle = bgGrad;
+        cCtx.fillRect(0, 0, size, size);
+
+        // Fine longitudinal open-pore European oak fibers
+        const numFibers = 160;
+        const stepX = 12;
+        for (let f = 0; f < numFibers; f++) {
+          const baseY = ((f + 0.5) / numFibers) * size;
+          const wave =
+            Math.sin(f * 0.92 + 1.3) * 4.8 +
+            Math.cos(f * 2.15 + 0.7) * 3.4 +
+            Math.sin(f * 0.28) * 4.2;
+          const isOpenPore = wave < -2.6;
+          const isSilkyRay = wave > 4.2;
+
+          const dR = Math.round(wave * 0.95 - (isOpenPore ? 9 : 0) + (isSilkyRay ? 5 : 0));
+          const dG = Math.round(wave * 0.95 - (isOpenPore ? 9 : 0) + (isSilkyRay ? 5 : 0));
+          const dB = Math.round(wave * 0.85 - (isOpenPore ? 8 : 0) + (isSilkyRay ? 4 : 0));
+
+          cCtx.strokeStyle = `rgba(${clampByte(baseR + dR)}, ${clampByte(baseG + dG)}, ${clampByte(baseB + dB)}, ${
+            isOpenPore ? 0.52 : isSilkyRay ? 0.38 : 0.26
+          })`;
+          cCtx.lineWidth = isOpenPore ? 1.25 : 1.0;
+
+          const bVal = clampByte(196 + (isOpenPore ? -28 : isSilkyRay ? 16 : Math.round(wave * 1.6)));
+          bCtx.strokeStyle = `rgb(${bVal}, ${bVal}, ${bVal})`;
+          bCtx.lineWidth = isOpenPore ? 1.25 : 1.0;
+
+          cCtx.beginPath();
+          bCtx.beginPath();
+          for (let px = 0; px <= size; px += stepX) {
+            const theta = (px / size) * Math.PI * 2;
+            const gy =
+              baseY +
+              Math.sin(theta + f * 0.11) * 2.8 +
+              Math.cos(theta * 2 - f * 0.07) * 1.1;
+            if (px === 0) {
+              cCtx.moveTo(px, gy);
+              bCtx.moveTo(px, gy);
+            } else {
+              cCtx.lineTo(px, gy);
+              bCtx.lineTo(px, gy);
+            }
+          }
+          cCtx.stroke();
+          bCtx.stroke();
+        }
+
+        // Delicate pale silver-straw medullary rays (characteristic of European oak skirting & doors)
+        for (let r = 0; r < 28; r++) {
+          const rx = ((r * 79 + 23) % (size - 60)) + 20;
+          const ry = ((r * 113 + 41) % (size - 24)) + 12;
+          const rw = 18 + (r % 5) * 7;
+          const rh = 1.6 + (r % 3) * 0.6;
+          cCtx.fillStyle = 'rgba(214, 193, 166, 0.24)';
+          cCtx.beginPath();
+          cCtx.ellipse(rx, ry, rw, rh, ((r % 3) - 1) * 0.03, 0, Math.PI * 2);
+          cCtx.fill();
+        }
       }
     );
 

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {
   createCourtyardStoneTexture,
   createImperialBrickTextures,
+  createNaturalOakJoineryTextures,
   createWovenWoolCarpetTextures,
 } from '../../../engine/textures/procedural-textures.ts';
 import type { SceneBuilderContext } from '../../../engine/viewer/scene-types.ts';
@@ -54,11 +55,15 @@ export function createFirstFloorMaterials(
     metalness: 0.03,
   });
 
-  // Antique Oak Skirting Material (Issue #14: all skirting boards antique wood with moulded top cap)
+  // Natural raw-effect matte-satin European oak for all skirting boards, architraves & interior doors
+  const naturalOakJoineryTextures = createNaturalOakJoineryTextures();
   const antiqueOakSkirtingMat = new THREE.MeshStandardMaterial({
-    color: 0x8f6b47,
-    roughness: 0.52,
-    metalness: 0.04,
+    map: naturalOakJoineryTextures.colorMap,
+    bumpMap: naturalOakJoineryTextures.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf5efe6,
+    roughness: 0.64,
+    metalness: 0.02,
   });
 
   const wardrobeMat = new THREE.MeshStandardMaterial({
@@ -68,9 +73,12 @@ export function createFirstFloorMaterials(
   });
 
   const timberDoorMat = new THREE.MeshStandardMaterial({
-    color: 0xdad5cb,
-    roughness: 0.45,
-    metalness: 0.04,
+    map: naturalOakJoineryTextures.colorMap,
+    bumpMap: naturalOakJoineryTextures.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf7f1e8,
+    roughness: 0.62,
+    metalness: 0.02,
   });
 
   const windowFrameMat = new THREE.MeshStandardMaterial({

@@ -470,13 +470,8 @@ export class WalkthroughLadderClimbController {
         this.beginTopMantle(footPos, yawRad, pitchRad, currentEyeHeight);
         return { handled: true, kickBackVelocityY: 0 };
       }
-      // Kick backward off the ladder into the Store North corridor
-      const { wx, wz } = outbuildingLocalToWorld(LADDER_CENTER_U, LADDER_DISMOUNT_BOTTOM_V);
-      footPos.x = wx;
-      footPos.z = wz;
-      footPos.y = Math.max(LADDER_BOTTOM_FOOT_Y, footPos.y - 0.12);
-      this.reset();
-      return { handled: true, kickBackVelocityY: 2.35 };
+      this.beginBottomDismount(footPos, yawRad, pitchRad, currentEyeHeight);
+      return { handled: true, kickBackVelocityY: 0 };
     }
     return { handled: true, kickBackVelocityY: 0 };
   }

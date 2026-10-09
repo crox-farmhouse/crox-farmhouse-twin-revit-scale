@@ -1,15 +1,28 @@
 import * as THREE from 'three';
 import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import {
   createBrushedStainlessTexture,
   createCementTexture,
   createDriftwoodTexture,
   createGraniteSettLPathTextures,
+  createNaturalOakJoineryTextures,
 } from '../../../../engine/textures/procedural-textures.ts';
 import { buildPatioAndGrapeVinePergola } from '../grounds/patio-and-grape-vine-pergola.ts';
-import { createSculptedCushionGeometry } from '../../../../objects/furniture/sitting-room-sofas-and-art.ts';
 
 function prepGeo<T extends THREE.BufferGeometry>(geo: T): T {
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+function createBeveledKitchenCushionGeo(
+  w: number,
+  h: number,
+  d: number,
+  radius: number
+): RoundedBoxGeometry {
+  const geo = new RoundedBoxGeometry(w, h, d, 3, radius);
+  geo.userData.isSculpted = true;
   geo.computeBoundingSphere();
   return geo;
 }
@@ -22,16 +35,10 @@ function tagHighLod(obj: THREE.Object3D, maxDistance = 14): void {
 // ============================================================================
 // Shared BufferGeometries for Sitting Area, Bifolds, Trophy Urns & Grindstone
 // ============================================================================
-const sharedChairSeatGeo = prepGeo(
-  createSculptedCushionGeometry(0.78, 0.16, 0.76, 16, 10, 16, 0.56, 'standard')
-);
+const sharedChairSeatGeo = createBeveledKitchenCushionGeo(0.78, 0.16, 0.76, 0.015);
 const sharedChairBaseFrameGeo = prepGeo(new THREE.BoxGeometry(0.82, 0.05, 0.8));
-const sharedChairBackGeo = prepGeo(
-  createSculptedCushionGeometry(0.76, 0.48, 0.16, 16, 14, 10, 0.58, 'standard', false, 0.12)
-);
-const sharedChairPillowGeo = prepGeo(
-  createSculptedCushionGeometry(0.38, 0.26, 0.1, 14, 12, 10, 0.64, 'standard', true)
-);
+const sharedChairBackGeo = createBeveledKitchenCushionGeo(0.76, 0.48, 0.16, 0.015);
+const sharedChairPillowGeo = createBeveledKitchenCushionGeo(0.38, 0.26, 0.1, 0.012);
 const sharedChairArmGeo = prepGeo(new THREE.BoxGeometry(0.078, 0.044, 0.78));
 const sharedChairFrontLegGeo = prepGeo(new THREE.CylinderGeometry(0.025, 0.019, 0.62, 10));
 const sharedChairBackLegGeo = prepGeo(new THREE.CylinderGeometry(0.025, 0.019, 0.58, 10));
@@ -284,10 +291,14 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   // 4 WIDER WHITE BIFOLD DOORS FRAMED BY A LARGE, THICK OAK MANTLE & OAK UPRIGHTS
   // (Set in the 0.28m-thick South wall at Z = +1.99m..+2.27m, center Z = +2.13m)
   // =========================================================================
+  const naturalOakTex = createNaturalOakJoineryTextures();
   const structuralOakMat = new THREE.MeshStandardMaterial({
-    color: 0x8a6038,
-    roughness: 0.56,
-    metalness: 0.05,
+    map: naturalOakTex.colorMap,
+    bumpMap: naturalOakTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf5efe6,
+    roughness: 0.64,
+    metalness: 0.02,
   });
   const darkOakPegMat = new THREE.MeshStandardMaterial({
     color: 0x5c3d20,

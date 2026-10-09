@@ -19,7 +19,7 @@ const RACK_OB_V = 4.02;
 
 const STAND_OB_U = 1.34;
 const STAND_OB_V = 2.85;
-const STAND_EYE_HEIGHT = 1.65;
+const STAND_EYE_HEIGHT = 1.6;
 const STAND_PITCH_RAD = -0.12;
 
 const BENCH_ACTIVE_X = 0.0;
@@ -301,16 +301,17 @@ export class GymBenchPressController implements AnimatedInteractable {
     if (t <= 1.05) {
       // Stage 1 (0.00s -> 1.05s): Bench slide-in, rack height lower, and 1PV lie-back
       const u = easeInOutCubic(t / 1.05);
+      const camU = easeInOutSine(t / 1.05);
       benchSlideU = u;
       rackY = lerp(this.#barRestY, BENCH_RACK_Y, u);
       barY = rackY;
       barZ = barRackedZ;
 
       useStandingBlend = true;
-      standBlendT = u;
-      yawRad = lerp(standYawRad, lieYawRad, u);
-      pitchRad = lerp(STAND_PITCH_RAD, 1.34, u);
-      rollRad = Math.sin(u * Math.PI) * 0.025;
+      standBlendT = camU;
+      yawRad = lerp(standYawRad, lieYawRad, camU);
+      pitchRad = lerp(STAND_PITCH_RAD, 1.34, camU);
+      rollRad = Math.sin(camU * Math.PI) * 0.025;
       fovBoostDeg = 0;
     } else if (t <= 1.65) {
       // Stage 2 (1.05s -> 1.65s): Grip & unrack 102 kg barbell to lockout over mid-chest
@@ -342,16 +343,17 @@ export class GymBenchPressController implements AnimatedInteractable {
         eyeLocalY = 0.535;
         eyeLocalZ = this.#barRestZ + 0.205;
         pitchRad = 1.26;
-        fovBoostDeg = 1.2;
+        fovBoostDeg = 1.1;
       } else {
         // Explosive concentric press (2.40s -> 3.05s)
-        const u = easeOutCubic((t - 2.4) / 0.65);
+        const rawU = clamp01((t - 2.4) / 0.65);
+        const u = easeOutCubic(rawU);
         barY = lerp(BAR_CHEST_Y, BAR_LOCKOUT_Y, u);
         barZ = lerp(barChestZ, barLockoutZ, u);
         eyeLocalY = lerp(0.535, EYE_LIE_Y - EYE_UNRACK_DIP_Y, u);
         eyeLocalZ = lerp(this.#barRestZ + 0.205, eyePressLocalZ, u);
         pitchRad = lerp(1.26, 1.42, u);
-        fovBoostDeg = 0.8 + Math.sin(u * Math.PI) * 1.8;
+        fovBoostDeg = lerp(1.1, 0.8, rawU) + Math.sin(rawU * Math.PI) * 1.6;
       }
     } else if (t <= 4.55) {
       // Stage 4 (3.05s -> 4.55s): Rep 2 — Working rep with sticking-point slowdown around y = 0.78m
@@ -385,7 +387,7 @@ export class GymBenchPressController implements AnimatedInteractable {
         eyeLocalZ = lerp(this.#barRestZ + 0.205, eyePressLocalZ, pressFrac);
         pitchRad = lerp(1.25, 1.42, pressFrac) - effortEnv * 0.02;
         rollRad = Math.sin(raw * Math.PI) * 0.014;
-        fovBoostDeg = 0.8 + effortEnv * 3.0;
+        fovBoostDeg = lerp(1.4, 0.8, raw) + effortEnv * 2.7;
       }
     } else if (t <= 6.35) {
       // Stage 5 (4.55s -> 6.35s): Rep 3 — Max-effort grinder rep
@@ -397,7 +399,7 @@ export class GymBenchPressController implements AnimatedInteractable {
         eyeLocalY = lerp(EYE_LIE_Y - EYE_UNRACK_DIP_Y, 0.53, u);
         eyeLocalZ = lerp(eyePressLocalZ, this.#barRestZ + 0.205, u);
         pitchRad = lerp(1.42, 1.24, u);
-        fovBoostDeg = lerp(1.0, 1.8, u);
+        fovBoostDeg = lerp(0.8, 1.8, u);
       } else {
         // The Grind (5.20s -> 6.35s): stalls at sticking point (localY ≈ 0.76m at 5.55s..5.95s)
         let pressFrac: number;
@@ -433,7 +435,7 @@ export class GymBenchPressController implements AnimatedInteractable {
           tremorGain * 0.035 +
           Math.sin(t * 31) * 0.008 * tremorGain;
         rollRad = Math.sin(t * 29) * 0.018 * tremorGain;
-        fovBoostDeg = strainEnv * 4.8;
+        fovBoostDeg = lerp(1.8, 0.8, grindNorm) + strainEnv * 3.2;
       }
     } else {
       // Stage 6 (6.35s -> 7.40s): Re-rack into J-cups & stand up
@@ -452,16 +454,17 @@ export class GymBenchPressController implements AnimatedInteractable {
       } else {
         // Restore rack & bench to resting positions while 1PV camera sits up and steps off (6.80s -> 7.40s)
         const u = easeInOutCubic((t - 6.8) / 0.6);
+        const camU = easeInOutSine((t - 6.8) / 0.6);
         benchSlideU = 1 - u;
         rackY = lerp(BENCH_RACK_Y, this.#barRestY, u);
         barY = rackY;
         barZ = barRackedZ;
 
         useStandingBlend = true;
-        standBlendT = 1 - u;
-        yawRad = lerp(lieYawRad, standYawRad, u);
-        pitchRad = lerp(1.34, STAND_PITCH_RAD, u);
-        rollRad = Math.sin(u * Math.PI) * -0.02;
+        standBlendT = 1 - camU;
+        yawRad = lerp(lieYawRad, standYawRad, camU);
+        pitchRad = lerp(1.34, STAND_PITCH_RAD, camU);
+        rollRad = Math.sin(camU * Math.PI) * -0.02;
         fovBoostDeg = 0;
       }
     }

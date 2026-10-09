@@ -217,4 +217,28 @@ describe('GymBenchPressController', () => {
     const [outX, outZ] = toWorld(4.0, 1.2);
     expect(controller.isPlayerInProximityZone(outX, GYM_FLOOR_Y, outZ)).toBe(false);
   });
+
+  it('maintains smooth frame-to-frame 1P camera continuity across all 6 bench press stages', () => {
+    const { controller } = createTestSquatRackRig();
+    controller.trigger();
+    const dt = 1 / 60;
+    let prev = controller.sampleFirstPersonPose()!;
+    expect(prev).not.toBeNull();
+    while (controller.isFirstPersonActive()) {
+      controller.step(dt);
+      const cur = controller.sampleFirstPersonPose();
+      if (!cur) break;
+      const eyeStep = Math.hypot(
+        cur.eyePosition[0] - prev.eyePosition[0],
+        cur.eyePosition[1] - prev.eyePosition[1],
+        cur.eyePosition[2] - prev.eyePosition[2]
+      );
+      const pitchStep = Math.abs(cur.pitchRad - prev.pitchRad);
+      const fovStep = Math.abs((cur.fovBoostDeg ?? 0) - (prev.fovBoostDeg ?? 0));
+      expect(eyeStep).toBeLessThan(0.125);
+      expect(pitchStep).toBeLessThan(0.12);
+      expect(fovStep).toBeLessThan(0.36);
+      prev = cur;
+    }
+  });
 });

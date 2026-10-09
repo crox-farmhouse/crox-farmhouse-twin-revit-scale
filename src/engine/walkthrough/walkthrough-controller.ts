@@ -154,6 +154,35 @@ export class WalkthroughController {
   private targetedPrompt: string | null = null;
   private wasInGolfAutoSwingStance = false;
   private golfShotStartPose: GolfShotStartPose | null = null;
+  private lastCameraEyePos = new THREE.Vector3();
+  private lastCameraRollRad = 0;
+  private fpEntryBlend: {
+    readonly startEye: readonly [number, number, number];
+    readonly startFoot: readonly [number, number, number];
+    readonly startYaw: number;
+    readonly startPitch: number;
+    readonly startRoll: number;
+    elapsedSec: number;
+  } | null = null;
+  private lastActiveFpPose: {
+    readonly eye: readonly [number, number, number];
+    readonly foot: readonly [number, number, number];
+    readonly yaw: number;
+    readonly pitch: number;
+    readonly roll: number;
+  } | null = null;
+  private fpExitBlend: {
+    readonly startEye: readonly [number, number, number];
+    readonly startFoot: readonly [number, number, number];
+    readonly startYaw: number;
+    readonly startPitch: number;
+    readonly startRoll: number;
+    readonly targetFoot: readonly [number, number, number];
+    readonly targetEyeH: number;
+    readonly targetYaw: number;
+    readonly targetPitch: number;
+    elapsedSec: number;
+  } | null = null;
   private lastRaycastMs = 0;
   private lastSessionSaveMs = 0;
 
@@ -634,7 +663,8 @@ export class WalkthroughController {
   private syncCameraFromFootAndAngles(
     bobOffsetY: number,
     rollRad = 0,
-    pitchNodRad = 0
+    pitchNodRad = 0,
+    eyeOverride?: readonly [number, number, number]
   ): void {
     syncWalkthroughCameraPose(
       this.rig,
@@ -644,8 +674,11 @@ export class WalkthroughController {
       bobOffsetY,
       this.yawRad,
       THREE.MathUtils.clamp(this.pitchRad + pitchNodRad, -MAX_PITCH_RAD, MAX_PITCH_RAD),
-      rollRad
+      rollRad,
+      eyeOverride
     );
+    this.lastCameraEyePos.copy(this.rig.perspCamera.position);
+    this.lastCameraRollRad = rollRad;
   }
 
   /**
@@ -704,13 +737,12 @@ export class WalkthroughController {
 
     if (t <= 0.28) {
       const u = smoothstep(0, 0.28, t);
-      const lookU = smoothstep(0, 0.2, t);
       obU = THREE.MathUtils.lerp(start.startU, bagStandU, u);
       obV = THREE.MathUtils.lerp(start.startV, bagStandV, u);
       footY = THREE.MathUtils.lerp(start.startFootY, simFloorY, u);
-      yaw = lerpAngle(start.startYaw, bagLookYaw, lookU);
-      pitch = THREE.MathUtils.lerp(start.startPitch, bagLookPitch, lookU);
-      eyeH = THREE.MathUtils.lerp(start.startEyeH, 1.46, Math.sin(u * Math.PI * 0.85));
+      yaw = lerpAngle(start.startYaw, bagLookYaw, u);
+      pitch = THREE.MathUtils.lerp(start.startPitch, bagLookPitch, u);
+      eyeH = THREE.MathUtils.lerp(start.startEyeH, 1.46, u);
       rollRad = -0.025 * Math.sin(u * Math.PI);
     } else if (t <= 0.72) {
       const u = smoothstep(0.28, 0.72, t);
@@ -899,16 +931,59 @@ export class WalkthroughController {
       this.verticalVelocity = 0;
       this.groundVelX = 0;
       this.groundVelZ = 0;
-      const [fx, fy, fz] = fpSample.footPosition;
-      const [ex, ey, ez] = fpSample.eyePosition;
+      this.fpExitBlend = null;
+
+      if (this.fpEntryBlend === null) {
+        this.fpEntryBlend = {
+          startEye: [
+            this.lastCameraEyePos.x,
+            this.lastCameraEyePos.y,
+            this.lastCameraEyePos.z,
+          ],
+          startFoot: [this.footPos.x, this.footPos.y, this.footPos.z],
+          startYaw: this.yawRad,
+          startPitch: this.pitchRad,
+          startRoll: this.lastCameraRollRad,
+          elapsedSec: 0,
+        };
+      } else {
+        this.fpEntryBlend.elapsedSec += dtSeconds;
+      }
+
+      const FP_ENTRY_BLEND_DURATION_SEC = 0.52;
+      const wIn = smoothstep(0, FP_ENTRY_BLEND_DURATION_SEC, this.fpEntryBlend.elapsedSec);
+      const [rawFx, rawFy, rawFz] = fpSample.footPosition;
+      const [rawEx, rawEy, rawEz] = fpSample.eyePosition;
+      const fx = THREE.MathUtils.lerp(this.fpEntryBlend.startFoot[0], rawFx, wIn);
+      const fy = THREE.MathUtils.lerp(this.fpEntryBlend.startFoot[1], rawFy, wIn);
+      const fz = THREE.MathUtils.lerp(this.fpEntryBlend.startFoot[2], rawFz, wIn);
+      const ex = THREE.MathUtils.lerp(this.fpEntryBlend.startEye[0], rawEx, wIn);
+      const ey = THREE.MathUtils.lerp(this.fpEntryBlend.startEye[1], rawEy, wIn);
+      const ez = THREE.MathUtils.lerp(this.fpEntryBlend.startEye[2], rawEz, wIn);
+      const blendedYaw = lerpAngle(this.fpEntryBlend.startYaw, fpSample.yawRad, wIn);
+      const blendedPitch = THREE.MathUtils.lerp(this.fpEntryBlend.startPitch, fpSample.pitchRad, wIn);
+      const blendedRoll = THREE.MathUtils.lerp(
+        this.fpEntryBlend.startRoll,
+        fpSample.rollRad ?? 0,
+        wIn
+      );
+
       this.footPos.set(fx, fy, fz);
-      this.yawRad = fpSample.yawRad;
-      this.pitchRad = fpSample.pitchRad;
-      this.targetYawRad = fpSample.yawRad;
-      this.targetPitchRad = fpSample.pitchRad;
+      this.yawRad = blendedYaw;
+      this.pitchRad = blendedPitch;
+      this.targetYawRad = blendedYaw;
+      this.targetPitchRad = blendedPitch;
       this.currentEyeHeight = Math.max(0.25, ey - fy);
 
-      const desiredFpFov = this.baseFov + (fpSample.fovBoostDeg ?? 0);
+      this.lastActiveFpPose = {
+        eye: [ex, ey, ez],
+        foot: [fx, fy, fz],
+        yaw: blendedYaw,
+        pitch: blendedPitch,
+        roll: blendedRoll,
+      };
+
+      const desiredFpFov = this.baseFov + (fpSample.fovBoostDeg ?? 0) * wIn;
       if (Math.abs(this.currentFov - desiredFpFov) > 0.02) {
         this.currentFov = THREE.MathUtils.lerp(
           this.currentFov,
@@ -919,11 +994,108 @@ export class WalkthroughController {
         this.rig.perspCamera.updateProjectionMatrix();
       }
 
-      this.syncCameraFromFootAndAngles(0, fpSample.rollRad ?? 0, 0);
-      this.rig.perspCamera.position.set(ex, ey, ez);
+      this.syncCameraFromFootAndAngles(0, blendedRoll, 0, [ex, ey, ez]);
       this.refreshTargetedInteractable();
       this.onPoseUpdated();
       this.saveSessionState(false);
+      return true;
+    }
+
+    if (this.fpEntryBlend !== null && this.lastActiveFpPose !== null) {
+      const prev = this.lastActiveFpPose;
+      this.fpEntryBlend = null;
+      this.lastActiveFpPose = null;
+
+      const floorY = sampleFloorElevation(this.footPos.x, this.footPos.y, this.footPos.z);
+      this.footPos.y = floorY;
+      const targetEyeH = getWalkthroughTargetEyeHeight(
+        this.footPos.x,
+        this.footPos.y,
+        this.footPos.z,
+        this.crouched
+      );
+      this.collisionAndBarge.ensureFootPositionUnblocked(this.footPos, targetEyeH);
+      const targetEyeY = this.footPos.y + targetEyeH;
+      const targetPitch = THREE.MathUtils.clamp(prev.pitch, -0.35, 0.15);
+      const eyeDelta = Math.hypot(
+        prev.eye[0] - this.footPos.x,
+        prev.eye[1] - targetEyeY,
+        prev.eye[2] - this.footPos.z
+      );
+      if (
+        eyeDelta > 0.01 ||
+        Math.abs(prev.pitch - targetPitch) > 0.01 ||
+        Math.abs(prev.roll) > 0.004
+      ) {
+        this.fpExitBlend = {
+          startEye: prev.eye,
+          startFoot: prev.foot,
+          startYaw: prev.yaw,
+          startPitch: prev.pitch,
+          startRoll: prev.roll,
+          targetFoot: [this.footPos.x, this.footPos.y, this.footPos.z],
+          targetEyeH,
+          targetYaw: prev.yaw,
+          targetPitch,
+          elapsedSec: 0,
+        };
+      }
+    }
+
+    if (this.fpExitBlend !== null) {
+      this.fpExitBlend.elapsedSec += dtSeconds;
+      const FP_EXIT_BLEND_DURATION_SEC = 0.45;
+      const wOut = smoothstep(0, FP_EXIT_BLEND_DURATION_SEC, this.fpExitBlend.elapsedSec);
+      const fx = THREE.MathUtils.lerp(
+        this.fpExitBlend.startFoot[0],
+        this.fpExitBlend.targetFoot[0],
+        wOut
+      );
+      const fy = THREE.MathUtils.lerp(
+        this.fpExitBlend.startFoot[1],
+        this.fpExitBlend.targetFoot[1],
+        wOut
+      );
+      const fz = THREE.MathUtils.lerp(
+        this.fpExitBlend.startFoot[2],
+        this.fpExitBlend.targetFoot[2],
+        wOut
+      );
+      const targetEyeY = this.fpExitBlend.targetFoot[1] + this.fpExitBlend.targetEyeH;
+      const ex = THREE.MathUtils.lerp(this.fpExitBlend.startEye[0], fx, wOut);
+      const ey = THREE.MathUtils.lerp(this.fpExitBlend.startEye[1], targetEyeY, wOut);
+      const ez = THREE.MathUtils.lerp(this.fpExitBlend.startEye[2], fz, wOut);
+
+      this.footPos.set(fx, fy, fz);
+      this.currentEyeHeight = Math.max(0.25, ey - fy);
+      this.yawRad = lerpAngle(this.fpExitBlend.startYaw, this.fpExitBlend.targetYaw, wOut);
+      this.pitchRad = THREE.MathUtils.lerp(
+        this.fpExitBlend.startPitch,
+        this.fpExitBlend.targetPitch,
+        wOut
+      );
+      this.targetYawRad = this.yawRad;
+      this.targetPitchRad = this.pitchRad;
+      const roll = THREE.MathUtils.lerp(this.fpExitBlend.startRoll, 0, wOut);
+
+      if (Math.abs(this.currentFov - this.baseFov) > 0.02) {
+        this.currentFov = THREE.MathUtils.lerp(
+          this.currentFov,
+          this.baseFov,
+          1 - Math.exp(-12 * dtSeconds)
+        );
+        this.rig.perspCamera.fov = this.currentFov;
+        this.rig.perspCamera.updateProjectionMatrix();
+      }
+
+      this.syncCameraFromFootAndAngles(0, roll, 0, [ex, ey, ez]);
+      this.refreshTargetedInteractable();
+      this.onPoseUpdated();
+      this.saveSessionState(false);
+
+      if (this.fpExitBlend.elapsedSec >= FP_EXIT_BLEND_DURATION_SEC) {
+        this.fpExitBlend = null;
+      }
       return true;
     }
 

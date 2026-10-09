@@ -1,25 +1,34 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 /**
- * Helper to deform a subdivided BoxGeometry into a plump, sculpted upholstery cushion or
- * knife-edge pillow with smooth superellipsoid edge rounding and sinusoidal face crowning.
+ * Builds a tailored rectangular upholstery cushion or pillow geometry using a multi-segment
+ * physical-radius RoundedBoxGeometry with subtle face crowning (not bubbly/spherical and not a sharp 90° cube).
  */
 export function createSculptedCushionGeometry(
   widthX: number,
   heightY: number,
   depthZ: number,
-  segX: number,
-  segY: number,
-  segZ: number,
+  _segX: number,
+  _segY: number,
+  _segZ: number,
   crownPower: number,
   uvMode: 'striped' | 'standard',
   knifeEdge = false,
   loungeCrease = 0
 ): THREE.BufferGeometry {
-  const effSegX = Math.max(10, Math.round(segX * 0.85));
-  const effSegY = Math.max(8, Math.round(segY * 0.85));
-  const effSegZ = Math.max(10, Math.round(segZ * 0.85));
-  const geo = new THREE.BoxGeometry(widthX, heightY, depthZ, effSegX, effSegY, effSegZ);
+  const minDim = Math.min(widthX, heightY, depthZ);
+  // Physical seam fillet radius (in meters):
+  // - Structured sofa decks/bases/arms (crownPower <= 0.44): ~1.5cm..1.8cm crisp upholstered bevel
+  // - Tailored seat & back cushions (crownPower > 0.44): ~2.2cm..2.5cm rounded cushion edge
+  // - Knife-edge throw pillows: ~1.8cm..2.2cm rounded edge
+  const bevelRadius = knifeEdge
+    ? Math.min(minDim * 0.22, 0.022)
+    : crownPower <= 0.44
+      ? Math.min(minDim * 0.14, 0.018)
+      : Math.min(minDim * 0.16, 0.025);
+
+  const geo = new RoundedBoxGeometry(widthX, heightY, depthZ, 4, bevelRadius);
   geo.userData.isSculpted = true;
   const pos = geo.attributes.position as THREE.BufferAttribute;
   const norm = geo.attributes.normal as THREE.BufferAttribute;
@@ -30,11 +39,6 @@ export function createSculptedCushionGeometry(
   const hz = depthZ * 0.5;
   const stripeScale = 1.25;
 
-  // Superellipsoid exponent: lower exponent = rounder, more pillowed edges and corners (Issue #5)
-  const exp = knifeEdge
-    ? 2.15
-    : Math.max(2.2, 3.25 - Math.min(1.05, crownPower * 1.15));
-
   for (let i = 0; i < pos.count; i++) {
     const x0 = pos.getX(i);
     const y0 = pos.getY(i);
@@ -43,7 +47,6 @@ export function createSculptedCushionGeometry(
     const nx0 = norm.getX(i);
     const ny0 = norm.getY(i);
 
-    // Normalized coordinates in [-1, 1]
     const ux = hx > 1e-5 ? x0 / hx : 0;
     const uy = hy > 1e-5 ? y0 / hy : 0;
     const uz = hz > 1e-5 ? z0 / hz : 0;
@@ -52,56 +55,44 @@ export function createSculptedCushionGeometry(
     const ay = Math.min(1, Math.abs(uy));
     const az = Math.min(1, Math.abs(uz));
 
-    // Smooth superellipsoid radial factor that rounds the 12 edges and 8 corners of the cushion
-    const superNorm = Math.pow(
-      Math.pow(ax, exp) + Math.pow(ay, exp) + Math.pow(az, exp),
-      1 / exp
-    );
-    const edgeRoundScale = superNorm > 1e-5 ? 1 / superNorm : 1;
-    // Strong superellipsoid blend so cushions have genuinely rounded bolsters instead of sharp box corners
-    const roundBlend = knifeEdge
-      ? 0.92
-      : Math.min(0.92, Math.max(0.68, 0.58 + crownPower * 0.52));
-    const baseScale = 1 - roundBlend * (1 - edgeRoundScale);
-
-    // Sinusoidal pillow-crown dome across each face
     const domeY = Math.cos(ax * Math.PI * 0.5) * Math.cos(az * Math.PI * 0.5);
     const domeX = Math.cos(ay * Math.PI * 0.5) * Math.cos(az * Math.PI * 0.5);
     const domeZ = Math.cos(ax * Math.PI * 0.5) * Math.cos(ay * Math.PI * 0.5);
 
-    let x = x0 * baseScale;
-    let y = y0 * baseScale;
-    let z = z0 * baseScale;
+    let x = x0;
+    let y = y0;
+    let z = z0;
 
     if (knifeEdge) {
-      // Taper thickness (X) toward the perimeter edges in Y and Z to create a true tailored knife-edge seam
+      // Gentle perimeter taper toward the seam without turning the pillow into a sphere
       const perimeterPinch =
-        (1 - 0.56 * Math.pow(ay, 2.1)) * (1 - 0.52 * Math.pow(az, 2.1));
-      x = x0 * perimeterPinch + Math.sign(ux) * hx * crownPower * 0.38 * domeX;
-      y += Math.sign(uy) * hy * crownPower * 0.16 * domeY;
-      z += Math.sign(uz) * hz * crownPower * 0.14 * domeZ;
+        (1 - 0.24 * Math.pow(ay, 2.8)) * (1 - 0.22 * Math.pow(az, 2.8));
+      x = x0 * perimeterPinch + Math.sign(ux) * Math.min(hx * 0.12, 0.008) * crownPower * domeX;
+      y += Math.sign(uy) * Math.min(hy * 0.04, 0.004) * crownPower * domeY;
+      z += Math.sign(uz) * Math.min(hz * 0.04, 0.004) * crownPower * domeZ;
     } else {
-      // Plump feather-wrapped cushion with rich top/bottom crown and bullnosed front/back/side cheeks
-      x += Math.sign(ux) * hx * crownPower * 0.26 * domeX;
-      y += Math.sign(uy) * hy * crownPower * 0.42 * domeY;
-      z += Math.sign(uz) * hz * crownPower * 0.22 * domeZ;
+      // Subtle tailored upholstery crown (~5mm on top of seat cushions, flat bottom, ~2mm on cheeks)
+      const topLift =
+        uy > 0
+          ? Math.min(hy * 0.06, 0.0065) * crownPower * domeY
+          : Math.sign(uy) * Math.min(hy * 0.015, 0.0015) * crownPower * domeY;
+      x += Math.sign(ux) * Math.min(hx * 0.02, 0.0025) * crownPower * domeX;
+      y += topLift;
+      z += Math.sign(uz) * Math.min(hz * 0.02, 0.0025) * crownPower * domeZ;
     }
 
-    // Optional subtle central lounge indentation for back cushions
     if (loungeCrease > 0) {
       const centerBell =
         Math.cos(ay * Math.PI * 0.5) * Math.cos(az * Math.PI * 0.5);
-      x -= ux * hx * loungeCrease * centerBell;
-      // Soft top-edge lounge dip near the middle of the cushion
+      x -= ux * hx * loungeCrease * 0.35 * centerBell;
       if (uy > 0) {
-        y -= hy * loungeCrease * 0.35 * Math.cos(az * Math.PI * 0.5) * uy;
+        y -= hy * loungeCrease * 0.14 * Math.cos(az * Math.PI * 0.5) * uy;
       }
     }
 
     pos.setXYZ(i, x, y, z);
 
     if (uvMode === 'striped') {
-      // Continuous vertical stripes along Y on front/back faces and front-to-back along X on top/bottom faces
       if (Math.abs(nx0) > 0.5) {
         uv.setXY(i, z * stripeScale, y * stripeScale);
       } else if (Math.abs(ny0) > 0.5) {

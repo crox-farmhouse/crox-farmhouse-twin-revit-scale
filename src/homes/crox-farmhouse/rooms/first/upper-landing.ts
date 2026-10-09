@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { buildAngledWallSegment, buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
+import { createNaturalOakJoineryTextures } from '../../../../engine/textures/procedural-textures.ts';
 import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
@@ -73,11 +74,15 @@ export function buildUpperLanding(
   //    - Heavy dark black-stained timber ceiling beam & West wall timber framing posts (Photos 3 & 4)
   //    - South courtyard window with cast-iron column radiator underneath (Photo 4 left)
   // =========================================================================
-  // Warm natural seasoned oak beam material matching the Entrance Hall beams downstairs (`oakMat`: 0xa17b55)
+  // Natural matte European oak beam material matching the Entrance Hall beams downstairs (`oakMat`)
+  const naturalOakTex = createNaturalOakJoineryTextures();
   const darkTimberBeamMat = new THREE.MeshStandardMaterial({
-    color: 0xa17b55,
-    roughness: 0.52,
-    metalness: 0.04,
+    map: naturalOakTex.colorMap,
+    bumpMap: naturalOakTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf2ebe0,
+    roughness: 0.64,
+    metalness: 0.02,
   });
 
   const collarCeilingY = 4.52;

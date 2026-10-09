@@ -4,6 +4,7 @@ import {
   createBrushedStainlessTexture,
   createHawaiiArtworkTexture,
   createImperialBrickTextures,
+  createNaturalOakJoineryTextures,
   createStoneTileTexture,
   createWelshSlateRoofTexture,
 } from '../../../../../engine/textures/procedural-textures.ts';
@@ -76,20 +77,30 @@ export function buildOakDoor(
   doorGroup.position.set(x, 0, z);
   doorGroup.rotation.y = rotY;
 
+  const naturalOakTex = createNaturalOakJoineryTextures();
   const whiteDoorMat = new THREE.MeshStandardMaterial({
-    color: 0xf4f1ea,
-    roughness: 0.34,
-    metalness: 0.04,
+    map: naturalOakTex.colorMap,
+    bumpMap: naturalOakTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf7f1e8,
+    roughness: 0.62,
+    metalness: 0.02,
   });
   const whitePanelMat = new THREE.MeshStandardMaterial({
-    color: 0xe7e2d8,
-    roughness: 0.4,
-    metalness: 0.03,
+    map: naturalOakTex.colorMap,
+    bumpMap: naturalOakTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xebe3d6,
+    roughness: 0.64,
+    metalness: 0.02,
   });
   const oakArchitraveMat = new THREE.MeshStandardMaterial({
-    color: 0x8e643c,
-    roughness: 0.52,
-    metalness: 0.04,
+    map: naturalOakTex.colorMap,
+    bumpMap: naturalOakTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf5efe6,
+    roughness: 0.64,
+    metalness: 0.02,
   });
   const brushedStainlessTex = createBrushedStainlessTexture();
   const brushedHardwareMat = new THREE.MeshStandardMaterial({
@@ -226,15 +237,22 @@ export function buildSplitStableDoor(
     color: 0x3b3833,
     roughness: 0.75,
   });
+  const naturalOakTex = createNaturalOakJoineryTextures();
   const oakArchitraveMat = new THREE.MeshStandardMaterial({
-    color: 0x8e643c,
-    roughness: 0.52,
-    metalness: 0.04,
+    map: naturalOakTex.colorMap,
+    bumpMap: naturalOakTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf5efe6,
+    roughness: 0.64,
+    metalness: 0.02,
   });
   const oakWeatherMat = new THREE.MeshStandardMaterial({
-    color: 0x946b42,
-    roughness: 0.52,
-    metalness: 0.05,
+    map: naturalOakTex.colorMap,
+    bumpMap: naturalOakTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf2ebe0,
+    roughness: 0.64,
+    metalness: 0.02,
   });
   const glassMat = new THREE.MeshStandardMaterial({
     color: 0xbad8f5,
@@ -514,10 +532,14 @@ export function buildFullHeightEastWindow(
   winGroup.name = 'kitchen.eastWindow.group';
   winGroup.position.set(x, 0, centerZ);
 
+  const naturalOakTex = createNaturalOakJoineryTextures();
   const oakFrameMat = new THREE.MeshStandardMaterial({
-    color: 0x946b42,
-    roughness: 0.52,
-    metalness: 0.06,
+    map: naturalOakTex.colorMap,
+    bumpMap: naturalOakTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf5efe6,
+    roughness: 0.64,
+    metalness: 0.02,
   });
   const glassMat = new THREE.MeshStandardMaterial({
     color: 0xbad8f5,
@@ -967,10 +989,14 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   hawaiiFrameGroup.name = 'kitchen.sitting.hawaiiArtworkFrame';
   hawaiiFrameGroup.position.set(4.06, 1.5, -0.683);
 
+  const naturalOakTex = createNaturalOakJoineryTextures();
   const galleryOakFrameMat = new THREE.MeshStandardMaterial({
-    color: 0x8d633b,
-    roughness: 0.46,
-    metalness: 0.06,
+    map: naturalOakTex.colorMap,
+    bumpMap: naturalOakTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf5efe6,
+    roughness: 0.62,
+    metalness: 0.02,
   });
   const museumMatBoardMat = new THREE.MeshStandardMaterial({
     color: 0xf6f3eb,
@@ -1134,9 +1160,12 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   // ANTIQUE OAK 45°-MITRED SKIRTING BOARDS ALONG ALL EXPOSED INTERIOR WALLS
   // =========================================================================
   const skirtingMat = new THREE.MeshStandardMaterial({
-    color: 0x8e643c,
-    roughness: 0.56,
-    metalness: 0.04,
+    map: naturalOakTex.colorMap,
+    bumpMap: naturalOakTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf5efe6,
+    roughness: 0.64,
+    metalness: 0.02,
   });
 
   const addMitredKitchenSkirting = (

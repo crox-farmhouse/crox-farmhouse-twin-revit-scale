@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createEngineeredOakFloorTextures, createHerringboneTerracottaQuarryTileTextures, createImperialBrickTextures } from '../../../engine/textures/procedural-textures.ts';
+import { createEngineeredOakFloorTextures, createHerringboneTerracottaQuarryTileTextures, createImperialBrickTextures, createNaturalOakJoineryTextures } from '../../../engine/textures/procedural-textures.ts';
 import {
   createVitoriaRossoChequerboardTextures,
   VITORIA_CHEQUER_REPEAT_M,
@@ -130,17 +130,25 @@ export function createGroundFloorMaterials(
     metalness: 0.03,
   });
 
-  // Warm antique-finished Old Farmhouse oak material for all wall skirting boards & stair trim (Issue #14)
+  // Natural raw-effect matte-satin European oak for all wall skirting boards, architraves, interior doors & beams
+  // (matching reference photo media_1791557597873_0dec7400.jpg — pale muted sandy-taupe oak without Danish-oil orange cast)
+  const naturalOakJoineryTextures = createNaturalOakJoineryTextures();
   const antiqueOakSkirtingMat = new THREE.MeshStandardMaterial({
-    color: 0x8f6b47,
-    roughness: 0.48,
-    metalness: 0.04,
+    map: naturalOakJoineryTextures.colorMap,
+    bumpMap: naturalOakJoineryTextures.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf5efe6,
+    roughness: 0.64,
+    metalness: 0.02,
   });
 
   const timberDoorMat = new THREE.MeshStandardMaterial({
-    color: 0xdad5cb,
-    roughness: 0.45,
-    metalness: 0.04,
+    map: naturalOakJoineryTextures.colorMap,
+    bumpMap: naturalOakJoineryTextures.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf7f1e8,
+    roughness: 0.62,
+    metalness: 0.02,
   });
 
   // Crisp warm architectural white exterior paint finish for all Courtyard & Outbuilding Doors (Issue #2: "Make all of the doors white")
@@ -162,9 +170,12 @@ export function createGroundFloorMaterials(
   });
 
   const oakMat = new THREE.MeshStandardMaterial({
-    color: 0xa17b55,
-    roughness: 0.52,
-    metalness: 0.04,
+    map: naturalOakJoineryTextures.colorMap,
+    bumpMap: naturalOakJoineryTextures.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xf2ebe0,
+    roughness: 0.64,
+    metalness: 0.02,
   });
 
   const windowFrameMat = new THREE.MeshStandardMaterial({
@@ -221,9 +232,9 @@ export function createGroundFloorMaterials(
   const engineeredOakFloorMat = new THREE.MeshStandardMaterial({
     map: engineeredOakTextures.colorMap,
     bumpMap: engineeredOakTextures.bumpMap,
-    bumpScale: 0.006,
-    roughness: 0.52,
-    metalness: 0.04,
+    bumpScale: 0.005,
+    roughness: 0.58,
+    metalness: 0.02,
   });
 
   // Fayrouz "Vitoria Classic Rosso" 30cm x 30cm matt marble-effect porcelain chequerboard,

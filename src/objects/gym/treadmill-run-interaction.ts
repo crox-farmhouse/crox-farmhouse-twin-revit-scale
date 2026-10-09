@@ -312,12 +312,13 @@ export class GymTreadmillRunController implements AnimatedInteractable {
     if (t < 3.20) {
       const u = clamp01((t - 0.85) / (3.20 - 0.85));
       const s = easeInOutCubic(u);
+      const jogRamp = easeInOutCubic(clamp01((t - 0.85) / 0.45));
       const speedKmh = 5.5 + (11.5 - 5.5) * s;
       const bpm = 118 + (142 - 118) * s;
       const pitchRad = -0.10 + (-0.06 - -0.10) * s;
-      const strideBounceY = absSinStride * 0.038;
-      const rollRad = sinStride * 0.016;
-      const fovBoostDeg = 2.2;
+      const strideBounceY = absSinStride * (0.016 + (0.038 - 0.016) * jogRamp);
+      const rollRad = sinStride * (0.008 + (0.016 - 0.008) * jogRamp);
+      const fovBoostDeg = 0.8 + (2.2 - 0.8) * jogRamp;
       return {
         obU: BELT_RUNNER_OB_U,
         obV: BELT_RUNNER_OB_V,
@@ -340,9 +341,9 @@ export class GymTreadmillRunController implements AnimatedInteractable {
       const speedKmh = 11.5 + (16.8 - 11.5) * ramp;
       const bpm = 142 + (172 - 142) * s;
       const pitchRad = -0.06;
-      const strideBounceY = absSinStride * 0.052;
-      const rollRad = sinStride * 0.024;
-      const fovBoostDeg = 5.8;
+      const strideBounceY = absSinStride * (0.038 + (0.052 - 0.038) * ramp);
+      const rollRad = sinStride * (0.016 + (0.024 - 0.016) * ramp);
+      const fovBoostDeg = 2.2 + (5.8 - 2.2) * ramp;
       return {
         obU: BELT_RUNNER_OB_U,
         obV: BELT_RUNNER_OB_V,
@@ -360,10 +361,11 @@ export class GymTreadmillRunController implements AnimatedInteractable {
     // Stage 4 (6.40s -> 8.00s): Cooldown & Dismount (`16.8 -> 0.0 km/h`, step off to gym floor)
     const u = clamp01((t - 6.40) / (TOTAL_RUN_DURATION_SEC - 6.40));
     const s = easeInOutCubic(u);
+    const dismountS = easeInOutCubic(clamp01((u - 0.35) / 0.65));
     const fade = 1 - s;
     const obU = DISMOUNT_OB_U;
-    const obV = BELT_RUNNER_OB_V + (DISMOUNT_OB_V - BELT_RUNNER_OB_V) * s;
-    const footY = this.#gymFloorY + BELT_SURFACE_OFFSET_Y * fade;
+    const obV = BELT_RUNNER_OB_V + (DISMOUNT_OB_V - BELT_RUNNER_OB_V) * dismountS;
+    const footY = this.#gymFloorY + BELT_SURFACE_OFFSET_Y * (1 - dismountS);
     const speedKmh = 16.8 * fade;
     const bpm = 172 - (172 - 122) * s;
     const pitchRad = -0.06 * fade;

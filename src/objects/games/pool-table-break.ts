@@ -49,7 +49,7 @@ const POCKET_DROP_DEPTH = 0.07;
 const RACK_SEC = 0.9;
 const RACK_LIFT = 0.04;
 const MAX_STEP_SEC = 0.05;
-const STANDING_EYE_HEIGHT = 1.68;
+const STANDING_EYE_HEIGHT = 1.6;
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -333,14 +333,15 @@ export class PoolTableBreakController implements AnimatedInteractable {
 
         lookLocalX = THREE.MathUtils.lerp(trackedLookX, 0.18, settleU);
         lookLocalZ = THREE.MathUtils.lerp(trackedLookZ, 0, settleU);
-        lookLocalY = this.#ballY;
+        lookLocalY = this.#ballY + 0.014 * (1 - riseU);
         rollRad = 0.013 * (1 - riseU);
         fovBoostDeg = 3.8 * (1 - riseU);
       }
     } else {
       // Phase === 'racking' (0.00s -> 0.90s): Lean in to watch the 15-ball triangle re-rack, then step back to head of table
       const u = clamp01(this.#elapsed / RACK_SEC);
-      const arch = Math.sin(u * Math.PI);
+      const sinU = Math.sin(u * Math.PI);
+      const arch = sinU * sinU;
       const standX = cueBallRack.x - 1.02;
       footLocalX = THREE.MathUtils.lerp(standX, -0.95, arch);
       footLocalZ = THREE.MathUtils.lerp(0, -0.32, arch);

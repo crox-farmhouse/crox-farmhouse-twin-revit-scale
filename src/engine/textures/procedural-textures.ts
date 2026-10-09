@@ -33,6 +33,7 @@ export {
   createBrushedStainlessTexture,
   createDriftwoodTexture,
   createEngineeredOakFloorTextures,
+  createNaturalOakJoineryTextures,
   createPolishedChromeTexture,
 } from './timber-and-metal-textures.ts';
 

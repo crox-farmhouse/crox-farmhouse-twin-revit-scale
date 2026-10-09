@@ -869,7 +869,7 @@ export function createFirstFloorShellKit(
       const recessD = alongZ ? leafW : 0.028;
       const recessCore = new THREE.Mesh(
         new THREE.BoxGeometry(recessW, leafH, recessD),
-        wardrobeMat
+        timberDoorMat
       );
       recessCore.name = 'interiorDoor.recessCore';
       recessCore.castShadow = true;

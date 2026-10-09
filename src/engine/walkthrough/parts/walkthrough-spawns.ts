@@ -210,11 +210,16 @@ export function syncWalkthroughCameraPose(
   bobOffsetY: number,
   yawRad: number,
   pitchRad: number,
-  rollRad = 0
+  rollRad = 0,
+  eyeOverride?: readonly [number, number, number]
 ): void {
   const cam = rig.perspCamera;
-  const eyeY = footPos.y + currentEyeHeight + jumpOffsetY + bobOffsetY;
-  cam.position.set(footPos.x, eyeY, footPos.z);
+  if (eyeOverride) {
+    cam.position.set(eyeOverride[0], eyeOverride[1], eyeOverride[2]);
+  } else {
+    const eyeY = footPos.y + currentEyeHeight + jumpOffsetY + bobOffsetY;
+    cam.position.set(footPos.x, eyeY, footPos.z);
+  }
 
   const cosPitch = Math.cos(pitchRad);
   const sinPitch = Math.sin(pitchRad);
