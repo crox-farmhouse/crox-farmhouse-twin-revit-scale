@@ -161,7 +161,10 @@ export class PointerInput {
         !host.isPickExcluded(hit.object)
     );
     if (!visibleSceneHit) return;
-    const primInfo = host.getUsdRuntime().getPrimInfoByMesh(visibleSceneHit.object);
+    const targetMesh =
+      (visibleSceneHit as THREE.Intersection & { readonly originalMesh?: THREE.Mesh })
+        .originalMesh ?? visibleSceneHit.object;
+    const primInfo = host.getUsdRuntime().getPrimInfoByMesh(targetMesh);
     if (primInfo) this.usdPrimPick.emit(primInfo);
   }
 

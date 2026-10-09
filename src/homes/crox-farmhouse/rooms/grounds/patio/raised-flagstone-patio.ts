@@ -7,6 +7,76 @@ import {
   createRivenYorkstonePatioTextures,
 } from './patio-textures-and-shrubs.ts';
 
+let cachedWeatheredTeakTextures: {
+  readonly colorMap: THREE.CanvasTexture;
+  readonly bumpMap: THREE.CanvasTexture;
+} | null = null;
+
+function getWeatheredTeakBenchTextures(): {
+  readonly colorMap: THREE.CanvasTexture;
+  readonly bumpMap: THREE.CanvasTexture;
+} {
+  if (cachedWeatheredTeakTextures) {
+    return cachedWeatheredTeakTextures;
+  }
+  const size = 256;
+  const colorCanvas = document.createElement('canvas');
+  colorCanvas.width = size;
+  colorCanvas.height = size;
+  const cCtx = colorCanvas.getContext('2d')!;
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = size;
+  bumpCanvas.height = size;
+  const bCtx = bumpCanvas.getContext('2d')!;
+
+  cCtx.fillStyle = '#8e7b64';
+  cCtx.fillRect(0, 0, size, size);
+  bCtx.fillStyle = '#808080';
+  bCtx.fillRect(0, 0, size, size);
+
+  const hash = (n: number): number => {
+    const x = Math.sin(n * 127.1 + 311.7) * 43758.5453123;
+    return x - Math.floor(x);
+  };
+
+  for (let y = 0; y < size; y += 2) {
+    const v = y / size;
+    const cathedral = Math.sin(v * Math.PI * 6.0) * 8.0 + Math.cos(v * Math.PI * 14.0) * 4.5;
+    for (let x = 0; x < size; x += 4) {
+      const u = x / size;
+      const fiber =
+        Math.sin(y * 0.45 + Math.sin(u * Math.PI * 2.0) * 3.2) * 7.0 +
+        (hash(x * 17 + y * 53) - 0.5) * 10.0;
+      const silverPatina = Math.sin(u * Math.PI * 4.0 + v * Math.PI * 2.0) * 5.0;
+      const d = Math.round(cathedral * 0.45 + fiber + silverPatina);
+      const r = Math.max(96, Math.min(182, 142 + d));
+      const g = Math.max(84, Math.min(166, 124 + Math.round(d * 0.92)));
+      const b = Math.max(68, Math.min(148, 102 + Math.round(d * 0.85)));
+      cCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      cCtx.fillRect(x, y, 4, 2);
+
+      const bv = Math.max(40, Math.min(220, Math.round(128 + fiber * 3.2 + cathedral * 1.1)));
+      bCtx.fillStyle = `rgb(${bv}, ${bv}, ${bv})`;
+      bCtx.fillRect(x, y, 4, 2);
+    }
+  }
+
+  const colorMap = new THREE.CanvasTexture(colorCanvas);
+  colorMap.wrapS = THREE.RepeatWrapping;
+  colorMap.wrapT = THREE.RepeatWrapping;
+  colorMap.repeat.set(2, 2);
+  colorMap.colorSpace = THREE.SRGBColorSpace;
+
+  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+  bumpMap.wrapS = THREE.RepeatWrapping;
+  bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.repeat.set(2, 2);
+
+  cachedWeatheredTeakTextures = { colorMap, bumpMap };
+  return cachedWeatheredTeakTextures;
+}
+
 export interface LowBrickRetainingWallKit {
   readonly brickWallMat: THREE.MeshStandardMaterial;
   readonly brickSoldierCopingMat: THREE.MeshStandardMaterial;
@@ -225,42 +295,250 @@ export function buildLowBrickRetainingWall(
   westPatioBenchGroup.name = 'courtyard.rattanPatioWestBench';
   westPatioBenchGroup.position.set(-4.84, -0.14, 5.45);
   westPatioBenchGroup.rotation.y = -Math.PI / 2;
+  const weatheredTeakTextures = getWeatheredTeakBenchTextures();
   const weatheredBenchMat = new THREE.MeshStandardMaterial({
-    color: 0x8a755c,
-    roughness: 0.76,
+    color: 0x9c8870,
+    map: weatheredTeakTextures.colorMap,
+    bumpMap: weatheredTeakTextures.bumpMap,
+    bumpScale: 0.012,
+    roughness: 0.78,
     metalness: 0.03,
   });
+  const benchBronzePegMat = new THREE.MeshStandardMaterial({
+    color: 0x3b3024,
+    roughness: 0.46,
+    metalness: 0.62,
+  });
+
+  // Rounded front waterfall bullnose seat rail (`courtyard.rattanPatio.westBenchSeat`)
   const westBenchSeat = new THREE.Mesh(
-    new THREE.BoxGeometry(1.22, 0.042, 0.46),
+    new THREE.CylinderGeometry(0.016, 0.016, 1.14, 14),
     weatheredBenchMat
   );
-  if (!westBenchSeat.name) westBenchSeat.name = 'courtyard.rattanPatio.westBenchSeat';
-  westBenchSeat.position.set(0, 0.42, 0.02);
+  westBenchSeat.name = 'courtyard.rattanPatio.westBenchSeat';
+  westBenchSeat.rotation.z = Math.PI * 0.5;
+  westBenchSeat.position.set(0, 0.422, 0.228);
   westBenchSeat.castShadow = true;
+  westBenchSeat.receiveShadow = true;
   westPatioBenchGroup.add(westBenchSeat);
-  const westBenchBack = new THREE.Mesh(
-    new THREE.BoxGeometry(1.22, 0.4, 0.038),
+
+  // 6 individual slatted seat planks (`courtyard.rattanPatio.westBenchSeat.slat.1..6`)
+  for (let slatIdx = 0; slatIdx < 6; slatIdx++) {
+    const slatZ = 0.194 - slatIdx * 0.072;
+    const seatSlat = new THREE.Mesh(
+      new THREE.BoxGeometry(1.12, 0.024, 0.056),
+      weatheredBenchMat
+    );
+    seatSlat.name = `courtyard.rattanPatio.westBenchSeat.slat.${slatIdx + 1}`;
+    seatSlat.position.set(0, 0.422, slatZ);
+    seatSlat.castShadow = true;
+    seatSlat.receiveShadow = true;
+    westPatioBenchGroup.add(seatSlat);
+  }
+
+  // Front & rear seat apron rails (`westBenchSeat.frontApron`, `westBenchSeat.rearApron`)
+  const frontSeatApron = new THREE.Mesh(
+    new THREE.BoxGeometry(1.12, 0.056, 0.032),
     weatheredBenchMat
   );
-  if (!westBenchBack.name) westBenchBack.name = 'courtyard.rattanPatio.westBenchBack';
-  westBenchBack.position.set(0, 0.64, -0.2);
+  frontSeatApron.name = 'courtyard.rattanPatio.westBenchSeat.frontApron';
+  frontSeatApron.position.set(0, 0.392, 0.212);
+  frontSeatApron.castShadow = true;
+  frontSeatApron.receiveShadow = true;
+  westPatioBenchGroup.add(frontSeatApron);
+
+  const rearSeatApron = new THREE.Mesh(
+    new THREE.BoxGeometry(1.12, 0.056, 0.032),
+    weatheredBenchMat
+  );
+  rearSeatApron.name = 'courtyard.rattanPatio.westBenchSeat.rearApron';
+  rearSeatApron.position.set(0, 0.392, -0.192);
+  rearSeatApron.castShadow = true;
+  rearSeatApron.receiveShadow = true;
+  westPatioBenchGroup.add(rearSeatApron);
+
+  // 3 under-seat transverse bearer battens
+  let bearerIdx = 0;
+  for (const bx of [-0.51, 0, 0.51] as const) {
+    const bearer = new THREE.Mesh(
+      new THREE.BoxGeometry(0.038, 0.046, 0.4),
+      weatheredBenchMat
+    );
+    bearer.name = `courtyard.rattanPatio.westBenchSeat.bearer.${++bearerIdx}`;
+    bearer.position.set(bx, 0.394, 0.01);
+    bearer.castShadow = true;
+    westPatioBenchGroup.add(bearer);
+  }
+
+  // Top shaped/arched crest rail (`courtyard.rattanPatio.westBenchBack`)
+  const crestShape = new THREE.Shape();
+  crestShape.moveTo(-0.56, -0.034);
+  crestShape.lineTo(0.56, -0.034);
+  crestShape.lineTo(0.56, 0.028);
+  crestShape.quadraticCurveTo(0, 0.072, -0.56, 0.028);
+  crestShape.closePath();
+  const crestGeo = new THREE.ExtrudeGeometry(crestShape, {
+    depth: 0.036,
+    bevelEnabled: true,
+    bevelThickness: 0.004,
+    bevelSize: 0.004,
+    bevelSegments: 2,
+  });
+  crestGeo.translate(0, 0, -0.018);
+  crestGeo.computeVertexNormals();
+  const westBenchBack = new THREE.Mesh(crestGeo, weatheredBenchMat);
+  westBenchBack.name = 'courtyard.rattanPatio.westBenchBack';
+  westBenchBack.position.set(0, 0.805, -0.228);
   westBenchBack.rotation.x = -0.08;
   westBenchBack.castShadow = true;
+  westBenchBack.receiveShadow = true;
   westPatioBenchGroup.add(westBenchBack);
-  for (const sx of [-0.57, 0.57]) {
-    const fLeg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.56, 0.05), weatheredBenchMat);
-    if (!fLeg.name) fLeg.name = 'courtyard.rattanPatio.fLeg';
-    fLeg.position.set(sx, 0.28, 0.22);
-    westPatioBenchGroup.add(fLeg);
-    const rLeg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.84, 0.05), weatheredBenchMat);
-    if (!rLeg.name) rLeg.name = 'courtyard.rattanPatio.rLeg';
-    rLeg.position.set(sx, 0.42, -0.2);
-    westPatioBenchGroup.add(rLeg);
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.038, 0.48), weatheredBenchMat);
-    if (!arm.name) arm.name = 'courtyard.rattanPatio.arm';
-    arm.position.set(sx, 0.56, 0.01);
-    westPatioBenchGroup.add(arm);
+
+  // Lower backrest rail (`courtyard.rattanPatio.westBenchBack.lowerRail`)
+  const lowerBackRail = new THREE.Mesh(
+    new THREE.BoxGeometry(1.12, 0.042, 0.034),
+    weatheredBenchMat
+  );
+  lowerBackRail.name = 'courtyard.rattanPatio.westBenchBack.lowerRail';
+  lowerBackRail.position.set(0, 0.485, -0.204);
+  lowerBackRail.rotation.x = -0.08;
+  lowerBackRail.castShadow = true;
+  lowerBackRail.receiveShadow = true;
+  westPatioBenchGroup.add(lowerBackRail);
+
+  // 15 vertical mortised backrest spindles/slats (`courtyard.rattanPatio.westBenchBack.slat.1..15`) inclined at -0.08 rad
+  for (let bSlatIdx = 0; bSlatIdx < 15; bSlatIdx++) {
+    const slatX = -0.49 + (bSlatIdx / 14) * 0.98;
+    const archExtraH = Math.cos((slatX / 0.56) * Math.PI * 0.5) * 0.022;
+    const backSlat = new THREE.Mesh(
+      new THREE.BoxGeometry(0.036, 0.295 + archExtraH, 0.018),
+      weatheredBenchMat
+    );
+    backSlat.name = `courtyard.rattanPatio.westBenchBack.slat.${bSlatIdx + 1}`;
+    backSlat.position.set(slatX, 0.642 + archExtraH * 0.5, -0.216);
+    backSlat.rotation.x = -0.08;
+    backSlat.castShadow = true;
+    backSlat.receiveShadow = true;
+    westPatioBenchGroup.add(backSlat);
   }
+
+  // Corbel bracket shape for under-arm supports
+  const corbelShape = new THREE.Shape();
+  corbelShape.moveTo(0, 0);
+  corbelShape.lineTo(0.095, 0);
+  corbelShape.quadraticCurveTo(0.035, -0.032, 0, -0.095);
+  corbelShape.closePath();
+  const corbelGeo = new THREE.ExtrudeGeometry(corbelShape, {
+    depth: 0.042,
+    bevelEnabled: false,
+  });
+  corbelGeo.rotateY(-Math.PI * 0.5);
+  corbelGeo.translate(0.021, 0, 0);
+  corbelGeo.computeVertexNormals();
+
+  // Detailed Leg & Armrest Frames (`sx = -0.57, +0.57`)
+  let pegIdx = 0;
+  for (const sx of [-0.57, 0.57] as const) {
+    const fLeg = new THREE.Mesh(
+      new THREE.BoxGeometry(0.056, 0.56, 0.056),
+      weatheredBenchMat
+    );
+    fLeg.name = 'courtyard.rattanPatio.fLeg';
+    fLeg.position.set(sx, 0.28, 0.216);
+    fLeg.castShadow = true;
+    fLeg.receiveShadow = true;
+    westPatioBenchGroup.add(fLeg);
+
+    const rLeg = new THREE.Mesh(
+      new THREE.BoxGeometry(0.056, 0.85, 0.056),
+      weatheredBenchMat
+    );
+    rLeg.name = 'courtyard.rattanPatio.rLeg';
+    rLeg.position.set(sx, 0.425, -0.212);
+    rLeg.rotation.x = -0.04;
+    rLeg.castShadow = true;
+    rLeg.receiveShadow = true;
+    westPatioBenchGroup.add(rLeg);
+
+    // Turned/rounded top finial on rear post
+    const postFinial = new THREE.Mesh(
+      new THREE.SphereGeometry(0.027, 12, 10),
+      weatheredBenchMat
+    );
+    postFinial.name = 'courtyard.rattanPatio.postFinial';
+    postFinial.scale.set(1.0, 1.18, 1.0);
+    postFinial.position.set(sx, 0.868, -0.229);
+    postFinial.castShadow = true;
+    westPatioBenchGroup.add(postFinial);
+
+    // Scrolled/shaped wide armrest (`courtyard.rattanPatio.arm`) + front scroll knuckle
+    const arm = new THREE.Mesh(
+      new THREE.BoxGeometry(0.072, 0.032, 0.48),
+      weatheredBenchMat
+    );
+    arm.name = 'courtyard.rattanPatio.arm';
+    arm.position.set(sx, 0.572, 0.01);
+    arm.castShadow = true;
+    arm.receiveShadow = true;
+    westPatioBenchGroup.add(arm);
+
+    const armScroll = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.022, 0.022, 0.074, 12),
+      weatheredBenchMat
+    );
+    armScroll.name = 'courtyard.rattanPatio.armScroll';
+    armScroll.rotation.z = Math.PI * 0.5;
+    armScroll.position.set(sx, 0.564, 0.252);
+    armScroll.castShadow = true;
+    westPatioBenchGroup.add(armScroll);
+
+    // Under-arm corbel bracket (`courtyard.rattanPatio.armBracket`)
+    const armBracket = new THREE.Mesh(corbelGeo, weatheredBenchMat);
+    armBracket.name = 'courtyard.rattanPatio.armBracket';
+    armBracket.position.set(sx, 0.556, 0.188);
+    armBracket.castShadow = true;
+    westPatioBenchGroup.add(armBracket);
+
+    // Lower H-stretcher side rail (`courtyard.rattanPatio.sideStretcher`)
+    const sideStretcher = new THREE.Mesh(
+      new THREE.BoxGeometry(0.042, 0.046, 0.41),
+      weatheredBenchMat
+    );
+    sideStretcher.name = 'courtyard.rattanPatio.sideStretcher';
+    sideStretcher.position.set(sx, 0.15, 0.006);
+    sideStretcher.castShadow = true;
+    sideStretcher.receiveShadow = true;
+    westPatioBenchGroup.add(sideStretcher);
+
+    // Dark bronze/brass mortise pegs at front apron, rear apron, lower backrest rail & crest rail joints
+    for (const [py, pz] of [
+      [0.392, 0.216],
+      [0.392, -0.198],
+      [0.485, -0.206],
+      [0.802, -0.228],
+    ] as const) {
+      const peg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.005, 0.005, 0.06, 8),
+        benchBronzePegMat
+      );
+      peg.name = `courtyard.rattanPatio.mortisePeg.${++pegIdx}`;
+      peg.rotation.x = Math.PI * 0.5;
+      peg.position.set(sx, py, pz);
+      westPatioBenchGroup.add(peg);
+    }
+  }
+
+  // Central long tie-stretcher (`courtyard.rattanPatio.centerStretcher`)
+  const centerStretcher = new THREE.Mesh(
+    new THREE.BoxGeometry(1.14, 0.04, 0.048),
+    weatheredBenchMat
+  );
+  centerStretcher.name = 'courtyard.rattanPatio.centerStretcher';
+  centerStretcher.position.set(0, 0.15, 0.006);
+  centerStretcher.castShadow = true;
+  centerStretcher.receiveShadow = true;
+  westPatioBenchGroup.add(centerStretcher);
+
   scene.add(westPatioBenchGroup);
 
   const rustedBowlMat = new THREE.MeshStandardMaterial({

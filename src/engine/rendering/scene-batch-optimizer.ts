@@ -461,6 +461,9 @@ export class SceneBatchOptimizer {
         merged.geometry.dispose();
       }
       for (const { mesh, meshParent } of rec.originalMeshes) {
+        if (mesh.userData) {
+          delete mesh.userData.__batchOriginalParent;
+        }
         meshParent.add(mesh);
       }
     }
@@ -486,29 +489,11 @@ export class SceneBatchOptimizer {
       this.originalInteractiveMeshes = null;
     }
 
-    for (let i = this.originalLightRecords.length - 1; i >= 0; i--) {
-      const rec = this.originalLightRecords[i]!;
-      if (rec.light.parent !== rec.originalParent) {
-        rec.originalParent.add(rec.light);
-      }
-      rec.light.position.copy(rec.originalPosition);
-      rec.light.visible = rec.originalVisible;
-      // KNX lights keep their live dimmer level (not the stale level captured at optimize time).
-      const knxTarget = rec.light.userData?.knxTargetIntensity;
-      rec.light.intensity = typeof knxTarget === 'number' ? knxTarget : rec.originalIntensity;
-      rec.light.distance = rec.originalDistance;
-      if (rec.light.userData) {
-        delete rec.light.userData[POINT_LIGHT_BUDGET_WEIGHT_KEY];
-      }
-    }
-
+    // Intentionally keep consolidated & hoisted PointLights (`originalLightRecords` / `managedPointLights`)
+    // intact when unbatching static geometry so `NUM_POINT_LIGHTS` never changes and shaders never recompile.
     this.batchRecords.length = 0;
     this.originalChildrenByParent.clear();
     this.originalMeshProps.clear();
-    this.originalLightRecords.length = 0;
-    this.managedPointLights.length = 0;
-    this.budgetWeights.length = 0;
-    this.budgetTargets.length = 0;
     this.isCurrentlyBatched = false;
     this.extraLodBound = false;
 
@@ -652,17 +637,19 @@ export class SceneBatchOptimizer {
       lodController.removeBatchedObjects(batchedOriginalMeshes);
     }
 
-    // 10. Consolidate redundant standalone PointLights and hoist 1F PointLights to prevent shader recompilations
-    this.consolidateAndHoistPointLights(scene, firstFloorMeshGroup);
-    this.budgetWeights.length = 0;
-    this.budgetTargets.length = 0;
-    this.recomputeBudgetTargets();
-    for (let i = 0; i < this.managedPointLights.length; i++) {
-      // Lights start at their budget target (no fade-in on load / re-batch).
-      const w = this.budgetTargets[i] ?? 1;
-      this.budgetWeights[i] = w;
-      const light = this.managedPointLights[i]!.light;
-      light.userData = { ...light.userData, [POINT_LIGHT_BUDGET_WEIGHT_KEY]: w };
+    // 10. Consolidate redundant standalone PointLights and hoist 1F PointLights once to prevent shader recompilations
+    if (this.originalLightRecords.length === 0) {
+      this.consolidateAndHoistPointLights(scene, firstFloorMeshGroup);
+      this.budgetWeights.length = 0;
+      this.budgetTargets.length = 0;
+      this.recomputeBudgetTargets();
+      for (let i = 0; i < this.managedPointLights.length; i++) {
+        // Lights start at their budget target (no fade-in on load / re-batch).
+        const w = this.budgetTargets[i] ?? 1;
+        this.budgetWeights[i] = w;
+        const light = this.managedPointLights[i]!.light;
+        light.userData = { ...light.userData, [POINT_LIGHT_BUDGET_WEIGHT_KEY]: w };
+      }
     }
 
     this.isCurrentlyBatched = true;
@@ -1389,6 +1376,7 @@ export class SceneBatchOptimizer {
 
       for (const item of list) {
         this.snapshotParentChildren(item.meshParent);
+        item.mesh.userData.__batchOriginalParent = item.meshParent;
         item.meshParent.remove(item.mesh);
         originalMeshes.push({ mesh: item.mesh, meshParent: item.meshParent });
         batchedOriginalMeshes.add(item.mesh);
@@ -1506,6 +1494,7 @@ export class SceneBatchOptimizer {
 
         for (const item of list) {
           this.snapshotParentChildren(item.meshParent);
+          item.mesh.userData.__batchOriginalParent = item.meshParent;
           item.meshParent.remove(item.mesh);
           originalMeshes.push({ mesh: item.mesh, meshParent: item.meshParent });
           batchedOriginalMeshes.add(item.mesh);
@@ -1706,7 +1695,7 @@ export class SceneBatchOptimizer {
     _cameraPos: THREE.Vector3,
     _firstFloorVisible: boolean
   ): boolean {
-    if (!this.isCurrentlyBatched || this.managedPointLights.length === 0) return false;
+    if (this.managedPointLights.length === 0) return false;
     return this.applyManagedLightIntensities();
   }
 
@@ -1899,7 +1888,8 @@ export class SceneBatchOptimizer {
     );
     merged.boundingBox = bbox;
     merged.boundingSphere = bbox.getBoundingSphere(new THREE.Sphere());
-    merged.userData = { subBounds, subRanges };
+    const subMeshes = list.map((item) => item.mesh);
+    merged.userData = { subBounds, subRanges, subMeshes };
     return merged;
   }
 }
@@ -1918,9 +1908,11 @@ function accelerateMergedMeshRaycast(mesh: THREE.Mesh): void {
   const geoUserData = mesh.geometry.userData as {
     readonly subBounds?: Float32Array;
     readonly subRanges?: Uint32Array;
+    readonly subMeshes?: readonly THREE.Mesh[];
   } | undefined;
   const subBounds = geoUserData?.subBounds;
   const subRanges = geoUserData?.subRanges;
+  const subMeshes = geoUserData?.subMeshes;
   if (!subBounds || !subRanges) return;
   const subCount = subRanges.length >>> 1;
   if (subCount < 2) return;
@@ -1972,7 +1964,15 @@ function accelerateMergedMeshRaycast(mesh: THREE.Mesh): void {
       if (_raycastLocalRay.intersectsBox(_raycastSubBox)) {
         const r2 = s * 2;
         geometry.setDrawRange(subRanges[r2]!, subRanges[r2 + 1]!);
+        const prevLen = intersects.length;
         selfWithCompute._computeIntersections(raycaster, intersects, _raycastLocalRay);
+        const origMesh = subMeshes?.[s];
+        if (origMesh && intersects.length > prevLen) {
+          for (let k = prevLen; k < intersects.length; k++) {
+            (intersects[k]! as THREE.Intersection & { originalMesh?: THREE.Mesh }).originalMesh =
+              origMesh;
+          }
+        }
       }
     }
     geometry.setDrawRange(0, Infinity);

@@ -36,7 +36,7 @@ export function buildLandRoverDefender(
   // ---------------------------------------------------------------------------
   const worldCenterX = -12.538;
   const worldCenterZ = 6.565;
-  const yaw = -0.145; // Front nose (-x) faces West-Southwest toward Courtyard Driveway Gate
+  const yaw = -Math.PI + 0.42; // Front nose (-x) faces East-Northeast toward the Farmhouse as driven in through the Courtyard Gate
 
   // Sample exact cobbled courtyard ground height at center, front/rear axles, and left/right tracks.
   // Fallback uses `-0.353` at `(-12.538, 6.565)` with the courtyard surface normal `[-0.068, 0.996, 0.058]`.

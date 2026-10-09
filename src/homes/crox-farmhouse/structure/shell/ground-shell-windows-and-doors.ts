@@ -1126,8 +1126,7 @@ export function createGroundShellWindowsAndDoors(
     bayWallGroup.name = bayPrefix;
     tagCutawayWall(bayWallGroup, bayCutawayDesc);
 
-    // Canted polygonal interior white ceiling soffit & true 3-Facet Pitched Hipped Lead/Slate Bay Roof (Issue #14)
-    // Added to `bayWallGroup` (in `scene`) so the bay window always has its pitched exterior roof!
+    // Canted polygonal interior white ceiling soffit & solid 3D Flat Lead Bay Roof with subtle weather fall (Issue #6)
     const bayLeadRoofMat = new THREE.MeshStandardMaterial({
       color: 0x3f4650,
       roughness: 0.52,
@@ -1140,12 +1139,18 @@ export function createGroundShellWindowsAndDoors(
       metalness: 0.38,
     });
 
-    // True 3-Facet Pitched Hipped Bay Roof sloping from the main West brick wall exterior face (X = -22.47m, Y = frontWallH + 0.32m)
-    // down to the overhanging canted eaves (Y = frontWallH + 0.055m)
+    // Solid 3D Flat Lead Bay Roof deck with a subtle 2.5cm weather fall from the main West brick wall
+    // exterior face (wallApexX = -22.47m, backTopY = frontWallH + 0.105m) down to the canted eaves
+    // (eaveFrontX = -22.88m, frontTopY = frontWallH + 0.080m), sitting on eaveRoofY = frontWallH + 0.055m
     const eaveRoofY = frontWallH + 0.055;
-    const ridgeRoofY = frontWallH + 0.32;
-    const wallApexX = wallInnerX - 0.28; // Exact exterior face of West brick wall (-22.47m — Issues #2 & #3)
+    const backTopY = frontWallH + 0.105;
+    const frontTopY = frontWallH + 0.08;
+    const wallApexX = wallInnerX - 0.28; // Exact exterior face of West brick wall (-22.47m)
     const eaveFrontX = bayInnerFrontX - 0.36; // Overhanging front eaves (-22.88m)
+    const eaveOuterMinZ = centerZ - bayHalfZ - 0.14;
+    const eaveOuterMaxZ = centerZ + bayHalfZ + 0.14;
+    const eaveFrontMinZ = centerZ - frontW / 2 - 0.2;
+    const eaveFrontMaxZ = centerZ + frontW / 2 + 0.2;
 
     // Interior bay ceiling soffit (strictly inside the bay walls) & exterior overhanging 3-facet white eaves fascia deck (X <= -22.47m)
     buildPolygonalFloorSlab(
@@ -1164,10 +1169,10 @@ export function createGroundShellWindowsAndDoors(
     buildPolygonalFloorSlab(
       bayWallGroup,
       [
-        [wallApexX, centerZ - bayHalfZ - 0.14],
-        [eaveFrontX, centerZ - frontW / 2 - 0.2],
-        [eaveFrontX, centerZ + frontW / 2 + 0.2],
-        [wallApexX, centerZ + bayHalfZ + 0.14],
+        [wallApexX, eaveOuterMinZ],
+        [eaveFrontX, eaveFrontMinZ],
+        [eaveFrontX, eaveFrontMaxZ],
+        [wallApexX, eaveOuterMaxZ],
       ],
       eaveRoofY,
       0.055,
@@ -1175,27 +1180,37 @@ export function createGroundShellWindowsAndDoors(
       0.5
     );
 
-    const e0 = new THREE.Vector3(wallApexX, eaveRoofY, centerZ - bayHalfZ - 0.14);
-    const e1 = new THREE.Vector3(eaveFrontX, eaveRoofY, centerZ - frontW / 2 - 0.2);
-    const e2 = new THREE.Vector3(eaveFrontX, eaveRoofY, centerZ + frontW / 2 + 0.2);
-    const e3 = new THREE.Vector3(wallApexX, eaveRoofY, centerZ + bayHalfZ + 0.14);
-    const rNorth = new THREE.Vector3(wallApexX, ridgeRoofY, centerZ - frontW * 0.42);
-    const rSouth = new THREE.Vector3(wallApexX, ridgeRoofY, centerZ + frontW * 0.42);
+    const b0 = new THREE.Vector3(wallApexX, eaveRoofY, eaveOuterMinZ);
+    const b1 = new THREE.Vector3(eaveFrontX, eaveRoofY, eaveFrontMinZ);
+    const b2 = new THREE.Vector3(eaveFrontX, eaveRoofY, eaveFrontMaxZ);
+    const b3 = new THREE.Vector3(wallApexX, eaveRoofY, eaveOuterMaxZ);
+    const t0 = new THREE.Vector3(wallApexX, backTopY, eaveOuterMinZ);
+    const t1 = new THREE.Vector3(eaveFrontX, frontTopY, eaveFrontMinZ);
+    const t2 = new THREE.Vector3(eaveFrontX, frontTopY, eaveFrontMaxZ);
+    const t3 = new THREE.Vector3(wallApexX, backTopY, eaveOuterMaxZ);
 
     const bayRoofPositions: number[] = [];
     const addRoofTri = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3): void => {
       bayRoofPositions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
     };
-    // 1. North pitched hip facet (triangle e0 -> e1 -> rNorth)
-    addRoofTri(e0, e1, rNorth);
-    // 2. Central front pitched trapezoidal slope (quad e1 -> e2 -> rSouth -> rNorth)
-    addRoofTri(e1, e2, rSouth);
-    addRoofTri(e1, rSouth, rNorth);
-    // 3. South pitched hip facet (triangle e2 -> e3 -> rSouth)
-    addRoofTri(e2, e3, rSouth);
-    // 4. Back closure against the main West brick wall so the prism is watertight
-    addRoofTri(e0, rNorth, rSouth);
-    addRoofTri(e0, rSouth, e3);
+    const addRoofQuad = (
+      a: THREE.Vector3,
+      b: THREE.Vector3,
+      c: THREE.Vector3,
+      d: THREE.Vector3
+    ): void => {
+      addRoofTri(a, b, c);
+      addRoofTri(a, c, d);
+    };
+    // 1. Gently sloped flat lead top deck (+Y normal with 2.5cm weather fall toward -X)
+    addRoofQuad(t0, t1, t2, t3);
+    // 2. Bottom soffit closure (-Y normal)
+    addRoofQuad(b0, b3, b2, b1);
+    // 3. Perimeter lead drip-edge fascia/apron faces & rear wall closure (outward normals)
+    addRoofQuad(b0, b1, t1, t0); // North splay drip edge
+    addRoofQuad(b1, b2, t2, t1); // West front drip edge
+    addRoofQuad(b2, b3, t3, t2); // South splay drip edge
+    addRoofQuad(b3, b0, t0, t3); // East rear wall abutment
 
     const bayRoofGeo = new THREE.BufferGeometry();
     bayRoofGeo.setAttribute('position', new THREE.Float32BufferAttribute(bayRoofPositions, 3));
@@ -1205,49 +1220,65 @@ export function createGroundShellWindowsAndDoors(
     bayRoofMesh.name = 'westBayWindow.pitchedLeadRoof';
     bayRoofMesh.castShadow = true;
     bayRoofMesh.receiveShadow = true;
+    tagCutawayWall(bayRoofMesh, bayCutawayDesc);
     bayWallGroup.add(bayRoofMesh);
 
-    // Rounded lead hip roll batten caps along the two diagonal hip ridges (rNorth->e1, rSouth->e2) & wall flashing ridge
-    const flashApexX = wallApexX - 0.012;
-    const fE0 = new THREE.Vector3(flashApexX, eaveRoofY, centerZ - bayHalfZ - 0.14);
-    const fE3 = new THREE.Vector3(flashApexX, eaveRoofY, centerZ + bayHalfZ + 0.14);
-    const fRNorth = new THREE.Vector3(flashApexX, ridgeRoofY, centerZ - frontW * 0.42);
-    const fRSouth = new THREE.Vector3(flashApexX, ridgeRoofY, centerZ + frontW * 0.42);
-    let rollIdx = 0;
-    for (const [pStart, pEnd, rad] of [
-      [fRNorth, e1, 0.02],
-      [fRSouth, e2, 0.02],
-      [fE0, fRNorth, 0.012],
-      [fRNorth, fRSouth, 0.014],
-      [fRSouth, fE3, 0.012],
-    ] as const) {
-      const curve = new THREE.LineCurve3(pStart, pEnd);
-      const rollMesh = new THREE.Mesh(
-        new THREE.TubeGeometry(curve, 8, rad, 10, false),
-        bayHipRollMat
-      );
-      rollMesh.name = `${bayPrefix}.hipRoll.${++rollIdx}`;
-      rollMesh.geometry.computeBoundingSphere();
-      rollMesh.userData.lodTier = 'high';
-      rollMesh.castShadow = true;
-      bayWallGroup.add(rollMesh);
-    }
-
-    // Vertical standing-seam lead bay roof ribs on the front slope for period authenticity
+    // 5 Flat-roof wooden-cored lead seam rolls (`westBayWindow.leadSeamRoll.1..5`) running horizontally
+    // with the 2.5cm fall from the rear brick wall (`wallApexX = -22.47`) out to the canted front/side eaves
+    // (at the 2 mitre hip lines plus 3 intermediate standing-seam bays across the flat roof deck)
+    const seamRollSpecs: ReadonlyArray<readonly [number, number, number]> = [
+      [-frontW * 0.56, eaveFrontMinZ - centerZ, 0.016],
+      [-0.4, -0.4, 0.014],
+      [0, 0, 0.014],
+      [0.4, 0.4, 0.014],
+      [frontW * 0.56, eaveFrontMaxZ - centerZ, 0.016],
+    ];
     let seamIdx = 0;
-    for (const seamZOff of [-0.42, 0, 0.42] as const) {
-      const pTop = new THREE.Vector3(wallApexX - 0.008, ridgeRoofY, centerZ + seamZOff);
-      const pBot = new THREE.Vector3(eaveFrontX, eaveRoofY, centerZ + seamZOff);
-      const seamCurve = new THREE.LineCurve3(pTop, pBot);
+    for (const [rearZOff, frontZOff, rollRad] of seamRollSpecs) {
+      const pRear = new THREE.Vector3(wallApexX - 0.008, backTopY + 0.004, centerZ + rearZOff);
+      const pFront = new THREE.Vector3(eaveFrontX + 0.008, frontTopY + 0.004, centerZ + frontZOff);
+      const seamCurve = new THREE.LineCurve3(pRear, pFront);
       const seamRoll = new THREE.Mesh(
-        new THREE.TubeGeometry(seamCurve, 6, 0.012, 8, false),
+        new THREE.TubeGeometry(seamCurve, 6, rollRad, 10, false),
         bayHipRollMat
       );
       seamRoll.geometry.computeBoundingSphere();
-      seamRoll.name = `${bayWallGroup.name}.roofLeadSeamRoll.${++seamIdx}`;
+      seamRoll.name = `westBayWindow.leadSeamRoll.${++seamIdx}`;
       seamRoll.userData.lodTier = 'high';
+      seamRoll.castShadow = true;
+      tagCutawayWall(seamRoll, bayCutawayDesc);
       bayWallGroup.add(seamRoll);
     }
+
+    // Lead wall-abutment upstand & stepped flashing apron (`westBayWindow.leadWallFlashing`)
+    // tucked into the brickwork along x = wallApexX (y = backTopY..backTopY + 0.11)
+    const flashingLenZ = eaveOuterMaxZ - eaveOuterMinZ;
+    const flashingProfile = new THREE.Shape();
+    flashingProfile.moveTo(0.012, 0);
+    flashingProfile.lineTo(-0.026, 0);
+    flashingProfile.lineTo(-0.026, 0.014);
+    flashingProfile.lineTo(-0.014, 0.018);
+    flashingProfile.lineTo(-0.014, 0.11);
+    flashingProfile.lineTo(0.016, 0.11);
+    flashingProfile.lineTo(0.016, 0.094);
+    flashingProfile.lineTo(0.002, 0.094);
+    flashingProfile.lineTo(0.002, 0.012);
+    flashingProfile.lineTo(0.012, 0.012);
+    flashingProfile.closePath();
+
+    const flashingGeo = new THREE.ExtrudeGeometry(flashingProfile, {
+      depth: flashingLenZ,
+      bevelEnabled: false,
+    });
+    flashingGeo.translate(wallApexX, backTopY - 0.002, eaveOuterMinZ);
+    flashingGeo.computeVertexNormals();
+    flashingGeo.computeBoundingSphere();
+    const leadWallFlashing = new THREE.Mesh(flashingGeo, bayHipRollMat);
+    leadWallFlashing.name = 'westBayWindow.leadWallFlashing';
+    leadWallFlashing.castShadow = true;
+    leadWallFlashing.receiveShadow = true;
+    tagCutawayWall(leadWallFlashing, bayCutawayDesc);
+    bayWallGroup.add(leadWallFlashing);
 
     // 6-vertex reference polyline spanning the FULL room West wall from minWallZ to maxWallZ (d = 0):
     // P0 -> P1 (North West wall), P1 -> P2 (North splay), P2 -> P3 (Front facet),

@@ -68,6 +68,7 @@ export interface AnnotationControllerHost {
   setRayFromClient(clientX: number, clientY: number): THREE.Raycaster;
   /** Extra meshes that must never be annotation targets (e.g. additive glow pools). */
   isExcludedFromPicking(mesh: THREE.Mesh): boolean;
+  ensureUnbatchedForTransform?(): void;
   requestRender(): void;
   invalidateShadows(): void;
 }
@@ -214,6 +215,9 @@ export class SceneAnnotationController {
 
   public setAnnotationToolMode(tool: AnnotationToolMode): void {
     this.annotationToolMode = tool;
+    if (tool === 'move' || tool === 'rotate') {
+      this.host.ensureUnbatchedForTransform?.();
+    }
     if (tool === 'move') {
       this.gizmoTransformMode = 'translate';
       this.transformControls.setMode('translate');
@@ -505,12 +509,12 @@ export class SceneAnnotationController {
   public updateMeasurePreviewAt(clientX: number, clientY: number, shiftKey: boolean): void {
     const startHit = this.measureStartHit;
     if (!startHit) return;
-    const picked = this.raycastSceneMeshAndHit(clientX, clientY);
-    if (!picked) return;
+    const rawPoint = this.raycastScenePointOnly(clientX, clientY);
+    if (!rawPoint) return;
 
     const snapLocked = this.measureAxisSnap || shiftKey;
     const pA = startHit.worldPoint;
-    const pB = this.computeSnappedMeasureEndPoint(pA, picked.hit.worldPoint, snapLocked);
+    const pB = this.computeSnappedMeasureEndPoint(pA, rawPoint, snapLocked);
     const dx = round3(pB[0] - pA[0]);
     const dy = round3(pB[1] - pA[1]);
     const dz = round3(pB[2] - pA[2]);
@@ -565,6 +569,7 @@ export class SceneAnnotationController {
       : 'pin';
 
     if (effectiveTool === 'move' || effectiveTool === 'rotate') {
+      this.host.ensureUnbatchedForTransform?.();
       this.gizmoTransformMode = effectiveTool === 'rotate' ? 'rotate' : 'translate';
       const { defaultTarget, candidates } = this.collectMovableCandidatesForMesh(picked.mesh);
       const baseline = this.ensureObjectBaseline(defaultTarget, picked.hit, candidates);
@@ -894,6 +899,14 @@ export class SceneAnnotationController {
     return true;
   }
 
+  private raycastScenePointOnly(clientX: number, clientY: number): Vec3Tuple | null {
+    const raycaster = this.host.setRayFromClient(clientX, clientY);
+    const hits = raycaster.intersectObjects(this.scene.children, true);
+    const validHit = hits.find((h) => this.isAnnotatableSceneMesh(h.object));
+    if (!validHit) return null;
+    return toTuple3(validHit.point);
+  }
+
   private raycastSceneMeshAndHit(
     clientX: number,
     clientY: number
@@ -905,10 +918,14 @@ export class SceneAnnotationController {
       return null;
     }
 
+    const resolvedMesh =
+      (validHit as THREE.Intersection & { readonly originalMesh?: THREE.Mesh }).originalMesh ??
+      validHit.object;
+
     const layers = this.host.layers;
     const hit = extractSceneAnnotationHit(
       validHit,
-      validHit.object,
+      resolvedMesh,
       this.scene,
       {
         firstFloorMeshGroup: layers.firstFloorMeshGroup,
@@ -921,7 +938,7 @@ export class SceneAnnotationController {
       },
       this.host.getCameraPose()
     );
-    return { mesh: validHit.object, hit };
+    return { mesh: resolvedMesh, hit };
   }
 
   private computeSnappedMeasureEndPoint(

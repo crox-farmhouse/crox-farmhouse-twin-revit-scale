@@ -801,8 +801,11 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   const garagePassDoorVMin = 0.36;
   const garagePassDoorVMax = 1.22; // 0.86m structural opening for Part M / FD30S fire door in the 0.96m corridor!
   const garagePassDoorTopY = 1.66; // Standard 2.00m door height above the -0.34m threshold step (`2.16m` above `-0.50m` garage floor, flush with `1.66m` cupboard top!)
-  const benchAlcoveVMin = 1.56; // Aligns with the 1.30m Tall Stainless Cupboard in the Garage
-  const benchAlcoveVMax = vEastRangeSouth - wallT - 0.002; // 5.428m
+  const benchAlcoveVMin = 1.332; // Aligns cleanly with `corridorSouthWall` (`v = 1.24..1.33m`) and the Garage Tall Stainless Cupboard (`v = 1.34..2.86m`)
+  const benchAlcoveVMax = vEastRangeSouth - wallT - 0.005; // 5.425m
+  const stepWallNorthVMin = vEastRangeNorth + wallT + 0.005; // 0.285m (5mm clear of North wall inner plaster `v = 0.280m` to prevent cutaway grazing dithering)
+  const storeLoftSlabBotY = 2.52;
+  const stepWallChildStartIdx = groundGroup.children.length;
 
   // 1. Lower sill / step wall (`y = barnLowerFloorY (-0.70m) .. garageFloorTopY (-0.50m)`): full span `vInnerNorth .. vInnerSouth`
   addOutbuildingBrickWall(
@@ -811,49 +814,49 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     uStoreStart + 0.24,
     barnLowerFloorY,
     garageFloorTopY,
-    vEastRangeNorth + wallT + 0.002,
+    stepWallNorthVMin,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  const storeLoftSlabBotY = 2.52;
-  // 2a. North-most corner jamb pier (`v = 0.282m .. 0.38m`): `y = garageFloorTopY (-0.50m) .. storeLoftSlabBotY (2.52m)`
-  addOutbuildingBrickWall(
+  // 2a. North-most corner jamb pier (`v = 0.285m .. 0.36m`): `y = garageFloorTopY (-0.50m) .. eastRangeGroundTopY (1.94m)`
+  const northCornerJambPier = addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
     uStoreStart + 0.24,
     garageFloorTopY,
-    storeLoftSlabBotY,
-    vEastRangeNorth + wallT + 0.002,
+    eastRangeGroundTopY,
+    stepWallNorthVMin,
     garagePassDoorVMin,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2b. Over-door lintel (`v = 0.38m .. 1.18m`): `y = 1.66m .. storeLoftSlabBotY (2.52m)`
+  northCornerJambPier.receiveShadow = false;
+  // 2b. Over-door lintel (`v = 0.36m .. 1.22m`): `y = 1.66m .. eastRangeGroundTopY (1.94m)`
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
     uStoreStart + 0.24,
     garagePassDoorTopY,
-    storeLoftSlabBotY,
+    eastRangeGroundTopY,
     garagePassDoorVMin,
     garagePassDoorVMax,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 2c. Center pier between the Pass-Through Door (`v = 1.18m`) and the Tall Stainless Cupboard (`v = 1.56m`)
+  // 2c. Center pier between the Pass-Through Door (`v = 1.22m`) and the Tall Stainless Cupboard (`v = 1.332m`)
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
     uStoreStart + 0.24,
     garageFloorTopY,
-    storeLoftSlabBotY,
+    eastRangeGroundTopY,
     garagePassDoorVMax,
     benchAlcoveVMin,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
-  // 3. Unified upper lintel header above both the Tall Stainless Cupboard and the Recessed Workbench (`v = 1.56m .. 5.428m, y = 1.66m .. 1.94m` — Issue #4!)
+  // 3. Unified upper lintel header above both the Tall Stainless Cupboard and the Recessed Workbench (`v = 1.332m .. 5.425m, y = 1.66m .. 1.94m`)
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -866,14 +869,14 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     warmRoomPlasterMat
   );
 
-  // Backing wall behind the Garage Tall Stainless Cupboard (`u = 12.31m..13.04m, v = 1.33m..1.56m`, South of `corridorSouthWall`)
+  // Lower plinth curb under `corridorSouthWall` (`u = 12.31m..12.78m, y = -0.50m..-0.34m, v = 1.242m..1.332m`)
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart + 0.24,
-    13.04,
+    12.78,
     garageFloorTopY,
-    storeLoftSlabBotY,
-    1.33,
+    barnWestFloorY,
+    1.242,
     benchAlcoveVMin,
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
@@ -900,6 +903,18 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     ['+x', '-x', '+z', '-z'],
     warmRoomPlasterMat
   );
+
+  // Inset the auto-generated `.woodFibreInsulation` cores on `brickWall.24..31` so they stay strictly inside
+  // their parent masonry volumes and never z-fight or dither on `-z`, `+z`, `-y`, or `+y` faces.
+  for (let cIdx = stepWallChildStartIdx; cIdx < groundGroup.children.length; cIdx++) {
+    const child = groundGroup.children[cIdx];
+    if (child instanceof THREE.Mesh && child.name.endsWith('.woodFibreInsulation')) {
+      child.scale.set(0.96, 0.96, 0.92);
+      child.position.y -= 0.002;
+      child.castShadow = false;
+      child.receiveShadow = false;
+    }
+  }
 
   // Interactive Hinged 4-Panel Solid European Oak Pass-Through Door (`outbuildings.garage.golfPassThroughDoor`) & Threshold Step
   {
@@ -928,7 +943,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     // Removed the hinged door slab, stops, hinges, and lever handles so `outbuildings.garage.golfPassThroughDoor`
     // is a clean, open cased Solid Light-Oak Walkthrough Archway with oak jamb linings, head lining, and dual-face chamfered architraves!
     const jambT = 0.032;
-    const jambD = 0.244;
+    const jambD = 0.242;
     for (const sideZ of [-1, 1] as const) {
       const jamb = new THREE.Mesh(
         new THREE.BoxGeometry(jambD, passDoorH - 0.16, jambT),
@@ -947,8 +962,8 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     passDoorGroup.add(headJamb);
 
     for (const [normalSign, faceWallX, archMat] of [
-      [-1 as const, -0.12, warmRoomPlasterMat],
-      [1 as const, 0.12, settingPlasterMat],
+      [-1 as const, -0.1215, warmRoomPlasterMat],
+      [1 as const, 0.1235, settingPlasterMat],
     ] as const) {
       const [leftLegGeo, headGeo, rightLegGeo] = buildMitredArchitraveSegments(
         -(passDoorW * 0.5 - 0.016),
@@ -1174,24 +1189,25 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   addInteriorPlasterGableWall(
     groundGroup,
     uStoreStart,
-    uStoreStart + 0.165,
-    vEastRangeNorth + wallT + 0.002,
-    vEastRangeSouth - wallT - 0.002,
+    uStoreStart + 0.095,
+    vEastRangeNorth + wallT + 0.005,
+    vEastRangeSouth - wallT - 0.005,
     eastRangeGroundTopY,
-    westRangeCeilEaveY,
-    westRangeCeilRidgeY,
+    2.121,
+    3.55,
     'outbuildings.garageStoreStep1InteriorGable'
   );
-  // Store side (`+x` at `u = 12.095..12.315m`) painted plasterboard wall & gable extending up to the Store vaulted ceiling (`barnCeilRidgeY`)
+  // Store side (`+x` at `u = 12.165..12.310m`) painted plasterboard wall & gable meeting `garageStoreStep1InteriorGable`
+  // and `stepUpExteriorBrickGable` flush at `u = 12.165m` with zero diagonal step or overlap in cutaway view!
   addInteriorPlasterGableWall(
     groundGroup,
     uStoreStart + 0.095,
-    uStoreStart + 0.245,
-    vEastRangeNorth + wallT + 0.002,
-    vEastRangeSouth - wallT - 0.002,
+    uStoreStart + 0.24,
+    vEastRangeNorth + wallT + 0.005,
+    vEastRangeSouth - wallT - 0.005,
     eastRangeGroundTopY,
-    barnCeilEaveY,
-    barnCeilRidgeY,
+    barnCeilEaveY + 0.151,
+    barnCeilRidgeY + 0.231,
     'outbuildings.storeWestInteriorPlasterGable'
   );
 
@@ -1401,7 +1417,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     groundGroup.add(studPartitionGroup);
 
     const corridorWallU0 = uStoreStart + 0.245; // 12.315m (meets Garage/Store East wall)
-    const corridorNorthV = vEastRangeNorth + wallT + 0.002;
+    const corridorNorthV = stepWallNorthVMin;
     const corridorWallH = beamBotY - barnWestFloorY; // 2.850m (`y = -0.34m .. 2.510m`, flush with underside of UC header beam)
     const corridorWallMidY = barnWestFloorY + corridorWallH * 0.5;
     const corridorWallSouthFaceV = simCutoutVMin; // 1.330m
@@ -1425,43 +1441,49 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     corridorSouthWall.receiveShadow = true;
     studPartitionGroup.add(corridorSouthWall);
 
-    // Setting Plaster finish on the West end wall of the North Corridor (`u = 12.313m, v = 0.282..1.240m`)
-    // around the FD30S fire door (`v = 0.38..1.18m, y = -0.34..1.66m`)
+    // Setting Plaster finish on the West end wall of the North Corridor (`u = 12.311m, v = 0.285..1.240m, y = -0.34..1.94m`)
+    // around the FD30S fire door (`v = 0.36..1.22m, y = -0.34..1.66m`), stopping cleanly at `eastRangeGroundTopY = 1.94m`
+    // so it never overlaps `storeWestInteriorPlasterGable` (`y = 1.94..4.50m`) or `golfPassThroughDoor.architrave`!
+    const westEndVeneerU = uStoreStart + 0.2415; // 12.3115m
+    const westEndVeneerNorthV = corridorNorthV;
+    const westEndPierH = eastRangeGroundTopY - barnWestFloorY;
+    const westEndPierMidY = barnWestFloorY + westEndPierH * 0.5;
     const westEndNorthPier = new THREE.Mesh(
-      new THREE.BoxGeometry(0.006, corridorWallH, garagePassDoorVMin - corridorNorthV),
+      new THREE.BoxGeometry(0.002, westEndPierH, garagePassDoorVMin - westEndVeneerNorthV),
       settingPlasterMat
     );
     westEndNorthPier.name = 'outbuildings.store.corridorWestEndWall.northPier';
     westEndNorthPier.userData.isArchitecturalShell = true;
+    westEndNorthPier.receiveShadow = false;
     westEndNorthPier.position.set(
-      corridorWallU0,
-      corridorWallMidY,
-      (corridorNorthV + garagePassDoorVMin) * 0.5
+      westEndVeneerU,
+      westEndPierMidY,
+      (westEndVeneerNorthV + garagePassDoorVMin) * 0.5
     );
     studPartitionGroup.add(westEndNorthPier);
 
     const westEndSouthPier = new THREE.Mesh(
-      new THREE.BoxGeometry(0.006, corridorWallH, corridorSouthV - garagePassDoorVMax),
+      new THREE.BoxGeometry(0.002, westEndPierH, corridorSouthV - garagePassDoorVMax),
       settingPlasterMat
     );
     westEndSouthPier.name = 'outbuildings.store.corridorWestEndWall.southPier';
     westEndSouthPier.userData.isArchitecturalShell = true;
     westEndSouthPier.position.set(
-      corridorWallU0,
-      corridorWallMidY,
+      westEndVeneerU,
+      westEndPierMidY,
       (garagePassDoorVMax + corridorSouthV) * 0.5
     );
     studPartitionGroup.add(westEndSouthPier);
 
-    const westEndHeaderH = beamBotY - garagePassDoorTopY;
+    const westEndHeaderH = eastRangeGroundTopY - garagePassDoorTopY;
     const westEndHeader = new THREE.Mesh(
-      new THREE.BoxGeometry(0.006, westEndHeaderH, garagePassDoorVMax - garagePassDoorVMin),
+      new THREE.BoxGeometry(0.002, westEndHeaderH, garagePassDoorVMax - garagePassDoorVMin),
       settingPlasterMat
     );
     westEndHeader.name = 'outbuildings.store.corridorWestEndWall.header';
     westEndHeader.userData.isArchitecturalShell = true;
     westEndHeader.position.set(
-      corridorWallU0,
+      westEndVeneerU,
       garagePassDoorTopY + westEndHeaderH * 0.5,
       (garagePassDoorVMin + garagePassDoorVMax) * 0.5
     );
@@ -1888,6 +1910,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
 
   // North Courtyard Wall of Store & West Barn (`u = 12.07m..18.68m`, rising to `barnUpperTopY = 2.92m` on `groundGroup`
   // so the over-door wall at `u = 15.85..16.85m, y = 1.68..2.92m` is visible in ground cutaway mode behind the Horse Show Certificates!)
+  const northStoreWallStartIdx = groundGroup.children.length;
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
@@ -1900,6 +1923,15 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     exteriorBrickMat,
     settingPlasterMat
   );
+  for (let cIdx = northStoreWallStartIdx; cIdx < groundGroup.children.length; cIdx++) {
+    const child = groundGroup.children[cIdx];
+    if (
+      child instanceof THREE.Mesh &&
+      (child.name.endsWith('.limePlaster') || child.name.endsWith('.woodFibreInsulation'))
+    ) {
+      child.castShadow = false;
+    }
+  }
   addOutbuildingBrickWall(
     groundGroup,
     12.85,

@@ -46,10 +46,28 @@ export class AnnotationService {
     ]
   >();
   private readonly host: AnnotationServiceHost;
+  private unbatchedForTransform = false;
 
   public constructor(host: AnnotationServiceHost) {
     this.host = host;
-    this.controller = new SceneAnnotationController(host);
+    this.controller = new SceneAnnotationController({
+      get canvas() {
+        return host.canvas;
+      },
+      get layers() {
+        return host.layers;
+      },
+      get orbitControls() {
+        return host.orbitControls;
+      },
+      getActiveCamera: () => host.getActiveCamera(),
+      getCameraPose: () => host.getCameraPose(),
+      setRayFromClient: (x, y) => host.setRayFromClient(x, y),
+      isExcludedFromPicking: (m) => host.isExcludedFromPicking(m),
+      ensureUnbatchedForTransform: () => this.ensureUnbatchedForTransform(),
+      requestRender: () => host.requestRender(),
+      invalidateShadows: () => host.invalidateShadows(),
+    });
     this.controller.setOnAnnotationPick((hit) => this.pick.emit(hit));
     this.controller.setOnAnnotationMarkerSelect((id) => this.markerSelect.emit(id));
     this.controller.setOnMeasurePreviewChange((state) => this.measurePreview.emit(state));
@@ -64,25 +82,41 @@ export class AnnotationService {
   }
 
   /**
-   * Enables / disables authoring. Editing needs unbatched, individually
-   * movable meshes; leaving re-batches (when allowed) and refreezes matrices.
+   * Lazily unbatches static geometry only when the user actually enters `'move'` / `'rotate'`
+   * object-transform mode. Standard Note (`'pin'`) and Measure (`'measure'`) modes raycast
+   * directly against the AABB-accelerated merged batches with zero unbatching or shader recompilation.
+   */
+  public ensureUnbatchedForTransform(): void {
+    if (this.unbatchedForTransform) return;
+    this.unbatchedForTransform = true;
+    this.host.unbatchAll();
+    this.host.refreshView();
+    this.host.freezeStaticMatrices();
+  }
+
+  /**
+   * Enables / disables authoring. Note (`'pin'`) and Measure (`'measure'`) modes keep static
+   * batches intact for instant 0ms activation and 60 FPS raycasting; only `'move'` / `'rotate'`
+   * unbatches on demand.
    */
   public setActive(enabled: boolean): void {
     const { host } = this;
-    if (enabled) {
-      host.unbatchAll();
-      host.refreshView();
-      host.freezeStaticMatrices();
+    const tool = this.controller.getAnnotationToolMode();
+    if (enabled && (tool === 'move' || tool === 'rotate')) {
+      this.ensureUnbatchedForTransform();
     }
     this.controller.setAnnotationMode(enabled);
-    if (!enabled && host.canUseStaticBatching()) {
-      host.captureFurnitureColliders();
-      host.optimizeBatches();
-      host.refreshView();
-      host.freezeStaticMatrices();
+    if (!enabled && this.unbatchedForTransform) {
+      this.unbatchedForTransform = false;
+      if (host.canUseStaticBatching()) {
+        host.captureFurnitureColliders();
+        host.optimizeBatches();
+        host.refreshView();
+        host.freezeStaticMatrices();
+      }
+      host.invalidateObstacleCache();
+      host.invalidateShadows();
     }
-    host.invalidateObstacleCache();
-    host.invalidateShadows();
     host.requestRender();
   }
 
@@ -93,10 +127,12 @@ export class AnnotationService {
 
   /** Re-applies persisted move / rotate annotations to their target objects. */
   public reapplySavedMoves(records: readonly SceneAnnotationRecord[]): void {
+    const hasMoveRecords = records.some((r) => r.kind === 'move' && Boolean(r.objectTransform));
+    if (!hasMoveRecords) return;
     const { host } = this;
     host.unbatchAll();
     this.controller.reapplySavedMoveAnnotations(records);
-    if (!this.controller.isAnnotationMode() && host.canUseStaticBatching()) {
+    if (!this.unbatchedForTransform && host.canUseStaticBatching()) {
       host.captureFurnitureColliders();
       host.optimizeBatches();
     }

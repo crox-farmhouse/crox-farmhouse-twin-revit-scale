@@ -138,13 +138,28 @@ export function extractSceneAnnotationHit(
 ): SceneAnnotationHit {
   const worldPoint = toTuple3(hit.point);
 
+  const normalMatrixSource = hit.object instanceof THREE.Mesh ? hit.object : mesh;
   const rawNormal = hit.face
-    ? hit.face.normal.clone().transformDirection(mesh.matrixWorld).normalize()
+    ? hit.face.normal.clone().transformDirection(normalMatrixSource.matrixWorld).normalize()
     : new THREE.Vector3(0, 1, 0);
   const worldNormal = toTuple3(rawNormal);
 
   const worldCenterVec = new THREE.Vector3();
-  const worldBox = new THREE.Box3().setFromObject(mesh);
+  const worldBox = new THREE.Box3();
+  if (mesh.parent) {
+    worldBox.setFromObject(mesh);
+  } else {
+    // When `mesh` is a constituent sub-mesh of a merged static batch (`mesh.parent === null`),
+    // `Box3.setFromObject` would call `mesh.updateWorldMatrix` and overwrite `mesh.matrixWorld`
+    // with `mesh.matrix`. Transforming `mesh.geometry.boundingBox` by `mesh.matrixWorld` is O(1)
+    // and preserves `mesh.matrixWorld`.
+    if (!mesh.geometry.boundingBox) {
+      mesh.geometry.computeBoundingBox();
+    }
+    if (mesh.geometry.boundingBox) {
+      worldBox.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld);
+    }
+  }
   worldBox.getCenter(worldCenterVec);
   const worldSizeVec = new THREE.Vector3();
   worldBox.getSize(worldSizeVec);
@@ -185,7 +200,9 @@ export function extractSceneAnnotationHit(
     if (labelParts.length > 0) {
       parentChain.unshift(labelParts.join(' '));
     }
-    cur = cur.parent;
+    cur =
+      cur.parent ??
+      ((cur.userData?.__batchOriginalParent as THREE.Object3D | undefined) ?? null);
   }
 
   const meshInfo: SceneMeshDiagnosticInfo = {
