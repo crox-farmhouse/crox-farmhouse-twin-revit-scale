@@ -68,24 +68,25 @@ export const ENV_PRESETS: Readonly<Record<TimeOfDay, EnvPresetConfig>> = {
     groundBounce: 0x2c381e,
     sunOrbColor: 0xfff8e8,
     sunOrbPeak: 6.5,
-    // Sun-to-sky ratio ~8:1 so shade reads crisply against sunlit surfaces without HDR ambient wash.
-    envIntensity: 0.45,
-    bgIntensity: 0.95,
+    // Generous sky IBL + hemisphere fill so daytime shadows in the courtyard and rooms read as
+    // open sunlit daylight rather than dark gloom.
+    envIntensity: 0.88,
+    bgIntensity: 1.12,
     bgBlurriness: 0.02,
-    hdrMaxClampEnv: 3.6,
+    hdrMaxClampEnv: 4.5,
     hdrMaxClampBg: 18.0,
     zenithDarkening: 0,
-    // Mid-afternoon sun in the west-south-west, ~38° high: the west facades that face the default
-    // north-west views are sunlit and roofs / chimneys / pergola rake crisp shadows across the
-    // courtyard and garden towards the east.
-    sunDirection: [0.68, 0.62, -0.39],
+    // High summer sun (~51° elevation) from the open west-north-west (+X, +Z) side of the estate
+    // so the courtyard, patio, pergola, main house rear facade, and outbuilding fronts are bathed
+    // in direct sunlight rather than shadowed by the two-storey main house roof.
+    sunDirection: [0.52, 0.78, 0.35],
     // ~5800 K daylight.
-    sunColor: 0xfff2e6,
-    sunIntensity: 3.8,
-    hemiSkyColor: 0xdfeaf7,
-    hemiGroundColor: 0x4b5636,
-    hemiIntensity: 0.06,
-    exposure: 0.94,
+    sunColor: 0xfff4e8,
+    sunIntensity: 4.4,
+    hemiSkyColor: 0xe6f0fa,
+    hemiGroundColor: 0x626e48,
+    hemiIntensity: 0.42,
+    exposure: 1.08,
     fogColor: 0xcad9e8,
     fogDensity: 0.0018,
   },
