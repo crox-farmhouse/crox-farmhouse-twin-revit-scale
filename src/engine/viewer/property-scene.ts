@@ -108,6 +108,12 @@ export class PropertyScene<
   public cycleGraphicsQualityPreset(): GraphicsQualityPreset { return this.graphics.cycleQualityPreset(); }
   public isMotionBlurEnabled(): boolean { return this.graphics.isMotionBlurEnabled(); }
   public toggleMotionBlur(): boolean { return this.graphics.toggleMotionBlur(); }
+  public isSsaoEnabled(): boolean { return this.graphics.isSsaoEnabled(); }
+  public setSsaoEnabled(enabled: boolean): void { this.graphics.setSsaoEnabled(enabled); }
+  public toggleSsao(): boolean { return this.graphics.toggleSsao(); }
+  public isFxaaEnabled(): boolean { return this.graphics.isFxaaEnabled(); }
+  public setFxaaEnabled(enabled: boolean): void { this.graphics.setFxaaEnabled(enabled); }
+  public toggleFxaa(): boolean { return this.graphics.toggleFxaa(); }
 
   // --- Trade views ------------------------------------------------------------------------
 

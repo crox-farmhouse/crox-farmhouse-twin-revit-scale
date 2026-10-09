@@ -329,6 +329,10 @@ export interface TwinGraphicsApi {
   getStats(): TwinGraphicsStats;
   /** Short user-facing messages (e.g. automatic quality step-down). */
   onToast(listener: (message: string) => void): Unsubscribe;
+  isSsaoEnabled(): boolean;
+  setSsaoEnabled(enabled: boolean): void;
+  isFxaaEnabled(): boolean;
+  setFxaaEnabled(enabled: boolean): void;
 }
 
 // -----------------------------------------------------------------------------

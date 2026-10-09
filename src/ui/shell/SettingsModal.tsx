@@ -1,5 +1,5 @@
 import type { JSX } from 'preact';
-import { useEffect } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import {
   devMode,
   graphicsFps,
@@ -56,6 +56,12 @@ export function SettingsModal(): JSX.Element | null {
   if (!open) return null;
   const mode = graphicsMode.value;
   const fps = graphicsFps.value;
+  const [ssaoEnabled, setSsaoEnabled] = useState<boolean>(() => ctl.api.graphics.isSsaoEnabled());
+  const [fxaaEnabled, setFxaaEnabled] = useState<boolean>(() => ctl.api.graphics.isFxaaEnabled());
+  useEffect(() => {
+    setSsaoEnabled(ctl.api.graphics.isSsaoEnabled());
+    setFxaaEnabled(ctl.api.graphics.isFxaaEnabled());
+  }, [ctl, mode]);
   const close = (): void => {
     settingsOpen.value = false;
   };
@@ -99,6 +105,46 @@ export function SettingsModal(): JSX.Element | null {
                   </span>
                 </label>
               ))}
+            </div>
+            <div class="shell-toggle-row" style={{ marginTop: '12px' }}>
+              <span class="shell-radio-text">
+                <span>SSAO (Screen-Space Ambient Occlusion)</span>
+                <span class="shell-muted">8-tap bilateral depth-curvature contact shadows (+ baked 3D room AO)</span>
+              </span>
+              <button
+                type="button"
+                class={`shell-switch${ssaoEnabled ? ' is-on' : ''}`}
+                role="switch"
+                aria-checked={ssaoEnabled}
+                aria-label="SSAO (Screen-Space Ambient Occlusion)"
+                onClick={() => {
+                  const next = !ssaoEnabled;
+                  ctl.api.graphics.setSsaoEnabled(next);
+                  setSsaoEnabled(next);
+                }}
+              >
+                <span class="shell-switch-knob" />
+              </button>
+            </div>
+            <div class="shell-toggle-row" style={{ marginTop: '8px' }}>
+              <span class="shell-radio-text">
+                <span>FXAA 3.11 (Edge Anti-Aliasing)</span>
+                <span class="shell-muted">Directional luma-edge span search + sub-pixel smoothing</span>
+              </span>
+              <button
+                type="button"
+                class={`shell-switch${fxaaEnabled ? ' is-on' : ''}`}
+                role="switch"
+                aria-checked={fxaaEnabled}
+                aria-label="FXAA 3.11 anti-aliasing"
+                onClick={() => {
+                  const next = !fxaaEnabled;
+                  ctl.api.graphics.setFxaaEnabled(next);
+                  setFxaaEnabled(next);
+                }}
+              >
+                <span class="shell-switch-knob" />
+              </button>
             </div>
           </section>
 

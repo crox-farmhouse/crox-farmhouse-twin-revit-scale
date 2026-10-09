@@ -14,6 +14,7 @@ export interface GraphicsSettingsState {
   readonly motionBlurStrength: number;
   readonly postProcessingEnabled: boolean;
   readonly ambientOcclusionEnabled: boolean;
+  readonly fxaaEnabled: boolean;
   readonly bloomEnabled: boolean;
   readonly sharpenEnabled: boolean;
   readonly pixelRatio: number;
@@ -77,6 +78,7 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
   uniform float uAoIntensity;
   uniform float uBloomIntensity;
   uniform float uSharpenIntensity;
+  uniform float uFxaaEnabled;
 
   varying vec2 vUv;
 
@@ -184,17 +186,157 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
     );
   }
 
-  // Symmetric-pair depth curvature AO: 3 rotated symmetric pairs (6 depth taps total).
+  float perceptualLuma(vec3 rgb) {
+    return sqrt(max(0.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+  }
+
+  // Directional FXAA 3.11 (3x3 neighborhood edge orientation + 6-step tangent span search
+  // + sub-pixel aliasing filter) fused with Contrast-Adaptive Sharpening (CAS).
+  vec3 computeFxaaAndCas(vec2 uv, vec3 centerColor) {
+    vec3 rgbN = texture2D(tColor, uv + vec2(0.0, uTexelSize.y)).rgb;
+    vec3 rgbS = texture2D(tColor, uv - vec2(0.0, uTexelSize.y)).rgb;
+    vec3 rgbE = texture2D(tColor, uv + vec2(uTexelSize.x, 0.0)).rgb;
+    vec3 rgbW = texture2D(tColor, uv - vec2(uTexelSize.x, 0.0)).rgb;
+
+    float lumaM = perceptualLuma(centerColor);
+    float lumaN = perceptualLuma(rgbN);
+    float lumaS = perceptualLuma(rgbS);
+    float lumaE = perceptualLuma(rgbE);
+    float lumaW = perceptualLuma(rgbW);
+
+    float lumaMin = min(lumaM, min(min(lumaN, lumaS), min(lumaE, lumaW)));
+    float lumaMax = max(lumaM, max(max(lumaN, lumaS), max(lumaE, lumaW)));
+    float lumaRange = lumaMax - lumaMin;
+
+    vec3 resultColor = centerColor;
+
+    if (uFxaaEnabled > 0.5 && lumaRange >= max(0.0312, lumaMax * 0.125)) {
+      vec3 rgbNW = texture2D(tColor, uv + vec2(-uTexelSize.x,  uTexelSize.y)).rgb;
+      vec3 rgbNE = texture2D(tColor, uv + vec2( uTexelSize.x,  uTexelSize.y)).rgb;
+      vec3 rgbSW = texture2D(tColor, uv + vec2(-uTexelSize.x, -uTexelSize.y)).rgb;
+      vec3 rgbSE = texture2D(tColor, uv + vec2( uTexelSize.x, -uTexelSize.y)).rgb;
+
+      float lumaNW = perceptualLuma(rgbNW);
+      float lumaNE = perceptualLuma(rgbNE);
+      float lumaSW = perceptualLuma(rgbSW);
+      float lumaSE = perceptualLuma(rgbSE);
+
+      float lumaDownUp = lumaS + lumaN;
+      float lumaLeftRight = lumaW + lumaE;
+      float lumaLeftCorners = lumaSW + lumaNW;
+      float lumaDownCorners = lumaSW + lumaSE;
+      float lumaRightCorners = lumaSE + lumaNE;
+      float lumaUpCorners = lumaNE + lumaNW;
+
+      float edgeHorizontal =
+        abs(-2.0 * lumaW + lumaLeftCorners) +
+        abs(-2.0 * lumaM + lumaDownUp) * 2.0 +
+        abs(-2.0 * lumaE + lumaRightCorners);
+      float edgeVertical =
+        abs(-2.0 * lumaN + lumaUpCorners) +
+        abs(-2.0 * lumaM + lumaLeftRight) * 2.0 +
+        abs(-2.0 * lumaS + lumaDownCorners);
+
+      bool isHorizontal = (edgeHorizontal >= edgeVertical);
+      float luma1 = isHorizontal ? lumaS : lumaW;
+      float luma2 = isHorizontal ? lumaN : lumaE;
+      float gradient1 = luma1 - lumaM;
+      float gradient2 = luma2 - lumaM;
+      bool is1Steepest = abs(gradient1) >= abs(gradient2);
+      float gradientScaled = 0.25 * max(abs(gradient1), abs(gradient2));
+
+      float stepLength = isHorizontal ? uTexelSize.y : uTexelSize.x;
+      float lumaLocalAverage = 0.0;
+      if (is1Steepest) {
+        stepLength = -stepLength;
+        lumaLocalAverage = 0.5 * (luma1 + lumaM);
+      } else {
+        lumaLocalAverage = 0.5 * (luma2 + lumaM);
+      }
+
+      vec2 currentUv = uv;
+      if (isHorizontal) {
+        currentUv.y += stepLength * 0.5;
+      } else {
+        currentUv.x += stepLength * 0.5;
+      }
+
+      vec2 offset = isHorizontal ? vec2(uTexelSize.x, 0.0) : vec2(0.0, uTexelSize.y);
+      vec2 uv1 = currentUv - offset;
+      vec2 uv2 = currentUv + offset;
+
+      float lumaEnd1 = perceptualLuma(texture2D(tColor, uv1).rgb) - lumaLocalAverage;
+      float lumaEnd2 = perceptualLuma(texture2D(tColor, uv2).rgb) - lumaLocalAverage;
+      bool reached1 = abs(lumaEnd1) >= gradientScaled;
+      bool reached2 = abs(lumaEnd2) >= gradientScaled;
+      bool reachedBoth = reached1 && reached2;
+
+      if (!reached1) uv1 -= offset * 1.5;
+      if (!reached2) uv2 += offset * 1.5;
+
+      if (!reachedBoth) {
+        for (int i = 0; i < 4; i++) {
+          if (!reached1) {
+            lumaEnd1 = perceptualLuma(texture2D(tColor, uv1).rgb) - lumaLocalAverage;
+          }
+          if (!reached2) {
+            lumaEnd2 = perceptualLuma(texture2D(tColor, uv2).rgb) - lumaLocalAverage;
+          }
+          reached1 = abs(lumaEnd1) >= gradientScaled;
+          reached2 = abs(lumaEnd2) >= gradientScaled;
+          reachedBoth = reached1 && reached2;
+          if (reachedBoth) break;
+          float stepMul = (i == 0) ? 2.0 : ((i == 1) ? 2.0 : ((i == 2) ? 4.0 : 8.0));
+          if (!reached1) uv1 -= offset * stepMul;
+          if (!reached2) uv2 += offset * stepMul;
+        }
+      }
+
+      float distance1 = isHorizontal ? (uv.x - uv1.x) : (uv.y - uv1.y);
+      float distance2 = isHorizontal ? (uv2.x - uv.x) : (uv2.y - uv.y);
+      bool isDirection1 = distance1 < distance2;
+      float distanceFinal = min(distance1, distance2);
+      float edgeThickness = max(1e-5, distance1 + distance2);
+      float pixelOffset = -distanceFinal / edgeThickness + 0.5;
+
+      bool isLumaCenterSmaller = lumaM < lumaLocalAverage;
+      bool correctVariation = ((isDirection1 ? lumaEnd1 : lumaEnd2) < 0.0) != isLumaCenterSmaller;
+      float finalOffset = correctVariation ? pixelOffset : 0.0;
+
+      float lumaAverage = (1.0 / 12.0) * (2.0 * (lumaDownUp + lumaLeftRight) + lumaLeftCorners + lumaRightCorners);
+      float subPixelOffset1 = clamp(abs(lumaAverage - lumaM) / max(1e-5, lumaRange), 0.0, 1.0);
+      float subPixelOffset2 = (-2.0 * subPixelOffset1 + 3.0) * subPixelOffset1 * subPixelOffset1;
+      float subPixelOffsetFinal = subPixelOffset2 * subPixelOffset2 * 0.75;
+
+      finalOffset = max(finalOffset, subPixelOffsetFinal);
+      vec2 finalUv = uv;
+      if (isHorizontal) {
+        finalUv.y += finalOffset * stepLength;
+      } else {
+        finalUv.x += finalOffset * stepLength;
+      }
+      resultColor = texture2D(tColor, finalUv).rgb;
+    }
+
+    if (uSharpenIntensity > 0.001) {
+      vec3 neighborAvg = 0.25 * (rgbN + rgbS + rgbE + rgbW);
+      float detailWeight = (1.0 - smoothstep(0.25, 0.85, lumaRange)) * uSharpenIntensity;
+      resultColor = max(vec3(0.0), resultColor + (centerColor - neighborAvg) * detailWeight);
+    }
+
+    return resultColor;
+  }
+
+  // Bilateral Screen-Space Ambient Occlusion (SSAO): 4 rotated symmetric pairs (8 depth taps total).
   // Radius and distance fade are driven by the on-screen scale (world units per pixel), so an
   // orthographic view produces the same AO as a perspective view at the same apparent zoom.
-  // Depth deltas are linear metres for both projections (see linearizeDepth).
   float computeContactAO(vec2 uv, float centerLinZ, float noise) {
     float scaleZ = uIsOrtho > 0.5 ? uOrthoEquivDepth : centerLinZ;
     if (uAoIntensity <= 0.001 || scaleZ >= 20.0) {
       return 1.0;
     }
 
-    float radiusPx = clamp(20.0 / max(1.2, scaleZ), 2.5, 14.0);
+    float radiusPx = clamp(21.0 / max(1.2, scaleZ), 2.5, 14.5);
     vec2 aspectStep = uTexelSize * radiusPx;
     float baseAngle = noise * 6.2831853;
     float c0 = cos(baseAngle);
@@ -202,11 +344,12 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
     vec2 rot0 = vec2(c0, s0);
     vec2 rot1 = vec2(-s0, c0);
     vec2 rot2 = vec2(c0 - s0, c0 + s0) * 0.70710678;
+    vec2 rot3 = vec2(-c0 - s0, c0 - s0) * 0.70710678;
 
     float occlusion = 0.0;
-    for (int i = 0; i < 3; i++) {
-      vec2 unitDir = (i == 0) ? rot0 : ((i == 1) ? rot1 : rot2);
-      float ringScale = (i == 0) ? 0.55 : ((i == 1) ? 0.80 : 1.0);
+    for (int i = 0; i < 4; i++) {
+      vec2 unitDir = (i == 0) ? rot0 : ((i == 1) ? rot1 : ((i == 2) ? rot2 : rot3));
+      float ringScale = (i == 0) ? 0.42 : ((i == 1) ? 0.65 : ((i == 2) ? 0.85 : 1.0));
       vec2 dir = unitDir * aspectStep * ringScale;
 
       float zPlus = readLinearDepth(uv + dir);
@@ -222,7 +365,7 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
     }
 
     float distanceFade = 1.0 - smoothstep(13.0, 20.0, scaleZ);
-    float ao = 1.0 - (occlusion * 0.333) * uAoIntensity * distanceFade;
+    float ao = 1.0 - (occlusion * 0.25) * uAoIntensity * distanceFade;
     return clamp(ao, 0.52, 1.0);
   }
 
@@ -291,21 +434,8 @@ const POST_FRAGMENT_SHADER = /* glsl */ `
         totalWeight += w;
       }
       hdrColor = accumColor / totalWeight;
-    } else if (uSharpenIntensity > 0.001) {
-      vec3 n = texture2D(tColor, vUv + vec2(0.0, uTexelSize.y)).rgb;
-      vec3 s = texture2D(tColor, vUv - vec2(0.0, uTexelSize.y)).rgb;
-      vec3 e = texture2D(tColor, vUv + vec2(uTexelSize.x, 0.0)).rgb;
-      vec3 w = texture2D(tColor, vUv - vec2(uTexelSize.x, 0.0)).rgb;
-      vec3 neighborAvg = 0.25 * (n + s + e + w);
-
-      vec3 minCol = min(centerColor, min(min(n, s), min(e, w)));
-      vec3 maxCol = max(centerColor, max(max(n, s), max(e, w)));
-      float localContrast = length(maxCol - minCol);
-
-      float detailWeight = (1.0 - smoothstep(0.35, 1.1, localContrast)) * uSharpenIntensity;
-      float aaBlend = smoothstep(0.55, 1.35, localContrast) * 0.24;
-      vec3 sharpened = max(vec3(0.0), centerColor + (centerColor - neighborAvg) * detailWeight);
-      hdrColor = mix(sharpened, mix(centerColor, neighborAvg, 0.45), aaBlend);
+    } else if (uFxaaEnabled > 0.5 || uSharpenIntensity > 0.001) {
+      hdrColor = computeFxaaAndCas(vUv, centerColor);
     }
 
     // 3. Apply Screen-Space Contact Ambient Occlusion (fades out during rapid whip-pans)
@@ -351,6 +481,7 @@ export class PostProcessingPipeline {
   private motionBlurStrength = 0.68;
   private postEnabled = true;
   private ambientOcclusionEnabled = true;
+  private fxaaEnabled = true;
   private bloomEnabled = false;
   private sharpenEnabled = true;
   private targetPixelRatio = 1.0;
@@ -415,6 +546,7 @@ export class PostProcessingPipeline {
         uAoIntensity: { value: AO_INTENSITY },
         uBloomIntensity: { value: BLOOM_INTENSITY },
         uSharpenIntensity: { value: SHARPEN_INTENSITY },
+        uFxaaEnabled: { value: 1.0 },
       },
     });
 
@@ -431,6 +563,7 @@ export class PostProcessingPipeline {
     this.targetPixelRatio = Math.max(0.5, settings.pixelRatio);
     this.postEnabled = settings.postProcessing;
     this.ambientOcclusionEnabled = settings.postProcessing && settings.ambientOcclusion;
+    this.fxaaEnabled = settings.postProcessing;
     this.bloomEnabled = settings.postProcessing && settings.bloom;
     this.sharpenEnabled = settings.postProcessing && settings.sharpen;
   }
@@ -466,6 +599,7 @@ export class PostProcessingPipeline {
       motionBlurStrength: this.motionBlurStrength,
       postProcessingEnabled: this.postEnabled,
       ambientOcclusionEnabled: this.ambientOcclusionEnabled,
+      fxaaEnabled: this.fxaaEnabled,
       bloomEnabled: this.bloomEnabled,
       sharpenEnabled: this.sharpenEnabled,
       pixelRatio: this.currentPixelRatio,
@@ -513,6 +647,36 @@ export class PostProcessingPipeline {
     this.motionBlurEnabled = !this.motionBlurEnabled;
     this.saveSettings();
     return this.motionBlurEnabled;
+  }
+
+  public isSsaoEnabled(): boolean {
+    return this.ambientOcclusionEnabled;
+  }
+
+  public setSsaoEnabled(enabled: boolean): void {
+    this.ambientOcclusionEnabled = enabled;
+    if (enabled) this.postEnabled = true;
+    this.saveSettings();
+  }
+
+  public toggleSsao(): boolean {
+    this.setSsaoEnabled(!this.ambientOcclusionEnabled);
+    return this.ambientOcclusionEnabled;
+  }
+
+  public isFxaaEnabled(): boolean {
+    return this.fxaaEnabled;
+  }
+
+  public setFxaaEnabled(enabled: boolean): void {
+    this.fxaaEnabled = enabled;
+    if (enabled) this.postEnabled = true;
+    this.saveSettings();
+  }
+
+  public toggleFxaa(): boolean {
+    this.setFxaaEnabled(!this.fxaaEnabled);
+    return this.fxaaEnabled;
   }
 
   private saveSettings(): void {
@@ -627,6 +791,7 @@ export class PostProcessingPipeline {
     uniforms.uBloomIntensity.value = this.bloomEnabled && this.bloom.texture ? BLOOM_INTENSITY : 0.0;
     uniforms.tBloom.value = this.bloom.texture;
     uniforms.uSharpenIntensity.value = this.sharpenEnabled ? SHARPEN_INTENSITY : 0.0;
+    uniforms.uFxaaEnabled.value = this.fxaaEnabled ? 1.0 : 0.0;
 
     // 3. Draw single-pass composite quad to screen
     this.renderer.render(this.postScene, this.postCamera);

@@ -417,6 +417,10 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       setMode: (mode) => scene.setGraphicsMode(mode),
       getStats: () => scene.getGraphicsStats(),
       onToast: (listener) => scene.onGraphicsToast(listener),
+      isSsaoEnabled: () => scene.isSsaoEnabled(),
+      setSsaoEnabled: (enabled) => scene.setSsaoEnabled(enabled),
+      isFxaaEnabled: () => scene.isFxaaEnabled(),
+      setFxaaEnabled: (enabled) => scene.setFxaaEnabled(enabled),
     },
 
     trades: {

@@ -95,6 +95,36 @@ export class GraphicsService {
     return next;
   }
 
+  public isSsaoEnabled(): boolean {
+    return this.host.renderer.post.isSsaoEnabled();
+  }
+
+  public setSsaoEnabled(enabled: boolean): void {
+    this.host.renderer.post.setSsaoEnabled(enabled);
+    this.host.renderer.requestRender();
+  }
+
+  public toggleSsao(): boolean {
+    const next = this.host.renderer.post.toggleSsao();
+    this.host.renderer.requestRender();
+    return next;
+  }
+
+  public isFxaaEnabled(): boolean {
+    return this.host.renderer.post.isFxaaEnabled();
+  }
+
+  public setFxaaEnabled(enabled: boolean): void {
+    this.host.renderer.post.setFxaaEnabled(enabled);
+    this.host.renderer.requestRender();
+  }
+
+  public toggleFxaa(): boolean {
+    const next = this.host.renderer.post.toggleFxaa();
+    this.host.renderer.requestRender();
+    return next;
+  }
+
   public setDevicePixelRatio(ratio: number): void {
     this.governor.setDevicePixelRatio(ratio);
   }
