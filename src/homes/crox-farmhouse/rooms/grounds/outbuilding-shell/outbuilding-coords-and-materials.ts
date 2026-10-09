@@ -913,6 +913,7 @@ export function createOutbuildingShellContext(
     const isEastUpperExt = Math.abs(uMin - (29.05 - wallT)) < 0.012 && Math.abs(uMax - 29.05) < 0.012 && yMin >= 1.90;
     const isEastGroundExt = Math.abs(uMin - (31.85 - wallT)) < 0.012 && Math.abs(uMax - 31.85) < 0.012;
     const floorTag: 'ground' | 'first' = parent === firstFloorGroup ? 'first' : 'ground';
+    const includeInFirstFloorCutaway = floorTag === 'first' || yMax > 2.65;
 
     const cutawaySpec = isNorthExt
       ? {
@@ -922,7 +923,7 @@ export function createOutbuildingShellContext(
           maxSpan: uMax,
           floor: floorTag,
           outwardSide: 'north' as const,
-          includeInFirstFloorCutaway: true,
+          includeInFirstFloorCutaway,
         }
       : isSouthExt
         ? {
@@ -932,7 +933,7 @@ export function createOutbuildingShellContext(
             maxSpan: uMax,
             floor: floorTag,
             outwardSide: 'south' as const,
-            includeInFirstFloorCutaway: true,
+            includeInFirstFloorCutaway,
           }
         : isWestExt
           ? {
@@ -942,7 +943,7 @@ export function createOutbuildingShellContext(
               maxSpan: vMax,
               floor: floorTag,
               outwardSide: 'west' as const,
-              includeInFirstFloorCutaway: true,
+              includeInFirstFloorCutaway,
             }
           : isEastUpperExt || isEastGroundExt
             ? {
@@ -952,7 +953,7 @@ export function createOutbuildingShellContext(
                 maxSpan: vMax,
                 floor: floorTag,
                 outwardSide: 'east' as const,
-                includeInFirstFloorCutaway: true,
+                includeInFirstFloorCutaway,
               }
             : undefined;
 
@@ -1160,7 +1161,7 @@ export function createOutbuildingShellContext(
       maxSpan: uCenter + width * 0.5,
       floor: parent === firstFloorGroup ? 'first' : 'ground',
       outwardSide: vWallCenter < 1.0 ? 'north' : 'south',
-      includeInFirstFloorCutaway: true,
+      includeInFirstFloorCutaway: parent === firstFloorGroup,
     };
     doorGroup.position.set(uCenter, yBase, vWallCenter);
 
@@ -1559,7 +1560,7 @@ export function createOutbuildingShellContext(
       maxSpan: uCenter + width * 0.5,
       floor: parent === firstFloorGroup ? 'first' : 'ground',
       outwardSide: vWallCenter < 1.0 ? 'north' : 'south',
-      includeInFirstFloorCutaway: true,
+      includeInFirstFloorCutaway: parent === firstFloorGroup,
     };
     screenGroup.position.set(uCenter, yBase, vWallCenter);
 
@@ -1721,7 +1722,7 @@ export function createOutbuildingShellContext(
           maxSpan: vCenter + width * 0.5,
           floor: parent === firstFloorGroup ? 'first' : 'ground',
           outwardSide: uCenter < 1.0 ? 'west' : 'east',
-          includeInFirstFloorCutaway: true,
+          includeInFirstFloorCutaway: parent === firstFloorGroup,
         }
       : {
           axis: 'z',
@@ -1730,7 +1731,7 @@ export function createOutbuildingShellContext(
           maxSpan: uCenter + width * 0.5,
           floor: parent === firstFloorGroup ? 'first' : 'ground',
           outwardSide: vCenter < 1.0 ? 'north' : 'south',
-          includeInFirstFloorCutaway: true,
+          includeInFirstFloorCutaway: parent === firstFloorGroup,
         };
     winGroup.position.set(uCenter, yCenter, vCenter);
     if (alongV) {
@@ -2334,7 +2335,7 @@ export function createOutbuildingShellContext(
         // and the upper roof slope (`eaveRelH..peakRelH`), and restrict its extrusion depth to `0.095m`
         // (`u = 23.02..23.115m`) so it stays 100% West of the interior painted plaster gable (`u = 23.12..23.225m`)
         // and never pokes through into the Stable, Barn, or Store interiors!
-        const lowerBaseRelH = lowerRoofEaveRelH + 0.03;
+        const lowerBaseRelH = lowerRoofEaveRelH + 0.19;
         const lowerPeakRelH = lowerBaseRelH + lowerSlopeRise - 0.02;
         pointsVY = [
           [-halfWallV, lowerBaseRelH],
@@ -2347,23 +2348,20 @@ export function createOutbuildingShellContext(
       }
 
       const brickExtrudeT = isStepUpGable ? 0.095 : wallT - 0.03;
+      const uStartGable = isStepUpGable && uWallMin < 15 ? uWallMin - 0.005 : uWallMin;
       const geo = createExtrudedVYPolygon(pointsVY, brickExtrudeT);
       applyWorldSpaceBrickUVs(
         geo,
-        OUTBUILDING_ORIGIN_X + uWallMin,
+        OUTBUILDING_ORIGIN_X + uStartGable,
         datumY,
         OUTBUILDING_ORIGIN_Z + vMid
       );
       const mesh = new THREE.Mesh(geo, exteriorBrickMat);
       mesh.name = isStepUpGable ? 'outbuildings.roof.stepUpExteriorBrickGable' : 'outbuildings.roof.exteriorBrickGable';
-      mesh.position.set(uWallMin, datumY, vMid);
+      mesh.position.set(uStartGable, datumY, vMid);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      if (isStepUpGable && uWallMin < 15) {
-        groundGroup.add(mesh);
-      } else {
-        roofGroup.add(mesh);
-      }
+      roofGroup.add(mesh);
     };
 
     if (addWestBrickGable) {
@@ -2566,7 +2564,7 @@ export function createOutbuildingShellContext(
       maxSpan: maxSpanV,
       floor: floorTag,
       outwardSide: 'east',
-      includeInFirstFloorCutaway: true,
+      includeInFirstFloorCutaway: floorTag === 'first',
     };
     sconceGroup.position.set(uWallFace, yCenter, vCenter);
 

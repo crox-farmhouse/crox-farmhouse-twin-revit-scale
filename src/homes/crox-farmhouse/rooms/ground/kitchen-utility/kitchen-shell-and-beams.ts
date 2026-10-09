@@ -82,7 +82,7 @@ export function buildOakDoor(
     map: naturalOakTex.colorMap,
     bumpMap: naturalOakTex.bumpMap,
     bumpScale: 0.0035,
-    color: 0xf7f1e8,
+    color: 0xdcc8ae,
     roughness: 0.62,
     metalness: 0.02,
   });
@@ -90,16 +90,16 @@ export function buildOakDoor(
     map: naturalOakTex.colorMap,
     bumpMap: naturalOakTex.bumpMap,
     bumpScale: 0.0035,
-    color: 0xebe3d6,
-    roughness: 0.64,
+    color: 0xd2bda2,
+    roughness: 0.62,
     metalness: 0.02,
   });
   const oakArchitraveMat = new THREE.MeshStandardMaterial({
     map: naturalOakTex.colorMap,
     bumpMap: naturalOakTex.bumpMap,
     bumpScale: 0.0035,
-    color: 0xf5efe6,
-    roughness: 0.64,
+    color: 0xdcc8ae,
+    roughness: 0.62,
     metalness: 0.02,
   });
   const brushedStainlessTex = createBrushedStainlessTexture();
@@ -242,16 +242,16 @@ export function buildSplitStableDoor(
     map: naturalOakTex.colorMap,
     bumpMap: naturalOakTex.bumpMap,
     bumpScale: 0.0035,
-    color: 0xf5efe6,
-    roughness: 0.64,
+    color: 0xdcc8ae,
+    roughness: 0.62,
     metalness: 0.02,
   });
   const oakWeatherMat = new THREE.MeshStandardMaterial({
     map: naturalOakTex.colorMap,
     bumpMap: naturalOakTex.bumpMap,
     bumpScale: 0.0035,
-    color: 0xf2ebe0,
-    roughness: 0.64,
+    color: 0xdcc8ae,
+    roughness: 0.62,
     metalness: 0.02,
   });
   const glassMat = new THREE.MeshStandardMaterial({
@@ -537,8 +537,8 @@ export function buildFullHeightEastWindow(
     map: naturalOakTex.colorMap,
     bumpMap: naturalOakTex.bumpMap,
     bumpScale: 0.0035,
-    color: 0xf5efe6,
-    roughness: 0.64,
+    color: 0xdcc8ae,
+    roughness: 0.62,
     metalness: 0.02,
   });
   const glassMat = new THREE.MeshStandardMaterial({
@@ -994,7 +994,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
     map: naturalOakTex.colorMap,
     bumpMap: naturalOakTex.bumpMap,
     bumpScale: 0.0035,
-    color: 0xf5efe6,
+    color: 0xdcc8ae,
     roughness: 0.62,
     metalness: 0.02,
   });
@@ -1163,8 +1163,8 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
     map: naturalOakTex.colorMap,
     bumpMap: naturalOakTex.bumpMap,
     bumpScale: 0.0035,
-    color: 0xf5efe6,
-    roughness: 0.64,
+    color: 0xdcc8ae,
+    roughness: 0.62,
     metalness: 0.02,
   });
 

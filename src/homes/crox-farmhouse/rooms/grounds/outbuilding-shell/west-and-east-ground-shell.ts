@@ -93,7 +93,6 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     stableDatumY,
     eastRangeGroundTopY,
     barnUpperTopY,
-    barnCeilEaveY,
     barnCeilRidgeY,
     mezzanineFloorY,
     barnWestFloorY,
@@ -804,7 +803,6 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   const benchAlcoveVMin = 1.332; // Aligns cleanly with `corridorSouthWall` (`v = 1.24..1.33m`) and the Garage Tall Stainless Cupboard (`v = 1.34..2.86m`)
   const benchAlcoveVMax = vEastRangeSouth - wallT - 0.005; // 5.425m
   const stepWallNorthVMin = vEastRangeNorth + wallT + 0.005; // 0.285m (5mm clear of North wall inner plaster `v = 0.280m` to prevent cutaway grazing dithering)
-  const storeLoftSlabBotY = 2.52;
   const stepWallChildStartIdx = groundGroup.children.length;
 
   // 1. Lower sill / step wall (`y = barnLowerFloorY (-0.70m) .. garageFloorTopY (-0.50m)`): full span `vInnerNorth .. vInnerSouth`
@@ -886,7 +884,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     12.78,
     13.04,
     garageFloorTopY,
-    storeLoftSlabBotY,
+    2.51,
     benchAlcoveVMin,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
@@ -897,7 +895,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     uStoreStart + 0.24,
     12.78,
     1.66,
-    storeLoftSlabBotY,
+    2.51,
     benchAlcoveVMin,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
@@ -905,14 +903,19 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   );
 
   // Inset the auto-generated `.woodFibreInsulation` cores on `brickWall.24..31` so they stay strictly inside
-  // their parent masonry volumes and never z-fight or dither on `-z`, `+z`, `-y`, or `+y` faces.
+  // their parent masonry volumes and never z-fight or dither on `-z`, `+z`, `-y`, or `+y` faces, and finish the
+  // top (`+y`) cap of internal step-wall segments with `warmRoomPlasterMat` so no dark `wallCapMat` seam shows.
   for (let cIdx = stepWallChildStartIdx; cIdx < groundGroup.children.length; cIdx++) {
     const child = groundGroup.children[cIdx];
-    if (child instanceof THREE.Mesh && child.name.endsWith('.woodFibreInsulation')) {
-      child.scale.set(0.96, 0.96, 0.92);
-      child.position.y -= 0.002;
-      child.castShadow = false;
-      child.receiveShadow = false;
+    if (child instanceof THREE.Mesh) {
+      if (child.name.endsWith('.woodFibreInsulation')) {
+        child.scale.set(0.94, 0.94, 0.90);
+        child.position.y -= 0.008;
+        child.castShadow = false;
+        child.receiveShadow = false;
+      } else if (Array.isArray(child.material) && child.material.length >= 6) {
+        child.material[2] = warmRoomPlasterMat;
+      }
     }
   }
 
@@ -1182,33 +1185,35 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       -Math.PI * 0.46
     );
   }
-  // Issue #3 ("Show this full wall in cutout view incl gable from the inside " at `[-10.207, 1.803, 17.731]`):
-  // Attach both the Garage-side interior plaster gable (`u = 12.07..12.165m`) and the full-height Store-side
-  // interior plaster gable (`u = 12.095..12.315m`, rising from `1.94m` to `2.92m` eaves and `4.269m` ridge)
-  // directly to `groundGroup` so the full step-up wall and gable are visible in cutout view from both inside and outside!
+  // Issue #3 ("Show this full wall in cutout view incl gable from the inside " at `[-10.207, 1.803, 17.731]`) &
+  // Issue #1 ("This wall looks a bit janky in cutaway mode, lots going on. Try to tidy up the geometry" at `[-10.183, 2.849, 18.005]`):
+  // Give both halves of the 240mm Garage/Store step-up gable (`u = 12.07..12.19m` in `warmRoomPlasterMat` and
+  // `u = 12.19..12.31m` in `settingPlasterMat`) the exact same unified Store gable profile (`eaves = barnUpperTopY = 2.92m`,
+  // `ridge = barnCeilRidgeY = 4.269m`, `v = 0.282..5.428m`) so the wall forms a single flush, un-stepped gable in cutaway mode
+  // that aligns cleanly with the `2.92m` Store North/South walls and `4.269m` ridge beam!
   addInteriorPlasterGableWall(
     groundGroup,
     uStoreStart,
-    uStoreStart + 0.095,
-    vEastRangeNorth + wallT + 0.005,
-    vEastRangeSouth - wallT - 0.005,
+    uStoreStart + 0.12,
+    vEastRangeNorth + wallT + 0.002,
+    vEastRangeSouth - wallT - 0.002,
     eastRangeGroundTopY,
-    2.121,
-    3.55,
-    'outbuildings.garageStoreStep1InteriorGable'
+    barnUpperTopY,
+    barnCeilRidgeY,
+    'outbuildings.garageStoreStep1InteriorGable',
+    warmRoomPlasterMat
   );
-  // Store side (`+x` at `u = 12.165..12.310m`) painted plasterboard wall & gable meeting `garageStoreStep1InteriorGable`
-  // and `stepUpExteriorBrickGable` flush at `u = 12.165m` with zero diagonal step or overlap in cutaway view!
   addInteriorPlasterGableWall(
     groundGroup,
-    uStoreStart + 0.095,
+    uStoreStart + 0.12,
     uStoreStart + 0.24,
-    vEastRangeNorth + wallT + 0.005,
-    vEastRangeSouth - wallT - 0.005,
+    vEastRangeNorth + wallT + 0.002,
+    vEastRangeSouth - wallT - 0.002,
     eastRangeGroundTopY,
-    barnCeilEaveY + 0.151,
-    barnCeilRidgeY + 0.231,
-    'outbuildings.storeWestInteriorPlasterGable'
+    barnUpperTopY,
+    barnCeilRidgeY,
+    'outbuildings.storeWestInteriorPlasterGable',
+    settingPlasterMat
   );
 
   // Issue #1 ("Mat isn't using the full width of the bay" at `[-8.042, -0.653, 20.21]`) &
@@ -1416,11 +1421,11 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     studPartitionGroup.userData.isArchitecturalShell = true;
     groundGroup.add(studPartitionGroup);
 
-    const corridorWallU0 = uStoreStart + 0.245; // 12.315m (meets Garage/Store East wall)
+    const corridorWallU0 = uStoreStart + 0.24; // 12.310m (meets Garage/Store East wall flush with zero gap)
     const corridorNorthV = stepWallNorthVMin;
     const corridorWallH = beamBotY - barnWestFloorY; // 2.850m (`y = -0.34m .. 2.510m`, flush with underside of UC header beam)
     const corridorWallMidY = barnWestFloorY + corridorWallH * 0.5;
-    const corridorWallSouthFaceV = simCutoutVMin; // 1.330m
+    const corridorWallSouthFaceV = benchAlcoveVMin; // 1.332m (flush with workbench alcove North face)
     const corridorWallT = corridorWallSouthFaceV - corridorSouthV; // 0.090m (`v = 1.240m .. 1.330m`)
     const corridorWallMidV = (corridorSouthV + corridorWallSouthFaceV) * 0.5; // 1.285m
 
@@ -2262,7 +2267,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       maxSpan: vEastDoorV1,
       floor: 'ground',
       outwardSide: 'east',
-      includeInFirstFloorCutaway: true,
+      includeInFirstFloorCutaway: false,
     };
     eastGlassDoorGroup.position.set(dMidU, eastDoorBotY, dMidV);
     groundGroup.add(eastGlassDoorGroup);

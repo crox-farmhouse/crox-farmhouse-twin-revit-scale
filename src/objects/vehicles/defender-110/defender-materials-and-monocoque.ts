@@ -559,6 +559,7 @@ export function evalSpline(x: number, knots: readonly (readonly [number, number]
   return last[1];
 }
 
+
 /**
  * Plan-view wrap-around shift `getPlanWrapShiftX(x, z)`:
  * Captures the L663 Defender's bevelled front fascia corners (`+x` wrap at outer `z`)
@@ -581,96 +582,97 @@ export function getPlanWrapShiftX(x: number, z: number): number {
 
 /**
  * 1. Centerline elevation profile `CENTERLINE_Y_KNOTS`:
- *    - Upright front skid pan & bumper face (`x = -2.38m..-2.31m`, rising from `0.33m` to `1.14m`)
- *    - Sculpted clamshell bonnet with central V8 power dome (`x = -2.31m..-0.92m`, `y = 1.15m..1.25m`)
- *    - Upright raked L663 windshield (`x = -0.92m..-0.44m`, `y = 1.25m..1.93m`)
- *    - Flat, commanding Defender safari roof crown (`x = -0.44m..+2.18m`, `y = 1.955m..1.967m`)
- *    - Vertical cut-off Kamm rear tailgate (`x = +2.28m..+2.36m`, dropping cleanly to the rear skid pan at `y = 0.34m`).
+ *    - Upright front skid pan & H-frame bumper fascia (`x = -2.38m..-2.345m`, rising from `0.33m` to `1.03m`)
+ *    - Smooth clamshell bonnet leading edge & long sculpted bonnet (`x = -2.28m..-1.02m`, `y = 1.13m..1.23m`)
+ *    - Sleek, raked L663 windshield (`x = -1.02m..-0.38m`, `y = 1.23m..1.92m`)
+ *    - Flat, commanding Defender safari roof crown (`x = -0.38m..+2.18m`, `y = 1.92m..1.967m`)
+ *    - Vertical cut-off Kamm rear tailgate (`x = +2.26m..+2.36m`, dropping cleanly to the rear skid pan at `y = 0.34m`).
  */
 export const CENTERLINE_Y_KNOTS: readonly (readonly [number, number])[] = [
   [-2.38, 0.33],
-  [-2.36, 0.62],
-  [-2.33, 0.96],
-  [-2.29, 1.145], // Leading edge of clamshell bonnet
-  [-2.14, 1.192],
-  [-1.82, 1.218],
-  [-1.36, 1.236],
-  [-0.94, 1.246], // Base of windshield cowl
-  [-0.78, 1.48],
-  [-0.58, 1.78],
-  [-0.44, 1.928], // Top of windshield header
-  [-0.22, 1.958],
+  [-2.365, 0.68],
+  [-2.345, 1.03],
+  [-2.28, 1.13], // Leading edge of L663 clamshell bonnet
+  [-2.06, 1.172],
+  [-1.62, 1.202],
+  [-1.02, 1.23], // Base of windshield cowl
+  [-0.80, 1.46],
+  [-0.58, 1.73],
+  [-0.38, 1.92], // Top of raked windshield header
+  [-0.16, 1.956],
   [0.45, 1.967], // Peak of Defender 110 roof crown
-  [1.35, 1.965],
-  [2.08, 1.954],
-  [2.26, 1.928], // Rear roof header above tailgate glass
+  [1.35, 1.964],
+  [2.08, 1.952],
+  [2.26, 1.925], // Rear roof header above tailgate glass
   [2.32, 1.56],
-  [2.35, 1.22], // Base of rear tailgate window / waist line
+  [2.35, 1.21], // Base of rear tailgate window / waist line
   [2.36, 0.72], // Vertical Kamm tailgate lower face
 ];
 
 /**
  * 2. Horizontal Defender Barrel Waist Shoulder Line `SHOULDER_Y_KNOTS`:
- *    Runs continuously at `y ≈ 1.24m` from the clamshell bonnet edge across the doors
+ *    Runs continuously at `y ≈ 1.21m` from the clamshell bonnet shutline across the doors
  *    to the vertical rear corner pillars (`x = +2.35m`).
  */
 export const SHOULDER_Y_KNOTS: readonly (readonly [number, number])[] = [
   [-2.38, 0.33],
-  [-2.35, 0.64],
-  [-2.31, 1.02],
-  [-2.24, 1.145],
-  [-1.95, 1.205],
-  [-1.51, 1.232], // Above front wheel arch
-  [-0.92, 1.242], // Front A-pillar waist
-  [0.0, 1.244], // Mid-door horizontal barrel waist
-  [0.95, 1.245],
-  [1.51, 1.245], // Above rear wheel arch
-  [2.15, 1.242],
-  [2.32, 1.232], // Rear corner pillar waist
+  [-2.365, 0.68],
+  [-2.345, 1.03],
+  [-2.28, 1.12],
+  [-2.02, 1.18],
+  [-1.51, 1.206], // Above front wheel arch
+  [-1.02, 1.212], // Front A-pillar waist (`yShoulder ≈ 1.21m`)
+  [0.0, 1.214], // Mid-door horizontal barrel waist shelf
+  [0.95, 1.215],
+  [1.51, 1.215], // Above rear wheel arch
+  [2.15, 1.212],
+  [2.32, 1.205], // Rear corner pillar waist
   [2.35, 0.88],
   [2.36, 0.62],
 ];
 
 /**
  * 3. Plan-View Outer Body Half-Width `BODY_WIDTH_Z_KNOTS`:
- *    Captures the muscular `2.008m` (`z = ±1.004m`) Defender wheel-arch fenders and taut barrel flanks.
+ *    Captures the muscular `2.008m` (`z = ±1.004m`) Defender wheel-arch fenders, full-width front bumper corners,
+ *    and taut barrel flanks (`z ≈ 0.96m`).
  */
 export const BODY_WIDTH_Z_KNOTS: readonly (readonly [number, number])[] = [
-  [-2.38, 0.78],
-  [-2.32, 0.88],
-  [-2.14, 0.945],
-  [-1.82, 0.988],
-  [-1.51, 1.002], // Muscular front wheel arch flare (`2.004m` width)
-  [-1.12, 0.972],
-  [-0.75, 0.956],
-  [0.0, 0.954], // Door flank width
-  [0.82, 0.962],
-  [1.18, 0.988],
-  [1.51, 1.004], // Muscular rear wheel arch flare (`2.008m` width)
-  [1.88, 0.985],
-  [2.20, 0.945],
-  [2.36, 0.885],
+  [-2.38, 0.86],
+  [-2.33, 0.915],
+  [-2.14, 0.956],
+  [-1.82, 0.992],
+  [-1.51, 1.004], // Muscular front wheel arch flare (`2.008m` width)
+  [-1.12, 0.976],
+  [-0.75, 0.964],
+  [0.0, 0.962], // Door flank width (`z ≈ 0.96m`)
+  [0.82, 0.968],
+  [1.18, 0.992],
+  [1.51, 1.006], // Muscular rear wheel arch flare (`2.012m` width)
+  [1.88, 0.988],
+  [2.20, 0.948],
+  [2.36, 0.89],
 ];
 
 /**
  * 4. Plan-View Roof Cantrail & Bonnet Crown Half-Width `CROWN_WIDTH_Z_KNOTS`:
+ *    Captures the L663 Defender's pronounced tumblehome greenhouse tapering to the chamfered floating roof crown (`zCrown ≈ 0.70m`).
  */
 export const CROWN_WIDTH_Z_KNOTS: readonly (readonly [number, number])[] = [
-  [-2.38, 0.56],
-  [-2.24, 0.68],
+  [-2.38, 0.58],
+  [-2.28, 0.68],
   [-1.85, 0.74],
-  [-1.35, 0.77],
-  [-0.92, 0.785], // Windshield base half-width
-  [-0.48, 0.735], // Windshield header half-width
-  [0.20, 0.732], // Flat floating roof cantrail half-width
-  [1.20, 0.728],
-  [2.05, 0.715],
-  [2.28, 0.695],
-  [2.36, 0.66],
+  [-1.35, 0.765],
+  [-1.02, 0.775], // Windshield base half-width
+  [-0.38, 0.704], // Windshield header half-width (`zCrown ≈ 0.70m`)
+  [0.20, 0.700], // Chamfered floating roof cantrail half-width
+  [1.20, 0.696],
+  [2.08, 0.688],
+  [2.28, 0.672],
+  [2.36, 0.64],
 ];
 
 /**
- * Evaluates the squared-off circular wheel-arch cutout height `yArch(x)` around the
+ * Evaluates the smooth rounded-chamfer circular wheel-arch cutout height `yArch(x)` around the
  * front (`x = -1.51m`) and rear (`x = +1.51m`) axles.
  */
 export function sampleWheelArchCutoutY(x: number, yBaseSill: number): number {
@@ -680,9 +682,9 @@ export function sampleWheelArchCutoutY(x: number, yBaseSill: number): number {
   for (const xAxle of [-1.51, 1.51] as const) {
     const dx = x - xAxle;
     if (Math.abs(dx) < rArch) {
-      // Slightly squared-off super-circular Defender arch profile (`exponent = 2.35`)
+      // Smooth rounded-chamfer L663 Defender arch profile (`exponent = 2.15`)
       const u = Math.min(1, Math.abs(dx) / rArch);
-      const archRise = rArch * Math.pow(Math.max(0, 1 - Math.pow(u, 2.35)), 1 / 2.2);
+      const archRise = rArch * Math.pow(Math.max(0, 1 - Math.pow(u, 2.15)), 1 / 2.05);
       return Math.max(yBaseSill, yCenterArch + archRise);
     }
   }
@@ -705,13 +707,13 @@ export function sampleDefenderHalfProfile(x: number, nv: number): [number, numbe
   const yArchCut = sampleWheelArchCutoutY(x, yBaseSill);
 
   const bonnetWeight =
-    smoothstep(-2.28, -2.08, x) * (1 - smoothstep(-1.02, -0.88, x));
+    smoothstep(-2.28, -2.06, x) * (1 - smoothstep(-1.08, -0.92, x));
   const cabinWeight =
-    smoothstep(-0.92, -0.52, x) * (1 - smoothstep(2.24, 2.35, x));
+    smoothstep(-1.02, -0.42, x) * (1 - smoothstep(2.24, 2.35, x));
 
-  // Muscular fender blister weight around front (`x = -1.51m`) and rear (`x = +1.51m`) wheel arches
-  const frontBlister = Math.exp(-Math.pow((x - -1.51) / 0.52, 2));
-  const rearBlister = Math.exp(-Math.pow((x - 1.51) / 0.54, 2));
+  // Smooth monolithic rounded-chamfer fender blister weight around front (`x = -1.51m`) and rear (`x = +1.51m`) wheel arches
+  const frontBlister = Math.exp(-Math.pow((x - -1.51) / 0.56, 2));
+  const rearBlister = Math.exp(-Math.pow((x - 1.51) / 0.58, 2));
   const archBlister = Math.max(frontBlister, rearBlister);
 
   const pts: [number, number][] = [];
@@ -721,44 +723,47 @@ export function sampleDefenderHalfProfile(x: number, nv: number): [number, numbe
     let z = 0;
 
     if (v <= 0.30) {
-      // Region 1: Roof crown / Windshield / Sculpted Clamshell Bonnet with V8 Power Dome
+      // Region 1: Floating Roof Crown with Chamfered Cantrail Bevel / Raked Windshield / Sculpted Clamshell Bonnet
       const u = v / 0.30;
       z = u * zCrown;
       const roofCamber = cabinWeight * 0.014 * (1 - u * u);
-      // Central raised V8 bonnet dome (`u < 0.58`) stepping down into the bonnet valley channel (`u ≈ 0.65..0.85`)
-      const domeStep = 1 - smoothstep(0.48, 0.68, u);
+      const cantrailBevel = cabinWeight * 0.024 * smoothstep(0.78, 1.0, u);
+      // Central raised V8 bonnet dome (`u < 0.56`) stepping down into the bonnet valley channel (`u ≈ 0.60..0.86`)
+      const domeStep = 1 - smoothstep(0.46, 0.66, u);
       const valleyDip =
-        smoothstep(0.56, 0.68, u) * (1 - smoothstep(0.74, 0.88, u));
+        smoothstep(0.54, 0.66, u) * (1 - smoothstep(0.74, 0.88, u));
       const bonnetSculpt = bonnetWeight * (domeStep * 0.026 - valleyDip * 0.012);
-      y = yCenter + roofCamber + bonnetSculpt;
+      y = yCenter + roofCamber - cantrailBevel + bonnetSculpt;
     } else if (v <= 0.56) {
-      // Region 2: Upright Tumblehome Greenhouse & Iconic Horizontal Defender Barrel Shoulder Shelf
+      // Region 2: Tumblehome Greenhouse (`v = 0.30..0.49`) & Crisp Horizontal L663 Barrel Shoulder Shelf (`v = 0.49..0.56`)
       const u = (v - 0.30) / 0.26;
-      // Near `u = 0.82..1.0`, flatten slightly into the horizontal Defender shoulder chamfer
-      const shoulderShelf = smoothstep(0.78, 0.98, u);
-      const glassSlopeU = Math.min(1, u * 1.15);
-      const yGreenhouse = lerp(
-        yCenter,
-        yShoulder + 0.015,
-        0.86 * glassSlopeU + 0.14 * shoulderShelf
-      );
+      const uGlass = Math.min(1, u / 0.73);
+      const uShelf = Math.max(0, (u - 0.73) / 0.27);
+      const yRoofEdge = yCenter - cabinWeight * 0.024;
+      const yGlassBase = yShoulder + 0.014;
+      const yGreenhouse = lerp(yRoofEdge, yGlassBase, uGlass) - uShelf * 0.014;
       const yBonnetFender = lerp(yCenter, yShoulder, smoothstep(0, 1, u));
       y = lerp(yBonnetFender, yGreenhouse, cabinWeight);
 
-      // Greenhouse tumblehome widens from `zCrown` (`~0.73m`) to the outer waist shoulder (`zMax * 0.955`)
-      const shelfFlare = smoothstep(0.74, 1.0, u) * 0.032;
-      z = lerp(zCrown, zMax * 0.925, Math.pow(u, 0.88)) + shelfFlare;
+      // Greenhouse tumblehome widens from `zCrown` (`~0.70m`) to `zGlassBase` (`~0.86m`), then steps sharply outward across the horizontal shoulder shelf to `zShoulderOuter` (`~0.96m`)
+      const zGlassBase = zMax * 0.888;
+      const zShoulderOuter = zMax * 0.985;
+      const zGreenhouse =
+        lerp(zCrown, zGlassBase, Math.pow(uGlass, 0.92)) +
+        smoothstep(0, 1, uShelf) * (zShoulderOuter - zGlassBase);
+      const zBonnetFender = lerp(zCrown, zShoulderOuter, Math.pow(u, 0.84));
+      z = lerp(zBonnetFender, zGreenhouse, cabinWeight);
     } else if (v <= 0.90) {
-      // Region 3: Muscular Lower Body Side Flank & Squared Fender Blister
+      // Region 3: Muscular Lower Body Side Flank & Smooth Monolithic Rounded-Chamfer Fender Blister
       const u = (v - 0.56) / 0.34;
       const yFlankNominal = lerp(yShoulder, yBaseSill + 0.04, u);
       const yClampedMin = yArchCut + 0.024 + (1 - u) * 0.045;
       y = Math.max(yFlankNominal, lerp(yShoulder, yClampedMin, u));
 
-      // Barrel side profile with prominent squared wheel-arch flare
-      const barrelCurve = Math.sin(u * Math.PI * 0.86) * 0.026;
-      const blisterOut = archBlister * smoothstep(0.08, 0.55, u) * 0.022;
-      z = lerp(zMax * 0.955, zMax * 0.975, u) + barrelCurve + blisterOut;
+      // Taut barrel side profile with smooth monolithic rounded-chamfer wheel-arch flare
+      const barrelCurve = Math.sin(u * Math.PI * 0.85) * 0.016;
+      const blisterOut = archBlister * Math.sin(u * Math.PI * 0.92) * 0.018;
+      z = lerp(zMax * 0.985, zMax * 0.975, u) + barrelCurve + blisterOut;
     } else {
       // Region 4: Lower Rocker Sill & Wheel-Arch Lip Return Flange
       const u = (v - 0.90) / 0.10;
@@ -782,7 +787,7 @@ export function sampleLateralSurfaceZAtXY(x: number, yTarget: number): number {
   const halfPts = sampleDefenderHalfProfile(x, 64);
   let bestZ = halfPts[22]![1];
   let bestDiff = 1e9;
-  for (let j = 16; j < 56; j++) {
+  for (let j = 14; j < 64; j++) {
     const [y0, z0] = halfPts[j]!;
     const [y1, z1] = halfPts[j + 1]!;
     const yMaxSeg = Math.max(y0, y1);
@@ -798,6 +803,34 @@ export function sampleLateralSurfaceZAtXY(x: number, yTarget: number): number {
     }
   }
   return bestZ;
+}
+
+/**
+ * Samples the exact 3D front fascia coordinate `vx = xStation + getPlanWrapShiftX(xStation, zTarget)`
+ * on the Defender monocoque nose at height `yTarget` (`0.33m .. 1.13m`) and lateral offset `zTarget`
+ * so all front grille, headlight, bumper, fog lamp, radar, tow eye, and number plate attachments
+ * sit 100% flush with zero floating gap.
+ */
+export function sampleFrontNoseSurfaceXAtYZ(yTarget: number, zTarget: number): number {
+  let lo = -2.38;
+  let hi = -2.28;
+  const zFrac = Math.min(1, Math.max(0, (Math.abs(zTarget) - 0.58) / 0.32));
+  const clampedY = Math.max(0.33, Math.min(1.13, yTarget));
+  for (let iter = 0; iter < 18; iter++) {
+    const mid = 0.5 * (lo + hi);
+    const yMid = lerp(
+      evalSpline(mid, CENTERLINE_Y_KNOTS),
+      evalSpline(mid, SHOULDER_Y_KNOTS),
+      zFrac
+    );
+    if (yMid < clampedY) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  const xSt = 0.5 * (lo + hi);
+  return xSt + getPlanWrapShiftX(xSt, zTarget);
 }
 
 /**
@@ -1029,15 +1062,15 @@ export function createConformalLateralWindowOrPanelGeometry(
 }
 
 /**
- * Builds the squared-off L663 Narvik Gloss Black wheel-arch cladding lip and deep inner wheelhouse liner
- * around the front (`x = -1.51m`) and rear (`x = +1.51m`) axles.
+ * Builds the smooth, flush, monolithic rounded-chamfer L663 Narvik Gloss Black wheel-arch cladding lip
+ * and deep inner wheelhouse liner around the front (`x = -1.51m`) and rear (`x = +1.51m`) axles.
  */
 export function buildDefenderWheelArchCladdingAndLiner(
   parent: THREE.Group,
   xAxle: number,
   yAxle: number,
   rArch: number,
-  zOuter: number,
+  zOuterFallback: number,
   claddingMat: THREE.Material,
   linerMat: THREE.Material
 ): void {
@@ -1047,7 +1080,7 @@ export function buildDefenderWheelArchCladdingAndLiner(
   const linerPositions: number[] = [];
   const linerIndices: number[] = [];
 
-  const lipWidth = 0.046; // Bold L663 Defender Black Pack squared arch eyebrow cladding
+  const lipWidth = 0.038; // Flush monolithic L663 Defender rounded-chamfer arch eyebrow moulding
   const linerDepthZ = 0.38;
 
   for (const sideZ of [-1, 1] as const) {
@@ -1055,29 +1088,36 @@ export function buildDefenderWheelArchCladdingAndLiner(
     const linerBase = linerPositions.length / 3;
 
     for (let s = 0; s <= segs; s++) {
-      const ang = -0.08 + (s / segs) * (Math.PI + 0.16);
+      const ang = -0.06 + (s / segs) * (Math.PI + 0.12);
       const c = Math.cos(ang);
       const sn = Math.sin(ang);
-      // Slight super-ellipse squaring at top of Defender wheel arch
-      const sqFactor = 1 + 0.06 * Math.sin(ang * 2) * Math.sin(ang);
+      // Smooth rounded-chamfer Defender wheel arch contour
+      const sqFactor = 1 + 0.026 * Math.sin(ang * 2) * Math.sin(ang);
       const rIn = rArch * sqFactor;
       const rOut = (rArch + lipWidth) * sqFactor;
 
       const px = xAxle - c * rIn;
-      const py = Math.max(0.25, yAxle + sn * rIn);
+      const py = Math.max(0.26, yAxle + sn * rIn);
       const pxOut = xAxle - c * rOut;
-      const pyOut = Math.max(0.25, yAxle + sn * rOut);
+      const pyOut = Math.max(0.26, yAxle + sn * rOut);
 
-      const zRim = sideZ * (zOuter + 0.012);
-      const zIn = sideZ * (zOuter - 0.024);
-      const zDeep = sideZ * (zOuter - linerDepthZ);
+      const zSurfOut = Math.max(zOuterFallback * 0.94, sampleLateralSurfaceZAtXY(pxOut, pyOut));
+      const zSurfIn = Math.max(zOuterFallback * 0.92, sampleLateralSurfaceZAtXY(px, py));
 
-      lipPositions.push(pxOut, pyOut, zRim, px, py, zIn);
+      const zRim = sideZ * (zSurfOut + 0.004);
+      const zIn = sideZ * (zSurfIn - 0.016);
+      const zDeep = sideZ * (zSurfIn - linerDepthZ);
+
+      const vxOut = pxOut + getPlanWrapShiftX(pxOut, zRim);
+      const vxIn = px + getPlanWrapShiftX(px, zIn);
+      const vxDeep = (px * 0.97 + xAxle * 0.03) + getPlanWrapShiftX(px, zDeep);
+
+      lipPositions.push(vxOut, pyOut, zRim, vxIn, py, zIn);
       linerPositions.push(
-        px,
+        vxIn,
         py,
         zIn,
-        px * 0.97 + xAxle * 0.03,
+        vxDeep,
         Math.max(0.24, py - 0.02),
         zDeep
       );
@@ -1166,12 +1206,12 @@ export function buildDefender110MonocoqueAndCladding(
   bodyShellMesh.receiveShadow = true;
   defenderGroup.add(bodyShellMesh);
 
-  // Contrast Narvik Gloss Black Floating Roof Cap (`x = -0.44m..+2.24m, y = 1.88m..1.968m`)
+  // Contrast Narvik Gloss Black Floating Roof Cap (`x = -0.38m..+2.24m, y = 1.90m..1.968m`)
   const floatingRoofCapGeo = createConformalDefenderPatchGeometry(
-    -0.44,
+    -0.38,
     2.24,
     () => 0.0,
-    () => 0.31,
+    () => 0.305,
     36,
     24,
     0.0025,
@@ -1184,14 +1224,14 @@ export function buildDefender110MonocoqueAndCladding(
   floatingRoofCapMesh.receiveShadow = true;
   defenderGroup.add(floatingRoofCapMesh);
 
-  // Prominent Horizontal Defender Barrel Waist Shoulder Trim Moulding (`y ≈ 1.24m, z = ±0.96m`)
+  // Prominent Horizontal Defender Barrel Waist Shoulder Shelf Moulding (`y ≈ 1.21m, z = ±0.86m..±0.96m`)
   const waistShoulderStripGeo = createConformalDefenderPatchGeometry(
     -2.20,
     2.30,
-    () => 0.525,
-    () => 0.565,
+    () => 0.495,
+    () => 0.558,
     48,
-    4,
+    6,
     0.0022,
     0.0025,
     true
@@ -1200,18 +1240,22 @@ export function buildDefender110MonocoqueAndCladding(
   waistShoulderStripMesh.name = 'courtyard.landRoverDefender.waistShoulderLine';
   defenderGroup.add(waistShoulderStripMesh);
 
-  // Lower Door & Quarter Protective Narvik Black Cladding Panels (`x = -1.04m..+1.04m, y = 0.28m..0.52m`)
-  for (const sideZ of [-1, 1] as const) {
-    const lowerDoorCladding = new THREE.Mesh(
-      new THREE.BoxGeometry(2.04, 0.21, 0.022),
-      mats.narvikGlossBlackMat
-    );
-    lowerDoorCladding.name = 'courtyard.landRoverDefender.lowerDoorCladding';
-    lowerDoorCladding.position.set(0.0, 0.39, sideZ * 0.958);
-    defenderGroup.add(lowerDoorCladding);
-  }
+  // Conformal Lower Door & Quarter Protective Narvik Black Cladding Panels (`x = -1.02m..+1.02m, y = 0.30m..0.50m`)
+  const lowerDoorCladdingGeo = createConformalLateralWindowOrPanelGeometry(
+    -1.02,
+    1.02,
+    () => 0.30,
+    () => 0.50,
+    24,
+    6,
+    0.004,
+    [-1, 1]
+  );
+  const lowerDoorCladdingMesh = new THREE.Mesh(lowerDoorCladdingGeo, mats.narvikGlossBlackMat);
+  lowerDoorCladdingMesh.name = 'courtyard.landRoverDefender.lowerDoorCladding';
+  defenderGroup.add(lowerDoorCladdingMesh);
 
-  // Squared-Off Muscular Wheel Arch Cladding Flanges & Dark Wheelhouse Liners (`x = -1.51m` front, `x = +1.51m` rear)
+  // Smooth Rounded-Chamfer Wheel Arch Cladding Flanges & Dark Wheelhouse Liners (`x = -1.51m` front, `x = +1.51m` rear)
   buildDefenderWheelArchCladdingAndLiner(
     defenderGroup,
     -1.51,
@@ -1237,13 +1281,13 @@ export function buildDefender110MonocoqueAndCladding(
   defenderGroup.add(bonnetChequerGroup);
 
   const bonnetChequerPatchGeo = createConformalDefenderPatchGeometry(
-    -2.16,
+    -2.18,
     -1.08,
-    () => 0.205,
-    () => 0.295,
+    () => 0.195,
+    () => 0.285,
     24,
     8,
-    0.0045,
+    0.0038,
     0.002,
     true
   );

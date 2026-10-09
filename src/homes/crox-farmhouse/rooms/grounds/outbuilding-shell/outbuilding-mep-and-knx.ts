@@ -602,11 +602,11 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
  * 3.907 m at v = 1.4 m — measured), emissive-only plus one shared fill PointLight.
  */
 function buildGuestSuiteVaultSpots(s: OutbuildingShellContext): void {
-  const { ctx, firstFloorGroup, spotlightHousingMat, spotlightBrassTrimMat } = s;
+  const { ctx, firstFloorGroup, roofGroup, spotlightHousingMat, spotlightBrassTrimMat } = s;
   const group = ctx.lightGroups.stableSuiteDownlights;
-  const RIDGE_V = 2.85;
-  const APEX_Y = 4.666;
-  const SLOPE = (APEX_Y - 3.907) / (RIDGE_V - 1.4);
+  const RIDGE_V = 2.855;
+  const APEX_Y = 4.669;
+  const SLOPE = (APEX_Y - 3.32) / 2.575;
   const tilt = Math.atan(SLOPE);
 
   const lensMat = new THREE.MeshStandardMaterial({
@@ -618,11 +618,13 @@ function buildGuestSuiteVaultSpots(s: OutbuildingShellContext): void {
   lensMat.userData = { ...lensMat.userData, baseEmissiveIntensity: 2.2 };
   group.emissives.push(lensMat);
 
-  const canGeo = new THREE.CylinderGeometry(0.042, 0.046, 0.11, 18);
+  // Flush recessed ceiling downlight cans so they sit tight against the sloping vaulted ceiling plaster
+  // without protruding into the room volume, and attach to `roofGroup` so they hide cleanly when `ceilingCutaway === true`.
+  const canGeo = new THREE.CylinderGeometry(0.038, 0.038, 0.012, 18);
   canGeo.computeBoundingSphere();
-  const roseGeo = new THREE.CylinderGeometry(0.055, 0.055, 0.012, 18);
+  const roseGeo = new THREE.CylinderGeometry(0.052, 0.052, 0.006, 18);
   roseGeo.computeBoundingSphere();
-  const lensGeo = new THREE.CylinderGeometry(0.034, 0.034, 0.004, 16);
+  const lensGeo = new THREE.CylinderGeometry(0.032, 0.032, 0.004, 16);
   lensGeo.computeBoundingSphere();
 
   const spots: ReadonlyArray<readonly [number, number]> = [
@@ -648,19 +650,19 @@ function buildGuestSuiteVaultSpots(s: OutbuildingShellContext): void {
 
     const rose = new THREE.Mesh(roseGeo, spotlightBrassTrimMat);
     rose.name = `${name}.rose`;
-    rose.position.y = -0.006;
+    rose.position.y = -0.003;
     fixture.add(rose);
     const can = new THREE.Mesh(canGeo, spotlightHousingMat);
     can.name = `${name}.can`;
-    can.position.y = -0.067;
+    can.position.y = -0.006;
     setInteractiveTreeUserData(can, data);
     ctx.interactiveMeshes.push(can);
     fixture.add(can);
     const lens = new THREE.Mesh(lensGeo, lensMat);
     lens.name = `${name}.emitter`;
-    lens.position.y = -0.124;
+    lens.position.y = -0.011;
     fixture.add(lens);
-    firstFloorGroup.add(fixture);
+    roofGroup.add(fixture);
   });
 
   const fill = new THREE.PointLight(0xffd6a0, 3.2, 6.5, 1.6);

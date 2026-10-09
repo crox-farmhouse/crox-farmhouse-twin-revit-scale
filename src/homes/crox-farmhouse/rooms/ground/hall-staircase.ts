@@ -3,7 +3,10 @@ import {
   buildSweptMouldingGeometry,
   createSkirtingCapProfile,
 } from '../../../../engine/geometry/swept-moulding.ts';
-import { createWovenWoolCarpetTextures } from '../../../../engine/textures/procedural-textures.ts';
+import {
+  createNaturalOakJoineryTextures,
+  createWovenWoolCarpetTextures,
+} from '../../../../engine/textures/procedural-textures.ts';
 import { buildUnderstairsHeatingManifold } from '../../../../objects/fixtures/hydronic-manifold.ts';
 import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
@@ -191,7 +194,25 @@ export function buildHallStaircase(
   const stairRodGeo = createSharedGeo(
     new THREE.CylinderGeometry(0.0055, 0.0055, runnerW + runnerBorderW * 2 + 0.05, 12)
   );
-  const spindleGeo = createSharedGeo(new THREE.BoxGeometry(0.03, 0.71, 0.03));
+  // Issue #13: Stripped natural European oak for bannister handrails, shoe rails & detailed newel posts,
+  // paired with slender 16mm square matt black wrought/cast iron spindles
+  const naturalOakJoineryTex = createNaturalOakJoineryTextures();
+  const strippedBannisterOakMat = new THREE.MeshStandardMaterial({
+    map: naturalOakJoineryTex.colorMap,
+    bumpMap: naturalOakJoineryTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xd8c3a5,
+    roughness: 0.56,
+    metalness: 0.02,
+  });
+  const blackIronSpindleMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1d20,
+    roughness: 0.42,
+    metalness: 0.72,
+  });
+  const spindleGeo = createSharedGeo(new THREE.BoxGeometry(0.016, 0.71, 0.016));
+  const spindleBaseShoeGeo = createSharedGeo(new THREE.BoxGeometry(0.026, 0.014, 0.026));
+  const spindleCollarGeo = createSharedGeo(new THREE.BoxGeometry(0.024, 0.024, 0.024));
 
   // 1A. Step 1: Wide Bullnose / Curtail Bottom Step in front of the Bottom Newel Post (Z = -0.36m..-0.58m, Y = -0.30m..-0.11m)
   const step1TopY = lowerFloorY + lowerRiserH; // -0.11m
@@ -632,15 +653,30 @@ export function buildHallStaircase(
     -0.54,
     -1.62,
     -0.05,
-    0.15,
+    0.145,
     0.79,
-    0.99,
+    0.985,
     0.058,
     -16.64,
     skirtingMat
   );
   lowerStringer.name = 'hall.stairs.lowerStringer';
   stairGroup.add(lowerStringer);
+
+  // Stripped-oak stringer shoe rail / capping along the top of the lower stringer (Issue #13)
+  const lowerStringerShoeRail = buildPlumbZBeam(
+    -0.54,
+    -1.62,
+    0.135,
+    0.162,
+    0.975,
+    1.002,
+    0.064,
+    -16.64,
+    strippedBannisterOakMat
+  );
+  lowerStringerShoeRail.name = 'hall.stairs.lowerStringer.shoeRail';
+  stairGroup.add(lowerStringerShoeRail);
 
   // Issue #5 & Issue #1: Seasoned Oak Wall Stringer (`antiqueOakSkirtingMat`) matching the exact 22mm + 17mm
   // stepped ogee/torus skirting profile, coming lower along the steps (95mm board / 125mm cap above nosings)
@@ -723,11 +759,101 @@ export function buildHallStaircase(
     stairGroup.add(westWallStringerGroup);
   }
 
-  // Square White Bottom Newel Post standing cleanly on Step 1 (X = -16.64m, Z = -0.54m, Y = -0.11m..+0.93m — Issue #3, PH-47 & PH-48)
+  // Helper to add tasteful stripped-oak English joinery details to a Hall Staircase newel post
+  const addStairNewelDetails = (
+    prefix: string,
+    cx: number,
+    cz: number,
+    plinthBaseY: number,
+    lowerCollarY: number,
+    upperCollarY: number,
+    capBaseY: number
+  ): void => {
+    const plinth = new THREE.Mesh(
+      createSharedGeo(new THREE.BoxGeometry(0.106, 0.068, 0.106)),
+      strippedBannisterOakMat
+    );
+    plinth.name = `${prefix}.basePlinth`;
+    plinth.position.set(cx, plinthBaseY + 0.034, cz);
+    plinth.castShadow = true;
+    stairGroup.add(plinth);
+
+    const plinthLedge = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.1, 0.014, 0.1)),
+        strippedBannisterOakMat
+      )
+    );
+    plinthLedge.name = `${prefix}.basePlinthLedge`;
+    plinthLedge.position.set(cx, plinthBaseY + 0.075, cz);
+    stairGroup.add(plinthLedge);
+
+    const collarGeo = createSharedGeo(new THREE.BoxGeometry(0.1, 0.022, 0.1));
+    const lowerCollar = tagHighLod(new THREE.Mesh(collarGeo, strippedBannisterOakMat));
+    lowerCollar.name = `${prefix}.lowerShaftCollar`;
+    lowerCollar.position.set(cx, lowerCollarY, cz);
+    stairGroup.add(lowerCollar);
+
+    const upperCollar = tagHighLod(new THREE.Mesh(collarGeo, strippedBannisterOakMat));
+    upperCollar.name = `${prefix}.upperShaftCollar`;
+    upperCollar.position.set(cx, upperCollarY, cz);
+    stairGroup.add(upperCollar);
+
+    const stileH = Math.max(0.12, upperCollarY - lowerCollarY - 0.022);
+    const stileGeo = createSharedGeo(new THREE.BoxGeometry(0.018, stileH, 0.018));
+    for (const [idx, [ox, oz]] of (
+      [
+        [-0.04, -0.04],
+        [0.04, -0.04],
+        [-0.04, 0.04],
+        [0.04, 0.04],
+      ] as const
+    ).entries()) {
+      const stile = tagHighLod(new THREE.Mesh(stileGeo, strippedBannisterOakMat));
+      stile.name = `${prefix}.shaftStile.${idx + 1}`;
+      stile.position.set(cx + ox, (lowerCollarY + upperCollarY) * 0.5, cz + oz);
+      stairGroup.add(stile);
+    }
+
+    // Moulded necking ring / shadow-gap collar just below the newel cap
+    const neckRing = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.108, 0.018, 0.108)),
+        strippedBannisterOakMat
+      )
+    );
+    neckRing.name = `${prefix}.neckRing`;
+    neckRing.position.set(cx, capBaseY - 0.024, cz);
+    neckRing.castShadow = true;
+    stairGroup.add(neckRing);
+
+    // Stepped low-profile bevelled pyramid cap crown
+    const capCrown = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.102, 0.012, 0.102)),
+        strippedBannisterOakMat
+      )
+    );
+    capCrown.name = `${prefix}.capCrown`;
+    capCrown.position.set(cx, capBaseY + 0.03, cz);
+    stairGroup.add(capCrown);
+
+    const capApex = tagHighLod(
+      new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(0.076, 0.01, 0.076)),
+        strippedBannisterOakMat
+      )
+    );
+    capApex.name = `${prefix}.capApex`;
+    capApex.position.set(cx, capBaseY + 0.041, cz);
+    stairGroup.add(capApex);
+  };
+
+  // Stripped-Oak Bottom Newel Post standing cleanly on Step 1 (X = -16.64m, Z = -0.54m, Y = -0.11m..+0.93m — Issue #13)
   const bottomNewelH = 1.04;
   const bottomNewel = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.104, bottomNewelH, 0.104)),
-    skirtingMat
+    createSharedGeo(new THREE.BoxGeometry(0.092, bottomNewelH, 0.092)),
+    strippedBannisterOakMat
   );
   bottomNewel.name = 'hall.stairs.bottomNewel';
   bottomNewel.position.set(-16.64, step1TopY + bottomNewelH * 0.5, -0.54);
@@ -735,52 +861,88 @@ export function buildHallStaircase(
   stairGroup.add(bottomNewel);
 
   const bottomNewelCap = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.128, 0.036, 0.128)),
-    skirtingMat
+    createSharedGeo(new THREE.BoxGeometry(0.122, 0.024, 0.122)),
+    strippedBannisterOakMat
   );
   bottomNewelCap.name = 'hall.stairs.bottomNewel.cap';
-  bottomNewelCap.position.set(-16.64, step1TopY + bottomNewelH + 0.018, -0.54);
+  bottomNewelCap.position.set(-16.64, step1TopY + bottomNewelH + 0.012, -0.54);
   stairGroup.add(bottomNewelCap);
 
-  // Sloped White Lower Handrail strictly parallel to the lower stringer (Y = +0.82m..+0.876m at Z = -0.54m -> Y = +1.66m..+1.716m at Z = -1.62m — Issue #3)
+  addStairNewelDetails(
+    'hall.stairs.bottomNewel',
+    -16.64,
+    -0.54,
+    step1TopY,
+    step1TopY + 0.24,
+    step1TopY + bottomNewelH - 0.12,
+    step1TopY + bottomNewelH
+  );
+
+  // Sloped Stripped-Oak Lower Handrail with contoured top rail + recessed moulded under-fillet (Issue #13)
   const lowerHandrail = buildPlumbZBeam(
     -0.54,
     -1.62,
-    0.82,
-    0.876,
-    1.66,
-    1.716,
+    0.834,
+    0.878,
+    1.674,
+    1.718,
     0.068,
     -16.64,
-    skirtingMat
+    strippedBannisterOakMat
   );
   lowerHandrail.name = 'hall.stairs.lowerHandrail';
   stairGroup.add(lowerHandrail);
 
-  // 7 Vertical White Square Balusters (Spindles) spanning strictly between the lower stringer and parallel lower handrail (Issue #3)
+  const lowerHandrailFillet = tagHighLod(
+    buildPlumbZBeam(
+      -0.54,
+      -1.62,
+      0.818,
+      0.834,
+      1.658,
+      1.674,
+      0.052,
+      -16.64,
+      strippedBannisterOakMat
+    )
+  );
+  lowerHandrailFillet.name = 'hall.stairs.lowerHandrail.underFillet';
+  stairGroup.add(lowerHandrailFillet);
+
+  // 7 Slender 16mm Matt Black Wrought/Cast Iron Balusters (Spindles) + base shoes & central forged collar knuckles (Issue #13)
+  const lowerPitchAngle = Math.atan2(lowerStringerDy, lowerStringerDz);
   for (let b = 0; b < 7; b++) {
     const bt = (b + 0.5) / 7;
     const bz = -0.62 - bt * 0.92;
     const tZ = (-0.54 - bz) / lowerStringerDz;
-    const strY = 0.13 + tZ * lowerStringerDy;
-    const railY = 0.84 + tZ * lowerStringerDy;
-    const baluster = new THREE.Mesh(spindleGeo, skirtingMat);
+    const strY = 0.145 + tZ * lowerStringerDy;
+    const railY = 0.83 + tZ * lowerStringerDy;
+    const midY = (strY + railY) * 0.5;
+    const baluster = new THREE.Mesh(spindleGeo, blackIronSpindleMat);
     baluster.name = `hall.stairs.lowerSpindle.${b + 1}`;
-    baluster.position.set(-16.64, (strY + railY) * 0.5, bz);
+    baluster.position.set(-16.64, midY, bz);
     baluster.castShadow = true;
     stairGroup.add(baluster);
+
+    const baseShoe = tagHighLod(new THREE.Mesh(spindleBaseShoeGeo, blackIronSpindleMat));
+    baseShoe.name = `hall.stairs.lowerSpindle.${b + 1}.baseShoe`;
+    baseShoe.position.set(-16.64, strY + 0.008, bz);
+    baseShoe.rotation.x = lowerPitchAngle;
+    stairGroup.add(baseShoe);
+
+    const collarKnuckle = tagHighLod(new THREE.Mesh(spindleCollarGeo, blackIronSpindleMat));
+    collarKnuckle.name = `hall.stairs.lowerSpindle.${b + 1}.collarKnuckle`;
+    collarKnuckle.position.set(-16.64, midY, bz);
+    stairGroup.add(collarKnuckle);
   }
 
-  // 2. Intermediate Corner White Newel Post at the Quarter-Landing Turn (X = -16.64m, Z = -1.63m)
-  //    Rises from a dropped bottom finial at Y = +0.58m (hanging in the open space above the left armchair!)
-  //    up to a flat square cap at Y = +1.76m so both the Lower Handrail (Y = 1.66m..1.716m) and the
-  //    Upper Handrail (starting at Y = 1.66m..1.716m) frame cleanly into the post at ~0.88m above the landing (Issue #3, PH-47 & PH-48!)
+  // 2. Intermediate Corner Stripped-Oak Newel Post at the Quarter-Landing Turn (X = -16.64m, Z = -1.63m — Issue #13)
   const cornerNewelBottomY = 0.58;
   const cornerNewelTopY = 1.76;
   const cornerNewelH = cornerNewelTopY - cornerNewelBottomY;
   const cornerNewel = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.106, cornerNewelH, 0.112)),
-    skirtingMat
+    createSharedGeo(new THREE.BoxGeometry(0.092, cornerNewelH, 0.096)),
+    strippedBannisterOakMat
   );
   cornerNewel.name = 'hall.stairs.cornerNewel';
   cornerNewel.position.set(-16.64, (cornerNewelBottomY + cornerNewelTopY) * 0.5, -1.63);
@@ -788,20 +950,50 @@ export function buildHallStaircase(
   stairGroup.add(cornerNewel);
 
   const cornerNewelCap = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.132, 0.036, 0.136)),
-    skirtingMat
+    createSharedGeo(new THREE.BoxGeometry(0.124, 0.024, 0.128)),
+    strippedBannisterOakMat
   );
   cornerNewelCap.name = 'hall.stairs.cornerNewel.cap';
-  cornerNewelCap.position.set(-16.64, cornerNewelTopY + 0.018, -1.63);
+  cornerNewelCap.position.set(-16.64, cornerNewelTopY + 0.012, -1.63);
   stairGroup.add(cornerNewelCap);
 
+  addStairNewelDetails(
+    'hall.stairs.cornerNewel',
+    -16.64,
+    -1.63,
+    quarterLandingY,
+    quarterLandingY + 0.18,
+    cornerNewelTopY - 0.12,
+    cornerNewelTopY
+  );
+
+  const cornerNewelDropNeck = tagHighLod(
+    new THREE.Mesh(
+      createSharedGeo(new THREE.BoxGeometry(0.106, 0.016, 0.11)),
+      strippedBannisterOakMat
+    )
+  );
+  cornerNewelDropNeck.name = 'hall.stairs.cornerNewel.dropNeckRing';
+  cornerNewelDropNeck.position.set(-16.64, cornerNewelBottomY + 0.018, -1.63);
+  stairGroup.add(cornerNewelDropNeck);
+
   const cornerNewelDropCap = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.124, 0.028, 0.128)),
-    skirtingMat
+    createSharedGeo(new THREE.BoxGeometry(0.12, 0.022, 0.124)),
+    strippedBannisterOakMat
   );
   cornerNewelDropCap.name = 'hall.stairs.cornerNewel.dropCap';
-  cornerNewelDropCap.position.set(-16.64, cornerNewelBottomY - 0.014, -1.63);
+  cornerNewelDropCap.position.set(-16.64, cornerNewelBottomY - 0.011, -1.63);
   stairGroup.add(cornerNewelDropCap);
+
+  const cornerNewelDropPendant = tagHighLod(
+    new THREE.Mesh(
+      createSharedGeo(new THREE.BoxGeometry(0.088, 0.016, 0.092)),
+      strippedBannisterOakMat
+    )
+  );
+  cornerNewelDropPendant.name = 'hall.stairs.cornerNewel.dropPendant';
+  cornerNewelDropPendant.position.set(-16.64, cornerNewelBottomY - 0.03, -1.63);
+  stairGroup.add(cornerNewelDropPendant);
 
   // 3. Upper Flight turning 90° East (+X) along the North wall (Z = -2.49m..-1.66m, X = -16.64m..-15.36m)
   //    Rises from quarterLandingY = +0.84m to First Floor Landing floorTopY = +2.16m (6 risers of 0.22m = 1.32m)
@@ -929,8 +1121,8 @@ export function buildHallStaircase(
   const upperSpanDeltaY = ((upperBalustradeJoinX - -16.59) * upperStepRise) / upperStepRun;
   const upperStrShape = new THREE.Shape();
   upperStrShape.moveTo(-16.59, 0.78);
-  upperStrShape.lineTo(-16.59, 0.98);
-  upperStrShape.lineTo(upperBalustradeJoinX, 0.98 + upperSpanDeltaY);
+  upperStrShape.lineTo(-16.59, 0.975);
+  upperStrShape.lineTo(upperBalustradeJoinX, 0.975 + upperSpanDeltaY);
   upperStrShape.lineTo(upperBalustradeJoinX, 0.78 + upperSpanDeltaY);
   upperStrShape.closePath();
   const upperStrGeo = new THREE.ExtrudeGeometry(upperStrShape, {
@@ -944,13 +1136,30 @@ export function buildHallStaircase(
   upperStringer.castShadow = true;
   stairGroup.add(upperStringer);
 
-  // Issue #3 & Issue #4: Parallel Mitered White Upper Handrail along Z = -1.64m (X = -16.59m..-15.41m)
-  // Starts at Y = 1.66m..1.716m on the East face of `cornerNewel` (~0.88m above landing) and climbs to the First Floor gallery newel post
+  // Stripped-oak shoe rail / capping along the top edge of the upper stringer (Issue #13)
+  const upperShoeShape = new THREE.Shape();
+  upperShoeShape.moveTo(-16.59, 0.966);
+  upperShoeShape.lineTo(-16.59, 0.992);
+  upperShoeShape.lineTo(upperBalustradeJoinX, 0.992 + upperSpanDeltaY);
+  upperShoeShape.lineTo(upperBalustradeJoinX, 0.966 + upperSpanDeltaY);
+  upperShoeShape.closePath();
+  const upperShoeGeo = new THREE.ExtrudeGeometry(upperShoeShape, {
+    depth: 0.062,
+    bevelEnabled: false,
+  });
+  upperShoeGeo.translate(0, 0, -1.671);
+  createSharedGeo(upperShoeGeo);
+  const upperStringerShoeRail = new THREE.Mesh(upperShoeGeo, strippedBannisterOakMat);
+  upperStringerShoeRail.name = 'hall.stairs.upperStringer.shoeRail';
+  upperStringerShoeRail.castShadow = true;
+  stairGroup.add(upperStringerShoeRail);
+
+  // Issue #13: Parallel Mitered Stripped-Oak Upper Handrail with contoured top rail + recessed under-fillet along Z = -1.64m
   const upperRailShape = new THREE.Shape();
-  upperRailShape.moveTo(-16.59, 1.66);
-  upperRailShape.lineTo(-16.59, 1.716);
-  upperRailShape.lineTo(upperBalustradeJoinX, 1.716 + upperSpanDeltaY);
-  upperRailShape.lineTo(upperBalustradeJoinX, 1.66 + upperSpanDeltaY);
+  upperRailShape.moveTo(-16.59, 1.674);
+  upperRailShape.lineTo(-16.59, 1.718);
+  upperRailShape.lineTo(upperBalustradeJoinX, 1.718 + upperSpanDeltaY);
+  upperRailShape.lineTo(upperBalustradeJoinX, 1.674 + upperSpanDeltaY);
   upperRailShape.closePath();
   const upperRailGeo = new THREE.ExtrudeGeometry(upperRailShape, {
     depth: 0.068,
@@ -958,32 +1167,63 @@ export function buildHallStaircase(
   });
   upperRailGeo.translate(0, 0, -1.674);
   createSharedGeo(upperRailGeo);
-  const upperHandrail = new THREE.Mesh(upperRailGeo, skirtingMat);
+  const upperHandrail = new THREE.Mesh(upperRailGeo, strippedBannisterOakMat);
   upperHandrail.name = 'hall.stairs.upperHandrail';
   upperHandrail.castShadow = true;
   stairGroup.add(upperHandrail);
 
-  // 7 Full-Height (0.71m) Vertical White Square Balusters (Spindles) between the parallel Upper Stringer & Upper Handrail (Issue #3)
+  const upperFilletShape = new THREE.Shape();
+  upperFilletShape.moveTo(-16.59, 1.658);
+  upperFilletShape.lineTo(-16.59, 1.674);
+  upperFilletShape.lineTo(upperBalustradeJoinX, 1.674 + upperSpanDeltaY);
+  upperFilletShape.lineTo(upperBalustradeJoinX, 1.658 + upperSpanDeltaY);
+  upperFilletShape.closePath();
+  const upperFilletGeo = new THREE.ExtrudeGeometry(upperFilletShape, {
+    depth: 0.052,
+    bevelEnabled: false,
+  });
+  upperFilletGeo.translate(0, 0, -1.666);
+  createSharedGeo(upperFilletGeo);
+  const upperHandrailFillet = tagHighLod(
+    new THREE.Mesh(upperFilletGeo, strippedBannisterOakMat)
+  );
+  upperHandrailFillet.name = 'hall.stairs.upperHandrail.underFillet';
+  stairGroup.add(upperHandrailFillet);
+
+  // 7 Slender 16mm Matt Black Wrought/Cast Iron Balusters (Spindles) + base shoes & central forged collar knuckles (Issue #13)
+  const upperPitchAngle = Math.atan2(upperStepRise, upperStepRun);
   for (let ub = 0; ub < 7; ub++) {
     const ut = (ub + 0.5) / 7;
     const bx = -16.59 + ut * (upperBalustradeJoinX - -16.59);
-    const bBottomY = 0.96 + ut * upperSpanDeltaY;
-    const bTopY = 1.67 + ut * upperSpanDeltaY;
-    const baluster = new THREE.Mesh(spindleGeo, skirtingMat);
+    const bBottomY = 0.975 + ut * upperSpanDeltaY;
+    const bTopY = 1.665 + ut * upperSpanDeltaY;
+    const midY = (bBottomY + bTopY) * 0.5;
+    const baluster = new THREE.Mesh(spindleGeo, blackIronSpindleMat);
     baluster.name = `hall.stairs.upperSpindle.${ub + 1}`;
-    baluster.position.set(bx, (bBottomY + bTopY) * 0.5, -1.64);
+    baluster.position.set(bx, midY, -1.64);
     baluster.castShadow = true;
     stairGroup.add(baluster);
+
+    const baseShoe = tagHighLod(new THREE.Mesh(spindleBaseShoeGeo, blackIronSpindleMat));
+    baseShoe.name = `hall.stairs.upperSpindle.${ub + 1}.baseShoe`;
+    baseShoe.position.set(bx, bBottomY + 0.008, -1.64);
+    baseShoe.rotation.z = upperPitchAngle;
+    stairGroup.add(baseShoe);
+
+    const collarKnuckle = tagHighLod(new THREE.Mesh(spindleCollarGeo, blackIronSpindleMat));
+    collarKnuckle.name = `hall.stairs.upperSpindle.${ub + 1}.collarKnuckle`;
+    collarKnuckle.position.set(bx, midY, -1.64);
+    stairGroup.add(collarKnuckle);
   }
 
-  // Signature Hanging Square White Newel Post with Drop-Pendant Finial at X = -15.38m, Z = -1.64m (PH-47 & PH-48!)
+  // Signature Hanging Stripped-Oak Newel Post with Detailed Drop-Pendant Finial at X = -15.38m, Z = -1.64m (Issue #13)
   // Anchors the top of the Upper Flight handrail & stringer directly into the First Floor Landing gallery rail (Y = 1.76m..3.12m)
   const hangingPostBottomY = 1.76;
   const hangingPostTopY = topStepY + 0.96;
   const hangingPostH = hangingPostTopY - hangingPostBottomY;
   const hangingPostPendant = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.1, hangingPostH, 0.1)),
-    skirtingMat
+    createSharedGeo(new THREE.BoxGeometry(0.088, hangingPostH, 0.088)),
+    strippedBannisterOakMat
   );
   hangingPostPendant.name = 'hall.stairs.hangingNewelPost';
   hangingPostPendant.position.set(
@@ -994,13 +1234,43 @@ export function buildHallStaircase(
   hangingPostPendant.castShadow = true;
   stairGroup.add(hangingPostPendant);
 
+  const hangingPostDropNeck = tagHighLod(
+    new THREE.Mesh(
+      createSharedGeo(new THREE.BoxGeometry(0.104, 0.016, 0.104)),
+      strippedBannisterOakMat
+    )
+  );
+  hangingPostDropNeck.name = 'hall.stairs.hangingNewelPost.dropNeckRing';
+  hangingPostDropNeck.position.set(-15.38, hangingPostBottomY + 0.018, -1.64);
+  stairGroup.add(hangingPostDropNeck);
+
   const hangingPostCap = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.122, 0.028, 0.122)),
-    skirtingMat
+    createSharedGeo(new THREE.BoxGeometry(0.118, 0.022, 0.118)),
+    strippedBannisterOakMat
   );
   hangingPostCap.name = 'hall.stairs.hangingNewelPost.cap';
-  hangingPostCap.position.set(-15.38, hangingPostBottomY - 0.014, -1.64);
+  hangingPostCap.position.set(-15.38, hangingPostBottomY - 0.011, -1.64);
   stairGroup.add(hangingPostCap);
+
+  const hangingPostPendantStep = tagHighLod(
+    new THREE.Mesh(
+      createSharedGeo(new THREE.BoxGeometry(0.092, 0.014, 0.092)),
+      strippedBannisterOakMat
+    )
+  );
+  hangingPostPendantStep.name = 'hall.stairs.hangingNewelPost.pendantStep';
+  hangingPostPendantStep.position.set(-15.38, hangingPostBottomY - 0.029, -1.64);
+  stairGroup.add(hangingPostPendantStep);
+
+  const hangingPostPendantTip = tagHighLod(
+    new THREE.Mesh(
+      createSharedGeo(new THREE.BoxGeometry(0.064, 0.014, 0.064)),
+      strippedBannisterOakMat
+    )
+  );
+  hangingPostPendantTip.name = 'hall.stairs.hangingNewelPost.pendantTip';
+  hangingPostPendantTip.position.set(-15.38, hangingPostBottomY - 0.043, -1.64);
+  stairGroup.add(hangingPostPendantTip);
 
   // White-Plastered Ceiling Stairwell Trimmer Fascia & Apron along the First Floor gallery edge (X = -15.36m, Z = -1.65m..-0.58m)
   // Leaves the Upper Flight arrival threshold (Z = -2.50m..-1.65m at X = -15.36m, Y = 2.16m) 100% open!

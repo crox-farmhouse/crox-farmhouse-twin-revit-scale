@@ -4,8 +4,8 @@ import {
   createConformalLateralWindowOrPanelGeometry,
   type Defender110Materials,
   lerp,
+  sampleLateralSurfaceZAtXY,
 } from './defender-materials-and-monocoque.ts';
-
 function tagHighLodDetail(obj: THREE.Object3D): void {
   obj.userData.lodTier = 'high';
   obj.userData.lodMaxDistance = 18;
@@ -388,13 +388,14 @@ export function buildDefender110GlazingTrimAndCabinInterior(
   glazingGroup.name = 'courtyard.landRoverDefender.glazing';
   defenderGroup.add(glazingGroup);
 
-  // A. Conformal Flush Front Windshield (`x = -0.92m..-0.44m`) with Narvik Black A-Pillar Surround
+
+  // A. Conformal Flush Raked L663 Front Windshield (`x = -1.02m..-0.38m`) with Narvik Black A-Pillar Surround
   const windshieldBorderGeo = createConformalDefenderPatchGeometry(
-    -0.93,
-    -0.43,
+    -1.03,
+    -0.37,
     () => 0.0,
     () => 0.305,
-    20,
+    22,
     24,
     0.0028,
     0.0028,
@@ -405,11 +406,11 @@ export function buildDefender110GlazingTrimAndCabinInterior(
   glazingGroup.add(windshieldBorderMesh);
 
   const windshieldGlassGeo = createConformalDefenderPatchGeometry(
-    -0.90,
-    -0.46,
+    -1.00,
+    -0.40,
     () => 0.0,
-    () => 0.286,
-    20,
+    () => 0.285,
+    22,
     24,
     0.0046,
     0.0046,
@@ -419,17 +420,17 @@ export function buildDefender110GlazingTrimAndCabinInterior(
   windshieldMesh.name = 'courtyard.landRoverDefender.glazing';
   glazingGroup.add(windshieldMesh);
 
-  // B. Conformal Flush Side Glazing (Front Door Window, Rear Door Window, and Rear Quarter Cargo Glass)
-  //    with Gloss Black B/C/D Pillar Surround from `x = -0.84m` to `x = +2.28m`, `y = 1.26m..1.85m`
+  // B. Conformal Flush Tumblehome Side Glazing (Front Door Window, Rear Door Window, and Rear Quarter Cargo Glass)
+  //    with Gloss Black B/C/D Pillar Surround from `x = -0.96m` to `x = +2.30m`, `y = 1.22m..1.865m`
   const sidePillarSurroundGeo = createConformalLateralWindowOrPanelGeometry(
-    -0.86,
+    -0.96,
     2.30,
-    (x) => (x < -0.52 ? lerp(1.26, 1.255, (x - -0.86) / 0.34) : 1.255),
+    (x) => (x < -0.52 ? lerp(1.225, 1.22, (x - -0.96) / 0.44) : 1.22),
     (x) =>
-      x < -0.45
-        ? lerp(1.32, 1.865, Math.max(0, (x - -0.86) / 0.41))
+      x < -0.38
+        ? lerp(1.28, 1.865, Math.max(0, (x - -0.96) / 0.58))
         : 1.865,
-    40,
+    42,
     14,
     0.0028,
     [-1, 1]
@@ -438,14 +439,14 @@ export function buildDefender110GlazingTrimAndCabinInterior(
   sidePillarSurroundMesh.name = 'courtyard.landRoverDefender.glazing.pillarSurround';
   glazingGroup.add(sidePillarSurroundMesh);
 
-  // Front Door Windows (`x = -0.82m..-0.02m`)
+  // Front Door Windows (`x = -0.90m..-0.04m`)
   const frontDoorGlassGeo = createConformalLateralWindowOrPanelGeometry(
-    -0.82,
-    -0.02,
-    () => 1.27,
+    -0.90,
+    -0.04,
+    () => 1.235,
     (x) =>
-      x < -0.45
-        ? lerp(1.33, 1.845, Math.max(0, (x - -0.82) / 0.37))
+      x < -0.38
+        ? lerp(1.30, 1.845, Math.max(0, (x - -0.90) / 0.52))
         : 1.845,
     18,
     12,
@@ -456,11 +457,11 @@ export function buildDefender110GlazingTrimAndCabinInterior(
   frontDoorGlassMesh.name = 'courtyard.landRoverDefender.glazing.frontDoorWindow';
   glazingGroup.add(frontDoorGlassMesh);
 
-  // Rear Passenger Door Windows (`x = +0.06m..+0.94m`)
+  // Rear Passenger Door Windows (`x = +0.04m..+0.80m`, forward of the C-pillar Signature Graphic)
   const rearDoorGlassGeo = createConformalLateralWindowOrPanelGeometry(
-    0.06,
-    0.94,
-    () => 1.27,
+    0.04,
+    0.80,
+    () => 1.235,
     () => 1.845,
     16,
     12,
@@ -471,13 +472,13 @@ export function buildDefender110GlazingTrimAndCabinInterior(
   rearDoorGlassMesh.name = 'courtyard.landRoverDefender.glazing.rearDoorWindow';
   glazingGroup.add(rearDoorGlassMesh);
 
-  // Rear Quarter Cargo Windows (`x = +1.54m..+2.26m`, behind the C-pillar Signature Graphic)
+  // Rear Quarter Cargo Windows (`x = +1.28m..+2.26m`, behind the C-pillar Signature Graphic `x = +0.82m..+1.26m`)
   const rearQuarterGlassGeo = createConformalLateralWindowOrPanelGeometry(
-    1.54,
+    1.28,
     2.26,
-    () => 1.27,
+    () => 1.235,
     () => 1.845,
-    14,
+    16,
     12,
     0.0048,
     [-1, 1]
@@ -486,42 +487,45 @@ export function buildDefender110GlazingTrimAndCabinInterior(
   rearQuarterGlassMesh.name = 'courtyard.landRoverDefender.glazing.rearQuarterWindow';
   glazingGroup.add(rearQuarterGlassMesh);
 
-  // Heated Rear Tailgate Window (`x = +2.28m..+2.35m, y = 1.27m..1.86m, z = -0.68m..+0.68m`)
+  // Heated Rear Tailgate Window (`x = +2.28m..+2.35m, y = 1.24m..1.86m, z = -0.66m..+0.66m`)
   const rearTailgateGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(0.018, 0.58, 1.34),
+    new THREE.BoxGeometry(0.018, 0.58, 1.32),
     mats.tintedPrivacyGlassMat
   );
   rearTailgateGlass.name = 'courtyard.landRoverDefender.glazing';
-  rearTailgateGlass.position.set(2.318, 1.56, 0);
+  rearTailgateGlass.position.set(2.318, 1.55, 0);
   rearTailgateGlass.rotation.z = 0.095;
   glazingGroup.add(rearTailgateGlass);
 
   // C. 4 Flush Body-Color Door Handles (`x = -0.18m` front doors, `x = +0.62m` rear doors) &
-  //    Sculpted Twin-Arm Defender Wing Mirrors (`x = -0.74m, y = 1.28m, z = ±0.98m`) with puddle-light housings
+  //    Sculpted Twin-Arm Defender Wing Mirrors (`x = -0.76m, y = 1.22m`) with puddle-light housings
   for (const sideZ of [-1, 1] as const) {
     for (const handleX of [-0.18, 0.62] as const) {
+      const handleY = 1.135;
+      const zSurf = sampleLateralSurfaceZAtXY(handleX, handleY);
       const handleRecess = new THREE.Mesh(
         new THREE.BoxGeometry(0.175, 0.042, 0.012),
         mats.narvikGlossBlackMat
       );
       handleRecess.name = 'courtyard.landRoverDefender.doorHandle.recess';
-      handleRecess.position.set(handleX, 1.155, sideZ * 0.952);
+      handleRecess.position.set(handleX, handleY, sideZ * (zSurf + 0.002));
       defenderGroup.add(handleRecess);
 
       const handleBar = new THREE.Mesh(
-        new THREE.BoxGeometry(0.165, 0.028, 0.026),
+        new THREE.BoxGeometry(0.165, 0.028, 0.024),
         mats.santoriniBlackBodyMat
       );
       handleBar.name = 'courtyard.landRoverDefender.doorHandle';
-      handleBar.position.set(handleX, 1.155, sideZ * 0.964);
+      handleBar.position.set(handleX, handleY, sideZ * (zSurf + 0.012));
       handleBar.castShadow = true;
       defenderGroup.add(handleBar);
     }
 
-    // Sculpted Twin-Arm L663 Wing Mirror (`x = -0.74m, y = 1.28m, z = ±0.98m`)
+    // Sculpted Twin-Arm L663 Wing Mirror (`x = -0.76m, y = 1.22m`) anchored flush into the door shoulder
     const mirrorGroup = new THREE.Group();
     mirrorGroup.name = 'courtyard.landRoverDefender.wingMirror';
-    mirrorGroup.position.set(-0.74, 1.28, sideZ * 0.94);
+    const mirrorBaseZ = sampleLateralSurfaceZAtXY(-0.76, 1.22);
+    mirrorGroup.position.set(-0.76, 1.22, sideZ * (mirrorBaseZ - 0.01));
     defenderGroup.add(mirrorGroup);
 
     for (const armY of [-0.018, 0.018] as const) {

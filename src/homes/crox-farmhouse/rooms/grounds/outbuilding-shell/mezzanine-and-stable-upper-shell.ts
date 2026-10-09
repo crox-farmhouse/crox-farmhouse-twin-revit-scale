@@ -583,16 +583,17 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     };
 
     // 1. Interior 15mm breathable lime plaster gable (`outbuildings.stable.eastGableInteriorPlaster`)
-    //    Spans `v = 0.26..5.45m` (`halfSpanG + 0.02m`) to overlap the North & South wall `.limePlaster` linings (`0.265..5.445m`) with zero corner brick gap!
+    //    Spans `v = 0.258..5.452m` (`halfSpanG + 0.022m`) and `stableCeilRidgeY + 0.004m` to overlap the North & South wall
+    //    `.limePlaster` linings (`0.265..5.445m`) and mask the entire gable interior in cutaway view with zero exposed brick!
     const intGableGeo = createExtrudedVYPolygon(
       [
-        [-halfSpanG - 0.02, stableUpperTopY],
+        [-halfSpanG - 0.022, stableUpperTopY],
         [dDoorV0, stableUpperTopY],
         [dDoorV0, balDoorTopY],
         [dDoorV1, balDoorTopY],
         [dDoorV1, stableUpperTopY],
-        [halfSpanG + 0.02, stableUpperTopY],
-        [0, stableCeilRidgeY],
+        [halfSpanG + 0.022, stableUpperTopY],
+        [0, stableCeilRidgeY + 0.004],
       ],
       0.015
     );
@@ -606,15 +607,19 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     firstFloorGroup.add(intGableMesh);
 
     // 1B. Middle 60mm Breathable Wood-Fibre Insulation Gable Core (`outbuildings.stable.eastGableWoodFibreCore`)
+    //     Steps from `±(halfSpanG + 0.075)` at `stableUpperTopY = 3.32m` to the interior ceiling slope so the top of the
+    //     North & South wall `.woodFibreInsulation` (`0.205..5.505m`) is cleanly capped without exposing exterior red brick!
     const iwiGableGeo = createExtrudedVYPolygon(
       [
-        [-halfSpanG - 0.02, stableUpperTopY],
+        [-halfSpanG - 0.075, stableUpperTopY],
         [dDoorV0, stableUpperTopY],
         [dDoorV0, balDoorTopY],
         [dDoorV1, balDoorTopY],
         [dDoorV1, stableUpperTopY],
-        [halfSpanG + 0.02, stableUpperTopY],
-        [0, stableCeilRidgeY],
+        [halfSpanG + 0.075, stableUpperTopY],
+        [halfSpanG + 0.02, stableUpperTopY + 0.028],
+        [0, stableCeilRidgeY + 0.002],
+        [-halfSpanG - 0.02, stableUpperTopY + 0.028],
       ],
       0.06
     );
@@ -628,6 +633,10 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     firstFloorGroup.add(iwiGableMesh);
 
     // 2. Exterior 205mm (9-inch) red-brick East Gable triangle (`outbuildings.stable.eastGableExteriorBrick`)
+    //    Issue #9 ("in cutaway view I can see bricks on the inside" at `[6.585, 4.247, 17.206]`):
+    //    In `firstFloorGroup`, cap `eastGableExteriorBrick` strictly at the interior vaulted ceiling line
+    //    (`[-halfSpanG - 0.02, stableUpperTopY + 0.026] -> [0, stableCeilRidgeY] -> [halfSpanG + 0.02, stableUpperTopY + 0.026]`)
+    //    so its West (`-x`) face is 100% masked behind `eastGableWoodFibreCore` and `eastGableInteriorPlaster` when `ceilingCutaway === true`!
     const halfOuterV = (vEastRangeSouth - vEastRangeNorth) * 0.5 - 0.01;
     const peakWorldY = stableDatumY + stableRidgeH - 0.02;
     const extGableGeo = createExtrudedVYPolygon(
@@ -638,7 +647,9 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
         [dDoorV1, balDoorTopY],
         [dDoorV1, stableUpperTopY],
         [halfOuterV, stableUpperTopY],
-        [0, peakWorldY],
+        [halfSpanG + 0.02, stableUpperTopY + 0.026],
+        [0, stableCeilRidgeY],
+        [-halfSpanG - 0.02, stableUpperTopY + 0.026],
       ],
       wallT - 0.075
     );
@@ -656,6 +667,35 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     extGableMesh.castShadow = true;
     extGableMesh.receiveShadow = true;
     firstFloorGroup.add(extGableMesh);
+
+    // 2B. Outer roof-rafter verge brick band (`outbuildings.roof.eastGableVergeBrick`, between the interior ceiling line
+    //     `stableCeilRidgeY = 4.669m` and the outer roof ridge `peakWorldY = 4.90m`) attached to `roofGroup` so the exterior
+    //     gable is completely closed when roofs are visible (`ceilingCutaway === false`), and hides with the roof in cutaway view!
+    const vergeBrickGeo = createExtrudedVYPolygon(
+      [
+        [-halfOuterV, stableUpperTopY],
+        [-halfSpanG - 0.02, stableUpperTopY + 0.026],
+        [0, stableCeilRidgeY],
+        [halfSpanG + 0.02, stableUpperTopY + 0.026],
+        [halfOuterV, stableUpperTopY],
+        [0, peakWorldY],
+      ],
+      wallT - 0.075
+    );
+    applyWorldSpaceBrickUVs(
+      vergeBrickGeo,
+      OUTBUILDING_ORIGIN_X + (uStableEnd - wallT + 0.075),
+      0,
+      OUTBUILDING_ORIGIN_Z + vMidG
+    );
+    const vergeBrickMesh = new THREE.Mesh(vergeBrickGeo, exteriorBrickMat);
+    vergeBrickMesh.name = 'outbuildings.roof.eastGableVergeBrick';
+    vergeBrickMesh.userData.isArchitecturalShell = true;
+    vergeBrickMesh.userData.cutawayWall = gableCutawaySpec;
+    vergeBrickMesh.position.set(uStableEnd - wallT + 0.075, 0, vMidG);
+    vergeBrickMesh.castShadow = true;
+    vergeBrickMesh.receiveShadow = true;
+    roofGroup.add(vergeBrickMesh);
   }
 
   // 2. Central Full-Height Glazed French Double Balcony Door (`outbuildings.firstFloor.stableBalconySlidingDoor`,

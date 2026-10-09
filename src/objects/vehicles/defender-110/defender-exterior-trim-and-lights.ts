@@ -6,7 +6,11 @@ import {
   createUkNumberPlateTexture,
   type Defender110Materials,
   getPlanWrapShiftX,
+  lerp,
+  sampleDefenderHalfProfile,
+  sampleFrontNoseSurfaceXAtYZ,
   sampleLateralSurfaceZAtXY,
+  smoothstep,
 } from './defender-materials-and-monocoque.ts';
 
 function tagHighLodDetail(obj: THREE.Object3D): void {
@@ -15,103 +19,284 @@ function tagHighLodDetail(obj: THREE.Object3D): void {
 }
 
 /**
+ * Builds a single-side conformal patch over the parametric Defender monocoque `(x, v)` domain
+ * on either the left (`sideZ = -1`) or right (`sideZ = +1`) side.
+ */
+function createSingleSideConformalDefenderPatchGeometry(
+  xStart: number,
+  xEnd: number,
+  vStartFunc: (x: number) => number,
+  vEndFunc: (x: number) => number,
+  segX: number,
+  segV: number,
+  outwardOffsetY: number,
+  outwardOffsetZ: number,
+  sideZ: -1 | 1
+): THREE.BufferGeometry {
+  const nv = 64;
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+
+  for (let ix = 0; ix <= segX; ix++) {
+    const tx = ix / segX;
+    const x = lerp(xStart, xEnd, tx);
+    const halfPts = sampleDefenderHalfProfile(x, nv);
+    const v0 = vStartFunc(x);
+    const v1 = vEndFunc(x);
+
+    for (let iv = 0; iv <= segV; iv++) {
+      const tv = iv / segV;
+      const absV = Math.abs(lerp(v0, v1, tv));
+      const fIdx = Math.min(nv - 1e-4, Math.max(0, absV * nv));
+      const j0 = Math.floor(fIdx);
+      const j1 = Math.min(nv, j0 + 1);
+      const frac = fIdx - j0;
+
+      const p0 = halfPts[j0]!;
+      const p1 = halfPts[j1]!;
+      const py = lerp(p0[0], p1[0], frac) + outwardOffsetY;
+      const pz = sideZ * (lerp(p0[1], p1[1], frac) + outwardOffsetZ);
+      const vx = x + getPlanWrapShiftX(x, pz);
+
+      positions.push(vx, py, pz);
+      uvs.push(tx, tv);
+    }
+  }
+
+  const stride = segV + 1;
+  for (let ix = 0; ix < segX; ix++) {
+    for (let iv = 0; iv < segV; iv++) {
+      const a = ix * stride + iv;
+      const b = (ix + 1) * stride + iv;
+      const c = (ix + 1) * stride + iv + 1;
+      const d = ix * stride + iv + 1;
+      if (sideZ > 0) {
+        indices.push(a, b, c, a, c, d);
+      } else {
+        indices.push(a, c, b, a, d, c);
+      }
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+/**
+ * Builds the conformal L663 Shadow Atlas lower A-frame front skid pan curving smoothly
+ * from the lower H-frame bumper (`y = 0.49m` at `x ≈ -2.37m`) around the front chin
+ * (`x = -2.38m + getPlanWrapShiftX(-2.38, z), y = 0.325m`) and back underneath the monocoque
+ * to `x = -2.02m, y = 0.265m` so it is 100% attached to the chin and chassis undertray.
+ */
+function createConformalFrontSkidPanGeometry(): THREE.BufferGeometry {
+  const stations: readonly (readonly [number, number, number, number])[] = [
+    // [tStation, y, halfWidthZ, forwardOutsetX]
+    [0.0, 0.49, 0.50, -0.008],
+    [0.25, 0.41, 0.54, -0.009],
+    [0.50, 0.33, 0.57, -0.008],
+    [0.75, 0.29, 0.56, 0.0],
+    [1.0, 0.265, 0.52, 0.0],
+  ];
+  const segZ = 24;
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+
+  for (let is = 0; is < stations.length; is++) {
+    const [ts, py, halfW, xOut] = stations[is]!;
+    for (let iz = 0; iz <= segZ; iz++) {
+      const tz = iz / segZ;
+      const u = tz * 2 - 1;
+      const pz = u * halfW;
+      let vx: number;
+      if (ts <= 0.5) {
+        vx = sampleFrontNoseSurfaceXAtYZ(py, pz) + xOut;
+      } else {
+        const subU = (ts - 0.5) / 0.5;
+        const baseChinX = -2.38 + getPlanWrapShiftX(-2.38, pz) + xOut;
+        const underRearX = -2.02 + getPlanWrapShiftX(-2.02, pz) * 0.25;
+        vx = lerp(baseChinX, underRearX, subU);
+      }
+      positions.push(vx, py, pz);
+      uvs.push(tz, ts);
+    }
+  }
+
+  const stride = segZ + 1;
+  for (let is = 0; is < stations.length - 1; is++) {
+    for (let iz = 0; iz < segZ; iz++) {
+      const a = is * stride + iz;
+      const b = (is + 1) * stride + iz;
+      const c = (is + 1) * stride + iz + 1;
+      const d = is * stride + iz + 1;
+      indices.push(a, b, c, a, c, d);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+/**
  * Builds the iconic L663 Defender signature exterior accessories:
- * - Floating C-Pillar "Signature Graphic" panel & square mount boss
- * - Alpine roof light windows, panoramic sliding glass sunroof, longitudinal roof rails & ClearSight fin
- * - Exterior side-mounted gear carrier box on the right rear quarter
- * - Raised roof-height safari snorkel / raised air intake on the left A-pillar
- * - Louvred front fender side vents
+ * - Floating C-Pillar "Signature Graphic" square panel (`x = +0.82m..+1.26m, y = 1.24m..1.85m`) & recessed square accessory port
+ * - Alpine Light roof-edge windows (`courtyard.landRoverDefender.alpineLight.left` / `.right`) along `x = +0.95m..+2.08m`,
+ *   panoramic sliding glass sunroof, longitudinal roof rails & ClearSight fin
+ * - Exterior side-mounted gear carrier box on the right rear quarter (`x = +1.36m..+1.92m`)
+ * - Sleek, flush L663 gloss-black hood/fender intake trim (replacing any bulky A-pillar snorkel)
+ * - Conformal louvred front fender side vents
  */
 export function buildDefender110SignatureExteriorAccessories(
   defenderGroup: THREE.Group,
   mats: Defender110Materials
 ): void {
-  // A. Floating C-Pillar "Signature Graphic" Panel (`courtyard.landRoverDefender.signatureGraphic`)
-  //    on both sides (`x = +0.98m..+1.52m, y = 1.26m..1.86m, z = ±0.88m`) in satin anthracite/black
-  //    with the recessed square accessory mount boss.
+  // A. Iconic L663 C-Pillar "Signature Graphic" Floating Square Panel (`courtyard.landRoverDefender.signatureGraphicPanel`)
+  //    on both left and right sides (`x = +0.82m..+1.26m, y = 1.24m..1.85m`) floating across the privacy glass
+  //    over the rear wheel arch, with the recessed black square accessory port in its center.
   const signatureGraphicGroup = new THREE.Group();
   signatureGraphicGroup.name = 'courtyard.landRoverDefender.signatureGraphic';
   defenderGroup.add(signatureGraphicGroup);
 
-  const sigPanelGeo = createConformalLateralWindowOrPanelGeometry(
-    0.98,
-    1.52,
-    () => 1.265,
+  // Chamfered metallic contrast perimeter reveal so the floating square graphic stands out crisply against the privacy glass
+  const sigBezelGeo = createConformalLateralWindowOrPanelGeometry(
+    0.805,
+    1.275,
+    () => 1.235,
     () => 1.855,
     14,
     12,
-    0.0065,
+    0.0062,
     [-1, 1]
   );
-  const sigPanelMesh = new THREE.Mesh(sigPanelGeo, mats.satinAnthraciteMat);
-  sigPanelMesh.name = 'courtyard.landRoverDefender.signatureGraphic';
+  const sigBezelMesh = new THREE.Mesh(sigBezelGeo, mats.magnesiumCrossBeamMat);
+  sigBezelMesh.name = 'courtyard.landRoverDefender.signatureGraphic.bezelFrame';
+  signatureGraphicGroup.add(sigBezelMesh);
+
+  // Body-coloured floating square Signature Graphic pillar panel (`x = +0.82m..+1.26m, y = 1.24m..1.85m`)
+  const sigPanelGeo = createConformalLateralWindowOrPanelGeometry(
+    0.82,
+    1.26,
+    () => 1.24,
+    () => 1.85,
+    14,
+    12,
+    0.0076,
+    [-1, 1]
+  );
+  const sigPanelMesh = new THREE.Mesh(sigPanelGeo, mats.santoriniBlackBodyMat);
+  sigPanelMesh.name = 'courtyard.landRoverDefender.signatureGraphicPanel';
   sigPanelMesh.castShadow = true;
+  sigPanelMesh.receiveShadow = true;
   signatureGraphicGroup.add(sigPanelMesh);
 
+  // Inner satin anthracite sculpted graphical square inlay
+  const sigInlayGeo = createConformalLateralWindowOrPanelGeometry(
+    0.848,
+    1.232,
+    () => 1.268,
+    () => 1.822,
+    12,
+    10,
+    0.0086,
+    [-1, 1]
+  );
+  const sigInlayMesh = new THREE.Mesh(sigInlayGeo, mats.satinAnthraciteMat);
+  sigInlayMesh.name = 'courtyard.landRoverDefender.signatureGraphic';
+  signatureGraphicGroup.add(sigInlayMesh);
+
+  // Recessed black square accessory port in the center of the Signature Graphic panel (`x = +1.04m, y = 1.545m`)
   for (const sideZ of [-1, 1] as const) {
-    const zBoss = sideZ * (sampleLateralSurfaceZAtXY(1.25, 1.56) + 0.01);
+    const zSurf = sampleLateralSurfaceZAtXY(1.04, 1.545);
+    const zBoss = sideZ * (zSurf + 0.010);
+    const xBoss = 1.04 + getPlanWrapShiftX(1.04, zBoss);
     const bossFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(0.145, 0.145, 0.012),
+      new THREE.BoxGeometry(0.135, 0.135, 0.010),
       mats.narvikGlossBlackMat
     );
     bossFrame.name = 'courtyard.landRoverDefender.signatureGraphic.mountBossFrame';
-    bossFrame.position.set(1.25, 1.56, zBoss);
-    bossFrame.rotation.x = -sideZ * 0.16;
+    bossFrame.position.set(xBoss, 1.545, zBoss);
+    bossFrame.rotation.x = -sideZ * 0.22;
     signatureGraphicGroup.add(bossFrame);
 
     const bossCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.095, 0.095, 0.016),
+      new THREE.BoxGeometry(0.088, 0.088, 0.014),
       mats.satinAnthraciteMat
     );
     bossCap.name = 'courtyard.landRoverDefender.signatureGraphic.mountBossCap';
-    bossCap.position.set(1.25, 1.56, zBoss + sideZ * 0.003);
-    bossCap.rotation.x = -sideZ * 0.16;
+    bossCap.position.set(xBoss, 1.545, zBoss + sideZ * 0.002);
+    bossCap.rotation.x = -sideZ * 0.22;
     signatureGraphicGroup.add(bossCap);
   }
 
-  // B. Iconic Defender Alpine Roof Light Windows (`courtyard.landRoverDefender.alpineLight`)
-  //    curved into the left and right upper roof cantrails (`x = +0.65m..+2.10m, y = 1.88m..1.95m, z = ±0.76m`),
-  //    plus longitudinal black roof rails and panoramic sliding glass sunroof (`x = -0.35m..+1.35m, y = 1.965m`).
+  // B. Iconic L663 Defender Alpine Light Roof-Edge Windows (`courtyard.landRoverDefender.alpineLight.left` / `.right`)
+  //    curved into the chamfered left and right upper roof cantrails (`x = +0.95m..+2.08m`),
+  //    plus longitudinal black roof rails and panoramic sliding glass sunroof (`x = -0.32m..+1.35m, y = 1.965m`).
   const alpineLightGroup = new THREE.Group();
   alpineLightGroup.name = 'courtyard.landRoverDefender.alpineLight';
   defenderGroup.add(alpineLightGroup);
 
   const alpineBezelGeo = createConformalDefenderPatchGeometry(
-    0.63,
-    2.12,
-    () => 0.285,
-    () => 0.348,
+    0.93,
+    2.10,
+    () => 0.245,
+    () => 0.335,
     24,
     8,
-    0.0038,
-    0.0038,
+    0.0035,
+    0.0035,
     true
   );
   const alpineBezelMesh = new THREE.Mesh(alpineBezelGeo, mats.narvikGlossBlackMat);
   alpineBezelMesh.name = 'courtyard.landRoverDefender.alpineLight.bezel';
   alpineLightGroup.add(alpineBezelMesh);
 
-  const alpineGlassGeo = createConformalDefenderPatchGeometry(
-    0.65,
-    2.10,
-    () => 0.292,
-    () => 0.340,
-    24,
+  const alpineLeftGeo = createSingleSideConformalDefenderPatchGeometry(
+    0.95,
+    2.08,
+    () => 0.252,
+    () => 0.328,
+    22,
     8,
-    0.0052,
-    0.0052,
-    true
+    0.005,
+    0.005,
+    -1
   );
-  const alpineGlassMesh = new THREE.Mesh(alpineGlassGeo, mats.tintedPrivacyGlassMat);
-  alpineGlassMesh.name = 'courtyard.landRoverDefender.alpineLight';
-  alpineLightGroup.add(alpineGlassMesh);
+  const alpineLeftMesh = new THREE.Mesh(alpineLeftGeo, mats.tintedPrivacyGlassMat);
+  alpineLeftMesh.name = 'courtyard.landRoverDefender.alpineLight.left';
+  alpineLightGroup.add(alpineLeftMesh);
 
-  // Panoramic Sliding Glass Sunroof (`x = -0.35m..+1.35m, y = 1.965m`)
+  const alpineRightGeo = createSingleSideConformalDefenderPatchGeometry(
+    0.95,
+    2.08,
+    () => 0.252,
+    () => 0.328,
+    22,
+    8,
+    0.005,
+    0.005,
+    1
+  );
+  const alpineRightMesh = new THREE.Mesh(alpineRightGeo, mats.tintedPrivacyGlassMat);
+  alpineRightMesh.name = 'courtyard.landRoverDefender.alpineLight.right';
+  alpineLightGroup.add(alpineRightMesh);
+
+  // Panoramic Sliding Glass Sunroof (`x = -0.32m..+1.35m, y = 1.965m`)
   const sunroofFrameGeo = createConformalDefenderPatchGeometry(
-    -0.37,
+    -0.34,
     1.37,
     () => 0.0,
-    () => 0.225,
+    () => 0.215,
     24,
     16,
     0.004,
@@ -123,10 +308,10 @@ export function buildDefender110SignatureExteriorAccessories(
   alpineLightGroup.add(sunroofFrameMesh);
 
   const sunroofGlassGeo = createConformalDefenderPatchGeometry(
-    -0.35,
+    -0.32,
     1.35,
     () => 0.0,
-    () => 0.212,
+    () => 0.202,
     24,
     16,
     0.0058,
@@ -137,57 +322,57 @@ export function buildDefender110SignatureExteriorAccessories(
   sunroofGlassMesh.name = 'courtyard.landRoverDefender.sunroof';
   alpineLightGroup.add(sunroofGlassMesh);
 
-  // Longitudinal Expedition Narvik Black Roof Rails (`x = -0.32m..+2.14m, y = 1.985m, z = ±0.64m`)
+  // Longitudinal Expedition Narvik Black Roof Rails (`x = -0.28m..+2.12m, y = 1.978m, z = ±0.56m`)
   for (const sideZ of [-1, 1] as const) {
     const railBar = new THREE.Mesh(
-      new THREE.BoxGeometry(2.44, 0.026, 0.036),
+      new THREE.BoxGeometry(2.40, 0.024, 0.034),
       mats.narvikGlossBlackMat
     );
     railBar.name = 'courtyard.landRoverDefender.roofRail';
-    railBar.position.set(0.91, 1.984, sideZ * 0.635);
+    railBar.position.set(0.92, 1.978, sideZ * 0.56);
     railBar.castShadow = true;
     alpineLightGroup.add(railBar);
 
-    for (const stanchionX of [-0.26, 0.88, 2.06] as const) {
+    for (const stanchionX of [-0.22, 0.90, 2.04] as const) {
       const stanchion = new THREE.Mesh(
-        new THREE.BoxGeometry(0.11, 0.032, 0.042),
+        new THREE.BoxGeometry(0.10, 0.028, 0.040),
         mats.satinAnthraciteMat
       );
       stanchion.name = 'courtyard.landRoverDefender.roofRail.stanchion';
-      stanchion.position.set(stanchionX, 1.964, sideZ * 0.635);
+      stanchion.position.set(stanchionX, 1.960, sideZ * 0.56);
       alpineLightGroup.add(stanchion);
     }
   }
 
-  // Roof-Mounted Shark-Fin / ClearSight Rear-View Camera Antenna Pod (`x = +1.96m, y = 1.995m, z = 0`)
+  // Roof-Mounted Shark-Fin / ClearSight Rear-View Camera Antenna Pod (`x = +1.96m, y = 1.98m, z = 0`)
   const clearSightFin = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16, 0.058, 0.044),
+    new THREE.BoxGeometry(0.16, 0.056, 0.044),
     mats.narvikGlossBlackMat
   );
   clearSightFin.name = 'courtyard.landRoverDefender.clearSightAntennaPod';
-  clearSightFin.position.set(1.96, 1.982, 0);
+  clearSightFin.position.set(1.96, 1.978, 0);
   alpineLightGroup.add(clearSightFin);
 
   // C. Exterior Side-Mounted Gear Carrier Box (`courtyard.landRoverDefender.sideGearCarrier`)
-  //    on the right/rear quarter (`x = +1.15m..+1.78m, y = 1.32m..1.76m, z = +0.93m`) in aerodynamic
-  //    gloss Santorini Black with Land Rover oval badge & latch.
+  //    on the right rear quarter glass behind the C-pillar Signature Graphic (`x = +1.36m..+1.92m, y = 1.34m..1.74m`)
+  //    in aerodynamic gloss Santorini Black with Land Rover oval badge & latch.
   const gearCarrierGroup = new THREE.Group();
   gearCarrierGroup.name = 'courtyard.landRoverDefender.sideGearCarrier';
-  gearCarrierGroup.position.set(1.465, 1.54, 0.93);
+  const carrierCenterZ = sampleLateralSurfaceZAtXY(1.64, 1.54) + 0.068;
+  gearCarrierGroup.position.set(1.64 + getPlanWrapShiftX(1.64, carrierCenterZ), 1.54, carrierCenterZ);
+  gearCarrierGroup.rotation.x = -0.18; // Follow tumblehome angle of rear quarter glazing
   defenderGroup.add(gearCarrierGroup);
 
-  // Mounting bracket rails connecting the carrier box to the right C-pillar / rear quarter glass
   const carrierBracket = new THREE.Mesh(
-    new THREE.BoxGeometry(0.54, 0.36, 0.065),
+    new THREE.BoxGeometry(0.48, 0.32, 0.064),
     mats.satinAnthraciteMat
   );
   carrierBracket.name = 'courtyard.landRoverDefender.sideGearCarrier.mountingBracket';
-  carrierBracket.position.set(0, 0, -0.055);
+  carrierBracket.position.set(0, 0, -0.048);
   gearCarrierGroup.add(carrierBracket);
 
-  // Sculpted aerodynamic Santorini Black outer shell (`0.63m x 0.44m x 0.14m`) with bevelled outer lid
   const carrierMainBox = new THREE.Mesh(
-    new THREE.BoxGeometry(0.63, 0.44, 0.115),
+    new THREE.BoxGeometry(0.56, 0.40, 0.105),
     mats.santoriniBlackBodyMat
   );
   carrierMainBox.name = 'courtyard.landRoverDefender.sideGearCarrier';
@@ -196,112 +381,106 @@ export function buildDefender110SignatureExteriorAccessories(
   gearCarrierGroup.add(carrierMainBox);
 
   const carrierOuterLid = new THREE.Mesh(
-    new THREE.BoxGeometry(0.58, 0.39, 0.042),
+    new THREE.BoxGeometry(0.52, 0.36, 0.036),
     mats.narvikGlossBlackMat
   );
   carrierOuterLid.name = 'courtyard.landRoverDefender.sideGearCarrier.outerLid';
-  carrierOuterLid.position.set(0, 0, 0.058);
+  carrierOuterLid.position.set(0, 0, 0.052);
   carrierOuterLid.castShadow = true;
   gearCarrierGroup.add(carrierOuterLid);
 
-  // Horizontal aerodynamic speed-rib & Shadow Atlas latch + Land Rover oval badge on carrier lid
   const carrierSpeedRib = new THREE.Mesh(
-    new THREE.BoxGeometry(0.54, 0.032, 0.014),
+    new THREE.BoxGeometry(0.48, 0.028, 0.012),
     mats.satinAnthraciteMat
   );
   carrierSpeedRib.name = 'courtyard.landRoverDefender.sideGearCarrier.speedRib';
-  carrierSpeedRib.position.set(0, -0.04, 0.082);
+  carrierSpeedRib.position.set(0, -0.035, 0.072);
   gearCarrierGroup.add(carrierSpeedRib);
 
   const carrierLatch = new THREE.Mesh(
-    new THREE.BoxGeometry(0.065, 0.095, 0.016),
+    new THREE.BoxGeometry(0.058, 0.088, 0.014),
     mats.satinAnthraciteMat
   );
   carrierLatch.name = 'courtyard.landRoverDefender.sideGearCarrier.latch';
-  carrierLatch.position.set(-0.21, 0.02, 0.081);
+  carrierLatch.position.set(-0.18, 0.018, 0.071);
   gearCarrierGroup.add(carrierLatch);
 
   const carrierBadge = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.068, 0.034),
+    new THREE.PlaneGeometry(0.064, 0.032),
     mats.landRoverBadgeMat
   );
   carrierBadge.name = 'courtyard.landRoverDefender.sideGearCarrier.badge';
-  carrierBadge.position.set(0.16, -0.10, 0.082);
+  carrierBadge.position.set(0.14, -0.09, 0.072);
   tagHighLodDetail(carrierBadge);
   gearCarrierGroup.add(carrierBadge);
 
-  // D. Raised Roof-Height Safari Snorkel / Raised Air Intake (`courtyard.landRoverDefender.raisedAirIntake`)
-  //    on the left A-pillar (`x = -0.92m, y = 1.26m..1.94m, z = -0.92m`).
-  const snorkelGroup = new THREE.Group();
-  snorkelGroup.name = 'courtyard.landRoverDefender.raisedAirIntake';
-  defenderGroup.add(snorkelGroup);
+  // D. Sleek, Flush L663 Defender Gloss-Black Hood/Fender Intake Trim (`courtyard.landRoverDefender.raisedAirIntake`)
+  //    mounted flush on the upper fender/bonnet shoulder (`x = -1.24m..-0.96m`) so the A-pillar is clean and modern.
+  const hoodIntakeGroup = new THREE.Group();
+  hoodIntakeGroup.name = 'courtyard.landRoverDefender.raisedAirIntake';
+  defenderGroup.add(hoodIntakeGroup);
 
-  // Lower fender intake plenum box mounted cleanly to left fender vent (`x = -0.98m, y = 1.18m, z = -0.965m`)
-  const snorkelBasePlenum = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, 0.11, 0.056),
-    mats.satinAnthraciteMat
+  const hoodIntakeBezelGeo = createConformalDefenderPatchGeometry(
+    -1.24,
+    -0.96,
+    () => 0.44,
+    () => 0.545,
+    12,
+    6,
+    0.0032,
+    0.0032,
+    true
   );
-  snorkelBasePlenum.name = 'courtyard.landRoverDefender.raisedAirIntake';
-  snorkelBasePlenum.position.set(-0.98, 1.19, -0.965);
-  snorkelBasePlenum.castShadow = true;
-  snorkelGroup.add(snorkelBasePlenum);
+  const hoodIntakeBezelMesh = new THREE.Mesh(hoodIntakeBezelGeo, mats.narvikGlossBlackMat);
+  hoodIntakeBezelMesh.name = 'courtyard.landRoverDefender.raisedAirIntake';
+  hoodIntakeGroup.add(hoodIntakeBezelMesh);
 
-  // Swept 3D tubular riser hugging the left A-pillar (`x = -0.92m..-0.48m, y = 1.24m..1.94m, z = -0.94m..-0.79m`)
-  const snorkelCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.96, 1.22, -0.965),
-    new THREE.Vector3(-0.91, 1.32, -0.945),
-    new THREE.Vector3(-0.76, 1.58, -0.885),
-    new THREE.Vector3(-0.56, 1.86, -0.815),
-    new THREE.Vector3(-0.48, 1.94, -0.795),
-  ]);
-  const snorkelRiserGeo = new THREE.TubeGeometry(snorkelCurve, 24, 0.034, 12, false);
-  snorkelRiserGeo.computeBoundingSphere();
-  const snorkelRiser = new THREE.Mesh(snorkelRiserGeo, mats.narvikGlossBlackMat);
-  snorkelRiser.name = 'courtyard.landRoverDefender.raisedAirIntake';
-  snorkelRiser.scale.set(1.15, 1.0, 0.78);
-  snorkelRiser.castShadow = true;
-  snorkelGroup.add(snorkelRiser);
-
-  // Forward-facing roof-level ram-air intake head with slatted grille at `(-0.48m, 1.955m, -0.795m)`
-  const snorkelHead = new THREE.Mesh(
-    new THREE.BoxGeometry(0.145, 0.072, 0.068),
-    mats.narvikGlossBlackMat
+  const hoodIntakeGrilleGeo = createConformalDefenderPatchGeometry(
+    -1.21,
+    -0.99,
+    () => 0.46,
+    () => 0.53,
+    10,
+    4,
+    0.0045,
+    0.0045,
+    true
   );
-  snorkelHead.name = 'courtyard.landRoverDefender.raisedAirIntake.intakeHead';
-  snorkelHead.position.set(-0.50, 1.955, -0.795);
-  snorkelHead.castShadow = true;
-  snorkelGroup.add(snorkelHead);
+  const hoodIntakeGrilleMesh = new THREE.Mesh(hoodIntakeGrilleGeo, mats.satinAnthraciteMat);
+  hoodIntakeGrilleMesh.name = 'courtyard.landRoverDefender.raisedAirIntake.intakeGrille';
+  hoodIntakeGroup.add(hoodIntakeGrilleMesh);
 
-  const snorkelGrilleFace = new THREE.Mesh(
-    new THREE.BoxGeometry(0.012, 0.056, 0.054),
-    mats.satinAnthraciteMat
+  // E. Conformal Fender Side Vents behind the front wheel arches (`x = -1.04m..-0.88m, y = 0.96m..1.14m`)
+  //    with flush vertical Narvik Black louvres
+  const fenderVentFrameGeo = createConformalLateralWindowOrPanelGeometry(
+    -1.04,
+    -0.88,
+    () => 0.96,
+    () => 1.14,
+    8,
+    6,
+    0.004,
+    [-1, 1]
   );
-  snorkelGrilleFace.name = 'courtyard.landRoverDefender.raisedAirIntake.intakeGrille';
-  snorkelGrilleFace.position.set(-0.574, 1.955, -0.795);
-  snorkelGroup.add(snorkelGrilleFace);
+  const fenderVentFrameMesh = new THREE.Mesh(fenderVentFrameGeo, mats.satinAnthraciteMat);
+  fenderVentFrameMesh.name = 'courtyard.landRoverDefender.fenderSideVent.frame';
+  defenderGroup.add(fenderVentFrameMesh);
 
-  // E. Fender Side Vents behind the front wheel arches (`x = -0.98m, y = 0.96m..1.14m, z = ±0.97m`) with vertical black louvres
   for (const sideZ of [-1, 1] as const) {
     const fenderVentGroup = new THREE.Group();
     fenderVentGroup.name = 'courtyard.landRoverDefender.fenderSideVent';
-    fenderVentGroup.position.set(-0.98, 1.05, sideZ * 0.965);
+    const zVentSurf = sampleLateralSurfaceZAtXY(-0.96, 1.05);
+    const pzVent = sideZ * (zVentSurf + 0.006);
+    fenderVentGroup.position.set(-0.96 + getPlanWrapShiftX(-0.96, pzVent), 1.05, pzVent);
     defenderGroup.add(fenderVentGroup);
 
-    const ventFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(0.165, 0.185, 0.018),
-      mats.satinAnthraciteMat
-    );
-    ventFrame.name = 'courtyard.landRoverDefender.fenderSideVent.frame';
-    fenderVentGroup.add(ventFrame);
-
-    for (const lx of [-0.045, 0.0, 0.045] as const) {
+    for (const lx of [-0.042, 0.0, 0.042] as const) {
       const louvre = new THREE.Mesh(
-        new THREE.BoxGeometry(0.018, 0.15, 0.024),
+        new THREE.BoxGeometry(0.016, 0.145, 0.008),
         mats.narvikGlossBlackMat
       );
       louvre.name = 'courtyard.landRoverDefender.fenderSideVent.louvre';
-      louvre.position.set(lx, 0, sideZ * 0.003);
-      louvre.rotation.y = sideZ * 0.25;
+      louvre.position.set(lx, 0, 0);
       fenderVentGroup.add(louvre);
     }
   }
@@ -309,7 +488,7 @@ export function buildDefender110SignatureExteriorAccessories(
 
 /**
  * Builds the L663 front fascia, multi-slot Narvik Black front grille, DEFENDER bonnet lettering,
- * Matrix LED semicircular "Halo" headlights, and lower front bumper with Shadow Atlas skid pan.
+ * recessed Matrix LED semicircular "Halo" headlights, and conformal H-frame front bumper with Shadow Atlas A-frame skid pan.
  */
 export function buildDefender110FrontFasciaAndHeadlights(
   defenderGroup: THREE.Group,
@@ -320,62 +499,72 @@ export function buildDefender110FrontFasciaAndHeadlights(
   frontGrilleGroup.name = 'courtyard.landRoverDefender.frontGrille';
   defenderGroup.add(frontGrilleGroup);
 
-  // Recessed dark radiator cavity behind grille (`x = -2.355m, y = 0.98m, z = -0.48m..+0.48m`)
-  const grilleCavity = new THREE.Mesh(
-    new THREE.BoxGeometry(0.045, 0.23, 0.96),
-    mats.narvikGlossBlackMat
+  // Conformal recessed dark radiator grille surround on the nose (`x = -2.362m..-2.340m, v = -0.28..+0.28`)
+  const grilleCavityGeo = createConformalDefenderPatchGeometry(
+    -2.362,
+    -2.340,
+    () => 0.0,
+    () => 0.28,
+    12,
+    20,
+    0.0025,
+    0.0025,
+    false
   );
+  const grilleCavity = new THREE.Mesh(grilleCavityGeo, mats.narvikGlossBlackMat);
   grilleCavity.name = 'courtyard.landRoverDefender.frontGrille';
-  grilleCavity.position.set(-2.355, 0.985, 0);
   frontGrilleGroup.add(grilleCavity);
 
-  // Plan-curved horizontal intake bars & oval slot apertures across the L663 grille
-  for (const barY of [1.085, 1.02, 0.955, 0.89] as const) {
+  // Unscaled plan-curved horizontal intake bars flush with the nose surface (`y = 0.865m..1.03m`)
+  for (const barY of [1.03, 0.975, 0.92, 0.865] as const) {
     const barPts: THREE.Vector3[] = [];
     for (let i = 0; i <= 20; i++) {
       const u = (i / 20) * 2 - 1;
-      const z = u * 0.48;
-      const x = -2.372 + getPlanWrapShiftX(-2.36, z);
+      const z = u * 0.47;
+      const x = sampleFrontNoseSurfaceXAtYZ(barY, z) - 0.005;
       barPts.push(new THREE.Vector3(x, barY, z));
     }
     const barCurve = new THREE.CatmullRomCurve3(barPts);
-    const barGeo = new THREE.TubeGeometry(barCurve, 24, 0.014, 8, false);
+    const barGeo = new THREE.TubeGeometry(barCurve, 24, 0.011, 8, false);
     barGeo.computeBoundingSphere();
     const barMesh = new THREE.Mesh(
       barGeo,
-      barY === 1.02 ? mats.satinAnthraciteMat : mats.narvikGlossBlackMat
+      barY === 0.975 ? mats.satinAnthraciteMat : mats.narvikGlossBlackMat
     );
     barMesh.name = 'courtyard.landRoverDefender.frontGrille.crossBar';
-    barMesh.scale.set(1.2, 0.75, 1.0);
     frontGrilleGroup.add(barMesh);
   }
 
   // Vertical grille dividers creating the signature Defender rectangular intake slots
-  for (const divZ of [-0.47, -0.24, 0.0, 0.24, 0.47] as const) {
-    const dx = -2.368 + getPlanWrapShiftX(-2.36, divZ);
+  for (const divZ of [-0.46, -0.23, 0.0, 0.23, 0.46] as const) {
+    const dx = sampleFrontNoseSurfaceXAtYZ(0.948, divZ) - 0.004;
     const divider = new THREE.Mesh(
-      new THREE.BoxGeometry(0.024, 0.21, 0.018),
+      new THREE.BoxGeometry(0.016, 0.185, 0.016),
       mats.narvikGlossBlackMat
     );
     divider.name = 'courtyard.landRoverDefender.frontGrille.slotDivider';
-    divider.position.set(dx, 0.985, divZ);
+    divider.position.set(dx, 0.948, divZ);
     frontGrilleGroup.add(divider);
   }
 
-  // Green/Black Land Rover Oval Badge on right side of front grille (`x = -2.378m, y = 1.015m, z = -0.34m`)
+  // Green/Black Land Rover Oval Badge on right side of front grille (`y = 0.975m, z = -0.34m`)
   const frontOvalBadge = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.088, 0.044),
+    new THREE.PlaneGeometry(0.084, 0.042),
     mats.landRoverBadgeMat
   );
   frontOvalBadge.name = 'courtyard.landRoverDefender.frontGrille.ovalBadge';
-  frontOvalBadge.position.set(-2.378 + getPlanWrapShiftX(-2.36, -0.34), 1.015, -0.34);
+  frontOvalBadge.position.set(
+    sampleFrontNoseSurfaceXAtYZ(0.975, -0.34) - 0.012,
+    0.975,
+    -0.34
+  );
   frontOvalBadge.rotation.y = -Math.PI / 2 - 0.08;
   tagHighLodDetail(frontOvalBadge);
   frontGrilleGroup.add(frontOvalBadge);
 
-  // Bold Satin Black `D E F E N D E R` Bonnet Edge Lettering (`CanvasTexture` at `x = -2.32m, y = 1.15m`)
+  // Bold Satin Black `D E F E N D E R` Bonnet Edge Lettering (`CanvasTexture` flush on clamshell bonnet leading edge)
   const bonnetLetteringPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.68, 0.078),
+    new THREE.PlaneGeometry(0.66, 0.072),
     new THREE.MeshStandardMaterial({
       map: createDefenderBonnetLetteringTexture(),
       transparent: true,
@@ -384,190 +573,331 @@ export function buildDefender110FrontFasciaAndHeadlights(
     })
   );
   bonnetLetteringPlane.name = 'courtyard.landRoverDefender.bonnetLettering';
-  bonnetLetteringPlane.position.set(-2.318, 1.148, 0);
+  bonnetLetteringPlane.position.set(
+    sampleFrontNoseSurfaceXAtYZ(1.095, 0) - 0.005,
+    1.095,
+    0
+  );
   bonnetLetteringPlane.rotation.y = -Math.PI / 2;
-  bonnetLetteringPlane.rotation.z = -0.38;
+  bonnetLetteringPlane.rotation.z = -0.36;
   tagHighLodDetail(bonnetLetteringPlane);
   frontGrilleGroup.add(bonnetLetteringPlane);
 
-  // B. L663 Matrix LED Headlights (`courtyard.landRoverDefender.headlight`)
-  //    at `(x = -2.33m, y = 0.98m, z = ±0.72m)`: recessed rectangular bevelled smoked housing
-  //    containing the unmistakable glowing warm-white semicircular lower LED Halo ring +
-  //    twin horizontal outer LED signature pips (`emissive: 0xf2f8ff, emissiveIntensity: 2.5`)
-  //    and clear polycarbonate outer lens.
+  // B. Recessed L663 Matrix LED Headlight Pockets (`courtyard.landRoverDefender.headlight`)
+  //    Sitting flush inside recessed Narvik Black rectangular fascia pockets (`y ≈ 0.85m..1.04m, z = ±0.50m..±0.84m`)
+  //    with glowing warm-white semicircular lower LED Halo ring + twin horizontal outer LED signature pips
+  //    and conformal flush polycarbonate outer lens.
   for (const sideZ of [-1, 1] as const) {
     const hlGroup = new THREE.Group();
     hlGroup.name = 'courtyard.landRoverDefender.headlight';
-    const hz = sideZ * 0.72;
-    const hx = -2.335 + getPlanWrapShiftX(-2.35, hz);
-    hlGroup.position.set(hx, 0.985, hz);
-    hlGroup.rotation.y = sideZ * 0.22; // Follow plan-view bevel of front fascia corner
     defenderGroup.add(hlGroup);
 
-    // Bevelled rectangular smoked housing box (`0.08m deep x 0.22m high x 0.34m wide`)
-    const housingBox = new THREE.Mesh(
-      new THREE.BoxGeometry(0.075, 0.215, 0.34),
-      mats.narvikGlossBlackMat
+    // Conformal recessed Narvik Black rectangular pocket surround flush with the monocoque fascia
+    const pocketGeo = createSingleSideConformalDefenderPatchGeometry(
+      -2.362,
+      -2.340,
+      () => 0.285,
+      () => 0.535,
+      10,
+      12,
+      0.0022,
+      0.0022,
+      sideZ
     );
-    housingBox.name = 'courtyard.landRoverDefender.headlight';
-    hlGroup.add(housingBox);
+    const pocketMesh = new THREE.Mesh(pocketGeo, mats.narvikGlossBlackMat);
+    pocketMesh.name = 'courtyard.landRoverDefender.headlight.recessPocket';
+    hlGroup.add(pocketMesh);
 
-    // Satin Anthracite inner projector bezel surround
+    // Internal projector & LED Halo assembly recessed slightly inside the fascia pocket
+    const internalPod = new THREE.Group();
+    internalPod.name = 'courtyard.landRoverDefender.headlight.internalAssembly';
+    const hy = 0.948;
+    const hz = sideZ * 0.67;
+    const hx = sampleFrontNoseSurfaceXAtYZ(hy, hz) + 0.006;
+    internalPod.position.set(hx, hy, hz);
+    internalPod.rotation.y = sideZ * 0.25;
+    internalPod.rotation.z = -0.05;
+    hlGroup.add(internalPod);
+
     const innerBezel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.055, 0.185, 0.31),
+      new THREE.BoxGeometry(0.036, 0.165, 0.28),
       mats.satinAnthraciteMat
     );
     innerBezel.name = 'courtyard.landRoverDefender.headlight.innerBezel';
-    innerBezel.position.set(-0.008, 0, 0);
-    hlGroup.add(innerBezel);
+    innerBezel.position.set(0.014, 0, 0);
+    internalPod.add(innerBezel);
 
     // Central bi-LED projector lens sphere inside the halo ring
     const projectorDome = new THREE.Mesh(
-      new THREE.SphereGeometry(0.052, 20, 16),
+      new THREE.SphereGeometry(0.046, 18, 14),
       mats.clearPolycarbonateLensMat
     );
     projectorDome.name = 'courtyard.landRoverDefender.headlight.projectorLens';
-    projectorDome.scale.set(0.55, 1.0, 1.0);
-    projectorDome.position.set(-0.028, 0.008, -sideZ * 0.025);
-    hlGroup.add(projectorDome);
+    projectorDome.scale.set(0.45, 1.0, 1.0);
+    projectorDome.position.set(-0.002, 0.006, -sideZ * 0.022);
+    internalPod.add(projectorDome);
 
     // Unmistakable L663 Glowing Warm-White Semicircular Lower LED Halo Ring + Upper Cropped Brow Bar
     const haloSemiRing = new THREE.Mesh(
-      new THREE.TorusGeometry(0.072, 0.0095, 14, 32, Math.PI * 1.18),
+      new THREE.TorusGeometry(0.064, 0.0085, 14, 32, Math.PI * 1.18),
       mats.ledHaloWhiteMat
     );
     haloSemiRing.name = 'courtyard.landRoverDefender.headlight';
     haloSemiRing.rotation.y = -Math.PI / 2;
-    haloSemiRing.rotation.x = Math.PI + 0.28; // Lower semicircle cradle (`U` shape)
-    haloSemiRing.position.set(-0.038, 0.012, -sideZ * 0.025);
-    hlGroup.add(haloSemiRing);
+    haloSemiRing.rotation.x = Math.PI + 0.28;
+    haloSemiRing.position.set(-0.006, 0.010, -sideZ * 0.022);
+    internalPod.add(haloSemiRing);
 
     const haloUpperChordBar = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, 0.012, 0.135),
+      new THREE.BoxGeometry(0.010, 0.010, 0.122),
       mats.ledHaloWhiteMat
     );
     haloUpperChordBar.name = 'courtyard.landRoverDefender.headlight.haloBrowBar';
-    haloUpperChordBar.position.set(-0.038, 0.042, -sideZ * 0.025);
-    hlGroup.add(haloUpperChordBar);
+    haloUpperChordBar.position.set(-0.006, 0.038, -sideZ * 0.022);
+    internalPod.add(haloUpperChordBar);
 
     // Twin Horizontal Outer LED Signature Pips flanking the halo ring
-    for (const pipZOff of [0.078, 0.125] as const) {
+    for (const pipZOff of [0.068, 0.112] as const) {
       const ledPip = new THREE.Mesh(
-        new THREE.BoxGeometry(0.014, 0.018, 0.034),
+        new THREE.BoxGeometry(0.010, 0.016, 0.030),
         mats.ledHaloWhiteMat
       );
       ledPip.name = 'courtyard.landRoverDefender.headlight.signaturePip';
-      ledPip.position.set(-0.038, 0.005, sideZ * pipZOff);
-      hlGroup.add(ledPip);
+      ledPip.position.set(-0.006, 0.004, sideZ * pipZOff);
+      internalPod.add(ledPip);
     }
 
-    // Clear polycarbonate outer headlight lens cover
-    const outerClearLens = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, 0.205, 0.332),
-      mats.clearPolycarbonateLensMat
+    // Conformal clear polycarbonate outer headlight lens flush with the front fascia pocket
+    const outerLensGeo = createSingleSideConformalDefenderPatchGeometry(
+      -2.360,
+      -2.342,
+      () => 0.295,
+      () => 0.525,
+      10,
+      12,
+      0.0052,
+      0.0052,
+      sideZ
     );
+    const outerClearLens = new THREE.Mesh(outerLensGeo, mats.clearPolycarbonateLensMat);
     outerClearLens.name = 'courtyard.landRoverDefender.headlight.outerLens';
-    outerClearLens.position.set(-0.042, 0, 0);
     hlGroup.add(outerClearLens);
   }
 
-  // C. Lower Front Bumper & Shadow Atlas Skid Pan (`courtyard.landRoverDefender.frontBumper`)
+  // C. Signature L663 H-Frame Front Bumper Fascia & Shadow Atlas A-Frame Skid Pan (`courtyard.landRoverDefender.frontBumper`)
+  //    100% conformal and physically connected to the monocoque body shell from `x = -2.38m` seamlessly back into
+  //    the front wheel-arch leading edges (`x = -1.96m`) with zero gap.
   const frontBumperGroup = new THREE.Group();
   frontBumperGroup.name = 'courtyard.landRoverDefender.frontBumper';
   defenderGroup.add(frontBumperGroup);
 
-  // Plan-curved Shadow Atlas / Satin Anthracite lower front bumper crossbeam (`y = 0.52m..0.82m`)
-  const fBumperPts: THREE.Vector3[] = [];
-  for (let i = 0; i <= 28; i++) {
-    const u = (i / 28) * 2 - 1;
-    const z = u * 0.90;
-    const x = -2.375 + getPlanWrapShiftX(-2.37, z);
-    fBumperPts.push(new THREE.Vector3(x, 0.64, z));
-  }
-  const fBumperCurve = new THREE.CatmullRomCurve3(fBumperPts);
-  const fBumperGeo = new THREE.TubeGeometry(fBumperCurve, 32, 0.13, 12, false);
-  fBumperGeo.computeBoundingSphere();
-  const fBumperBeam = new THREE.Mesh(fBumperGeo, mats.satinAnthraciteMat);
-  fBumperBeam.name = 'courtyard.landRoverDefender.frontBumper';
-  fBumperBeam.scale.set(0.55, 1.15, 1.0);
-  fBumperBeam.position.set(-2.375 * 0.45, 0, 0);
-  fBumperBeam.castShadow = true;
-  frontBumperGroup.add(fBumperBeam);
+  // 1. Conformal Central Lower Bumper Fascia across the nose (`x = -2.38m..-2.356m, v = -0.58..+0.58`)
+  const noseBumperFasciaGeo = createConformalDefenderPatchGeometry(
+    -2.38,
+    -2.356,
+    () => 0.0,
+    () => 0.58,
+    12,
+    24,
+    0.0032,
+    0.0032,
+    false
+  );
+  const noseBumperFasciaMesh = new THREE.Mesh(noseBumperFasciaGeo, mats.satinAnthraciteMat);
+  noseBumperFasciaMesh.name = 'courtyard.landRoverDefender.frontBumper';
+  noseBumperFasciaMesh.castShadow = true;
+  noseBumperFasciaMesh.receiveShadow = true;
+  frontBumperGroup.add(noseBumperFasciaMesh);
 
-  // Sculpted Shadow Atlas Front Skid Pan (`x = -2.39m..-2.05m, y = 0.29m..0.52m, z = -0.58m..+0.58m`)
-  // with 4 recessed bash-plate slots
-  const frontSkidPan = new THREE.Mesh(
-    new THREE.BoxGeometry(0.32, 0.24, 1.14),
+  // 2. Conformal Wraparound Side Bumper Wings (`v = 0.58..0.96` across the nose `x = -2.38m..-1.96m`)
+  //    connecting seamlessly into the leading edges of the front wheel arches with zero gap
+  const wrapBumperWingGeo = createConformalDefenderPatchGeometry(
+    -2.38,
+    -1.96,
+    (x) => lerp(0.56, 0.68, smoothstep(-2.34, -1.96, x)),
+    () => 0.96,
+    24,
+    12,
+    0.0035,
+    0.0035,
+    true
+  );
+  const wrapBumperWingMesh = new THREE.Mesh(wrapBumperWingGeo, mats.santoriniBlackBodyMat);
+  wrapBumperWingMesh.name = 'courtyard.landRoverDefender.frontBumper.wraparoundWing';
+  wrapBumperWingMesh.castShadow = true;
+  wrapBumperWingMesh.receiveShadow = true;
+  frontBumperGroup.add(wrapBumperWingMesh);
+
+  // Lower wraparound Shadow Atlas / Satin Anthracite bumper valence moulding (`v = 0.78..0.96`, `x = -2.38m..-1.96m`)
+  const wrapBumperLowerMouldingGeo = createConformalDefenderPatchGeometry(
+    -2.38,
+    -1.96,
+    () => 0.78,
+    () => 0.96,
+    24,
+    8,
+    0.0048,
+    0.0048,
+    true
+  );
+  const wrapBumperLowerMouldingMesh = new THREE.Mesh(
+    wrapBumperLowerMouldingGeo,
     mats.satinAnthraciteMat
   );
-  frontSkidPan.name = 'courtyard.landRoverDefender.frontBumper';
-  frontSkidPan.position.set(-2.27, 0.40, 0);
-  frontSkidPan.rotation.z = 0.52;
+  wrapBumperLowerMouldingMesh.name = 'courtyard.landRoverDefender.frontBumper.lowerMoulding';
+  frontBumperGroup.add(wrapBumperLowerMouldingMesh);
+
+  // 3. Signature L663 H-Frame Crossbar & Twin Vertical Uprights (`mats.satinAnthraciteMat`)
+  const hFrameCrossbarGeo = createConformalDefenderPatchGeometry(
+    -2.370,
+    -2.358,
+    () => 0.0,
+    () => 0.52,
+    8,
+    20,
+    0.0055,
+    0.0055,
+    false
+  );
+  const hFrameCrossbarMesh = new THREE.Mesh(hFrameCrossbarGeo, mats.satinAnthraciteMat);
+  hFrameCrossbarMesh.name = 'courtyard.landRoverDefender.frontBumper.hFrameCrossbar';
+  frontBumperGroup.add(hFrameCrossbarMesh);
+
+  for (const sideZ of [-1, 1] as const) {
+    const uz = sideZ * 0.48;
+    const uy = 0.58;
+    const ux = sampleFrontNoseSurfaceXAtYZ(uy, uz) - 0.005;
+    const hFrameUpright = new THREE.Mesh(
+      new THREE.BoxGeometry(0.018, 0.44, 0.056),
+      mats.satinAnthraciteMat
+    );
+    hFrameUpright.name = 'courtyard.landRoverDefender.frontBumper.hFrameUpright';
+    hFrameUpright.position.set(ux, uy, uz);
+    hFrameUpright.rotation.y = sideZ * 0.14;
+    hFrameUpright.rotation.z = -0.05;
+    frontBumperGroup.add(hFrameUpright);
+  }
+
+  // 4. Recessed Central Lower Air Dam Intake with Horizontal Vanes (`y = 0.46m..0.58m, z = -0.44m..+0.44m`)
+  const lowerAirDamGeo = createConformalDefenderPatchGeometry(
+    -2.374,
+    -2.364,
+    () => 0.0,
+    () => 0.25,
+    6,
+    14,
+    0.0042,
+    0.0042,
+    false
+  );
+  const lowerAirDamMesh = new THREE.Mesh(lowerAirDamGeo, mats.narvikGlossBlackMat);
+  lowerAirDamMesh.name = 'courtyard.landRoverDefender.frontBumper.lowerIntake';
+  frontBumperGroup.add(lowerAirDamMesh);
+
+  for (const vaneY of [0.48, 0.535] as const) {
+    const vanePts: THREE.Vector3[] = [];
+    for (let i = 0; i <= 16; i++) {
+      const u = (i / 16) * 2 - 1;
+      const z = u * 0.43;
+      const x = sampleFrontNoseSurfaceXAtYZ(vaneY, z) - 0.005;
+      vanePts.push(new THREE.Vector3(x, vaneY, z));
+    }
+    const vaneCurve = new THREE.CatmullRomCurve3(vanePts);
+    const vaneGeo = new THREE.TubeGeometry(vaneCurve, 18, 0.0065, 6, false);
+    vaneGeo.computeBoundingSphere();
+    const vaneMesh = new THREE.Mesh(vaneGeo, mats.narvikGlossBlackMat);
+    vaneMesh.name = 'courtyard.landRoverDefender.frontBumper.intakeVane';
+    frontBumperGroup.add(vaneMesh);
+  }
+
+  // 5. Flush Shadow Atlas Lower A-Frame Skid Pan (`courtyard.landRoverDefender.frontBumper.skidPan`)
+  //    Curving smoothly underneath from `x = -2.38m + getPlanWrapShiftX(-2.38, z)` back to `x = -2.02m`
+  const frontSkidPanGeo = createConformalFrontSkidPanGeometry();
+  const frontSkidPan = new THREE.Mesh(frontSkidPanGeo, mats.satinAnthraciteMat);
+  frontSkidPan.name = 'courtyard.landRoverDefender.frontBumper.skidPan';
   frontSkidPan.castShadow = true;
+  frontSkidPan.receiveShadow = true;
   frontBumperGroup.add(frontSkidPan);
 
   for (const slotZ of [-0.36, -0.12, 0.12, 0.36] as const) {
+    const sy = 0.39;
+    const sx = sampleFrontNoseSurfaceXAtYZ(sy, slotZ) - 0.009;
     const bashSlot = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 0.045, 0.12),
+      new THREE.BoxGeometry(0.012, 0.052, 0.11),
       mats.narvikGlossBlackMat
     );
     bashSlot.name = 'courtyard.landRoverDefender.frontBumper.skidBashSlot';
-    bashSlot.position.set(-2.345, 0.39, slotZ);
-    bashSlot.rotation.z = 0.52;
+    bashSlot.position.set(sx, sy, slotZ);
+    bashSlot.rotation.y = (slotZ < 0 ? -1 : 1) * 0.08;
+    bashSlot.rotation.z = -0.08;
     frontBumperGroup.add(bashSlot);
   }
 
-  // Twin Recessed Front LED Fog Lamps (`z = ±0.74m, y = 0.56m`) + Front Radar Module + Tow Recovery Eyes
+  // 6. Flush Front Bumper Attachments (Fog Lamps, Tow Eyes, Radar Module, UK Front Registration Plate)
   for (const sideZ of [-1, 1] as const) {
-    const fz = sideZ * 0.74;
-    const fx = -2.37 + getPlanWrapShiftX(-2.37, fz);
+    const fz = sideZ * 0.70;
+    const fy = 0.56;
+    const fx = sampleFrontNoseSurfaceXAtYZ(fy, fz) - 0.004;
     const fogHousing = new THREE.Mesh(
-      new THREE.BoxGeometry(0.042, 0.068, 0.145),
+      new THREE.BoxGeometry(0.018, 0.064, 0.135),
       mats.narvikGlossBlackMat
     );
     fogHousing.name = 'courtyard.landRoverDefender.frontBumper.fogHousing';
-    fogHousing.position.set(fx - 0.01, 0.56, fz);
-    fogHousing.rotation.y = sideZ * 0.24;
+    fogHousing.position.set(fx, fy, fz);
+    fogHousing.rotation.y = sideZ * 0.25;
     frontBumperGroup.add(fogHousing);
 
     const fogLampLed = new THREE.Mesh(
-      new THREE.BoxGeometry(0.018, 0.028, 0.088),
+      new THREE.BoxGeometry(0.012, 0.026, 0.084),
       mats.ledHaloWhiteMat
     );
     fogLampLed.name = 'courtyard.landRoverDefender.frontBumper.fogLampLed';
-    fogLampLed.position.set(fx - 0.026, 0.56, fz);
-    fogLampLed.rotation.y = sideZ * 0.24;
+    fogLampLed.position.set(fx - 0.005, fy, fz);
+    fogLampLed.rotation.y = sideZ * 0.25;
     frontBumperGroup.add(fogLampLed);
 
-    // Heavy-duty front recovery tow eye loop (`z = ±0.46m, y = 0.33m`)
+    // Heavy-duty front recovery tow eye loop (`z = ±0.46m, y = 0.34m`) with exact plan-wrap shift
+    const tz = sideZ * 0.46;
+    const ty = 0.34;
+    const tx = sampleFrontNoseSurfaceXAtYZ(ty, tz) - 0.008;
     const towEye = new THREE.Mesh(
-      new THREE.TorusGeometry(0.032, 0.009, 10, 20),
+      new THREE.TorusGeometry(0.028, 0.008, 10, 20),
       mats.narvikGlossBlackMat
     );
     towEye.name = 'courtyard.landRoverDefender.frontBumper.towRecoveryEye';
-    towEye.position.set(-2.375, 0.33, sideZ * 0.46);
+    towEye.position.set(tx, ty, tz);
     frontBumperGroup.add(towEye);
   }
 
-  // Central ACC Front Radar Module (`x = -2.392m, y = 0.49m, z = 0`)
+  // Central ACC Front Radar Module flush in the lower intake (`y = 0.50m, z = 0`)
   const frontRadarModule = new THREE.Mesh(
-    new THREE.BoxGeometry(0.022, 0.085, 0.14),
+    new THREE.BoxGeometry(0.016, 0.078, 0.13),
     mats.narvikGlossBlackMat
   );
   frontRadarModule.name = 'courtyard.landRoverDefender.frontBumper.radarSensor';
-  frontRadarModule.position.set(-2.392, 0.49, 0);
+  frontRadarModule.position.set(sampleFrontNoseSurfaceXAtYZ(0.50, 0) - 0.006, 0.50, 0);
   frontBumperGroup.add(frontRadarModule);
 
-  // White UK Front Registration Plate (`"DEF 110X"`, `x = -2.402m, y = 0.64m, z = 0`)
+  // White UK Front Registration Plate (`"DEF 110X"`, flush on the H-frame bumper crossbar at `y = 0.66m, z = 0`)
+  const frontPlatePlinth = new THREE.Mesh(
+    new THREE.BoxGeometry(0.014, 0.108, 0.46),
+    mats.narvikGlossBlackMat
+  );
+  frontPlatePlinth.name = 'courtyard.landRoverDefender.frontBumper.numberPlatePlinth';
+  frontPlatePlinth.position.set(sampleFrontNoseSurfaceXAtYZ(0.66, 0) - 0.006, 0.66, 0);
+  frontPlatePlinth.rotation.z = -0.05;
+  frontBumperGroup.add(frontPlatePlinth);
+
   const frontUkPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.014, 0.095, 0.44),
+    new THREE.BoxGeometry(0.010, 0.095, 0.44),
     new THREE.MeshStandardMaterial({
       map: createUkNumberPlateTexture(false),
       roughness: 0.24,
     })
   );
   frontUkPlate.name = 'courtyard.landRoverDefender.frontNumberPlate';
-  frontUkPlate.position.set(-2.402, 0.64, 0);
+  frontUkPlate.position.set(sampleFrontNoseSurfaceXAtYZ(0.66, 0) - 0.012, 0.66, 0);
+  frontUkPlate.rotation.z = -0.05;
   tagHighLodDetail(frontUkPlate);
   frontBumperGroup.add(frontUkPlate);
 }
@@ -575,7 +905,7 @@ export function buildDefender110FrontFasciaAndHeadlights(
 /**
  * Builds the vertical Kamm tailgate, exterior hinges, rear UK registration plate,
  * Carpathian V8 badge, recessed smoked quad-square LED taillights, high-mounted third
- * brake light, rear Shadow Atlas skid diffuser, and quad V8 exhaust tailpipes.
+ * brake light, conformal rear Shadow Atlas bumper & skid diffuser, and quad V8 exhaust tailpipes.
  */
 export function buildDefender110TailgateTaillightsAndExhaust(
   defenderGroup: THREE.Group,
@@ -587,12 +917,13 @@ export function buildDefender110TailgateTaillightsAndExhaust(
 
   // Exposed Heavy-Duty Right-Side Exterior Tailgate Hinges (`x = +2.362m, z = +0.66m, y = 0.88m & 1.18m`)
   for (const hingeY of [0.88, 1.18] as const) {
+    const hx = 2.356 + getPlanWrapShiftX(2.356, 0.64);
     const hingeBlock = new THREE.Mesh(
       new THREE.BoxGeometry(0.042, 0.056, 0.145),
       mats.narvikGlossBlackMat
     );
     hingeBlock.name = 'courtyard.landRoverDefender.tailgate.hingeBlock';
-    hingeBlock.position.set(2.358, hingeY, 0.64);
+    hingeBlock.position.set(hx, hingeY, 0.64);
     rearTailgateGroup.add(hingeBlock);
 
     const hingePin = new THREE.Mesh(
@@ -600,7 +931,7 @@ export function buildDefender110TailgateTaillightsAndExhaust(
       mats.satinAnthraciteMat
     );
     hingePin.name = 'courtyard.landRoverDefender.tailgate.hingePin';
-    hingePin.position.set(2.374, hingeY, 0.70);
+    hingePin.position.set(hx + 0.016, hingeY, 0.70);
     rearTailgateGroup.add(hingePin);
   }
 
@@ -610,15 +941,16 @@ export function buildDefender110TailgateTaillightsAndExhaust(
     mats.narvikGlossBlackMat
   );
   tailgateGrabHandle.name = 'courtyard.landRoverDefender.tailgate.grabHandle';
-  tailgateGrabHandle.position.set(2.368, 0.96, -0.56);
+  tailgateGrabHandle.position.set(2.362 + getPlanWrapShiftX(2.36, -0.56), 0.96, -0.56);
   rearTailgateGroup.add(tailgateGrabHandle);
 
+  const rearPlateX = 2.358 + getPlanWrapShiftX(2.358, -0.44);
   const rearPlatePlinth = new THREE.Mesh(
     new THREE.BoxGeometry(0.022, 0.135, 0.48),
     mats.narvikGlossBlackMat
   );
   rearPlatePlinth.name = 'courtyard.landRoverDefender.tailgate.numberPlatePlinth';
-  rearPlatePlinth.position.set(2.362, 0.75, -0.44);
+  rearPlatePlinth.position.set(rearPlateX, 0.75, -0.44);
   rearTailgateGroup.add(rearPlatePlinth);
 
   const rearUkPlate = new THREE.Mesh(
@@ -629,17 +961,18 @@ export function buildDefender110TailgateTaillightsAndExhaust(
     })
   );
   rearUkPlate.name = 'courtyard.landRoverDefender.rearNumberPlate';
-  rearUkPlate.position.set(2.374, 0.75, -0.44);
+  rearUkPlate.position.set(rearPlateX + 0.012, 0.75, -0.44);
   tagHighLodDetail(rearUkPlate);
   rearTailgateGroup.add(rearUkPlate);
 
-  // Carpathian Edition Red-Accented `V8` Rear Tailgate Badge (`x = +2.368m, y = 0.60m, z = -0.58m`)
+  // Carpathian Edition Red-Accented `V8` Rear Tailgate Badge (`x = +2.36m, y = 0.60m, z = -0.58m`)
+  const v8BadgeX = 2.36 + getPlanWrapShiftX(2.36, -0.58);
   const v8BadgeBack = new THREE.Mesh(
     new THREE.BoxGeometry(0.012, 0.036, 0.082),
     mats.ledCrimsonRedMat
   );
   v8BadgeBack.name = 'courtyard.landRoverDefender.tailgate.v8BadgeBacking';
-  v8BadgeBack.position.set(2.365, 0.60, -0.58);
+  v8BadgeBack.position.set(v8BadgeX, 0.60, -0.58);
   tagHighLodDetail(v8BadgeBack);
   rearTailgateGroup.add(v8BadgeBack);
 
@@ -648,35 +981,35 @@ export function buildDefender110TailgateTaillightsAndExhaust(
     mats.narvikGlossBlackMat
   );
   v8BadgeFace.name = 'courtyard.landRoverDefender.tailgate.v8Badge';
-  v8BadgeFace.position.set(2.367, 0.60, -0.58);
+  v8BadgeFace.position.set(v8BadgeX + 0.002, 0.60, -0.58);
   tagHighLodDetail(v8BadgeFace);
   rearTailgateGroup.add(v8BadgeFace);
 
   // C. Signature L663 Recessed Smoked Quad-Square LED Taillights (`courtyard.landRoverDefender.taillight`)
-  //    (`x = +2.35m, y = 0.88m..1.22m, z = ±0.83m`): stacked twin glowing crimson-red square LED ring cubes
+  //    (`x = +2.35m, y = 0.88m..1.20m, z = ±0.83m`): stacked twin glowing crimson-red square LED ring cubes
   //    (`emissive: 0xff161c, emissiveIntensity: 2.4`) + outer vertical indicator pips per side.
   for (const sideZ of [-1, 1] as const) {
     const tlGroup = new THREE.Group();
     tlGroup.name = 'courtyard.landRoverDefender.taillight';
-    const tz = sideZ * 0.83;
+    const tz = sideZ * 0.82;
     const tx = 2.345 + getPlanWrapShiftX(2.35, tz);
-    tlGroup.position.set(tx, 1.05, tz);
+    tlGroup.position.set(tx, 1.04, tz);
     tlGroup.rotation.y = -sideZ * 0.16;
     defenderGroup.add(tlGroup);
 
-    // Recessed Narvik Black vertical taillight bezel pocket (`y = 0.88m..1.22m`, height `0.34m`)
+    // Recessed Narvik Black vertical taillight bezel pocket (`y = 0.87m..1.21m`, height `0.34m`)
     const bezelPocket = new THREE.Mesh(
-      new THREE.BoxGeometry(0.048, 0.35, 0.165),
+      new THREE.BoxGeometry(0.042, 0.34, 0.16),
       mats.narvikGlossBlackMat
     );
     bezelPocket.name = 'courtyard.landRoverDefender.taillight';
     tlGroup.add(bezelPocket);
 
-    // Stacked Twin Glowing Crimson-Red Square LED Ring Cubes (`yOff = -0.078m` lower cube, `+0.078m` upper cube)
-    for (const yCubeOff of [-0.078, 0.078] as const) {
+    // Stacked Twin Glowing Crimson-Red Square LED Ring Cubes (`yOff = -0.076m` lower cube, `+0.076m` upper cube)
+    for (const yCubeOff of [-0.076, 0.076] as const) {
       const cubeGroup = new THREE.Group();
       cubeGroup.name = 'courtyard.landRoverDefender.taillight.quadCube';
-      cubeGroup.position.set(0.018, yCubeOff, -sideZ * 0.018);
+      cubeGroup.position.set(0.016, yCubeOff, -sideZ * 0.018);
       tlGroup.add(cubeGroup);
 
       // 4 glowing red bars forming the rounded-square L663 3D taillight ring
@@ -684,7 +1017,7 @@ export function buildDefender110TailgateTaillightsAndExhaust(
       const barThick = 0.011;
       for (const barY of [-ringHalf, ringHalf] as const) {
         const hBar = new THREE.Mesh(
-          new THREE.BoxGeometry(0.018, barThick, ringHalf * 2 + barThick),
+          new THREE.BoxGeometry(0.016, barThick, ringHalf * 2 + barThick),
           mats.ledCrimsonRedMat
         );
         hBar.name = 'courtyard.landRoverDefender.taillight';
@@ -693,7 +1026,7 @@ export function buildDefender110TailgateTaillightsAndExhaust(
       }
       for (const barZ of [-ringHalf, ringHalf] as const) {
         const vBar = new THREE.Mesh(
-          new THREE.BoxGeometry(0.018, ringHalf * 2 - barThick, barThick),
+          new THREE.BoxGeometry(0.016, ringHalf * 2 - barThick, barThick),
           mats.ledCrimsonRedMat
         );
         vBar.name = 'courtyard.landRoverDefender.taillight';
@@ -703,7 +1036,7 @@ export function buildDefender110TailgateTaillightsAndExhaust(
 
       // Smoked dark inner cube core + flush smoked polycarbonate lens
       const innerCore = new THREE.Mesh(
-        new THREE.BoxGeometry(0.014, 0.052, 0.052),
+        new THREE.BoxGeometry(0.012, 0.052, 0.052),
         mats.narvikGlossBlackMat
       );
       innerCore.name = 'courtyard.landRoverDefender.taillight.cubeCore';
@@ -714,18 +1047,18 @@ export function buildDefender110TailgateTaillightsAndExhaust(
         mats.smokedLensMat
       );
       cubeLens.name = 'courtyard.landRoverDefender.taillight.smokedLens';
-      cubeLens.position.set(0.01, 0, 0);
+      cubeLens.position.set(0.008, 0, 0);
       cubeGroup.add(cubeLens);
     }
 
     // Outer Vertical Indicator & Reverse LED Pips flanking the quad-square taillight cubes
-    for (const pipYOff of [-0.078, 0.0, 0.078] as const) {
+    for (const pipYOff of [-0.076, 0.0, 0.076] as const) {
       const pipMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(0.018, 0.044, 0.022),
+        new THREE.BoxGeometry(0.016, 0.044, 0.022),
         pipYOff === 0.0 ? mats.ledAmberPipMat : mats.ledCrimsonRedMat
       );
       pipMesh.name = 'courtyard.landRoverDefender.taillight.indicatorPip';
-      pipMesh.position.set(0.018, pipYOff, sideZ * 0.056);
+      pipMesh.position.set(0.016, pipYOff, sideZ * 0.056);
       tlGroup.add(pipMesh);
     }
   }
@@ -739,28 +1072,41 @@ export function buildDefender110TailgateTaillightsAndExhaust(
   chmslStrip.position.set(2.295, 1.912, 0);
   defenderGroup.add(chmslStrip);
 
-  // D. Defender V8 Quad Exhaust Tailpipes (`courtyard.landRoverDefender.exhaust`)
-  //    flanking the rear Shadow Atlas skid diffuser (`x = +2.32m, y = 0.34m, z = ±0.58m`)
-  //    plus heavy-duty rear recovery tow loop.
+  // D. Defender V8 Quad Exhaust Tailpipes & Conformal Rear Shadow Atlas Bumper (`courtyard.landRoverDefender.exhaust`)
   const exhaustGroup = new THREE.Group();
   exhaustGroup.name = 'courtyard.landRoverDefender.exhaust';
   defenderGroup.add(exhaustGroup);
 
-  // Rear Shadow Atlas Bumper & Skid Diffuser (`x = +2.33m, y = 0.34m..0.54m, z = -0.88m..+0.88m`)
+  // Conformal wraparound rear corner bumper wings (`x = +1.98m..+2.36m, v = 0.72..0.96`)
+  const rearWrapBumperGeo = createConformalDefenderPatchGeometry(
+    1.98,
+    2.36,
+    () => 0.72,
+    () => 0.96,
+    18,
+    8,
+    0.0038,
+    0.0038,
+    true
+  );
+  const rearWrapBumperMesh = new THREE.Mesh(rearWrapBumperGeo, mats.satinAnthraciteMat);
+  rearWrapBumperMesh.name = 'courtyard.landRoverDefender.exhaust.rearBumperCorner';
+  rearWrapBumperMesh.castShadow = true;
+  exhaustGroup.add(rearWrapBumperMesh);
+
+  // Unscaled plan-curved rear Shadow Atlas bumper crossbeam (`x = +2.35m, y = 0.46m, z = -0.86m..+0.86m`)
   const rBumperPts: THREE.Vector3[] = [];
   for (let i = 0; i <= 28; i++) {
     const u = (i / 28) * 2 - 1;
-    const z = u * 0.88;
-    const x = 2.345 + getPlanWrapShiftX(2.35, z);
-    rBumperPts.push(new THREE.Vector3(x, 0.47, z));
+    const z = u * 0.86;
+    const x = 2.348 + getPlanWrapShiftX(2.35, z);
+    rBumperPts.push(new THREE.Vector3(x, 0.46, z));
   }
   const rBumperCurve = new THREE.CatmullRomCurve3(rBumperPts);
-  const rBumperGeo = new THREE.TubeGeometry(rBumperCurve, 32, 0.105, 12, false);
+  const rBumperGeo = new THREE.TubeGeometry(rBumperCurve, 32, 0.068, 12, false);
   rBumperGeo.computeBoundingSphere();
   const rBumperBeam = new THREE.Mesh(rBumperGeo, mats.satinAnthraciteMat);
   rBumperBeam.name = 'courtyard.landRoverDefender.exhaust.rearBumperBeam';
-  rBumperBeam.scale.set(0.55, 1.1, 1.0);
-  rBumperBeam.position.set(2.345 * 0.45, 0, 0);
   rBumperBeam.castShadow = true;
   exhaustGroup.add(rBumperBeam);
 
@@ -790,7 +1136,7 @@ export function buildDefender110TailgateTaillightsAndExhaust(
   rearTowLoop.position.set(2.382, 0.345, 0);
   exhaustGroup.add(rearTowLoop);
 
-  // Defender V8 Quad Exhaust Tailpipes (`z = ±0.54m & ±0.64m` centered at `x = +2.32m, y = 0.34m, z = ±0.58m`)
+  // Defender V8 Quad Exhaust Tailpipes (`z = ±0.54m & ±0.63m` centered at `x = +2.32m, y = 0.34m`)
   for (const sideZ of [-1, 1] as const) {
     for (const pipeZ of [0.535, 0.625] as const) {
       const pz = sideZ * pipeZ;

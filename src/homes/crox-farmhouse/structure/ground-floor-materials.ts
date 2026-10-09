@@ -137,8 +137,8 @@ export function createGroundFloorMaterials(
     map: naturalOakJoineryTextures.colorMap,
     bumpMap: naturalOakJoineryTextures.bumpMap,
     bumpScale: 0.0035,
-    color: 0xf5efe6,
-    roughness: 0.64,
+    color: 0xdcc8ae,
+    roughness: 0.62,
     metalness: 0.02,
   });
 
@@ -146,7 +146,7 @@ export function createGroundFloorMaterials(
     map: naturalOakJoineryTextures.colorMap,
     bumpMap: naturalOakJoineryTextures.bumpMap,
     bumpScale: 0.0035,
-    color: 0xf7f1e8,
+    color: 0xdcc8ae,
     roughness: 0.62,
     metalness: 0.02,
   });
@@ -173,8 +173,8 @@ export function createGroundFloorMaterials(
     map: naturalOakJoineryTextures.colorMap,
     bumpMap: naturalOakJoineryTextures.bumpMap,
     bumpScale: 0.0035,
-    color: 0xf2ebe0,
-    roughness: 0.64,
+    color: 0xdcc8ae,
+    roughness: 0.62,
     metalness: 0.02,
   });
 

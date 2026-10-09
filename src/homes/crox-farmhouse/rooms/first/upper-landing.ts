@@ -58,7 +58,6 @@ export function buildUpperLanding(
     floorBaseY,
     floorTopY,
     oakFloorMat,
-    skirtingMat,
     tagUpperCutawayWall,
     upperWallTopY,
     wallCapMat,
@@ -80,9 +79,25 @@ export function buildUpperLanding(
     map: naturalOakTex.colorMap,
     bumpMap: naturalOakTex.bumpMap,
     bumpScale: 0.0035,
-    color: 0xf2ebe0,
-    roughness: 0.64,
+    color: 0xdcc8ae,
+    roughness: 0.62,
     metalness: 0.02,
+  });
+
+  // Issue #13: Stripped natural European oak for handrails, shoe rails & detailed newel posts,
+  // paired with slender 16mm matt black wrought/cast iron spindles
+  const strippedBannisterOakMat = new THREE.MeshStandardMaterial({
+    map: naturalOakTex.colorMap,
+    bumpMap: naturalOakTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xd8c3a5,
+    roughness: 0.56,
+    metalness: 0.02,
+  });
+  const blackIronSpindleMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1d20,
+    roughness: 0.42,
+    metalness: 0.72,
   });
 
   const collarCeilingY = 4.52;
@@ -112,7 +127,7 @@ export function buildUpperLanding(
   landingFloorSlab.userData.isArchitecturalShell = true;
   landingFloorSlab.geometry.computeBoundingSphere();
 
-  // White Balustrade & Handrail Gallery around the Stairwell Opening on the First Floor Landing (Photos 3 & 4)
+  // Stripped-Oak Balustrade & Black-Iron Spindle Gallery around the Stairwell Opening on the First Floor Landing (Issue #13)
   // Issue #8: Extend South gallery handrail & balustrade along Z = -0.58m all the way to the West cross-wall (X = -17.57m..-15.36m)
   const landingRailGroup = new THREE.Group();
   landingRailGroup.name = 'upperLanding.balustrade';
@@ -121,95 +136,280 @@ export function buildUpperLanding(
   const southRailSpan = southRailEndX - southRailStartX; // 2.21m
   const southRailCenterX = (southRailStartX + southRailEndX) / 2; // -16.465m
 
-  const southGalleryRailGeo = new THREE.BoxGeometry(southRailSpan, 0.055, 0.065);
+  // Contoured 0.068m wide stripped-oak top handrail + recessed moulded under-fillet
+  const southGalleryRailGeo = new THREE.BoxGeometry(southRailSpan, 0.042, 0.068);
   southGalleryRailGeo.computeBoundingSphere();
-  const southGalleryRail = new THREE.Mesh(southGalleryRailGeo, skirtingMat);
+  const southGalleryRail = new THREE.Mesh(southGalleryRailGeo, strippedBannisterOakMat);
   southGalleryRail.name = 'upperLanding.southGalleryRail';
-  southGalleryRail.position.set(southRailCenterX, floorTopY + 0.88, -0.58);
+  southGalleryRail.position.set(southRailCenterX, floorTopY + 0.886, -0.58);
   southGalleryRail.castShadow = true;
   landingRailGroup.add(southGalleryRail);
 
-  const southGalleryShoeRailGeo = new THREE.BoxGeometry(southRailSpan, 0.032, 0.052);
+  const southGalleryRailFilletGeo = new THREE.BoxGeometry(southRailSpan, 0.016, 0.052);
+  southGalleryRailFilletGeo.computeBoundingSphere();
+  const southGalleryRailFillet = new THREE.Mesh(southGalleryRailFilletGeo, strippedBannisterOakMat);
+  southGalleryRailFillet.name = 'upperLanding.southGalleryRail.underFillet';
+  southGalleryRailFillet.position.set(southRailCenterX, floorTopY + 0.857, -0.58);
+  tagHighLodDetail(southGalleryRailFillet);
+  landingRailGroup.add(southGalleryRailFillet);
+
+  const southGalleryShoeRailGeo = new THREE.BoxGeometry(southRailSpan, 0.032, 0.056);
   southGalleryShoeRailGeo.computeBoundingSphere();
-  const southGalleryShoeRail = new THREE.Mesh(southGalleryShoeRailGeo, skirtingMat);
+  const southGalleryShoeRail = new THREE.Mesh(southGalleryShoeRailGeo, strippedBannisterOakMat);
   southGalleryShoeRail.name = 'upperLanding.southGalleryShoeRail';
   southGalleryShoeRail.position.set(southRailCenterX, floorTopY + 0.016, -0.58);
   landingRailGroup.add(southGalleryShoeRail);
 
-  // Shared BufferGeometry across all 14 South spindles and 6 East spindles
-  const sharedBalustradeSpindleGeo = new THREE.BoxGeometry(0.032, 0.84, 0.032);
+  const southGalleryShoeBeadGeo = new THREE.BoxGeometry(southRailSpan, 0.01, 0.042);
+  southGalleryShoeBeadGeo.computeBoundingSphere();
+  const southGalleryShoeBead = new THREE.Mesh(southGalleryShoeBeadGeo, strippedBannisterOakMat);
+  southGalleryShoeBead.name = 'upperLanding.southGalleryShoeRail.topBead';
+  southGalleryShoeBead.position.set(southRailCenterX, floorTopY + 0.037, -0.58);
+  tagHighLodDetail(southGalleryShoeBead);
+  landingRailGroup.add(southGalleryShoeBead);
+
+  // Slender 16mm square forged black-iron spindles + cast-iron base shoes & central forged collar knuckles
+  const sharedBalustradeSpindleGeo = new THREE.BoxGeometry(0.016, 0.82, 0.016);
   sharedBalustradeSpindleGeo.computeBoundingSphere();
+  const sharedSpindleBaseShoeGeo = new THREE.BoxGeometry(0.026, 0.014, 0.026);
+  sharedSpindleBaseShoeGeo.computeBoundingSphere();
+  const sharedSpindleCollarGeo = new THREE.BoxGeometry(0.024, 0.024, 0.024);
+  sharedSpindleCollarGeo.computeBoundingSphere();
 
   const southSpindleCount = 14;
   for (let i = 0; i < southSpindleCount; i++) {
     const gx = THREE.MathUtils.lerp(-17.43, -15.5, i / (southSpindleCount - 1));
-    const spindle = new THREE.Mesh(sharedBalustradeSpindleGeo, skirtingMat);
+    const spindle = new THREE.Mesh(sharedBalustradeSpindleGeo, blackIronSpindleMat);
     spindle.name = `upperLanding.balustrade.southSpindle_${i + 1}`;
-    spindle.position.set(gx, floorTopY + 0.436, -0.58);
+    spindle.position.set(gx, floorTopY + 0.445, -0.58);
     spindle.castShadow = true;
     tagHighLodDetail(spindle);
     landingRailGroup.add(spindle);
+
+    const baseShoe = new THREE.Mesh(sharedSpindleBaseShoeGeo, blackIronSpindleMat);
+    baseShoe.name = `upperLanding.balustrade.southSpindle_${i + 1}.baseShoe`;
+    baseShoe.position.set(gx, floorTopY + 0.048, -0.58);
+    tagHighLodDetail(baseShoe);
+    landingRailGroup.add(baseShoe);
+
+    const collarKnuckle = new THREE.Mesh(sharedSpindleCollarGeo, blackIronSpindleMat);
+    collarKnuckle.name = `upperLanding.balustrade.southSpindle_${i + 1}.collarKnuckle`;
+    collarKnuckle.position.set(gx, floorTopY + 0.445, -0.58);
+    tagHighLodDetail(collarKnuckle);
+    landingRailGroup.add(collarKnuckle);
   }
 
-  // West wall half-newel post where the South gallery rail meets the West cross-wall (X = -17.54m, Z = -0.58m)
-  const westWallNewelGeo = new THREE.BoxGeometry(0.065, 0.96, 0.095);
+  // Helper to add tasteful stripped-oak English joinery details to a square newel post:
+  // base plinth collar, stopped-chamfered / recessed shaft panel framing, neck groove + necking ring,
+  // and stepped bevelled low-profile pyramid cap crown.
+  const addDetailedNewelJoinery = (
+    prefix: string,
+    cx: number,
+    baseY: number,
+    totalH: number,
+    cz: number,
+    isHalfNewel = false
+  ): void => {
+    const sx = isHalfNewel ? 0.068 : 0.092;
+    const sz = 0.092;
+    const plinthW = isHalfNewel ? 0.078 : 0.104;
+    const plinthD = 0.104;
+    const collarW = isHalfNewel ? 0.074 : 0.098;
+    const collarD = 0.098;
+    const neckRingW = isHalfNewel ? 0.08 : 0.106;
+    const neckRingD = 0.106;
+
+    // 1. Base plinth collar at floor level
+    const plinthGeo = new THREE.BoxGeometry(plinthW, 0.068, plinthD);
+    plinthGeo.computeBoundingSphere();
+    const plinth = new THREE.Mesh(plinthGeo, strippedBannisterOakMat);
+    plinth.name = `${prefix}.basePlinth`;
+    plinth.position.set(cx, baseY + 0.034, cz);
+    plinth.castShadow = true;
+    landingRailGroup.add(plinth);
+
+    const plinthLedgeGeo = new THREE.BoxGeometry(collarW, 0.014, collarD);
+    plinthLedgeGeo.computeBoundingSphere();
+    const plinthLedge = new THREE.Mesh(plinthLedgeGeo, strippedBannisterOakMat);
+    plinthLedge.name = `${prefix}.basePlinthLedge`;
+    plinthLedge.position.set(cx, baseY + 0.075, cz);
+    tagHighLodDetail(plinthLedge);
+    landingRailGroup.add(plinthLedge);
+
+    // 2. Stopped-chamfer / recessed vertical shaft framing (lower & upper shaft collars + corner stiles)
+    const lowerCollarY = baseY + 0.17;
+    const upperCollarY = baseY + totalH - 0.12;
+    const shaftCollarGeo = new THREE.BoxGeometry(collarW, 0.022, collarD);
+    shaftCollarGeo.computeBoundingSphere();
+
+    const lowerShaftCollar = new THREE.Mesh(shaftCollarGeo, strippedBannisterOakMat);
+    lowerShaftCollar.name = `${prefix}.lowerShaftCollar`;
+    lowerShaftCollar.position.set(cx, lowerCollarY, cz);
+    tagHighLodDetail(lowerShaftCollar);
+    landingRailGroup.add(lowerShaftCollar);
+
+    const upperShaftCollar = new THREE.Mesh(shaftCollarGeo, strippedBannisterOakMat);
+    upperShaftCollar.name = `${prefix}.upperShaftCollar`;
+    upperShaftCollar.position.set(cx, upperCollarY, cz);
+    tagHighLodDetail(upperShaftCollar);
+    landingRailGroup.add(upperShaftCollar);
+
+    const stileH = upperCollarY - lowerCollarY - 0.022;
+    const stileGeo = new THREE.BoxGeometry(0.018, stileH, 0.018);
+    stileGeo.computeBoundingSphere();
+    const cornerOffsets: ReadonlyArray<readonly [number, number]> = isHalfNewel
+      ? [
+          [sx * 0.5 - 0.006, -sz * 0.5 + 0.006],
+          [sx * 0.5 - 0.006, sz * 0.5 - 0.006],
+        ]
+      : [
+          [-sx * 0.5 + 0.006, -sz * 0.5 + 0.006],
+          [sx * 0.5 - 0.006, -sz * 0.5 + 0.006],
+          [-sx * 0.5 + 0.006, sz * 0.5 - 0.006],
+          [sx * 0.5 - 0.006, sz * 0.5 - 0.006],
+        ];
+    cornerOffsets.forEach(([ox, oz], idx) => {
+      const stile = new THREE.Mesh(stileGeo, strippedBannisterOakMat);
+      stile.name = `${prefix}.shaftStile_${idx + 1}`;
+      stile.position.set(cx + ox, (lowerCollarY + upperCollarY) * 0.5, cz + oz);
+      tagHighLodDetail(stile);
+      landingRailGroup.add(stile);
+    });
+
+    // 3. Moulded necking ring / shadow-gap collar just below the newel cap
+    const neckRingGeo = new THREE.BoxGeometry(neckRingW, 0.018, neckRingD);
+    neckRingGeo.computeBoundingSphere();
+    const neckRing = new THREE.Mesh(neckRingGeo, strippedBannisterOakMat);
+    neckRing.name = `${prefix}.neckRing`;
+    neckRing.position.set(cx, baseY + totalH - 0.024, cz);
+    neckRing.castShadow = true;
+    tagHighLodDetail(neckRing);
+    landingRailGroup.add(neckRing);
+
+    // 4. Stepped low-profile bevelled pyramid crown above the newel cap
+    const crownStepGeo = new THREE.BoxGeometry(
+      isHalfNewel ? 0.072 : 0.098,
+      0.012,
+      0.098
+    );
+    crownStepGeo.computeBoundingSphere();
+    const crownStep = new THREE.Mesh(crownStepGeo, strippedBannisterOakMat);
+    crownStep.name = `${prefix}Cap.crownStep`;
+    crownStep.position.set(cx, baseY + totalH + 0.03, cz);
+    tagHighLodDetail(crownStep);
+    landingRailGroup.add(crownStep);
+
+    const crownApexGeo = new THREE.BoxGeometry(
+      isHalfNewel ? 0.054 : 0.074,
+      0.01,
+      0.074
+    );
+    crownApexGeo.computeBoundingSphere();
+    const crownApex = new THREE.Mesh(crownApexGeo, strippedBannisterOakMat);
+    crownApex.name = `${prefix}Cap.crownApex`;
+    crownApex.position.set(cx, baseY + totalH + 0.041, cz);
+    tagHighLodDetail(crownApex);
+    landingRailGroup.add(crownApex);
+  };
+
+  // West wall half-newel post where the South gallery rail meets the West cross-wall (X = -17.535m, Z = -0.58m)
+  const westWallNewelGeo = new THREE.BoxGeometry(0.068, 0.96, 0.088);
   westWallNewelGeo.computeBoundingSphere();
-  const westWallNewel = new THREE.Mesh(westWallNewelGeo, skirtingMat);
+  const westWallNewel = new THREE.Mesh(westWallNewelGeo, strippedBannisterOakMat);
   westWallNewel.name = 'upperLanding.westWallNewel';
   westWallNewel.position.set(-17.535, floorTopY + 0.48, -0.58);
   westWallNewel.castShadow = true;
   landingRailGroup.add(westWallNewel);
 
-  const westWallNewelCapGeo = new THREE.BoxGeometry(0.082, 0.026, 0.112);
+  const westWallNewelCapGeo = new THREE.BoxGeometry(0.086, 0.024, 0.118);
   westWallNewelCapGeo.computeBoundingSphere();
-  const westWallNewelCap = new THREE.Mesh(westWallNewelCapGeo, skirtingMat);
+  const westWallNewelCap = new THREE.Mesh(westWallNewelCapGeo, strippedBannisterOakMat);
   westWallNewelCap.name = 'upperLanding.westWallNewelCap';
-  westWallNewelCap.position.set(-17.535, floorTopY + 0.973, -0.58);
+  westWallNewelCap.position.set(-17.535, floorTopY + 0.972, -0.58);
   tagHighLodDetail(westWallNewelCap);
   landingRailGroup.add(westWallNewelCap);
+  addDetailedNewelJoinery('upperLanding.westWallNewel', -17.535, floorTopY, 0.96, -0.58, true);
 
   // East gallery return handrail at X = -15.36m (Z = -1.65m..-0.58m)
-  const eastGalleryRailGeo = new THREE.BoxGeometry(0.065, 0.055, 1.07);
+  const eastGalleryRailGeo = new THREE.BoxGeometry(0.068, 0.042, 1.07);
   eastGalleryRailGeo.computeBoundingSphere();
-  const eastGalleryRail = new THREE.Mesh(eastGalleryRailGeo, skirtingMat);
+  const eastGalleryRail = new THREE.Mesh(eastGalleryRailGeo, strippedBannisterOakMat);
   eastGalleryRail.name = 'upperLanding.eastGalleryRail';
-  eastGalleryRail.position.set(-15.36, floorTopY + 0.88, -1.115);
+  eastGalleryRail.position.set(-15.36, floorTopY + 0.886, -1.115);
   eastGalleryRail.castShadow = true;
   landingRailGroup.add(eastGalleryRail);
 
-  const eastGalleryShoeRailGeo = new THREE.BoxGeometry(0.052, 0.032, 1.07);
+  const eastGalleryRailFilletGeo = new THREE.BoxGeometry(0.052, 0.016, 1.07);
+  eastGalleryRailFilletGeo.computeBoundingSphere();
+  const eastGalleryRailFillet = new THREE.Mesh(eastGalleryRailFilletGeo, strippedBannisterOakMat);
+  eastGalleryRailFillet.name = 'upperLanding.eastGalleryRail.underFillet';
+  eastGalleryRailFillet.position.set(-15.36, floorTopY + 0.857, -1.115);
+  tagHighLodDetail(eastGalleryRailFillet);
+  landingRailGroup.add(eastGalleryRailFillet);
+
+  const eastGalleryShoeRailGeo = new THREE.BoxGeometry(0.056, 0.032, 1.07);
   eastGalleryShoeRailGeo.computeBoundingSphere();
-  const eastGalleryShoeRail = new THREE.Mesh(eastGalleryShoeRailGeo, skirtingMat);
+  const eastGalleryShoeRail = new THREE.Mesh(eastGalleryShoeRailGeo, strippedBannisterOakMat);
   eastGalleryShoeRail.name = 'upperLanding.eastGalleryShoeRail';
   eastGalleryShoeRail.position.set(-15.36, floorTopY + 0.016, -1.115);
   landingRailGroup.add(eastGalleryShoeRail);
 
+  const eastGalleryShoeBeadGeo = new THREE.BoxGeometry(0.042, 0.01, 1.07);
+  eastGalleryShoeBeadGeo.computeBoundingSphere();
+  const eastGalleryShoeBead = new THREE.Mesh(eastGalleryShoeBeadGeo, strippedBannisterOakMat);
+  eastGalleryShoeBead.name = 'upperLanding.eastGalleryShoeRail.topBead';
+  eastGalleryShoeBead.position.set(-15.36, floorTopY + 0.037, -1.115);
+  tagHighLodDetail(eastGalleryShoeBead);
+  landingRailGroup.add(eastGalleryShoeBead);
+
   let eastSpindleIdx = 0;
   for (let gz = -1.52; gz <= -0.72; gz += 0.16) {
     eastSpindleIdx += 1;
-    const spindle = new THREE.Mesh(sharedBalustradeSpindleGeo, skirtingMat);
+    const spindle = new THREE.Mesh(sharedBalustradeSpindleGeo, blackIronSpindleMat);
     spindle.name = `upperLanding.balustrade.eastSpindle_${eastSpindleIdx}`;
-    spindle.position.set(-15.36, floorTopY + 0.436, gz);
+    spindle.position.set(-15.36, floorTopY + 0.445, gz);
     spindle.castShadow = true;
     tagHighLodDetail(spindle);
     landingRailGroup.add(spindle);
+
+    const baseShoe = new THREE.Mesh(sharedSpindleBaseShoeGeo, blackIronSpindleMat);
+    baseShoe.name = `upperLanding.balustrade.eastSpindle_${eastSpindleIdx}.baseShoe`;
+    baseShoe.position.set(-15.36, floorTopY + 0.048, gz);
+    tagHighLodDetail(baseShoe);
+    landingRailGroup.add(baseShoe);
+
+    const collarKnuckle = new THREE.Mesh(sharedSpindleCollarGeo, blackIronSpindleMat);
+    collarKnuckle.name = `upperLanding.balustrade.eastSpindle_${eastSpindleIdx}.collarKnuckle`;
+    collarKnuckle.position.set(-15.36, floorTopY + 0.445, gz);
+    tagHighLodDetail(collarKnuckle);
+    landingRailGroup.add(collarKnuckle);
   }
 
-  const cornerNewelGeo = new THREE.BoxGeometry(0.095, 0.96, 0.095);
+  // Corner Newel Post at the SE corner of the stairwell opening (X = -15.36m, Z = -0.58m)
+  const cornerNewelGeo = new THREE.BoxGeometry(0.088, 0.96, 0.088);
   cornerNewelGeo.computeBoundingSphere();
-  const cornerNewel = new THREE.Mesh(cornerNewelGeo, skirtingMat);
+  const cornerNewel = new THREE.Mesh(cornerNewelGeo, strippedBannisterOakMat);
   cornerNewel.name = 'upperLanding.cornerNewel';
   cornerNewel.position.set(-15.36, floorTopY + 0.48, -0.58);
   cornerNewel.castShadow = true;
   landingRailGroup.add(cornerNewel);
 
-  const cornerNewelCapGeo = new THREE.BoxGeometry(0.114, 0.026, 0.114);
+  const cornerNewelCapGeo = new THREE.BoxGeometry(0.118, 0.024, 0.118);
   cornerNewelCapGeo.computeBoundingSphere();
-  const cornerNewelCap = new THREE.Mesh(cornerNewelCapGeo, skirtingMat);
+  const cornerNewelCap = new THREE.Mesh(cornerNewelCapGeo, strippedBannisterOakMat);
   cornerNewelCap.name = 'upperLanding.cornerNewelCap';
-  cornerNewelCap.position.set(-15.36, floorTopY + 0.973, -0.58);
+  cornerNewelCap.position.set(-15.36, floorTopY + 0.972, -0.58);
   tagHighLodDetail(cornerNewelCap);
   landingRailGroup.add(cornerNewelCap);
+  addDetailedNewelJoinery('upperLanding.cornerNewel', -15.36, floorTopY, 0.96, -0.58, false);
+
+  // North Newel Post top cap & landing joinery detailing at the top of the stairs (X = -15.38m, Z = -1.64m)
+  const northNewelCap = new THREE.Mesh(cornerNewelCapGeo, strippedBannisterOakMat);
+  northNewelCap.name = 'upperLanding.northNewelCap';
+  northNewelCap.position.set(-15.38, floorTopY + 0.972, -1.64);
+  tagHighLodDetail(northNewelCap);
+  landingRailGroup.add(northNewelCap);
+  addDetailedNewelJoinery('upperLanding.northNewelPost', -15.38, floorTopY, 0.96, -1.64, false);
 
   scene.add(landingRailGroup);
 

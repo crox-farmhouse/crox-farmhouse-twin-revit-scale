@@ -1850,4 +1850,385 @@ export function buildCourtyardAndGates(
     applyWorldSpaceBrickUVs,
     addWallClimbingIvyCluster,
   });
+
+  // -------------------------------------------------------------------------
+  // 9b. OVERHEAD BT TELEPHONE DROP LINE, HOUSE EAVES BRACKET & SOUTH BARN TELEGRAPH POLE
+  //     Issue #12 ("telephone line connects here and goes over the south end of the barn "
+  //     at `[-21.833, 4.084, 11.77]`, `firstFloor.exteriorBrickWall.21`):
+  //     - House Eaves Anchor Bracket (`courtyard.telephoneDropLine.houseEavesBracket`),
+  //       porcelain bullnose insulator spool (`courtyard.telephoneDropLine.houseInsulatorSpool`),
+  //       helical drop-wire tension clamp (`courtyard.telephoneDropLine.houseTensionClamp`), and
+  //       weatherproof grey BT Openreach Customer Lead-In Junction Box (`courtyard.telephoneDropLine.btJunctionBox`)
+  //       with black CW1308 drip-loop cable mounted on the South brick wall of Bedroom 4 (`z = 11.77m`).
+  //     - Overhead Catenary Telephone Drop Cable (`courtyard.telephoneDropLine.catenaryWire`) spanning
+  //       southward from `[-21.833, 4.084, 11.78]` high over the South end of the western barn/outbuilding
+  //       range (`y >= 4.06m`, clearing the `y = 3.25m..3.44m` ridge at `z = 18.85m` at `y = 4.52m`)
+  //       to a Creosoted Timber BT Telegraph Pole (`courtyard.telephoneDropLine.telegraphPole`) just
+  //       South of the western barn at `[-21.85, -0.50..5.65, 23.15]`.
+  // -------------------------------------------------------------------------
+  {
+    const telephoneDropLineGroup = new THREE.Group();
+    telephoneDropLineGroup.name = 'courtyard.telephoneDropLine';
+
+    const galvSteelMat = new THREE.MeshStandardMaterial({
+      name: 'btGalvanisedSteelMat',
+      color: 0x9aa0a6,
+      roughness: 0.38,
+      metalness: 0.78,
+    });
+    const ceramicInsulatorMat = new THREE.MeshStandardMaterial({
+      name: 'btCeramicInsulatorMat',
+      color: 0xf2efe9,
+      roughness: 0.18,
+      metalness: 0.04,
+    });
+    const btJunctionGreyMat = new THREE.MeshStandardMaterial({
+      name: 'btOpenreachJunctionGreyMat',
+      color: 0x8c9298,
+      roughness: 0.52,
+      metalness: 0.08,
+    });
+    const dropWireSheathMat = new THREE.MeshStandardMaterial({
+      name: 'btDropwire10SheathMat',
+      color: 0x181a1e,
+      roughness: 0.62,
+      metalness: 0.08,
+    });
+    const creosotePoleMat = new THREE.MeshStandardMaterial({
+      name: 'btCreosoteTimberPoleMat',
+      color: 0x3b281c,
+      roughness: 0.86,
+      metalness: 0.03,
+    });
+    const warningYellowMat = new THREE.MeshStandardMaterial({
+      name: 'btStatutoryWarningYellowMat',
+      color: 0xe6b81e,
+      roughness: 0.45,
+      metalness: 0.06,
+    });
+
+    // 1. House Eaves Offset Bracket (`courtyard.telephoneDropLine.houseEavesBracket`) at `[-21.833, 4.084, 11.77]`
+    const houseBracketX = -21.833;
+    const houseBracketY = 4.084;
+    const houseWallZ = 11.77;
+
+    const houseEavesBracket = new THREE.Group();
+    houseEavesBracket.name = 'courtyard.telephoneDropLine.houseEavesBracket';
+    houseEavesBracket.position.set(houseBracketX, houseBracketY, houseWallZ);
+
+    const wallPlateGeo = new THREE.BoxGeometry(0.076, 0.145, 0.008);
+    wallPlateGeo.computeBoundingSphere();
+    const wallPlate = new THREE.Mesh(wallPlateGeo, galvSteelMat);
+    wallPlate.name = 'courtyard.telephoneDropLine.houseEavesBracket.wallPlate';
+    wallPlate.position.set(0, 0, 0.004);
+    wallPlate.castShadow = true;
+    wallPlate.receiveShadow = true;
+    houseEavesBracket.add(wallPlate);
+
+    let boltIdx = 0;
+    for (const bx of [-0.024, 0.024] as const) {
+      for (const by of [-0.052, 0.052] as const) {
+        const boltGeo = new THREE.CylinderGeometry(0.0055, 0.0055, 0.01, 6);
+        boltGeo.rotateX(Math.PI / 2);
+        boltGeo.computeBoundingSphere();
+        const bolt = new THREE.Mesh(boltGeo, galvSteelMat);
+        bolt.name = `courtyard.telephoneDropLine.houseEavesBracket.bolt.${++boltIdx}`;
+        bolt.position.set(bx, by, 0.011);
+        houseEavesBracket.add(bolt);
+      }
+    }
+
+    const standoffArmGeo = new THREE.BoxGeometry(0.024, 0.018, 0.068);
+    standoffArmGeo.computeBoundingSphere();
+    const standoffArm = new THREE.Mesh(standoffArmGeo, galvSteelMat);
+    standoffArm.name = 'courtyard.telephoneDropLine.houseEavesBracket.standoffArm';
+    standoffArm.position.set(0, -0.022, 0.038);
+    standoffArm.castShadow = true;
+    houseEavesBracket.add(standoffArm);
+
+    const gussetBraceGeo = new THREE.BoxGeometry(0.016, 0.068, 0.012);
+    gussetBraceGeo.computeBoundingSphere();
+    const gussetBrace = new THREE.Mesh(gussetBraceGeo, galvSteelMat);
+    gussetBrace.name = 'courtyard.telephoneDropLine.houseEavesBracket.gussetBrace';
+    gussetBrace.position.set(0, -0.048, 0.028);
+    gussetBrace.rotation.x = -0.68;
+    gussetBrace.castShadow = true;
+    houseEavesBracket.add(gussetBrace);
+
+    const spindlePinGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.072, 12);
+    spindlePinGeo.computeBoundingSphere();
+    const spindlePin = new THREE.Mesh(spindlePinGeo, galvSteelMat);
+    spindlePin.name = 'courtyard.telephoneDropLine.houseEavesBracket.spindlePin';
+    spindlePin.position.set(0, 0.008, 0.056);
+    spindlePin.castShadow = true;
+    houseEavesBracket.add(spindlePin);
+
+    telephoneDropLineGroup.add(houseEavesBracket);
+
+    // 2. Porcelain/Polymer Bullnose Insulator Spool (`courtyard.telephoneDropLine.houseInsulatorSpool`)
+    const houseInsulatorSpool = new THREE.Group();
+    houseInsulatorSpool.name = 'courtyard.telephoneDropLine.houseInsulatorSpool';
+    houseInsulatorSpool.position.set(houseBracketX, houseBracketY + 0.008, houseWallZ + 0.056);
+
+    const spoolBodyGeo = new THREE.CylinderGeometry(0.023, 0.023, 0.048, 16);
+    spoolBodyGeo.computeBoundingSphere();
+    const spoolBody = new THREE.Mesh(spoolBodyGeo, ceramicInsulatorMat);
+    spoolBody.name = 'courtyard.telephoneDropLine.houseInsulatorSpool.body';
+    spoolBody.castShadow = true;
+    houseInsulatorSpool.add(spoolBody);
+
+    const spoolGrooveGeo = new THREE.TorusGeometry(0.021, 0.0045, 10, 20);
+    spoolGrooveGeo.rotateX(Math.PI / 2);
+    spoolGrooveGeo.computeBoundingSphere();
+    const spoolGroove = new THREE.Mesh(spoolGrooveGeo, dropWireSheathMat);
+    spoolGroove.name = 'courtyard.telephoneDropLine.houseInsulatorSpool.wireLoop';
+    houseInsulatorSpool.add(spoolGroove);
+
+    telephoneDropLineGroup.add(houseInsulatorSpool);
+
+    // 3. Helical Steel Drop-Wire Tension Clamp (`courtyard.telephoneDropLine.houseTensionClamp`)
+    const houseTensionClamp = new THREE.Group();
+    houseTensionClamp.name = 'courtyard.telephoneDropLine.houseTensionClamp';
+    houseTensionClamp.position.set(houseBracketX, houseBracketY + 0.004, houseWallZ + 0.095);
+
+    const clampBailGeo = new THREE.BoxGeometry(0.018, 0.012, 0.048);
+    clampBailGeo.computeBoundingSphere();
+    const clampBail = new THREE.Mesh(clampBailGeo, galvSteelMat);
+    clampBail.name = 'courtyard.telephoneDropLine.houseTensionClamp.bail';
+    clampBail.position.set(0, 0, -0.012);
+    houseTensionClamp.add(clampBail);
+
+    const helicalSleeveGeo = new THREE.CylinderGeometry(0.0095, 0.013, 0.095, 12);
+    helicalSleeveGeo.rotateX(Math.PI / 2);
+    helicalSleeveGeo.computeBoundingSphere();
+    const helicalSleeve = new THREE.Mesh(helicalSleeveGeo, galvSteelMat);
+    helicalSleeve.name = 'courtyard.telephoneDropLine.houseTensionClamp.helicalSleeve';
+    helicalSleeve.position.set(0, -0.002, 0.042);
+    helicalSleeve.castShadow = true;
+    houseTensionClamp.add(helicalSleeve);
+
+    telephoneDropLineGroup.add(houseTensionClamp);
+
+    // 4. Weatherproof Grey BT Openreach Customer Lead-In Junction Box (`courtyard.telephoneDropLine.btJunctionBox`)
+    //    mounted beside the eaves bracket at `[-21.74, 3.98, 11.78]` with lead-in drip-loop cable entering the brick wall
+    const btJunctionBox = new THREE.Group();
+    btJunctionBox.name = 'courtyard.telephoneDropLine.btJunctionBox';
+    btJunctionBox.position.set(-21.74, 3.98, 11.78);
+
+    const jbBackboxGeo = new THREE.BoxGeometry(0.096, 0.138, 0.032);
+    jbBackboxGeo.computeBoundingSphere();
+    const jbBackbox = new THREE.Mesh(jbBackboxGeo, btJunctionGreyMat);
+    jbBackbox.name = 'courtyard.telephoneDropLine.btJunctionBox.enclosure';
+    jbBackbox.position.set(0, 0, 0.006);
+    jbBackbox.castShadow = true;
+    jbBackbox.receiveShadow = true;
+    btJunctionBox.add(jbBackbox);
+
+    const jbLidGeo = new THREE.BoxGeometry(0.102, 0.144, 0.012);
+    jbLidGeo.computeBoundingSphere();
+    const jbLid = new THREE.Mesh(jbLidGeo, btJunctionGreyMat);
+    jbLid.name = 'courtyard.telephoneDropLine.btJunctionBox.lid';
+    jbLid.position.set(0, 0, 0.026);
+    jbLid.castShadow = true;
+    btJunctionBox.add(jbLid);
+
+    for (const [gIdx, gx] of [
+      [1, -0.022],
+      [2, 0.022],
+    ] as const) {
+      const glandGeo = new THREE.CylinderGeometry(0.009, 0.011, 0.024, 10);
+      glandGeo.computeBoundingSphere();
+      const gland = new THREE.Mesh(glandGeo, dropWireSheathMat);
+      gland.name = `courtyard.telephoneDropLine.btJunctionBox.gland.${gIdx}`;
+      gland.position.set(gx, -0.078, 0.012);
+      btJunctionBox.add(gland);
+    }
+
+    const wallEntryGrommetGeo = new THREE.CylinderGeometry(0.012, 0.014, 0.018, 12);
+    wallEntryGrommetGeo.rotateX(Math.PI / 2);
+    wallEntryGrommetGeo.computeBoundingSphere();
+    const wallEntryGrommet = new THREE.Mesh(wallEntryGrommetGeo, dropWireSheathMat);
+    wallEntryGrommet.name = 'courtyard.telephoneDropLine.btJunctionBox.wallEntryGrommet';
+    wallEntryGrommet.position.set(0.022, 0.088, -0.004);
+    btJunctionBox.add(wallEntryGrommet);
+
+    telephoneDropLineGroup.add(btJunctionBox);
+
+    // Neat black CW1308 lead-in drip-loop cable from the insulator spool (`[-21.833, 4.084, 11.825]`)
+    // looping down to `y = 3.86m` and up into the BT junction box gland + out to the Bedroom 4 wall grommet
+    const dripLoopCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(houseBracketX, houseBracketY + 0.004, houseWallZ + 0.056),
+      new THREE.Vector3(-21.825, 3.94, 11.815),
+      new THREE.Vector3(-21.79, 3.865, 11.802),
+      new THREE.Vector3(-21.762, 3.902, 11.792),
+      new THREE.Vector3(-21.762, 3.98, 11.79),
+      new THREE.Vector3(-21.718, 4.04, 11.784),
+      new THREE.Vector3(-21.718, 4.068, 11.772),
+    ]);
+    const dripLoopGeo = new THREE.TubeGeometry(dripLoopCurve, 18, 0.005, 8, false);
+    dripLoopGeo.computeBoundingSphere();
+    const leadInDripLoop = new THREE.Mesh(dripLoopGeo, dropWireSheathMat);
+    leadInDripLoop.name = 'courtyard.telephoneDropLine.leadInDripLoop';
+    leadInDripLoop.castShadow = true;
+    telephoneDropLineGroup.add(leadInDripLoop);
+
+    // 5. Traditional Creosoted Timber BT Telegraph Pole (`courtyard.telephoneDropLine.telegraphPole`)
+    //    positioned just beyond the South wall of the western barn/outbuilding (`x = -21.85m, z = 23.15m`,
+    //    `baseY = -0.50m`, top `y = 5.65m`, height `6.15m`)
+    const poleX = -21.85;
+    const poleZ = 23.15;
+    const poleBaseY = -0.5;
+    const poleTopY = 5.65;
+    const poleHeight = poleTopY - poleBaseY; // 6.15m
+    const poleRingY = 5.35;
+
+    const telegraphPole = new THREE.Group();
+    telegraphPole.name = 'courtyard.telephoneDropLine.telegraphPole';
+    telegraphPole.position.set(poleX, 0, poleZ);
+
+    const poleShaftGeo = new THREE.CylinderGeometry(0.095, 0.125, poleHeight, 20);
+    poleShaftGeo.computeBoundingSphere();
+    const poleShaft = new THREE.Mesh(poleShaftGeo, creosotePoleMat);
+    poleShaft.name = 'courtyard.telephoneDropLine.telegraphPole.shaft';
+    poleShaft.position.set(0, (poleBaseY + poleTopY) * 0.5, 0);
+    poleShaft.castShadow = true;
+    poleShaft.receiveShadow = true;
+    telegraphPole.add(poleShaft);
+
+    const baseBootGeo = new THREE.CylinderGeometry(0.132, 0.138, 0.28, 18);
+    baseBootGeo.computeBoundingSphere();
+    const baseBoot = new THREE.Mesh(baseBootGeo, dropWireSheathMat);
+    baseBoot.name = 'courtyard.telephoneDropLine.telegraphPole.baseBoot';
+    baseBoot.position.set(0, poleBaseY + 0.14, 0);
+    telegraphPole.add(baseBoot);
+
+    // Galvanised steel pole-top finial cap (`poleCap`)
+    const poleCapGeo = new THREE.ConeGeometry(0.104, 0.065, 18);
+    poleCapGeo.computeBoundingSphere();
+    const poleCap = new THREE.Mesh(poleCapGeo, galvSteelMat);
+    poleCap.name = 'courtyard.telephoneDropLine.telegraphPole.poleCap';
+    poleCap.position.set(0, poleTopY + 0.032, 0);
+    poleCap.castShadow = true;
+    telegraphPole.add(poleCap);
+
+    // Yellow/black statutory warning band & number plate (`warningLabel`)
+    const warningLabel = new THREE.Group();
+    warningLabel.name = 'courtyard.telephoneDropLine.telegraphPole.warningLabel';
+    warningLabel.position.set(0, 1.55, 0);
+
+    const warningBandGeo = new THREE.CylinderGeometry(0.118, 0.12, 0.18, 18);
+    warningBandGeo.computeBoundingSphere();
+    const warningBand = new THREE.Mesh(warningBandGeo, warningYellowMat);
+    warningBand.name = 'courtyard.telephoneDropLine.telegraphPole.warningLabel.band';
+    warningLabel.add(warningBand);
+
+    const numberPlateGeo = new THREE.BoxGeometry(0.075, 0.11, 0.012);
+    numberPlateGeo.computeBoundingSphere();
+    const numberPlate = new THREE.Mesh(numberPlateGeo, dropWireSheathMat);
+    numberPlate.name = 'courtyard.telephoneDropLine.telegraphPole.warningLabel.numberPlate';
+    numberPlate.position.set(0, 0, -0.118);
+    warningLabel.add(numberPlate);
+
+    telegraphPole.add(warningLabel);
+
+    // Staggered galvanised steel pole climbing steps on the upper shaft
+    for (let sIdx = 0; sIdx < 5; sIdx++) {
+      const stepY = 2.65 + sIdx * 0.52;
+      const sideSign = sIdx % 2 === 0 ? -1 : 1;
+      const stepGeo = new THREE.BoxGeometry(0.13, 0.018, 0.028);
+      stepGeo.computeBoundingSphere();
+      const climbingStep = new THREE.Mesh(stepGeo, galvSteelMat);
+      climbingStep.name = `courtyard.telephoneDropLine.telegraphPole.climbingStep.${sIdx + 1}`;
+      climbingStep.position.set(sideSign * 0.145, stepY, 0);
+      telegraphPole.add(climbingStep);
+    }
+
+    // Galvanised pole ring-head distribution bracket with porcelain/ceramic insulators (`poleInsulatorRing`) at `y = 5.35m`
+    const poleInsulatorRing = new THREE.Group();
+    poleInsulatorRing.name = 'courtyard.telephoneDropLine.telegraphPole.poleInsulatorRing';
+    poleInsulatorRing.position.set(0, poleRingY, 0);
+
+    const ringCollarGeo = new THREE.CylinderGeometry(0.104, 0.106, 0.085, 18);
+    ringCollarGeo.computeBoundingSphere();
+    const ringCollar = new THREE.Mesh(ringCollarGeo, galvSteelMat);
+    ringCollar.name = 'courtyard.telephoneDropLine.telegraphPole.poleInsulatorRing.collar';
+    poleInsulatorRing.add(ringCollar);
+
+    const distributionRingGeo = new THREE.TorusGeometry(0.175, 0.011, 10, 24);
+    distributionRingGeo.rotateX(Math.PI / 2);
+    distributionRingGeo.computeBoundingSphere();
+    const distributionRing = new THREE.Mesh(distributionRingGeo, galvSteelMat);
+    distributionRing.name = 'courtyard.telephoneDropLine.telegraphPole.poleInsulatorRing.ring';
+    distributionRing.castShadow = true;
+    poleInsulatorRing.add(distributionRing);
+
+    for (let armIdx = 0; armIdx < 4; armIdx++) {
+      const angle = (armIdx * Math.PI) / 2;
+      const armGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.35, 8);
+      armGeo.rotateZ(Math.PI / 2);
+      armGeo.rotateY(angle);
+      armGeo.computeBoundingSphere();
+      const spiderArm = new THREE.Mesh(armGeo, galvSteelMat);
+      spiderArm.name = `courtyard.telephoneDropLine.telegraphPole.poleInsulatorRing.arm.${armIdx + 1}`;
+      poleInsulatorRing.add(spiderArm);
+    }
+
+    for (let insIdx = 0; insIdx < 6; insIdx++) {
+      const angle = (insIdx * Math.PI) / 3 - Math.PI / 2; // insIdx = 0 points due North (-Z) at z = -0.175m
+      const ix = Math.cos(angle) * 0.175;
+      const iz = Math.sin(angle) * 0.175;
+      const insulatorGeo = new THREE.CylinderGeometry(0.021, 0.021, 0.046, 14);
+      insulatorGeo.computeBoundingSphere();
+      const insulator = new THREE.Mesh(insulatorGeo, ceramicInsulatorMat);
+      insulator.name = `courtyard.telephoneDropLine.telegraphPole.poleInsulatorRing.insulator.${insIdx + 1}`;
+      insulator.position.set(ix, 0.026, iz);
+      insulator.castShadow = true;
+      poleInsulatorRing.add(insulator);
+    }
+
+    // Drop-wire tension clamp on the North (-Z) insulator (`z = -0.18m -> world z = 22.97m, y = 5.35m`)
+    const poleTensionClampGeo = new THREE.CylinderGeometry(0.0095, 0.013, 0.095, 12);
+    poleTensionClampGeo.rotateX(Math.PI / 2);
+    poleTensionClampGeo.computeBoundingSphere();
+    const poleTensionClamp = new THREE.Mesh(poleTensionClampGeo, galvSteelMat);
+    poleTensionClamp.name = 'courtyard.telephoneDropLine.telegraphPole.poleTensionClamp';
+    poleTensionClamp.position.set(0, 0.024, -0.215);
+    poleTensionClamp.castShadow = true;
+    poleInsulatorRing.add(poleTensionClamp);
+
+    telegraphPole.add(poleInsulatorRing);
+
+    // Pole down-lead armoured riser conduit along the South (+Z) face of the pole
+    const riserConduitGeo = new THREE.CylinderGeometry(0.014, 0.014, poleRingY - poleBaseY, 10);
+    riserConduitGeo.computeBoundingSphere();
+    const riserConduit = new THREE.Mesh(riserConduitGeo, dropWireSheathMat);
+    riserConduit.name = 'courtyard.telephoneDropLine.telegraphPole.riserConduit';
+    riserConduit.position.set(0, (poleRingY + poleBaseY) * 0.5, 0.118);
+    telegraphPole.add(riserConduit);
+
+    telephoneDropLineGroup.add(telegraphPole);
+
+    // 6. Overhead Catenary Telephone Drop Cable (`courtyard.telephoneDropLine.catenaryWire`)
+    //    Runs from the house eaves bracket (`[-21.833, 4.084, 11.78]`) southward across the courtyard
+    //    driveway gap and high over the South end of the western barn/outbuilding range (`x ≈ -21.85m`,
+    //    clearing the outbuilding ridge at `z = 18.85m, y = 3.25m..3.44m` by passing cleanly above it at
+    //    `y = 4.52m`, with `y >= 4.06m` everywhere along the span) to the BT Telegraph Pole tension clamp
+    //    at `[-21.85, 5.35, 22.97]`.
+    const catenaryCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(houseBracketX, houseBracketY, 11.78),
+      new THREE.Vector3(-21.836, 4.065, 13.65),
+      new THREE.Vector3(-21.84, 4.185, 15.85),
+      new THREE.Vector3(-21.844, 4.52, 18.85),
+      new THREE.Vector3(-21.848, 4.92, 21.35),
+      new THREE.Vector3(poleX, poleRingY + 0.024, poleZ - 0.18),
+    ]);
+    const catenaryWireGeo = new THREE.TubeGeometry(catenaryCurve, 24, 0.0065, 8, false);
+    catenaryWireGeo.computeBoundingSphere();
+    const catenaryWire = new THREE.Mesh(catenaryWireGeo, dropWireSheathMat);
+    catenaryWire.name = 'courtyard.telephoneDropLine.catenaryWire';
+    catenaryWire.castShadow = true;
+    telephoneDropLineGroup.add(catenaryWire);
+
+    scene.add(telephoneDropLineGroup);
+  }
 }

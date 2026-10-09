@@ -91,7 +91,7 @@ const CIRCUIT_PRESENTATION: Readonly<
   // Living room / cinema (circuit id predates the room rename)
   frontRoomPendant: { label: 'Picture lights', dimmable: true },
   livingRoomShelfLeds: { label: 'Alcove shelf LEDs', dimmable: true },
-  livingRoomTvBacklight: { label: 'TV bias light', dimmable: true },
+  livingRoomTvBacklight: { label: 'Cinema screen bias light', dimmable: true },
   livingRoomWallLights: { label: 'Wall lights', dimmable: true },
   livingRoomDownlights: { label: 'Ceiling downlights', dimmable: true },
   // Entrance hall
