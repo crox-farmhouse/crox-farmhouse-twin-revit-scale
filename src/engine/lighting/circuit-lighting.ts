@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { CircuitId, CircuitLevels } from '../../core/types/knx.ts';
 import type { TimeOfDay } from '../../core/types/scene.ts';
-import type { RoomZoneLodRegistration } from '../lod/lod-manager.ts';
+import type { RoomZoneLodRegistration } from '../../core/entities.ts';
 import { BakedLightVolumeController } from './baked-light-volume.ts';
 import type { LightGroupMap, ZoneIndicatorMaterials } from '../viewer/scene-types.ts';
 

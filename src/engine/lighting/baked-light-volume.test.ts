@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import type { CircuitLevels } from '../../core/types/knx.ts';
-import type { RoomZoneLodRegistration } from '../lod/lod-manager.ts';
+import type { RoomZoneLodRegistration } from '../../core/entities.ts';
 import type { LightGroupMap } from '../viewer/scene-types.ts';
 import { BakedLightVolumeController } from './baked-light-volume.ts';
 
