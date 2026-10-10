@@ -29,7 +29,8 @@ export function bakeProceduralSky(cfg: EnvPresetConfig, width = 512, height = 25
   const sunCol = new THREE.Color(cfg.sunOrbColor);
   const tmpCol = new THREE.Color();
 
-  const data = new Float32Array(width * height * 4);
+  const data = new Uint16Array(width * height * 4);
+  const fullAlpha = THREE.DataUtils.toHalfFloat(1.0);
   const sunU = cfg.hdrSunU;
   const sunV = cfg.hdrSunV;
   const sunPeak = cfg.sunOrbPeak;
@@ -74,21 +75,21 @@ export function bakeProceduralSky(cfg: EnvPresetConfig, width = 512, height = 25
       }
 
       const idx = (y * width + x) * 4;
-      data[idx] = tmpCol.r;
-      data[idx + 1] = tmpCol.g;
-      data[idx + 2] = tmpCol.b;
-      data[idx + 3] = 1.0;
+      data[idx] = THREE.DataUtils.toHalfFloat(tmpCol.r);
+      data[idx + 1] = THREE.DataUtils.toHalfFloat(tmpCol.g);
+      data[idx + 2] = THREE.DataUtils.toHalfFloat(tmpCol.b);
+      data[idx + 3] = fullAlpha;
     }
   }
 
-  const tex = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.FloatType);
+  const tex = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.HalfFloatType);
   configureEquirect(tex);
   return tex;
 }
 
 /** Background (visible skybox) and IBL source panoramas prepared from one loaded `.hdr`. */
 export interface PreparedHdr {
-  readonly background: THREE.Texture;
+  readonly background: THREE.DataTexture;
   readonly envSource: THREE.DataTexture;
   /** Average linear radiance of the meadow band just below the horizon (what the 3D ground fades into). */
   readonly horizonGround: THREE.Color;
@@ -108,8 +109,10 @@ export function prepareHdrPanorama(loadedTex: THREE.DataTexture, cfg: EnvPresetC
 
   const W = img.width;
   const H = img.height;
-  const bgData = img.data;
-  const envData = new Float32Array(bgData.length);
+  const srcData = img.data;
+  const bgData = new Uint16Array(srcData.length);
+  const envData = new Uint16Array(srcData.length);
+  const fullAlpha = THREE.DataUtils.toHalfFloat(1.0);
 
   // Sample the distant meadow band just below the horizon to build the nadir ground.
   const yBand0 = Math.floor(H * 0.525);
@@ -127,9 +130,9 @@ export function prepareHdrPanorama(loadedTex: THREE.DataTexture, cfg: EnvPresetC
     let sb = 0;
     for (let y = yBand0; y < yBand1; y++) {
       const i = (y * W + x) * 4;
-      sr += Math.min(bgData[i]!, 2.0);
-      sg += Math.min(bgData[i + 1]!, 2.0);
-      sb += Math.min(bgData[i + 2]!, 2.0);
+      sr += Math.min(srcData[i]!, 2.0);
+      sg += Math.min(srcData[i + 1]!, 2.0);
+      sb += Math.min(srcData[i + 2]!, 2.0);
     }
     colR[x] = sr / bandRows;
     colG[x] = sg / bandRows;
@@ -180,15 +183,15 @@ export function prepareHdrPanorama(loadedTex: THREE.DataTexture, cfg: EnvPresetC
     // Sample clean ambient sky away from the photographed sun column on this row for inpainting
     const cleanX = Math.floor(((cfg.hdrSunU + 0.32) % 1.0) * W);
     const cleanIdx = (y * W + cleanX) * 4;
-    const rowCleanR = Math.min(bgData[cleanIdx]!, 2.2);
-    const rowCleanG = Math.min(bgData[cleanIdx + 1]!, 2.2);
-    const rowCleanB = Math.min(bgData[cleanIdx + 2]!, 2.4);
+    const rowCleanR = Math.min(srcData[cleanIdx]!, 2.2);
+    const rowCleanG = Math.min(srcData[cleanIdx + 1]!, 2.2);
+    const rowCleanB = Math.min(srcData[cleanIdx + 2]!, 2.4);
 
     for (let x = 0; x < W; x++) {
       const i = (y * W + x) * 4;
-      let r = bgData[i]!;
-      let g = bgData[i + 1]!;
-      let b = bgData[i + 2]!;
+      let r = srcData[i]!;
+      let g = srcData[i + 1]!;
+      let b = srcData[i + 2]!;
 
       if (relocateDaySun && vTop < 0.46) {
         const u = x / W;
@@ -230,21 +233,22 @@ export function prepareHdrPanorama(loadedTex: THREE.DataTexture, cfg: EnvPresetC
 
       const peak = Math.max(r, g, b);
       const sBg = peak > kneeBg ? kneeBg / peak : 1;
-      bgData[i] = r * sBg;
-      bgData[i + 1] = g * sBg;
-      bgData[i + 2] = b * sBg;
-      bgData[i + 3] = 1.0;
+      bgData[i] = THREE.DataUtils.toHalfFloat(r * sBg);
+      bgData[i + 1] = THREE.DataUtils.toHalfFloat(g * sBg);
+      bgData[i + 2] = THREE.DataUtils.toHalfFloat(b * sBg);
+      bgData[i + 3] = fullAlpha;
 
       const sEnv = peak > kneeEnv ? kneeEnv / peak : 1;
-      envData[i] = r * sEnv;
-      envData[i + 1] = g * sEnv;
-      envData[i + 2] = b * sEnv;
-      envData[i + 3] = 1.0;
+      envData[i] = THREE.DataUtils.toHalfFloat(r * sEnv);
+      envData[i + 1] = THREE.DataUtils.toHalfFloat(g * sEnv);
+      envData[i + 2] = THREE.DataUtils.toHalfFloat(b * sEnv);
+      envData[i + 3] = fullAlpha;
     }
   }
 
-  configureEquirect(loadedTex);
-  const envSource = new THREE.DataTexture(envData, W, H, THREE.RGBAFormat, THREE.FloatType);
+  const background = new THREE.DataTexture(bgData, W, H, THREE.RGBAFormat, THREE.HalfFloatType);
+  configureEquirect(background);
+  const envSource = new THREE.DataTexture(envData, W, H, THREE.RGBAFormat, THREE.HalfFloatType);
   configureEquirect(envSource);
-  return { background: loadedTex, envSource, horizonGround: new THREE.Color(avgR, avgG, avgB) };
+  return { background, envSource, horizonGround: new THREE.Color(avgR, avgG, avgB) };
 }

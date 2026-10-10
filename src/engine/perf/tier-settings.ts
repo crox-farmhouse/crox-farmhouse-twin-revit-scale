@@ -100,10 +100,10 @@ const TIER_TABLE: Readonly<Record<GraphicsTier, TierFeatureRow>> = {
     pointLightBudget: 16,
   },
   medium: {
-    postProcessing: false,
-    ambientOcclusion: false,
+    postProcessing: true,
+    ambientOcclusion: true,
     bloom: false,
-    sharpen: false,
+    sharpen: true,
     shadowMapSize: 2048,
     lodDistanceScale: 0.85,
     highDetailMaxDistance: 10,
@@ -112,7 +112,7 @@ const TIER_TABLE: Readonly<Record<GraphicsTier, TierFeatureRow>> = {
   high: {
     postProcessing: true,
     ambientOcclusion: true,
-    bloom: false,
+    bloom: true,
     sharpen: true,
     shadowMapSize: 2048,
     lodDistanceScale: 1.0,

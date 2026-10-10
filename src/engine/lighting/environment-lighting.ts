@@ -177,17 +177,14 @@ export class EnvironmentLighting {
         cfg.hdrUrl,
         (loadedTex) => {
           const prepared = prepareHdrPanorama(loadedTex, cfg);
+          loadedTex.dispose();
           if (!prepared) return;
           const envTexture = bakeEquirectPmrem(renderer, prepared.envSource);
           prepared.envSource.dispose();
 
-          const prevBg = this.bgMaps[mode];
-          const prevEnv = this.envMaps[mode];
           this.bgMaps[mode] = prepared.background;
           this.envMaps[mode] = envTexture;
           this.horizonGround[mode].copy(prepared.horizonGround);
-          prevBg?.dispose();
-          prevEnv?.dispose();
 
           if (this.currentMode === mode) {
             this.applyEnvironmentTextures(mode);

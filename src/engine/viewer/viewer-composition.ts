@@ -6,7 +6,6 @@ import {
   applyWebGpuLightVolumeToScene,
   installShaderLightCulling,
 } from '../lighting/shader-light-culling.ts';
-import { detectDeviceProfile } from '../perf/index.ts';
 import { RoomLodController } from '../lod/lod-manager.ts';
 import { applySelectiveBevelModifier } from '../rendering/bevel-modifier.ts';
 import { classifyScene } from '../trade-views/index.ts';
@@ -355,6 +354,7 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
   private startGolfSimulatorShot(): void {
     if (!this.walkthrough.isActive()) {
       if (this.annotations.isActive()) this.annotations.controller.setAnnotationMode(false);
+      this.renderer.resetHistory();
       this.walkthrough.enter(this.camera.getPoseSnapshot(), GOLF_SHOT_SPAWN);
     }
     this.walkthrough.beginFirstPersonGolfShot();
@@ -364,6 +364,7 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
     const sample = this.devices.interactions.getActiveFirstPersonPose();
     if (!this.walkthrough.isActive() && sample) {
       if (this.annotations.isActive()) this.annotations.controller.setAnnotationMode(false);
+      this.renderer.resetHistory();
       this.walkthrough.enter(this.camera.getPoseSnapshot(), {
         position: sample.footPosition,
         yawDeg: THREE.MathUtils.radToDeg(sample.yawRad),
@@ -405,6 +406,7 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
   }
 
   public setWalkthroughMode(enabled: boolean, spawnId?: string): boolean {
+    this.renderer.resetHistory();
     if (enabled) {
       if (this.annotations.isActive()) this.annotations.controller.setAnnotationMode(false);
       const spawn = spawnId ? DEFAULT_WALKTHROUGH_SPAWNS.find((s) => s.id === spawnId) : undefined;
@@ -435,8 +437,7 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
     onProgress?: (label: string, fraction: number) => Promise<void> | void
   ): Promise<void> {
     await this.renderer.init();
-    const refreshedProfile = detectDeviceProfile(this.renderer.renderer);
-    this.graphics.setDevicePixelRatio(refreshedProfile.devicePixelRatio);
+    this.graphics.refreshDeviceProfile();
     this.environment.bakeProceduralEnvironments(this.renderer.renderer);
     this.environment.applyTimeOfDay(this.environment.currentMinutes, this.scene);
     applyWebGpuLightVolumeToScene(this.scene);

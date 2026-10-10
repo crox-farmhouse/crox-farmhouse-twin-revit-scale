@@ -133,6 +133,13 @@ export class GraphicsService {
     this.governor.setDevicePixelRatio(ratio);
   }
 
+  /** Re-inspects the GPU adapter after `await renderer.init()` and updates the auto tier & DPR. */
+  public refreshDeviceProfile(): void {
+    const profile = detectDeviceProfile(this.host.renderer.renderer);
+    this.governor.setDevicePixelRatio(profile.devicePixelRatio);
+    this.governor.setAutoTier(estimateInitialTier(profile));
+  }
+
   /** Feeds a rendered frame's duration to the governor. */
   public recordFrame(dtMs: number, cameraMoving: boolean): void {
     this.governor.recordFrame(dtMs, cameraMoving);

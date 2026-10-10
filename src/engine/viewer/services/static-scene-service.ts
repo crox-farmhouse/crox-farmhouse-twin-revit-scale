@@ -72,19 +72,6 @@ export class StaticSceneService {
     const dynamicObjects = new Set<THREE.Object3D>();
     this.host.collectDynamicObjects(dynamicObjects);
 
-    const mutableMaterials = new Set<THREE.Material>();
-    for (const group of Object.values(this.host.lightGroups)) {
-      for (const mat of group.emissives) {
-        mutableMaterials.add(mat);
-      }
-    }
-    for (const mat of Object.values(this.host.indicatorMats)) {
-      mutableMaterials.add(mat);
-    }
-    for (const binding of this.host.roomSwitchLedMats) {
-      mutableMaterials.add(binding.mat);
-    }
-
     const maxAnisotropy = Math.min(MAX_ANISOTROPY, this.host.renderer.getMaxAnisotropy());
     const seenMaterials = new Set<THREE.Material>();
 
@@ -95,20 +82,6 @@ export class StaticSceneService {
       }
       if (!(obj instanceof THREE.Mesh)) return;
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-      let hasMutableMat = false;
-      for (const mat of mats) {
-        if (!mat) continue;
-        if (
-          mutableMaterials.has(mat) ||
-          typeof mat.userData?.cutawayLightOpacity === 'number' ||
-          (mat.transparent && mat.opacity >= 0.30 && mat.opacity <= 0.44 && mat.depthWrite === false)
-        ) {
-          hasMutableMat = true;
-        }
-      }
-      if (isStaticObject && !hasMutableMat) {
-        (obj as THREE.Object3D & { static?: boolean }).static = true;
-      }
       for (const mat of mats) {
         if (!mat || seenMaterials.has(mat)) continue;
         seenMaterials.add(mat);

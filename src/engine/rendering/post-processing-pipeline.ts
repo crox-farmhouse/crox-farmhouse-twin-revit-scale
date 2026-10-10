@@ -120,7 +120,6 @@ export class PostProcessingPipeline {
   private readonly uIsLogDepth = uniform(0.0).setGroup(renderGroup);
   private readonly uOrthoEquivDepth = uniform(10.0).setGroup(renderGroup);
   private readonly uExposure: ShaderNodeObject<UniformNode<number>>;
-  private readonly uProjZ = uniform(new THREE.Vector2(-1.0, -0.2)).setGroup(renderGroup);
   private readonly uCurrInvViewProj = uniform(new THREE.Matrix4()).setGroup(renderGroup);
   private readonly uPrevViewProj = uniform(new THREE.Matrix4()).setGroup(renderGroup);
   private readonly uMotionBlurEnabled = uniform(1.0).setGroup(renderGroup);
@@ -665,7 +664,7 @@ export class PostProcessingPipeline {
         // Note: WebGPU PostProcessing QuadMesh UVs have vUv.y = 0 at top (ndc.y = +1) and 1 at bottom (ndc.y = -1).
         const velocity = vec2(0.0).toVar();
         If(this.uMotionBlurEnabled.greaterThan(0.5), () => {
-          const ndcZ = this.uProjZ.x.negate().add(this.uProjZ.y.div(max(1e-5, centerLinZ)));
+          const ndcZ = rawDepth.mul(2.0).sub(1.0);
           const ndcXY = vec2(vUv.x, float(1.0).sub(vUv.y)).mul(2.0).sub(1.0);
           const clipPos = vec4(ndcXY, ndcZ, 1.0);
           const worldPos = this.uCurrInvViewProj.mul(clipPos).toVar();
@@ -780,7 +779,7 @@ export class PostProcessingPipeline {
       const d = Math.abs(ce[i]! - pe[i]!);
       if (d > maxMatrixDelta) maxMatrixDelta = d;
     }
-    const cameraMoved = maxMatrixDelta > 1e-4;
+    const cameraMoved = maxMatrixDelta > 1e-5;
 
     const isOrtho = (camera as THREE.OrthographicCamera).isOrthographicCamera === true;
     const near = (camera as THREE.PerspectiveCamera | THREE.OrthographicCamera).near ?? 0.1;
@@ -802,7 +801,6 @@ export class PostProcessingPipeline {
       : 0.0;
     // Exposure comes only from the renderer (never from the camera type, zoom or position).
     this.uExposure.value = this.renderer.toneMappingExposure;
-    this.uProjZ.value.set(projElements[10]!, projElements[14]!);
 
     if (cameraMoved) {
       this.uCurrInvViewProj.value.copy(this.currInvViewProj);

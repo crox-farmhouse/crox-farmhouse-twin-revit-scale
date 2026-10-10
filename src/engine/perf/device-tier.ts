@@ -220,8 +220,17 @@ export function estimateInitialTier(profile: DeviceProfile): GraphicsTier {
   const gpuTier = classifyGpu(profile.gpuRenderer);
   let tier: GraphicsTier = gpuTier ?? 'medium';
 
-  // Safari on macOS masks every GPU as "Apple GPU"; on a desktop that is almost always Apple silicon.
-  if (/apple\s*gpu/i.test(profile.gpuRenderer) && !profile.isMobile && !profile.isTouch) {
+  // Safari on macOS masks every GPU as "Apple GPU", and Chrome/Safari WebGPU often masks
+  // adapterInfo.device/description while reporting "WebGPU Hardware Adapter" or vendor "apple"/"nvidia"/"amd".
+  if (
+    !profile.isMobile &&
+    !profile.isTouch &&
+    gpuTier === null &&
+    (/apple\s*gpu|webgpu\s*hardware\s*adapter/i.test(profile.gpuRenderer) ||
+      /^(apple|nvidia|amd)\b/i.test(profile.gpuVendor))
+  ) {
+    tier = 'high';
+  } else if (/apple\s*gpu/i.test(profile.gpuRenderer) && !profile.isMobile && !profile.isTouch) {
     tier = 'high';
   }
 
