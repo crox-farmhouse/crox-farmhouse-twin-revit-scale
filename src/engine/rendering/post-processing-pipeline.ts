@@ -89,10 +89,11 @@ export const POST_TONE_MAPPER: 'agx' | 'aces' = 'agx';
 export const RENDERER_TONE_MAPPING: THREE.ToneMapping =
   POST_TONE_MAPPER === 'agx' ? THREE.AgXToneMapping : THREE.ACESFilmicToneMapping;
 
-const STORAGE_KEY = 'crox_graphics_settings_v2';
+const STORAGE_KEY = 'crox_graphics_settings_v3';
 const AO_INTENSITY = 0.42;
 const BLOOM_INTENSITY = 0.12;
 const SHARPEN_INTENSITY = 0.26;
+const MOTION_BLUR_STRENGTH = 0.38;
 
 function currentDevicePixelRatio(): number {
   return typeof window !== 'undefined' && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
@@ -122,8 +123,8 @@ export class PostProcessingPipeline {
   private readonly uProjZ = uniform(new THREE.Vector2(-1.0, -0.2)).setGroup(renderGroup);
   private readonly uCurrInvViewProj = uniform(new THREE.Matrix4()).setGroup(renderGroup);
   private readonly uPrevViewProj = uniform(new THREE.Matrix4()).setGroup(renderGroup);
-  private readonly uMotionBlurEnabled = uniform(0.0).setGroup(renderGroup);
-  private readonly uShutterScale = uniform(0.55).setGroup(renderGroup);
+  private readonly uMotionBlurEnabled = uniform(1.0).setGroup(renderGroup);
+  private readonly uShutterScale = uniform(MOTION_BLUR_STRENGTH).setGroup(renderGroup);
   private readonly uAoIntensity = uniform(AO_INTENSITY).setGroup(renderGroup);
   private readonly uSharpenIntensity = uniform(SHARPEN_INTENSITY).setGroup(renderGroup);
   private readonly uFxaaEnabled = uniform(0.0).setGroup(renderGroup);
@@ -134,9 +135,9 @@ export class PostProcessingPipeline {
   private hasPrevMatrix = false;
 
   private tier: GraphicsTier = 'high';
-  /** Motion blur is opt-in (plan 2.2) and only takes effect while the post pipeline is enabled. */
-  private motionBlurEnabled = false;
-  private motionBlurStrength = 0.68;
+  /** Subtle ~135° shutter camera-velocity motion blur; active while the post pipeline is enabled. */
+  private motionBlurEnabled = true;
+  private motionBlurStrength = MOTION_BLUR_STRENGTH;
   private postEnabled = true;
   private ambientOcclusionEnabled = true;
   private fxaaEnabled = false;
@@ -260,12 +261,12 @@ export class PostProcessingPipeline {
 
   public setMotionBlurEnabled(enabled: boolean): void {
     this.motionBlurEnabled = enabled;
+    if (enabled) this.postEnabled = true;
     this.saveSettings();
   }
 
   public toggleMotionBlur(): boolean {
-    this.motionBlurEnabled = !this.motionBlurEnabled;
-    this.saveSettings();
+    this.setMotionBlurEnabled(!this.motionBlurEnabled);
     return this.motionBlurEnabled;
   }
 
@@ -660,20 +661,26 @@ export class PostProcessingPipeline {
         const noise = fract(float(52.9829189).mul(fract(dot(screenCoordinate.xy, magicXY)))).toVar();
         const centerLinZ = linearizeDepth(rawDepth).toVar();
 
-        // 1. Compute per-pixel 3D camera velocity vector in screen UV space (only when camera moved)
+        // 1. Compute per-pixel 3D camera velocity vector in screen UV space (only when camera moved).
+        // Note: WebGPU PostProcessing QuadMesh UVs have vUv.y = 0 at top (ndc.y = +1) and 1 at bottom (ndc.y = -1).
         const velocity = vec2(0.0).toVar();
         If(this.uMotionBlurEnabled.greaterThan(0.5), () => {
           const ndcZ = this.uProjZ.x.negate().add(this.uProjZ.y.div(max(1e-5, centerLinZ)));
-          const clipPos = vec4(vUv.mul(2.0).sub(1.0), ndcZ, 1.0);
+          const ndcXY = vec2(vUv.x, float(1.0).sub(vUv.y)).mul(2.0).sub(1.0);
+          const clipPos = vec4(ndcXY, ndcZ, 1.0);
           const worldPos = this.uCurrInvViewProj.mul(clipPos).toVar();
           worldPos.divAssign(max(1e-6, worldPos.w));
 
           const prevClipPos = this.uPrevViewProj.mul(worldPos).toVar();
           If(prevClipPos.w.greaterThan(1e-4), () => {
-            const prevUv = prevClipPos.xy.div(prevClipPos.w).mul(0.5).add(0.5);
+            const prevNdc = prevClipPos.xy.div(prevClipPos.w);
+            const prevUv = vec2(
+              prevNdc.x.mul(0.5).add(0.5),
+              float(0.5).sub(prevNdc.y.mul(0.5))
+            );
             const rawVel = vUv.sub(prevUv).mul(this.uShutterScale).toVar();
             const velMag = length(rawVel);
-            const maxRadius = float(0.028);
+            const maxRadius = float(0.014);
             velocity.assign(
               select(
                 velMag.greaterThan(maxRadius),
@@ -686,13 +693,13 @@ export class PostProcessingPipeline {
 
         const speedPx = length(velocity.mul(this.uResolution)).toVar();
         const hdrColor = vec3(centerColor).toVar();
-        const applyBlur = this.uMotionBlurEnabled.greaterThan(0.5).and(speedPx.greaterThan(1.25));
+        const applyBlur = this.uMotionBlurEnabled.greaterThan(0.5).and(speedPx.greaterThan(1.8));
 
-        // 2. Apply 6-tap depth-aware directional shutter motion blur when moving/turning rapidly,
-        //    or FXAA + Contrast-Adaptive Sharpening (CAS) when stationary/slow-moving.
+        // 2. Apply subtle 6-tap depth-aware directional shutter motion blur when panning/flying,
+        //    with a smooth onset ramp (1.8px -> 6.5px) so gentle orbits remain crisp.
         If(applyBlur, () => {
-          const accumColor = centerColor.mul(1.25).toVar();
-          const totalWeight = float(1.25).toVar();
+          const accumColor = centerColor.mul(1.65).toVar();
+          const totalWeight = float(1.65).toVar();
 
           const sampleCount = 6;
           for (let i = 0; i < sampleCount; i++) {
@@ -703,13 +710,14 @@ export class PostProcessingPipeline {
 
             const depthDiff = abs(sampleLinZ.sub(centerLinZ));
             const depthWeight = smoothstep(1.2, 0.08, depthDiff).mul(0.75).add(0.25);
-            const windowWeight = float(1.0).sub(abs(fi).mul(0.65));
+            const windowWeight = float(1.0).sub(abs(fi).mul(0.75));
             const w = depthWeight.mul(windowWeight);
 
             accumColor.addAssign(sampleCol.mul(w));
             totalWeight.addAssign(w);
           }
-          hdrColor.assign(accumColor.div(totalWeight));
+          const blurBlend = smoothstep(1.8, 6.5, speedPx);
+          hdrColor.assign(mix(centerColor, accumColor.div(totalWeight), blurBlend));
         });
 
         If(

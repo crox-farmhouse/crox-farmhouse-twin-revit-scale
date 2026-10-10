@@ -107,6 +107,7 @@ export class PropertyScene<
   public setGraphicsQualityPreset(preset: GraphicsQualityPreset): void { this.graphics.setQualityPreset(preset); }
   public cycleGraphicsQualityPreset(): GraphicsQualityPreset { return this.graphics.cycleQualityPreset(); }
   public isMotionBlurEnabled(): boolean { return this.graphics.isMotionBlurEnabled(); }
+  public setMotionBlurEnabled(enabled: boolean): void { this.graphics.setMotionBlurEnabled(enabled); }
   public toggleMotionBlur(): boolean { return this.graphics.toggleMotionBlur(); }
   public isSsaoEnabled(): boolean { return this.graphics.isSsaoEnabled(); }
   public setSsaoEnabled(enabled: boolean): void { this.graphics.setSsaoEnabled(enabled); }

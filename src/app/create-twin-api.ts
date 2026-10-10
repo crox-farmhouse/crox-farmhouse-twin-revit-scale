@@ -421,6 +421,8 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       setSsaoEnabled: (enabled) => scene.setSsaoEnabled(enabled),
       isFxaaEnabled: () => scene.isFxaaEnabled(),
       setFxaaEnabled: (enabled) => scene.setFxaaEnabled(enabled),
+      isMotionBlurEnabled: () => scene.isMotionBlurEnabled(),
+      setMotionBlurEnabled: (enabled) => scene.setMotionBlurEnabled(enabled),
     },
 
     trades: {

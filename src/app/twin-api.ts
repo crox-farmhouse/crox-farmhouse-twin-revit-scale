@@ -333,6 +333,8 @@ export interface TwinGraphicsApi {
   setSsaoEnabled(enabled: boolean): void;
   isFxaaEnabled(): boolean;
   setFxaaEnabled(enabled: boolean): void;
+  isMotionBlurEnabled(): boolean;
+  setMotionBlurEnabled(enabled: boolean): void;
 }
 
 // -----------------------------------------------------------------------------

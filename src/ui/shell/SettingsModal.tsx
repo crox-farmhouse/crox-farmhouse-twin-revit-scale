@@ -58,9 +58,13 @@ export function SettingsModal(): JSX.Element | null {
   const fps = graphicsFps.value;
   const [ssaoEnabled, setSsaoEnabled] = useState<boolean>(() => ctl.api.graphics.isSsaoEnabled());
   const [fxaaEnabled, setFxaaEnabled] = useState<boolean>(() => ctl.api.graphics.isFxaaEnabled());
+  const [motionBlurEnabled, setMotionBlurEnabled] = useState<boolean>(() =>
+    ctl.api.graphics.isMotionBlurEnabled()
+  );
   useEffect(() => {
     setSsaoEnabled(ctl.api.graphics.isSsaoEnabled());
     setFxaaEnabled(ctl.api.graphics.isFxaaEnabled());
+    setMotionBlurEnabled(ctl.api.graphics.isMotionBlurEnabled());
   }, [ctl, mode]);
   const close = (): void => {
     settingsOpen.value = false;
@@ -107,6 +111,26 @@ export function SettingsModal(): JSX.Element | null {
               ))}
             </div>
             <div class="shell-toggle-row" style={{ marginTop: '12px' }}>
+              <span class="shell-radio-text">
+                <span>Motion Blur (Cinematic Shutter)</span>
+                <span class="shell-muted">Subtle 6-tap depth-aware camera velocity shutter blur</span>
+              </span>
+              <button
+                type="button"
+                class={`shell-switch${motionBlurEnabled ? ' is-on' : ''}`}
+                role="switch"
+                aria-checked={motionBlurEnabled}
+                aria-label="Motion Blur (Cinematic Shutter)"
+                onClick={() => {
+                  const next = !motionBlurEnabled;
+                  ctl.api.graphics.setMotionBlurEnabled(next);
+                  setMotionBlurEnabled(next);
+                }}
+              >
+                <span class="shell-switch-knob" />
+              </button>
+            </div>
+            <div class="shell-toggle-row" style={{ marginTop: '8px' }}>
               <span class="shell-radio-text">
                 <span>SSAO (Screen-Space Ambient Occlusion)</span>
                 <span class="shell-muted">8-tap bilateral depth-curvature contact shadows (+ baked 3D room AO)</span>

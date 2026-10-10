@@ -88,6 +88,11 @@ export class GraphicsService {
     return this.host.renderer.post.isMotionBlurEnabled();
   }
 
+  public setMotionBlurEnabled(enabled: boolean): void {
+    this.host.renderer.post.setMotionBlurEnabled(enabled);
+    this.host.renderer.requestRender();
+  }
+
   public toggleMotionBlur(): boolean {
     const next = this.host.renderer.post.toggleMotionBlur();
     this.host.renderer.requestRender();
