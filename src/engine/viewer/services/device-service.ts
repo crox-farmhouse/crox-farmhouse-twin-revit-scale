@@ -219,6 +219,7 @@ export class DeviceService<TSecurity extends SecurityOverlay3D = SecurityOverlay
   public update(dtSeconds: number, walkingCameraMoved: boolean): void {
     const bifoldMoving = this.bifolds.update(dtSeconds);
     const doorMoving = this.interactions.update(dtSeconds);
+    const ambientMoving = this.interactions.stepAmbient(dtSeconds);
     const { invalidator } = this.host;
     if (bifoldMoving || doorMoving) {
       this.doorsWereAnimating = true;
@@ -232,6 +233,8 @@ export class DeviceService<TSecurity extends SecurityOverlay3D = SecurityOverlay
     } else if (this.doorsWereAnimating) {
       this.doorsWereAnimating = false;
       invalidator.invalidateShadows();
+      invalidator.requestRender();
+    } else if (ambientMoving) {
       invalidator.requestRender();
     }
   }

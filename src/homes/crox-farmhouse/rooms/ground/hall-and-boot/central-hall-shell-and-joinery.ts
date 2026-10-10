@@ -11,6 +11,7 @@ import {
   createSkirtingCapProfile,
 } from '../../../../../engine/geometry/swept-moulding.ts';
 import { buildWindowRomanBlind } from '../../../../../objects/decor/roman-blind.ts';
+import { buildHallWoodBurningStoveFirebox } from '../../../../../objects/heating/wood-burning-stove-fire.ts';
 import type { SceneBuilderContext } from '../../../../../engine/viewer/scene-types.ts';
 import type { createGroundFloorMaterials } from '../../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../../structure/ground-floor-shell-kit.ts';
@@ -419,140 +420,6 @@ export function buildCentralHallShellAndJoinery(
   hallStoveTopPlate.castShadow = true;
   hallStoveGroup.add(hallStoveTopPlate);
 
-  // Warm-lit vermiculite firebox back & side liners inside the recessed cavity
-  const fireboxLinerMat = new THREE.MeshStandardMaterial({
-    color: 0x3b1d0e,
-    emissive: 0xd9480f,
-    emissiveIntensity: 0.95,
-    roughness: 0.88,
-  });
-  const fireboxBackLiner = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.014, 0.236, 0.246)),
-    fireboxLinerMat
-  );
-  fireboxBackLiner.name = 'hall.woodBurningStove.fireboxBack';
-  fireboxBackLiner.position.set(-0.058, 0.31, 0);
-  hallStoveGroup.add(fireboxBackLiner);
-
-  const fireboxSideLinerGeo = createSharedGeo(new THREE.BoxGeometry(0.105, 0.236, 0.012));
-  for (const [sideTag, sz] of [
-    ['north', -0.119],
-    ['south', 0.119],
-  ] as const) {
-    const sideLiner = tagHighLod(new THREE.Mesh(fireboxSideLinerGeo, fireboxLinerMat));
-    sideLiner.name = `hall.woodBurningStove.fireboxLiner.${sideTag}`;
-    sideLiner.position.set(-0.112, 0.31, sz);
-    hallStoveGroup.add(sideLiner);
-  }
-
-  // Incandescent glowing ember bed & glowing coal chunks on the firebox floor
-  const hallEmberGlowMat = new THREE.MeshStandardMaterial({
-    color: 0xff5a14,
-    emissive: 0xff3d00,
-    emissiveIntensity: 2.8,
-    roughness: 0.6,
-  });
-  const hallEmberBed = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.095, 0.032, 0.235)),
-    hallEmberGlowMat
-  );
-  hallEmberBed.name = 'hall.woodBurningStove.emberBed';
-  hallEmberBed.position.set(-0.112, 0.208, 0);
-  hallStoveGroup.add(hallEmberBed);
-
-  const emberChunkGeo = createSharedGeo(new THREE.DodecahedronGeometry(0.018, 0));
-  for (const [eIdx, [ex, ey, ez]] of (
-    [
-      [-0.135, 0.226, -0.075],
-      [-0.125, 0.228, -0.025],
-      [-0.132, 0.227, 0.032],
-      [-0.128, 0.225, 0.082],
-      [-0.095, 0.228, -0.05],
-      [-0.092, 0.229, 0.048],
-    ] as const
-  ).entries()) {
-    const emberChunk = tagHighLod(new THREE.Mesh(emberChunkGeo, hallEmberGlowMat));
-    emberChunk.name = `hall.woodBurningStove.ember.${eIdx + 1}`;
-    emberChunk.position.set(ex, ey, ez);
-    hallStoveGroup.add(emberChunk);
-  }
-
-  // Cast-iron front log guard / riddle grate bar across the lower firebox opening
-  const logGuardBar = tagHighLod(
-    new THREE.Mesh(createSharedGeo(new THREE.BoxGeometry(0.012, 0.026, 0.244)), castIronMat)
-  );
-  logGuardBar.name = 'hall.woodBurningStove.logRetainer';
-  logGuardBar.position.set(-0.158, 0.212, 0);
-  hallStoveGroup.add(logGuardBar);
-
-  // Crossed charred split hardwood logs resting on the glowing ember bed
-  const hallCharredLogMat = new THREE.MeshStandardMaterial({
-    color: 0x2a1810,
-    emissive: 0x992600,
-    emissiveIntensity: 0.85,
-    roughness: 0.86,
-  });
-  const hallCharredLogGeo = createSharedGeo(new THREE.CylinderGeometry(0.025, 0.028, 0.165, 10));
-  for (const [logIdx, [lx, ly, lz, rotX, rotZ]] of (
-    [
-      [-0.118, 0.248, -0.035, 1.38, 0.16],
-      [-0.108, 0.256, 0.038, -1.34, -0.22],
-      [-0.095, 0.274, 0.0, 1.52, 0.08],
-    ] as const
-  ).entries()) {
-    const logMesh = tagHighLod(new THREE.Mesh(hallCharredLogGeo, hallCharredLogMat));
-    logMesh.name = `hall.woodBurningStove.charredLog.${logIdx + 1}`;
-    logMesh.rotation.set(rotX, 0, rotZ);
-    logMesh.position.set(lx, ly, lz);
-    hallStoveGroup.add(logMesh);
-  }
-
-  // Multi-layered burning flame tongues (outer orange-amber + inner hot golden-yellow cores)
-  const hallOuterFlameMat = new THREE.MeshStandardMaterial({
-    color: 0xff9e33,
-    emissive: 0xff6a00,
-    emissiveIntensity: 3.2,
-    roughness: 0.22,
-    transparent: true,
-    opacity: 0.9,
-  });
-  const hallCoreFlameMat = new THREE.MeshStandardMaterial({
-    color: 0xfff3b0,
-    emissive: 0xffc833,
-    emissiveIntensity: 3.8,
-    roughness: 0.15,
-    transparent: true,
-    opacity: 0.94,
-  });
-  for (const [flameIdx, [fx, fy, fz, fh, fw, tiltX, tiltZ]] of (
-    [
-      [-0.122, 0.315, -0.055, 0.11, 0.032, 0.08, 0.06],
-      [-0.115, 0.335, -0.008, 0.145, 0.04, -0.04, 0.05],
-      [-0.12, 0.322, 0.042, 0.12, 0.035, -0.07, 0.04],
-      [-0.102, 0.31, 0.075, 0.095, 0.028, -0.1, 0.03],
-      [-0.098, 0.328, -0.028, 0.125, 0.034, 0.05, -0.04],
-    ] as const
-  ).entries()) {
-    const outerFlame = tagHighLod(
-      new THREE.Mesh(createSharedGeo(new THREE.ConeGeometry(fw, fh, 10)), hallOuterFlameMat)
-    );
-    outerFlame.name = `hall.woodBurningStove.flame.${flameIdx + 1}`;
-    outerFlame.position.set(fx, fy, fz);
-    outerFlame.rotation.set(tiltX, 0, tiltZ);
-    hallStoveGroup.add(outerFlame);
-
-    const coreFlame = tagHighLod(
-      new THREE.Mesh(
-        createSharedGeo(new THREE.ConeGeometry(fw * 0.62, fh * 0.74, 10)),
-        hallCoreFlameMat
-      )
-    );
-    coreFlame.name = `hall.woodBurningStove.flameCore.${flameIdx + 1}`;
-    coreFlame.position.set(fx - 0.008, fy - fh * 0.08, fz);
-    coreFlame.rotation.set(tiltX * 0.7, 0, tiltZ * 0.7);
-    hallStoveGroup.add(coreFlame);
-  }
-
   // Framed front cast-iron door rails & stiles surrounding the 0.25m × 0.26m glass viewing window on the West (-X) face
   for (const [framePart, py, pz, sy, sz] of [
     ['topRail', 0.455, 0, 0.05, 0.34],
@@ -580,23 +447,15 @@ export function buildCentralHallShellAndJoinery(
   stoveWindowBrow.position.set(-0.176, 0.422, 0);
   hallStoveGroup.add(stoveWindowBrow);
 
-  // Clear heat-resistant ceramic glass viewing window revealing the burning fire inside
-  const stoveCeramicGlassMat = new THREE.MeshStandardMaterial({
-    color: 0xffecd2,
-    emissive: 0xff6a1a,
-    emissiveIntensity: 0.24,
-    roughness: 0.06,
-    metalness: 0.1,
-    transparent: true,
-    opacity: 0.22,
-    depthWrite: false,
-  });
-  const stoveDoorGlass = tagHighLod(
-    new THREE.Mesh(createSharedGeo(new THREE.BoxGeometry(0.012, 0.25, 0.26)), stoveCeramicGlassMat)
+  // Sculpted organic S-curve flame tongues, white-hot inner cores, glowing fissured ember bed,
+  // rising sparks, ceramic stove glass (`hall.woodBurningStove.doorGlass`), and hearth firelight glow pool
+  interactions.registerAnimatedInteractable(
+    buildHallWoodBurningStoveFirebox({
+      stoveGroup: hallStoveGroup,
+      castIronMat,
+    })
   );
-  stoveDoorGlass.name = 'hall.woodBurningStove.doorGlass';
-  stoveDoorGlass.position.set(-0.178, 0.31, 0);
-  hallStoveGroup.add(stoveDoorGlass);
+
 
   // Chrome / brushed-steel latch handle on the left (-Z) side of the stove door
   const stoveDoorHandle = tagHighLod(

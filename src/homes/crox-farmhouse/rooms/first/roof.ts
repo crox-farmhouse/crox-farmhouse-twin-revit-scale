@@ -193,14 +193,21 @@ export function buildFirstFloorCeilingsAndRoof(
     const mainBedCollarSouthZ = 1.05;
     const northPitchBaseZ = -2.54;
     const southPitchBaseZ = 2.44;
+    const landingSkeilingBaseY =
+      upperWallTopY -
+      ((-2.5 - northPitchBaseZ) / (collarNorthZ - -2.5)) * (collarCeilingY - upperWallTopY);
+    const mainBedSkeilingBaseY =
+      upperWallTopY -
+      ((-2.5 - northPitchBaseZ) / (mainBedCollarNorthZ - -2.5)) *
+        (mainBedCollarCeilingY - upperWallTopY);
     const xWestAtZ = (z: number): number =>
       -17.55 + ((z - -2.5) / (2.68 - -2.5)) * (-17.92 - -17.55) - 0.04;
 
-    // 1A. Upper Landing & Family Bathroom — North pitched skeiling (`Z = -2.54m, Y = 4.16m -> Z = -1.15m, Y = 4.52m`)
+    // 1A. Upper Landing & Family Bathroom — North pitched skeiling (`Z = -2.50m, Y = 4.16m -> Z = -1.15m, Y = 4.52m`)
     buildVaultedCeilingQuad(
       'eastWing.vaultedCeiling.northSkeiling',
-      new THREE.Vector3(xWestAtZ(northPitchBaseZ), upperWallTopY, northPitchBaseZ),
-      new THREE.Vector3(mainBedWestWallX, upperWallTopY, northPitchBaseZ),
+      new THREE.Vector3(xWestAtZ(northPitchBaseZ), landingSkeilingBaseY, northPitchBaseZ),
+      new THREE.Vector3(mainBedWestWallX, landingSkeilingBaseY, northPitchBaseZ),
       new THREE.Vector3(mainBedWestWallX, collarCeilingY, collarNorthZ),
       new THREE.Vector3(xWestAtZ(collarNorthZ), collarCeilingY, collarNorthZ),
       0.03,
@@ -218,22 +225,22 @@ export function buildFirstFloorCeilingsAndRoof(
       ewCeilingMeshGroup
     );
 
-    // 1C. Upper Landing & Family Bathroom — South pitched skeiling (`Z = +1.05m, Y = 4.52m -> Z = +2.44m, Y = 4.16m`)
+    // 1C. Upper Landing & Family Bathroom — South pitched skeiling (`Z = +1.05m, Y = 4.52m -> Z = +2.40m, Y = 4.16m`)
     buildVaultedCeilingQuad(
       'eastWing.vaultedCeiling.southSkeiling',
       new THREE.Vector3(xWestAtZ(collarSouthZ), collarCeilingY, collarSouthZ),
       new THREE.Vector3(mainBedWestWallX, collarCeilingY, collarSouthZ),
-      new THREE.Vector3(mainBedWestWallX, upperWallTopY, southPitchBaseZ),
-      new THREE.Vector3(xWestAtZ(southPitchBaseZ), upperWallTopY, southPitchBaseZ),
+      new THREE.Vector3(mainBedWestWallX, landingSkeilingBaseY, southPitchBaseZ),
+      new THREE.Vector3(xWestAtZ(southPitchBaseZ), landingSkeilingBaseY, southPitchBaseZ),
       0.03,
       ewCeilingMeshGroup
     );
 
-    // 2A. Main Bedroom — High North pitched skeiling (`Z = -2.54m, Y = 4.16m -> Z = -1.15m, Y = 5.02m`)
+    // 2A. Main Bedroom — High North pitched skeiling (`Z = -2.50m, Y = 4.16m -> Z = -1.15m, Y = 5.02m`)
     buildVaultedCeilingQuad(
       'mainBedroom.vaultedCeiling.northSkeiling',
-      new THREE.Vector3(mainBedInnerWestX, upperWallTopY, northPitchBaseZ),
-      new THREE.Vector3(eastWallX, upperWallTopY, northPitchBaseZ),
+      new THREE.Vector3(mainBedInnerWestX, mainBedSkeilingBaseY, northPitchBaseZ),
+      new THREE.Vector3(eastWallX, mainBedSkeilingBaseY, northPitchBaseZ),
       new THREE.Vector3(eastWallX, mainBedCollarCeilingY, mainBedCollarNorthZ),
       new THREE.Vector3(mainBedInnerWestX, mainBedCollarCeilingY, mainBedCollarNorthZ),
       0.03,
@@ -251,13 +258,13 @@ export function buildFirstFloorCeilingsAndRoof(
       ewCeilingMeshGroup
     );
 
-    // 2C. Main Bedroom — High South pitched skeiling (`Z = +1.05m, Y = 5.02m -> Z = +2.44m, Y = 4.16m`)
+    // 2C. Main Bedroom — High South pitched skeiling (`Z = +1.05m, Y = 5.02m -> Z = +2.40m, Y = 4.16m`)
     buildVaultedCeilingQuad(
       'mainBedroom.vaultedCeiling.southSkeiling',
       new THREE.Vector3(mainBedInnerWestX, mainBedCollarCeilingY, mainBedCollarSouthZ),
       new THREE.Vector3(eastWallX, mainBedCollarCeilingY, mainBedCollarSouthZ),
-      new THREE.Vector3(eastWallX, upperWallTopY, southPitchBaseZ),
-      new THREE.Vector3(mainBedInnerWestX, upperWallTopY, southPitchBaseZ),
+      new THREE.Vector3(eastWallX, mainBedSkeilingBaseY, southPitchBaseZ),
+      new THREE.Vector3(mainBedInnerWestX, mainBedSkeilingBaseY, southPitchBaseZ),
       0.03,
       ewCeilingMeshGroup
     );
@@ -1019,17 +1026,18 @@ export function buildFirstFloorCeilingsAndRoof(
     ewCeilingMeshGroup.add(gutter);
   }
 
-  // North Eave Brick Wall-Plate Backing (`x_ew = -17.78m..-4.64m, y = 4.064m..4.22m, z_ew = -2.78m..-2.50m`)
-  // Closes any vertical gap between the 4.16m North brick wall and the 4.064m..4.22m boxed eaves soffit & slate roof at the North Valley (Issue #6)
+  // North Eave Brick Wall-Plate Backing (`x_ew = -17.78m..-4.64m, y = 4.064m..4.22m, z_ew = -2.78m..-2.60m`)
+  // Closes any exterior vertical gap between the 4.16m North brick wall and the 4.064m..4.22m boxed eaves soffit & slate roof at the North Valley (Issue #6),
+  // while staying 10cm recessed behind the z_ew = -2.50m interior bedroom/bathroom/landing plaster wall face so bricks never show in 1PV (Issue #1).
   {
     const northBackingW = -4.64 - -17.78;
     const northBackingCx = (-17.78 + -4.64) * 0.5;
-    const northBackingGeo = new THREE.BoxGeometry(northBackingW, 0.156, 0.28);
-    applyWorldSpaceBrickUVs(northBackingGeo, northBackingCx, 4.142, -2.64);
+    const northBackingGeo = new THREE.BoxGeometry(northBackingW, 0.156, 0.18);
+    applyWorldSpaceBrickUVs(northBackingGeo, northBackingCx, 4.142, -2.69);
     northBackingGeo.computeBoundingSphere();
     const northEaveBacking = new THREE.Mesh(northBackingGeo, exteriorBrickMat);
     northEaveBacking.name = 'roof.eastWing.northEaveBrickBacking';
-    northEaveBacking.position.set(northBackingCx, 4.142, -2.64);
+    northEaveBacking.position.set(northBackingCx, 4.142, -2.69);
     ewCeilingMeshGroup.add(northEaveBacking);
   }
 

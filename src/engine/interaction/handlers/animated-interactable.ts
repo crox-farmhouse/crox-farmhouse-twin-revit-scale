@@ -52,4 +52,11 @@ export interface AnimatedInteractable {
   cancelFirstPerson?(): void;
   /** Optional: returns true if the player feet `(footX, footY, footZ)` are in the prop's proximity trigger zone. */
   isPlayerInProximityZone?(footX: number, footY: number, footZ: number): boolean;
+  /**
+   * Optional: when true, this prop runs a continuous ambient visual animation (such as
+   * flickering stove flames and embers) stepped via `stepAmbient(dtSeconds)` without
+   * invalidating shadow maps every frame.
+   */
+  readonly isAmbientLoop?: boolean;
 }
+

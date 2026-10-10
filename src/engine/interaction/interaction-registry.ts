@@ -1031,9 +1031,21 @@ export class InteractionRegistry {
     }
 
     for (const device of this.#animated.values()) {
-      if (device.step(dtSeconds)) anyChanged = true;
+      if (!device.isAmbientLoop && device.step(dtSeconds)) anyChanged = true;
     }
 
+    return anyChanged;
+  }
+
+  /**
+   * Steps continuous ambient visual animations (such as flickering stove flames and embers)
+   * that request a frame render without invalidating shadow maps.
+   */
+  public stepAmbient(dtSeconds: number): boolean {
+    let anyChanged = false;
+    for (const device of this.#animated.values()) {
+      if (device.isAmbientLoop && device.step(dtSeconds)) anyChanged = true;
+    }
     return anyChanged;
   }
 
