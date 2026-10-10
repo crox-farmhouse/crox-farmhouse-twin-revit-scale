@@ -518,24 +518,30 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   // =========================================================================
   // 1. COBBLED PATH RUNNING ALONGSIDE THE HOUSE
   // =========================================================================
-  const { colorMap: graniteSettTex, depthMap: graniteSettDepthTex } =
-    createGraniteSettLPathTextures();
+  const {
+    colorMap: graniteSettTex,
+    depthMap: graniteSettDepthTex,
+    normalMap: graniteSettNormalTex,
+    roughnessMap: graniteSettRoughnessTex,
+  } = createGraniteSettLPathTextures();
 
   const graniteSettMat = new THREE.MeshStandardMaterial({
     map: graniteSettTex,
-    bumpMap: graniteSettDepthTex,
-    bumpScale: 0.036,
-    roughness: 0.82,
+    normalMap: graniteSettNormalTex,
+    normalScale: new THREE.Vector2(0.85, 0.85),
+    roughnessMap: graniteSettRoughnessTex,
+    roughness: 0.88,
     metalness: 0.06,
   });
   const graniteSettTopReliefMat = new THREE.MeshStandardMaterial({
     map: graniteSettTex,
-    bumpMap: graniteSettDepthTex,
-    bumpScale: 0.036,
+    normalMap: graniteSettNormalTex,
+    normalScale: new THREE.Vector2(0.85, 0.85),
+    roughnessMap: graniteSettRoughnessTex,
     displacementMap: graniteSettDepthTex,
     displacementScale: 0.009,
     displacementBias: -0.0045,
-    roughness: 0.82,
+    roughness: 0.88,
     metalness: 0.06,
   });
 

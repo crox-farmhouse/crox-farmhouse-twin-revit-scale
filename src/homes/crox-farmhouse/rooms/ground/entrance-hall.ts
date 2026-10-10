@@ -5,7 +5,7 @@ import {
   buildMitredWallSkirtingGeometry,
   buildPolygonalFloorSlab,
 } from '../../../../engine/geometry/index.ts';
-import { createWelshSlateRoofTexture } from '../../../../engine/textures/procedural-textures.ts';
+import { createWelshSlateRoofTextures } from '../../../../engine/textures/procedural-textures.ts';
 import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { createGroundFloorMaterials } from '../../structure/ground-floor-materials.ts';
 import type { createGroundFloorShellKit } from '../../structure/ground-floor-shell-kit.ts';
@@ -499,12 +499,17 @@ export function buildEntranceHall(
     jutRoofGroup.name = 'entranceHall.eastJutOutRoof';
     jutRoofGroup.userData.isArchitecturalShell = true;
 
-    const jutSlateTex = createWelshSlateRoofTexture();
+    const {
+      colorMap: jutSlateTex,
+      normalMap: jutSlateNormalTex,
+      roughnessMap: jutSlateRoughnessTex,
+    } = createWelshSlateRoofTextures();
     const jutSlateMat = new THREE.MeshStandardMaterial({
       map: jutSlateTex,
-      bumpMap: jutSlateTex,
-      bumpScale: 0.016,
-      roughness: 0.76,
+      normalMap: jutSlateNormalTex,
+      normalScale: new THREE.Vector2(0.66, 0.66),
+      roughnessMap: jutSlateRoughnessTex,
+      roughness: 0.82,
       metalness: 0.03,
     });
     const leadFlashingMat = new THREE.MeshStandardMaterial({

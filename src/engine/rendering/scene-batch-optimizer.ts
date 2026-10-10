@@ -900,6 +900,7 @@ export class SceneBatchOptimizer {
               qRough.toFixed(2),
               qMetal.toFixed(2),
               (mat.bumpScale ?? 0).toFixed(3),
+              `${(mat.normalScale?.x ?? 1).toFixed(2)},${(mat.normalScale?.y ?? 1).toFixed(2)}`,
               (mat.opacity ?? 1).toFixed(2),
               mat.transparent ? '1' : '0',
               targetSide,

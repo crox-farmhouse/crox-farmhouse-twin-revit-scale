@@ -13,6 +13,11 @@ import {
  * deterministic canvas/texture memoization registry.
  */
 export {
+  derivePbrNormalAndRoughnessMaps,
+  type PbrSurfaceMapOptions,
+} from './pbr-surface-maps.ts';
+
+export {
   clearTextureRegistryCache,
   getOrCreateCachedCanvas,
   getOrCreateCachedCanvasPair,

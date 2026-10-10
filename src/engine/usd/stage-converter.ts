@@ -68,7 +68,7 @@ class CanonicalMaterialRegistry {
     const spec: UsdPreviewSurfaceData = convertThreeMaterialToUsdSpec(mat, usageHint);
     const stdMat = mat as THREE.MeshStandardMaterial;
     const mapUuid = stdMat.map?.uuid ?? '';
-    const bumpUuid = stdMat.bumpMap?.uuid ?? '';
+    const bumpUuid = stdMat.bumpMap?.uuid ?? stdMat.normalMap?.uuid ?? '';
     const sig = `${JSON.stringify(spec)}|map:${mapUuid}|bump:${bumpUuid}|transparent:${Boolean(mat.transparent)}`;
     const bySig = this.signatureToPrimName.get(sig);
     if (bySig) {

@@ -102,12 +102,17 @@ export function createGroundFloorMaterials(
     metalness: 0.02,
   });
 
-  const { colorMap: brickColorTex, bumpMap: brickBumpTex } = createImperialBrickTextures();
+  const {
+    colorMap: brickColorTex,
+    normalMap: brickNormalTex,
+    roughnessMap: brickRoughnessTex,
+  } = createImperialBrickTextures();
   const exteriorBrickMat = new THREE.MeshStandardMaterial({
     map: brickColorTex,
-    bumpMap: brickBumpTex,
-    bumpScale: 0.018,
-    roughness: 0.82,
+    normalMap: brickNormalTex,
+    normalScale: new THREE.Vector2(0.85, 0.85),
+    roughnessMap: brickRoughnessTex,
+    roughness: 0.86,
     metalness: 0.03,
   });
 
@@ -221,9 +226,10 @@ export function createGroundFloorMaterials(
   const herringboneQuarryTextures = createHerringboneTerracottaQuarryTileTextures();
   const herringboneTerracottaQuarryMat = new THREE.MeshStandardMaterial({
     map: herringboneQuarryTextures.colorMap,
-    bumpMap: herringboneQuarryTextures.bumpMap,
-    bumpScale: 0.006,
-    roughness: 0.42, // Sealed satin wax sheen on traditional terracotta quarry tiles
+    normalMap: herringboneQuarryTextures.normalMap,
+    normalScale: new THREE.Vector2(0.45, 0.45),
+    roughnessMap: herringboneQuarryTextures.roughnessMap,
+    roughness: 0.46, // Sealed satin wax sheen on traditional terracotta quarry tiles
     metalness: 0.04,
   });
 

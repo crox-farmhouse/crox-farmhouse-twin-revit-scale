@@ -93,6 +93,8 @@ export interface RaisedFlagstonePatioKit {
   readonly yorkstonePatioTextures: {
     readonly colorMap: THREE.CanvasTexture;
     readonly bumpMap: THREE.CanvasTexture;
+    readonly normalMap: THREE.CanvasTexture;
+    readonly roughnessMap: THREE.CanvasTexture;
   };
   readonly rivenYorkstonePatioMat: THREE.MeshStandardMaterial;
   readonly applyPatioFlagstoneUVs: (
@@ -119,16 +121,18 @@ export function buildLowBrickRetainingWall(
   const brickWallMat = new THREE.MeshStandardMaterial({
     color: 0xd8c6bc,
     map: courtyardBrickTextures.colorMap,
-    bumpMap: courtyardBrickTextures.bumpMap,
-    bumpScale: 0.018,
-    roughness: 0.88,
+    normalMap: courtyardBrickTextures.normalMap,
+    normalScale: new THREE.Vector2(0.75, 0.75),
+    roughnessMap: courtyardBrickTextures.roughnessMap,
+    roughness: 0.92,
   });
   const brickSoldierCopingMat = new THREE.MeshStandardMaterial({
     color: 0x945743,
     map: courtyardBrickTextures.colorMap,
-    bumpMap: courtyardBrickTextures.bumpMap,
-    bumpScale: 0.014,
-    roughness: 0.82,
+    normalMap: courtyardBrickTextures.normalMap,
+    normalScale: new THREE.Vector2(0.65, 0.65),
+    roughnessMap: courtyardBrickTextures.roughnessMap,
+    roughness: 0.88,
   });
   const blueBrickCopingMat = new THREE.MeshStandardMaterial({
     color: 0x484d56,
@@ -604,17 +608,19 @@ export function buildRaisedFlagstonePatio(
   const rivenYorkstonePatioMat = new THREE.MeshStandardMaterial({
     color: 0xd8cdb8,
     map: yorkstonePatioTextures.colorMap,
-    bumpMap: yorkstonePatioTextures.bumpMap,
-    bumpScale: 0.026,
-    roughness: 0.8,
+    normalMap: yorkstonePatioTextures.normalMap,
+    normalScale: new THREE.Vector2(0.76, 0.76),
+    roughnessMap: yorkstonePatioTextures.roughnessMap,
+    roughness: 0.86,
     metalness: 0.03,
   });
   const rivenYorkstoneAccentMat = new THREE.MeshStandardMaterial({
     color: 0xcabca4,
     map: yorkstonePatioTextures.colorMap,
-    bumpMap: yorkstonePatioTextures.bumpMap,
-    bumpScale: 0.028,
-    roughness: 0.82,
+    normalMap: yorkstonePatioTextures.normalMap,
+    normalScale: new THREE.Vector2(0.8, 0.8),
+    roughnessMap: yorkstonePatioTextures.roughnessMap,
+    roughness: 0.88,
     metalness: 0.03,
   });
 
@@ -622,9 +628,10 @@ export function buildRaisedFlagstonePatio(
   const herringboneBrickMat = new THREE.MeshStandardMaterial({
     color: 0xdcc8be,
     map: herringboneBrickTextures.colorMap,
-    bumpMap: herringboneBrickTextures.bumpMap,
-    bumpScale: 0.022,
-    roughness: 0.82,
+    normalMap: herringboneBrickTextures.normalMap,
+    normalScale: new THREE.Vector2(0.72, 0.72),
+    roughnessMap: herringboneBrickTextures.roughnessMap,
+    roughness: 0.88,
     metalness: 0.03,
   });
 

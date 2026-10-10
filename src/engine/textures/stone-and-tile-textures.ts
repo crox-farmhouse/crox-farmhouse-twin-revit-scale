@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { derivePbrNormalAndRoughnessMaps } from './pbr-surface-maps.ts';
 import {
   getOrCreateCachedCanvas,
   getOrCreateCachedCanvasPair,
@@ -322,6 +323,8 @@ export function createGraniteSettDepthMapTexture(): THREE.CanvasTexture {
 export function createGraniteSettLPathTextures(): {
   readonly colorMap: THREE.CanvasTexture;
   readonly depthMap: THREE.CanvasTexture;
+  readonly normalMap: THREE.CanvasTexture;
+  readonly roughnessMap: THREE.CanvasTexture;
 } {
   return getOrCreateCachedTexture('granite-sett-lpath', () => {
     // World-space bounds of the T-shaped cobblestone path around the Kitchen, Patio & Pergola:
@@ -603,13 +606,30 @@ export function createGraniteSettLPathTextures(): {
     depthMap.wrapT = THREE.ClampToEdgeWrapping;
     depthMap.anisotropy = 8;
 
-    return { colorMap, depthMap };
+    const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+      'granite-sett-lpath',
+      depthCanvas,
+      {
+        normalStrength: 4.0,
+        wrapS: false,
+        wrapT: false,
+        mortarThreshold: 0.24,
+        mortarRoughness: 1.0,
+        surfaceRoughnessMin: 0.62,
+        surfaceRoughnessMax: 0.88,
+        microGrainRoughness: 0.06,
+      }
+    );
+
+    return { colorMap, depthMap, normalMap, roughnessMap };
   });
 }
 
 export function createHerringboneTerracottaQuarryTileTextures(): {
   readonly colorMap: THREE.CanvasTexture;
   readonly bumpMap: THREE.CanvasTexture;
+  readonly normalMap: THREE.CanvasTexture;
+  readonly roughnessMap: THREE.CanvasTexture;
 } {
   return getOrCreateCachedTexture('herringbone-terracotta-quarry', () => {
     const size = 512;
@@ -746,11 +766,26 @@ export function createHerringboneTerracottaQuarryTileTextures(): {
     colorMap.wrapS = THREE.RepeatWrapping;
     colorMap.wrapT = THREE.RepeatWrapping;
     colorMap.colorSpace = THREE.SRGBColorSpace;
+    colorMap.anisotropy = 8;
 
     const bumpMap = new THREE.CanvasTexture(bumpCanvas);
     bumpMap.wrapS = THREE.RepeatWrapping;
     bumpMap.wrapT = THREE.RepeatWrapping;
+    bumpMap.anisotropy = 8;
 
-    return { colorMap, bumpMap };
+    const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+      'herringbone-terracotta-quarry',
+      bumpCanvas,
+      {
+        normalStrength: 2.6,
+        mortarThreshold: 0.25,
+        mortarRoughness: 1.0,
+        surfaceRoughnessMin: 0.76,
+        surfaceRoughnessMax: 0.94,
+        microGrainRoughness: 0.04,
+      }
+    );
+
+    return { colorMap, bumpMap, normalMap, roughnessMap };
   });
 }

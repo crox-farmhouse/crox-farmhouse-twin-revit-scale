@@ -93,25 +93,28 @@ export function buildGrapeVinePergola(
   const dryStoneWallMat = new THREE.MeshStandardMaterial({
     color: 0xd8c8b0,
     map: dryStoneTextures.colorMap,
-    bumpMap: dryStoneTextures.bumpMap,
-    bumpScale: 0.038,
-    roughness: 0.88,
+    normalMap: dryStoneTextures.normalMap,
+    normalScale: new THREE.Vector2(0.88, 0.88),
+    roughnessMap: dryStoneTextures.roughnessMap,
+    roughness: 0.92,
     metalness: 0.02,
   });
   const dryStoneReliefMat = new THREE.MeshStandardMaterial({
     color: 0xccb99e,
     map: dryStoneTextures.colorMap,
-    bumpMap: dryStoneTextures.bumpMap,
-    bumpScale: 0.04,
-    roughness: 0.9,
+    normalMap: dryStoneTextures.normalMap,
+    normalScale: new THREE.Vector2(0.92, 0.92),
+    roughnessMap: dryStoneTextures.roughnessMap,
+    roughness: 0.94,
     metalness: 0.02,
   });
   const dryStoneCopingMat = new THREE.MeshStandardMaterial({
     color: 0xc2b298,
     map: yorkstonePatioTextures.colorMap,
-    bumpMap: yorkstonePatioTextures.bumpMap,
-    bumpScale: 0.03,
-    roughness: 0.84,
+    normalMap: yorkstonePatioTextures.normalMap,
+    normalScale: new THREE.Vector2(0.76, 0.76),
+    roughnessMap: yorkstonePatioTextures.roughnessMap,
+    roughness: 0.88,
     metalness: 0.03,
   });
 

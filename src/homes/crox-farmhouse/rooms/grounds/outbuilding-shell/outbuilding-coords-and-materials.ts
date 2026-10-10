@@ -444,26 +444,32 @@ export function createOutbuildingShellContext(
   outbuildingSlateColorMap.repeat.set(1, 1);
   outbuildingSlateColorMap.needsUpdate = true;
 
-  const outbuildingSlateBumpMap = baseSlateTextures.bumpMap.clone();
-  outbuildingSlateBumpMap.repeat.set(1, 1);
-  outbuildingSlateBumpMap.needsUpdate = true;
+  const outbuildingSlateNormalMap = baseSlateTextures.normalMap.clone();
+  outbuildingSlateNormalMap.repeat.set(1, 1);
+  outbuildingSlateNormalMap.needsUpdate = true;
+
+  const outbuildingSlateRoughnessMap = baseSlateTextures.roughnessMap.clone();
+  outbuildingSlateRoughnessMap.repeat.set(1, 1);
+  outbuildingSlateRoughnessMap.needsUpdate = true;
 
   const pantileRoofMat = new THREE.MeshStandardMaterial({
     map: outbuildingSlateColorMap,
-    bumpMap: outbuildingSlateBumpMap,
-    bumpScale: 0.024,
+    normalMap: outbuildingSlateNormalMap,
+    normalScale: new THREE.Vector2(0.75, 0.75),
+    roughnessMap: outbuildingSlateRoughnessMap,
     color: 0xd8cfc6, // Subtle warm weathered slate tint on the West & Center range
-    roughness: 0.72,
+    roughness: 0.8,
     metalness: 0.04,
     side: THREE.DoubleSide,
   });
 
   const welshSlateMat = new THREE.MeshStandardMaterial({
     map: outbuildingSlateColorMap,
-    bumpMap: outbuildingSlateBumpMap,
-    bumpScale: 0.026,
+    normalMap: outbuildingSlateNormalMap,
+    normalScale: new THREE.Vector2(0.8, 0.8),
+    roughnessMap: outbuildingSlateRoughnessMap,
     color: 0xffffff,
-    roughness: 0.68,
+    roughness: 0.76,
     metalness: 0.05,
     side: THREE.DoubleSide,
   });

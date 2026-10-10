@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import {
+  derivePbrNormalAndRoughnessMaps,
+  getOrCreateCachedCanvasPair,
+  getOrCreateCachedTexture,
+} from '../../../../engine/textures/procedural-textures.ts';
 import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import {
   getEastWingSouthWallZ,
@@ -77,67 +82,65 @@ export function buildCourtyardAndGates(
   const createContinuousCourtyardCobbleTextures = (): {
     readonly colorMap: THREE.CanvasTexture;
     readonly depthMap: THREE.CanvasTexture;
-  } => {
-    const width = 1024;
-    const height = 1024;
-    const bandW = 1.46;
-    const bandsPerTile = 2;
-    const tileSpanU = bandW * bandsPerTile; // 2.92m across 2 adjacent fan bands
-    const courseStep = 0.1437559;
-    const coursesPerTile = 16;
-    const tileSpanS = coursesPerTile * courseStep; // 2.3000944m along 16 arched fan courses
-    const rowsPerBand = 8;
-    const cobbleStepU = bandW / rowsPerBand; // 0.1825m
-    const pxPerMeterS = width / tileSpanS;
-    const pxPerMeterU = height / tileSpanU;
+    readonly normalMap: THREE.CanvasTexture;
+    readonly roughnessMap: THREE.CanvasTexture;
+  } =>
+    getOrCreateCachedTexture('courtyard-continuous-cobble', () => {
+      const width = 1024;
+      const height = 1024;
+      const bandW = 1.46;
+      const bandsPerTile = 2;
+      const tileSpanU = bandW * bandsPerTile; // 2.92m across 2 adjacent fan bands
+      const courseStep = 0.1437559;
+      const coursesPerTile = 16;
+      const tileSpanS = coursesPerTile * courseStep; // 2.3000944m along 16 arched fan courses
+      const rowsPerBand = 8;
+      const cobbleStepU = bandW / rowsPerBand; // 0.1825m
+      const pxPerMeterS = width / tileSpanS;
+      const pxPerMeterU = height / tileSpanU;
 
-    const stoneHash = (seed: number): number => {
-      const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453123;
-      return x - Math.floor(x);
-    };
+      const stoneHash = (seed: number): number => {
+        const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453123;
+        return x - Math.floor(x);
+      };
 
-    const traceOrganicCobblePath = (
-      ctx: CanvasRenderingContext2D,
-      w: number,
-      h: number,
-      seed: number,
-      inset = 0
-    ): void => {
-      const hw = Math.max(2, w * 0.5 - inset);
-      const hh = Math.max(2, h * 0.5 - inset);
-      const chX = Math.min(hw * 0.42, (2.8 + stoneHash(seed + 1) * 3.4) * (1 - inset * 0.08));
-      const chY = Math.min(hh * 0.42, (2.6 + stoneHash(seed + 2) * 3.2) * (1 - inset * 0.08));
-      const j = (k: number): number =>
-        (stoneHash(seed + k * 19.3) - 0.5) * 1.9 * Math.max(0.25, 1 - inset * 0.12);
+      const traceOrganicCobblePath = (
+        ctx: CanvasRenderingContext2D,
+        w: number,
+        h: number,
+        seed: number,
+        inset = 0
+      ): void => {
+        const hw = Math.max(2, w * 0.5 - inset);
+        const hh = Math.max(2, h * 0.5 - inset);
+        const chX = Math.min(hw * 0.42, (2.8 + stoneHash(seed + 1) * 3.4) * (1 - inset * 0.08));
+        const chY = Math.min(hh * 0.42, (2.6 + stoneHash(seed + 2) * 3.2) * (1 - inset * 0.08));
+        const j = (k: number): number =>
+          (stoneHash(seed + k * 19.3) - 0.5) * 1.9 * Math.max(0.25, 1 - inset * 0.12);
 
-      ctx.beginPath();
-      ctx.moveTo(-hw + chX + j(3), -hh + j(4));
-      ctx.lineTo(hw - chX + j(5), -hh + j(6));
-      ctx.lineTo(hw + j(7), -hh + chY + j(8));
-      ctx.lineTo(hw + j(9), hh - chY + j(10));
-      ctx.lineTo(hw - chX + j(11), hh + j(12));
-      ctx.lineTo(-hw + chX + j(13), hh + j(14));
-      ctx.lineTo(-hw + j(15), hh - chY + j(16));
-      ctx.lineTo(-hw + j(17), -hh + chY + j(18));
-      ctx.closePath();
-    };
+        ctx.beginPath();
+        ctx.moveTo(-hw + chX + j(3), -hh + j(4));
+        ctx.lineTo(hw - chX + j(5), -hh + j(6));
+        ctx.lineTo(hw + j(7), -hh + chY + j(8));
+        ctx.lineTo(hw + j(9), hh - chY + j(10));
+        ctx.lineTo(hw - chX + j(11), hh + j(12));
+        ctx.lineTo(-hw + chX + j(13), hh + j(14));
+        ctx.lineTo(-hw + j(15), hh - chY + j(16));
+        ctx.lineTo(-hw + j(17), -hh + chY + j(18));
+        ctx.closePath();
+      };
 
-    const colorCanvas = document.createElement('canvas');
-    colorCanvas.width = width;
-    colorCanvas.height = height;
-    const cCtx = colorCanvas.getContext('2d')!;
+      const [colorCanvas, depthCanvas] = getOrCreateCachedCanvasPair(
+        'courtyard-continuous-cobble',
+        width,
+        height,
+        (cCtx, dCtx) => {
+          // 1. Weathered sandy-lime mortar base with multi-scale grit, damp earth crevices & subtle mossy patina
+          cCtx.fillStyle = '#c4b18d';
+          cCtx.fillRect(0, 0, width, height);
 
-    const depthCanvas = document.createElement('canvas');
-    depthCanvas.width = width;
-    depthCanvas.height = height;
-    const dCtx = depthCanvas.getContext('2d')!;
-
-    // 1. Weathered sandy-lime mortar base with multi-scale grit, damp earth crevices & subtle mossy patina
-    cCtx.fillStyle = '#c4b18d';
-    cCtx.fillRect(0, 0, width, height);
-
-    dCtx.fillStyle = '#121212';
-    dCtx.fillRect(0, 0, width, height);
+          dCtx.fillStyle = '#121212';
+          dCtx.fillRect(0, 0, width, height);
 
     for (let y = 0; y < height; y += 4) {
       const ny = (y / height) * Math.PI * 2;
@@ -335,28 +338,47 @@ export function buildCourtyardAndGates(
         }
       }
     }
+        }
+      );
 
-    const colorMap = new THREE.CanvasTexture(colorCanvas);
-    colorMap.colorSpace = THREE.SRGBColorSpace;
-    colorMap.wrapS = THREE.RepeatWrapping;
-    colorMap.wrapT = THREE.RepeatWrapping;
-    colorMap.anisotropy = 8;
+      const colorMap = new THREE.CanvasTexture(colorCanvas);
+      colorMap.colorSpace = THREE.SRGBColorSpace;
+      colorMap.wrapS = THREE.RepeatWrapping;
+      colorMap.wrapT = THREE.RepeatWrapping;
+      colorMap.anisotropy = 8;
 
-    const depthMap = new THREE.CanvasTexture(depthCanvas);
-    depthMap.wrapS = THREE.RepeatWrapping;
-    depthMap.wrapT = THREE.RepeatWrapping;
-    depthMap.anisotropy = 8;
+      const depthMap = new THREE.CanvasTexture(depthCanvas);
+      depthMap.wrapS = THREE.RepeatWrapping;
+      depthMap.wrapT = THREE.RepeatWrapping;
+      depthMap.anisotropy = 8;
 
-    return { colorMap, depthMap };
-  };
+      const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+        'courtyard-continuous-cobble',
+        depthCanvas,
+        {
+          normalStrength: 4.2,
+          mortarThreshold: 0.24,
+          mortarRoughness: 1.0,
+          surfaceRoughnessMin: 0.62,
+          surfaceRoughnessMax: 0.88,
+          microGrainRoughness: 0.06,
+        }
+      );
 
-  const { colorMap: cobbleColorTex, depthMap: cobbleBumpTex } =
-    createContinuousCourtyardCobbleTextures();
+      return { colorMap, depthMap, normalMap, roughnessMap };
+    });
+
+  const {
+    colorMap: cobbleColorTex,
+    normalMap: cobbleNormalTex,
+    roughnessMap: cobbleRoughnessTex,
+  } = createContinuousCourtyardCobbleTextures();
   const courtyardCobbleMat = new THREE.MeshStandardMaterial({
     map: cobbleColorTex,
-    bumpMap: cobbleBumpTex,
-    bumpScale: 0.042,
-    roughness: 0.84,
+    normalMap: cobbleNormalTex,
+    normalScale: new THREE.Vector2(1.15, 1.15),
+    roughnessMap: cobbleRoughnessTex,
+    roughness: 0.86,
     metalness: 0.05,
   });
 
@@ -369,52 +391,49 @@ export function buildCourtyardAndGates(
   const createDrainageChannelSettMaterial = (): THREE.MeshStandardMaterial => {
     const w = 256;
     const h = 128;
-    const cCanvas = document.createElement('canvas');
-    cCanvas.width = w;
-    cCanvas.height = h;
-    const cCtx = cCanvas.getContext('2d')!;
+    const [cCanvas, bCanvas] = getOrCreateCachedCanvasPair(
+      'courtyard-drainage-channel-sett',
+      w,
+      h,
+      (cCtx, bCtx) => {
+        cCtx.fillStyle = '#8e7f68';
+        cCtx.fillRect(0, 0, w, h);
+        bCtx.fillStyle = '#222222';
+        bCtx.fillRect(0, 0, w, h);
 
-    const bCanvas = document.createElement('canvas');
-    bCanvas.width = w;
-    bCanvas.height = h;
-    const bCtx = bCanvas.getContext('2d')!;
+        const settColors = ['#d2c3a8', '#c6b598', '#dcd0b8', '#bca98c', '#cec0a4'];
+        const numRows = 3;
+        const numCols = 4;
+        const rowH = h / numRows;
+        const colW = w / numCols;
 
-    cCtx.fillStyle = '#8e7f68';
-    cCtx.fillRect(0, 0, w, h);
-    bCtx.fillStyle = '#222222';
-    bCtx.fillRect(0, 0, w, h);
+        for (let r = 0; r < numRows; r++) {
+          const staggerX = (r % 2) * (colW * 0.5);
+          for (let c = -1; c <= numCols; c++) {
+            const sx = c * colW + staggerX + 3;
+            const sy = r * rowH + 3;
+            const sw = colW - 6;
+            const sh = rowH - 6;
+            const idx = Math.abs((r * 7 + c * 13) % settColors.length);
 
-    const settColors = ['#d2c3a8', '#c6b598', '#dcd0b8', '#bca98c', '#cec0a4'];
-    const numRows = 3;
-    const numCols = 4;
-    const rowH = h / numRows;
-    const colW = w / numCols;
+            cCtx.fillStyle = settColors[idx] ?? '#cec0a4';
+            cCtx.beginPath();
+            cCtx.roundRect(sx, sy, sw, sh, 3);
+            cCtx.fill();
 
-    for (let r = 0; r < numRows; r++) {
-      const staggerX = (r % 2) * (colW * 0.5);
-      for (let c = -1; c <= numCols; c++) {
-        const sx = c * colW + staggerX + 3;
-        const sy = r * rowH + 3;
-        const sw = colW - 6;
-        const sh = rowH - 6;
-        const idx = Math.abs((r * 7 + c * 13) % settColors.length);
+            cCtx.strokeStyle = 'rgba(255, 250, 238, 0.25)';
+            cCtx.lineWidth = 1;
+            cCtx.stroke();
 
-        cCtx.fillStyle = settColors[idx] ?? '#cec0a4';
-        cCtx.beginPath();
-        cCtx.roundRect(sx, sy, sw, sh, 3);
-        cCtx.fill();
-
-        cCtx.strokeStyle = 'rgba(255, 250, 238, 0.25)';
-        cCtx.lineWidth = 1;
-        cCtx.stroke();
-
-        const lum = r === 1 ? 185 : 225; // Center row slightly recessed as valley gutter
-        bCtx.fillStyle = `rgb(${lum}, ${lum}, ${lum})`;
-        bCtx.beginPath();
-        bCtx.roundRect(sx + 1, sy + 1, sw - 2, sh - 2, 2.5);
-        bCtx.fill();
+            const lum = r === 1 ? 185 : 225; // Center row slightly recessed as valley gutter
+            bCtx.fillStyle = `rgb(${lum}, ${lum}, ${lum})`;
+            bCtx.beginPath();
+            bCtx.roundRect(sx + 1, sy + 1, sw - 2, sh - 2, 2.5);
+            bCtx.fill();
+          }
+        }
       }
-    }
+    );
 
     const colorMap = new THREE.CanvasTexture(cCanvas);
     colorMap.colorSpace = THREE.SRGBColorSpace;
@@ -422,16 +441,25 @@ export function buildCourtyardAndGates(
     colorMap.wrapT = THREE.RepeatWrapping;
     colorMap.anisotropy = 8;
 
-    const bumpMap = new THREE.CanvasTexture(bCanvas);
-    bumpMap.wrapS = THREE.RepeatWrapping;
-    bumpMap.wrapT = THREE.RepeatWrapping;
-    bumpMap.anisotropy = 8;
+    const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+      'courtyard-drainage-channel-sett',
+      bCanvas,
+      {
+        normalStrength: 3.4,
+        mortarThreshold: 0.24,
+        mortarRoughness: 1.0,
+        surfaceRoughnessMin: 0.68,
+        surfaceRoughnessMax: 0.9,
+        microGrainRoughness: 0.05,
+      }
+    );
 
     return new THREE.MeshStandardMaterial({
       map: colorMap,
-      bumpMap,
-      bumpScale: 0.028,
-      roughness: 0.78,
+      normalMap,
+      normalScale: new THREE.Vector2(0.95, 0.95),
+      roughnessMap,
+      roughness: 0.82,
       metalness: 0.04,
     });
   };

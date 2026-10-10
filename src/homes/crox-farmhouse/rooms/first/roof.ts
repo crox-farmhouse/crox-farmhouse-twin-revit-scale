@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { buildPolygonalFloorSlab } from '../../../../engine/geometry/index.ts';
-import { createWelshSlateRoofTexture } from '../../../../engine/textures/procedural-textures.ts';
+import { createWelshSlateRoofTextures } from '../../../../engine/textures/procedural-textures.ts';
 import {
   MAIN_EAST_WING_ROTATION_Y,
   transformEastWingPoint,
@@ -36,13 +36,18 @@ export function buildFirstFloorCeilingsAndRoof(
   // 8. FIRST FLOOR CEILINGS & WATER-TIGHT L-PLAN WELSH SLATE ROOF + 5 CHIMNEYS
   //    Added to `ceilingMeshGroup` (`Y = 4.38m..7.38m`)
   // =========================================================================
-  const slateTex = createWelshSlateRoofTexture();
+  const {
+    colorMap: slateTex,
+    normalMap: slateNormalTex,
+    roughnessMap: slateRoughnessTex,
+  } = createWelshSlateRoofTextures();
   const slateRoofMat = new THREE.MeshStandardMaterial({
     map: slateTex,
-    bumpMap: slateTex,
-    bumpScale: 0.018,
+    normalMap: slateNormalTex,
+    normalScale: new THREE.Vector2(0.68, 0.68),
+    roughnessMap: slateRoughnessTex,
     color: 0xffffff,
-    roughness: 0.78, // Natural matte riven Welsh slate (Issue #13: not shiny like a solar panel)
+    roughness: 0.84, // Natural matte riven Welsh slate (Issue #13: not shiny like a solar panel)
     metalness: 0.02,
     side: THREE.DoubleSide,
   });

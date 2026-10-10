@@ -140,7 +140,11 @@ function installWebGpuLightVolumeHooks(): void {
       this: PhysicalLightingModel,
       builder: NodeBuilder
     ): void {
-      const ctx = (builder as unknown as { context?: { irradiance?: TslIrradianceNode } }).context;
+      const ctx = (
+        builder as unknown as {
+          context?: { irradiance?: TslIrradianceNode; radiance?: TslIrradianceNode };
+        }
+      ).context;
       if (ctx?.irradiance) {
         const enabled = step(0.5, uBakedVolumeParamsNode.x);
         const biasedPos = positionWorld.add(normalWorld.mul(0.22));
@@ -157,6 +161,12 @@ function installWebGpuLightVolumeHooks(): void {
           .mul(uBakedVolumeParamsNode.y.mul(3.5).mul(enabled));
         const bakedAo = mix(float(1.0), bakedTexel.a, uBakedVolumeParamsNode.z.mul(enabled));
         ctx.irradiance.assign(ctx.irradiance.add(bakedIrradiance).mul(bakedAo));
+        if (ctx.radiance) {
+          const specularAo = mix(float(1.0), bakedAo, float(0.75));
+          ctx.radiance.assign(
+            ctx.radiance.add(bakedIrradiance.mul(0.22)).mul(specularAo)
+          );
+        }
       }
       origIndirectDiffuse.call(this, builder);
     };
@@ -293,6 +303,10 @@ uniform vec4 uBakedVolumeParams;
 		vec3 bakedIrradiance = ( bakedTexel.rgb * bakedTexel.rgb ) * ( 3.5 * uBakedVolumeParams.y );
 		float bakedAo = mix( 1.0, bakedTexel.a, uBakedVolumeParams.z );
 		irradiance = irradiance * bakedAo + bakedIrradiance * bakedAo;
+		#if defined( RE_IndirectSpecular )
+		float specularAo = mix( 1.0, bakedAo, 0.75 );
+		radiance = ( radiance + bakedIrradiance * 0.22 ) * specularAo;
+		#endif
 	}`
     );
   }

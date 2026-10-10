@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { derivePbrNormalAndRoughnessMaps } from './pbr-surface-maps.ts';
 import {
   getOrCreateCachedCanvasPair,
   getOrCreateCachedTexture,
@@ -7,6 +8,8 @@ import {
 export function createWelshSlateRoofTextures(): {
   readonly colorMap: THREE.CanvasTexture;
   readonly bumpMap: THREE.CanvasTexture;
+  readonly normalMap: THREE.CanvasTexture;
+  readonly roughnessMap: THREE.CanvasTexture;
 } {
   return getOrCreateCachedTexture('welsh-slate-roof', () => {
     const size = 1024;
@@ -202,7 +205,22 @@ export function createWelshSlateRoofTextures(): {
     bumpMap.repeat.set(7.5, 3.2);
     bumpMap.anisotropy = 8;
 
-    return { colorMap, bumpMap };
+    const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+      'welsh-slate-roof',
+      bumpCanvas,
+      {
+        normalStrength: 3.0,
+        mortarThreshold: 0.18,
+        mortarRoughness: 1.0,
+        surfaceRoughnessMin: 0.72,
+        surfaceRoughnessMax: 0.92,
+        microGrainRoughness: 0.04,
+      }
+    );
+    normalMap.repeat.set(7.5, 3.2);
+    roughnessMap.repeat.set(7.5, 3.2);
+
+    return { colorMap, bumpMap, normalMap, roughnessMap };
   });
 }
 
@@ -213,6 +231,8 @@ export function createWelshSlateRoofTexture(): THREE.CanvasTexture {
 export function createImperialBrickTextures(): {
   readonly colorMap: THREE.CanvasTexture;
   readonly bumpMap: THREE.CanvasTexture;
+  readonly normalMap: THREE.CanvasTexture;
+  readonly roughnessMap: THREE.CanvasTexture;
 } {
   return getOrCreateCachedTexture('imperial-brick', () => {
     const [colorCanvas, bumpCanvas] = getOrCreateCachedCanvasPair(
@@ -471,11 +491,26 @@ export function createImperialBrickTextures(): {
     colorMap.wrapS = THREE.RepeatWrapping;
     colorMap.wrapT = THREE.RepeatWrapping;
     colorMap.colorSpace = THREE.SRGBColorSpace;
+    colorMap.anisotropy = 8;
 
     const bumpMap = new THREE.CanvasTexture(bumpCanvas);
     bumpMap.wrapS = THREE.RepeatWrapping;
     bumpMap.wrapT = THREE.RepeatWrapping;
+    bumpMap.anisotropy = 8;
 
-    return { colorMap, bumpMap };
+    const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+      'imperial-brick',
+      bumpCanvas,
+      {
+        normalStrength: 3.4,
+        mortarThreshold: 0.25,
+        mortarRoughness: 1.0,
+        surfaceRoughnessMin: 0.72,
+        surfaceRoughnessMax: 0.92,
+        microGrainRoughness: 0.05,
+      }
+    );
+
+    return { colorMap, bumpMap, normalMap, roughnessMap };
   });
 }

@@ -35,12 +35,17 @@ export function createFirstFloorMaterials(
     metalness: 0.02,
   });
 
-  const { colorMap: brickColorTex, bumpMap: brickBumpTex } = createImperialBrickTextures();
+  const {
+    colorMap: brickColorTex,
+    normalMap: brickNormalTex,
+    roughnessMap: brickRoughnessTex,
+  } = createImperialBrickTextures();
   const exteriorBrickMat = new THREE.MeshStandardMaterial({
     map: brickColorTex,
-    bumpMap: brickBumpTex,
-    bumpScale: 0.018,
-    roughness: 0.82,
+    normalMap: brickNormalTex,
+    normalScale: new THREE.Vector2(0.85, 0.85),
+    roughnessMap: brickRoughnessTex,
+    roughness: 0.86,
     metalness: 0.03,
   });
 

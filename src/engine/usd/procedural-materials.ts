@@ -101,10 +101,21 @@ export function classifyProceduralPattern(
   const roughness = typeof std.roughness === 'number' ? std.roughness : 0.5;
   const metalness = typeof std.metalness === 'number' ? std.metalness : 0.0;
   const opacity = mat.transparent && typeof mat.opacity === 'number' ? mat.opacity : 1.0;
-  const bumpScale = typeof std.bumpScale === 'number' ? std.bumpScale : 0.01;
-
   const mapTex = std.map instanceof THREE.Texture ? std.map : undefined;
-  const bumpTex = std.bumpMap instanceof THREE.Texture ? std.bumpMap : undefined;
+  const bumpTex =
+    std.bumpMap instanceof THREE.Texture
+      ? std.bumpMap
+      : std.normalMap instanceof THREE.Texture
+        ? std.normalMap
+        : undefined;
+  const bumpScale =
+    std.bumpMap instanceof THREE.Texture && typeof std.bumpScale === 'number'
+      ? std.bumpScale
+      : std.normalMap instanceof THREE.Texture && std.normalScale
+        ? Math.min(0.05, Math.abs(std.normalScale.x) * 0.03)
+        : typeof std.bumpScale === 'number'
+          ? std.bumpScale
+          : 0.01;
   const rawRepeat: readonly [number, number] = mapTex
     ? [mapTex.repeat.x || 1, mapTex.repeat.y || 1]
     : bumpTex

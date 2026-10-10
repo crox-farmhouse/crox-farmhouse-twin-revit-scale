@@ -6,7 +6,7 @@ import {
   createImperialBrickTextures,
   createNaturalOakJoineryTextures,
   createStoneTileTexture,
-  createWelshSlateRoofTexture,
+  createWelshSlateRoofTextures,
 } from '../../../../../engine/textures/procedural-textures.ts';
 import {
   addCasedArchitravePortal,
@@ -648,9 +648,10 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   const imperialBrickTex = createImperialBrickTextures();
   const imperialBrickMat = new THREE.MeshStandardMaterial({
     map: imperialBrickTex.colorMap,
-    bumpMap: imperialBrickTex.bumpMap,
-    bumpScale: 0.018,
-    roughness: 0.82,
+    normalMap: imperialBrickTex.normalMap,
+    normalScale: new THREE.Vector2(0.75, 0.75),
+    roughnessMap: imperialBrickTex.roughnessMap,
+    roughness: 0.9,
     metalness: 0.03,
   });
 
@@ -1259,13 +1260,18 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   const ridgeBargeBotY = yBargeBotAt(0);
   const wallDeckY = yDeckAt(halfWallZ);
 
-  const welshSlateTex = createWelshSlateRoofTexture();
+  const {
+    colorMap: welshSlateTex,
+    normalMap: welshSlateNormalTex,
+    roughnessMap: welshSlateRoughnessTex,
+  } = createWelshSlateRoofTextures();
   const welshSlateMat = new THREE.MeshStandardMaterial({
     map: welshSlateTex,
-    bumpMap: welshSlateTex,
-    bumpScale: 0.018,
+    normalMap: welshSlateNormalTex,
+    normalScale: new THREE.Vector2(0.68, 0.68),
+    roughnessMap: welshSlateRoughnessTex,
     color: 0xffffff,
-    roughness: 0.78,
+    roughness: 0.84,
     metalness: 0.02,
   });
   const ridgeLeadMat = new THREE.MeshStandardMaterial({

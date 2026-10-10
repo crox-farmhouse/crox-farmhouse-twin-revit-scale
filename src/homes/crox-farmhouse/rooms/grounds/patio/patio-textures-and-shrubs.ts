@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { derivePbrNormalAndRoughnessMaps } from '../../../../../engine/textures/pbr-surface-maps.ts';
+import { getOrCreateCachedTexture } from '../../../../../engine/textures/texture-registry.ts';
 
 /**
  * High-resolution (`1024x1024`) Riven Weathered Yorkstone & Buff Flagstone Paving Texture
@@ -8,126 +10,148 @@ import * as THREE from 'three';
 export function createRivenYorkstonePatioTextures(): {
   readonly colorMap: THREE.CanvasTexture;
   readonly bumpMap: THREE.CanvasTexture;
+  readonly normalMap: THREE.CanvasTexture;
+  readonly roughnessMap: THREE.CanvasTexture;
 } {
-  const size = 1024;
-  const colorCanvas = document.createElement('canvas');
-  colorCanvas.width = size;
-  colorCanvas.height = size;
-  const cCtx = colorCanvas.getContext('2d')!;
+  const { colorMap, bumpMap } = getOrCreateCachedTexture(
+    'riven-yorkstone-patio:1024:1x1',
+    () => {
+      const size = 1024;
+      const colorCanvas = document.createElement('canvas');
+      colorCanvas.width = size;
+      colorCanvas.height = size;
+      const cCtx = colorCanvas.getContext('2d')!;
 
-  const bumpCanvas = document.createElement('canvas');
-  bumpCanvas.width = size;
-  bumpCanvas.height = size;
-  const bCtx = bumpCanvas.getContext('2d')!;
+      const bumpCanvas = document.createElement('canvas');
+      bumpCanvas.width = size;
+      bumpCanvas.height = size;
+      const bCtx = bumpCanvas.getContext('2d')!;
 
-  cCtx.fillStyle = '#5e584c';
-  cCtx.fillRect(0, 0, size, size);
-  bCtx.fillStyle = '#141414';
-  bCtx.fillRect(0, 0, size, size);
+      cCtx.fillStyle = '#5e584c';
+      cCtx.fillRect(0, 0, size, size);
+      bCtx.fillStyle = '#141414';
+      bCtx.fillRect(0, 0, size, size);
 
-  const hash = (n: number): number => {
-    const x = Math.sin(n * 127.1 + 311.7) * 43758.5453123;
-    return x - Math.floor(x);
-  };
+      const hash = (n: number): number => {
+        const x = Math.sin(n * 127.1 + 311.7) * 43758.5453123;
+        return x - Math.floor(x);
+      };
 
-  const yorkstonePalette: ReadonlyArray<readonly [number, number, number]> = [
-    [176, 162, 138],
-    [162, 154, 140],
-    [186, 168, 138],
-    [152, 146, 135],
-    [170, 155, 129],
-    [158, 152, 134],
-    [181, 164, 142],
-    [146, 138, 126],
-  ];
+      const yorkstonePalette: ReadonlyArray<readonly [number, number, number]> = [
+        [176, 162, 138],
+        [162, 154, 140],
+        [186, 168, 138],
+        [152, 146, 135],
+        [170, 155, 129],
+        [158, 152, 134],
+        [181, 164, 142],
+        [146, 138, 126],
+      ];
 
-  const courseHeights = [176, 152, 192, 164, 184, 156];
-  let curY = 0;
-  const jointPx = 7;
+      const courseHeights = [176, 152, 192, 164, 184, 156];
+      let curY = 0;
+      const jointPx = 7;
 
-  for (let row = 0; row < courseHeights.length; row++) {
-    const ch = courseHeights[row]!;
-    const slabWidths =
-      row % 3 === 0
-        ? [268, 212, 304, 240]
-        : row % 3 === 1
-          ? [196, 284, 224, 320]
-          : [312, 208, 260, 244];
+      for (let row = 0; row < courseHeights.length; row++) {
+        const ch = courseHeights[row]!;
+        const slabWidths =
+          row % 3 === 0
+            ? [268, 212, 304, 240]
+            : row % 3 === 1
+              ? [196, 284, 224, 320]
+              : [312, 208, 260, 244];
 
-    let curX = 0;
-    for (let col = 0; col < slabWidths.length; col++) {
-      const sw = slabWidths[col]!;
-      const seed = row * 97 + col * 31 + 13;
-      const pal = yorkstonePalette[Math.floor(hash(seed) * yorkstonePalette.length)]!;
-      const delta = Math.round((hash(seed + 1) - 0.5) * 18);
-      const warm = Math.round((hash(seed + 2) - 0.5) * 10);
-      const rBase = Math.max(95, Math.min(215, pal[0] + delta + warm));
-      const gBase = Math.max(90, Math.min(208, pal[1] + delta));
-      const bBase = Math.max(80, Math.min(195, pal[2] + delta - warm));
+        let curX = 0;
+        for (let col = 0; col < slabWidths.length; col++) {
+          const sw = slabWidths[col]!;
+          const seed = row * 97 + col * 31 + 13;
+          const pal = yorkstonePalette[Math.floor(hash(seed) * yorkstonePalette.length)]!;
+          const delta = Math.round((hash(seed + 1) - 0.5) * 18);
+          const warm = Math.round((hash(seed + 2) - 0.5) * 10);
+          const rBase = Math.max(95, Math.min(215, pal[0] + delta + warm));
+          const gBase = Math.max(90, Math.min(208, pal[1] + delta));
+          const bBase = Math.max(80, Math.min(195, pal[2] + delta - warm));
 
-      const sx = curX + jointPx * 0.5;
-      const sy = curY + jointPx * 0.5;
-      const w = sw - jointPx;
-      const h = ch - jointPx;
+          const sx = curX + jointPx * 0.5;
+          const sy = curY + jointPx * 0.5;
+          const w = sw - jointPx;
+          const h = ch - jointPx;
 
-      const grad = cCtx.createLinearGradient(sx, sy, sx + w, sy + h);
-      grad.addColorStop(0, `rgb(${rBase + 8}, ${gBase + 7}, ${bBase + 5})`);
-      grad.addColorStop(0.55, `rgb(${rBase}, ${gBase}, ${bBase})`);
-      grad.addColorStop(1, `rgb(${rBase - 10}, ${gBase - 9}, ${bBase - 8})`);
-      cCtx.fillStyle = grad;
-      cCtx.fillRect(sx, sy, w, h);
+          const grad = cCtx.createLinearGradient(sx, sy, sx + w, sy + h);
+          grad.addColorStop(0, `rgb(${rBase + 8}, ${gBase + 7}, ${bBase + 5})`);
+          grad.addColorStop(0.55, `rgb(${rBase}, ${gBase}, ${bBase})`);
+          grad.addColorStop(1, `rgb(${rBase - 10}, ${gBase - 9}, ${bBase - 8})`);
+          cCtx.fillStyle = grad;
+          cCtx.fillRect(sx, sy, w, h);
 
-      cCtx.strokeStyle = `rgba(${Math.min(235, rBase + 22)}, ${Math.min(228, gBase + 20)}, ${Math.min(210, bBase + 16)}, 0.48)`;
-      cCtx.lineWidth = 2.5;
-      cCtx.strokeRect(sx + 1.5, sy + 1.5, w - 3, h - 3);
+          cCtx.strokeStyle = `rgba(${Math.min(235, rBase + 22)}, ${Math.min(228, gBase + 20)}, ${Math.min(210, bBase + 16)}, 0.48)`;
+          cCtx.lineWidth = 2.5;
+          cCtx.strokeRect(sx + 1.5, sy + 1.5, w - 3, h - 3);
 
-      const slabBump = Math.round(165 + (hash(seed + 3) - 0.5) * 44);
-      bCtx.fillStyle = `rgb(${slabBump}, ${slabBump}, ${slabBump})`;
-      bCtx.fillRect(sx, sy, w, h);
+          const slabBump = Math.round(165 + (hash(seed + 3) - 0.5) * 44);
+          bCtx.fillStyle = `rgb(${slabBump}, ${slabBump}, ${slabBump})`;
+          bCtx.fillRect(sx, sy, w, h);
 
-      for (let py = sy + 3; py < sy + h - 3; py += 4) {
-        const relY = (py - sy) / h;
-        for (let px = sx + 3; px < sx + w - 3; px += 4) {
-          const relX = (px - sx) / w;
-          const ripple =
-            Math.sin(relX * Math.PI * 5 + relY * 8 + seed) * 6 +
-            Math.cos(relY * Math.PI * 6 - relX * 4 + seed * 0.7) * 5;
-          const grain = (hash(px * 13 + py * 29 + seed) - 0.5) * 11;
-          const edgeDist = Math.min(relX, 1 - relX, relY, 1 - relY);
-          const lichen = edgeDist < 0.09 && hash(px * 7 + py * 19 + seed) > 0.65 ? -14 : 0;
+          for (let py = sy + 3; py < sy + h - 3; py += 4) {
+            const relY = (py - sy) / h;
+            for (let px = sx + 3; px < sx + w - 3; px += 4) {
+              const relX = (px - sx) / w;
+              const ripple =
+                Math.sin(relX * Math.PI * 5 + relY * 8 + seed) * 6 +
+                Math.cos(relY * Math.PI * 6 - relX * 4 + seed * 0.7) * 5;
+              const grain = (hash(px * 13 + py * 29 + seed) - 0.5) * 11;
+              const edgeDist = Math.min(relX, 1 - relX, relY, 1 - relY);
+              const lichen = edgeDist < 0.09 && hash(px * 7 + py * 19 + seed) > 0.65 ? -14 : 0;
 
-          const pr = Math.max(85, Math.min(228, Math.round(rBase + ripple + grain + lichen)));
-          const pg = Math.max(82, Math.min(222, Math.round(gBase + ripple + grain + (lichen ? -4 : 0))));
-          const pb = Math.max(72, Math.min(208, Math.round(bBase + ripple + grain + (lichen ? -18 : 0))));
-          cCtx.fillStyle = `rgb(${pr}, ${pg}, ${pb})`;
-          cCtx.fillRect(px, py, 4, 4);
+              const pr = Math.max(85, Math.min(228, Math.round(rBase + ripple + grain + lichen)));
+              const pg = Math.max(82, Math.min(222, Math.round(gBase + ripple + grain + (lichen ? -4 : 0))));
+              const pb = Math.max(72, Math.min(208, Math.round(bBase + ripple + grain + (lichen ? -18 : 0))));
+              cCtx.fillStyle = `rgb(${pr}, ${pg}, ${pb})`;
+              cCtx.fillRect(px, py, 4, 4);
 
-          const bv = Math.max(
-            95,
-            Math.min(248, Math.round(slabBump + ripple * 1.9 + grain * 0.9 - (edgeDist < 0.04 ? 28 : 0)))
-          );
-          bCtx.fillStyle = `rgb(${bv}, ${bv}, ${bv})`;
-          bCtx.fillRect(px, py, 4, 4);
+              const bv = Math.max(
+                95,
+                Math.min(248, Math.round(slabBump + ripple * 1.9 + grain * 0.9 - (edgeDist < 0.04 ? 28 : 0)))
+              );
+              bCtx.fillStyle = `rgb(${bv}, ${bv}, ${bv})`;
+              bCtx.fillRect(px, py, 4, 4);
+            }
+          }
+
+          curX += sw;
         }
+        curY += ch;
       }
 
-      curX += sw;
+      const colorMap = new THREE.CanvasTexture(colorCanvas);
+      colorMap.wrapS = THREE.RepeatWrapping;
+      colorMap.wrapT = THREE.RepeatWrapping;
+      colorMap.colorSpace = THREE.SRGBColorSpace;
+      colorMap.anisotropy = 8;
+
+      const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+      bumpMap.wrapS = THREE.RepeatWrapping;
+      bumpMap.wrapT = THREE.RepeatWrapping;
+      bumpMap.anisotropy = 8;
+
+      return { colorMap, bumpMap };
     }
-    curY += ch;
-  }
+  );
 
-  const colorMap = new THREE.CanvasTexture(colorCanvas);
-  colorMap.wrapS = THREE.RepeatWrapping;
-  colorMap.wrapT = THREE.RepeatWrapping;
-  colorMap.colorSpace = THREE.SRGBColorSpace;
-  colorMap.anisotropy = 8;
+  const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+    'riven-yorkstone-patio:pbr:1024:1x1',
+    bumpMap.image as HTMLCanvasElement,
+    {
+      normalStrength: 3.4,
+      mortarThreshold: 0.25,
+      mortarRoughness: 0.98,
+      surfaceRoughnessMin: 0.64,
+      surfaceRoughnessMax: 0.88,
+      microGrainRoughness: 0.05,
+    }
+  );
 
-  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
-  bumpMap.wrapS = THREE.RepeatWrapping;
-  bumpMap.wrapT = THREE.RepeatWrapping;
-  bumpMap.anisotropy = 8;
-
-  return { colorMap, bumpMap };
+  return { colorMap, bumpMap, normalMap, roughnessMap };
 }
 
 /**
@@ -137,87 +161,109 @@ export function createRivenYorkstonePatioTextures(): {
 export function createHerringboneBrickPatioTextures(): {
   readonly colorMap: THREE.CanvasTexture;
   readonly bumpMap: THREE.CanvasTexture;
+  readonly normalMap: THREE.CanvasTexture;
+  readonly roughnessMap: THREE.CanvasTexture;
 } {
-  const size = 512;
-  const colorCanvas = document.createElement('canvas');
-  colorCanvas.width = size;
-  colorCanvas.height = size;
-  const cCtx = colorCanvas.getContext('2d')!;
+  const { colorMap, bumpMap } = getOrCreateCachedTexture(
+    'herringbone-brick-patio:512:1x1',
+    () => {
+      const size = 512;
+      const colorCanvas = document.createElement('canvas');
+      colorCanvas.width = size;
+      colorCanvas.height = size;
+      const cCtx = colorCanvas.getContext('2d')!;
 
-  const bumpCanvas = document.createElement('canvas');
-  bumpCanvas.width = size;
-  bumpCanvas.height = size;
-  const bCtx = bumpCanvas.getContext('2d')!;
+      const bumpCanvas = document.createElement('canvas');
+      bumpCanvas.width = size;
+      bumpCanvas.height = size;
+      const bCtx = bumpCanvas.getContext('2d')!;
 
-  cCtx.fillStyle = '#b9ab93';
-  cCtx.fillRect(0, 0, size, size);
-  bCtx.fillStyle = '#181818';
-  bCtx.fillRect(0, 0, size, size);
+      cCtx.fillStyle = '#b9ab93';
+      cCtx.fillRect(0, 0, size, size);
+      bCtx.fillStyle = '#181818';
+      bCtx.fillRect(0, 0, size, size);
 
-  const brickPalette: ReadonlyArray<readonly [number, number, number]> = [
-    [164, 82, 62],
-    [148, 72, 54],
-    [176, 94, 68],
-    [132, 66, 54],
-    [156, 86, 66],
-  ];
+      const brickPalette: ReadonlyArray<readonly [number, number, number]> = [
+        [164, 82, 62],
+        [148, 72, 54],
+        [176, 94, 68],
+        [132, 66, 54],
+        [156, 86, 66],
+      ];
 
-  const step = 32;
-  const brickL = step * 2 - 4;
-  const brickW = step - 4;
+      const step = 32;
+      const brickL = step * 2 - 4;
+      const brickW = step - 4;
 
-  for (let gy = -4; gy < 20; gy++) {
-    for (let gx = -4; gx < 20; gx++) {
-      const seed = ((gx * 73 + gy * 139) & 0xffff);
-      const pal = brickPalette[seed % brickPalette.length]!;
-      const shift = ((seed >> 3) % 17) - 8;
-      const r = Math.max(85, Math.min(205, pal[0] + shift));
-      const g = Math.max(45, Math.min(135, pal[1] + Math.round(shift * 0.6)));
-      const b = Math.max(38, Math.min(115, pal[2] + Math.round(shift * 0.5)));
-      const isHoriz = ((gx + gy) & 1) === 0;
+      for (let gy = -4; gy < 20; gy++) {
+        for (let gx = -4; gx < 20; gx++) {
+          const seed = ((gx * 73 + gy * 139) & 0xffff);
+          const pal = brickPalette[seed % brickPalette.length]!;
+          const shift = ((seed >> 3) % 17) - 8;
+          const r = Math.max(85, Math.min(205, pal[0] + shift));
+          const g = Math.max(45, Math.min(135, pal[1] + Math.round(shift * 0.6)));
+          const b = Math.max(38, Math.min(115, pal[2] + Math.round(shift * 0.5)));
+          const isHoriz = ((gx + gy) & 1) === 0;
 
-      const cx = gx * step;
-      const cy = gy * step;
+          const cx = gx * step;
+          const cy = gy * step;
 
-      cCtx.save();
-      cCtx.translate(cx, cy);
-      cCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-      if (isHoriz) {
-        cCtx.fillRect(2, 2, brickL, brickW);
-        cCtx.strokeStyle = `rgba(${Math.min(220, r + 24)}, ${Math.min(155, g + 18)}, ${Math.min(130, b + 14)}, 0.45)`;
-        cCtx.strokeRect(3, 3, brickL - 2, brickW - 2);
-      } else {
-        cCtx.fillRect(2, 2, brickW, brickL);
-        cCtx.strokeStyle = `rgba(${Math.min(220, r + 24)}, ${Math.min(155, g + 18)}, ${Math.min(130, b + 14)}, 0.45)`;
-        cCtx.strokeRect(3, 3, brickW - 2, brickL - 2);
+          cCtx.save();
+          cCtx.translate(cx, cy);
+          cCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+          if (isHoriz) {
+            cCtx.fillRect(2, 2, brickL, brickW);
+            cCtx.strokeStyle = `rgba(${Math.min(220, r + 24)}, ${Math.min(155, g + 18)}, ${Math.min(130, b + 14)}, 0.45)`;
+            cCtx.strokeRect(3, 3, brickL - 2, brickW - 2);
+          } else {
+            cCtx.fillRect(2, 2, brickW, brickL);
+            cCtx.strokeStyle = `rgba(${Math.min(220, r + 24)}, ${Math.min(155, g + 18)}, ${Math.min(130, b + 14)}, 0.45)`;
+            cCtx.strokeRect(3, 3, brickW - 2, brickL - 2);
+          }
+          cCtx.restore();
+
+          const bv = 185 + ((seed >> 5) % 45);
+          bCtx.save();
+          bCtx.translate(cx, cy);
+          bCtx.fillStyle = `rgb(${bv}, ${bv}, ${bv})`;
+          if (isHoriz) {
+            bCtx.fillRect(2, 2, brickL, brickW);
+          } else {
+            bCtx.fillRect(2, 2, brickW, brickL);
+          }
+          bCtx.restore();
+        }
       }
-      cCtx.restore();
 
-      const bv = 185 + ((seed >> 5) % 45);
-      bCtx.save();
-      bCtx.translate(cx, cy);
-      bCtx.fillStyle = `rgb(${bv}, ${bv}, ${bv})`;
-      if (isHoriz) {
-        bCtx.fillRect(2, 2, brickL, brickW);
-      } else {
-        bCtx.fillRect(2, 2, brickW, brickL);
-      }
-      bCtx.restore();
+      const colorMap = new THREE.CanvasTexture(colorCanvas);
+      colorMap.wrapS = THREE.RepeatWrapping;
+      colorMap.wrapT = THREE.RepeatWrapping;
+      colorMap.colorSpace = THREE.SRGBColorSpace;
+      colorMap.anisotropy = 8;
+
+      const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+      bumpMap.wrapS = THREE.RepeatWrapping;
+      bumpMap.wrapT = THREE.RepeatWrapping;
+      bumpMap.anisotropy = 8;
+
+      return { colorMap, bumpMap };
     }
-  }
+  );
 
-  const colorMap = new THREE.CanvasTexture(colorCanvas);
-  colorMap.wrapS = THREE.RepeatWrapping;
-  colorMap.wrapT = THREE.RepeatWrapping;
-  colorMap.colorSpace = THREE.SRGBColorSpace;
-  colorMap.anisotropy = 8;
+  const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+    'herringbone-brick-patio:pbr:512:1x1',
+    bumpMap.image as HTMLCanvasElement,
+    {
+      normalStrength: 3.4,
+      mortarThreshold: 0.25,
+      mortarRoughness: 0.98,
+      surfaceRoughnessMin: 0.68,
+      surfaceRoughnessMax: 0.9,
+      microGrainRoughness: 0.05,
+    }
+  );
 
-  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
-  bumpMap.wrapS = THREE.RepeatWrapping;
-  bumpMap.wrapT = THREE.RepeatWrapping;
-  bumpMap.anisotropy = 8;
-
-  return { colorMap, bumpMap };
+  return { colorMap, bumpMap, normalMap, roughnessMap };
 }
 
 /**
@@ -228,179 +274,201 @@ export function createHerringboneBrickPatioTextures(): {
 export function createDryStoneWallTextures(): {
   readonly colorMap: THREE.CanvasTexture;
   readonly bumpMap: THREE.CanvasTexture;
+  readonly normalMap: THREE.CanvasTexture;
+  readonly roughnessMap: THREE.CanvasTexture;
 } {
-  const width = 1024;
-  const height = 512;
-  const colorCanvas = document.createElement('canvas');
-  colorCanvas.width = width;
-  colorCanvas.height = height;
-  const cCtx = colorCanvas.getContext('2d')!;
+  const { colorMap, bumpMap } = getOrCreateCachedTexture(
+    'dry-stone-wall:1024x512:1x1',
+    () => {
+      const width = 1024;
+      const height = 512;
+      const colorCanvas = document.createElement('canvas');
+      colorCanvas.width = width;
+      colorCanvas.height = height;
+      const cCtx = colorCanvas.getContext('2d')!;
 
-  const bumpCanvas = document.createElement('canvas');
-  bumpCanvas.width = width;
-  bumpCanvas.height = height;
-  const bCtx = bumpCanvas.getContext('2d')!;
+      const bumpCanvas = document.createElement('canvas');
+      bumpCanvas.width = width;
+      bumpCanvas.height = height;
+      const bCtx = bumpCanvas.getContext('2d')!;
 
-  cCtx.fillStyle = '#231d17';
-  cCtx.fillRect(0, 0, width, height);
-  bCtx.fillStyle = '#0a0a0a';
-  bCtx.fillRect(0, 0, width, height);
+      cCtx.fillStyle = '#231d17';
+      cCtx.fillRect(0, 0, width, height);
+      bCtx.fillStyle = '#0a0a0a';
+      bCtx.fillRect(0, 0, width, height);
 
-  const hash = (n: number): number => {
-    const x = Math.sin(n * 91.7 + 197.3) * 43758.5453;
-    return x - Math.floor(x);
-  };
-
-  const dryStonePalette: ReadonlyArray<readonly [number, number, number]> = [
-    [186, 158, 120],
-    [168, 146, 118],
-    [152, 138, 122],
-    [194, 168, 132],
-    [138, 126, 112],
-    [175, 152, 122],
-    [146, 136, 116],
-    [162, 134, 104],
-  ];
-
-  const courseHeights = [52, 42, 48, 38, 54, 44, 46, 40, 50, 46, 52];
-  let curY = 0;
-
-  for (let row = 0; row < courseHeights.length; row++) {
-    const ch = courseHeights[row]!;
-    const staggerPx = Math.round(hash(row * 37 + 5) * 90);
-    let curX = -staggerPx;
-    let col = 0;
-
-    while (curX < width) {
-      const seed = row * 173 + col * 29 + 19;
-      const rem = width - curX;
-      const targetW = Math.round(88 + hash(seed) * 118);
-      const sw = rem < 150 ? rem : targetW;
-
-      const pal = dryStonePalette[Math.floor(hash(seed + 1) * dryStonePalette.length)]!;
-      const shift = Math.round((hash(seed + 2) - 0.5) * 24);
-      const warm = Math.round((hash(seed + 3) - 0.5) * 14);
-      const rBase = Math.max(82, Math.min(220, pal[0] + shift + warm));
-      const gBase = Math.max(76, Math.min(205, pal[1] + shift));
-      const bBase = Math.max(64, Math.min(182, pal[2] + shift - warm));
-
-      const padX = 3.5;
-      const padY = 3.0;
-      const sx = curX + padX;
-      const sy = curY + padY;
-      const w = Math.max(12, sw - padX * 2);
-      const h = Math.max(10, ch - padY * 2);
-
-      const traceDryStonePoly = (ctx: CanvasRenderingContext2D, inset = 0): void => {
-        const x0 = sx + inset;
-        const y0 = sy + inset;
-        const x1 = sx + w - inset;
-        const y1 = sy + h - inset;
-        const j = (k: number): number => (hash(seed + k * 13) - 0.5) * 3.6;
-        const chf = Math.min(7, h * 0.22);
-
-        ctx.beginPath();
-        ctx.moveTo(x0 + chf + j(1), y0 + j(2));
-        ctx.lineTo(x0 + w * 0.5 + j(3), y0 + j(4) * 0.7);
-        ctx.lineTo(x1 - chf + j(5), y0 + j(6));
-        ctx.lineTo(x1 + j(7), y0 + chf + j(8));
-        ctx.lineTo(x1 + j(9), y1 - chf + j(10));
-        ctx.lineTo(x1 - chf + j(11), y1 + j(12));
-        ctx.lineTo(x0 + w * 0.5 + j(13), y1 + j(14) * 0.7);
-        ctx.lineTo(x0 + chf + j(15), y1 + j(16));
-        ctx.lineTo(x0 + j(17), y1 - chf + j(18));
-        ctx.lineTo(x0 + j(19), y0 + chf + j(20));
-        ctx.closePath();
+      const hash = (n: number): number => {
+        const x = Math.sin(n * 91.7 + 197.3) * 43758.5453;
+        return x - Math.floor(x);
       };
 
-      const grad = cCtx.createLinearGradient(sx, sy, sx, sy + h);
-      grad.addColorStop(0, `rgb(${Math.min(235, rBase + 22)}, ${Math.min(220, gBase + 19)}, ${Math.min(198, bBase + 15)})`);
-      grad.addColorStop(0.28, `rgb(${rBase + 6}, ${gBase + 5}, ${bBase + 3})`);
-      grad.addColorStop(0.78, `rgb(${rBase - 6}, ${gBase - 6}, ${bBase - 5})`);
-      grad.addColorStop(1, `rgb(${Math.max(48, rBase - 34)}, ${Math.max(42, gBase - 30)}, ${Math.max(35, bBase - 26)})`);
+      const dryStonePalette: ReadonlyArray<readonly [number, number, number]> = [
+        [186, 158, 120],
+        [168, 146, 118],
+        [152, 138, 122],
+        [194, 168, 132],
+        [138, 126, 112],
+        [175, 152, 122],
+        [146, 136, 116],
+        [162, 134, 104],
+      ];
 
-      cCtx.save();
-      traceDryStonePoly(cCtx, 0);
-      cCtx.fillStyle = grad;
-      cCtx.fill();
-      cCtx.clip();
+      const courseHeights = [52, 42, 48, 38, 54, 44, 46, 40, 50, 46, 52];
+      let curY = 0;
 
-      for (let sLine = 0; sLine < 3; sLine++) {
-        const ly = sy + (0.25 + sLine * 0.24 + (hash(seed + 30 + sLine) - 0.5) * 0.1) * h;
-        cCtx.strokeStyle =
-          sLine % 2 === 0
-            ? `rgba(42, 34, 26, 0.28)`
-            : `rgba(${Math.min(242, rBase + 28)}, ${Math.min(228, gBase + 24)}, ${Math.min(205, bBase + 18)}, 0.25)`;
-        cCtx.lineWidth = 1.4;
-        cCtx.beginPath();
-        cCtx.moveTo(sx, ly);
-        cCtx.lineTo(sx + w * 0.5, ly + (hash(seed + 40 + sLine) - 0.5) * 3);
-        cCtx.lineTo(sx + w, ly + (hash(seed + 50 + sLine) - 0.5) * 3);
-        cCtx.stroke();
+      for (let row = 0; row < courseHeights.length; row++) {
+        const ch = courseHeights[row]!;
+        const staggerPx = Math.round(hash(row * 37 + 5) * 90);
+        let curX = -staggerPx;
+        let col = 0;
+
+        while (curX < width) {
+          const seed = row * 173 + col * 29 + 19;
+          const rem = width - curX;
+          const targetW = Math.round(88 + hash(seed) * 118);
+          const sw = rem < 150 ? rem : targetW;
+
+          const pal = dryStonePalette[Math.floor(hash(seed + 1) * dryStonePalette.length)]!;
+          const shift = Math.round((hash(seed + 2) - 0.5) * 24);
+          const warm = Math.round((hash(seed + 3) - 0.5) * 14);
+          const rBase = Math.max(82, Math.min(220, pal[0] + shift + warm));
+          const gBase = Math.max(76, Math.min(205, pal[1] + shift));
+          const bBase = Math.max(64, Math.min(182, pal[2] + shift - warm));
+
+          const padX = 3.5;
+          const padY = 3.0;
+          const sx = curX + padX;
+          const sy = curY + padY;
+          const w = Math.max(12, sw - padX * 2);
+          const h = Math.max(10, ch - padY * 2);
+
+          const traceDryStonePoly = (ctx: CanvasRenderingContext2D, inset = 0): void => {
+            const x0 = sx + inset;
+            const y0 = sy + inset;
+            const x1 = sx + w - inset;
+            const y1 = sy + h - inset;
+            const j = (k: number): number => (hash(seed + k * 13) - 0.5) * 3.6;
+            const chf = Math.min(7, h * 0.22);
+
+            ctx.beginPath();
+            ctx.moveTo(x0 + chf + j(1), y0 + j(2));
+            ctx.lineTo(x0 + w * 0.5 + j(3), y0 + j(4) * 0.7);
+            ctx.lineTo(x1 - chf + j(5), y0 + j(6));
+            ctx.lineTo(x1 + j(7), y0 + chf + j(8));
+            ctx.lineTo(x1 + j(9), y1 - chf + j(10));
+            ctx.lineTo(x1 - chf + j(11), y1 + j(12));
+            ctx.lineTo(x0 + w * 0.5 + j(13), y1 + j(14) * 0.7);
+            ctx.lineTo(x0 + chf + j(15), y1 + j(16));
+            ctx.lineTo(x0 + j(17), y1 - chf + j(18));
+            ctx.lineTo(x0 + j(19), y0 + chf + j(20));
+            ctx.closePath();
+          };
+
+          const grad = cCtx.createLinearGradient(sx, sy, sx, sy + h);
+          grad.addColorStop(0, `rgb(${Math.min(235, rBase + 22)}, ${Math.min(220, gBase + 19)}, ${Math.min(198, bBase + 15)})`);
+          grad.addColorStop(0.28, `rgb(${rBase + 6}, ${gBase + 5}, ${bBase + 3})`);
+          grad.addColorStop(0.78, `rgb(${rBase - 6}, ${gBase - 6}, ${bBase - 5})`);
+          grad.addColorStop(1, `rgb(${Math.max(48, rBase - 34)}, ${Math.max(42, gBase - 30)}, ${Math.max(35, bBase - 26)})`);
+
+          cCtx.save();
+          traceDryStonePoly(cCtx, 0);
+          cCtx.fillStyle = grad;
+          cCtx.fill();
+          cCtx.clip();
+
+          for (let sLine = 0; sLine < 3; sLine++) {
+            const ly = sy + (0.25 + sLine * 0.24 + (hash(seed + 30 + sLine) - 0.5) * 0.1) * h;
+            cCtx.strokeStyle =
+              sLine % 2 === 0
+                ? `rgba(42, 34, 26, 0.28)`
+                : `rgba(${Math.min(242, rBase + 28)}, ${Math.min(228, gBase + 24)}, ${Math.min(205, bBase + 18)}, 0.25)`;
+            cCtx.lineWidth = 1.4;
+            cCtx.beginPath();
+            cCtx.moveTo(sx, ly);
+            cCtx.lineTo(sx + w * 0.5, ly + (hash(seed + 40 + sLine) - 0.5) * 3);
+            cCtx.lineTo(sx + w, ly + (hash(seed + 50 + sLine) - 0.5) * 3);
+            cCtx.stroke();
+          }
+
+          const speckCount = Math.floor((w * h) / 70);
+          for (let sp = 0; sp < speckCount; sp++) {
+            const px = sx + hash(seed + sp * 7 + 100) * w;
+            const py = sy + hash(seed + sp * 11 + 200) * h;
+            const isDark = sp % 2 === 0;
+            cCtx.fillStyle = isDark
+              ? `rgba(48, 39, 30, 0.22)`
+              : `rgba(${Math.min(245, rBase + 32)}, ${Math.min(232, gBase + 28)}, ${Math.min(210, bBase + 22)}, 0.24)`;
+            cCtx.fillRect(px, py, 2.5, 2.0);
+          }
+          cCtx.restore();
+
+          const baseBump = Math.round(145 + hash(seed + 9) * 85);
+          bCtx.save();
+          traceDryStonePoly(bCtx, 0);
+          bCtx.fillStyle = `rgb(${Math.max(55, baseBump - 65)}, ${Math.max(55, baseBump - 65)}, ${Math.max(55, baseBump - 65)})`;
+          bCtx.fill();
+
+          traceDryStonePoly(bCtx, 2.5);
+          bCtx.fillStyle = `rgb(${baseBump}, ${baseBump}, ${baseBump})`;
+          bCtx.fill();
+
+          traceDryStonePoly(bCtx, 5.0);
+          const crownBump = Math.min(252, baseBump + 24);
+          bCtx.fillStyle = `rgb(${crownBump}, ${crownBump}, ${crownBump})`;
+          bCtx.fill();
+          bCtx.restore();
+
+          if (curX < 0) {
+            cCtx.save();
+            cCtx.translate(width, 0);
+            traceDryStonePoly(cCtx, 0);
+            cCtx.fillStyle = grad;
+            cCtx.fill();
+            cCtx.restore();
+
+            bCtx.save();
+            bCtx.translate(width, 0);
+            traceDryStonePoly(bCtx, 0);
+            bCtx.fillStyle = `rgb(${baseBump}, ${baseBump}, ${baseBump})`;
+            bCtx.fill();
+            bCtx.restore();
+          }
+
+          curX += sw;
+          col++;
+        }
+        curY += ch;
       }
 
-      const speckCount = Math.floor((w * h) / 70);
-      for (let sp = 0; sp < speckCount; sp++) {
-        const px = sx + hash(seed + sp * 7 + 100) * w;
-        const py = sy + hash(seed + sp * 11 + 200) * h;
-        const isDark = sp % 2 === 0;
-        cCtx.fillStyle = isDark
-          ? `rgba(48, 39, 30, 0.22)`
-          : `rgba(${Math.min(245, rBase + 32)}, ${Math.min(232, gBase + 28)}, ${Math.min(210, bBase + 22)}, 0.24)`;
-        cCtx.fillRect(px, py, 2.5, 2.0);
-      }
-      cCtx.restore();
+      const colorMap = new THREE.CanvasTexture(colorCanvas);
+      colorMap.wrapS = THREE.RepeatWrapping;
+      colorMap.wrapT = THREE.RepeatWrapping;
+      colorMap.colorSpace = THREE.SRGBColorSpace;
+      colorMap.anisotropy = 8;
 
-      const baseBump = Math.round(145 + hash(seed + 9) * 85);
-      bCtx.save();
-      traceDryStonePoly(bCtx, 0);
-      bCtx.fillStyle = `rgb(${Math.max(55, baseBump - 65)}, ${Math.max(55, baseBump - 65)}, ${Math.max(55, baseBump - 65)})`;
-      bCtx.fill();
+      const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+      bumpMap.wrapS = THREE.RepeatWrapping;
+      bumpMap.wrapT = THREE.RepeatWrapping;
+      bumpMap.anisotropy = 8;
 
-      traceDryStonePoly(bCtx, 2.5);
-      bCtx.fillStyle = `rgb(${baseBump}, ${baseBump}, ${baseBump})`;
-      bCtx.fill();
-
-      traceDryStonePoly(bCtx, 5.0);
-      const crownBump = Math.min(252, baseBump + 24);
-      bCtx.fillStyle = `rgb(${crownBump}, ${crownBump}, ${crownBump})`;
-      bCtx.fill();
-      bCtx.restore();
-
-      if (curX < 0) {
-        cCtx.save();
-        cCtx.translate(width, 0);
-        traceDryStonePoly(cCtx, 0);
-        cCtx.fillStyle = grad;
-        cCtx.fill();
-        cCtx.restore();
-
-        bCtx.save();
-        bCtx.translate(width, 0);
-        traceDryStonePoly(bCtx, 0);
-        bCtx.fillStyle = `rgb(${baseBump}, ${baseBump}, ${baseBump})`;
-        bCtx.fill();
-        bCtx.restore();
-      }
-
-      curX += sw;
-      col++;
+      return { colorMap, bumpMap };
     }
-    curY += ch;
-  }
+  );
 
-  const colorMap = new THREE.CanvasTexture(colorCanvas);
-  colorMap.wrapS = THREE.RepeatWrapping;
-  colorMap.wrapT = THREE.RepeatWrapping;
-  colorMap.colorSpace = THREE.SRGBColorSpace;
-  colorMap.anisotropy = 8;
+  const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+    'dry-stone-wall:pbr:1024x512:1x1',
+    bumpMap.image as HTMLCanvasElement,
+    {
+      normalStrength: 4.2,
+      mortarThreshold: 0.28,
+      mortarRoughness: 0.99,
+      surfaceRoughnessMin: 0.7,
+      surfaceRoughnessMax: 0.92,
+      microGrainRoughness: 0.06,
+    }
+  );
 
-  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
-  bumpMap.wrapS = THREE.RepeatWrapping;
-  bumpMap.wrapT = THREE.RepeatWrapping;
-  bumpMap.anisotropy = 8;
-
-  return { colorMap, bumpMap };
+  return { colorMap, bumpMap, normalMap, roughnessMap };
 }
 
 /**
@@ -411,96 +479,98 @@ export function createBotanicalShrubFoliageTextures(): {
   readonly colorMap: THREE.CanvasTexture;
   readonly bumpMap: THREE.CanvasTexture;
 } {
-  const size = 512;
-  const colorCanvas = document.createElement('canvas');
-  colorCanvas.width = size;
-  colorCanvas.height = size;
-  const cCtx = colorCanvas.getContext('2d')!;
+  return getOrCreateCachedTexture('botanical-shrub-foliage:512:1x1', () => {
+    const size = 512;
+    const colorCanvas = document.createElement('canvas');
+    colorCanvas.width = size;
+    colorCanvas.height = size;
+    const cCtx = colorCanvas.getContext('2d')!;
 
-  const bumpCanvas = document.createElement('canvas');
-  bumpCanvas.width = size;
-  bumpCanvas.height = size;
-  const bCtx = bumpCanvas.getContext('2d')!;
+    const bumpCanvas = document.createElement('canvas');
+    bumpCanvas.width = size;
+    bumpCanvas.height = size;
+    const bCtx = bumpCanvas.getContext('2d')!;
 
-  cCtx.fillStyle = '#6d7868';
-  cCtx.fillRect(0, 0, size, size);
-  bCtx.fillStyle = '#181818';
-  bCtx.fillRect(0, 0, size, size);
+    cCtx.fillStyle = '#6d7868';
+    cCtx.fillRect(0, 0, size, size);
+    bCtx.fillStyle = '#181818';
+    bCtx.fillRect(0, 0, size, size);
 
-  const hash = (n: number): number => {
-    const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
-    return x - Math.floor(x);
-  };
+    const hash = (n: number): number => {
+      const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+      return x - Math.floor(x);
+    };
 
-  for (let i = 0; i < 680; i++) {
-    const cx = hash(i * 13 + 1) * size;
-    const cy = hash(i * 17 + 2) * size;
-    const angle = hash(i * 23 + 3) * Math.PI * 2;
-    const leafL = 14 + hash(i * 29 + 4) * 18;
-    const leafW = 7 + hash(i * 31 + 5) * 9;
-    const layerT = i / 680;
-    const lum = Math.round(135 + layerT * 108 + (hash(i * 37 + 6) - 0.5) * 24);
-    const r = Math.max(85, Math.min(252, lum - 6));
-    const g = Math.max(95, Math.min(255, lum + 8));
-    const b = Math.max(78, Math.min(242, lum - 12));
-    const bumpVal = Math.max(35, Math.min(250, Math.round(60 + layerT * 185)));
+    for (let i = 0; i < 680; i++) {
+      const cx = hash(i * 13 + 1) * size;
+      const cy = hash(i * 17 + 2) * size;
+      const angle = hash(i * 23 + 3) * Math.PI * 2;
+      const leafL = 14 + hash(i * 29 + 4) * 18;
+      const leafW = 7 + hash(i * 31 + 5) * 9;
+      const layerT = i / 680;
+      const lum = Math.round(135 + layerT * 108 + (hash(i * 37 + 6) - 0.5) * 24);
+      const r = Math.max(85, Math.min(252, lum - 6));
+      const g = Math.max(95, Math.min(255, lum + 8));
+      const b = Math.max(78, Math.min(242, lum - 12));
+      const bumpVal = Math.max(35, Math.min(250, Math.round(60 + layerT * 185)));
 
-    for (const [ox, oy] of [
-      [0, 0],
-      [cx < 28 ? size : cx > size - 28 ? -size : 0, cy < 28 ? size : cy > size - 28 ? -size : 0],
-    ] as const) {
-      cCtx.save();
-      cCtx.translate(cx + ox, cy + oy);
-      cCtx.rotate(angle);
-      cCtx.beginPath();
-      cCtx.moveTo(-leafL * 0.5, 0);
-      cCtx.quadraticCurveTo(0, -leafW * 0.65, leafL * 0.5, 0);
-      cCtx.quadraticCurveTo(0, leafW * 0.65, -leafL * 0.5, 0);
-      cCtx.closePath();
-      cCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-      cCtx.fill();
-      cCtx.strokeStyle = `rgba(38, 48, 34, 0.35)`;
-      cCtx.lineWidth = 1.0;
-      cCtx.stroke();
+      for (const [ox, oy] of [
+        [0, 0],
+        [cx < 28 ? size : cx > size - 28 ? -size : 0, cy < 28 ? size : cy > size - 28 ? -size : 0],
+      ] as const) {
+        cCtx.save();
+        cCtx.translate(cx + ox, cy + oy);
+        cCtx.rotate(angle);
+        cCtx.beginPath();
+        cCtx.moveTo(-leafL * 0.5, 0);
+        cCtx.quadraticCurveTo(0, -leafW * 0.65, leafL * 0.5, 0);
+        cCtx.quadraticCurveTo(0, leafW * 0.65, -leafL * 0.5, 0);
+        cCtx.closePath();
+        cCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        cCtx.fill();
+        cCtx.strokeStyle = `rgba(38, 48, 34, 0.35)`;
+        cCtx.lineWidth = 1.0;
+        cCtx.stroke();
 
-      cCtx.strokeStyle = `rgba(${Math.min(255, r + 28)}, ${Math.min(255, g + 28)}, ${Math.min(255, b + 20)}, 0.48)`;
-      cCtx.lineWidth = 0.9;
-      cCtx.beginPath();
-      cCtx.moveTo(-leafL * 0.42, 0);
-      cCtx.lineTo(leafL * 0.42, 0);
-      cCtx.stroke();
-      cCtx.restore();
+        cCtx.strokeStyle = `rgba(${Math.min(255, r + 28)}, ${Math.min(255, g + 28)}, ${Math.min(255, b + 20)}, 0.48)`;
+        cCtx.lineWidth = 0.9;
+        cCtx.beginPath();
+        cCtx.moveTo(-leafL * 0.42, 0);
+        cCtx.lineTo(leafL * 0.42, 0);
+        cCtx.stroke();
+        cCtx.restore();
 
-      bCtx.save();
-      bCtx.translate(cx + ox, cy + oy);
-      bCtx.rotate(angle);
-      bCtx.beginPath();
-      bCtx.moveTo(-leafL * 0.5, 0);
-      bCtx.quadraticCurveTo(0, -leafW * 0.65, leafL * 0.5, 0);
-      bCtx.quadraticCurveTo(0, leafW * 0.65, -leafL * 0.5, 0);
-      bCtx.closePath();
-      bCtx.fillStyle = `rgb(${bumpVal}, ${bumpVal}, ${bumpVal})`;
-      bCtx.fill();
-      bCtx.restore();
+        bCtx.save();
+        bCtx.translate(cx + ox, cy + oy);
+        bCtx.rotate(angle);
+        bCtx.beginPath();
+        bCtx.moveTo(-leafL * 0.5, 0);
+        bCtx.quadraticCurveTo(0, -leafW * 0.65, leafL * 0.5, 0);
+        bCtx.quadraticCurveTo(0, leafW * 0.65, -leafL * 0.5, 0);
+        bCtx.closePath();
+        bCtx.fillStyle = `rgb(${bumpVal}, ${bumpVal}, ${bumpVal})`;
+        bCtx.fill();
+        bCtx.restore();
 
-      if (ox === 0 && oy === 0 && !(cx < 28 || cx > size - 28 || cy < 28 || cy > size - 28)) {
-        break;
+        if (ox === 0 && oy === 0 && !(cx < 28 || cx > size - 28 || cy < 28 || cy > size - 28)) {
+          break;
+        }
       }
     }
-  }
 
-  const colorMap = new THREE.CanvasTexture(colorCanvas);
-  colorMap.wrapS = THREE.RepeatWrapping;
-  colorMap.wrapT = THREE.RepeatWrapping;
-  colorMap.colorSpace = THREE.SRGBColorSpace;
-  colorMap.anisotropy = 8;
+    const colorMap = new THREE.CanvasTexture(colorCanvas);
+    colorMap.wrapS = THREE.RepeatWrapping;
+    colorMap.wrapT = THREE.RepeatWrapping;
+    colorMap.colorSpace = THREE.SRGBColorSpace;
+    colorMap.anisotropy = 8;
 
-  const bumpMap = new THREE.CanvasTexture(bumpCanvas);
-  bumpMap.wrapS = THREE.RepeatWrapping;
-  bumpMap.wrapT = THREE.RepeatWrapping;
-  bumpMap.anisotropy = 8;
+    const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+    bumpMap.wrapS = THREE.RepeatWrapping;
+    bumpMap.wrapT = THREE.RepeatWrapping;
+    bumpMap.anisotropy = 8;
 
-  return { colorMap, bumpMap };
+    return { colorMap, bumpMap };
+  });
 }
 
 /**
