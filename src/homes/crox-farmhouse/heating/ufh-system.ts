@@ -22,6 +22,7 @@ import {
   populateUfhZonesAndPrimaryMains,
   type FloorXrayEntry,
 } from './ufh/ufh-zone-definitions.ts';
+import { playCorstonSwitchSound } from '../../../objects/fixtures/corston-toggle-switch.ts';
 
 export type {
   HeatingEnvironmentConfig,
@@ -442,6 +443,7 @@ export function buildCroxUnderfloorHeatingSystem(
       if (!zone) return false;
       zone.heatingOn = !zone.heatingOn;
       zone.targetTempC = zone.heatingOn ? 21.0 : 16.0;
+      playCorstonSwitchSound('ufh');
       updateZoneMaterials(zone);
       notifyListeners();
       return zone.heatingOn;
@@ -457,6 +459,7 @@ export function buildCroxUnderfloorHeatingSystem(
         }
       }
       if (changed) {
+        playCorstonSwitchSound('ufh');
         notifyListeners();
       }
     },

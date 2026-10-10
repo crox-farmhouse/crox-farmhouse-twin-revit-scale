@@ -185,7 +185,13 @@ export class SoundEngine {
   }
 
   private installGestureUnlock(): void {
-    if (this.unlockInstalled || typeof window === 'undefined') return;
+    if (
+      this.unlockInstalled ||
+      typeof window === 'undefined' ||
+      typeof window.addEventListener !== 'function'
+    ) {
+      return;
+    }
     this.unlockInstalled = true;
     const onGesture = (): void => {
       if (this.muted) return;

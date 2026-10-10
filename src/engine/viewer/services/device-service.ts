@@ -2,7 +2,6 @@ import type * as THREE from 'three';
 import type { AccessPointEntityState, CctvCameraEntityState } from '../../../core/entities.ts';
 import type { CircuitLevels } from '../../../core/types/knx.ts';
 import type { InteractiveUserData, TimeOfDay } from '../../../core/types/scene.ts';
-import { playCorstonSwitchSound } from '../../../objects/fixtures/corston-toggle-switch.ts';
 import { BifoldDoorAnimator } from '../../interaction/bifold-animator.ts';
 import type { SceneInteractionManager } from '../../interaction/interaction-manager.ts';
 import { CircuitLightingController } from '../../lighting/circuit-lighting.ts';
@@ -199,7 +198,6 @@ export class DeviceService<TSecurity extends SecurityOverlay3D = SecurityOverlay
     const ufh = this.host.content.ufhSystem;
     if (!ufh) return false;
     const next = ufh.toggleZone(zoneId);
-    playCorstonSwitchSound('ufh');
     this.host.invalidator.requestRender();
     return next;
   }
@@ -208,7 +206,6 @@ export class DeviceService<TSecurity extends SecurityOverlay3D = SecurityOverlay
     const ufh = this.host.content.ufhSystem;
     if (!ufh) return;
     ufh.setAllZones(on);
-    playCorstonSwitchSound('ufh');
     this.host.invalidator.requestRender();
   }
 
