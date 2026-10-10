@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { soundEngine } from '../../audio/sound-engine.ts';
 import { easeInOutCubic } from '../interaction-math.ts';
 import type { HingedDoorState } from './hinged-doors.ts';
 import { wrapInHingePivot } from './hinge-pivot.ts';
@@ -267,13 +268,157 @@ export function getGolfSimulatorPromptLabel(
   return `Grab ${nextClub} from Golf Bag & Swing`;
 }
 
+const tmpGolfSoundPos = new THREE.Vector3();
+
+function playGolfShotAudioCue(
+  stage: 'draw' | 'whoosh' | 'impact' | 'screen' | 'drop',
+  targetObj: THREE.Object3D
+): void {
+  targetObj.getWorldPosition(tmpGolfSoundPos);
+  soundEngine.playSpatial(
+    tmpGolfSoundPos,
+    (tk) => {
+      const { now } = tk;
+      switch (stage) {
+        case 'draw': {
+          tk.noiseBurst({
+            startTime: now,
+            duration: 0.24,
+            filterType: 'bandpass',
+            freqStart: 1200,
+            freqEnd: 2400,
+            q: 1.6,
+            gainPeak: 0.08,
+            attackSec: 0.03,
+          });
+          tk.tone({
+            startTime: now + 0.06,
+            duration: 0.09,
+            type: 'triangle',
+            freqStart: 620,
+            freqEnd: 480,
+            gainPeak: 0.06,
+          });
+          break;
+        }
+        case 'whoosh': {
+          tk.noiseBurst({
+            startTime: now,
+            duration: 0.19,
+            filterType: 'bandpass',
+            freqStart: 320,
+            freqEnd: 1850,
+            q: 2.1,
+            gainPeak: 0.24,
+            attackSec: 0.07,
+          });
+          break;
+        }
+        case 'impact': {
+          tk.tone({
+            startTime: now,
+            duration: 0.14,
+            type: 'sine',
+            freqStart: 2680,
+            freqEnd: 2540,
+            gainPeak: 0.28,
+          });
+          tk.tone({
+            startTime: now,
+            duration: 0.095,
+            type: 'triangle',
+            freqStart: 4120,
+            freqEnd: 3890,
+            gainPeak: 0.18,
+          });
+          tk.tone({
+            startTime: now,
+            duration: 0.045,
+            type: 'sine',
+            freqStart: 480,
+            freqEnd: 140,
+            gainPeak: 0.34,
+          });
+          tk.noiseBurst({
+            startTime: now,
+            duration: 0.028,
+            filterType: 'highpass',
+            freqStart: 2200,
+            freqEnd: 1200,
+            q: 1.2,
+            gainPeak: 0.26,
+          });
+          break;
+        }
+        case 'screen': {
+          tk.tone({
+            startTime: now,
+            duration: 0.22,
+            type: 'sine',
+            freqStart: 128,
+            freqEnd: 38,
+            gainPeak: 0.38,
+          });
+          tk.noiseBurst({
+            startTime: now,
+            duration: 0.26,
+            filterType: 'bandpass',
+            freqStart: 780,
+            freqEnd: 290,
+            q: 1.3,
+            gainPeak: 0.22,
+            attackSec: 0.008,
+          });
+          tk.tone({
+            startTime: now + 0.08,
+            duration: 0.12,
+            type: 'sine',
+            freqStart: 1760,
+            freqEnd: 1760,
+            gainPeak: 0.055,
+          });
+          break;
+        }
+        case 'drop': {
+          tk.tone({
+            startTime: now,
+            duration: 0.075,
+            type: 'sine',
+            freqStart: 145,
+            freqEnd: 58,
+            gainPeak: 0.16,
+          });
+          tk.tone({
+            startTime: now + 0.19,
+            duration: 0.06,
+            type: 'sine',
+            freqStart: 135,
+            freqEnd: 54,
+            gainPeak: 0.09,
+          });
+          break;
+        }
+      }
+    },
+    { dryGain: 0.65, wetSend: 0.24, refDistance: 2.5, maxDistance: 24 }
+  );
+}
+
 /**
  * Steps a playing shot. Returns true while playing (the shot moved this frame).
  */
 export function stepGolfSimulatorShot(gs: GolfSimulatorShotState, dtSeconds: number): boolean {
   if (!gs.isPlaying) return false;
+  const prevT = gs.elapsedSec;
   gs.elapsedSec += Math.min(0.08, dtSeconds);
   const t = gs.elapsedSec;
+
+  if (prevT < 0.04 && t >= 0.04) playGolfShotAudioCue('draw', gs.clubSwingPivot);
+  if (prevT < 1.32 && t >= 1.32) playGolfShotAudioCue('whoosh', gs.clubSwingPivot);
+  if (prevT < 1.48 && t >= 1.48) playGolfShotAudioCue('impact', gs.teedBall);
+  if (prevT < 1.63 && t >= 1.63) playGolfShotAudioCue('screen', gs.screenMesh);
+  if (prevT < 1.97 && t >= 1.97) playGolfShotAudioCue('drop', gs.teedBall);
+
   const impactCfg =
     GOLF_SHOT_SCREEN_IMPACTS[gs.shotIndex % GOLF_SHOT_SCREEN_IMPACTS.length]!;
   const addrPos = gs.addressClubPos;

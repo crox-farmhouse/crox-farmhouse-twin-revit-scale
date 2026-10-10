@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { soundEngine } from '../../audio/sound-engine.ts';
 import { easeInOutCubic, stepProgress } from '../interaction-math.ts';
 import { wrapInHingePivot } from './hinge-pivot.ts';
 
@@ -50,4 +51,34 @@ export function stepCarGates(cg: MotorizedCarGatePairState, dtSeconds: number): 
   cg.northPivot.updateMatrixWorld(true);
   cg.southPivot.updateMatrixWorld(true);
   return true;
+}
+
+const tmpCarGateSoundPos = new THREE.Vector3();
+
+/** Synthesizes 3D dual-leaf motorized entrance gate latch clunk and hydraulic actuator hum. */
+export function playCarGateSound(cg: MotorizedCarGatePairState): void {
+  cg.northPivot.getWorldPosition(tmpCarGateSoundPos);
+  soundEngine.playSpatial(
+    tmpCarGateSoundPos,
+    (tk) => {
+      const { now } = tk;
+      tk.tone({
+        startTime: now,
+        duration: 0.06,
+        type: 'triangle',
+        freqStart: 420,
+        freqEnd: 180,
+        gainPeak: 0.18,
+      });
+      tk.tone({
+        startTime: now + 0.04,
+        duration: 0.9,
+        type: 'sawtooth',
+        freqStart: cg.isOpen ? 78 : 88,
+        freqEnd: cg.isOpen ? 86 : 72,
+        gainPeak: 0.065,
+      });
+    },
+    { dryGain: 0.55, wetSend: 0.08, refDistance: 3.5, maxDistance: 30 }
+  );
 }

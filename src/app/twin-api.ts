@@ -480,6 +480,23 @@ export interface TwinNotesApi {
 }
 
 // -----------------------------------------------------------------------------
+// Audio & Soundscape
+// -----------------------------------------------------------------------------
+
+export interface TwinAudioApi {
+  isMuted(): boolean;
+  setMuted(muted: boolean): void;
+  toggleMuted(): boolean;
+  getVolume(): number;
+  setVolume(volume: number): void;
+  isAmbientEnabled(): boolean;
+  setAmbientEnabled(enabled: boolean): void;
+  isSfxEnabled(): boolean;
+  setSfxEnabled(enabled: boolean): void;
+  onChanged(listener: () => void): Unsubscribe;
+}
+
+// -----------------------------------------------------------------------------
 // Dev (diagnostics only — dev tools needing engine objects get them from bootstrap)
 // -----------------------------------------------------------------------------
 
@@ -503,8 +520,10 @@ export interface TwinApi {
   readonly lighting: TwinLightingApi;
   readonly devices: TwinDevicesApi;
   readonly graphics: TwinGraphicsApi;
+  readonly audio: TwinAudioApi;
   readonly trades: TwinTradesApi;
   readonly walkthrough: TwinWalkthroughApi;
   readonly notes: TwinNotesApi;
   readonly dev: TwinDevApi;
 }
+

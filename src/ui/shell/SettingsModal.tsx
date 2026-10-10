@@ -61,11 +61,31 @@ export function SettingsModal(): JSX.Element | null {
   const [motionBlurEnabled, setMotionBlurEnabled] = useState<boolean>(() =>
     ctl.api.graphics.isMotionBlurEnabled()
   );
+  const [audioMuted, setAudioMuted] = useState<boolean>(() => ctl.api.audio?.isMuted() ?? false);
+  const [audioVolume, setAudioVolume] = useState<number>(() => ctl.api.audio?.getVolume() ?? 0.75);
+  const [ambientEnabled, setAmbientEnabled] = useState<boolean>(
+    () => ctl.api.audio?.isAmbientEnabled() ?? true
+  );
+  const [sfxEnabled, setSfxEnabled] = useState<boolean>(() => ctl.api.audio?.isSfxEnabled() ?? true);
+
   useEffect(() => {
     setSsaoEnabled(ctl.api.graphics.isSsaoEnabled());
     setFxaaEnabled(ctl.api.graphics.isFxaaEnabled());
     setMotionBlurEnabled(ctl.api.graphics.isMotionBlurEnabled());
   }, [ctl, mode]);
+
+  useEffect(() => {
+    if (!ctl.api.audio) return undefined;
+    const syncAudio = (): void => {
+      setAudioMuted(ctl.api.audio.isMuted());
+      setAudioVolume(ctl.api.audio.getVolume());
+      setAmbientEnabled(ctl.api.audio.isAmbientEnabled());
+      setSfxEnabled(ctl.api.audio.isSfxEnabled());
+    };
+    syncAudio();
+    return ctl.api.audio.onChanged(syncAudio);
+  }, [ctl]);
+
   const close = (): void => {
     settingsOpen.value = false;
   };
@@ -165,6 +185,90 @@ export function SettingsModal(): JSX.Element | null {
                   const next = !fxaaEnabled;
                   ctl.api.graphics.setFxaaEnabled(next);
                   setFxaaEnabled(next);
+                }}
+              >
+                <span class="shell-switch-knob" />
+              </button>
+            </div>
+          </section>
+
+          <section class="shell-settings-section">
+            <h3>Sound &amp; Acoustics</h3>
+            <div class="shell-toggle-row">
+              <span class="shell-radio-text">
+                <span>Enable Audio</span>
+                <span class="shell-muted">Procedural Web Audio 3D spatial soundscape &amp; reverb</span>
+              </span>
+              <button
+                type="button"
+                class={`shell-switch${!audioMuted ? ' is-on' : ''}`}
+                role="switch"
+                aria-checked={!audioMuted}
+                aria-label="Enable Audio"
+                onClick={() => {
+                  const nextMuted = !audioMuted;
+                  ctl.api.audio?.setMuted(nextMuted);
+                  setAudioMuted(nextMuted);
+                }}
+              >
+                <span class="shell-switch-knob" />
+              </button>
+            </div>
+            <div class="shell-toggle-row" style={{ marginTop: '8px' }}>
+              <span class="shell-radio-text">
+                <span>Master Volume ({Math.round(audioVolume * 100)}%)</span>
+                <span class="shell-muted">Overall level for spatial SFX and ambient soundscape</span>
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={Math.round(audioVolume * 100)}
+                aria-label="Master Volume"
+                style={{ width: '130px', accentColor: 'var(--shell-accent, #f59e0b)' }}
+                onInput={(e) => {
+                  const nextVol = Number(e.currentTarget.value) / 100;
+                  ctl.api.audio?.setVolume(nextVol);
+                  setAudioVolume(nextVol);
+                }}
+              />
+            </div>
+            <div class="shell-toggle-row" style={{ marginTop: '8px' }}>
+              <span class="shell-radio-text">
+                <span>Ambient Soundscape</span>
+                <span class="shell-muted">Outdoor breeze, daytime birdsong &amp; evening crickets</span>
+              </span>
+              <button
+                type="button"
+                class={`shell-switch${ambientEnabled ? ' is-on' : ''}`}
+                role="switch"
+                aria-checked={ambientEnabled}
+                aria-label="Ambient Soundscape"
+                onClick={() => {
+                  const next = !ambientEnabled;
+                  ctl.api.audio?.setAmbientEnabled(next);
+                  setAmbientEnabled(next);
+                }}
+              >
+                <span class="shell-switch-knob" />
+              </button>
+            </div>
+            <div class="shell-toggle-row" style={{ marginTop: '8px' }}>
+              <span class="shell-radio-text">
+                <span>Spatial 3D Sound Effects</span>
+                <span class="shell-muted">Footsteps, doors, switches, golf bay, pool table &amp; gym</span>
+              </span>
+              <button
+                type="button"
+                class={`shell-switch${sfxEnabled ? ' is-on' : ''}`}
+                role="switch"
+                aria-checked={sfxEnabled}
+                aria-label="Spatial 3D Sound Effects"
+                onClick={() => {
+                  const next = !sfxEnabled;
+                  ctl.api.audio?.setSfxEnabled(next);
+                  setSfxEnabled(next);
                 }}
               >
                 <span class="shell-switch-knob" />

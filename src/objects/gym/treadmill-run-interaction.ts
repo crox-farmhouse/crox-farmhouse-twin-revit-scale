@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { soundEngine } from '../../engine/audio/sound-engine.ts';
 import type {
   AnimatedInteractable,
   FirstPersonPoseSample,
@@ -209,13 +210,25 @@ export class GymTreadmillRunController implements AnimatedInteractable {
       return false;
     }
 
+    const prevT = this.#elapsedSec;
     this.#elapsedSec += dtSeconds;
     const clampedT = Math.min(this.#elapsedSec, TOTAL_RUN_DURATION_SEC);
     const kin = this.#evaluateKinematics(clampedT);
     const beltSpeedMps = kin.speedKmh / 3.6;
 
+    if (prevT < 0.38 && this.#elapsedSec >= 0.38) {
+      this.#playConsoleBeepSound();
+    }
+
+    const prevStrideStep = Math.floor(this.#stridePhase / Math.PI);
     this.#distanceMeters += beltSpeedMps * dtSeconds;
     this.#stridePhase += (6.2 + beltSpeedMps * 2.35) * dtSeconds;
+    const currStrideStep = Math.floor(this.#stridePhase / Math.PI);
+
+    if (currStrideStep > prevStrideStep && kin.speedKmh > 1.2) {
+      const intensity = Math.max(0.45, Math.min(1.35, kin.speedKmh / 12.5));
+      this.#playBeltStepSound(intensity);
+    }
 
     // 1. Scroll the elastomer belt texture UV so tread ribs and pace stripes race backward
     this.#beltTexture.wrapS = THREE.RepeatWrapping;
@@ -253,6 +266,72 @@ export class GymTreadmillRunController implements AnimatedInteractable {
     }
 
     return true;
+  }
+
+  #getBeltWorldPosition(): { readonly x: number; readonly y: number; readonly z: number } {
+    const [wx, wz] = outbuildingToWorldXZ(BELT_RUNNER_OB_U, BELT_RUNNER_OB_V);
+    return { x: wx, y: this.#gymFloorY + BELT_SURFACE_OFFSET_Y, z: wz };
+  }
+
+  #playConsoleBeepSound(): void {
+    soundEngine.playSpatial(
+      this.#getBeltWorldPosition(),
+      (tk) => {
+        const { now } = tk;
+        tk.tone({
+          startTime: now,
+          duration: 0.09,
+          type: 'sine',
+          freqStart: 2480,
+          freqEnd: 2480,
+          gainPeak: 0.14,
+        });
+        tk.tone({
+          startTime: now + 0.12,
+          duration: 0.14,
+          type: 'sine',
+          freqStart: 3120,
+          freqEnd: 3120,
+          gainPeak: 0.16,
+        });
+      },
+      { dryGain: 0.55, wetSend: 0.16, refDistance: 2.0, maxDistance: 16 }
+    );
+  }
+
+  #playBeltStepSound(intensity: number): void {
+    soundEngine.playSpatial(
+      this.#getBeltWorldPosition(),
+      (tk) => {
+        const { now } = tk;
+        tk.tone({
+          startTime: now,
+          duration: 0.085,
+          type: 'sine',
+          freqStart: 122,
+          freqEnd: 48,
+          gainPeak: 0.2 * intensity,
+        });
+        tk.noiseBurst({
+          startTime: now + 0.008,
+          duration: 0.075,
+          filterType: 'bandpass',
+          freqStart: 1350,
+          freqEnd: 780,
+          q: 1.6,
+          gainPeak: 0.075 * intensity,
+        });
+        tk.tone({
+          startTime: now,
+          duration: 0.14,
+          type: 'triangle',
+          freqStart: 68,
+          freqEnd: 66,
+          gainPeak: 0.04 * intensity,
+        });
+      },
+      { dryGain: 0.52, wetSend: 0.16, refDistance: 2.0, maxDistance: 16 }
+    );
   }
 
   public sampleFirstPersonPose(): FirstPersonPoseSample | null {

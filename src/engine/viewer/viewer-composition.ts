@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { FloorViewMode, InteractiveUserData, TimeOfDay } from '../../core/types/scene.ts';
+import { soundEngine } from '../audio/sound-engine.ts';
 import { CutawayController } from '../cutaway/cutaway-controller.ts';
 import { EnvironmentLighting } from '../lighting/environment-lighting.ts';
 import {
@@ -130,6 +131,7 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
       rig,
       invalidator: renderer,
       getRoomMinYAt: (x, y, z) => this.rooms.getRoomMinYAt(x, y, z),
+      getCurrentRoomId: () => this.rooms.getCurrent(),
       getInteractiveMeshes: () => this.content?.interactiveMeshes ?? [],
       getInteractions: () => this.devices.interactions,
       isBifoldsOpen: () => this.devices.isBifoldsOpen(),
@@ -313,6 +315,11 @@ export class ViewerComposition<TSecurity extends SecurityOverlay3D = SecurityOve
     }
     this.devices.update(dtSeconds, this.walkthrough.isActive() && cameraMoved);
     if (this.staticScene.batchOptimizer.stepFades(dtSeconds)) this.renderer.requestRender();
+
+    const currentRoom = this.rooms.getCurrent();
+    const isInterior = currentRoom !== null && currentRoom !== 'courtyard';
+    soundEngine.updateListener(rig.getActiveCamera(), isInterior);
+    this.environment.updateAmbientAudio(dtSeconds, isInterior, this.devices.isBifoldsOpen());
 
     const rendered = this.renderer.renderIfNeeded(
       this.scene,

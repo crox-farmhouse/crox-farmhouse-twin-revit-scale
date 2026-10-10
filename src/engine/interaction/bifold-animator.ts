@@ -1,5 +1,6 @@
 import type { BifoldPanelRef } from '../viewer/scene-types.ts';
 import type { BifoldTrackConfig } from '../viewer/property-scene-profile.ts';
+import { playBifoldSound } from './handlers/bifold-cupboards.ts';
 
 /**
  * Animates a concertina bifold door set between closed (0) and open (1).
@@ -25,6 +26,7 @@ export class BifoldDoorAnimator {
 
   public toggle(): boolean {
     this.open = !this.open;
+    playBifoldSound(this.panels[0]?.group, this.open);
     return this.open;
   }
 

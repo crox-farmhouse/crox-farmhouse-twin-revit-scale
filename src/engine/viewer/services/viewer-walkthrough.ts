@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import type { RoomZoneId } from '../../../core/types/topology.ts';
 import type { CameraRig } from '../../camera/camera-rig.ts';
 import type { SceneInteractionManager } from '../../interaction/interaction-manager.ts';
 import { WalkthroughController } from '../../walkthrough/walkthrough-controller.ts';
@@ -10,6 +11,7 @@ export interface ViewerWalkthroughHost {
   readonly rig: CameraRig;
   readonly invalidator: RenderInvalidator;
   getRoomMinYAt(x: number, y: number, z: number): number | null;
+  getCurrentRoomId?(): RoomZoneId | null;
   /** Resolved lazily: content is built after the walkthrough controller. */
   getInteractiveMeshes(): readonly THREE.Object3D[];
   getInteractions(): SceneInteractionManager;
@@ -32,6 +34,7 @@ export function createViewerWalkthrough(host: ViewerWalkthroughHost): Walkthroug
     scene: host.scene,
     rig: host.rig,
     getRoomMinYAt: (x, y, z) => host.getRoomMinYAt(x, y, z),
+    getCurrentRoomId: () => host.getCurrentRoomId?.() ?? null,
     getInteractiveMeshes: () => host.getInteractiveMeshes(),
     describeInteractable: (mesh) =>
       host.getInteractions().describeInteractable(mesh, host.isBifoldsOpen()),

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { soundEngine } from '../../audio/sound-engine.ts';
 import { easeInOutCubic } from '../interaction-math.ts';
 
 /** World-space closed doorway threshold geometry, cached per door. */
@@ -262,4 +263,129 @@ export function describeHingedDoor(
     return `${verb} Door`;
   }
   return `${verb} Cupboard`;
+}
+
+const tmpDoorSoundPos = new THREE.Vector3();
+
+/**
+ * Synthesizes 3D spatial mechanical audio for a hinged door, overhead garage door, or sliding golf mat.
+ */
+export function playHingedDoorSound(
+  door: HingedDoorState,
+  action: 'open' | 'close' | 'barge'
+): void {
+  door.pivot.getWorldPosition(tmpDoorSoundPos);
+  soundEngine.playSpatial(
+    tmpDoorSoundPos,
+    (tk) => {
+      const { now } = tk;
+      if (door.overheadTrackZ !== undefined) {
+        tk.noiseBurst({
+          startTime: now,
+          duration: 0.55,
+          filterType: 'bandpass',
+          freqStart: action === 'open' ? 280 : 420,
+          freqEnd: action === 'open' ? 520 : 240,
+          q: 2.0,
+          gainPeak: 0.16,
+          attackSec: 0.05,
+        });
+        tk.tone({
+          startTime: now,
+          duration: 0.5,
+          type: 'sawtooth',
+          freqStart: 92,
+          freqEnd: action === 'open' ? 112 : 76,
+          gainPeak: 0.055,
+        });
+        return;
+      }
+
+      if (door.isFoldingFloorMat) {
+        tk.noiseBurst({
+          startTime: now,
+          duration: 0.42,
+          filterType: 'bandpass',
+          freqStart: door.isOpen ? 460 : 680,
+          freqEnd: door.isOpen ? 720 : 390,
+          q: 1.8,
+          gainPeak: 0.14,
+          attackSec: 0.04,
+        });
+        return;
+      }
+
+      if (action === 'barge') {
+        tk.tone({
+          startTime: now,
+          duration: 0.11,
+          type: 'sine',
+          freqStart: 165,
+          freqEnd: 52,
+          gainPeak: 0.34,
+        });
+        tk.tone({
+          startTime: now + 0.01,
+          duration: 0.035,
+          type: 'triangle',
+          freqStart: 2200,
+          freqEnd: 1100,
+          gainPeak: 0.18,
+        });
+        tk.noiseBurst({
+          startTime: now + 0.02,
+          duration: 0.16,
+          filterType: 'bandpass',
+          freqStart: 850,
+          freqEnd: 380,
+          q: 1.8,
+          gainPeak: 0.18,
+        });
+      } else if (action === 'open') {
+        tk.tone({
+          startTime: now,
+          duration: 0.032,
+          type: 'triangle',
+          freqStart: 1950,
+          freqEnd: 980,
+          gainPeak: 0.14,
+        });
+        tk.tone({
+          startTime: now + 0.03,
+          duration: 0.22,
+          type: 'sine',
+          freqStart: 310,
+          freqEnd: 420,
+          gainPeak: 0.045,
+        });
+        tk.noiseBurst({
+          startTime: now + 0.02,
+          duration: 0.18,
+          filterType: 'bandpass',
+          freqStart: 620,
+          freqEnd: 880,
+          q: 2.4,
+          gainPeak: 0.06,
+        });
+      } else {
+        tk.tone({
+          startTime: now + 0.18,
+          duration: 0.095,
+          type: 'sine',
+          freqStart: 128,
+          freqEnd: 46,
+          gainPeak: 0.26,
+        });
+        tk.tone({
+          startTime: now + 0.19,
+          duration: 0.035,
+          type: 'triangle',
+          freqStart: 1680,
+          freqEnd: 840,
+          gainPeak: 0.13,
+        });
+      }
+    },
+    { dryGain: 0.55, wetSend: 0.22, refDistance: 2.0, maxDistance: 22 }
+  );
 }

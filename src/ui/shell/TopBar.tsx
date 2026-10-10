@@ -1,4 +1,5 @@
 import type { JSX } from 'preact';
+import { useEffect, useState } from 'preact/hooks';
 import {
   devDrawerOpen,
   devMode,
@@ -56,6 +57,15 @@ export function TopBar(): JSX.Element {
   const view = viewMode.value;
   const trade = tradeView.value;
   const tod = timeOfDay.value;
+  const [muted, setMuted] = useState<boolean>(() => ctl.api.audio?.isMuted() ?? false);
+
+  useEffect(() => {
+    if (!ctl.api.audio) return undefined;
+    setMuted(ctl.api.audio.isMuted());
+    return ctl.api.audio.onChanged(() => {
+      setMuted(ctl.api.audio.isMuted());
+    });
+  }, [ctl]);
 
   return (
     <header class="shell-topbar" role="banner">
@@ -182,6 +192,19 @@ export function TopBar(): JSX.Element {
         )}
         <button
           type="button"
+          class={`shell-icon-btn${!muted ? ' is-active' : ''}`}
+          title={muted ? 'Unmute audio' : 'Mute audio'}
+          aria-label={muted ? 'Unmute audio' : 'Mute audio'}
+          aria-pressed={!muted}
+          onClick={() => {
+            const next = ctl.api.audio?.toggleMuted() ?? !muted;
+            setMuted(next);
+          }}
+        >
+          <Icon name={muted ? 'volume-mute' : 'volume'} />
+        </button>
+        <button
+          type="button"
           class="shell-icon-btn"
           title="Help (?)"
           aria-label="Help"
@@ -214,3 +237,4 @@ export function TopBar(): JSX.Element {
     </header>
   );
 }
+

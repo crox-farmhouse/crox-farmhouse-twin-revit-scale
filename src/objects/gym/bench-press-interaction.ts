@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import { soundEngine } from '../../engine/audio/sound-engine.ts';
 import type {
   AnimatedInteractable,
   FirstPersonPoseSample,
@@ -230,17 +231,145 @@ export class GymBenchPressController implements AnimatedInteractable {
       return false;
     }
     const dt = Math.max(0, dtSeconds);
+    const prevT = this.#elapsedSec;
     this.#elapsedSec += dt;
-    if (this.#elapsedSec >= TOTAL_BENCH_DURATION_SEC) {
+    const currT = this.#elapsedSec;
+
+    if (prevT < 1.15 && currT >= 1.15) {
+      this.#playUnrackSound();
+    }
+    if (prevT < 2.35 && currT >= 2.35) {
+      this.#playRepSound(0.85);
+    }
+    if (prevT < 3.72 && currT >= 3.72) {
+      this.#playRepSound(1.0);
+    }
+    if (prevT < 5.22 && currT >= 5.22) {
+      this.#playRepSound(1.18);
+    }
+    if (prevT < 6.65 && currT >= 6.65) {
+      this.#playRerackSound();
+    }
+
+    if (currT >= TOTAL_BENCH_DURATION_SEC) {
       this.cancelFirstPerson();
       return true;
     }
-    this.#applyPoseAtTime(this.#elapsedSec);
+    this.#applyPoseAtTime(currT);
     return true;
   }
 
   public getElapsedSec(): number {
     return this.#elapsedSec;
+  }
+
+  #getRackWorldPosition(): { readonly x: number; readonly y: number; readonly z: number } {
+    const [wx, wz] = outbuildingToWorldXZ(RACK_OB_U, RACK_OB_V);
+    return { x: wx, y: this.#gymFloorY + BENCH_RACK_Y, z: wz };
+  }
+
+  #playUnrackSound(): void {
+    soundEngine.playSpatial(
+      this.#getRackWorldPosition(),
+      (tk) => {
+        const { now } = tk;
+        tk.tone({
+          startTime: now,
+          duration: 0.14,
+          type: 'triangle',
+          freqStart: 420,
+          freqEnd: 290,
+          gainPeak: 0.22,
+        });
+        tk.tone({
+          startTime: now + 0.015,
+          duration: 0.18,
+          type: 'sine',
+          freqStart: 1180,
+          freqEnd: 860,
+          gainPeak: 0.11,
+        });
+        tk.tone({
+          startTime: now,
+          duration: 0.16,
+          type: 'sine',
+          freqStart: 95,
+          freqEnd: 48,
+          gainPeak: 0.24,
+        });
+      },
+      { dryGain: 0.58, wetSend: 0.2, refDistance: 2.0, maxDistance: 18 }
+    );
+  }
+
+  #playRepSound(intensity: number): void {
+    soundEngine.playSpatial(
+      this.#getRackWorldPosition(),
+      (tk) => {
+        const { now } = tk;
+        tk.tone({
+          startTime: now,
+          duration: 0.12,
+          type: 'sine',
+          freqStart: 88,
+          freqEnd: 46,
+          gainPeak: 0.18 * intensity,
+        });
+        tk.noiseBurst({
+          startTime: now + 0.02,
+          duration: 0.22,
+          filterType: 'bandpass',
+          freqStart: 580,
+          freqEnd: 340,
+          q: 1.8,
+          gainPeak: 0.075 * intensity,
+          attackSec: 0.03,
+        });
+      },
+      { dryGain: 0.52, wetSend: 0.18, refDistance: 2.0, maxDistance: 16 }
+    );
+  }
+
+  #playRerackSound(): void {
+    soundEngine.playSpatial(
+      this.#getRackWorldPosition(),
+      (tk) => {
+        const { now } = tk;
+        tk.tone({
+          startTime: now,
+          duration: 0.18,
+          type: 'triangle',
+          freqStart: 380,
+          freqEnd: 195,
+          gainPeak: 0.28,
+        });
+        tk.tone({
+          startTime: now,
+          duration: 0.22,
+          type: 'sine',
+          freqStart: 960,
+          freqEnd: 740,
+          gainPeak: 0.16,
+        });
+        tk.tone({
+          startTime: now + 0.035,
+          duration: 0.16,
+          type: 'sine',
+          freqStart: 1620,
+          freqEnd: 1180,
+          gainPeak: 0.1,
+        });
+        tk.tone({
+          startTime: now,
+          duration: 0.18,
+          type: 'sine',
+          freqStart: 115,
+          freqEnd: 44,
+          gainPeak: 0.3,
+        });
+      },
+      { dryGain: 0.64, wetSend: 0.22, refDistance: 2.0, maxDistance: 20 }
+    );
   }
 
   #resetToRestPose(): void {

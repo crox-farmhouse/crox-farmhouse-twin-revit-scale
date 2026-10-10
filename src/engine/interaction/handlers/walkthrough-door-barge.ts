@@ -1,5 +1,9 @@
 import type * as THREE from 'three';
-import { getClosedDoorwayGeometry, type HingedDoorState } from './hinged-doors.ts';
+import {
+  getClosedDoorwayGeometry,
+  playHingedDoorSound,
+  type HingedDoorState,
+} from './hinged-doors.ts';
 
 /** Minimum time after a manual close before a walkthrough barge may re-open a door. */
 const MANUAL_CLOSE_BARGE_COOLDOWN_MS = 650;
@@ -94,6 +98,7 @@ function applyDoorBargeSwing(
     door.progress = 0;
     door.isOpen = true;
     door.speed = bargeSpeed;
+    playHingedDoorSound(door, 'barge');
     ctx.closeConflictingDoors(door.id);
   } else if (door.progress < 0.95 && door.speed < bargeSpeed) {
     door.speed = bargeSpeed;

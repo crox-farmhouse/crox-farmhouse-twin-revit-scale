@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { SceneCameraPoseSnapshot } from '../../core/types/scene.ts';
+import type { RoomZoneId } from '../../core/types/topology.ts';
 import type { FirstPersonPoseSample } from '../interaction/handlers/animated-interactable.ts';
 import { intersectVisibleObjects } from '../util/object-utils.ts';
 import type { CameraRig } from '../camera/camera-rig.ts';
@@ -8,6 +9,12 @@ import {
   type WalkthroughDoorBargeHandler,
   type WalkthroughProximityDoorBargeHandler,
 } from './parts/walkthrough-door-barge.ts';
+import {
+  classifyFloorSurface,
+  playWalkthroughFootstep,
+  playWalkthroughJump,
+  playWalkthroughLand,
+} from './parts/walkthrough-footstep-audio.ts';
 import {
   getWalkthroughTargetEyeHeight,
   OB_COS,
@@ -95,6 +102,7 @@ export class WalkthroughController {
   private readonly canvas: HTMLCanvasElement;
   private readonly rig: CameraRig;
   private readonly getRoomMinYAt: (x: number, y: number, z: number) => number | null;
+  private readonly getCurrentRoomId?: () => RoomZoneId | null;
   private readonly getInteractiveMeshes: () => readonly THREE.Object3D[];
   private readonly describeInteractable: (mesh: THREE.Object3D) => string;
   private readonly onInteractWithMesh: (mesh: THREE.Object3D) => void;
@@ -145,6 +153,7 @@ export class WalkthroughController {
   private groundVelX = 0;
   private groundVelZ = 0;
   private bobPhase = 0;
+  private ladderSoundAccumSec = 0;
   private smoothedFps = 120;
 
   private glideTargetFoot: THREE.Vector3 | null = null;
@@ -152,7 +161,6 @@ export class WalkthroughController {
 
   private targetedMesh: THREE.Object3D | null = null;
   private targetedPrompt: string | null = null;
-  private wasInGolfAutoSwingStance = false;
   private golfShotStartPose: GolfShotStartPose | null = null;
   private lastCameraEyePos = new THREE.Vector3();
   private lastCameraRollRad = 0;
@@ -196,6 +204,7 @@ export class WalkthroughController {
     readonly scene: THREE.Scene;
     readonly rig: CameraRig;
     readonly getRoomMinYAt: (x: number, y: number, z: number) => number | null;
+    readonly getCurrentRoomId?: () => RoomZoneId | null;
     readonly getInteractiveMeshes: () => readonly THREE.Object3D[];
     readonly describeInteractable: (mesh: THREE.Object3D) => string;
     readonly onInteractWithMesh: (mesh: THREE.Object3D) => void;
@@ -217,6 +226,7 @@ export class WalkthroughController {
     this.canvas = options.canvas;
     this.rig = options.rig;
     this.getRoomMinYAt = options.getRoomMinYAt;
+    this.getCurrentRoomId = options.getCurrentRoomId;
     this.getInteractiveMeshes = options.getInteractiveMeshes;
     this.describeInteractable = options.describeInteractable;
     this.onInteractWithMesh = options.onInteractWithMesh;
@@ -322,12 +332,14 @@ export class WalkthroughController {
     );
     if (ladderJump.handled) {
       this.verticalVelocity = ladderJump.kickBackVelocityY;
+      playWalkthroughJump(this.footPos);
       return;
     }
     if (this.crouched) {
       this.setCrouched(false);
     } else if (this.jumpOffsetY <= 0.01) {
       this.verticalVelocity = JUMP_IMPULSE_MPS;
+      playWalkthroughJump(this.footPos);
     }
   }
 
@@ -375,22 +387,19 @@ export class WalkthroughController {
     this.glideTargetFoot = null;
     this.verticalVelocity = 0;
     this.jumpOffsetY = 0;
-    this.wasInGolfAutoSwingStance = true;
   }
 
   private getGolfSimulatorZoneStatus(foot: THREE.Vector3): {
-    readonly inAutoSwingStance: boolean;
     readonly inPlayZone: boolean;
   } {
     if (foot.y > 0.25) {
-      return { inAutoSwingStance: false, inPlayZone: false };
+      return { inPlayZone: false };
     }
     const { obU, obV } = worldToOutbuildingLocal(foot.x, foot.z);
     // Callaway Tour Golf Bag is at outbuilding (u = 16.05m, v = 5.03m)
     const distToBag = Math.hypot(obU - 16.05, obV - 5.03);
-    const inAutoSwingStance = foot.y <= 0.15 && distToBag <= 1.55;
     const inPlayZone = distToBag <= 2.35;
-    return { inAutoSwingStance, inPlayZone };
+    return { inPlayZone };
   }
 
   public triggerTargetedInteraction(): boolean {
@@ -517,9 +526,6 @@ export class WalkthroughController {
 
     this.targetYawRad = this.yawRad;
     this.targetPitchRad = this.pitchRad;
-    this.wasInGolfAutoSwingStance = this.getGolfSimulatorZoneStatus(
-      this.footPos
-    ).inAutoSwingStance;
     this.syncCameraFromFootAndAngles(0);
     this.refreshTargetedInteractable(true);
     this.onStateChanged(true);
@@ -544,7 +550,6 @@ export class WalkthroughController {
     this.lookDirty = false;
     this.targetedMesh = null;
     this.targetedPrompt = null;
-    this.wasInGolfAutoSwingStance = false;
     this.verticalVelocity = 0;
     this.jumpOffsetY = 0;
 
@@ -579,9 +584,6 @@ export class WalkthroughController {
     this.pitchRad = -0.03;
     this.targetYawRad = this.yawRad;
     this.targetPitchRad = this.pitchRad;
-    this.wasInGolfAutoSwingStance = this.getGolfSimulatorZoneStatus(
-      this.footPos
-    ).inAutoSwingStance;
     this.syncCameraFromFootAndAngles(0);
     this.refreshTargetedInteractable(true);
     this.onPoseUpdated();
@@ -904,6 +906,13 @@ export class WalkthroughController {
         ladderStep.rollRad,
         ladderStep.pitchNodRad
       );
+      if (Math.abs(ladderStep.bobOffsetY) > 0.002) {
+        this.ladderSoundAccumSec += dtSeconds;
+        if (this.ladderSoundAccumSec >= 0.34) {
+          this.ladderSoundAccumSec = 0;
+          playWalkthroughFootstep('ladder', this.footPos, false);
+        }
+      }
       this.refreshTargetedInteractable();
       this.onPoseUpdated();
       this.saveSessionState(false);
@@ -920,7 +929,6 @@ export class WalkthroughController {
     }
     if (this.golfShotStartPose !== null) {
       this.golfShotStartPose = null;
-      this.wasInGolfAutoSwingStance = true;
     }
 
     const fpSample = this.getActiveFirstPersonPose?.() ?? null;
@@ -1160,6 +1168,7 @@ export class WalkthroughController {
     }
 
     if (this.jumpOffsetY > 0 || this.verticalVelocity !== 0) {
+      const prevJumpOffset = this.jumpOffsetY;
       this.jumpOffsetY += this.verticalVelocity * dtSeconds;
       this.verticalVelocity -= GRAVITY_MPS2 * dtSeconds;
       if (this.footPos.y >= 1.8 && targetEyeH < STANDING_EYE_HEIGHT - 0.1) {
@@ -1168,11 +1177,19 @@ export class WalkthroughController {
       } else if (this.jumpOffsetY <= 0) {
         this.jumpOffsetY = 0;
         this.verticalVelocity = 0;
+        if (prevJumpOffset > 0.025) {
+          const surface = classifyFloorSurface(
+            this.getCurrentRoomId?.() ?? null,
+            this.footPos.x,
+            this.footPos.y,
+            this.footPos.z,
+            false
+          );
+          playWalkthroughLand(surface, this.footPos);
+        }
       }
       movedOrRotated = true;
     }
-
-
 
     let forwardInput = this.touchForwardInput;
     let strafeInput = this.touchStrafeInput;
@@ -1219,6 +1236,8 @@ export class WalkthroughController {
       this.groundVelX = 0;
       this.groundVelZ = 0;
     }
+
+    const prevBobStride = Math.floor(this.bobPhase / Math.PI);
 
     if (isMoving || groundSpeed >= 0.03) {
       this.glideTargetFoot = null;
@@ -1304,14 +1323,21 @@ export class WalkthroughController {
       movedOrRotated = true;
     }
 
-    const { inAutoSwingStance } = this.getGolfSimulatorZoneStatus(this.footPos);
-    if (inAutoSwingStance && !this.wasInGolfAutoSwingStance) {
-      if (this.onTriggerGolfSimulatorShot?.()) {
-        this.beginFirstPersonGolfShot();
-        this.refreshTargetedInteractable(true);
-      }
+    const currBobStride = Math.floor(this.bobPhase / Math.PI);
+    if (
+      currBobStride > prevBobStride &&
+      this.jumpOffsetY === 0 &&
+      (isMoving || Boolean(this.glideTargetFoot))
+    ) {
+      const surface = classifyFloorSurface(
+        this.getCurrentRoomId?.() ?? null,
+        this.footPos.x,
+        this.footPos.y,
+        this.footPos.z,
+        false
+      );
+      playWalkthroughFootstep(surface, this.footPos, isSprinting);
     }
-    this.wasInGolfAutoSwingStance = inAutoSwingStance;
 
     const stairKinematics = this.ladderClimb.sampleManualStairWalkKinematics(
       dtSeconds,

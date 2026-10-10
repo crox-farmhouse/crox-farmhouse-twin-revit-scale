@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { soundEngine } from '../../audio/sound-engine.ts';
 import { easeInOutCubic, stepProgress } from '../interaction-math.ts';
 
 /** Sliding pan/warming drawer, or a fade-out prop (golf bag) linked to a door. */
@@ -112,4 +113,36 @@ export function rebindSlidingDrawer(dr: SlidingDrawerState, newGroup: THREE.Grou
   }
   applyDrawerPose(dr);
   dr.group.updateMatrixWorld(true);
+}
+
+const tmpDrawerSoundPos = new THREE.Vector3();
+
+/** Synthesizes 3D soft-close drawer runner glide and timber stop thud. */
+export function playSlidingDrawerSound(dr: SlidingDrawerState): void {
+  dr.group.getWorldPosition(tmpDrawerSoundPos);
+  soundEngine.playSpatial(
+    tmpDrawerSoundPos,
+    (tk) => {
+      const { now } = tk;
+      tk.noiseBurst({
+        startTime: now,
+        duration: 0.32,
+        filterType: 'bandpass',
+        freqStart: dr.isOpen ? 580 : 820,
+        freqEnd: dr.isOpen ? 920 : 480,
+        q: 1.6,
+        gainPeak: 0.11,
+        attackSec: 0.03,
+      });
+      tk.tone({
+        startTime: now + 0.25,
+        duration: 0.07,
+        type: 'sine',
+        freqStart: 138,
+        freqEnd: 54,
+        gainPeak: 0.14,
+      });
+    },
+    { dryGain: 0.55, wetSend: 0.2, refDistance: 2.0, maxDistance: 20 }
+  );
 }

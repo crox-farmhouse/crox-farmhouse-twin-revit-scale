@@ -6,6 +6,7 @@
  * where the UI facade meets engine / integration / home code.
  */
 import type { SceneAnnotationStore } from '../engine/annotation/annotation-system.ts';
+import { soundEngine } from '../engine/audio/sound-engine.ts';
 import { FocusController } from '../engine/rooms/focus-controller.ts';
 import type { PropertyScene } from '../engine/viewer/property-scene.ts';
 import type { UfhZoneId, UfhZoneState } from '../engine/viewer/property-scene-profile.ts';
@@ -17,6 +18,7 @@ import {
 } from '../homes/crox-farmhouse/room-manifest.ts';
 import type { KNXPropertyBusController } from '../integrations/knx/emulator.ts';
 import { ROOM_ZONES } from '../homes/crox-farmhouse/knx/rooms.ts';
+import { playCorstonSwitchSound } from '../objects/fixtures/corston-toggle-switch.ts';
 import type { CircuitId, CircuitLevels } from '../core/types/knx.ts';
 import type { FloorViewMode, TimeOfDay, Vec3Tuple } from '../core/types/scene.ts';
 import type { RoomBoundingBox, RoomZoneId } from '../core/types/topology.ts';
@@ -29,6 +31,7 @@ import type {
   TwinUfhZone,
   TwinViewState,
   TwinWalkthroughState,
+  TwinZoneLightingApi,
   Unsubscribe,
 } from './twin-api.ts';
 import { createZoneLightingApi } from './zone-lighting.ts';
@@ -214,7 +217,7 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
     }
   };
 
-  const zones = createZoneLightingApi(knx, {
+  const baseZones = createZoneLightingApi(knx, {
     circuits: knx.getCircuits(),
     manifest: home.manifest,
     getManifest: (zoneId) => home.getManifest(zoneId),
@@ -222,6 +225,26 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
     roomLabel,
     uiSourcePa: kitchenScenePa,
   });
+
+  const zones: TwinZoneLightingApi = {
+    ...baseZones,
+    recallScene: (zoneId, index) => {
+      playCorstonSwitchSound('scene');
+      baseZones.recallScene(zoneId, index);
+    },
+    setFull: (zoneId) => {
+      playCorstonSwitchSound('switch');
+      baseZones.setFull(zoneId);
+    },
+    setNight: (zoneId) => {
+      playCorstonSwitchSound('switch');
+      baseZones.setNight(zoneId);
+    },
+    setOff: (zoneId) => {
+      playCorstonSwitchSound('switch');
+      baseZones.setOff(zoneId);
+    },
+  };
 
   const walkState = (): TwinWalkthroughState => {
     const wt = scene.getWalkthrough();
@@ -294,16 +317,23 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       isKnownCircuit,
       getLiveLevels: () => knx.getLiveLevels(),
       getTargetLevels: () => knx.getTargetLevels(),
-      toggleCircuit: (id) => knx.toggleCircuit(id),
+      toggleCircuit: (id) => {
+        playCorstonSwitchSound('switch');
+        knx.toggleCircuit(id);
+      },
       setCircuitLevel: (id, pct) => knx.setCircuitLevel(id, clampPct(pct)),
       applyLevels,
       allOff: () => {
+        playCorstonSwitchSound('switch');
         const live = knx.getLiveLevels();
         for (const c of knx.getCircuits()) {
           if ((live[c.id] ?? 0) > 0) knx.setCircuitLevel(c.id, 0);
         }
       },
-      recallScene: (sceneNumber, pa = kitchenScenePa) => knx.recallScene(sceneNumber, pa),
+      recallScene: (sceneNumber, pa = kitchenScenePa) => {
+        playCorstonSwitchSound('scene');
+        knx.recallScene(sceneNumber, pa);
+      },
       scenes: () => knx.getScenes(),
       getActiveSceneIndex: () => knx.getActiveSceneIndex(),
       subscribe: (listener) => knx.subscribe(listener),
@@ -320,7 +350,7 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
         knx.setAmbientLux(TIME_OF_DAY_LUX[tod], true);
         if (tod === 'day') {
           const targets = knx.getTargetLevels();
-          const hasNonDaytimeLightsOn = zones
+          const hasNonDaytimeLightsOn = baseZones
             .list()
             .some(
               (z) =>
@@ -331,14 +361,14 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
             savedEveningLevels = { ...targets };
           }
           const daytimeCircuitSet = new Set<CircuitId>();
-          for (const z of zones.list()) {
+          for (const z of baseZones.list()) {
             if (DAYTIME_ACTIVE_ZONES.has(z.id)) {
               for (const cid of z.circuitIds) daytimeCircuitSet.add(cid);
-              if (zones.getState(z.id).mode === 'off') {
-                zones.recallScene(z.id, 0);
+              if (baseZones.getState(z.id).mode === 'off') {
+                baseZones.recallScene(z.id, 0);
               }
             } else {
-              zones.setOff(z.id);
+              baseZones.setOff(z.id);
             }
           }
           for (const c of knx.getCircuits()) {
@@ -350,9 +380,9 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
           if (savedEveningLevels) {
             applyLevels(savedEveningLevels);
           } else {
-            for (const z of zones.list()) {
-              if (!DAYTIME_ACTIVE_ZONES.has(z.id) && zones.getState(z.id).mode === 'off') {
-                zones.recallScene(z.id, 0);
+            for (const z of baseZones.list()) {
+              if (!DAYTIME_ACTIVE_ZONES.has(z.id) && baseZones.getState(z.id).mode === 'off') {
+                baseZones.recallScene(z.id, 0);
               }
             }
           }
@@ -369,6 +399,7 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       toggleRoomMotion: (id) => knx.toggleRoomMotion(id),
       isRoomNightDimActive: (id) => knx.isRoomNightDimActive(id),
       pressZoneSwitch: (zoneId, direction, longPress = false) => {
+        playCorstonSwitchSound('switch');
         const pa = knx
           .getPushButtons()
           .find((b) => b.gangs.some((g) => g.zoneId === zoneId))?.pa;
@@ -395,10 +426,16 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       toggleBifolds: () => scene.toggleBifolds(),
       isTvArtMode: () => knx.isTvArtModeActive(),
       getTvArtTitle: () => knx.getTvArtTitle(),
-      cycleTvArt: () => knx.cycleTvArt(true, '1.1.12'),
+      cycleTvArt: () => {
+        playCorstonSwitchSound('switch');
+        knx.cycleTvArt(true, '1.1.12');
+      },
       isCourtyardLightOn: () => knx.isCourtyardLightOn(),
       getCourtyardModeLabel: () => knx.getCourtyardModeLabel(),
-      pressCourtyardSwitch: () => knx.handleCourtyardSwitchShortPress('up', courtyardSwitchPa),
+      pressCourtyardSwitch: () => {
+        playCorstonSwitchSound('switch');
+        knx.handleCourtyardSwitchShortPress('up', courtyardSwitchPa);
+      },
       hasUfh: () => ufh !== null,
       ufhZones: () => (ufh ? ufh.getZones().map(toUfhZone) : []),
       ufhZoneForRoom: (zoneId) => {
@@ -423,6 +460,19 @@ export function createTwinRuntime(opts: TwinRuntimeOptions): TwinRuntime {
       setFxaaEnabled: (enabled) => scene.setFxaaEnabled(enabled),
       isMotionBlurEnabled: () => scene.isMotionBlurEnabled(),
       setMotionBlurEnabled: (enabled) => scene.setMotionBlurEnabled(enabled),
+    },
+
+    audio: {
+      isMuted: () => soundEngine.isMuted(),
+      setMuted: (muted) => soundEngine.setMuted(muted),
+      toggleMuted: () => soundEngine.toggleMuted(),
+      getVolume: () => soundEngine.getMasterVolume(),
+      setVolume: (volume) => soundEngine.setMasterVolume(volume),
+      isAmbientEnabled: () => soundEngine.isAmbientEnabled(),
+      setAmbientEnabled: (enabled) => soundEngine.setAmbientEnabled(enabled),
+      isSfxEnabled: () => soundEngine.isSfxEnabled(),
+      setSfxEnabled: (enabled) => soundEngine.setSfxEnabled(enabled),
+      onChanged: (listener) => soundEngine.onChanged(listener),
     },
 
     trades: {

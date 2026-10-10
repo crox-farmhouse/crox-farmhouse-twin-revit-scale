@@ -4,11 +4,13 @@ import type { InteractiveUserData } from '../../core/types/scene.ts';
 import { deriveStableIds, type StableIdKind, type StableIdSource } from './device-ids.ts';
 import {
   createBifoldCupboardPair,
+  playBifoldSound,
   stepBifoldCupboard,
   type BifoldCupboardState,
 } from './handlers/bifold-cupboards.ts';
 import {
   createMotorizedCarGatePair,
+  playCarGateSound,
   stepCarGates,
   type MotorizedCarGatePairState,
 } from './handlers/car-gates.ts';
@@ -38,6 +40,7 @@ import {
   getDefaultDoorOpenAngle,
   getEffectiveDoorOpenAngle,
   isWalkthroughDoorState,
+  playHingedDoorSound,
   type HingedDoorState,
 } from './handlers/hinged-doors.ts';
 import { collectUsdRebindCandidates } from './handlers/usd-rebind.ts';
@@ -45,6 +48,7 @@ import { GARAGE_DOOR_GROUP_ID, getPseudoDeviceUserData } from './handlers/pseudo
 import {
   collectPulleyMaidDynamicObjects,
   createPulleyMaidState,
+  playPulleyMaidSound,
   stepPulleyMaid,
   tagPulleyMaidRoles,
   type PulleyMaidConfig,
@@ -52,6 +56,7 @@ import {
 } from './handlers/pulley-maid.ts';
 import {
   createSlidingDrawerState,
+  playSlidingDrawerSound,
   rebindSlidingDrawer,
   stepSlidingDrawer,
   type SlidingDrawerState,
@@ -503,8 +508,9 @@ export class InteractionRegistry {
   // ---------------------------------------------------------------------------
 
   public setCarGatesOpen(isOpen: boolean): void {
-    if (this.carGatePair) {
+    if (this.carGatePair && this.carGatePair.isOpen !== isOpen) {
       this.carGatePair.isOpen = isOpen;
+      playCarGateSound(this.carGatePair);
     }
   }
 
@@ -597,9 +603,13 @@ export class InteractionRegistry {
    * target onto a linked drawer (golf bag) as a direct click does.
    */
   #setDoorTarget(door: HingedDoorState, isOpen: boolean, speed: number, syncLinkedDrawer: boolean): void {
+    const changed = door.isOpen !== isOpen;
     door.fromAngle = undefined;
     door.isOpen = isOpen;
     door.speed = speed;
+    if (changed) {
+      playHingedDoorSound(door, isOpen ? 'open' : 'close');
+    }
     if (door.isFoldingFloorMat && door.isOpen) {
       this.#cancelGolfShot();
     }
@@ -667,6 +677,7 @@ export class InteractionRegistry {
     const bifoldCup = this.bifoldCupboards.get(id);
     if (bifoldCup) {
       bifoldCup.isOpen = !bifoldCup.isOpen;
+      playBifoldSound(bifoldCup.outerPivot, bifoldCup.isOpen);
       if (bifoldCup.isOpen) {
         this.#closeConflictingDoors(id);
       }
@@ -676,6 +687,7 @@ export class InteractionRegistry {
     const drawer = this.slidingDrawers.get(id);
     if (drawer) {
       drawer.isOpen = !drawer.isOpen;
+      playSlidingDrawerSound(drawer);
       if (drawer.linkedDoorId) {
         const linkedDoor = this.hingedDoors.get(drawer.linkedDoorId);
         if (linkedDoor) {
@@ -693,6 +705,7 @@ export class InteractionRegistry {
 
     if (this.pulleyMaid && this.pulleyMaid.id === id) {
       this.pulleyMaid.isLowered = !this.pulleyMaid.isLowered;
+      playPulleyMaidSound(this.pulleyMaid);
       return true;
     }
 

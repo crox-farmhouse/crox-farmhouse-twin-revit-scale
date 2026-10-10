@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { CircuitId } from '../../core/types/knx.ts';
 import type { CutawayWallDescriptor, InteractiveUserData } from '../../core/types/scene.ts';
 import type { RoomZoneId } from '../../core/types/topology.ts';
+import { soundEngine } from '../../engine/audio/sound-engine.ts';
 
 /**
  * Generic N-gang Corston Architectural antique-brass dolly toggle plate on a KNX push-button
@@ -264,4 +265,73 @@ export function buildCorstonToggleSwitch(
       if (dolly) dolly.rotation.x = direction === 'up' ? -DOLLY_TILT_RAD : DOLLY_TILT_RAD;
     },
   };
+}
+
+/**
+ * Synthesizes tactile audio for Corston Architectural antique-brass toggle switches (`'switch'`),
+ * KNX room scene recalls (`'scene'`), and UFH hydronic manifold actuators (`'ufh'`).
+ */
+export function playCorstonSwitchSound(
+  kind: 'switch' | 'scene' | 'ufh',
+  worldPos?: { readonly x: number; readonly y: number; readonly z: number }
+): void {
+  soundEngine.playSpatial(
+    worldPos,
+    (tk) => {
+      const { now } = tk;
+      if (kind === 'switch') {
+        tk.tone({
+          startTime: now,
+          duration: 0.022,
+          type: 'triangle',
+          freqStart: 2850,
+          freqEnd: 1620,
+          gainPeak: 0.16,
+        });
+        tk.tone({
+          startTime: now + 0.004,
+          duration: 0.032,
+          type: 'sine',
+          freqStart: 720,
+          freqEnd: 290,
+          gainPeak: 0.12,
+        });
+      } else if (kind === 'scene') {
+        tk.tone({
+          startTime: now,
+          duration: 0.16,
+          type: 'sine',
+          freqStart: 880,
+          freqEnd: 880,
+          gainPeak: 0.08,
+        });
+        tk.tone({
+          startTime: now + 0.045,
+          duration: 0.22,
+          type: 'sine',
+          freqStart: 1318.5,
+          freqEnd: 1318.5,
+          gainPeak: 0.07,
+        });
+      } else {
+        tk.tone({
+          startTime: now,
+          duration: 0.038,
+          type: 'sine',
+          freqStart: 540,
+          freqEnd: 320,
+          gainPeak: 0.13,
+        });
+        tk.tone({
+          startTime: now + 0.03,
+          duration: 0.045,
+          type: 'triangle',
+          freqStart: 1120,
+          freqEnd: 860,
+          gainPeak: 0.08,
+        });
+      }
+    },
+    { dryGain: 0.45, wetSend: 0.12, refDistance: 1.8, maxDistance: 14 }
+  );
 }

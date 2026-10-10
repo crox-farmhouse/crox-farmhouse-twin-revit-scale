@@ -17,6 +17,7 @@ import { bakeProceduralSky, prepareHdrPanorama } from './env/hdr-processing.ts';
 import { installOrthoSafeBackground } from './env/background-projection.ts';
 import { createSiteGround, type SiteGround } from './env/site-ground.ts';
 import { DEFAULT_SITE_HAZE_FOOTPRINT, installSiteHazeFog } from './env/site-haze-fog.ts';
+import { AmbientSoundscape } from './env/ambient-soundscape.ts';
 
 const TIMES_OF_DAY: readonly TimeOfDay[] = ['day', 'dusk', 'night'];
 
@@ -102,6 +103,7 @@ export class EnvironmentLighting {
   private readonly transitionTo: EnvLightingState = stateFromPreset(ENV_PRESETS.dusk);
   private transitionStart = 0;
   private transitionFrame = 0;
+  private readonly ambientSoundscape = new AmbientSoundscape();
 
   /** Creates the hemisphere + shadow-casting sun lights + site ground & haze. */
   public constructor(
@@ -376,5 +378,10 @@ export class EnvironmentLighting {
       cancelAnimationFrame(this.transitionFrame);
       this.transitionFrame = 0;
     }
+  }
+
+  /** Steps the procedural countryside breeze, birdsong, and night cricket soundscape. */
+  public updateAmbientAudio(dtSeconds: number, isInterior: boolean, bifoldsOpen: boolean): void {
+    this.ambientSoundscape.update(dtSeconds, this.currentMode, isInterior, bifoldsOpen);
   }
 }

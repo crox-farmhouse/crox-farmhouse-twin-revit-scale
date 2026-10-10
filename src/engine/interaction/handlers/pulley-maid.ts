@@ -1,4 +1,5 @@
-import type * as THREE from 'three';
+import * as THREE from 'three';
+import { soundEngine } from '../../audio/sound-engine.ts';
 import { easeInOutCubic, stepProgress } from '../interaction-math.ts';
 
 /** Fixed interactable id of the Utility Room pulley maid airer. */
@@ -112,4 +113,39 @@ export function collectPulleyMaidDynamicObjects(
   for (const rope of pm.vertRopes) outSet.add(rope);
   for (const wheel of pm.pulleyWheels) outSet.add(wheel);
   outSet.add(pm.wallHaulRope);
+}
+
+const tmpPulleySoundPos = new THREE.Vector3();
+
+/** Synthesizes rhythmic cast-iron ceiling pulley wheel squeaks and cotton rope draw. */
+export function playPulleyMaidSound(pm: PulleyMaidState): void {
+  pm.rackMovingGroup.getWorldPosition(tmpPulleySoundPos);
+  soundEngine.playSpatial(
+    tmpPulleySoundPos,
+    (tk) => {
+      const { now } = tk;
+      for (let i = 0; i < 4; i++) {
+        const t0 = now + i * 0.11;
+        tk.tone({
+          startTime: t0,
+          duration: 0.08,
+          type: 'sine',
+          freqStart: 1380 + i * 65,
+          freqEnd: 1120 + i * 50,
+          gainPeak: 0.055,
+        });
+      }
+      tk.noiseBurst({
+        startTime: now,
+        duration: 0.46,
+        filterType: 'bandpass',
+        freqStart: 640,
+        freqEnd: 480,
+        q: 1.5,
+        gainPeak: 0.09,
+        attackSec: 0.04,
+      });
+    },
+    { dryGain: 0.55, wetSend: 0.22, refDistance: 2.0, maxDistance: 20 }
+  );
 }

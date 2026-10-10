@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { soundEngine } from '../../audio/sound-engine.ts';
 import { easeInOutCubic, stepProgress } from '../interaction-math.ts';
 
 /** 2-leaf concertina bi-fold cupboard door pair (e.g. the upper pantry doors). */
@@ -82,4 +83,44 @@ export function stepBifoldCupboard(bf: BifoldCupboardState, dtSeconds: number): 
   bf.innerLeaf.rotation.y = -bf.sideSign * theta;
   bf.innerLeaf.updateMatrixWorld(true);
   return true;
+}
+
+const tmpBifoldSoundPos = new THREE.Vector3();
+
+/** Synthesizes 3D concertina roller track glide + knuckle hinge clicks for bifold doors. */
+export function playBifoldSound(anchor: THREE.Object3D | undefined, isOpening: boolean): void {
+  const worldPos = anchor ? anchor.getWorldPosition(tmpBifoldSoundPos) : undefined;
+  soundEngine.playSpatial(
+    worldPos,
+    (tk) => {
+      const { now } = tk;
+      tk.noiseBurst({
+        startTime: now,
+        duration: 0.42,
+        filterType: 'bandpass',
+        freqStart: isOpening ? 480 : 720,
+        freqEnd: isOpening ? 780 : 390,
+        q: 1.9,
+        gainPeak: 0.14,
+        attackSec: 0.04,
+      });
+      tk.tone({
+        startTime: now + 0.02,
+        duration: 0.045,
+        type: 'triangle',
+        freqStart: 1350,
+        freqEnd: 720,
+        gainPeak: 0.1,
+      });
+      tk.tone({
+        startTime: now + 0.34,
+        duration: 0.08,
+        type: 'sine',
+        freqStart: 145,
+        freqEnd: 58,
+        gainPeak: 0.16,
+      });
+    },
+    { dryGain: 0.55, wetSend: 0.22, refDistance: 2.0, maxDistance: 22 }
+  );
 }

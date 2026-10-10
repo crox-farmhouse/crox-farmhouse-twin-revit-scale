@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { soundEngine } from '../../engine/audio/sound-engine.ts';
 import type {
   AnimatedInteractable,
   FirstPersonPoseSample,
@@ -391,9 +392,27 @@ export class PoolTableBreakController implements AnimatedInteractable {
 
   public step(dtSeconds: number): boolean {
     if (this.#phase === 'racked' || this.#phase === 'broken') return false;
+    const prevElapsed = this.#elapsed;
     this.#elapsed += Math.min(MAX_STEP_SEC, Math.max(0, dtSeconds));
-    if (this.#phase === 'breaking') this.#stepBreak(this.#elapsed);
-    else this.#stepRack(this.#elapsed);
+    if (this.#phase === 'breaking') {
+      if (prevElapsed < CUE_IMPACT && this.#elapsed >= CUE_IMPACT) {
+        this.#playStrikeSound();
+      }
+      if (prevElapsed < CUE_IMPACT + 0.045 && this.#elapsed >= CUE_IMPACT + 0.045) {
+        this.#playBreakScatterSound();
+      }
+      const prevSimT = prevElapsed - CUE_IMPACT;
+      const currSimT = this.#elapsed - CUE_IMPACT;
+      for (let i = 0; i < this.#drops.length; i++) {
+        const drop = this.#drops[i];
+        if (drop && prevSimT < drop.timeSec && currSimT >= drop.timeSec) {
+          this.#playPocketDropSound(drop.x, drop.z);
+        }
+      }
+      this.#stepBreak(this.#elapsed);
+    } else {
+      this.#stepRack(this.#elapsed);
+    }
     return true;
   }
 
@@ -550,6 +569,7 @@ export class PoolTableBreakController implements AnimatedInteractable {
     }
     this.#phase = 'racking';
     this.#elapsed = 0;
+    this.#playRackSound();
   }
 
   #stepRack(t: number): void {
@@ -581,5 +601,174 @@ export class PoolTableBreakController implements AnimatedInteractable {
       this.#sim = null;
       this.#phase = 'racked';
     }
+  }
+
+  // --- Encapsulated 3D Pool Table Audio ----------------------------------------------------
+
+  #getTableWorldPoint(localX: number, localZ: number, out: THREE.Vector3): THREE.Vector3 {
+    const tableGroup = this.#cue.parent ?? this.#balls[0]?.parent ?? null;
+    if (tableGroup) {
+      tableGroup.updateWorldMatrix(true, false);
+      return out.set(localX, this.#ballY, localZ).applyMatrix4(tableGroup.matrixWorld);
+    }
+    return out.set(localX, this.#ballY, localZ);
+  }
+
+  #playStrikeSound(): void {
+    const cueBall = this.#rack[0] ?? { x: -0.48, z: 0 };
+    const worldPos = this.#getTableWorldPoint(cueBall.x, cueBall.z, this.#tmp);
+    soundEngine.playSpatial(
+      worldPos,
+      (tk) => {
+        const { now } = tk;
+        tk.tone({
+          startTime: now,
+          duration: 0.045,
+          type: 'sine',
+          freqStart: 1950,
+          freqEnd: 920,
+          gainPeak: 0.28,
+        });
+        tk.tone({
+          startTime: now,
+          duration: 0.032,
+          type: 'triangle',
+          freqStart: 3450,
+          freqEnd: 2100,
+          gainPeak: 0.16,
+        });
+        tk.noiseBurst({
+          startTime: now,
+          duration: 0.025,
+          filterType: 'bandpass',
+          freqStart: 2200,
+          freqEnd: 1100,
+          q: 3.0,
+          gainPeak: 0.14,
+        });
+      },
+      { dryGain: 0.65, wetSend: 0.2, refDistance: 2.2, maxDistance: 22 }
+    );
+  }
+
+  #playBreakScatterSound(): void {
+    const worldPos = this.#getTableWorldPoint(0.32, 0, this.#tmp);
+    soundEngine.playSpatial(
+      worldPos,
+      (tk) => {
+        const { now } = tk;
+        for (let i = 0; i < 11; i++) {
+          const dt = i * 0.018 + Math.random() * 0.025;
+          const f0 = 2650 + Math.random() * 1450;
+          const decay = Math.pow(0.84, i);
+          tk.tone({
+            startTime: now + dt,
+            duration: 0.038,
+            type: 'sine',
+            freqStart: f0,
+            freqEnd: f0 * 0.82,
+            gainPeak: 0.22 * decay,
+          });
+          tk.tone({
+            startTime: now + dt,
+            duration: 0.024,
+            type: 'triangle',
+            freqStart: f0 * 1.62,
+            freqEnd: f0 * 1.4,
+            gainPeak: 0.11 * decay,
+          });
+        }
+        // Slate bed & wool baize rolling rumble + rubber cushion thuds
+        tk.noiseBurst({
+          startTime: now + 0.04,
+          duration: 0.72,
+          filterType: 'bandpass',
+          freqStart: 420,
+          freqEnd: 165,
+          q: 1.4,
+          gainPeak: 0.085,
+        });
+        for (let c = 0; c < 4; c++) {
+          const cTime = now + 0.16 + c * 0.14 + Math.random() * 0.05;
+          tk.tone({
+            startTime: cTime,
+            duration: 0.075,
+            type: 'sine',
+            freqStart: 138,
+            freqEnd: 56,
+            gainPeak: 0.12 * Math.pow(0.78, c),
+          });
+        }
+      },
+      { dryGain: 0.68, wetSend: 0.22, refDistance: 2.2, maxDistance: 22 }
+    );
+  }
+
+  #playPocketDropSound(pocketX: number, pocketZ: number): void {
+    const worldPos = this.#getTableWorldPoint(pocketX, pocketZ, this.#tmp);
+    soundEngine.playSpatial(
+      worldPos,
+      (tk) => {
+        const { now } = tk;
+        tk.tone({
+          startTime: now,
+          duration: 0.14,
+          type: 'sine',
+          freqStart: 165,
+          freqEnd: 62,
+          gainPeak: 0.26,
+        });
+        tk.tone({
+          startTime: now + 0.055,
+          duration: 0.065,
+          type: 'triangle',
+          freqStart: 880,
+          freqEnd: 460,
+          gainPeak: 0.12,
+        });
+        tk.noiseBurst({
+          startTime: now + 0.02,
+          duration: 0.11,
+          filterType: 'bandpass',
+          freqStart: 920,
+          freqEnd: 420,
+          q: 2.2,
+          gainPeak: 0.09,
+        });
+      },
+      { dryGain: 0.62, wetSend: 0.2, refDistance: 2.0, maxDistance: 20 }
+    );
+  }
+
+  #playRackSound(): void {
+    const worldPos = this.#getTableWorldPoint(0.28, 0, this.#tmp);
+    soundEngine.playSpatial(
+      worldPos,
+      (tk) => {
+        const { now } = tk;
+        for (let i = 0; i < 8; i++) {
+          const dt = i * 0.065 + Math.random() * 0.025;
+          const f0 = 2400 + Math.random() * 1100;
+          tk.tone({
+            startTime: now + dt,
+            duration: 0.032,
+            type: 'sine',
+            freqStart: f0,
+            freqEnd: f0 * 0.85,
+            gainPeak: 0.11,
+          });
+        }
+        tk.noiseBurst({
+          startTime: now,
+          duration: 0.65,
+          filterType: 'bandpass',
+          freqStart: 560,
+          freqEnd: 280,
+          q: 1.5,
+          gainPeak: 0.065,
+        });
+      },
+      { dryGain: 0.58, wetSend: 0.2, refDistance: 2.2, maxDistance: 20 }
+    );
   }
 }

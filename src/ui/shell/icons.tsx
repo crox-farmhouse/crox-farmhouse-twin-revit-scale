@@ -37,7 +37,9 @@ export type IconName =
   | 'eye'
   | 'move'
   | 'crouch'
-  | 'jump';
+  | 'jump'
+  | 'volume'
+  | 'volume-mute';
 
 const PATHS: Readonly<Record<IconName, readonly string[]>> = {
   cube: ['M12 2 3 7v10l9 5 9-5V7z', 'M3 7l9 5 9-5', 'M12 12v10'],
@@ -84,6 +86,12 @@ const PATHS: Readonly<Record<IconName, readonly string[]>> = {
   move: ['M5 9l-3 3 3 3', 'M9 5l3-3 3 3', 'M15 19l-3 3-3-3', 'M19 9l3 3-3 3', 'M2 12h20', 'M12 2v20'],
   jump: ['M12 19V5', 'M6 11l6-6 6 6', 'M5 21h14'],
   crouch: ['M12 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4z', 'M7 21l3-6 4 2v4', 'M10 11l4-2 3 3'],
+  volume: [
+    'M11 5L6 9H2v6h4l5 4V5z',
+    'M15.54 8.46a5 5 0 0 1 0 7.07',
+    'M19.07 4.93a10 10 0 0 1 0 14.14',
+  ],
+  'volume-mute': ['M11 5L6 9H2v6h4l5 4V5z', 'M22 9l-6 6', 'M16 9l6 6'],
 };
 
 export interface IconProps {
