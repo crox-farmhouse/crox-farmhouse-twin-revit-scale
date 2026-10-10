@@ -4,6 +4,7 @@ import type { CutawayWallDescriptor } from '../../../../../core/types/scene.ts';
 import type { SceneBuilderContext } from '../../../../../engine/viewer/scene-types.ts';
 import type { createGroundFloorMaterials } from '../../../structure/ground-floor-materials.ts';
 import type { buildDiningRoom } from '../dining-room.ts';
+import { RolandPianoController } from '../../../../../objects/music/roland-piano-interaction.ts';
 
 function createSharedGeo<T extends THREE.BufferGeometry>(geo: T): T {
   geo.computeBoundingSphere();
@@ -1103,6 +1104,7 @@ export function buildCentralHallFurnitureAndDecor(
     // 36 raised ebony-feel sharp/flat keys arranged in authentic 2-3 octave groupings across 7+ octaves
     const octavePattern = [1, 1, 0, 1, 1, 1, 0] as const;
     const blackKeyGeo = createSharedGeo(new THREE.BoxGeometry(0.012, 0.014, 0.092));
+    const blackKeyMeshes: THREE.Mesh[] = [];
     let sharpIdx = 0;
     for (let wIdx = 0; wIdx < 51; wIdx++) {
       const noteInOctave = (wIdx + 5) % 7;
@@ -1113,6 +1115,7 @@ export function buildCentralHallFurnitureAndDecor(
         blackKey.name = `hall.rolandGP6PE.blackKey.${sharpIdx}`;
         blackKey.position.set(kx, 0.692, 0.362);
         pianoGroup.add(blackKey);
+        blackKeyMeshes.push(blackKey);
       }
     }
 
@@ -1243,6 +1246,7 @@ export function buildCentralHallFurnitureAndDecor(
     const pedalGeo = createSharedGeo(new THREE.BoxGeometry(0.023, 0.012, 0.105));
     const pedalNames = ['soft', 'sostenuto', 'damper'] as const;
     const pedalXs = [-0.066, 0, 0.066] as const;
+    const pedalMeshes: THREE.Mesh[] = [];
     for (let pIdx = 0; pIdx < pedalXs.length; pIdx++) {
       const pedX = pedalXs[pIdx]!;
       const pedal = tagHighLod(new THREE.Mesh(pedalGeo, brassMat));
@@ -1250,6 +1254,7 @@ export function buildCentralHallFurnitureAndDecor(
       pedal.position.set(pedX, 0.045, 0.275);
       pedal.rotation.x = 0.15;
       pianoGroup.add(pedal);
+      pedalMeshes.push(pedal);
     }
 
     // 7. Matching Adjustable Polished Ebony Roland BNC-05 Artist Bench (0.56m x 0.35m x 0.48m)
@@ -1312,5 +1317,21 @@ export function buildCentralHallFurnitureAndDecor(
 
     pianoGroup.add(benchGroup);
     scene.add(pianoGroup);
+
+    // Register interactive Roland GP-6-PE concert-grand recital choreography & Web Audio synthesis
+    interactions.registerAnimatedInteractable(
+      new RolandPianoController({
+        pianoGroup,
+        lidPivot,
+        lidPropStick: propStick,
+        benchGroup,
+        whiteKeysMesh: whiteKeyBed,
+        blackKeyMeshes,
+        pedalMeshes,
+        touchPanelMat: rolandTouchPanelMat,
+        sheetMusicBook,
+        hallFloorY: lowerFloorY,
+      })
+    );
   }
 }

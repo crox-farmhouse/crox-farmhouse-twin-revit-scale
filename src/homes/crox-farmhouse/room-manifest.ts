@@ -228,7 +228,13 @@ const ROOM_SPECS: Readonly<Record<CanonicalRoomZoneId, RoomSpec>> = {
     ufhZoneId: 'ufhZone2',
   },
   study: { label: 'Plant room', group: 'house-ground', floor: 'ground' },
-  hall: { label: 'Staircase hall', group: 'house-ground', floor: 'ground', ufhZoneId: 'ufhZone3' },
+  hall: {
+    label: 'Staircase hall',
+    group: 'house-ground',
+    floor: 'ground',
+    devices: [{ interactableId: 'hall-piano-play', label: 'Roland GP-6-PE: play piano' }],
+    ufhZoneId: 'ufhZone3',
+  },
   bootLobby: {
     label: 'Boot lobby & WC',
     group: 'house-ground',
