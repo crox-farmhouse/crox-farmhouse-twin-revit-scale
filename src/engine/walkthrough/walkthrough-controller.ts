@@ -165,12 +165,14 @@ export class WalkthroughController {
   private lastCameraEyePos = new THREE.Vector3();
   private lastCameraRollRad = 0;
   private fpEntryBlend: {
+    readonly poseId: string;
     readonly startEye: readonly [number, number, number];
     readonly startFoot: readonly [number, number, number];
     readonly startYaw: number;
     readonly startPitch: number;
     readonly startRoll: number;
     elapsedSec: number;
+    requireMoveKeyRelease: boolean;
   } | null = null;
   private lastActiveFpPose: {
     readonly eye: readonly [number, number, number];
@@ -402,9 +404,32 @@ export class WalkthroughController {
     return { inPlayZone };
   }
 
+  private hasMovementInput(): boolean {
+    return (
+      this.keysDown.has('KeyW') ||
+      this.keysDown.has('KeyA') ||
+      this.keysDown.has('KeyS') ||
+      this.keysDown.has('KeyD') ||
+      this.keysDown.has('ArrowUp') ||
+      this.keysDown.has('ArrowDown') ||
+      this.keysDown.has('ArrowLeft') ||
+      this.keysDown.has('ArrowRight') ||
+      Math.hypot(this.touchForwardInput, this.touchStrafeInput) > 0.25
+    );
+  }
+
   public triggerTargetedInteraction(): boolean {
     if (!this.active) return false;
-    if ((this.getActiveFirstPersonPose?.() ?? null) !== null) {
+    const activeFpPose = this.getActiveFirstPersonPose?.() ?? null;
+    if (activeFpPose !== null) {
+      if (activeFpPose.allowFreeLook) {
+        this.refreshTargetedInteractable(true);
+        if (this.targetedMesh) {
+          this.onInteractWithMesh(this.targetedMesh);
+          this.refreshTargetedInteractable(true);
+          return true;
+        }
+      }
       const cancelled = this.cancelActiveFirstPerson?.() ?? false;
       this.refreshTargetedInteractable(true);
       return cancelled;
@@ -536,6 +561,10 @@ export class WalkthroughController {
 
   public exit(): SceneCameraPoseSnapshot | null {
     if (!this.active) return null;
+    this.cancelActiveFirstPerson?.();
+    this.fpEntryBlend = null;
+    this.lastActiveFpPose = null;
+    this.fpExitBlend = null;
     this.active = false;
     this.keysDown.clear();
     this.glideTargetFoot = null;
@@ -572,6 +601,10 @@ export class WalkthroughController {
   public teleportToSpawn(spawnId: string): boolean {
     const sp = DEFAULT_WALKTHROUGH_SPAWNS.find((s) => s.id === spawnId);
     if (!sp) return false;
+    this.cancelActiveFirstPerson?.();
+    this.fpEntryBlend = null;
+    this.lastActiveFpPose = null;
+    this.fpExitBlend = null;
     this.blurActiveControlIfNeeded();
     this.glideTargetFoot = null;
     this.ladderClimb.reset();
@@ -614,7 +647,7 @@ export class WalkthroughController {
       this.getProximityAnimatedInteractable?.(this.footPos.x, this.footPos.y, this.footPos.z) ??
       null;
     const activeFpPose = this.getActiveFirstPersonPose?.() ?? null;
-    if (activeFpPose !== null && proxAnim !== null) {
+    if (activeFpPose !== null && !activeFpPose.allowFreeLook && proxAnim !== null) {
       const activePrompt = proxAnim.prompt;
       if (this.targetedMesh !== null || activePrompt !== this.targetedPrompt) {
         this.targetedMesh = null;
@@ -636,6 +669,19 @@ export class WalkthroughController {
     const ladderPrompt = this.ladderClimb.getProximityLadderPrompt(this.footPos, nextMesh);
     const rawPrompt = nextMesh ? this.describeInteractable(nextMesh) : null;
     if (activeFpPose !== null) {
+      if (activeFpPose.allowFreeLook) {
+        const hasHitPrompt = rawPrompt !== null && rawPrompt.length > 0;
+        const effectiveMesh = hasHitPrompt ? nextMesh : null;
+        const activePrompt = hasHitPrompt
+          ? rawPrompt
+          : (activeFpPose.activePrompt ?? proxAnim?.prompt ?? null);
+        if (effectiveMesh !== this.targetedMesh || activePrompt !== this.targetedPrompt) {
+          this.targetedMesh = effectiveMesh;
+          this.targetedPrompt = activePrompt;
+          this.emit();
+        }
+        return;
+      }
       const activePrompt = proxAnim?.prompt ?? (rawPrompt && rawPrompt.length > 0 ? rawPrompt : null);
       if (nextMesh !== this.targetedMesh || activePrompt !== this.targetedPrompt) {
         this.targetedMesh = nextMesh;
@@ -931,18 +977,12 @@ export class WalkthroughController {
       this.golfShotStartPose = null;
     }
 
-    const fpSample = this.getActiveFirstPersonPose?.() ?? null;
+    let fpSample = this.getActiveFirstPersonPose?.() ?? null;
     if (fpSample !== null) {
-      this.lookDirty = false;
-      this.glideTargetFoot = null;
-      this.jumpOffsetY = 0;
-      this.verticalVelocity = 0;
-      this.groundVelX = 0;
-      this.groundVelZ = 0;
-      this.fpExitBlend = null;
-
-      if (this.fpEntryBlend === null) {
+      const samplePoseId = fpSample.poseId ?? 'default';
+      if (this.fpEntryBlend === null || this.fpEntryBlend.poseId !== samplePoseId) {
         this.fpEntryBlend = {
+          poseId: samplePoseId,
           startEye: [
             this.lastCameraEyePos.x,
             this.lastCameraEyePos.y,
@@ -953,10 +993,38 @@ export class WalkthroughController {
           startPitch: this.pitchRad,
           startRoll: this.lastCameraRollRad,
           elapsedSec: 0,
+          requireMoveKeyRelease: this.hasMovementInput(),
         };
+        if (fpSample.allowFreeLook) {
+          this.targetYawRad = fpSample.yawRad;
+          this.targetPitchRad = fpSample.pitchRad;
+        }
       } else {
         this.fpEntryBlend.elapsedSec += dtSeconds;
+        if (this.fpEntryBlend.requireMoveKeyRelease && !this.hasMovementInput()) {
+          this.fpEntryBlend.requireMoveKeyRelease = false;
+        }
+        if (
+          fpSample.allowFreeLook &&
+          !this.fpEntryBlend.requireMoveKeyRelease &&
+          this.fpEntryBlend.elapsedSec >= 0.35 &&
+          this.hasMovementInput()
+        ) {
+          this.cancelActiveFirstPerson?.();
+          this.refreshTargetedInteractable(true);
+          fpSample = null;
+        }
       }
+    }
+
+    if (fpSample !== null && this.fpEntryBlend !== null) {
+      this.lookDirty = false;
+      this.glideTargetFoot = null;
+      this.jumpOffsetY = 0;
+      this.verticalVelocity = 0;
+      this.groundVelX = 0;
+      this.groundVelZ = 0;
+      this.fpExitBlend = null;
 
       const FP_ENTRY_BLEND_DURATION_SEC = 0.52;
       const wIn = smoothstep(0, FP_ENTRY_BLEND_DURATION_SEC, this.fpEntryBlend.elapsedSec);
@@ -968,8 +1036,34 @@ export class WalkthroughController {
       const ex = THREE.MathUtils.lerp(this.fpEntryBlend.startEye[0], rawEx, wIn);
       const ey = THREE.MathUtils.lerp(this.fpEntryBlend.startEye[1], rawEy, wIn);
       const ez = THREE.MathUtils.lerp(this.fpEntryBlend.startEye[2], rawEz, wIn);
-      const blendedYaw = lerpAngle(this.fpEntryBlend.startYaw, fpSample.yawRad, wIn);
-      const blendedPitch = THREE.MathUtils.lerp(this.fpEntryBlend.startPitch, fpSample.pitchRad, wIn);
+
+      let blendedYaw: number;
+      let blendedPitch: number;
+      if (fpSample.allowFreeLook) {
+        if (wIn < 1) {
+          blendedYaw = lerpAngle(this.fpEntryBlend.startYaw, this.targetYawRad, wIn);
+          blendedPitch = THREE.MathUtils.lerp(
+            this.fpEntryBlend.startPitch,
+            this.targetPitchRad,
+            wIn
+          );
+        } else {
+          const lookAlpha = 1 - Math.exp(-48 * dtSeconds);
+          const yawDiff = shortestAngleDelta(this.yawRad, this.targetYawRad);
+          const pitchDiff = this.targetPitchRad - this.pitchRad;
+          blendedYaw =
+            Math.abs(yawDiff) <= 1e-4 ? this.targetYawRad : this.yawRad + yawDiff * lookAlpha;
+          blendedPitch =
+            Math.abs(pitchDiff) <= 1e-4
+              ? this.targetPitchRad
+              : THREE.MathUtils.lerp(this.pitchRad, this.targetPitchRad, lookAlpha);
+        }
+      } else {
+        blendedYaw = lerpAngle(this.fpEntryBlend.startYaw, fpSample.yawRad, wIn);
+        blendedPitch = THREE.MathUtils.lerp(this.fpEntryBlend.startPitch, fpSample.pitchRad, wIn);
+        this.targetYawRad = blendedYaw;
+        this.targetPitchRad = blendedPitch;
+      }
       const blendedRoll = THREE.MathUtils.lerp(
         this.fpEntryBlend.startRoll,
         fpSample.rollRad ?? 0,
@@ -979,8 +1073,6 @@ export class WalkthroughController {
       this.footPos.set(fx, fy, fz);
       this.yawRad = blendedYaw;
       this.pitchRad = blendedPitch;
-      this.targetYawRad = blendedYaw;
-      this.targetPitchRad = blendedPitch;
       this.currentEyeHeight = Math.max(0.25, ey - fy);
 
       this.lastActiveFpPose = {

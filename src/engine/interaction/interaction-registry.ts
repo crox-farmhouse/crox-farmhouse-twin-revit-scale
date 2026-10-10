@@ -278,7 +278,9 @@ export class InteractionRegistry {
     root.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.userData = { ...child.userData, ...data };
-        this.interactiveMeshes.push(child);
+        if (!this.interactiveMeshes.includes(child)) {
+          this.interactiveMeshes.push(child);
+        }
       }
     });
   }
@@ -659,7 +661,16 @@ export class InteractionRegistry {
 
     const animated = this.#animated.get(id);
     if (animated) {
-      return animated.trigger();
+      const wasFpActive = animated.isFirstPersonActive?.() ?? false;
+      const handled = animated.trigger();
+      if (handled && !wasFpActive && (animated.isFirstPersonActive?.() ?? false)) {
+        for (const [otherId, other] of this.#animated) {
+          if (otherId !== id && (other.isFirstPersonActive?.() ?? false)) {
+            other.cancelFirstPerson?.();
+          }
+        }
+      }
+      return handled;
     }
 
     const toggleCb = this.toggleCallbacks.get(id);
@@ -987,6 +998,18 @@ export class InteractionRegistry {
     footY: number,
     footZ: number
   ): { readonly id: string; readonly prompt: string; readonly targetMesh: THREE.Object3D | null } | null {
+    for (const device of this.#animated.values()) {
+      if (device.isFirstPersonActive?.() && device.isPlayerInProximityZone?.(footX, footY, footZ)) {
+        const prompt = device.describe();
+        if (prompt.length > 0) {
+          return {
+            id: device.id,
+            prompt,
+            targetMesh: device.clickableTargets[0] ?? null,
+          };
+        }
+      }
+    }
     for (const device of this.#animated.values()) {
       if (device.isPlayerInProximityZone?.(footX, footY, footZ)) {
         const prompt = device.describe();

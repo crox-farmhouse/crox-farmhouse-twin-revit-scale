@@ -18,6 +18,22 @@ export interface FirstPersonPoseSample {
   readonly rollRad?: number;
   /** Optional additive FOV boost in degrees (e.g. `+5` during sprint or max-effort press). */
   readonly fovBoostDeg?: number;
+  /**
+   * Optional: when true (e.g. while seated on a sofa, armchair, dining chair, stool, or bench),
+   * the user can look around freely (`360°` yaw and clamped pitch) after the initial sit-down
+   * blend, and pressing movement keys (`W`/`A`/`S`/`D`/Arrows), `Space`, or `F` smoothly stands up.
+   */
+  readonly allowFreeLook?: boolean;
+  /**
+   * Optional unique pose identifier (e.g. `seat:sittingRoom.barkerAndStonehouseSofa.east`) so
+   * switching directly from one seat/pose to another restarts the entry camera blend cleanly.
+   */
+  readonly poseId?: string;
+  /**
+   * Optional prompt shown while this first-person pose is active and the user is not targeting
+   * another interactable (e.g. `"Stand Up from Linen Sofa"`).
+   */
+  readonly activePrompt?: string;
 }
 
 /**

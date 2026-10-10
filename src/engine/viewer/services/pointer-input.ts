@@ -45,6 +45,7 @@ export class PointerInput {
   private readonly host: PointerInputHost;
   private pointerDownPos = { x: 0, y: 0 };
   private pointerDownMs = 0;
+  private pointerDownWasLocked = false;
   private lastHoverRaycastMs = 0;
   private lastTouchTapMs = 0;
   private lastTouchTapPos = { x: 0, y: 0 };
@@ -55,6 +56,7 @@ export class PointerInput {
     canvas.addEventListener('pointerdown', (e) => {
       this.pointerDownPos = { x: e.clientX, y: e.clientY };
       this.pointerDownMs = performance.now();
+      this.pointerDownWasLocked = document.pointerLockElement === canvas;
     });
     canvas.addEventListener('pointermove', (e) => this.onPointerMove(e));
     canvas.addEventListener('pointerup', (e) => this.onPointerUp(e));
@@ -121,6 +123,7 @@ export class PointerInput {
   private onPointerUp(e: PointerEvent): void {
     const { host } = this;
     if (e.button !== 0) return;
+    if (this.pointerDownWasLocked && host.getWalkthrough().isActive()) return;
     if (host.annotations.isGizmoBusy()) return;
     const slop = e.pointerType === 'touch' ? 14 : CLICK_SLOP_PX;
     const dist = Math.hypot(e.clientX - this.pointerDownPos.x, e.clientY - this.pointerDownPos.y);

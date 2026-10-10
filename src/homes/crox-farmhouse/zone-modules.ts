@@ -26,6 +26,7 @@ import {
 import { buildArchitecturalShellAndUtilityRoom } from './rooms/ground/kitchen-shell-and-utility.ts';
 import { buildSittingAreaAndOakBifolds } from './rooms/ground/kitchen-sitting-and-bifolds.ts';
 import { buildCroxKnxPresenceDetectors } from './knx/devices-placement.ts';
+import { registerPropertySeatingInteractions } from '../../objects/furniture/seating-interactions.ts';
 
 /**
  * Default Camera Presets for the Crox Farmhouse East Wing (Kitchen, Sitting, Utility & Courtyard).
@@ -313,6 +314,8 @@ export const KNXLightingAndDevicesZoneModule: SceneZoneModule = {
     const sensorMats = buildKitchenAndUtilityMotionSensors(eastWingCtx);
     // Every other presence detector of the KNX project (world frame).
     buildCroxKnxPresenceDetectors(ctx);
+    // Register 1st-person seating interactions on all sofas, armchairs, dining chairs, stools, benches & beanbags.
+    registerPropertySeatingInteractions([ctx.scene, ctx.firstFloorMeshGroup], ctx.interactions);
     return {
       wallSwitchLedMat: wallSwitchMats.wallSwitchLedMat,
       courtyardSwitchLedMat: wallSwitchMats.courtyardSwitchLedMat,
