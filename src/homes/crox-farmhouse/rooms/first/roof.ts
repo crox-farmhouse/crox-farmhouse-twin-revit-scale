@@ -38,13 +38,13 @@ export function buildFirstFloorCeilingsAndRoof(
   // =========================================================================
   const {
     colorMap: slateTex,
-    normalMap: slateNormalTex,
+    bumpMap: slateBumpTex,
     roughnessMap: slateRoughnessTex,
   } = createWelshSlateRoofTextures();
   const slateRoofMat = new THREE.MeshStandardMaterial({
     map: slateTex,
-    normalMap: slateNormalTex,
-    normalScale: new THREE.Vector2(0.68, 0.68),
+    bumpMap: slateBumpTex,
+    bumpScale: 0.022,
     roughnessMap: slateRoughnessTex,
     color: 0xffffff,
     roughness: 0.84, // Natural matte riven Welsh slate (Issue #13: not shiny like a solar panel)

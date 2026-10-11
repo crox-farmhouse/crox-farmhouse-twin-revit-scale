@@ -501,13 +501,13 @@ export function buildEntranceHall(
 
     const {
       colorMap: jutSlateTex,
-      normalMap: jutSlateNormalTex,
+      bumpMap: jutSlateBumpTex,
       roughnessMap: jutSlateRoughnessTex,
     } = createWelshSlateRoofTextures();
     const jutSlateMat = new THREE.MeshStandardMaterial({
       map: jutSlateTex,
-      normalMap: jutSlateNormalTex,
-      normalScale: new THREE.Vector2(0.66, 0.66),
+      bumpMap: jutSlateBumpTex,
+      bumpScale: 0.018,
       roughnessMap: jutSlateRoughnessTex,
       roughness: 0.82,
       metalness: 0.03,

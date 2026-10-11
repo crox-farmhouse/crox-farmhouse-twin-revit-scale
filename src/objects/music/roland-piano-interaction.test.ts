@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   HALL_PIANO_PLAY_ID,
+  PIANO_REPERTOIRE,
   RolandPianoController,
   TOTAL_PIANO_DURATION_SEC,
   pianoLocalToWorldXZ,
@@ -148,7 +149,7 @@ describe('RolandPianoController', () => {
     expect(touchPanelMat.emissiveIntensity).toBeGreaterThan(0.5);
     // Damper pedal should be depressed during sustained arpeggios
     expect(pedalMeshes[2]!.rotation.x).toBeGreaterThan(0.16);
-    // At least one black key should be depressed at t = 2.0s (Db4 / Ab4 / F5 chord)
+    // At least one black key should be depressed at t = 2.0s
     const depressedKeys = blackKeyMeshes.filter((k) => k.position.y < 0.6915);
     expect(depressedKeys.length).toBeGreaterThan(0);
 
@@ -164,6 +165,35 @@ describe('RolandPianoController', () => {
     expect(lidPivot.rotation.z).toBeCloseTo(0.16, 5);
     expect(benchGroup.position.z).toBeCloseTo(0.74, 5);
     expect(pedalMeshes[2]!.rotation.x).toBeCloseTo(0.15, 5);
+  });
+
+  it('includes Taylor Swift, KATSEYE, and Coldplay pop tunes and picks non-repeating random tracks', () => {
+    const artists = new Set(PIANO_REPERTOIRE.map((t) => t.artist));
+    expect(artists.has('Taylor Swift')).toBe(true);
+    expect(artists.has('KATSEYE')).toBe(true);
+    expect(artists.has('Coldplay')).toBe(true);
+
+    const { controller, blackKeyMeshes } = createPianoFixture();
+    let prevId = '';
+    for (let i = 0; i < 8; i++) {
+      controller.trigger();
+      const tune = controller.getCurrentTune();
+      expect(tune.id).not.toBe(prevId);
+      expect(controller.describe()).toContain(tune.artist);
+      expect(controller.describe()).toContain(tune.title);
+      prevId = tune.id;
+      controller.cancelFirstPerson();
+    }
+
+    // Verify every single tune in the repertoire depresses keys cleanly at t = 2.0s
+    for (const tune of PIANO_REPERTOIRE) {
+      controller.trigger(tune.id);
+      expect(controller.getCurrentTune().id).toBe(tune.id);
+      controller.step(2.0);
+      const depressed = blackKeyMeshes.filter((k) => k.position.y < 0.6915);
+      expect(depressed.length).toBeGreaterThan(0);
+      controller.cancelFirstPerson();
+    }
   });
 
   it('detects player proximity near the keyboard and bench', () => {

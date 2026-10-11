@@ -71,7 +71,15 @@ export function bakeProceduralSky(cfg: EnvPresetConfig, width = 512, height = 25
         tmpCol.g += sunCol.g * (disc + corona);
         tmpCol.b += sunCol.b * (disc + corona);
       } else {
-        tmpCol.copy(pastureCol).lerp(groundCol, smoothstep(0.0, 0.38, Math.sin(-elevation)));
+        const downSin = Math.sin(-elevation);
+        tmpCol.copy(pastureCol).lerp(groundCol, smoothstep(0.0, 0.38, downSin));
+        const nadirNeutralMix = smoothstep(0.06, 0.35, downSin) * 0.85;
+        if (nadirNeutralMix > 0) {
+          const lum = 0.299 * tmpCol.r + 0.587 * tmpCol.g + 0.114 * tmpCol.b;
+          tmpCol.r = tmpCol.r * (1 - nadirNeutralMix) + lum * 1.06 * nadirNeutralMix;
+          tmpCol.g = tmpCol.g * (1 - nadirNeutralMix) + lum * 0.98 * nadirNeutralMix;
+          tmpCol.b = tmpCol.b * (1 - nadirNeutralMix) + lum * 0.88 * nadirNeutralMix;
+        }
       }
 
       const idx = (y * width + x) * 4;
@@ -99,6 +107,8 @@ export interface PreparedHdr {
  * Prepares a loaded 2K HDR in place:
  *  - blends the lower hemisphere into a smooth pasture ground so the tripod-distorted near grass is
  *    not visible beneath the estate in top-down views;
+ *  - neutralizes excess green grass chroma in the lower hemisphere of `envSource` so downward-facing
+ *    white interior ceilings and soffits receive warm neutral earth/stone bounce rather than green grass;
  *  - optionally deepens the twilight zenith (`zenithDarkening`);
  *  - soft-knee clamps the sun disc separately for the skybox and the IBL source (the shadowed
  *    directional sun light replaces the disc in the IBL, avoiding double sun and fireflies).
@@ -168,6 +178,8 @@ export function prepareHdrPanorama(loadedTex: THREE.DataTexture, cfg: EnvPresetC
 
   const yNadirStart = Math.floor(H * 0.542);
   const yNadirFull = Math.floor(H * 0.66);
+  const yEnvNeutralStart = Math.floor(H * 0.502);
+  const yEnvNeutralFull = Math.floor(H * 0.58);
   const kneeBg = cfg.hdrMaxClampBg;
   const kneeEnv = cfg.hdrMaxClampEnv;
   const sunCol = new THREE.Color(cfg.sunOrbColor);
@@ -177,6 +189,8 @@ export function prepareHdrPanorama(loadedTex: THREE.DataTexture, cfg: EnvPresetC
     const vTop = y / (H - 1);
     const nadirBlend = y > yNadirStart ? smoothstep(yNadirStart, yNadirFull, y) : 0;
     const deepNadirMix = y > yNadirStart ? smoothstep(yNadirStart, H - 1, y) * 0.72 : 0;
+    const envNeutralMix =
+      y > yEnvNeutralStart ? smoothstep(yEnvNeutralStart, yEnvNeutralFull, y) * 0.88 : 0;
     const zenithFactor =
       cfg.zenithDarkening > 0 && vTop < 0.48 ? smoothstep(0.48, 0.05, vTop) * cfg.zenithDarkening : 0;
 
@@ -209,7 +223,7 @@ export function prepareHdrPanorama(loadedTex: THREE.DataTexture, cfg: EnvPresetC
         const newDv = vTop - cfg.hdrSunV;
         const newDist = Math.hypot(du * 1.35, newDv);
         const disc = Math.exp(-newDist * newDist * 1400.0) * cfg.sunOrbPeak;
-        const corona = Math.exp(-newDist * 11.0) * (cfg.sunOrbPeak * 0.15);
+        const corona = Math.exp(-newDist * 11.0) * (cfg.sunOrbPeak * 0.14);
         r += sunCol.r * (disc + corona);
         g += sunCol.g * (disc + corona);
         b += sunCol.b * (disc + corona);
@@ -238,10 +252,20 @@ export function prepareHdrPanorama(loadedTex: THREE.DataTexture, cfg: EnvPresetC
       bgData[i + 2] = THREE.DataUtils.toHalfFloat(b * sBg);
       bgData[i + 3] = fullAlpha;
 
-      const sEnv = peak > kneeEnv ? kneeEnv / peak : 1;
-      envData[i] = THREE.DataUtils.toHalfFloat(r * sEnv);
-      envData[i + 1] = THREE.DataUtils.toHalfFloat(g * sEnv);
-      envData[i + 2] = THREE.DataUtils.toHalfFloat(b * sEnv);
+      let envR = r;
+      let envG = g;
+      let envB = b;
+      if (envNeutralMix > 0) {
+        const lum = 0.299 * envR + 0.587 * envG + 0.114 * envB;
+        envR = envR * (1 - envNeutralMix) + lum * 1.06 * envNeutralMix;
+        envG = envG * (1 - envNeutralMix) + lum * 0.98 * envNeutralMix;
+        envB = envB * (1 - envNeutralMix) + lum * 0.88 * envNeutralMix;
+      }
+      const envPeak = Math.max(envR, envG, envB);
+      const sEnv = envPeak > kneeEnv ? kneeEnv / envPeak : 1;
+      envData[i] = THREE.DataUtils.toHalfFloat(envR * sEnv);
+      envData[i + 1] = THREE.DataUtils.toHalfFloat(envG * sEnv);
+      envData[i + 2] = THREE.DataUtils.toHalfFloat(envB * sEnv);
       envData[i + 3] = fullAlpha;
     }
   }

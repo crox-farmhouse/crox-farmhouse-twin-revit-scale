@@ -370,13 +370,13 @@ export function buildCourtyardAndGates(
 
   const {
     colorMap: cobbleColorTex,
-    normalMap: cobbleNormalTex,
+    depthMap: cobbleDepthTex,
     roughnessMap: cobbleRoughnessTex,
   } = createContinuousCourtyardCobbleTextures();
   const courtyardCobbleMat = new THREE.MeshStandardMaterial({
     map: cobbleColorTex,
-    normalMap: cobbleNormalTex,
-    normalScale: new THREE.Vector2(1.15, 1.15),
+    bumpMap: cobbleDepthTex,
+    bumpScale: 0.044,
     roughnessMap: cobbleRoughnessTex,
     roughness: 0.86,
     metalness: 0.05,
@@ -441,7 +441,12 @@ export function buildCourtyardAndGates(
     colorMap.wrapT = THREE.RepeatWrapping;
     colorMap.anisotropy = 8;
 
-    const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+    const bumpMap = new THREE.CanvasTexture(bCanvas);
+    bumpMap.wrapS = THREE.RepeatWrapping;
+    bumpMap.wrapT = THREE.RepeatWrapping;
+    bumpMap.anisotropy = 8;
+
+    const { roughnessMap } = derivePbrNormalAndRoughnessMaps(
       'courtyard-drainage-channel-sett',
       bCanvas,
       {
@@ -456,8 +461,8 @@ export function buildCourtyardAndGates(
 
     return new THREE.MeshStandardMaterial({
       map: colorMap,
-      normalMap,
-      normalScale: new THREE.Vector2(0.95, 0.95),
+      bumpMap,
+      bumpScale: 0.032,
       roughnessMap,
       roughness: 0.82,
       metalness: 0.04,

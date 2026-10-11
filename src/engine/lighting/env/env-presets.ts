@@ -83,7 +83,7 @@ export const ENV_PRESETS: Readonly<Record<TimeOfDay, EnvPresetConfig>> = {
     sunColor: 0xfff4e8,
     sunIntensity: 4.6,
     hemiSkyColor: 0xeaf4ff,
-    hemiGroundColor: 0x7e8864,
+    hemiGroundColor: 0x8c8276,
     hemiIntensity: 0.72,
     exposure: 1.15,
     fogColor: 0xcad9e8,

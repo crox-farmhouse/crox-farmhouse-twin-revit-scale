@@ -521,22 +521,21 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   const {
     colorMap: graniteSettTex,
     depthMap: graniteSettDepthTex,
-    normalMap: graniteSettNormalTex,
     roughnessMap: graniteSettRoughnessTex,
   } = createGraniteSettLPathTextures();
 
   const graniteSettMat = new THREE.MeshStandardMaterial({
     map: graniteSettTex,
-    normalMap: graniteSettNormalTex,
-    normalScale: new THREE.Vector2(0.85, 0.85),
+    bumpMap: graniteSettDepthTex,
+    bumpScale: 0.036,
     roughnessMap: graniteSettRoughnessTex,
     roughness: 0.88,
     metalness: 0.06,
   });
   const graniteSettTopReliefMat = new THREE.MeshStandardMaterial({
     map: graniteSettTex,
-    normalMap: graniteSettNormalTex,
-    normalScale: new THREE.Vector2(0.85, 0.85),
+    bumpMap: graniteSettDepthTex,
+    bumpScale: 0.036,
     roughnessMap: graniteSettRoughnessTex,
     displacementMap: graniteSettDepthTex,
     displacementScale: 0.009,

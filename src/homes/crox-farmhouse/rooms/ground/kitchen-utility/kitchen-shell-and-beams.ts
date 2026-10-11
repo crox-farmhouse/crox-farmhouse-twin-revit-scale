@@ -648,10 +648,10 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   const imperialBrickTex = createImperialBrickTextures();
   const imperialBrickMat = new THREE.MeshStandardMaterial({
     map: imperialBrickTex.colorMap,
-    normalMap: imperialBrickTex.normalMap,
-    normalScale: new THREE.Vector2(0.75, 0.75),
+    bumpMap: imperialBrickTex.bumpMap,
+    bumpScale: 0.022,
     roughnessMap: imperialBrickTex.roughnessMap,
-    roughness: 0.9,
+    roughness: 0.88,
     metalness: 0.03,
   });
 
@@ -1262,13 +1262,13 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
 
   const {
     colorMap: welshSlateTex,
-    normalMap: welshSlateNormalTex,
+    bumpMap: welshSlateBumpTex,
     roughnessMap: welshSlateRoughnessTex,
   } = createWelshSlateRoofTextures();
   const welshSlateMat = new THREE.MeshStandardMaterial({
     map: welshSlateTex,
-    normalMap: welshSlateNormalTex,
-    normalScale: new THREE.Vector2(0.68, 0.68),
+    bumpMap: welshSlateBumpTex,
+    bumpScale: 0.02,
     roughnessMap: welshSlateRoughnessTex,
     color: 0xffffff,
     roughness: 0.84,
