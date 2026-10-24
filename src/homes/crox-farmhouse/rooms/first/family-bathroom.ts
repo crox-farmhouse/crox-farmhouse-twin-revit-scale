@@ -97,7 +97,7 @@ export function buildFamilyBathroom(
   }
 
   // North Exterior Brick Wall of Family Bathroom (Z = -2.78m..-2.50m, X = -12.81m..-9.56m)
-  // Calibrated to Survey2Plan Win 1756577 (1.10m x 0.88m)
+  // Calibrated to Survey2Plan Win 1756577 / 1763678 (1.10m x 0.90m, doubleCasement below 3.86m eaves)
   childIdx = scene.children.length;
   addUpperBrickWallAlongXWithWindow(
     -12.81,
@@ -106,16 +106,16 @@ export function buildFamilyBathroom(
     -2.5,
     -11.35,
     1.10,
-    2.98,
-    3.86,
+    2.88,
+    3.78,
     'south',
     2,
-    { skipSkirting: true }
+    { skipSkirting: true, windowFamily: 'doubleCasement' }
   );
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.northExteriorWall');
 
   // South Courtyard Exterior Brick Wall of Upper Passage (Z = +2.40m..+2.68m, X = -12.93m..-9.56m)
-  // Calibrated to Survey2Plan Win 1748869 (0.86m x 0.76m)
+  // Calibrated to Survey2Plan Win 1747147 (0.88m x 0.76m, 670mm sill above 2.16m FFL)
   childIdx = scene.children.length;
   addUpperBrickWallAlongXWithWindow(
     -12.93,
@@ -123,16 +123,17 @@ export function buildFamilyBathroom(
     2.4,
     2.68,
     -12.05,
-    0.86,
-    3.02,
-    3.78,
+    0.88,
+    2.83,
+    3.59,
     'north',
-    1,
-    { skipSkirting: true }
+    2,
+    { skipSkirting: true, windowFamily: 'doubleCasement' }
   );
   ensureNamedAddedChildren(scene, childIdx, 'upperSouthPassage.southExteriorWall');
 
-  const collarCeilingY = 4.52;
+  const interiorEavesY = 3.86;
+  const collarCeilingY = 4.65;
 
   // =========================================================================
   // BESPOKE HOTEL DRINKS & REFRESHMENT CABINET (`X = -10.62m..-9.80m, Z = +0.36m..+1.05m`)
@@ -261,7 +262,7 @@ export function buildFamilyBathroom(
   // West Load-Bearing Cross-Wall between Family Bathroom/Passage and Main Staircase Landing (0.24m thick, X = -12.81m..-13.05m)
   // Open passage/doorway at Z = +1.55m with cased antique oak architrave portal matching downstairs
   childIdx = scene.children.length;
-  addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, -0.7, 0.24, 3.6, warmRoomPlasterMat, {
+  addUpperInteriorWall(-12.93, floorTopY, interiorEavesY, -0.7, 0.24, 3.6, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
@@ -291,17 +292,16 @@ export function buildFamilyBathroom(
     scene.add(skirtMesh);
   }
 
-  // Issue #11: Stop the South cross-wall pier at `Z = 2.398m` (`z = 2.199, d = 0.398`) and inset its East face by `2mm` across `Z = 2.22m..2.40m`
-  // so it never Z-fights with the `+X` face of the Upper Landing South wall (`Z = 2.22m..2.68m`)!
+  // Stop the South cross-wall pier at `Z = 2.398m` (`z = 2.199, d = 0.398`)
   childIdx = scene.children.length;
-  addUpperInteriorWall(-12.93, floorTopY, upperWallTopY, 2.199, 0.24, 0.398, warmRoomPlasterMat, {
+  addUpperInteriorWall(-12.93, floorTopY, interiorEavesY, 2.199, 0.24, 0.398, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.westCrossWallSouthPier');
 
   childIdx = scene.children.length;
-  addUpperInteriorWall(-12.93, floorTopY + doorH, upperWallTopY, 1.55, 0.24, 0.9, warmRoomPlasterMat, {
+  addUpperInteriorWall(-12.93, floorTopY + doorH, 4.18, 1.55, 0.24, 0.9, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
@@ -322,12 +322,16 @@ export function buildFamilyBathroom(
   });
   ensureNamedAddedChildren(scene, childIdx, 'upperLanding.eastPassagePortal');
 
-  // Issue #5, #9 & #10: Full-Span Trapezoidal Upper Gable Extension on the X = -12.93m Cross-Wall (Y = 4.16m..4.52m)
+  // Full-Span Trapezoidal Upper Gable Extension on the X = -12.93m Cross-Wall (`Y = 3.86m..4.65m`)
   {
     const crossGableShape = new THREE.Shape();
-    crossGableShape.moveTo(-2.5, upperWallTopY);
-    crossGableShape.lineTo(2.398, upperWallTopY);
-    crossGableShape.lineTo(1.05, collarCeilingY);
+    crossGableShape.moveTo(-2.5, interiorEavesY);
+    crossGableShape.lineTo(1.1, interiorEavesY);
+    crossGableShape.lineTo(1.1, 4.18);
+    crossGableShape.lineTo(2.0, 4.18);
+    crossGableShape.lineTo(2.0, interiorEavesY);
+    crossGableShape.lineTo(2.398, interiorEavesY);
+    crossGableShape.lineTo(1.35, collarCeilingY);
     crossGableShape.lineTo(-1.15, collarCeilingY);
     crossGableShape.closePath();
     const crossGableGeo = new THREE.ExtrudeGeometry(crossGableShape, {

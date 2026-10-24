@@ -73,7 +73,7 @@ export function buildSittingRoom(
   buildSittingRoomCornerPlant(scene, tier2FloorY);
 
   // East Courtyard Exterior Brick Wall of Living Room (0.28m thick, X = -17.11m..-17.39m, Z = +3.70m..+8.15m)
-  // With Courtyard Window at Z = +5.92m (headY lowered to 1.54m -> effHeadY = 1.38m for frontWallH = 1.625m — Issue #1)
+  // Calibrated to Survey2Plan Win 1693431 = 1.71m x 1.17m (sillY = 0.53 -> effSillY = 0.21, headY = 1.54 -> effHeadY = 1.38)
   addBrickWallAlongZWithWindow(
     -17.39,
     -17.11,
@@ -81,7 +81,7 @@ export function buildSittingRoom(
     8.15,
     5.92,
     1.71,
-    0.58,
+    0.53,
     1.54,
     'west',
     3,

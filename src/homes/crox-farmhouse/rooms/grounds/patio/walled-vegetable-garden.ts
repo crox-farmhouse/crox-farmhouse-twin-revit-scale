@@ -41,6 +41,9 @@ export function buildWalledVegetableGarden(
   // =========================================================================
   const vegGardenGroup = new THREE.Group();
   vegGardenGroup.name = 'courtyard.vegetableGardenAndGreenhouse';
+  // Survey2Plan Floor 1906995: East Walled Garden raised terrace at +0.710m above Kitchen FFL!
+  const vegFloorY = 0.71;
+  vegGardenGroup.position.y = vegFloorY;
 
   const gravelPathMat = new THREE.MeshStandardMaterial({
     color: 0xc2b59e,
@@ -61,6 +64,23 @@ export function buildWalledVegetableGarden(
   const vegSpanZ = vegSouthZ - vegNorthZ; // 8.15m
   const vegMidX = (vegWestX + vegEastX) * 0.5; // 14.75m
   const vegMidZ = (vegNorthZ + vegSouthZ) * 0.5; // +3.125m
+
+  // Continuous dry-stone retaining plinth (`y = -0.88..-0.04m` local -> `-0.17..+0.67m` world)
+  // grounding the +0.710m raised East Walled Garden cleanly into the surrounding grounds!
+  const vegRetainingPlinth = new THREE.Mesh(
+    applyDryStoneWallUVs(
+      new THREE.BoxGeometry(vegSpanX + 0.28, 0.84, vegSpanZ + 0.28),
+      vegMidX + 0.06,
+      vegFloorY - 0.46,
+      vegMidZ
+    ),
+    dryStoneWallMat
+  );
+  vegRetainingPlinth.name = 'courtyard.vegetableGarden.retainingPlinth';
+  vegRetainingPlinth.position.set(vegMidX + 0.06, -0.46, vegMidZ);
+  vegRetainingPlinth.castShadow = true;
+  vegRetainingPlinth.receiveShadow = true;
+  vegGardenGroup.add(vegRetainingPlinth);
 
   const vegGardenGravelPad = new THREE.Mesh(
     new THREE.BoxGeometry(vegSpanX, 0.08, vegSpanZ),

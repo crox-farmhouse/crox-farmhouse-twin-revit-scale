@@ -273,7 +273,7 @@ export function buildKitchenAndUtilityMotionSensors(
   for (const cfg of sensorConfigs) {
     const group = new THREE.Group();
     group.name = cfg.name;
-    group.position.set(cfg.x, 2.98, cfg.z);
+    group.position.set(cfg.x, 2.532, cfg.z);
     group.userData.presenceDetectorPa = cfg.userData.presenceDetectorPa;
 
     const bezel = new THREE.Mesh(sharedSensorBezelGeo, housingMat);
@@ -308,14 +308,14 @@ export function buildKitchenAndUtilityMotionSensors(
     scene.add(group);
   }
 
-  // Utility Room Central Brass & Fluted-Glass Ceiling Pendant (wired to utilitySpotlights Ch 6)
+  // Utility Room Central Brass & Fluted-Glass Ceiling Pendant (wired to utilitySpotlights Ch 6, mounted on 2.54m soffit)
   buildRoomCeilingPendant(ctx, {
     circuitId: 'utilitySpotlights',
     x: 3.5,
     z: -1.62,
-    ceilingY: 2.98,
+    ceilingY: 2.532,
     floorY: 0.012,
-    dropLength: 0.44,
+    dropLength: 0.28,
     style: 'flutedGlass',
     addPointLight: false,
   });

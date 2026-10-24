@@ -230,10 +230,10 @@ export function buildVaillantBoilersAndFlues(
   const headerWallZ = 8.46;
 
   // 1. Two Wall-Mounted Viessmann Vitodens 200-W Gas Condensing Boilers on the East (closest to Plant Room & East Flue Wall)
-  //    at X = -19.82m and X = -19.26m, mounted at ergonomic servicing height Y = tier2FloorY + 1.00m..1.80m
-  //    (world Y = +0.40m..+1.20m) so both horizontal concentric flues sit well below the ceiling joists
-  //    and remain 100% accessible for inspection along their entire run!
-  const boilerCenterY = tier2FloorY + 1.4; // World Y = +0.80m (casing spans +0.40m..+1.20m)
+  //    at X = -19.82m and X = -19.26m, mounted at ergonomic servicing height Y = tier2FloorY + 0.95m..1.75m
+  //    (world Y = +0.35m..+1.15m) so both horizontal concentric flues pass cleanly beneath the Plant Room's
+  //    1.98m dropped ceiling (`Ceil 1621697`, world Y = 1.38m)!
+  const boilerCenterY = tier2FloorY + 1.35; // World Y = +0.75m (casing spans +0.35m..+1.15m)
   const boilerCenterZ = 8.58;
   const flueWorldZ = 8.608; // Concentric flue centerline Z = 8.608m
   const flueLocalZ = flueWorldZ - boilerCenterZ; // +0.028m
@@ -252,12 +252,12 @@ export function buildVaillantBoilersAndFlues(
   const magFilterCapGeo = createSharedGeo(new THREE.CylinderGeometry(0.038, 0.038, 0.018, 16));
 
   // Independent room-sealed Ø60/100mm concentric flue elbow heights (no T-piece, full-run accessible):
-  // - Boiler 1 (East, X = -19.26m): turns East at world Y = 1.35m (local Y = +0.55m), 19cm above the Plant Room UFH wiring center
-  // - Boiler 2 (West, X = -19.82m): rises 20cm higher and turns East at world Y = 1.55m (local Y = +0.75m),
-  //   passing cleanly ABOVE Boiler 1's 90° elbow while staying ~28cm below the ceiling joists!
+  // - Boiler 1 (East, X = -19.26m): turns East at world Y = 1.20m (local Y = +0.45m), cleanly above the Plant Room UFH wiring center
+  // - Boiler 2 (West, X = -19.82m): rises higher and turns East at world Y = 1.30m (local Y = +0.55m),
+  //   passing cleanly ABOVE Boiler 1's 90° elbow while staying below the 1.38m Plant Room ceiling soffit!
   for (const [bIdx, bx, elbowWorldY] of [
-    [1, -19.26, 1.35],
-    [2, -19.82, 1.55],
+    [1, -19.26, 1.20],
+    [2, -19.82, 1.30],
   ] as const) {
     const flueLocalY = elbowWorldY - boilerCenterY;
     const boilerPrefix = `study.viessmannBoiler.${bIdx}`;
@@ -430,14 +430,14 @@ export function buildVaillantBoilersAndFlues(
         new THREE.Mesh(getTeeCollarGeo(conn.radius), brassMat)
       );
       valveBody.name = `${connPrefix}.isolationValve`;
-      valveBody.position.set(conn.px, -0.45, -0.04);
+      valveBody.position.set(conn.px, -0.435, -0.04);
       boilerGroup.add(valveBody);
 
       const valveLever = tagHighLod(
         new THREE.Mesh(valveLeverGeo, conn.handleMat)
       );
       valveLever.name = `${connPrefix}.valveLever`;
-      valveLever.position.set(conn.px, -0.458, -0.018);
+      valveLever.position.set(conn.px, -0.442, -0.018);
       boilerGroup.add(valveLever);
 
       // Magnetic cyclonic system filter canister (e.g. Adey MagnaClean / Fernox TF1) on the Primary Return leg
@@ -521,15 +521,15 @@ export function buildVaillantBoilersAndFlues(
       {
         bIdx: 1,
         startX: -19.26,
-        startY: 1.35,
-        endY: 1.4,
+        startY: 1.20,
+        endY: 1.23,
         clampXs: [-19.08, -18.55, -17.95, -17.48],
       },
       {
         bIdx: 2,
         startX: -19.82,
-        startY: 1.55,
-        endY: 1.61,
+        startY: 1.30,
+        endY: 1.325,
         clampXs: [-19.54, -19.08, -18.55, -17.95, -17.48],
       },
     ];

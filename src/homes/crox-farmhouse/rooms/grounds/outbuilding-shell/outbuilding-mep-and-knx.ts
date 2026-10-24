@@ -605,8 +605,8 @@ function buildGuestSuiteVaultSpots(s: OutbuildingShellContext): void {
   const { ctx, firstFloorGroup, roofGroup, spotlightHousingMat, spotlightBrassTrimMat } = s;
   const group = ctx.lightGroups.stableSuiteDownlights;
   const RIDGE_V = 2.855;
-  const APEX_Y = 4.669;
-  const SLOPE = (APEX_Y - 3.32) / 2.575;
+  const APEX_Y = s.stableCeilRidgeY;
+  const SLOPE = (APEX_Y - s.stableUpperTopY) / 2.575;
   const tilt = Math.atan(SLOPE);
 
   const lensMat = new THREE.MeshStandardMaterial({
@@ -667,7 +667,7 @@ function buildGuestSuiteVaultSpots(s: OutbuildingShellContext): void {
 
   const fill = new THREE.PointLight(0xffd6a0, 3.2, 6.5, 1.6);
   fill.name = 'outbuildings.firstFloor.stableBedroom.downlight.fillLight';
-  fill.position.set(27.3, 3.7, RIDGE_V);
+  fill.position.set(27.3, s.stableUpperFloorY + 1.62, RIDGE_V);
   fill.userData = { ...fill.userData, baseIntensity: 3.2 };
   firstFloorGroup.add(fill);
   group.lights.push(fill);
@@ -858,14 +858,14 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
       v: 0.292,
       facing: 'south',
     },
-    // 3B. Barn North Courtyard Door (`u = 15.85..16.85m`) — East latch jamb (`u = 17.04m`, clear of door swing)
+    // 3B. Barn North Courtyard Double Door (`Door 1864721`, `u = 15.66..17.52m`) — East latch jamb (`u = 17.66m`, clear of door swing)
     {
       customUnitName: 'outbuildings.barn.knxSwitch.northCourtyardDoor',
       zoneId: 'outbuildingBarn',
       circuitId: 'barnTrussAndSimHalo',
       switchPa: '2.1.12',
       switchLocation: 'Barn North Courtyard Door',
-      u: 17.04,
+      u: 17.66,
       y: 0.81,
       v: 0.292,
       facing: 'south',
@@ -967,14 +967,14 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
       v: 3.02,
       facing: 'east',
     },
-    // 5B. Office North Courtyard Door (`u = 23.80..24.70m`) — East latch jamb (`u = 24.92m, v = 0.292m`)
+    // 5B. Office North Courtyard Door (`Door 1795405`, `u = 23.58..24.93m`) — East latch jamb (`u = 25.12m, v = 0.292m`)
     {
       customUnitName: 'outbuildings.stable.office.knxSwitch.northCourtyardDoor',
       zoneId: 'outbuildingStableOffice',
       circuitId: 'stableOfficeSpotlights',
       switchPa: '2.1.14',
       switchLocation: 'Office North Courtyard Door',
-      u: 24.92,
+      u: 25.12,
       y: 0.71,
       v: 0.292,
       facing: 'south',
@@ -1006,7 +1006,7 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
 
     // =========================================================================
     // 6. Stable Upper Guest Bedroom, Ensuite & Balcony
-    //    (FFL = 2.08m -> Doorways 1.15m AFFL = y: 3.23m; Bedside 0.72m AFFL = y: 2.80m)
+    //    (FFL = 2.475m -> Doorways 1.15m AFFL = y: 3.625m; Bedside 0.72m AFFL = y: 3.195m)
     //    PA 2.1.15 · S1 Suite Bright / S2 Evening Relax / S3 Bedtime 5V Lamps
     // =========================================================================
     // 6A. Suite West Entry Portal from Mezzanine (`v = 2.405..3.305m`, centered at `v = 2.855m`) — mounted beside the entry steps (`u = 23.42m, v = 3.358m`)
@@ -1017,7 +1017,7 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
       switchPa: '2.1.15',
       switchLocation: 'Guest Suite Entry Portal',
       u: 23.42,
-      y: 3.23,
+      y: 3.625,
       v: 3.358,
       facing: 'north',
       isFirstFloor: true,
@@ -1030,12 +1030,12 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
       switchPa: '2.1.15',
       switchLocation: 'Guest Suite Ensuite Door',
       u: 25.54,
-      y: 3.23,
+      y: 3.625,
       v: 3.358,
       facing: 'north',
       isFirstFloor: true,
     },
-    // 6C. Super-King Bed West Nightstand Master Toggle (`u = 26.24m, y = 2.80m, v = 5.418m`, clear of `26.09m` Ensuite wall)
+    // 6C. Super-King Bed West Nightstand Master Toggle (`u = 26.24m, y = 3.195m, v = 5.418m`, clear of `26.09m` Ensuite wall)
     {
       customUnitName: 'outbuildings.stable.upper.knxSwitch.bedsideMaster',
       zoneId: 'outbuildingStableSuite',
@@ -1043,12 +1043,12 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
       switchPa: '2.1.15',
       switchLocation: 'Guest Suite Bedside (West)',
       u: 26.24,
-      y: 2.8,
+      y: 3.195,
       v: 5.418,
       facing: 'north',
       isFirstFloor: true,
     },
-    // 6D. Super-King Bed East Nightstand Companion Toggle (`u = 28.58m, y = 2.80m, v = 5.418m`)
+    // 6D. Super-King Bed East Nightstand Companion Toggle (`u = 28.58m, y = 3.195m, v = 5.418m`)
     {
       customUnitName: 'outbuildings.stable.upper.knxSwitch.bedsideEast',
       zoneId: 'outbuildingStableSuite',
@@ -1056,7 +1056,7 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
       switchPa: '2.1.15',
       switchLocation: 'Guest Suite Bedside (East)',
       u: 28.58,
-      y: 2.8,
+      y: 3.195,
       v: 5.418,
       facing: 'north',
       isFirstFloor: true,
@@ -1069,7 +1069,7 @@ function buildOutbuildingCorstonZoneSwitches(s: OutbuildingShellContext): void {
       switchPa: '2.1.15',
       switchLocation: 'Guest Suite Balcony Doors',
       u: 28.758,
-      y: 3.23,
+      y: 3.625,
       v: 0.48,
       facing: 'west',
       isFirstFloor: true,
@@ -1280,13 +1280,13 @@ function buildOutbuilding5VLampSocketsAndCords(s: OutbuildingShellContext): void
         ],
       },
     },
-    // 5. Stable Upper Bedroom West Bedside Table Lamp (`26.48, 2.664, 5.18`)
+    // 5. Stable Upper Bedroom West Bedside Table Lamp (`26.48, 3.059, 5.18`)
     {
       name: 'outbuildings.stable.upper.socket5A.bedsideWest',
       zone: 'outbuildingStableSuite',
       kind: 'doubleWithLampSocket',
       x: 26.4,
-      y: 2.53,
+      y: 2.925,
       z: 5.426,
       facing: 'north',
       connectedLamp: {
@@ -1294,19 +1294,19 @@ function buildOutbuilding5VLampSocketsAndCords(s: OutbuildingShellContext): void
         switchPa: '2.1.15',
         switchLocation: 'Guest Suite West Bedside 5V Socket',
         cordWaypoints: [
-          [26.312, 2.51, 5.414],
-          [26.44, 2.66, 5.32],
-          [26.48, 2.666, 5.18],
+          [26.312, 2.905, 5.414],
+          [26.44, 3.055, 5.32],
+          [26.48, 3.061, 5.18],
         ],
       },
     },
-    // 6. Stable Upper Bedroom East Bedside Table Lamp (`28.38, 2.664, 5.18`)
+    // 6. Stable Upper Bedroom East Bedside Table Lamp (`28.38, 3.059, 5.18`)
     {
       name: 'outbuildings.stable.upper.socket5A.bedsideEast',
       zone: 'outbuildingStableSuite',
       kind: 'doubleWithLampSocket',
       x: 28.46,
-      y: 2.53,
+      y: 2.925,
       z: 5.426,
       facing: 'north',
       connectedLamp: {
@@ -1314,19 +1314,19 @@ function buildOutbuilding5VLampSocketsAndCords(s: OutbuildingShellContext): void
         switchPa: '2.1.15',
         switchLocation: 'Guest Suite East Bedside 5V Socket',
         cordWaypoints: [
-          [28.372, 2.51, 5.414],
-          [28.38, 2.66, 5.32],
-          [28.38, 2.666, 5.18],
+          [28.372, 2.905, 5.414],
+          [28.38, 3.055, 5.32],
+          [28.38, 3.061, 5.18],
         ],
       },
     },
-    // 7. Stable Upper Bedroom Dressing Table Lamp (`28.02, 2.84, 0.50`)
+    // 7. Stable Upper Bedroom Dressing Table Lamp (`28.02, 3.235, 0.50`)
     {
       name: 'outbuildings.stable.upper.socket5A.dressingTable',
       zone: 'outbuildingStableSuite',
       kind: 'doubleWithLampSocket',
       x: 27.94,
-      y: 2.53,
+      y: 2.925,
       z: 0.284,
       facing: 'south',
       connectedLamp: {
@@ -1334,9 +1334,9 @@ function buildOutbuilding5VLampSocketsAndCords(s: OutbuildingShellContext): void
         switchPa: '2.1.15',
         switchLocation: 'Guest Suite Dressing Table 5V Socket',
         cordWaypoints: [
-          [28.028, 2.51, 0.296],
-          [28.02, 2.76, 0.34],
-          [28.02, 2.842, 0.5],
+          [28.028, 2.905, 0.296],
+          [28.02, 3.155, 0.34],
+          [28.02, 3.237, 0.5],
         ],
       },
     },
@@ -1491,7 +1491,7 @@ export function buildOutbuildingMepAndKnx(s: OutbuildingShellContext): void {
     buildIndoorAirToAirAcUnit(
       'outbuildings.stable.upper.acUnit',
       27.43,
-      3.04,
+      3.435,
       5.41,
       Math.PI,
       'outbuildingStableSuite'

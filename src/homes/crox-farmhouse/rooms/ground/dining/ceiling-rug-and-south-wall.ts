@@ -524,13 +524,13 @@ export function buildDiningCeilingRugAndSouthWall(
   }
 
   // 1H. South Exterior Brick Wall of Dining Room (0.28m thick, Z = +2.35m..+2.63m, X = -9.56m..-4.64m):
-  //     - 3-pane cottage casement window on the right/East (centered at X = -6.50m, width 1.68m)
+  //     - Survey2Plan Win 1765188 = 1.40m x 1.12m 3-pane casement window (`tripleTopHungCentre`) centered at X = -6.50m
   //     - Exterior Courtyard Door slightly to the left when looking from outside (centered at X = -8.78m, width 0.92m),
   //       opening directly into the SW corner of the Dining Room (PH-53, PH-56, Photo 1 & Floorplan!)
   const diningWinCenterX = -6.5;
-  const diningWinWidth = 1.68;
-  const diningWinLeft = diningWinCenterX - diningWinWidth / 2;   // -7.34m
-  const diningWinRight = diningWinCenterX + diningWinWidth / 2;  // -5.66m
+  const diningWinWidth = 1.4;
+  const diningWinLeft = diningWinCenterX - diningWinWidth / 2;   // -7.20m
+  const diningWinRight = diningWinCenterX + diningWinWidth / 2;  // -5.80m
   const diningDoorCenterX = -8.78;
   const diningDoorWidth = 0.92;
   const diningDoorLeft = diningDoorCenterX - diningDoorWidth / 2;  // -9.24m
@@ -808,24 +808,97 @@ export function buildDiningCeilingRugAndSouthWall(
         new THREE.BoxGeometry(0.045, winH, 0.11),
         windowFrameMat
       );
-      if (!mullion.name) mullion.name = 'familyRoom.southWall.mullion';
+      mullion.name = `familyRoom.southWall.mullion.${i}`;
+      mullion.geometry.computeBoundingSphere();
       mullion.position.set(mx, cy, 2.49);
       southCutGroup.add(mullion);
     }
-    for (const ry of [sillY + 0.027, sillY + winH * 0.52, headY - 0.027]) {
+    for (const [rIdx, ry] of ([sillY + 0.025, headY - 0.025] as const).entries()) {
       const rail = new THREE.Mesh(
-        new THREE.BoxGeometry(diningWinWidth, 0.04, 0.1),
+        new THREE.BoxGeometry(diningWinWidth, 0.042, 0.105),
         windowFrameMat
       );
-      if (!rail.name) rail.name = 'familyRoom.southWall.rail';
+      rail.name = `familyRoom.southWall.rail.${rIdx}`;
+      rail.geometry.computeBoundingSphere();
       rail.position.set(diningWinCenterX, ry, 2.49);
       southCutGroup.add(rail);
+    }
+    // 3D inset casement sash sub-frames, top-hung centre fanlight transom, glazing bars & brass stays (S2P-Windows-TplwGlazingBarsK)
+    const baySpan = diningWinWidth / 3;
+    const clearBayW = baySpan - 0.045;
+    const clearBayH = winH - 0.084;
+    const sashStileW = 0.028;
+    const sashDepth = 0.046;
+    const stayZ = 2.49 - 0.036;
+    for (let b = 0; b < 3; b++) {
+      const bx = diningWinLeft + (b + 0.5) * baySpan;
+      for (const sSign of [-1, 1] as const) {
+        const sStile = new THREE.Mesh(
+          new THREE.BoxGeometry(sashStileW, clearBayH - 0.008, sashDepth),
+          windowFrameMat
+        );
+        sStile.name = `familyRoom.southWall.sashStile.${b}_${sSign < 0 ? 'L' : 'R'}`;
+        sStile.geometry.computeBoundingSphere();
+        sStile.position.set(bx + sSign * (clearBayW * 0.5 - sashStileW * 0.5 - 0.004), cy, 2.49);
+        southCutGroup.add(sStile);
+
+        const sRail = new THREE.Mesh(
+          new THREE.BoxGeometry(clearBayW - 0.008, sashStileW, sashDepth),
+          windowFrameMat
+        );
+        sRail.name = `familyRoom.southWall.sashRail.${b}_${sSign < 0 ? 'B' : 'T'}`;
+        sRail.geometry.computeBoundingSphere();
+        sRail.position.set(bx, cy + sSign * (clearBayH * 0.5 - sashStileW * 0.5 - 0.004), 2.49);
+        southCutGroup.add(sRail);
+      }
+
+      if (b === 1) {
+        const transomY = sillY + winH * 0.68;
+        const transom = new THREE.Mesh(
+          new THREE.BoxGeometry(clearBayW + 0.01, 0.036, 0.095),
+          windowFrameMat
+        );
+        transom.name = 'familyRoom.southWall.centreTransom';
+        transom.geometry.computeBoundingSphere();
+        transom.position.set(bx, transomY, 2.49);
+        southCutGroup.add(transom);
+
+        const lowerMidY = (sillY + 0.042 + (transomY - 0.018)) * 0.5;
+        const lowerBar = new THREE.Mesh(
+          new THREE.BoxGeometry(clearBayW - sashStileW * 2, 0.018, 0.034),
+          windowFrameMat
+        );
+        lowerBar.name = 'familyRoom.southWall.centreGlazingBar';
+        lowerBar.geometry.computeBoundingSphere();
+        lowerBar.position.set(bx, lowerMidY, 2.49);
+        southCutGroup.add(lowerBar);
+      } else {
+        for (const [gIdx, frac] of ([0.34, 0.68] as const).entries()) {
+          const gBar = new THREE.Mesh(
+            new THREE.BoxGeometry(clearBayW - sashStileW * 2, 0.018, 0.034),
+            windowFrameMat
+          );
+          gBar.name = `familyRoom.southWall.glazingBar.${b}_${gIdx}`;
+          gBar.geometry.computeBoundingSphere();
+          gBar.position.set(bx, sillY + winH * frac, 2.49);
+          southCutGroup.add(gBar);
+        }
+        const stay = new THREE.Mesh(
+          new THREE.BoxGeometry(0.11, 0.012, 0.014),
+          brassMat
+        );
+        stay.name = `familyRoom.southWall.casementStay.${b}`;
+        stay.geometry.computeBoundingSphere();
+        stay.position.set(bx, sillY + 0.052, stayZ);
+        southCutGroup.add(stay);
+      }
     }
     const glass = new THREE.Mesh(
       new THREE.BoxGeometry(diningWinWidth - 0.06, winH - 0.08, 0.016),
       windowGlassMat
     );
-    if (!glass.name) glass.name = 'familyRoom.southWall.glass';
+    glass.name = 'familyRoom.southWall.glass';
+    glass.geometry.computeBoundingSphere();
     glass.position.set(diningWinCenterX, cy, 2.49);
     southCutGroup.add(glass);
 

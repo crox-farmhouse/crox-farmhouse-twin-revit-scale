@@ -658,9 +658,10 @@ export function buildAngledWallSegment(
 
       const stepW = op.width + 0.02;
       const stepRise = highFloorY - op.lowerFloorY;
+      const stepFacingSign: 1 | -1 = config.frontFloorY <= config.backFloorY ? 1 : -1;
       const nosingH = 0.032; // 32mm solid oak bullnose nosing bar thickness, top flush with highFloorY
-      const nosingDepth = 0.056; // 56mm solid oak bullnose nosing bar meeting the upper floorboards at localZ = +0.112m
-      const nosingCenterZ = config.thickness * 0.5; // +0.140m (spans localZ = +0.112m..+0.168m, zero overlap with upper floor!)
+      const nosingDepth = 0.056; // 56mm solid oak bullnose nosing bar meeting the upper floorboards at localZ = ±0.112m
+      const nosingCenterZ = stepFacingSign * (config.thickness * 0.5);
       const riserDepth = 0.028; // 28mm solid oak vertical riser board tucked cleanly beneath the bullnose overhang
 
       const riserH = Math.max(0.02, stepRise - nosingH);
@@ -678,7 +679,7 @@ export function buildAngledWallSegment(
       stepRiser.position.set(
         op.uCenter,
         op.lowerFloorY + riserH * 0.5,
-        nosingCenterZ - 0.002
+        nosingCenterZ - stepFacingSign * 0.002
       );
       stepRiser.castShadow = true;
       stepRiser.receiveShadow = true;
@@ -695,7 +696,7 @@ export function buildAngledWallSegment(
         op.stepMaterial
       );
       stepNosing.name = `${op.id}.stepNosing`;
-      // Top surface at highFloorY, abutting the doorway floorboards at localZ = config.thickness * 0.5 - nosingDepth * 0.5
+      // Top surface at highFloorY, abutting the doorway floorboards at localZ = stepFacingSign * (config.thickness * 0.5 - nosingDepth * 0.5)
       stepNosing.position.set(
         op.uCenter,
         highFloorY - nosingH * 0.5,
@@ -705,7 +706,7 @@ export function buildAngledWallSegment(
       stepNosing.receiveShadow = true;
       group.add(stepNosing);
 
-      // Rounded half-cylinder carpenter bullnose front edge along the overhanging lip (+Z face)
+      // Rounded half-cylinder carpenter bullnose front edge along the overhanging lip (±Z face)
       const bullnoseGeo = new THREE.CylinderGeometry(
         nosingH * 0.5,
         nosingH * 0.5,
@@ -717,13 +718,16 @@ export function buildAngledWallSegment(
         Math.PI
       );
       bullnoseGeo.rotateZ(Math.PI / 2);
+      if (stepFacingSign === -1) {
+        bullnoseGeo.rotateY(Math.PI);
+      }
       applyCarpenterSingleBoardUVs(bullnoseGeo, stepW, 0.04, 0.04, 0.09);
       const bullnoseLip = new THREE.Mesh(bullnoseGeo, op.stepMaterial);
       bullnoseLip.name = `${op.id}.stepBullnoseLip`;
       bullnoseLip.position.set(
         op.uCenter,
         highFloorY - nosingH * 0.5,
-        nosingCenterZ + nosingDepth * 0.5
+        nosingCenterZ + stepFacingSign * (nosingDepth * 0.5)
       );
       bullnoseLip.castShadow = true;
       bullnoseLip.receiveShadow = true;

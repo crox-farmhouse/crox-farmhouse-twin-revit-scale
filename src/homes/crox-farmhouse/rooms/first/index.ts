@@ -29,22 +29,28 @@ export function buildMainHouseFirstFloorAndRoof(ctx: SceneBuilderContext): void 
   });
   const kit0 = createFirstFloorMaterials(ctx);
   const eastWingKit1 = { ...kit0, ...createFirstFloorShellKit(eastWingCtx, kit0) };
-  // The Main Bedroom (East of X_ew = -9.68m, above the +0.30m stepped-up Ground Floor Dining Room)
-  // steps UP by +0.18m (from Y = 2.16m in the Upper South Passage to Y = 2.34m in the Main Bedroom)
-  const mainBedroomKit0 = { ...kit0, floorBaseY: 2.24, floorTopY: 2.34 };
+  // Survey2Plan `Floor 1613332` + `Stair 1867816`: Main Bedroom steps UP by +0.35m (2 risers × 175mm)
+  // from the Upper South Passage (`Y = 2.16m`) to `Y = 2.51m`!
+  const mainBedroomKit0 = { ...kit0, floorBaseY: 2.24, floorTopY: 2.51 };
   const mainBedroomKit1 = { ...mainBedroomKit0, ...createFirstFloorShellKit(eastWingCtx, mainBedroomKit0) };
-  // The 3-Bedroom West Wing (Bedroom 2, Shower Room, West Wing Corridor, Bedroom 3, Bedroom 4)
-  // sits one small 8cm step (Y = 2.08m) lower than the Main Staircase Landing & East Wing (Y = 2.16m)
-  const westWingKit0 = { ...kit0, floorBaseY: 2.0, floorTopY: 2.08 };
-  const westWingKit1 = { ...westWingKit0, ...createFirstFloorShellKit(ctx, westWingKit0) };
+  // Survey2Plan multi-step West Wing floor levels relative to Upper Landing (`Y = 2.160m`):
+  // - West Wing Lobby & Courtyard Corridor (`Floor 1602422` & `1612082`): `Y = 2.095m` (-65mm step down)
+  // - Bedroom 2 (`Floor 1612229`) & Bedroom 4 (`Floor 1601641`): `Y = 2.050m` (-45mm threshold step down)
+  // - Bedroom 3 (`Floor 1611036`): `Y = 2.080m` main floor (+ `-142mm` sunken NW wardrobe alcove at `1.938m`)
+  const corridorKit0 = { ...kit0, floorBaseY: 1.98, floorTopY: 2.095 };
+  const corridorKit1 = { ...corridorKit0, ...createFirstFloorShellKit(ctx, corridorKit0) };
+  const bed2And4Kit0 = { ...kit0, floorBaseY: 1.97, floorTopY: 2.05 };
+  const bed2And4Kit1 = { ...bed2And4Kit0, ...createFirstFloorShellKit(ctx, bed2And4Kit0) };
+  const bed3Kit0 = { ...kit0, floorBaseY: 1.97, floorTopY: 2.08 };
+  const bed3Kit1 = { ...bed3Kit0, ...createFirstFloorShellKit(ctx, bed3Kit0) };
 
   buildMainBedroom(eastWingCtx, mainBedroomKit1);
   buildFamilyBathroom(eastWingCtx, eastWingKit1);
   buildUpperLanding(eastWingCtx, eastWingKit1);
-  buildBedroom2(ctx, westWingKit1);
-  buildWestWingCorridor(ctx, westWingKit1);
-  buildBedroom3(ctx, westWingKit1);
-  buildBedroom4(ctx, westWingKit1);
-  buildFirstFloorCeilingsAndRoof(ctx, westWingKit1, eastWingCtx);
-  buildFirstFloorPendantsAndSwitches(ctx, westWingKit1, eastWingCtx);
+  buildBedroom2(ctx, bed2And4Kit1);
+  buildWestWingCorridor(ctx, corridorKit1);
+  buildBedroom3(ctx, bed3Kit1);
+  buildBedroom4(ctx, bed2And4Kit1);
+  buildFirstFloorCeilingsAndRoof(ctx, bed3Kit1, eastWingCtx);
+  buildFirstFloorPendantsAndSwitches(ctx, bed2And4Kit1, eastWingCtx);
 }

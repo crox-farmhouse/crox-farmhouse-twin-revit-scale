@@ -23,7 +23,7 @@ export function buildGroundFloorPendantsAndSwitches(
   kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'frontWallH' | 'tagCutawayWall' | 'wallH'> &
     Pick<ReturnType<typeof createGroundFloorShellKit>, 'getEastCourtyardWallCenterX'> &
     Pick<ReturnType<typeof buildDiningRoom>, 'lowerFloorY'> &
-    Pick<ReturnType<typeof defineTier2Levels>, 'tier2FloorY'>
+    Pick<ReturnType<typeof defineTier2Levels>, 'entranceHallFloorY' | 'plantRoomCeilingY' | 'tier2FloorY'>
 ): void {
   const { groundFloorCeilingGroup, interactions, lightGroups, scene } = ctx;
   const eastWingCtx = createScopedBuilderContext(ctx, {
@@ -32,9 +32,11 @@ export function buildGroundFloorPendantsAndSwitches(
     rotationY: MAIN_EAST_WING_ROTATION_Y,
   });
   const {
+    entranceHallFloorY,
     frontWallH,
     getEastCourtyardWallCenterX,
     lowerFloorY,
+    plantRoomCeilingY,
     tagCutawayWall,
     tier2FloorY,
     wallH,
@@ -434,8 +436,8 @@ export function buildGroundFloorPendantsAndSwitches(
     x: -19.8,
     z: 2.98,
     ceilingY: frontWallH - 0.03,
-    dropLength: 0.3,
-    floorY: tier2FloorY,
+    dropLength: 0.26,
+    floorY: entranceHallFloorY,
     style: 'glassLantern',
     pointLightIntensity: 11.5,
     pointLightDistance: 6.5,
@@ -445,7 +447,7 @@ export function buildGroundFloorPendantsAndSwitches(
     switchPa: '1.1.19',
     location: 'Front Entrance Hallway — South Wall (by Front Door)',
     x: -21.55,
-    y: tier2FloorY + 1.18,
+    y: entranceHallFloorY + 1.15,
     z: 3.55,
     facing: 'north',
   });
@@ -461,7 +463,7 @@ export function buildGroundFloorPendantsAndSwitches(
     name: 'entranceHall.floorUplight.north',
     zone: 'entranceHall',
     circuitId: 'entranceHallUplights',
-    floorY: tier2FloorY,
+    floorY: entranceHallFloorY,
     positions: [
       [-21.084, 2.315],
       [-19.796, 2.488],
@@ -470,20 +472,20 @@ export function buildGroundFloorPendantsAndSwitches(
     wallWash: {
       wallZ: 2.28,
       wallZAtX: (x: number) => 2.0462 + (0.575 / 4.299) * (x + 22.19),
-      haloHeight: 0.95,
+      haloHeight: 0.88,
     },
   });
   buildRecessedFloorUplights(ctx, {
     name: 'entranceHall.floorUplight.south',
     zone: 'entranceHall',
     circuitId: 'entranceHallUplights',
-    floorY: tier2FloorY,
+    floorY: entranceHallFloorY,
     positions: [
       [-21.25, 3.43],
       [-20.1, 3.43],
       [-18.95, 3.43],
     ],
-    wallWash: { wallZ: 3.55, haloHeight: 0.95 },
+    wallWash: { wallZ: 3.55, haloHeight: 0.88 },
   });
 
   // Flush ceiling PIR presence sensors for the motion-controlled rooms (click to simulate occupancy)
@@ -725,14 +727,14 @@ export function buildGroundFloorPendantsAndSwitches(
     });
     lightGroups.studyPendant.emissives.push(ledDiffuserMat);
 
-    for (const [barName, zoneName, bx, bz, rotY, hasLight] of [
-      ['plantRoom.ledLightBar', 'study', -18.08, 9.94, Math.PI / 2, true],
-      ['study.ledLightBar', 'study', -20.62, 9.94, 0, false],
+    for (const [barName, zoneName, bx, barCeilY, bz, rotY, hasLight] of [
+      ['plantRoom.ledLightBar', 'study', -18.08, plantRoomCeilingY - 0.004, 9.94, Math.PI / 2, true],
+      ['study.ledLightBar', 'study', -20.62, wallH - 0.03, 9.94, 0, false],
     ] as const) {
       const barGroup = new THREE.Group();
       barGroup.name = barName;
       barGroup.userData.zone = zoneName;
-      barGroup.position.set(bx, wallH - 0.03, bz);
+      barGroup.position.set(bx, barCeilY, bz);
       barGroup.rotation.y = rotY;
 
       const barLen = 1.22;
@@ -772,7 +774,7 @@ export function buildGroundFloorPendantsAndSwitches(
         // Consolidated PointLight positioned in world space between the Plant Room & Study doorway
         // (parented directly to `scene` rather than `groundFloorCeilingGroup` so ceiling cutaway never recompiles shaders!)
         const ledPointLight = new THREE.PointLight(0xffe0a8, 14.5, 7.8, 1.65);
-        ledPointLight.position.set(-19.23, wallH - 0.21, 9.94);
+        ledPointLight.position.set(-19.23, plantRoomCeilingY - 0.16, 9.94);
         scene.add(ledPointLight);
         lightGroups.studyPendant.lights.push(ledPointLight);
       }
@@ -802,7 +804,7 @@ export function buildGroundFloorPendantsAndSwitches(
     motionSensorGroup.userData.presenceDetectorPa = '1.1.24';
     motionSensorGroup.userData.location = 'Plant Room — East Wall (Motion Sensor by Courtyard Door)';
     const sensorWallX = getEastCourtyardWallCenterX(9.92) - 0.145;
-    motionSensorGroup.position.set(sensorWallX, tier2FloorY + 1.92, 9.92);
+    motionSensorGroup.position.set(sensorWallX, tier2FloorY + 1.78, 9.92);
 
     const sensorBodyMat = new THREE.MeshStandardMaterial({
       color: 0xf4f2ec,

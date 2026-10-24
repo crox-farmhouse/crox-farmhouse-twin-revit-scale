@@ -115,8 +115,8 @@ export function createCroxFarmhouseSceneProfile(): PropertySceneProfile<CroxSecu
       { material: 'utilitySwitchLedMat', circuits: ['utilitySpotlights'] },
       { material: 'courtyardSwitchLedMat', circuits: ['courtyardFestoons', 'reclaimedLampPost'] },
     ],
-    // 4-leaf oak bifolds folding outward into the courtyard from the right oak post.
-    bifoldTrack: { anchorRightX: 4.7, trackZ: 2.12, leafWidth: 3.02 / 4, maxFoldAngle: 1.4 },
+    // 4-leaf oak bifolds (Win 1722895: 3.55m x 2.07m, X = +1.32m..+4.87m) folding outward into the courtyard from the right oak post.
+    bifoldTrack: { anchorRightX: 4.87, trackZ: 2.12, leafWidth: 3.55 / 4, maxFoldAngle: 1.4 },
     usdOverrides: CROX_FARMHOUSE_USD_OVERRIDES,
     doorPolicy: CROX_DOOR_POLICY,
     buildSecurityOverlay: (ctx) => buildCroxUniFiSecurityAndAccess3D(ctx),

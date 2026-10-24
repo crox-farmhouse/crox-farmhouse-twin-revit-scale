@@ -84,19 +84,19 @@ export function buildPlantRoomElectrics(
       roughness: 0.32,
     });
 
-    // Overhead horizontal 150x100mm galvanized steel cable trunking header above both boards (Y = tier2FloorY + 2.38m, Z = 9.80m..11.44m)
+    // Overhead horizontal 140x140mm galvanized steel cable trunking header above both boards (Y = tier2FloorY + 1.88m, tucked cleanly under 1.98m ceiling!)
     const headerTrunking = new THREE.Mesh(
       createSharedGeo(new THREE.BoxGeometry(0.14, 0.14, 1.64)),
       trunkingGalvMat
     );
     headerTrunking.name = 'plantRoom.electricalDistribution.headerTrunking';
-    headerTrunking.position.set(-17.39 - 0.07, tier2FloorY + 2.38, 10.62);
+    headerTrunking.position.set(-17.39 - 0.07, tier2FloorY + 1.88, 10.62);
     headerTrunking.castShadow = true;
     elecGroup.add(headerTrunking);
 
     // 1. Left Board (Z = 10.18m): Tall Hager / ABB KNX Building Automation Metal Cabinet (0.64m W x 1.14m H x 0.18m D)
     const knxBoardZ = 10.18;
-    const knxBoardY = tier2FloorY + 1.56;
+    const knxBoardY = tier2FloorY + 1.20;
     const knxCabinet = new THREE.Mesh(
       createSharedGeo(new THREE.BoxGeometry(0.18, 1.14, 0.64)),
       enclosureGreyMat
@@ -164,9 +164,9 @@ export function buildPlantRoomElectrics(
 
     // 2. Right Board (Z = 10.98m): 3-Phase 400V TPN Commercial Metal Distribution Board & Main Switch-Disconnector
     const tpBoardZ = 10.98;
-    const tpBoardY = tier2FloorY + 1.66;
+    const tpBoardY = tier2FloorY + 1.48;
     const tpCabinet = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(0.20, 0.94, 0.56)),
+      createSharedGeo(new THREE.BoxGeometry(0.20, 0.66, 0.56)),
       enclosureGreyMat
     );
     tpCabinet.name = 'plantRoom.electricalDistribution.threePhaseBoard';
@@ -224,7 +224,7 @@ export function buildPlantRoomElectrics(
       pLamp.rotation.z = Math.PI / 2;
       pLamp.position.set(
         -17.39 - 0.204,
-        tpBoardY + 0.34,
+        tpBoardY + 0.22,
         tpBoardZ - 0.08 + p * 0.045
       );
       elecGroup.add(pLamp);
@@ -237,19 +237,19 @@ export function buildPlantRoomElectrics(
         new THREE.Mesh(warningPlaqueGeo, dangerYellowMat)
       );
       warningPlaque.name = `plantRoom.electricalDistribution.warningPlaque.${wIdx + 1}`;
-      warningPlaque.position.set(-17.39 - 0.202, tier2FloorY + 1.88, wz);
+      warningPlaque.position.set(-17.39 - 0.202, tier2FloorY + 1.62, wz);
       elecGroup.add(warningPlaque);
     }
 
     // Vertical galvanized steel cable risers connecting both boards to the overhead trunking & floor conduit
-    const riserGeo = createSharedGeo(new THREE.BoxGeometry(0.08, 0.32, 0.08));
+    const riserGeo = createSharedGeo(new THREE.BoxGeometry(0.08, 0.14, 0.08));
     for (const [rIdx, rz] of ([knxBoardZ - 0.14, knxBoardZ + 0.14, tpBoardZ - 0.12, tpBoardZ + 0.12] as const).entries()) {
       const riser = new THREE.Mesh(
         riserGeo,
         trunkingGalvMat
       );
       riser.name = `plantRoom.electricalDistribution.cableRiser.${rIdx + 1}`;
-      riser.position.set(-17.39 - 0.06, tier2FloorY + 2.22, rz);
+      riser.position.set(-17.39 - 0.06, tier2FloorY + 1.79, rz);
       elecGroup.add(riser);
     }
 
@@ -408,10 +408,10 @@ export function buildPlantRoomElectrics(
     batterySystemGroup.add(stackGroup);
 
     // 2. Wall-Mounted 3-Phase Whole-Home Backup Gateway / Automatic Transfer Switch (0ms UPS ATS)
-    //    Positioned at X = -17.78m, Y = tier2FloorY + 1.34m, Z = 11.39m (0.42m W x 0.62m H x 0.18m D, facing North -Z)
+    //    Positioned at X = -17.78m, Y = tier2FloorY + 1.26m, Z = 11.39m (0.42m W x 0.62m H x 0.18m D, facing North -Z)
     const gatewayGroup = new THREE.Group();
     gatewayGroup.name = 'plantRoom.homeBatterySystem.backupGateway';
-    gatewayGroup.position.set(-17.78, tier2FloorY + 1.34, 11.39);
+    gatewayGroup.position.set(-17.78, tier2FloorY + 1.26, 11.39);
 
     const gwW = 0.42;
     const gwH = 0.62;
@@ -478,17 +478,17 @@ export function buildPlantRoomElectrics(
       trunkingGalvMat
     );
     southHeaderTrunking.name = 'plantRoom.homeBatterySystem.southTrunking';
-    southHeaderTrunking.position.set(-18.08, tier2FloorY + 2.38, 11.39);
+    southHeaderTrunking.position.set(-18.08, tier2FloorY + 1.88, 11.39);
     southHeaderTrunking.castShadow = true;
     batterySystemGroup.add(southHeaderTrunking);
 
     // Vertical armored risers from the Inverter & Backup Gateway up to the South galvanized trunking header
-    const batRiserLongGeo = createSharedGeo(new THREE.BoxGeometry(0.068, 0.80, 0.068));
-    const batRiserShortGeo = createSharedGeo(new THREE.BoxGeometry(0.068, 0.74, 0.068));
+    const batRiserLongGeo = createSharedGeo(new THREE.BoxGeometry(0.068, 0.25, 0.068));
+    const batRiserShortGeo = createSharedGeo(new THREE.BoxGeometry(0.068, 0.23, 0.068));
     for (const [rIdx, rx] of ([-18.32, -17.86, -17.70] as const).entries()) {
-      const isLong = rx === -18.32;
-      const rH = isLong ? 0.80 : 0.74;
-      const rMidY = tier2FloorY + 2.31 - rH * 0.5;
+      const isLong = rx !== -18.32;
+      const rH = isLong ? 0.25 : 0.23;
+      const rMidY = tier2FloorY + 1.81 - rH * 0.5;
       const batRiser = new THREE.Mesh(
         isLong ? batRiserLongGeo : batRiserShortGeo,
         trunkingGalvMat

@@ -56,7 +56,7 @@ export function buildEntranceHall(
       'addExteriorBrickWall' | 'applyWorldSpaceBrickUVs'
     > &
     Pick<ReturnType<typeof buildDiningRoom>, 'lowerFloorY'> &
-    Pick<ReturnType<typeof defineTier2Levels>, 'tier2FloorY'> &
+    Pick<ReturnType<typeof defineTier2Levels>, 'entranceHallFloorY' | 'tier2FloorY'> &
     Pick<ReturnType<typeof buildLivingRoom>, 'entranceHallNorthWallFrame'>
 ): void {
   const { groundFloorCeilingGroup, interactions, scene } = ctx;
@@ -69,6 +69,7 @@ export function buildEntranceHall(
     ceramicWhiteMat,
     doorH,
     engineeredOakFloorMat,
+    entranceHallFloorY,
     entranceHallNorthWallFrame,
     exteriorBrickMat,
     farrowAndBallCordMat,
@@ -88,7 +89,8 @@ export function buildEntranceHall(
   // =========================================================================
   // 5. FRONT ENTRANCE HALLWAY (IN) — IRREGULAR TRAPEZOID WITH TWO 100% STRAIGHT WALLS
   //    (media_1790618728778.webp to media_1790618728869.webp & media_1790619068355.png)
-  //    Polygonal floor at Y = -0.60m (Fayrouz Vitoria Classic Rosso 30cm diagonal chequerboard porcelain):
+  //    Survey2Plan Floor 1596581: Polygonal floor at Y = -0.495m (-195mm single step down from GF Hall -0.30m,
+  //    and +105mm step up above Cinema Room & Sitting Room at Y = -0.60m):
   //    - Straight North Wall (zero kinks): [-22.19, 1.905] -> [-17.891, 2.48] -> [-16.36, 2.685]
   //    - Straight South Wall (zero kinks): [-22.19, 3.625] -> [-16.44, 3.625]
   //    - Issue #4: On the ground floor only, the East end wall juts out slightly (to X = -16.44m..-16.16m)
@@ -103,7 +105,7 @@ export function buildEntranceHall(
       [-16.44, 3.625],
       [-22.42, 3.625],
     ],
-    tier2FloorY,
+    entranceHallFloorY,
     0.08,
     vitoriaChequerTileMat,
     vitoriaChequerUvScale
@@ -111,14 +113,14 @@ export function buildEntranceHall(
 
   // East Continuation of the Straight North Wall ([-17.891, 2.48] -> [-16.92, 2.61], 0.28m thick, length 0.98m):
   // 100% collinear with both the Cinema Room South wall ([-22.19, 1.905] -> [-17.891, 2.48]) and the
-  // Hall South exterior brick wall, separating the Front Entrance Hallway (Y = -0.60m) from the
-  // Main Stair Hall (Y = -0.30m) with the 30cm step-up opening (`uCenter = 0.535m` from `[-17.891, 2.48]`)!
+  // Hall South exterior brick wall, separating the Front Entrance Hallway (Y = -0.495m) from the
+  // Main Stair Hall (Y = -0.30m) with the 195mm step-up opening (`uCenter = 0.535m` from `[-17.891, 2.48]`)!
   buildAngledWallSegment(scene, interactions, {
     start: [-17.891, 2.48],
     end: [-16.92, 2.61],
     thickness: 0.28,
     topY: 2.0,
-    frontFloorY: tier2FloorY,
+    frontFloorY: entranceHallFloorY,
     backFloorY: lowerFloorY,
     wallMaterial: warmRoomPlasterMat,
     capMaterial: wallCapMat,
@@ -132,7 +134,7 @@ export function buildEntranceHall(
         uCenter: 0.535,
         width: 0.74,
         doorHeight: doorH,
-        lowerFloorY: tier2FloorY,
+        lowerFloorY: entranceHallFloorY,
         upperFloorY: lowerFloorY,
         stepMaterial: engineeredOakFloorMat,
         architraveMaterial: antiqueOakSkirtingMat,
@@ -149,7 +151,7 @@ export function buildEntranceHall(
     end: [-16.256, 2.699],
     thickness: 0.28,
     topY: frontWallH,
-    frontFloorY: tier2FloorY,
+    frontFloorY: entranceHallFloorY,
     backFloorY: lowerFloorY,
     wallMaterial: warmRoomPlasterMat,
     capMaterial: wallCapMat,
@@ -161,7 +163,7 @@ export function buildEntranceHall(
   // West Exterior Front Entrance Wall (0.28m thick, X = -22.19m..-22.47m, Z = +2.045m..+3.70m)
   // With Front Entrance Doorway (Z = +2.30m..+3.37m) + Fanlight + Solid Oak Doorframe & Refined Architrave (Issue #5)
   // Kept permanently visible (`isArchitecturalShell = true`, NOT cutaway) so the Front Door is always visible from outside!
-  const frontDoorHeadY = tier2FloorY + 2.08; // 1.48m (fits cleanly beneath frontWallH = 1.625m — Issue #1)
+  const frontDoorHeadY = entranceHallFloorY + 2.02; // 1.525m (fits cleanly beneath frontWallH = 1.625m — Issue #1)
   const addPermanentFrontEntranceBrickPiece = (
     pieceName: string,
     minZ: number,
@@ -221,7 +223,7 @@ export function buildEntranceHall(
                 [-22.19, skirtZMax],
                 [-22.19, skirtZMin],
               ],
-              tier2FloorY
+              entranceHallFloorY
             )
           ),
           antiqueOakSkirtingMat
@@ -237,13 +239,13 @@ export function buildEntranceHall(
   addPermanentFrontEntranceBrickPiece('southPier', 3.37, 3.7, 0, frontWallH, true);
   addPermanentFrontEntranceBrickPiece('lintel', 2.3, 3.37, frontDoorHeadY, frontWallH, false);
 
-  // Stone front entrance steps (IN) outside the West Front Door (X = -22.47m..-23.15m, Z = +2.10m..+3.57m, seated at Y = -0.60m)
+  // Stone front entrance steps (IN) outside the West Front Door (X = -22.47m..-23.15m, Z = +2.10m..+3.57m, rising to entranceHallFloorY = -0.495m)
   const frontStepSlab = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.68, 0.12, 1.56)),
+    createSharedGeo(new THREE.BoxGeometry(0.68, 0.19, 1.56)),
     stoneSillMat
   );
   frontStepSlab.name = 'entranceHall.frontStepSlab';
-  frontStepSlab.position.set(-22.81, tier2FloorY + 0.02, 2.835);
+  frontStepSlab.position.set(-22.81, entranceHallFloorY - 0.02, 2.835);
   frontStepSlab.receiveShadow = true;
   frontStepSlab.userData.isArchitecturalShell = true;
   scene.add(frontStepSlab);
@@ -256,23 +258,23 @@ export function buildEntranceHall(
   });
 
   // Exterior pilasters & cornice hood on West facade
-  const pilasterGeo = createSharedGeo(new THREE.BoxGeometry(0.11, 2.14, 0.14));
+  const pilasterGeo = createSharedGeo(new THREE.BoxGeometry(0.11, 2.08, 0.14));
   for (const pz of [2.22, 3.45]) {
     const pilaster = new THREE.Mesh(pilasterGeo, frontDoorOakFrameMat);
     pilaster.name = 'entranceHall.frontDoorArchitrave.exteriorPilaster';
-    pilaster.position.set(-22.51, tier2FloorY + 1.07, pz);
+    pilaster.position.set(-22.51, entranceHallFloorY + 1.04, pz);
     pilaster.castShadow = true;
     pilaster.userData.isArchitecturalShell = true;
     scene.add(pilaster);
   }
 
   // Solid oak reveal jambs (spanning wall depth) + refined, slightly less substantial interior oak architrave
-  const frameJambGeo = createSharedGeo(new THREE.BoxGeometry(0.3, 2.1, 0.068));
+  const frameJambGeo = createSharedGeo(new THREE.BoxGeometry(0.3, 2.04, 0.068));
   const plinthBlockGeo = createSharedGeo(new THREE.BoxGeometry(0.038, 0.2, 0.125));
   for (const sideZ of [-1, 1] as const) {
     const frameJamb = new THREE.Mesh(frameJambGeo, frontDoorOakFrameMat);
     frameJamb.name = 'entranceHall.frontDoorArchitrave.jamb';
-    frameJamb.position.set(-22.33, tier2FloorY + 1.05, 2.835 + sideZ * 0.505);
+    frameJamb.position.set(-22.33, entranceHallFloorY + 1.02, 2.835 + sideZ * 0.505);
     frameJamb.castShadow = true;
     frameJamb.receiveShadow = true;
     frameJamb.userData.isArchitecturalShell = true;
@@ -283,7 +285,7 @@ export function buildEntranceHall(
     interiorPlinthBlock.name = 'entranceHall.frontDoorArchitrave.plinthBlock';
     interiorPlinthBlock.position.set(
       -22.171,
-      tier2FloorY + 0.1,
+      entranceHallFloorY + 0.1,
       2.835 + sideZ * 0.53
     );
     interiorPlinthBlock.castShadow = true;
@@ -297,7 +299,7 @@ export function buildEntranceHall(
     frontDoorOakFrameMat
   );
   frameHead.name = 'entranceHall.frontDoorArchitrave.head';
-  frameHead.position.set(-22.33, tier2FloorY + 2.075, 2.835);
+  frameHead.position.set(-22.33, entranceHallFloorY + 2.015, 2.835);
   frameHead.castShadow = true;
   frameHead.userData.isArchitecturalShell = true;
   scene.add(frameHead);
@@ -308,9 +310,9 @@ export function buildEntranceHall(
     wallThickness: 0.28,
     openingCenter: 2.835,
     openingWidth: 0.96,
-    frontFloorY: tier2FloorY + 0.2,
-    backFloorY: tier2FloorY + 0.2,
-    headY: tier2FloorY + 2.065,
+    frontFloorY: entranceHallFloorY + 0.2,
+    backFloorY: entranceHallFloorY + 0.2,
+    headY: entranceHallFloorY + 2.005,
     material: frontDoorOakFrameMat,
     architraveWidth: 0.115,
     includeRevealLining: false,
@@ -324,7 +326,7 @@ export function buildEntranceHall(
     frontDoorOakFrameMat
   );
   transomBar.name = 'entranceHall.frontDoorArchitrave.transomBar';
-  transomBar.position.set(-22.33, tier2FloorY + 1.88, 2.835);
+  transomBar.position.set(-22.33, entranceHallFloorY + 1.835, 2.835);
   transomBar.castShadow = true;
   transomBar.userData.isArchitecturalShell = true;
   scene.add(transomBar);
@@ -334,36 +336,36 @@ export function buildEntranceHall(
     frontDoorOakFrameMat
   );
   doorCorniceHood.name = 'entranceHall.frontDoorArchitrave.corniceHood';
-  doorCorniceHood.position.set(-22.56, tier2FloorY + 2.14, 2.835);
+  doorCorniceHood.position.set(-22.56, entranceHallFloorY + 2.065, 2.835);
   doorCorniceHood.castShadow = true;
   doorCorniceHood.userData.isArchitecturalShell = true;
   scene.add(doorCorniceHood);
 
-  // Fanlight transom glass + solid oak vertical glazing bars above the Front Entrance Door (Y = tier2FloorY + 1.90m..2.05m)
+  // Fanlight transom glass + solid oak vertical glazing bars above the Front Entrance Door
   const fanlightGlass = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.02, 0.15, 0.96)),
+    createSharedGeo(new THREE.BoxGeometry(0.02, 0.13, 0.96)),
     windowGlassMat
   );
   fanlightGlass.name = 'entranceHall.frontDoorArchitrave.fanlightGlass';
-  fanlightGlass.position.set(-22.33, tier2FloorY + 1.975, 2.835);
+  fanlightGlass.position.set(-22.33, entranceHallFloorY + 1.925, 2.835);
   fanlightGlass.userData.isArchitecturalShell = true;
   scene.add(fanlightGlass);
 
-  const fanBarGeo = createSharedGeo(new THREE.BoxGeometry(0.048, 0.15, 0.032));
+  const fanBarGeo = createSharedGeo(new THREE.BoxGeometry(0.048, 0.13, 0.032));
   for (const [bIdx, fz] of ([2.59, 2.835, 3.08] as const).entries()) {
     const fanBar = tagHighLod(new THREE.Mesh(fanBarGeo, frontDoorOakFrameMat));
     fanBar.name = `entranceHall.frontDoorArchitrave.fanlightBar.${bIdx + 1}`;
-    fanBar.position.set(-22.33, tier2FloorY + 1.975, fz);
+    fanBar.position.set(-22.33, entranceHallFloorY + 1.925, fz);
     fanBar.userData.isArchitecturalShell = true;
     scene.add(fanBar);
   }
 
-  // Issue #6: Natural Woven Coir Doormat inside the Front Entrance Door (X = -21.82m, Y = tier2FloorY, Z = 2.835m)
+  // Issue #6: Natural Woven Coir Doormat inside the Front Entrance Door (X = -21.82m, Y = entranceHallFloorY, Z = 2.835m)
   {
     const doormatGroup = new THREE.Group();
     doormatGroup.name = 'entranceHall.doormat';
     doormatGroup.userData.zone = 'entranceHall';
-    doormatGroup.position.set(-21.82, tier2FloorY, 2.835);
+    doormatGroup.position.set(-21.82, entranceHallFloorY, 2.835);
 
     const coirFiberMat = new THREE.MeshStandardMaterial({
       color: 0x9e7b52, // Natural warm golden-brown bristle coir
@@ -398,7 +400,7 @@ export function buildEntranceHall(
     scene.add(doormatGroup);
   }
 
-  // Interactive Formal 6-Panel Front Entrance Door (IN) seated at Y = -0.60m (visible from both outside and inside!)
+  // Interactive Formal 6-Panel Front Entrance Door (IN) seated at Y = -0.495m (visible from both outside and inside!)
   const frontDoorPanelMat = new THREE.MeshStandardMaterial({
     color: 0x1c2623,
     roughness: 0.34,
@@ -406,9 +408,9 @@ export function buildEntranceHall(
   });
   const frontDoorObj = new THREE.Group();
   frontDoorObj.name = 'entranceHall.frontDoor';
-  frontDoorObj.position.set(-22.33, tier2FloorY + 0.93, 2.835);
+  frontDoorObj.position.set(-22.33, entranceHallFloorY + 0.905, 2.835);
   const frontDoorLeaf = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.058, 1.85, 0.98)),
+    createSharedGeo(new THREE.BoxGeometry(0.058, 1.80, 0.98)),
     frontDoorMat
   );
   frontDoorLeaf.name = 'entranceHall.frontDoor.leaf';
@@ -810,8 +812,8 @@ export function buildEntranceHall(
     end: [-17.0, 3.625],
     thickness: 0.15,
     topY: frontWallH,
-    frontFloorY: tier2FloorY, // +normal = South (Living Room at Y = -0.60m)
-    backFloorY: tier2FloorY, // -normal = North (Front Entrance Hallway at Y = -0.60m)
+    frontFloorY: tier2FloorY, // +normal = South (Sitting Room at Y = -0.60m)
+    backFloorY: entranceHallFloorY, // -normal = North (Front Entrance Hallway at Y = -0.495m)
     wallMaterial: warmRoomPlasterMat,
     frontFaceMaterial: farrowAndBallCordMat,
     backFaceMaterial: warmRoomPlasterMat,
@@ -825,14 +827,15 @@ export function buildEntranceHall(
         kind: 'hinged-door',
         uCenter: 4.42,
         width: 0.86,
-        doorHeight: doorH,
+        doorHeight: doorH - 0.105,
         lowerFloorY: tier2FloorY,
-        upperFloorY: tier2FloorY,
+        upperFloorY: entranceHallFloorY,
+        stepMaterial: engineeredOakFloorMat,
         architraveMaterial: antiqueOakSkirtingMat,
         doorLeafMaterial: timberDoorMat,
         hardwareMaterial: brassMat,
         hingeSide: 'right',
-        openAngle: Math.PI * 0.45, // Swings SOUTH (+Z, into the Living Room) clear of the hallway!
+        openAngle: Math.PI * 0.45, // Swings SOUTH (+Z, into the Sitting Room) clear of the hallway!
         initialOpenProgress: 0.85,
       },
     ],

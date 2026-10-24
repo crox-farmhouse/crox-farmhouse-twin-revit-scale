@@ -521,7 +521,7 @@ export function buildSplitStableDoor(
   parent.add(doorGroup);
 }
 
-const sharedEastWinPostGeo = prepGeo(new THREE.BoxGeometry(0.26, 2.52, 0.055));
+const sharedEastWinPostGeo = prepGeo(new THREE.BoxGeometry(0.26, 2.09, 0.055));
 
 export function buildFullHeightEastWindow(
   parent: THREE.Object3D,
@@ -541,6 +541,11 @@ export function buildFullHeightEastWindow(
     roughness: 0.62,
     metalness: 0.02,
   });
+  const whiteSashMat = new THREE.MeshStandardMaterial({
+    color: 0xf4f1ea,
+    roughness: 0.34,
+    metalness: 0.04,
+  });
   const glassMat = new THREE.MeshStandardMaterial({
     color: 0xbad8f5,
     transparent: true,
@@ -549,8 +554,9 @@ export function buildFullHeightEastWindow(
     metalness: 0.2,
   });
 
-  const winW = 2.0;
-  const winH = 2.52;
+  // Survey2Plan Win 1724581: 1.18m x 2.09m full-height single glazed unit (`S2P-Windows-SglPlainK`)
+  const winW = 1.18;
+  const winH = 2.09;
 
   // Floor sill and top head frame (sized for 0.28m exterior brick wall)
   const sill = new THREE.Mesh(
@@ -558,7 +564,7 @@ export function buildFullHeightEastWindow(
     oakFrameMat
   );
   sill.name = 'kitchen.eastWindow.sill';
-  sill.position.set(0, 0.022, 0);
+  sill.position.set(0, 0.0225, 0);
   winGroup.add(sill);
 
   const head = new THREE.Mesh(
@@ -569,8 +575,8 @@ export function buildFullHeightEastWindow(
   head.position.set(0, winH - 0.03, 0);
   winGroup.add(head);
 
-  // Outer jambs + 2 internal vertical mullions (3 tall full-height bays)
-  const postPositions = [-winW / 2 + 0.03, -winW / 6, winW / 6, winW / 2 - 0.03] as const;
+  // Outer jambs (single full-height glazed unit, no intermediate vertical mullions)
+  const postPositions = [-winW / 2 + 0.0275, winW / 2 - 0.0275] as const;
   for (let i = 0; i < postPositions.length; i++) {
     const post = new THREE.Mesh(sharedEastWinPostGeo, oakFrameMat);
     post.name = `kitchen.eastWindow.mullionPost_${i}`;
@@ -579,13 +585,164 @@ export function buildFullHeightEastWindow(
     winGroup.add(post);
   }
 
+  // Inset glazed sash sub-frame (`SglPlainK`)
+  const clearW = winW - 0.11;
+  const clearH = winH - 0.105;
+  const sashW = 0.032;
+  for (const sSign of [-1, 1] as const) {
+    const sStile = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(0.052, clearH, sashW)),
+      whiteSashMat
+    );
+    sStile.name = `kitchen.eastWindow.sashStile_${sSign < 0 ? 'north' : 'south'}`;
+    sStile.position.set(0, 0.045 + clearH * 0.5, sSign * (clearW * 0.5 - sashW * 0.5));
+    winGroup.add(sStile);
+
+    const sRail = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(0.052, sashW, clearW)),
+      whiteSashMat
+    );
+    sRail.name = `kitchen.eastWindow.sashRail_${sSign < 0 ? 'bottom' : 'top'}`;
+    sRail.position.set(0, 0.045 + clearH * 0.5 + sSign * (clearH * 0.5 - sashW * 0.5), 0);
+    winGroup.add(sRail);
+  }
+
   // Full-height glass pane
   const glass = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(0.016, winH - 0.09, winW - 0.1)),
+    prepGeo(new THREE.BoxGeometry(0.016, clearH - sashW * 2 + 0.008, clearW - sashW * 2 + 0.008)),
     glassMat
   );
   glass.name = 'kitchen.eastWindow.glassPane';
-  glass.position.set(0, winH / 2, 0);
+  glass.position.set(0, 0.045 + clearH * 0.5, 0);
+  winGroup.add(glass);
+
+  parent.add(winGroup);
+}
+
+/**
+ * Survey2Plan Win 1725531: 0.58m x 0.91m high-level single casement (`S2P-Windows-SglPlainK`)
+ * on the Kitchen Sitting Area East gable wall (`Y = 1.21m..2.12m`).
+ */
+function buildHighLevelEastCasementWindow(
+  parent: THREE.Object3D,
+  x: number,
+  centerZ: number
+): void {
+  const winGroup = new THREE.Group();
+  winGroup.name = 'kitchen.eastHighWindow.group';
+  const sillY = 1.21;
+  const winW = 0.58;
+  const winH = 0.91;
+  winGroup.position.set(x, sillY, centerZ);
+
+  const naturalOakTex = createNaturalOakJoineryTextures();
+  const oakTrimMat = new THREE.MeshStandardMaterial({
+    map: naturalOakTex.colorMap,
+    bumpMap: naturalOakTex.bumpMap,
+    bumpScale: 0.0035,
+    color: 0xdcc8ae,
+    roughness: 0.62,
+    metalness: 0.02,
+  });
+  const stoneSillMat = new THREE.MeshStandardMaterial({
+    color: 0xc8c0b0,
+    roughness: 0.78,
+    metalness: 0.03,
+  });
+  const whiteFrameMat = new THREE.MeshStandardMaterial({
+    color: 0xf4f1ea,
+    roughness: 0.34,
+    metalness: 0.04,
+  });
+  const brassStayMat = new THREE.MeshStandardMaterial({
+    color: 0xb8924a,
+    roughness: 0.28,
+    metalness: 0.82,
+  });
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0xbad8f5,
+    transparent: true,
+    opacity: 0.18,
+    roughness: 0.1,
+    metalness: 0.2,
+  });
+
+  // Exterior stone sill & interior oak bullnose window board
+  const extSill = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.185, 0.06, winW + 0.1)),
+    stoneSillMat
+  );
+  extSill.name = 'kitchen.eastHighWindow.extSill';
+  extSill.position.set(0.085, -0.02, 0);
+  winGroup.add(extSill);
+
+  const intBoard = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.165, 0.032, winW + 0.08)),
+    oakTrimMat
+  );
+  intBoard.name = 'kitchen.eastHighWindow.oakBoard';
+  intBoard.position.set(-0.08, 0.016, 0);
+  winGroup.add(intBoard);
+
+  // Outer casement frame + 3D inset sash sub-frame & brass casement stay
+  for (const zSide of [-1, 1] as const) {
+    const jamb = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(0.11, winH, 0.042)),
+      whiteFrameMat
+    );
+    jamb.name = `kitchen.eastHighWindow.jamb_${zSide < 0 ? 'north' : 'south'}`;
+    jamb.position.set(0.015, winH * 0.5, zSide * (winW * 0.5 - 0.021));
+    winGroup.add(jamb);
+  }
+  for (const [ry, rTag] of [
+    [0.021, 'bottomRail'],
+    [winH - 0.021, 'topRail'],
+  ] as const) {
+    const rail = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(0.105, 0.042, winW)),
+      whiteFrameMat
+    );
+    rail.name = `kitchen.eastHighWindow.${rTag}`;
+    rail.position.set(0.015, ry, 0);
+    winGroup.add(rail);
+  }
+
+  const clearW = winW - 0.084;
+  const clearH = winH - 0.084;
+  const sashW = 0.028;
+  for (const sSign of [-1, 1] as const) {
+    const sStile = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(0.046, clearH - 0.008, sashW)),
+      whiteFrameMat
+    );
+    sStile.name = `kitchen.eastHighWindow.sashStile_${sSign < 0 ? 'north' : 'south'}`;
+    sStile.position.set(0.015, winH * 0.5, sSign * (clearW * 0.5 - sashW * 0.5 - 0.004));
+    winGroup.add(sStile);
+
+    const sRail = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(0.046, sashW, clearW - 0.008)),
+      whiteFrameMat
+    );
+    sRail.name = `kitchen.eastHighWindow.sashRail_${sSign < 0 ? 'bottom' : 'top'}`;
+    sRail.position.set(0.015, winH * 0.5 + sSign * (clearH * 0.5 - sashW * 0.5 - 0.004), 0);
+    winGroup.add(sRail);
+  }
+
+  const stay = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.014, 0.012, 0.11)),
+    brassStayMat
+  );
+  stay.name = 'kitchen.eastHighWindow.casementStay';
+  stay.position.set(-0.022, 0.052, 0);
+  tagHighLod(stay);
+  winGroup.add(stay);
+
+  const glass = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.016, clearH - sashW * 2 + 0.008, clearW - sashW * 2 + 0.008)),
+    glassMat
+  );
+  glass.name = 'kitchen.eastHighWindow.glassPane';
+  glass.position.set(0.015, winH * 0.5, 0);
   winGroup.add(glass);
 
   parent.add(winGroup);
@@ -828,6 +985,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
 
   // =========================================================================
   // EAST EXTERIOR BRICK WALL (X = +5.00m..+5.28m, Z = -2.78m to +2.27m, thickness 0.28m)
+  // Calibrated to Survey2Plan Door 1729331 + Win 1724581 (1.18x2.09m) + Win 1725531 (0.58x0.91m)
   // =========================================================================
   const eastWallCenterX = 5.0 + extWallThick / 2; // +5.14m
 
@@ -847,13 +1005,37 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
     'utility.eastWall.lowBaseMid',
     extWallThick,
     0.18,
-    0.575,
+    0.495,
     eastWallCenterX,
     0.09,
-    -0.6375,
+    -0.6775,
     ['-x']
   );
   scene.add(eastWallLowBaseMid);
+
+  const eastWallLowBaseBetweenWins = createExteriorBrickWallBox(
+    'kitchen.eastWall.lowBaseBetweenWins',
+    extWallThick,
+    0.18,
+    0.32,
+    eastWallCenterX,
+    0.09,
+    0.91,
+    ['-x']
+  );
+  scene.add(eastWallLowBaseBetweenWins);
+
+  const eastWallLowBaseHighWin = createExteriorBrickWallBox(
+    'kitchen.eastWall.lowBaseHighWin',
+    extWallThick,
+    0.18,
+    0.58,
+    eastWallCenterX,
+    0.09,
+    1.36,
+    ['-x']
+  );
+  scene.add(eastWallLowBaseHighWin);
 
   const eastWallLowBaseSouth = createExteriorBrickWallBox(
     'kitchen.eastWall.lowBaseSouth',
@@ -882,10 +1064,10 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   const eastWallUtilDoorHeader = createExteriorBrickWallBox(
     'utility.eastWall.doorHeader',
     extWallThick,
-    0.86,
+    0.925,
     0.88,
     eastWallCenterX,
-    2.57,
+    2.5375,
     -1.365,
     ['-x']
   );
@@ -895,15 +1077,15 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
     'utility.eastWall.midPier',
     extWallThick,
     wallHeight - 0.18,
-    0.575,
+    0.495,
     eastWallCenterX,
     0.18 + (wallHeight - 0.18) / 2,
-    -0.6375,
+    -0.6775,
     ['-x']
   );
   cutawayWallGroups.east.add(eastWallMidPier);
 
-  // Exterior Split Stable Exit Door on the East end of the Utility Room (X = +5.14m, Z = -1.365m)
+  // Exterior Split Stable Exit Door on the East end of the Utility Room (Door 1729331 at X = +5.14m, Z = -1.365m)
   buildSplitStableDoor(
     cutawayWallGroups.east,
     interactions,
@@ -911,6 +1093,58 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
     -1.365,
     -Math.PI / 2
   );
+
+  const eastWindowHeader = createExteriorBrickWallBox(
+    'kitchen.eastWall.windowHeader',
+    extWallThick,
+    0.91,
+    1.18,
+    eastWallCenterX,
+    2.545,
+    0.16,
+    ['-x']
+  );
+  cutawayWallGroups.east.add(eastWindowHeader);
+
+  buildFullHeightEastWindow(cutawayWallGroups.east, eastWallCenterX, 0.16);
+
+  const eastWallBetweenWinsPier = createExteriorBrickWallBox(
+    'kitchen.eastWall.betweenWinsPier',
+    extWallThick,
+    wallHeight - 0.18,
+    0.32,
+    eastWallCenterX,
+    0.18 + (wallHeight - 0.18) / 2,
+    0.91,
+    ['-x']
+  );
+  cutawayWallGroups.east.add(eastWallBetweenWinsPier);
+
+  const eastHighWinSpandrelLower = createExteriorBrickWallBox(
+    'kitchen.eastWall.highWinSpandrelLower',
+    extWallThick,
+    1.03,
+    0.58,
+    eastWallCenterX,
+    0.695,
+    1.36,
+    ['-x']
+  );
+  cutawayWallGroups.east.add(eastHighWinSpandrelLower);
+
+  const eastHighWinHeader = createExteriorBrickWallBox(
+    'kitchen.eastWall.highWinHeader',
+    extWallThick,
+    0.88,
+    0.58,
+    eastWallCenterX,
+    2.56,
+    1.36,
+    ['-x']
+  );
+  cutawayWallGroups.east.add(eastHighWinHeader);
+
+  buildHighLevelEastCasementWindow(cutawayWallGroups.east, eastWallCenterX, 1.36);
 
   const eastWallSouthPier = createExteriorBrickWallBox(
     'kitchen.eastWall.southPier',
@@ -924,29 +1158,16 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   );
   cutawayWallGroups.east.add(eastWallSouthPier);
 
-  const eastWindowHeader = createExteriorBrickWallBox(
-    'kitchen.eastWall.windowHeader',
-    extWallThick,
-    0.48,
-    2.0,
-    eastWallCenterX,
-    2.76,
-    0.65,
-    ['-x']
-  );
-  cutawayWallGroups.east.add(eastWindowHeader);
-
-  buildFullHeightEastWindow(cutawayWallGroups.east, eastWallCenterX, 0.65);
-
   // =========================================================================
   // UTILITY ROOM CUTOUT (Exact Plan Dimensions: 3.00m x 1.65m = 9'10" x 5'5")
   // =========================================================================
+  const westKitchenFlatCeilH = 2.54; // Survey2Plan Ceil 1609635 = 2.53m..2.555m flat ceiling soffit
   const utilWestWall = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(partWallThick, wallHeight, 1.8)),
+    prepGeo(new THREE.BoxGeometry(partWallThick, westKitchenFlatCeilH, 1.8)),
     wallMat
   );
   utilWestWall.name = 'utility.westPartitionWall';
-  utilWestWall.position.set(1.925, wallHeight / 2, -1.6);
+  utilWestWall.position.set(1.925, westKitchenFlatCeilH / 2, -1.6);
   utilWestWall.castShadow = true;
   utilWestWall.receiveShadow = true;
   scene.add(utilWestWall);
@@ -1080,15 +1301,16 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
 
   scene.add(hawaiiFrameGroup);
 
-  // South Front Wall at Z = +2.13m
+  // South Front Wall at Z = +2.13m — calibrated to Survey2Plan Win 1720246 (2.42x2.11m 3-panel sliding screen)
+  // and Win 1722895 (3.55x2.07m 4-panel sliding/bifold doors)
   const southWallCenterZ = 1.99 + extWallThick / 2; // +2.13m
 
   const southLowCutaway = createExteriorBrickWallBox(
     'kitchen.southWall.westLowCutaway',
-    2.08,
+    1.74,
     0.18,
     extWallThick,
-    -3.36,
+    -3.53,
     0.09,
     southWallCenterZ,
     ['-z', '-x']
@@ -1097,37 +1319,37 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
 
   const southWestFullWall = createExteriorBrickWallBox(
     'kitchen.southWall.westFullWall',
-    2.08,
+    1.74,
     wallHeight - 0.18,
     extWallThick,
-    -3.36,
+    -3.53,
     0.18 + (wallHeight - 0.18) / 2,
     southWallCenterZ,
     ['-z', '-x']
   );
   cutawayWallGroups.southWest.add(southWestFullWall);
 
-  // Exterior Imperial Brick / interior plaster wall strip above the 3-Pane Window's thick Oak Mantel (Y = 2.74m to 3.00m)
+  // Exterior Imperial Brick / interior plaster wall strip above the 2.42x2.11m 3-Panel Screen's Oak Mantel (Y = 2.405m..3.00m)
   const southWindowHeader = createExteriorBrickWallBox(
     'kitchen.southWall.windowHeader',
-    2.98,
-    0.26,
+    2.82,
+    0.595,
     extWallThick,
-    -0.83,
-    2.87,
+    -1.25,
+    2.7025,
     southWallCenterZ,
     ['-z']
   );
   cutawayWallGroups.southWest.add(southWindowHeader);
 
-  // Exterior Imperial Brick / interior plaster wall strip above the Bifold's thick Oak Mantel (Y = 2.74m to 3.00m)
+  // Exterior Imperial Brick / interior plaster wall strip above the 3.55x2.07m Bifold's Oak Mantel (Y = 2.365m..3.00m)
   const bifoldHeader = createExteriorBrickWallBox(
     'kitchen.southWall.bifoldHeader',
-    3.5,
-    0.26,
+    3.79,
+    0.635,
     extWallThick,
-    3.19,
-    2.87,
+    3.075,
+    2.6825,
     southWallCenterZ,
     ['-z']
   );
@@ -1135,10 +1357,10 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
 
   const bifoldLeftPier = createExteriorBrickWallBox(
     'kitchen.southWall.bifoldLeftPier',
-    0.78,
+    1.02,
     wallHeight,
     extWallThick,
-    1.05,
+    0.67,
     wallHeight / 2,
     southWallCenterZ,
     ['-z']
@@ -1147,10 +1369,10 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
 
   const bifoldRightPier = createExteriorBrickWallBox(
     'kitchen.southWall.bifoldRightPier',
-    0.06,
+    0.03,
     wallHeight,
     extWallThick,
-    4.97,
+    4.985,
     wallHeight / 2,
     southWallCenterZ,
     ['-z']
@@ -1183,20 +1405,20 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   };
 
   addMitredKitchenSkirting('kitchen.skirting.southWestWall', scene, [
-    [-2.32, 1.99],
+    [-2.66, 1.99],
     [-4.4, 1.99],
   ]);
   addMitredKitchenSkirting('kitchen.skirting.southCentralPier', cutawayWallGroups.southWest, [
-    [1.44, 1.99],
-    [0.66, 1.99],
+    [1.18, 1.99],
+    [0.16, 1.99],
   ]);
   addMitredKitchenSkirting('kitchen.skirting.sittingNorthEastCorner', scene, [
     [3.15, -0.7],
     [5.0, -0.7],
-    [5.0, -0.35],
+    [5.0, -0.43],
   ]);
   addMitredKitchenSkirting('kitchen.skirting.sittingSouthEastCorner', scene, [
-    [5.0, 1.65],
+    [5.0, 0.75],
     [5.0, 1.99],
   ]);
   addMitredKitchenSkirting('kitchen.skirting.tvPartitionWall', scene, [
@@ -1214,19 +1436,50 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
     [3.15, -0.85],
   ]);
 
-  // Smooth Plaster Ceiling over the 9.40m x 4.49m Kitchen & Utility Wing
+  // Stepped Plaster Ceiling:
+  // - Survey2Plan Ceil 1609635 = 2.54m flat plaster ceiling soffit over West Kitchen (X = -4.64..+1.85m) and Utility Room (X = +1.85..+5.00m, Z = -2.50..-0.775m)
+  // - East Sitting Area (X = +1.85..+5.24m, Z = -0.775..+1.99m) retains its high 3.00m ceiling, bridged by a crisp vertical plaster bulkhead at X = +1.85m
   const ceilingMat = new THREE.MeshStandardMaterial({
     color: 0xf2eee6,
     roughness: 0.9,
     side: THREE.DoubleSide,
   });
-  const fullCeiling = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(9.64, 0.08, 4.49)),
+  const westKitchenSoffit = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(6.49, 0.06, 4.49)),
     ceilingMat
   );
-  fullCeiling.name = 'kitchen.ceiling.plasterSlab';
-  fullCeiling.position.set(0.18, 3.04, -0.255);
-  ceilingMeshGroup.add(fullCeiling);
+  westKitchenSoffit.name = 'kitchen.ceiling.plasterSlab';
+  westKitchenSoffit.position.set(-1.395, 2.57, -0.255);
+  westKitchenSoffit.receiveShadow = true;
+  ceilingMeshGroup.add(westKitchenSoffit);
+
+  const utilitySoffit = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(3.15, 0.06, 1.725)),
+    ceilingMat
+  );
+  utilitySoffit.name = 'utility.ceiling.plasterSlab';
+  utilitySoffit.position.set(3.425, 2.57, -1.6375);
+  utilitySoffit.receiveShadow = true;
+  ceilingMeshGroup.add(utilitySoffit);
+
+  const sittingHighCeiling = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(3.39, 0.08, 2.765)),
+    ceilingMat
+  );
+  sittingHighCeiling.name = 'kitchen.sitting.ceilingSlab';
+  sittingHighCeiling.position.set(3.545, 3.04, 0.6075);
+  sittingHighCeiling.receiveShadow = true;
+  ceilingMeshGroup.add(sittingHighCeiling);
+
+  const sittingBulkheadFascia = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.08, 0.5, 2.765)),
+    wallMat
+  );
+  sittingBulkheadFascia.name = 'kitchen.ceiling.sittingBulkheadFascia';
+  sittingBulkheadFascia.position.set(1.85, 2.79, 0.6075);
+  sittingBulkheadFascia.castShadow = true;
+  sittingBulkheadFascia.receiveShadow = true;
+  ceilingMeshGroup.add(sittingBulkheadFascia);
 
   // =========================================================================
   // WELSH SLATE PITCHED ROOF, TIMBER SOFFITS, PAINTED FASCIA BOARDS,

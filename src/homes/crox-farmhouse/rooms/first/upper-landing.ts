@@ -53,7 +53,6 @@ export function buildUpperLanding(
     addUpperBrickWallAlongXWithWindow,
     antiqueOakSkirtingMat,
     applyWorldSpaceBrickUVs,
-    doorH,
     exteriorBrickMat,
     floorBaseY,
     floorTopY,
@@ -100,7 +99,9 @@ export function buildUpperLanding(
     metalness: 0.72,
   });
 
-  const collarCeilingY = 4.52;
+  const interiorEavesY = 3.86;
+  const collarCeilingY = 4.65;
+  const westWingCorridorFloorY = 2.095; // Survey2Plan -65mm step down into Room 18 North Lobby
 
   // Non-Square Polygonal Floor Slab for Main Staircase Landing (wrapping around the X = -17.69m..-15.36m, Z = -2.50m..-0.58m stairwell void,
   // stopping at the z_ew = 2.22m North face of the 0.46m South wall, and extending into the West Cross-Wall cased opening reveal z_ew = 1.232m..2.090m!)
@@ -505,7 +506,7 @@ export function buildUpperLanding(
     tagUpperCutawayWall(northWallMidBeamMoulding, northCutawayDescriptor);
     scene.add(northWallMidBeamMoulding);
 
-    // Upper Natural Oak Eaves Wall-Plate Beam along the top of the North wall (Y = upperWallTopY - 0.06m = 4.10m)
+    // Upper Natural Oak Eaves Wall-Plate Beam along the top of the North wall (Y = interiorEavesY - 0.06m = 3.80m)
     const northWallTopPlateBeamGeo = new THREE.BoxGeometry(lowerBrickW, 0.12, 0.058);
     northWallTopPlateBeamGeo.computeBoundingSphere();
     const northWallTopPlateBeam = new THREE.Mesh(
@@ -513,7 +514,7 @@ export function buildUpperLanding(
       darkTimberBeamMat
     );
     northWallTopPlateBeam.name = 'upperLanding.northWallTopPlateBeam';
-    northWallTopPlateBeam.position.set(lowerBrickCx, upperWallTopY - 0.06, -2.478);
+    northWallTopPlateBeam.position.set(lowerBrickCx, interiorEavesY - 0.06, -2.478);
     northWallTopPlateBeam.castShadow = true;
     northWallTopPlateBeam.receiveShadow = true;
     tagUpperCutawayWall(northWallTopPlateBeam, northCutawayDescriptor);
@@ -525,7 +526,7 @@ export function buildUpperLanding(
     sharedLowerPostGeo.computeBoundingSphere();
 
     const upperPostBottomY = floorTopY + 1.12;
-    const upperPostTopY = upperWallTopY - 0.12;
+    const upperPostTopY = interiorEavesY - 0.12;
     const upperPostH = upperPostTopY - upperPostBottomY;
     const sharedUpperPostGeo = new THREE.BoxGeometry(0.115, upperPostH, 0.052);
     sharedUpperPostGeo.computeBoundingSphere();
@@ -564,23 +565,22 @@ export function buildUpperLanding(
     }
 
     // Diagonal Natural Oak Timber Brace in the upper North wall bay above the stairwell
-    const northWallDiagonalBraceGeo = new THREE.BoxGeometry(0.11, 1.08, 0.048);
+    const northWallDiagonalBraceGeo = new THREE.BoxGeometry(0.11, 0.82, 0.048);
     northWallDiagonalBraceGeo.computeBoundingSphere();
     const northWallDiagonalBrace = new THREE.Mesh(
       northWallDiagonalBraceGeo,
       darkTimberBeamMat
     );
     northWallDiagonalBrace.name = 'upperLanding.northWallDiagonalBrace';
-    northWallDiagonalBrace.position.set(-16.4, floorTopY + 1.54, -2.48);
-    northWallDiagonalBrace.rotation.z = -0.58;
+    northWallDiagonalBrace.position.set(-16.4, floorTopY + 1.40, -2.48);
+    northWallDiagonalBrace.rotation.z = -0.68;
     northWallDiagonalBrace.castShadow = true;
     tagUpperCutawayWall(northWallDiagonalBrace, northCutawayDescriptor);
     scene.add(northWallDiagonalBrace);
   }
 
-  // Issues #4, #6 & #11: Continuous 0.46m-thick South Wall of Main Stair Landing (Z = +2.22m..+2.68m, X = -17.80m..-12.93m)
-  // Stops at `x_ew = -12.93m` inside the East cross-wall (`x_ew = -13.05m..-12.81m`) so its `+X` brick end face never Z-fights
-  // with the East face of the cross-wall at `x_ew = -12.81m` (Issue #11)!
+  // Continuous 0.46m-thick South Wall of Main Stair Landing (Z = +2.22m..+2.68m, X = -17.80m..-12.93m)
+  // Calibrated to Survey2Plan `Win 1745978` (`1.50m x 0.78m` 3-light casement above the cast-iron column radiator)
   {
     const idx = scene.children.length;
     addUpperBrickWallAlongXWithWindow(
@@ -589,12 +589,16 @@ export function buildUpperLanding(
       2.22,
       2.68,
       -15.35,
-      1.42,
-      2.98,
-      3.76,
+      1.5,
+      2.88,
+      3.66,
       'north',
       3,
-      { skirtingMin: -17.788, skirtingMax: -13.072 }
+      {
+        skirtingMin: -17.788,
+        skirtingMax: -13.072,
+        windowFamily: 'tripleTopHungCentre',
+      }
     );
     ensureNamedAddedChildren(scene, idx, 'upperLanding.southExteriorWall');
   }
@@ -1091,8 +1095,8 @@ export function buildUpperLanding(
     end: [-17.92, 2.68],
     thickness: 0.24,
     topY: upperWallTopY,
-    frontFloorY: floorTopY - 0.08, // +normal = West (Bedroom 2 & Cut-Out Hallway at Y = 2.08m)
-    backFloorY: floorTopY,         // -normal = East (Upper Landing at Y = 2.16m)
+    frontFloorY: westWingCorridorFloorY, // +normal = West (Room 18 North Lobby at Y = 2.095m, -65mm step down)
+    backFloorY: floorTopY,               // -normal = East (Upper Landing at Y = 2.160m)
     wallMaterial: warmRoomPlasterMat,
     capMaterial: warmRoomPlasterMat,
     skirtingMaterial: antiqueOakSkirtingMat,
@@ -1102,16 +1106,16 @@ export function buildUpperLanding(
     addBackSkirting: true,
     backSkirtingExclusions: [
       [0, 1.975],     // Omit skirting across the open Stairwell Void & westWallNewel (Z = -2.50m..-0.53m)
-      [4.732, 5.193], // Omit skirting inside the 0.46m-thick South wall (z_ew = 2.22m..2.68m) while bridging u = 4.692..4.732 (Issue #9)
+      [4.732, 5.193], // Omit skirting inside the 0.46m-thick South wall (z_ew = 2.22m..2.68m)
     ],
     openings: [
       {
         id: 'upperLandingToWestWingPortal',
         kind: 'cased-opening',
         uCenter: 4.18,
-        width: 0.86,
-        doorHeight: doorH,
-        lowerFloorY: floorTopY - 0.08,
+        width: 0.864,
+        doorHeight: 1.88,
+        lowerFloorY: westWingCorridorFloorY,
         upperFloorY: floorTopY,
         architraveMaterial: antiqueOakSkirtingMat,
       },
@@ -1119,25 +1123,24 @@ export function buildUpperLanding(
   });
   ensureNamedAddedChildren(scene, crossWallStartIdx, 'upperLanding.westCrossWall');
 
-  // Issues #3 & #6: Single One-Piece Full-Height Vaulted West Cross-Wall (`Y = floorBaseY..collarCeilingY`, `u = 0..5.2098m`)
-  // Eliminates the horizontal split/cap seam at `Y = 4.16m` (Issue #6) and miters the South end at `z_ew = 2.688m` (Issue #3)!
+  // Single One-Piece Full-Height Vaulted West Cross-Wall (`Y = floorBaseY..collarCeilingY`, `u = 0..5.2098m`)
   {
-    const portalU0 = 4.18 - 0.86 / 2; // 3.75m
-    const portalU1 = 4.18 + 0.86 / 2; // 4.61m
-    const portalTopY = floorTopY + doorH;
+    const portalU0 = 4.18 - 0.864 / 2; // 3.748m
+    const portalU1 = 4.18 + 0.864 / 2; // 4.612m
+    const portalTopY = floorTopY + 1.88; // 4.04m (Door 1684667 CP-06: 1.945m clear above 2.095m West Lobby)
     const southMaxU = 5.2098;
     const westWallShape = new THREE.Shape();
-    westWallShape.moveTo(0, floorBaseY);
-    westWallShape.lineTo(portalU0, floorBaseY);
+    westWallShape.moveTo(0, floorBaseY - 0.04);
+    westWallShape.lineTo(portalU0, floorBaseY - 0.04);
     westWallShape.lineTo(portalU0, portalTopY);
     westWallShape.lineTo(portalU1, portalTopY);
-    westWallShape.lineTo(portalU1, floorBaseY);
-    westWallShape.lineTo(southMaxU, floorBaseY);
+    westWallShape.lineTo(portalU1, floorBaseY - 0.04);
+    westWallShape.lineTo(southMaxU, floorBaseY - 0.04);
     westWallShape.lineTo(southMaxU, upperWallTopY);
-    westWallShape.lineTo(4.96, upperWallTopY);
-    westWallShape.lineTo(3.559, collarCeilingY);
+    westWallShape.lineTo(4.96, interiorEavesY);
+    westWallShape.lineTo(3.86, collarCeilingY);
     westWallShape.lineTo(1.353, collarCeilingY);
-    westWallShape.lineTo(0, upperWallTopY);
+    westWallShape.lineTo(0, interiorEavesY);
     westWallShape.closePath();
 
     const westGableGeo = new THREE.ExtrudeGeometry(westWallShape, {

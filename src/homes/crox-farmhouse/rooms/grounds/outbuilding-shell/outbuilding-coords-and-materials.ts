@@ -2472,11 +2472,12 @@ export function createOutbuildingShellContext(
   const eastRangeGroundWallH = 2.26;
   const barnUpperEaveH = 3.24; // Level 2 (Store + Barn) eave height above barnDatumY
   const barnRidgeH = 4.84; // Level 2 (Store + Barn) ridge height above barnDatumY
-  // Issue #11 ("Lower the floor height here there is only about 3 steps between the mezzanine and the upper floor of the stable" at `[2.052, 2.66, 15.82]`):
-  // Lowered Stable upper floor to `2.08m` (3 steps x 0.18m above the `1.54m` Barn Mezzanine), with `stableGroundTopY = 1.96m`,
-  // `stableGroundFloorY = -0.44m` (`2.40m` clear ground-floor ceiling height), `stableUpperTopY = 3.32m`, and `stableRidgeY = 4.92m`.
-  const stableUpperEaveH = 3.54; // Level 3 (2-Storey Stable) eave height above stableDatumY -> world Y = 3.32m
-  const stableRidgeH = 5.14; // Level 3 (2-Storey Stable) ridge height above stableDatumY -> world Y = 4.92m
+  // Survey2Plan Revit calibration (`FLOOR 1614082` & `ROOF 1866979`):
+  // The East Stable Loft steps UP by `+0.935m` above the `1.54m` Barn Mezzanine (`stableUpperFloorY = 2.475m`,
+  // 5 risers x 0.187m), with `stableGroundTopY = 2.355m` (`2.795m` ground-floor Office/Cloakroom headroom),
+  // `stableUpperTopY = 3.715m`, and `stableRidgeY = 5.315m` (`stableCeilRidgeY = 5.064m`).
+  const stableUpperEaveH = 3.935; // Level 3 (2-Storey Stable) eave height above stableDatumY -> world Y = 3.715m
+  const stableRidgeH = 5.535; // Level 3 (2-Storey Stable) ridge height above stableDatumY -> world Y = 5.315m
 
   const baseYBarnStart = getBaseYAtU(uBarnStart); // -0.39m
 
@@ -2499,15 +2500,15 @@ export function createOutbuildingShellContext(
   const barnWestFloorY = -0.34;
   const barnLowerFloorY = -0.7;
 
-  // Issue #11: Stable ground floor at `stableGroundFloorY = -0.44m`, ground-floor ceiling at `stableGroundTopY = 1.96m` (`2.40m` headroom),
-  // and Stable Upper Floor at `stableUpperFloorY = 2.08m` (3 steps above `mezzanineFloorY = 1.54m`!)
+  // Survey2Plan FLOOR 1614082 & ROOF 1866979: Stable ground floor at `stableGroundFloorY = -0.44m`, ground-floor ceiling
+  // at `stableGroundTopY = 2.355m` (`2.795m` headroom), and Stable Upper Floor at `stableUpperFloorY = 2.475m` (`+0.935m` above `mezzanineFloorY = 1.54m`!)
   const stableGroundFloorY = -0.44;
-  const stableGroundTopY = 1.96;
-  const stableUpperFloorY = 2.08;
-  const stableUpperTopY = stableDatumY + stableUpperEaveH; // 3.32m level eave across 2-Storey Stable
-  const stableCeilEaveY = stableUpperTopY; // 3.32m (meets wall top directly — Issue #7!)
+  const stableGroundTopY = 2.355;
+  const stableUpperFloorY = 2.475;
+  const stableUpperTopY = stableDatumY + stableUpperEaveH; // 3.715m level eave across 2-Storey Stable
+  const stableCeilEaveY = stableUpperTopY; // 3.715m (meets wall top directly — Issue #7!)
   const stableCeilRidgeY =
-    stableCeilEaveY + 2.575 * ((stableRidgeH - stableUpperEaveH) / 3.055); // 4.669m vaulted ceiling apex in Stable
+    stableCeilEaveY + 2.575 * ((stableRidgeH - stableUpperEaveH) / 3.055); // 5.064m vaulted ceiling apex in Stable
 
   // Issue #1 ("There is a gap here" at `[-9.565, -0.69, 16.38]`) & Issue #2 & #3:
   const barnCarpetTopY = -0.675; // 1.5cm above the -0.69m terrain slab so terrain never bleeds through!

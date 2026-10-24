@@ -180,7 +180,7 @@ export function buildDownstairsWcAndCloakroom(
   wcSouthDoorHeaderLining.position.set(-12.12, lowerDoorLintelY, -0.258);
   wcGroup.add(wcSouthDoorHeaderLining);
 
-  // North exterior wall dark lining around the WC window (X = -12.52m..-11.76m, Y = 0.79m..1.60m), tagged with tagCutawayWall
+  // North exterior wall dark lining around the WC window (X = -12.335m..-11.945m, Y = 0.86m..1.60m, Win 1736291 = 0.39x0.74m), tagged with tagCutawayWall
   const wcNorthCutaway: CutawayWallDescriptor = {
     axis: 'z',
     coord: -2.64,
@@ -189,10 +189,10 @@ export function buildDownstairsWcAndCloakroom(
     floor: 'ground',
   };
   const northLiningSpecs = [
-    [-12.62, lowerWallMidY, 0.38, lowerWallH, 'westPier'],
-    [-11.65, lowerWallMidY, 0.4, lowerWallH, 'eastPier'],
-    [-12.14, (lowerFloorY + 0.79) / 2, 0.58, 0.79 - lowerFloorY, 'spandrelLower'],
-    [-12.14, (1.6 + wallH) / 2, 0.58, wallH - 1.6, 'spandrelUpper'],
+    [-12.5725, lowerWallMidY, 0.475, lowerWallH, 'westPier'],
+    [-11.6975, lowerWallMidY, 0.495, lowerWallH, 'eastPier'],
+    [-12.14, (lowerFloorY + 0.86) / 2, 0.39, 0.86 - lowerFloorY, 'spandrelLower'],
+    [-12.14, (1.6 + wallH) / 2, 0.39, wallH - 1.6, 'spandrelUpper'],
   ] as const;
   for (const [nx, ny, nw, nh, nTag] of northLiningSpecs) {
     const northLining = new THREE.Mesh(

@@ -47,7 +47,8 @@ const sharedAgaTowelBracketGeo = prepGeo(new THREE.BoxGeometry(0.022, 0.022, 0.0
 const sharedAgaTowelFinialGeo = prepGeo(new THREE.SphereGeometry(0.016, 10, 8));
 
 const sharedBacksplashGeo = prepGeo(new THREE.BoxGeometry(2.77, 1.0, 0.024));
-const sharedHoodMantleGeo = prepGeo(new THREE.BoxGeometry(2.75, 1.05, 0.46));
+// Survey2Plan Ceil 1609635 = 2.54m flat plaster ceiling soffit over West Kitchen (hood chimney terminates cleanly at Y = 2.54m)
+const sharedHoodMantleGeo = prepGeo(new THREE.BoxGeometry(2.75, 0.59, 0.46));
 const sharedHoodCorbelGeo = prepGeo(new THREE.BoxGeometry(0.12, 0.22, 0.48));
 const sharedHoodShelfLowerGeo = prepGeo(new THREE.BoxGeometry(2.78, 0.028, 0.485));
 const sharedHoodShelfUpperGeo = prepGeo(new THREE.BoxGeometry(2.81, 0.038, 0.505));
@@ -472,10 +473,10 @@ export function buildBacksplashAndCookerHood(
   marbleBacksplash.receiveShadow = true;
   wideHoodGroup.add(marbleBacksplash);
 
-  // Raised higher above the kitchen units (mantel shelf at Y = 1.94m, chimney up to ceiling Y = 3.00m) for generous clearance above the AGA & Hob
+  // Mantel shelf at Y = 1.94m, chimney terminating cleanly against the Survey2Plan 2.54m flat ceiling soffit (Ceil 1609635)
   const mantleHood = new THREE.Mesh(sharedHoodMantleGeo, wallPlasterMat);
   mantleHood.name = 'kitchen.cabinetry.north.cookerHoodAndBacksplash.chimneyBreast';
-  mantleHood.position.set(0, 2.475, 0);
+  mantleHood.position.set(0, 2.245, 0);
   mantleHood.castShadow = true;
   mantleHood.receiveShadow = true;
   wideHoodGroup.add(mantleHood);
@@ -499,7 +500,7 @@ export function buildBacksplashAndCookerHood(
 
   const hoodTopCornice = new THREE.Mesh(sharedHoodTopCorniceGeo, wallPlasterMat);
   hoodTopCornice.name = 'kitchen.cabinetry.north.cookerHoodAndBacksplash.topCornice';
-  hoodTopCornice.position.set(0, 2.97, 0.005);
+  hoodTopCornice.position.set(0, 2.52, 0.005);
   wideHoodGroup.add(hoodTopCornice);
 
   for (const bx of [-0.64, 0.62] as const) {

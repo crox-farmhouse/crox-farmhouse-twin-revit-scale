@@ -79,7 +79,7 @@ const sharedPulleyStrutGeo = prepGeo(new THREE.CylinderGeometry(0.007, 0.007, 0.
 const sharedPulleyTopEyeGeo = prepGeo(new THREE.TorusGeometry(0.016, 0.005, 6, 12));
 const sharedPulleyBracketGeo = prepGeo(new THREE.BoxGeometry(0.026, 0.055, 0.036));
 const sharedPulleyWheelGeo = prepGeo(new THREE.CylinderGeometry(0.024, 0.024, 0.014, 10));
-const sharedPulleyVertRopeGeo = prepGeo(new THREE.CylinderGeometry(0.0045, 0.0045, 0.48, 6));
+const sharedPulleyVertRopeGeo = prepGeo(new THREE.CylinderGeometry(0.0045, 0.0045, 0.35, 6));
 
 export function buildUtilityRoomJoineryAndAppliances(
   ctx: SceneBuilderContext
@@ -781,7 +781,7 @@ export function buildUtilityRoomJoineryAndAppliances(
     roughness: 0.85,
   });
 
-  const rackY = 2.34;
+  const rackY = 2.02;
   // 4 Wooden drying laths (1.46m long x 0.036m tall x 0.016m thick)
   const lathZs = [-0.2, -0.067, 0.067, 0.2] as const;
   for (let i = 0; i < lathZs.length; i++) {
@@ -826,17 +826,17 @@ export function buildUtilityRoomJoineryAndAppliances(
     tagHighLod(topEye);
     rackMovingGroup.add(topEye);
 
-    // Ceiling-mounted cast-iron screw pulley wheel & bracket (at Y = 2.96m)
+    // Ceiling-mounted cast-iron screw pulley wheel & bracket (under Survey2Plan 2.54m flat ceiling soffit)
     const pulleyBracket = new THREE.Mesh(sharedPulleyBracketGeo, castIronMat);
     pulleyBracket.name = `utility.pulleyMaid.ceilingPulley_${i}.bracket`;
-    pulleyBracket.position.set(rx, 2.965, 0);
+    pulleyBracket.position.set(rx, 2.515, 0);
     tagHighLod(pulleyBracket);
     pulleyMaidGroup.add(pulleyBracket);
 
     const pulleyWheel = new THREE.Mesh(sharedPulleyWheelGeo, castIronMat);
     pulleyWheel.name = `utility.pulleyMaid.ceilingPulley_${i}.wheel`;
     pulleyWheel.rotation.x = Math.PI / 2;
-    pulleyWheel.position.set(rx, 2.945, 0);
+    pulleyWheel.position.set(rx, 2.495, 0);
     tagHighLod(pulleyWheel);
     pulleyMaidGroup.add(pulleyWheel);
     pulleyWheels.push(pulleyWheel);
@@ -844,7 +844,7 @@ export function buildUtilityRoomJoineryAndAppliances(
     // Vertical cotton hoist cord from ceiling pulley down to rack end eye
     const vertRope = new THREE.Mesh(sharedPulleyVertRopeGeo, cottonRopeMat);
     vertRope.name = `utility.pulleyMaid.vertHoistRope_${i}`;
-    vertRope.position.set(rx, 2.705, 0);
+    vertRope.position.set(rx, 2.32, 0);
     pulleyMaidGroup.add(vertRope);
     vertRopes.push(vertRope);
   }
@@ -856,7 +856,7 @@ export function buildUtilityRoomJoineryAndAppliances(
   );
   ceilingRope.name = 'utility.pulleyMaid.ceilingHorizontalRope';
   ceilingRope.rotation.z = Math.PI / 2;
-  ceilingRope.position.set(0.3, 2.95, 0);
+  ceilingRope.position.set(0.3, 2.5, 0);
   tagHighLod(ceilingRope);
   pulleyMaidGroup.add(ceilingRope);
 
@@ -866,16 +866,16 @@ export function buildUtilityRoomJoineryAndAppliances(
     castIronMat
   );
   wallPulley.name = 'utility.pulleyMaid.wallGuidePulley';
-  wallPulley.position.set(1.14, 2.95, 0);
+  wallPulley.position.set(1.14, 2.5, 0);
   tagHighLod(wallPulley);
   pulleyMaidGroup.add(wallPulley);
 
   const wallHaulRope = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.005, 0.005, 1.56, 6)),
+    prepGeo(new THREE.CylinderGeometry(0.005, 0.005, 1.12, 6)),
     cottonRopeMat
   );
   wallHaulRope.name = 'utility.pulleyMaid.wallHaulRope';
-  wallHaulRope.position.set(1.14, 2.17, 0);
+  wallHaulRope.position.set(1.14, 1.94, 0);
   pulleyMaidGroup.add(wallHaulRope);
 
   const wallCleat = new THREE.Mesh(
@@ -894,12 +894,12 @@ export function buildUtilityRoomJoineryAndAppliances(
     vertRopes,
     pulleyWheels,
     wallHaulRope,
-    baseRopeLength: 0.48,
-    pulleyCeilingY: 2.945,
+    baseRopeLength: 0.35,
+    pulleyCeilingY: 2.495,
     baseRackEyeY: rackY + 0.125,
-    baseWallRopeLength: 1.56,
-    wallPulleyY: 2.95,
-    dropDistance: 0.84,
+    baseWallRopeLength: 1.12,
+    wallPulleyY: 2.5,
+    dropDistance: 0.68,
   });
 
   return tvScreenMat;

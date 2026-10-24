@@ -49,7 +49,7 @@ const concreteInnerPoints: THREE.Vector2[] = [
 const sharedConcreteInnerGeo = prepGeo(new THREE.LatheGeometry(concreteInnerPoints, 24));
 const sharedIslandRoseGeo = prepGeo(new THREE.CylinderGeometry(0.058, 0.058, 0.028, 16));
 const sharedIslandCordGripGeo = prepGeo(new THREE.CylinderGeometry(0.014, 0.018, 0.026, 12));
-const sharedIslandBraidedCordGeo = prepGeo(new THREE.CylinderGeometry(0.0095, 0.0095, 0.84, 10));
+const sharedIslandBraidedCordGeo = prepGeo(new THREE.CylinderGeometry(0.0095, 0.0095, 0.4, 10));
 const sharedIslandBulbGeo = prepGeo(new THREE.SphereGeometry(0.048, 14, 14));
 
 const narrowGlassProfilePoints: THREE.Vector2[] = [
@@ -173,22 +173,22 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     group.name = pName;
     group.position.set(px, 0, pz);
 
-    // Matte Black Ceiling Rose + Black Cord Grip
+    // Matte Black Ceiling Rose + Black Cord Grip (mounted to Survey2Plan 2.54m flat ceiling soffit)
     const blackRose = new THREE.Mesh(sharedIslandRoseGeo, matteBlackMat);
     blackRose.name = `${pName}.ceilingRose`;
-    blackRose.position.set(0, 2.982, 0);
+    blackRose.position.set(0, 2.526, 0);
     group.add(blackRose);
 
     const blackCordGrip = new THREE.Mesh(sharedIslandCordGripGeo, matteBlackMat);
     blackCordGrip.name = `${pName}.cordGrip`;
-    blackCordGrip.position.set(0, 2.958, 0);
+    blackCordGrip.position.set(0, 2.502, 0);
     tagHighLod(blackCordGrip);
     group.add(blackCordGrip);
 
     // Black & White Braided Fabric Cable
     const braidedCord = new THREE.Mesh(sharedIslandBraidedCordGeo, braidedCableMat);
     braidedCord.name = `${pName}.braidedCord`;
-    braidedCord.position.set(0, 2.54, 0);
+    braidedCord.position.set(0, 2.31, 0);
     group.add(braidedCord);
 
     // Taller cast-concrete bell-dome shade (rim at Y = 1.83m, top neck at Y = 2.125m)
@@ -341,9 +341,9 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
   ctx.addGlowPool('sittingPendants', 3.45, 0.465, 0.82, 0.54, 0.58);
 
   // =========================================================================
-  // CIRCUIT 3: 5 Inground Floor Uplights across the inside front of the Bifolds
+  // CIRCUIT 3: 5 Inground Floor Uplights across the inside front of the 3.55x2.07m Bifolds
   // =========================================================================
-  const uplightXPositions = [1.88, 2.535, 3.19, 3.845, 4.5] as const;
+  const uplightXPositions = [1.68, 2.3875, 3.095, 3.8025, 4.51] as const;
   const uplightZ = 1.86;
 
   const bezelMat = new THREE.MeshStandardMaterial({
@@ -377,17 +377,17 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     scene.add(lens);
 
     ctx.addGlowPool('bifoldUplights', ux, 0.012, uplightZ, 0.48, 0.42);
-    ctx.addGlowPool('bifoldUplights', ux, 2.475, 2.06, 0.52, 0.22, Math.PI / 2);
+    ctx.addGlowPool('bifoldUplights', ux, 2.085, 2.06, 0.52, 0.22, Math.PI / 2);
   }
 
   const bifoldGrazingLight = new THREE.PointLight(0xffb454, 7.8, 4.8, 1.4);
   bifoldGrazingLight.name = 'kitchen.lighting.bifoldUplights.pointLight';
-  bifoldGrazingLight.position.set(3.19, 0.36, uplightZ);
+  bifoldGrazingLight.position.set(3.095, 0.36, uplightZ);
   scene.add(bifoldGrazingLight);
   lightGroups.bifoldUplights.lights.push(bifoldGrazingLight);
 
   // =========================================================================
-  // CIRCUIT 4: 10 Recessed Ceiling Spotlights in a 4 x 3 Kitchen Grid
+  // CIRCUIT 4: 10 Recessed Ceiling Spotlights in a 4 x 3 Kitchen Grid (in 2.54m flat soffit)
   // =========================================================================
   const spotEmissive = new THREE.MeshStandardMaterial({
     color: 0xfff6e5,
@@ -423,13 +423,13 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     const [sx, sz] = spotCoords[i];
     const trim = new THREE.Mesh(sharedSpotTrimGeo, spotTrimMat);
     trim.name = `kitchen.lighting.spotlight_${i}.trim`;
-    trim.position.set(sx, 2.98, sz);
+    trim.position.set(sx, 2.532, sz);
     interactions.registerLightFixture(trim, 'spotlights');
     scene.add(trim);
 
     const puck = new THREE.Mesh(sharedSpotPuckGeo, spotEmissive);
     puck.name = `kitchen.lighting.spotlight_${i}.puck`;
-    puck.position.set(sx, 2.975, sz);
+    puck.position.set(sx, 2.527, sz);
     interactions.registerLightFixture(puck, 'spotlights');
     scene.add(puck);
 
@@ -438,7 +438,7 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
 
   const spotZoneLight = new THREE.PointLight(0xffe0b2, 7.5, 5.2, 1.3);
   spotZoneLight.name = 'kitchen.lighting.spotlights.pointLight';
-  spotZoneLight.position.set(-1.15, 2.75, 0.14);
+  spotZoneLight.position.set(-1.15, 2.42, 0.14);
   scene.add(spotZoneLight);
   lightGroups.spotlights.lights.push(spotZoneLight);
 
@@ -560,17 +560,17 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
 
     const span = Math.max(ast.w, ast.d);
     ctx.addGlowPool('aboveCabinet', ast.x, ast.baseY + 0.016, ast.z, span * 0.48, 0.42);
-    ctx.addGlowPool('aboveCabinet', ast.x, 2.985, ast.z, span * 0.62, 0.26, Math.PI / 2);
+    ctx.addGlowPool('aboveCabinet', ast.x, 2.528, ast.z, span * 0.62, 0.26, Math.PI / 2);
   }
 
   const aboveCabWestLight = new THREE.PointLight(0xffb658, 7.2, 5.8, 1.4);
   aboveCabWestLight.name = 'kitchen.lighting.aboveCabinet.pointLight';
-  aboveCabWestLight.position.set(-2.2, 2.62, -1.25);
+  aboveCabWestLight.position.set(-2.2, 2.48, -1.25);
   scene.add(aboveCabWestLight);
   lightGroups.aboveCabinet.lights.push(aboveCabWestLight);
 
   // =========================================================================
-  // CIRCUIT 6: 2 Utility Room Recessed Ceiling Spotlights
+  // CIRCUIT 6: 2 Utility Room Recessed Ceiling Spotlights (in 2.54m flat soffit)
   // =========================================================================
   const utilitySpotEmissive = new THREE.MeshStandardMaterial({
     color: 0xfff6e5,
@@ -591,13 +591,13 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     const [ux, uz] = utilitySpotCoords[i];
     const trim = new THREE.Mesh(sharedSpotTrimGeo, spotTrimMat);
     trim.name = `utility.lighting.spotlight_${i}.trim`;
-    trim.position.set(ux, 2.98, uz);
+    trim.position.set(ux, 2.532, uz);
     interactions.registerLightFixture(trim, 'utilitySpotlights');
     scene.add(trim);
 
     const puck = new THREE.Mesh(sharedSpotPuckGeo, utilitySpotEmissive);
     puck.name = `utility.lighting.spotlight_${i}.puck`;
-    puck.position.set(ux, 2.975, uz);
+    puck.position.set(ux, 2.527, uz);
     interactions.registerLightFixture(puck, 'utilitySpotlights');
     scene.add(puck);
 
@@ -609,7 +609,7 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
 
   const utilityZoneLight = new THREE.PointLight(0xffe0b2, 6.5, 4.6, 1.3);
   utilityZoneLight.name = 'utility.lighting.utilitySpotlights.pointLight';
-  utilityZoneLight.position.set(3.5, 2.65, -1.45);
+  utilityZoneLight.position.set(3.5, 2.42, -1.45);
   scene.add(utilityZoneLight);
   lightGroups.utilitySpotlights.lights.push(utilityZoneLight);
 

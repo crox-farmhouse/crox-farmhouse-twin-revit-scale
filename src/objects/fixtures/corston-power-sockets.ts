@@ -998,13 +998,13 @@ export function buildGroundFloorCorstonSockets(
         ],
       },
     },
-    // Issue #8: Front Entrance Hall Straight Angled North Partition Wall (FFL = -0.60m -> Y = -0.15m = 450mm above floor)
+    // Issue #8: Front Entrance Hall Straight Angled North Partition Wall (FFL = -0.495m -> Y = -0.045m = 450mm above floor)
     {
       name: 'entranceHall.corstonSocket.northWall',
       zone: 'entranceHall',
       kind: 'double',
       x: -21.835,
-      y: -0.15,
+      y: -0.045,
       z: 2.094,
       facing: 'south',
       rotY: -Math.atan2(0.705, 5.27),

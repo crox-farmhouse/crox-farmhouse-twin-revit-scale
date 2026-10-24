@@ -88,10 +88,12 @@ export function buildMainBedroom(
   }
 
   // East Cross-Wall of Main Bedroom (X = -4.64m..-4.40m, Z = -2.78m..+2.68m)
-  // `skipCap: true` so the lower brick wall merges seamlessly into `mainBedroom.eastWallBrickGable` (`Y = 4.16m..5.02m`)!
+  // `skipCap: true` so the lower brick wall merges seamlessly into `mainBedroom.eastWallBrickGable` (`Y = 4.16m..5.065m`)!
+  const northEavesY = 3.69; // 1.18m cottage eaves spring height above 2.51m FFL (Survey2Plan: 1.175m)
+  const southEavesY = 3.76; // 1.25m eaves spring height above 2.51m FFL clearing Win 1749749 top architrave
   {
     const idx0 = scene.children.length;
-    addUpperInteriorWall(-4.63, floorTopY, 3.08, 1.585, 0.02, 1.53, warmRoomPlasterMat, {
+    addUpperInteriorWall(-4.63, floorTopY, northEavesY, 1.585, 0.02, 1.53, warmRoomPlasterMat, {
       skipSkirting: true,
       skipCap: true,
     });
@@ -105,7 +107,7 @@ export function buildMainBedroom(
     ensureNamedAddedChildren(scene, idx1, 'mainBedroom.eastExteriorBrickWall');
   }
 
-  // North Exterior Brick Wall of Main Bedroom (Z = -2.78m..-2.50m, X = -9.56m..-4.40m) with Survey2Plan cottage casement window (Win 1757552: 0.98m x 0.72m, low 0.46m cottage sill above 2.34m FFL)
+  // North Exterior Brick Wall of Main Bedroom (Z = -2.78m..-2.50m, X = -9.56m..-4.40m) with Survey2Plan cottage casement window (Win 1757552: 0.88m x 0.70m, low 270mm cottage sill above 2.51m FFL)
   // Skirting is emitted below via `mainBedroom.perimeterMitredSkirting` for 45°-mitred corners
   {
     const idx = scene.children.length;
@@ -115,18 +117,18 @@ export function buildMainBedroom(
       -2.78,
       -2.5,
       -6.85,
-      0.98,
-      2.80,
-      3.52,
+      0.88,
+      2.78,
+      3.48,
       'south',
       2,
-      { skipSkirting: true, minSillY: 2.78 }
+      { skipSkirting: true, minSillY: 2.74, windowFamily: 'doubleCasement' }
     );
     ensureNamedAddedChildren(scene, idx, 'mainBedroom.northExteriorWall');
   }
 
   // South Courtyard Exterior Brick Wall of Main Bedroom (Z = +2.40m..+2.68m, X = -9.56m..-4.40m)
-  // Calibrated to Survey2Plan Win 1749749 (1.46m x 0.75m, low 0.47m sill at Y = 2.81m directly above the full-length bespoke Shaker window seat J-M02)!
+  // Calibrated to Survey2Plan Win 1749749 (1.36m x 0.72m 3-light casement, low 455mm sill at Y = 2.965m directly above the 2.958m bespoke Shaker window seat J-M02)!
   {
     const idx = scene.children.length;
     addUpperBrickWallAlongXWithWindow(
@@ -135,28 +137,33 @@ export function buildMainBedroom(
       2.4,
       2.68,
       -7.41,
-      1.46,
-      2.81,
-      3.56,
+      1.36,
+      2.965,
+      3.685,
       'north',
       3,
-      { skipSkirting: true, minSillY: 2.78, skipUnderApron: true }
+      {
+        skipSkirting: true,
+        minSillY: 2.92,
+        skipUnderApron: true,
+        windowFamily: 'tripleTopHungCentre',
+      }
     );
     ensureNamedAddedChildren(scene, idx, 'mainBedroom.southExteriorWall');
   }
 
-  // Issue #1: High vaulted collar ceiling in the Main Bedroom (`collarCeilingY = 5.02m`, +0.50m higher than the
-  // 4.52m landing/bathroom ceiling, following the roof line across `Z = -1.15m..+1.05m` and giving 2.68m headroom above the 2.34m floor!)
-  const collarCeilingY = 5.02;
-  const collarNorthZ = -1.15;
-  const collarSouthZ = 1.05;
+  // Survey2Plan `Ceil 1608703`: Vaulted collar ceiling in the Main Bedroom (`collarCeilingY = 5.065m`, `2.555m` clear height
+  // above the `2.51m` stepped-up floor, springing from authentic low `1.18m–1.25m` cottage eaves!)
+  const collarCeilingY = 5.065;
+  const collarNorthZ = -1.0;
+  const collarSouthZ = 1.2;
 
   // =========================================================================
   // FULL-WIDTH BANK OF 4 BUILT-IN SHAKER WARDROBES ALONG THE EAST WALL
   // (`X = -5.26m..-4.64m, Z = -2.50m..+2.40m`, facing West `-X` into Main Bedroom)
-  // Issues #1 & #8: Continuous full-height Shaker wardrobe carcass (`wardrobeMat`) and
-  // 8 ceiling-height Shaker doors (raked outer doors under the North/South skeilings +
-  // full-height central doors under the 5.02m collar ceiling) rising all the way to the ceiling!
+  // Continuous full-height Shaker wardrobe carcass (`wardrobeMat`) and
+  // 8 ceiling-height Shaker doors (raked outer doors under the low North/South skeilings +
+  // full-height central doors under the 5.065m collar ceiling) rising all the way to the ceiling!
   // =========================================================================
   {
     const eastWardGroup = new THREE.Group();
@@ -166,14 +173,14 @@ export function buildMainBedroom(
     const getVaultCeilingYAtZ = (z: number): number => {
       if (z < collarNorthZ) {
         return (
-          upperWallTopY +
-          ((z - -2.5) / (collarNorthZ - -2.5)) * (collarCeilingY - upperWallTopY)
+          northEavesY +
+          ((z - -2.5) / (collarNorthZ - -2.5)) * (collarCeilingY - northEavesY)
         );
       }
       if (z > collarSouthZ) {
         return (
           collarCeilingY -
-          ((z - collarSouthZ) / (2.4 - collarSouthZ)) * (collarCeilingY - upperWallTopY)
+          ((z - collarSouthZ) / (2.4 - collarSouthZ)) * (collarCeilingY - southEavesY)
         );
       }
       return collarCeilingY;
@@ -183,10 +190,10 @@ export function buildMainBedroom(
     const carcassShape = new THREE.Shape();
     carcassShape.moveTo(-2.5, floorTopY);
     carcassShape.lineTo(2.4, floorTopY);
-    carcassShape.lineTo(2.4, upperWallTopY + 0.02);
+    carcassShape.lineTo(2.4, southEavesY + 0.015);
     carcassShape.lineTo(collarSouthZ, collarCeilingY + 0.015);
     carcassShape.lineTo(collarNorthZ, collarCeilingY + 0.015);
-    carcassShape.lineTo(-2.5, upperWallTopY + 0.02);
+    carcassShape.lineTo(-2.5, northEavesY + 0.015);
     carcassShape.closePath();
     const carcassGeo = new THREE.ExtrudeGeometry(carcassShape, {
       depth: wardD,
@@ -205,10 +212,10 @@ export function buildMainBedroom(
     {
       const corniceProfile = createCrownCorniceProfile(0.042, 0.046);
       const cornicePath: ReadonlyArray<readonly [number, number]> = [
-        [-2.5, upperWallTopY + 0.008],
+        [-2.5, northEavesY + 0.006],
         [collarNorthZ, collarCeilingY],
         [collarSouthZ, collarCeilingY],
-        [2.4, upperWallTopY + 0.008],
+        [2.4, southEavesY + 0.006],
       ];
       const corniceGeo = buildSweptMouldingGeometry(
         corniceProfile,
@@ -224,18 +231,18 @@ export function buildMainBedroom(
     }
 
     // 8 ceiling-height Shaker wardrobe doors (4 pairs of double doors) aligned with the vaulted ceiling segments:
-    // - Doors 1 & 2: Z = -2.44m .. -1.156m (raked under North skeiling)
-    // - Doors 3..6: Z = -1.144m .. +1.044m (full-height under 5.02m flat collar)
-    // - Doors 7 & 8: Z = +1.056m .. +2.34m (raked under South skeiling; Door 8 is counter-mounted above the J-M02 South Window Seat so it opens cleanly with zero clash!)
+    // - Doors 1 & 2: Z = -2.44m .. -1.006m (deeply raked under low 1.18m North skeiling!)
+    // - Doors 3..6: Z = -0.994m .. +1.194m (full-height under 5.065m flat collar)
+    // - Doors 7 & 8: Z = +1.206m .. +2.34m (raked under low 1.25m South skeiling; Door 8 is counter-mounted above the J-M02 South Window Seat!)
     const doorIntervals: ReadonlyArray<readonly [number, number]> = [
-      [-2.44, -1.801],
-      [-1.789, -1.156],
-      [-1.144, -0.604],
-      [-0.592, -0.056],
-      [-0.044, 0.492],
-      [0.504, 1.044],
-      [1.056, 1.689],
-      [1.701, 2.34],
+      [-2.44, -1.729],
+      [-1.717, -1.006],
+      [-0.994, -0.456],
+      [-0.444, 0.094],
+      [0.106, 0.644],
+      [0.656, 1.194],
+      [1.206, 1.767],
+      [1.779, 2.34],
     ];
     const fullDoorBaseY = floorTopY + 0.15;
     const aboveSeatDoorBaseY = floorTopY + 0.468; // 2.808m: 20mm clear above the 2.788m window-seat squab cushion
@@ -270,15 +277,15 @@ export function buildMainBedroom(
       );
     }
 
-    // In-frame Shaker lower fascia panel below Door 8 across Z = 1.701m..1.96m where visible North of the window seat
+    // In-frame Shaker lower fascia panel below Door 8 across Z = 1.779m..1.96m where visible North of the window seat
     {
       const lowerFillerH = aboveSeatDoorBaseY - fullDoorBaseY - 0.008;
-      const lowerFillerW = 1.96 - 1.701;
+      const lowerFillerW = 1.96 - 1.779;
       const lowerFillerGeo = new THREE.BoxGeometry(0.024, lowerFillerH, lowerFillerW);
       lowerFillerGeo.computeBoundingSphere();
       const lowerFiller = new THREE.Mesh(lowerFillerGeo, wardrobeMat);
       lowerFiller.name = 'mainBedroom.eastWardrobe.seatJunctionFascia';
-      lowerFiller.position.set(-5.272, fullDoorBaseY + lowerFillerH * 0.5, (1.701 + 1.96) * 0.5);
+      lowerFiller.position.set(-5.272, fullDoorBaseY + lowerFillerH * 0.5, (1.779 + 1.96) * 0.5);
       lowerFiller.castShadow = true;
       lowerFiller.receiveShadow = true;
       eastWardGroup.add(lowerFiller);
@@ -588,27 +595,28 @@ export function buildMainBedroom(
     scene.add(cushionGroup);
   }
 
-  // West Load-Bearing Cross-Wall between Main Bedroom (Y = 2.34m) and Family Bathroom / Upper Passage (Y = 2.16m)
-  // Calibrated to Survey2Plan cottage doorway `Door 1685966` (`width = 0.82m`, `centerZ = 1.48m` -> `Z = 1.07m..1.89m`, `doorH = 1.80m`, `75mm` Solid Oak architrave)
+  // West Load-Bearing Cross-Wall between Main Bedroom (Y = 2.51m) and Family Bathroom / Upper Passage (Y = 2.16m)
+  // Calibrated to Survey2Plan cottage doorway `Door 1685966` (`width = 0.82m`, `centerZ = 1.48m` -> `Z = 1.07m..1.89m`, `doorH = 1.66m` above `2.51m` FFL / `1.835m` above mid-step)
   const passageFloorTopY = 2.16;
-  const mainBedDoorH = 1.8;
+  const mainBedDoorH = 1.66;
+  const westCrossWallEavesY = 3.86; // Seals cleanly to BOTH Family Bathroom 3.86m eaves (West) & Main Bedroom 3.69m/3.76m eaves (East)
   {
     const idx0 = scene.children.length;
-    addUpperInteriorWall(-9.68, passageFloorTopY, upperWallTopY, -0.715, 0.24, 3.57, warmRoomPlasterMat, {
+    addUpperInteriorWall(-9.68, passageFloorTopY, westCrossWallEavesY, -0.715, 0.24, 3.57, warmRoomPlasterMat, {
       skipSkirting: true,
       skipCap: true,
     });
     ensureNamedAddedChildren(scene, idx0, 'mainBedroom.westCrossWall.northPier');
 
     const idx1 = scene.children.length;
-    addUpperInteriorWall(-9.68, passageFloorTopY, upperWallTopY, 2.145, 0.24, 0.51, warmRoomPlasterMat, {
+    addUpperInteriorWall(-9.68, passageFloorTopY, westCrossWallEavesY, 2.145, 0.24, 0.51, warmRoomPlasterMat, {
       skipSkirting: true,
       skipCap: true,
     });
     ensureNamedAddedChildren(scene, idx1, 'mainBedroom.westCrossWall.southPier');
 
     const idx2 = scene.children.length;
-    addUpperInteriorWall(-9.68, floorTopY + mainBedDoorH, upperWallTopY, 1.48, 0.24, 0.82, warmRoomPlasterMat, {
+    addUpperInteriorWall(-9.68, floorTopY + mainBedDoorH, 4.24, 1.48, 0.24, 0.82, warmRoomPlasterMat, {
       skipSkirting: true,
       skipCap: true,
     });
@@ -645,15 +653,14 @@ export function buildMainBedroom(
       backFloorY: passageFloorTopY,
       doorFloorY: floorTopY,
       doorH: mainBedDoorH,
-      architraveWidth: 0.075,
+      architraveWidth: 0.065,
       jambInset: 0.01,
     });
     ensureNamedAddedChildren(scene, idx, 'mainBedroom.entranceDoor');
   }
 
-  // Issue #1: 18cm (+0.18m) Solid European Oak Threshold Step-Up (`mainBedroom.thresholdStep`)
-  // at the calibrated Main Bedroom doorway (`X_ew = -9.80m..-9.56m, Z_ew = 1.07m..1.89m`) stepping up from the
-  // Upper South Passage (`Y = 2.16m`) onto the Main Bedroom floor (`Y = 2.34m`)
+  // Survey2Plan `Stair 1867816`: 2-Riser (+0.35m = 2 × 175mm) Solid European Oak Threshold Stair (`mainBedroom.thresholdStep`)
+  // stepping up from the Upper South Passage (`Y = 2.160m`) -> mid-step (`Y = 2.335m`) -> Main Bedroom floor (`Y = 2.510m`)!
   {
     const stepGroup = new THREE.Group();
     stepGroup.name = 'mainBedroom.thresholdStep';
@@ -661,21 +668,46 @@ export function buildMainBedroom(
     stepGroup.userData.isArchitecturalShell = true;
 
     const stepSpanZ = 0.8;
-    const stepRiserH = floorTopY - passageFloorTopY - 0.028; // 0.152m
-    const stepRiserGeo = new THREE.BoxGeometry(0.12, stepRiserH, stepSpanZ);
+    const totalRise = floorTopY - passageFloorTopY; // 0.350m
+    const singleRise = totalRise * 0.5; // 0.175m
+    const midStepTopY = passageFloorTopY + singleRise; // 2.335m
+    const treadThick = 0.028;
+    const riserH = singleRise - treadThick; // 0.147m
+
+    // Step 1 (Lower step in Upper South Passage: X = -9.98m..-9.74m, top at Y = 2.335m)
+    const lowerRiserGeo = new THREE.BoxGeometry(0.24, riserH, stepSpanZ);
+    lowerRiserGeo.computeBoundingSphere();
+    const lowerRiser = new THREE.Mesh(lowerRiserGeo, antiqueOakSkirtingMat);
+    lowerRiser.name = 'mainBedroom.thresholdStep.lowerRiser';
+    lowerRiser.position.set(-9.86, passageFloorTopY + riserH * 0.5, 1.48);
+    lowerRiser.castShadow = true;
+    lowerRiser.receiveShadow = true;
+    stepGroup.add(lowerRiser);
+
+    const lowerTreadGeo = new THREE.BoxGeometry(0.256, treadThick, stepSpanZ + 0.016);
+    lowerTreadGeo.computeBoundingSphere();
+    const lowerTread = new THREE.Mesh(lowerTreadGeo, oakFloorMat);
+    lowerTread.name = 'mainBedroom.thresholdStep.lowerTread';
+    lowerTread.position.set(-9.858, midStepTopY - treadThick * 0.5, 1.48);
+    lowerTread.castShadow = true;
+    lowerTread.receiveShadow = true;
+    stepGroup.add(lowerTread);
+
+    // Step 2 (Upper threshold step inside cased reveal: X = -9.74m..-9.56m, top at Y = 2.510m)
+    const stepRiserGeo = new THREE.BoxGeometry(0.18, riserH, stepSpanZ);
     stepRiserGeo.computeBoundingSphere();
     const stepRiser = new THREE.Mesh(stepRiserGeo, antiqueOakSkirtingMat);
     stepRiser.name = 'mainBedroom.thresholdStep.riser';
-    stepRiser.position.set(-9.73, passageFloorTopY + stepRiserH * 0.5, 1.48);
+    stepRiser.position.set(-9.65, midStepTopY + riserH * 0.5, 1.48);
     stepRiser.castShadow = true;
     stepRiser.receiveShadow = true;
     stepGroup.add(stepRiser);
 
-    const stepTreadGeo = new THREE.BoxGeometry(0.244, 0.028, stepSpanZ);
+    const stepTreadGeo = new THREE.BoxGeometry(0.186, treadThick, stepSpanZ);
     stepTreadGeo.computeBoundingSphere();
     const stepTread = new THREE.Mesh(stepTreadGeo, oakFloorMat);
     stepTread.name = 'mainBedroom.thresholdStep.tread';
-    stepTread.position.set(-9.678, floorTopY - 0.014, 1.48);
+    stepTread.position.set(-9.649, floorTopY - treadThick * 0.5, 1.48);
     stepTread.castShadow = true;
     stepTread.receiveShadow = true;
     stepGroup.add(stepTread);
@@ -692,11 +724,21 @@ export function buildMainBedroom(
     );
     bullnoseGeo.rotateX(Math.PI / 2);
     bullnoseGeo.computeBoundingSphere();
+
+    const lowerBullnose = new THREE.Mesh(bullnoseGeo, antiqueOakSkirtingMat);
+    lowerBullnose.name = 'mainBedroom.thresholdStep.lowerBullnose';
+    lowerBullnose.userData.lodTier = 'high';
+    lowerBullnose.userData.lodMaxDistance = 12;
+    lowerBullnose.position.set(-9.986, midStepTopY - 0.014, 1.48);
+    lowerBullnose.castShadow = true;
+    lowerBullnose.receiveShadow = true;
+    stepGroup.add(lowerBullnose);
+
     const stepBullnose = new THREE.Mesh(bullnoseGeo, antiqueOakSkirtingMat);
     stepBullnose.name = 'mainBedroom.thresholdStep.bullnose';
     stepBullnose.userData.lodTier = 'high';
     stepBullnose.userData.lodMaxDistance = 12;
-    stepBullnose.position.set(-9.8, floorTopY - 0.014, 1.48);
+    stepBullnose.position.set(-9.742, floorTopY - 0.014, 1.48);
     stepBullnose.castShadow = true;
     stepBullnose.receiveShadow = true;
     stepGroup.add(stepBullnose);
@@ -704,18 +746,22 @@ export function buildMainBedroom(
     scene.add(stepGroup);
   }
 
-  // Issue #5, #9, #10 & Issue #1: Full-Span Trapezoidal Upper Gable Extensions on the West (X = -9.68m) Cross-Wall
-  // and East Exterior Brick Gable Wall (X = -4.64m..-4.40m, Y = 4.16m..5.02m, matching Bedroom 2's full-height brick gable in cutout view!)
+  // Full-Span Trapezoidal Upper Gable Extensions on the West (X = -9.68m) Cross-Wall
+  // and East Exterior Brick Gable Wall (`X = -4.64m..-4.40m, Y = 4.16m..5.065m`)
   {
-    const gableShape = new THREE.Shape();
-    gableShape.moveTo(-2.5, upperWallTopY);
-    gableShape.lineTo(2.4, upperWallTopY);
-    gableShape.lineTo(collarSouthZ, collarCeilingY);
-    gableShape.lineTo(collarNorthZ, collarCeilingY);
-    gableShape.closePath();
+    const westGableShape = new THREE.Shape();
+    westGableShape.moveTo(-2.5, westCrossWallEavesY);
+    westGableShape.lineTo(1.07, westCrossWallEavesY);
+    westGableShape.lineTo(1.07, 4.24);
+    westGableShape.lineTo(1.89, 4.24);
+    westGableShape.lineTo(1.89, westCrossWallEavesY);
+    westGableShape.lineTo(2.4, westCrossWallEavesY);
+    westGableShape.lineTo(collarSouthZ, collarCeilingY);
+    westGableShape.lineTo(collarNorthZ, collarCeilingY);
+    westGableShape.closePath();
 
     // 1. West interior cross-wall upper gable (`X = -9.80m..-9.56m`, `warmRoomPlasterMat`)
-    const westGableGeo = new THREE.ExtrudeGeometry(gableShape, {
+    const westGableGeo = new THREE.ExtrudeGeometry(westGableShape, {
       depth: 0.24,
       bevelEnabled: false,
     });
@@ -729,8 +775,7 @@ export function buildMainBedroom(
     westGableMesh.receiveShadow = true;
     scene.add(westGableMesh);
 
-    // 2. East exterior brick gable wall (`X = -4.64m..-4.40m, Y = 4.16m..5.02m`, `exteriorBrickMat`)
-    //    Goes all the way to the 5.02m vaulted ceiling top in cutout view (`firstFloorMeshGroup`), just like `bedroom2.northWallBrickGable`!
+    // 2. East exterior brick gable wall (`X = -4.64m..-4.40m, Y = 4.16m..5.065m`, `exteriorBrickMat`)
     const eastGableCutawayDesc = {
       axis: 'x' as const,
       coord: -4.52,
@@ -738,7 +783,13 @@ export function buildMainBedroom(
       maxSpan: 2.68,
       floor: 'first' as const,
     };
-    const eastBrickGableGeo = new THREE.ExtrudeGeometry(gableShape, {
+    const eastBrickShape = new THREE.Shape();
+    eastBrickShape.moveTo(-2.5, upperWallTopY);
+    eastBrickShape.lineTo(2.4, upperWallTopY);
+    eastBrickShape.lineTo(1.18, collarCeilingY);
+    eastBrickShape.lineTo(-1.28, collarCeilingY);
+    eastBrickShape.closePath();
+    const eastBrickGableGeo = new THREE.ExtrudeGeometry(eastBrickShape, {
       depth: 0.24,
       bevelEnabled: false,
     });
@@ -754,8 +805,14 @@ export function buildMainBedroom(
     tagUpperCutawayWall(eastBrickGable, eastGableCutawayDesc);
     scene.add(eastBrickGable);
 
-    // 3. East interior plaster lining (`X = -4.654m..-4.64m, Y = 4.16m..5.02m`, `warmRoomPlasterMat`)
-    const eastPlasterGableGeo = new THREE.ExtrudeGeometry(gableShape, {
+    // 3. East interior plaster lining (`X = -4.654m..-4.64m, Y = northEavesY..collarCeilingY`, `warmRoomPlasterMat`)
+    const eastPlasterShape = new THREE.Shape();
+    eastPlasterShape.moveTo(-2.5, northEavesY);
+    eastPlasterShape.lineTo(2.4, southEavesY);
+    eastPlasterShape.lineTo(collarSouthZ, collarCeilingY);
+    eastPlasterShape.lineTo(collarNorthZ, collarCeilingY);
+    eastPlasterShape.closePath();
+    const eastPlasterGableGeo = new THREE.ExtrudeGeometry(eastPlasterShape, {
       depth: 0.014,
       bevelEnabled: false,
     });

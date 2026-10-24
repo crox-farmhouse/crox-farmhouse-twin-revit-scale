@@ -156,30 +156,30 @@ export function buildCentralHallShellAndJoinery(
   ).name = 'hall.floor';
 
   // North Exterior Brick Wall of Hall (0.28m thick, Z = -2.50m..-2.78m, X = -12.81m..-17.55m)
-  // With 3-pane white cottage casement window centered at X = -14.55m (aligned with the
-  // 75%-staggered step-up opening sightline in media_1790504019383.webp!)
+  // Calibrated to Survey2Plan Win 1736931 = 1.53m x 1.10m 3-pane casement (sillY = 0.84 -> effSillY = 0.52, headY = 1.78 -> effHeadY = 1.62)
   addBrickWallAlongXWithWindow(
     -17.55,
     -12.81,
     -2.78,
     -2.5,
     -14.55,
-    1.46,
-    1.0,
+    1.53,
+    0.84,
     1.78,
     'south',
-    3
+    3,
+    { windowFamily: 'tripleTopHungCentre' }
   );
 
-  // Face-fixed linen Roman blind over the hall North window (Survey2Plan Win 1529880 calibrated aperture),
+  // Face-fixed linen Roman blind over the hall North window (Survey2Plan Win 1736931 = 1.53x1.10m),
   // shown part-lowered with its soft pleat stack covering the top of the casement.
   buildWindowRomanBlind(scene, tagCutawayWall, {
     name: 'hall.northWindow.romanBlind',
     zone: 'hall',
     centerX: -14.55,
-    width: 1.46,
-    railY: 1.735,
-    bottomY: 1.4,
+    width: 1.53,
+    railY: 1.585,
+    bottomY: 1.25,
     wallFaceZ: -2.48,
     facingZ: 1,
     cutawayWall: {

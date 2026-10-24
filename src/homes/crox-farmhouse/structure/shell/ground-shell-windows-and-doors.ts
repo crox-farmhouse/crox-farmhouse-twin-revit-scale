@@ -74,8 +74,12 @@ export function createGroundShellWindowsAndDoors(
       readonly trimFaceOffset?: number;
       readonly skipUnderApron?: boolean;
       readonly skipArchitrave?: boolean;
+      readonly windowFamily?: 'tripleTopHungCentre' | 'tripleHorzBars' | 'singleCasement' | 'doubleCasement';
     }
   ): void => {
+    const family =
+      wallOptions?.windowFamily ??
+      (panes === 1 ? 'singleCasement' : panes === 3 ? 'tripleTopHungCentre' : 'doubleCasement');
     const winLeft = winCenterX - winWidth / 2;
     const winRight = winCenterX + winWidth / 2;
     const yOffset = winCenterX < -13.0 ? -0.32 : 0;
@@ -167,7 +171,7 @@ export function createGroundShellWindowsAndDoors(
       skipArchitrave: wallOptions?.skipArchitrave,
     });
 
-    // Timber window frame & mullions
+    // Timber window outer box frame, structural mullions & 3D inset casement sashes (Survey2Plan family geometry)
     const frameDepth = 0.11;
     const topRail = new THREE.Mesh(
       new THREE.BoxGeometry(winWidth, 0.055, frameDepth),
@@ -196,14 +200,114 @@ export function createGroundShellWindowsAndDoors(
       winGroup.add(mullion);
     }
 
-    // Horizontal glazing bar
-    const transBar = new THREE.Mesh(
-      new THREE.BoxGeometry(winWidth, 0.028, frameDepth * 0.7),
-      windowFrameMat
-    );
-    transBar.name = `${winId}.transomBar`;
-    transBar.position.set(winCenterX, effSillY + winH * 0.52, cz);
-    winGroup.add(transBar);
+    const sashThickZ = 0.048;
+    const sashStileW = 0.028;
+    const sashZ = cz + extSignZ * 0.012;
+    const lightClearH = Math.max(0.16, winH - 0.11);
+    const lightSpanW = winWidth / panes;
+
+    for (let p = 0; p < panes; p++) {
+      const lightCenterX = winLeft + (p + 0.5) * lightSpanW;
+      const lightClearW = Math.max(0.12, lightSpanW - 0.046);
+      const isTopHungCentre = family === 'tripleTopHungCentre' && panes === 3 && p === 1;
+
+      if (isTopHungCentre) {
+        const transomY = effHeadY - 0.055 - lightClearH * 0.34;
+        const fanTransom = new THREE.Mesh(
+          new THREE.BoxGeometry(lightClearW + 0.012, 0.036, frameDepth * 0.88),
+          windowFrameMat
+        );
+        fanTransom.name = `${winId}.centreFanlightTransom`;
+        fanTransom.position.set(lightCenterX, transomY, cz);
+        winGroup.add(fanTransom);
+
+        const fanH = Math.max(0.1, effHeadY - 0.055 - (transomY + 0.018));
+        const fanMidY = (effHeadY - 0.055 + transomY + 0.018) * 0.5;
+        for (const sx of [-1, 1] as const) {
+          const fStile = new THREE.Mesh(
+            new THREE.BoxGeometry(sashStileW, fanH, sashThickZ),
+            windowFrameMat
+          );
+          fStile.name = `${winId}.fanlightSashStile.${sx < 0 ? 'left' : 'right'}`;
+          fStile.position.set(lightCenterX + sx * (lightClearW * 0.5 - sashStileW * 0.5), fanMidY, sashZ);
+          winGroup.add(fStile);
+        }
+        for (const [ry, rTag] of [
+          [effHeadY - 0.055 - sashStileW * 0.5, 'top'],
+          [transomY + 0.018 + sashStileW * 0.5, 'bottom'],
+        ] as const) {
+          const fRail = new THREE.Mesh(
+            new THREE.BoxGeometry(lightClearW, sashStileW, sashThickZ),
+            windowFrameMat
+          );
+          fRail.name = `${winId}.fanlightSashRail.${rTag}`;
+          fRail.position.set(lightCenterX, ry, sashZ);
+          winGroup.add(fRail);
+        }
+
+        const lowBar = new THREE.Mesh(
+          new THREE.BoxGeometry(lightClearW, 0.022, sashThickZ * 0.78),
+          windowFrameMat
+        );
+        lowBar.name = `${winId}.centreGlazingBar`;
+        lowBar.position.set(lightCenterX, (effSillY + 0.055 + transomY - 0.018) * 0.5, sashZ);
+        winGroup.add(lowBar);
+      } else {
+        for (const sx of [-1, 1] as const) {
+          const sStile = new THREE.Mesh(
+            new THREE.BoxGeometry(sashStileW, lightClearH, sashThickZ),
+            windowFrameMat
+          );
+          sStile.name = `${winId}.sash.${p + 1}.stile.${sx < 0 ? 'left' : 'right'}`;
+          sStile.position.set(lightCenterX + sx * (lightClearW * 0.5 - sashStileW * 0.5), cy, sashZ);
+          winGroup.add(sStile);
+        }
+        for (const [ry, rTag] of [
+          [effHeadY - 0.055 - sashStileW * 0.5, 'top'],
+          [effSillY + 0.055 + sashStileW * 0.5, 'bottom'],
+        ] as const) {
+          const sRail = new THREE.Mesh(
+            new THREE.BoxGeometry(lightClearW, sashStileW, sashThickZ),
+            windowFrameMat
+          );
+          sRail.name = `${winId}.sash.${p + 1}.rail.${rTag}`;
+          sRail.position.set(lightCenterX, ry, sashZ);
+          winGroup.add(sRail);
+        }
+
+        if (family !== 'singleCasement') {
+          const barFracs =
+            family === 'tripleHorzBars' || family === 'tripleTopHungCentre'
+              ? ([0.34, 0.67] as const)
+              : ([0.52] as const);
+          for (let bIdx = 0; bIdx < barFracs.length; bIdx++) {
+            const hBar = new THREE.Mesh(
+              new THREE.BoxGeometry(lightClearW - sashStileW, 0.022, sashThickZ * 0.8),
+              windowFrameMat
+            );
+            hBar.name = `${winId}.sash.${p + 1}.glazingBar.${bIdx + 1}`;
+            hBar.position.set(lightCenterX, effSillY + 0.055 + lightClearH * barFracs[bIdx]!, sashZ);
+            winGroup.add(hBar);
+          }
+        }
+      }
+
+      // Period brass casement stay on opening lights
+      if (panes === 1 || p !== 1 || family !== 'tripleTopHungCentre') {
+        const stay = new THREE.Mesh(
+          new THREE.BoxGeometry(Math.min(0.18, lightClearW * 0.55), 0.01, 0.016),
+          brassMat
+        );
+        stay.name = `${winId}.sash.${p + 1}.casementStay`;
+        stay.userData.lodTier = 'high';
+        stay.position.set(
+          lightCenterX,
+          effSillY + 0.055 + 0.016,
+          cz + intSignZ * (frameDepth * 0.48)
+        );
+        winGroup.add(stay);
+      }
+    }
 
     const glass = new THREE.Mesh(new THREE.BoxGeometry(winWidth - 0.06, winH - 0.08, 0.016), windowGlassMat);
     glass.name = `${winId}.glass`;
@@ -233,8 +337,12 @@ export function createGroundShellWindowsAndDoors(
       readonly trimFaceOffset?: number;
       readonly skipUnderApron?: boolean;
       readonly skipArchitrave?: boolean;
+      readonly windowFamily?: 'tripleTopHungCentre' | 'tripleHorzBars' | 'singleCasement' | 'doubleCasement';
     }
   ): void => {
+    const family =
+      trimOptions?.windowFamily ??
+      (panes === 1 ? 'singleCasement' : panes === 3 ? 'tripleTopHungCentre' : 'doubleCasement');
     const winNorth = winCenterZ - winWidth / 2;
     const winSouth = winCenterZ + winWidth / 2;
     const rawCx = (minX + maxX) / 2;
@@ -382,16 +490,138 @@ export function createGroundShellWindowsAndDoors(
       winGroup.add(mullion);
     }
 
-    const transBar = new THREE.Mesh(
-      shearGeometryAlongZ(
-        new THREE.BoxGeometry(frameDepth * 0.7, 0.028, winWidth),
-        slopeXPerZ
-      ),
-      windowFrameMat
-    );
-    transBar.name = `${winId}.transomBar`;
-    transBar.position.set(cx, effSillY + winH * 0.52, winCenterZ);
-    winGroup.add(transBar);
+    const sashThickX = 0.048;
+    const sashStileW = 0.028;
+    const lightClearH = Math.max(0.16, winH - 0.11);
+    const lightSpanW = winWidth / panes;
+
+    for (let p = 0; p < panes; p++) {
+      const lightCenterZ = winNorth + (p + 0.5) * lightSpanW;
+      const lightCx = isAngledEastCourtyardWall
+        ? getEastCourtyardWallCenterX(lightCenterZ)
+        : rawCx;
+      const sashX = lightCx + extSignX * 0.012;
+      const lightClearW = Math.max(0.12, lightSpanW - 0.046);
+      const isTopHungCentre = family === 'tripleTopHungCentre' && panes === 3 && p === 1;
+
+      if (isTopHungCentre) {
+        const transomY = effHeadY - 0.055 - lightClearH * 0.34;
+        const fanTransom = new THREE.Mesh(
+          shearGeometryAlongZ(
+            new THREE.BoxGeometry(frameDepth * 0.88, 0.036, lightClearW + 0.012),
+            slopeXPerZ
+          ),
+          windowFrameMat
+        );
+        fanTransom.name = `${winId}.centreFanlightTransom`;
+        fanTransom.position.set(lightCx, transomY, lightCenterZ);
+        winGroup.add(fanTransom);
+
+        const fanH = Math.max(0.1, effHeadY - 0.055 - (transomY + 0.018));
+        const fanMidY = (effHeadY - 0.055 + transomY + 0.018) * 0.5;
+        for (const sz of [-1, 1] as const) {
+          const stZ = lightCenterZ + sz * (lightClearW * 0.5 - sashStileW * 0.5);
+          const stCx = isAngledEastCourtyardWall ? getEastCourtyardWallCenterX(stZ) : rawCx;
+          const fStile = new THREE.Mesh(
+            new THREE.BoxGeometry(sashThickX, fanH, sashStileW),
+            windowFrameMat
+          );
+          fStile.name = `${winId}.fanlightSashStile.${sz < 0 ? 'north' : 'south'}`;
+          fStile.position.set(stCx + extSignX * 0.012, fanMidY, stZ);
+          winGroup.add(fStile);
+        }
+        for (const [ry, rTag] of [
+          [effHeadY - 0.055 - sashStileW * 0.5, 'top'],
+          [transomY + 0.018 + sashStileW * 0.5, 'bottom'],
+        ] as const) {
+          const fRail = new THREE.Mesh(
+            shearGeometryAlongZ(
+              new THREE.BoxGeometry(sashThickX, sashStileW, lightClearW),
+              slopeXPerZ
+            ),
+            windowFrameMat
+          );
+          fRail.name = `${winId}.fanlightSashRail.${rTag}`;
+          fRail.position.set(sashX, ry, lightCenterZ);
+          winGroup.add(fRail);
+        }
+
+        const lowBar = new THREE.Mesh(
+          shearGeometryAlongZ(
+            new THREE.BoxGeometry(sashThickX * 0.78, 0.022, lightClearW),
+            slopeXPerZ
+          ),
+          windowFrameMat
+        );
+        lowBar.name = `${winId}.centreGlazingBar`;
+        lowBar.position.set(sashX, (effSillY + 0.055 + transomY - 0.018) * 0.5, lightCenterZ);
+        winGroup.add(lowBar);
+      } else {
+        for (const sz of [-1, 1] as const) {
+          const stZ = lightCenterZ + sz * (lightClearW * 0.5 - sashStileW * 0.5);
+          const stCx = isAngledEastCourtyardWall ? getEastCourtyardWallCenterX(stZ) : rawCx;
+          const sStile = new THREE.Mesh(
+            new THREE.BoxGeometry(sashThickX, lightClearH, sashStileW),
+            windowFrameMat
+          );
+          sStile.name = `${winId}.sash.${p + 1}.stile.${sz < 0 ? 'north' : 'south'}`;
+          sStile.position.set(stCx + extSignX * 0.012, cy, stZ);
+          winGroup.add(sStile);
+        }
+        for (const [ry, rTag] of [
+          [effHeadY - 0.055 - sashStileW * 0.5, 'top'],
+          [effSillY + 0.055 + sashStileW * 0.5, 'bottom'],
+        ] as const) {
+          const sRail = new THREE.Mesh(
+            shearGeometryAlongZ(
+              new THREE.BoxGeometry(sashThickX, sashStileW, lightClearW),
+              slopeXPerZ
+            ),
+            windowFrameMat
+          );
+          sRail.name = `${winId}.sash.${p + 1}.rail.${rTag}`;
+          sRail.position.set(sashX, ry, lightCenterZ);
+          winGroup.add(sRail);
+        }
+
+        if (family !== 'singleCasement') {
+          const barFracs =
+            family === 'tripleHorzBars' || family === 'tripleTopHungCentre'
+              ? ([0.34, 0.67] as const)
+              : ([0.52] as const);
+          for (let bIdx = 0; bIdx < barFracs.length; bIdx++) {
+            const hBar = new THREE.Mesh(
+              shearGeometryAlongZ(
+                new THREE.BoxGeometry(sashThickX * 0.8, 0.022, lightClearW - sashStileW),
+                slopeXPerZ
+              ),
+              windowFrameMat
+            );
+            hBar.name = `${winId}.sash.${p + 1}.glazingBar.${bIdx + 1}`;
+            hBar.position.set(sashX, effSillY + 0.055 + lightClearH * barFracs[bIdx]!, lightCenterZ);
+            winGroup.add(hBar);
+          }
+        }
+      }
+
+      if (panes === 1 || p !== 1 || family !== 'tripleTopHungCentre') {
+        const stay = new THREE.Mesh(
+          shearGeometryAlongZ(
+            new THREE.BoxGeometry(0.016, 0.01, Math.min(0.18, lightClearW * 0.55)),
+            slopeXPerZ
+          ),
+          brassMat
+        );
+        stay.name = `${winId}.sash.${p + 1}.casementStay`;
+        stay.userData.lodTier = 'high';
+        stay.position.set(
+          lightCx + intSignX * (frameDepth * 0.48),
+          effSillY + 0.055 + 0.016,
+          lightCenterZ
+        );
+        winGroup.add(stay);
+      }
+    }
 
     const glass = new THREE.Mesh(
       shearGeometryAlongZ(
@@ -1106,14 +1336,14 @@ export function createGroundShellWindowsAndDoors(
     interiorLowerWallMat: THREE.Material = warmRoomPlasterMat
   ): void => {
     const wallInnerX = -22.19;     // Exact interior (+X) face of the West exterior wall
-    const bayInnerFrontX = -22.52; // Issue #18: Shallow canted bay projection (0.33m internal recess instead of 0.65m!)
-    const bayHalfZ = 1.12;         // Survey2Plan calibrated internal bay opening = 2.24m
+    const bayInnerFrontX = -22.55; // Survey2Plan canted bay projection (0.36m internal recess -> 0.51m splay flank lights!)
+    const bayHalfZ = 1.17;         // Survey2Plan 1.62m front + 2 × 0.36m Z-splay = 2.34m internal bay span (splay = hypot(0.36, 0.36) = 0.51m!)
     const hornLen = 0.095;         // Projecting windowsill horn & architrave return along X = -22.19m
     const bayBaseY = -0.6;         // West Wing floor & exterior ground level
-    const sillY = 0.08;            // 0.68m above the -0.60m Living/Front Room floor (Issue #2: 10cm lower & 10cm taller windows)
-    const headY = frontWallH - 0.26; // Adapted for reduced front-room ceiling height frontWallH = 1.625m (Issue #1: headY = 1.365m)
+    const sillY = 0.02;            // 0.62m above -0.60m floor (clears 0.58m bay radiator)
+    const headY = 1.44;            // Survey2Plan Win 1690814 / 1698360 exact height = 1.42m (1.44 - 0.02 = 1.42m!)
     const winH = headY - sillY;
-    const frontW = 1.38;           // Survey2Plan Win 1397299 / 1409822 central facet = 1.38m
+    const frontW = 1.62;           // Survey2Plan S2P-Windows-TplwGlazingBarsK central 3-light facet = 1.62m wide
 
     // Trapezoidal carpeted bay floor extension slab tucked 4cm inside the 0.28m bay walls (at Y = -0.60m)
     buildPolygonalFloorSlab(
@@ -1695,7 +1925,7 @@ export function createGroundShellWindowsAndDoors(
     );
 
 
-    // 11. Two Intermediate Vertical Mullions dividing the Front Facet into 3 casement bays (3x2 = 6 panes)
+    // 11. Two Intermediate Vertical Mullions + 3 Inset Sash Sub-Frames dividing the 1.62m Front Facet into 3 casement bays (`S2P-Windows-TplwGlazingBarsK`)
     for (const mz of [-frontW / 6, frontW / 6]) {
       const mullion = new THREE.Mesh(
         new THREE.BoxGeometry(0.082, winH - 0.044, 0.052),
@@ -1704,6 +1934,33 @@ export function createGroundShellWindowsAndDoors(
       mullion.name = `${bayWallGroup.name}.frontMullion.${mz < 0 ? "north" : "south"}`;
       mullion.position.set(bayInnerFrontX - 0.144, sillY + winH / 2, centerZ + mz);
       bayWallGroup.add(mullion);
+    }
+    const frontLightW = frontW / 3 - 0.052;
+    const frontClearH = winH - 0.148;
+    for (let fl = 0; fl < 3; fl++) {
+      const flCenterZ = centerZ + (fl - 1) * (frontW / 3);
+      for (const sz of [-1, 1] as const) {
+        const sStile = new THREE.Mesh(
+          new THREE.BoxGeometry(0.044, frontClearH, 0.026),
+          windowFrameMat
+        );
+        sStile.name = `${bayWallGroup.name}.frontSash.${fl + 1}.stile.${sz < 0 ? 'north' : 'south'}`;
+        sStile.position.set(
+          bayInnerFrontX - 0.152,
+          sillY + winH / 2,
+          flCenterZ + sz * (frontLightW * 0.5 - 0.013)
+        );
+        bayWallGroup.add(sStile);
+      }
+      for (const barFrac of [0.33, 0.67] as const) {
+        const gBar = new THREE.Mesh(
+          new THREE.BoxGeometry(0.036, 0.02, frontLightW - 0.026),
+          windowFrameMat
+        );
+        gBar.name = `${bayWallGroup.name}.frontSash.${fl + 1}.glazingBar.${barFrac < 0.5 ? 1 : 2}`;
+        gBar.position.set(bayInnerFrontX - 0.152, sillY + 0.074 + frontClearH * barFrac, flCenterZ);
+        bayWallGroup.add(gBar);
+      }
     }
 
     // 12. Brass Casement Stays & Handles on the 2 Angled Splay Windows (media_1790514908836.webp)

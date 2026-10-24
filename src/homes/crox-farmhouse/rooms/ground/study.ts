@@ -30,7 +30,7 @@ export function buildStudy(
   ctx: SceneBuilderContext,
   kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'antiqueOakSkirtingMat' | 'exteriorBrickMat' | 'tagCutawayWall' | 'wallCapMat' | 'wallH' | 'warmRoomPlasterMat'> &
     Pick<ReturnType<typeof createGroundFloorShellKit>, 'addBrickWallAlongXWithWindow' | 'addBrickWallAlongZWithCourtyardDoor' | 'addExteriorBrickWall' | 'addInteriorWall'> &
-    Pick<ReturnType<typeof defineTier2Levels>, 'tier2FloorY' | 'tier2WallH' | 'tier2WallMidY'>
+    Pick<ReturnType<typeof defineTier2Levels>, 'plantRoomCeilingY' | 'tier2FloorY' | 'tier2WallH' | 'tier2WallMidY'>
 ): void {
   const { groundFloorCeilingGroup, scene } = ctx;
   const {
@@ -40,6 +40,7 @@ export function buildStudy(
     addInteriorWall,
     antiqueOakSkirtingMat,
     exteriorBrickMat,
+    plantRoomCeilingY,
     tagCutawayWall,
     tier2FloorY,
     tier2WallH,
@@ -280,10 +281,11 @@ export function buildStudy(
     skipSkirting: true,
   });
   {
-    // Issue #8: Raise the Study / Plant Room open doorway clear height to 2.08m (6'10") above tier2FloorY (-0.60m)
-    const studyDoorH = 2.08;
-    const studyLintelH = wallH - (tier2FloorY + studyDoorH); // 0.58m
-    const studyLintelY = tier2FloorY + studyDoorH + studyLintelH / 2; // 1.77m
+    // Survey2Plan Door 1823349 (1.72–1.88m): 1.84m clear doorway height above tier2FloorY (-0.60m -> headY = 1.24m),
+    // fitting cleanly beneath the Plant Room 1.98m dropped ceiling (`plantRoomCeilingY = 1.38m`)!
+    const studyDoorH = 1.84;
+    const studyLintelH = wallH - (tier2FloorY + studyDoorH); // 0.82m
+    const studyLintelY = tier2FloorY + studyDoorH + studyLintelH / 2; // 1.65m
     addInteriorWall(-18.915, studyLintelY, 10.68, 0.15, studyLintelH, 0.9, warmRoomPlasterMat, {
       skipSkirting: true,
     });
@@ -552,13 +554,13 @@ export function buildStudy(
     scene.add(fanGroup);
   }
 
-  // Plasterboard ceiling backing over Study & Plant Room (bottom at wallH - 0.026m above the linear LED light bars at wallH - 0.03m)
+  // Plasterboard ceiling backing over Study (`Ceil 1620396`, clear height ~2.66m, bottom at wallH - 0.026m)
   const studyCeilingSlab = buildPolygonalFloorSlab(
     groundFloorCeilingGroup,
     [
       [-22.36, 8.27],
-      [-17.11, 8.27],
-      [-17.25, 11.63],
+      [-18.84, 8.27],
+      [-18.84, 11.63],
       [-22.36, 11.63],
     ],
     wallH + 0.012,
@@ -568,4 +570,33 @@ export function buildStudy(
   );
   studyCeilingSlab.name = 'study.ceilingBacking';
   studyCeilingSlab.geometry.computeBoundingSphere();
+
+  // Survey2Plan Ceil 1621697: Dropped 1.98m plaster ceiling soffit over Plant Room (`Rm 12B`, bottom at plantRoomCeilingY = 1.38m)
+  // plus vertical plaster bulkhead fascia along the X = -18.84m partition closing up to wallH (2.06m).
+  const plantRoomCeilingSlab = buildPolygonalFloorSlab(
+    groundFloorCeilingGroup,
+    [
+      [-18.84, 8.27],
+      [-17.11, 8.27],
+      [-17.25, 11.63],
+      [-18.84, 11.63],
+    ],
+    plantRoomCeilingY + 0.038,
+    0.038,
+    warmRoomPlasterMat,
+    0.5
+  );
+  plantRoomCeilingSlab.name = 'plantRoom.droppedCeilingSoffit';
+  plantRoomCeilingSlab.geometry.computeBoundingSphere();
+
+  const plantBulkheadH = wallH - plantRoomCeilingY;
+  const plantCeilingBulkhead = new THREE.Mesh(
+    createSharedGeo(new THREE.BoxGeometry(0.032, plantBulkheadH, 3.1)),
+    warmRoomPlasterMat
+  );
+  plantCeilingBulkhead.name = 'plantRoom.ceilingBulkheadFascia';
+  plantCeilingBulkhead.position.set(-18.824, plantRoomCeilingY + plantBulkheadH * 0.5, 9.94);
+  plantCeilingBulkhead.castShadow = true;
+  plantCeilingBulkhead.receiveShadow = true;
+  groundFloorCeilingGroup.add(plantCeilingBulkhead);
 }

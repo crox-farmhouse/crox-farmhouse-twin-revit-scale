@@ -279,8 +279,8 @@ export const SittingAndCourtyardZoneModule: SceneZoneModule = {
     { minX: -10.2, maxX: -7.1, minY: -0.45, maxY: 4.5, minZ: 14.85, maxZ: 20.4 },
     // Outbuilding Bay 4: Barn & Mezzanine (`u = 15.20..23.02m`)
     { minX: -7.3, maxX: 0.95, minY: -0.75, maxY: 4.5, minZ: 14.15, maxZ: 20.15 },
-    // Outbuilding Bay 5: 2-Storey Stable (`u = 23.22..28.77m`)
-    { minX: 0.65, maxX: 6.7, minY: -0.5, maxY: 4.95, minZ: 13.65, maxZ: 19.45 },
+    // Outbuilding Bay 5: 2-Storey Stable (`u = 23.22..28.77m`, stepped-up loft ridge 5.064m)
+    { minX: 0.65, maxX: 6.7, minY: -0.5, maxY: 5.35, minZ: 13.65, maxZ: 19.45 },
   ],
   build(ctx: SceneBuilderContext): ZoneIndicatorMaterials {
     const eastWingCtx = createScopedBuilderContext(ctx, {

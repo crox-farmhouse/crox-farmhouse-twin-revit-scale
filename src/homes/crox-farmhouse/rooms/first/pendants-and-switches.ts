@@ -22,9 +22,12 @@ export function buildFirstFloorPendantsAndSwitches(
   //    (Mounted to `scene` = `firstFloorMeshGroup` so they hide cleanly when
   //    First Floor visibility is toggled off)
   // =========================================================================
-  const ewCollarCeilingY = 4.52;
-  const mainBedCollarCeilingY = 5.02;
-  const mainBedFloorTopY = 2.34;
+  const ewCollarCeilingY = 4.65;
+  const mainBedCollarCeilingY = 5.065;
+  const mainBedFloorTopY = 2.51;
+  const bed2FloorTopY = 2.05;
+  const bed3FloorTopY = 2.08;
+  const bed4FloorTopY = 2.05;
 
   // 1. Main Bedroom (Circuit: mainBedroomPendant, Switch PA: 1.2.10)
   buildRoomCeilingPendant(eastWingCtx, {
@@ -292,9 +295,9 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'bedroom2Pendant',
     x: -19.85,
     z: 0.05,
-    ceilingY: 5.02,
-    dropLength: 0.56,
-    floorY: floorTopY,
+    ceilingY: 4.73,
+    dropLength: 0.44,
+    floorY: bed2FloorTopY,
     pointLightIntensity: 13.5,
     pointLightDistance: 7.2,
     addPointLight: false,
@@ -305,8 +308,8 @@ export function buildFirstFloorPendantsAndSwitches(
     switchPa: '1.2.13',
     location: 'Bedroom 2 — East Wall (by Door)',
     x: -19.0,
-    y: floorTopY + 1.15,
-    z: 1.15,
+    y: bed2FloorTopY + 1.15,
+    z: 1.12,
     facing: 'west',
     parentGroup: scene,
   });
@@ -316,9 +319,9 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'bedroom3Pendant',
     x: -20.05,
     z: 6.38,
-    ceilingY: 5.02,
+    ceilingY: 5.05,
     dropLength: 0.56,
-    floorY: floorTopY,
+    floorY: bed3FloorTopY,
     pointLightIntensity: 13.0,
     pointLightDistance: 7.0,
     addPointLight: false,
@@ -328,9 +331,9 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'bedroom3Pendant',
     switchPa: '1.2.14',
     location: 'Bedroom 3 — East Wall (by Door)',
-    x: -18.48,
-    y: floorTopY + 1.15,
-    z: 6.82,
+    x: -18.29,
+    y: bed3FloorTopY + 1.15,
+    z: 6.72,
     facing: 'west',
     parentGroup: scene,
   });
@@ -340,9 +343,9 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'bedroom4Pendant',
     x: -19.85,
     z: 9.94,
-    ceilingY: 5.02,
+    ceilingY: 5.05,
     dropLength: 0.56,
-    floorY: floorTopY,
+    floorY: bed4FloorTopY,
     pointLightIntensity: 13.0,
     pointLightDistance: 7.0,
     addPointLight: false,
@@ -352,8 +355,8 @@ export function buildFirstFloorPendantsAndSwitches(
     circuitId: 'bedroom4Pendant',
     switchPa: '1.2.15',
     location: 'Bedroom 4 — North Wall (by Door)',
-    x: -18.35,
-    y: floorTopY + 1.15,
+    x: -18.32,
+    y: bed4FloorTopY + 1.15,
     z: 8.39,
     facing: 'south',
     parentGroup: scene,

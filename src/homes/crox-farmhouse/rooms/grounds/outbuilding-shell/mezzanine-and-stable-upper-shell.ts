@@ -408,10 +408,58 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     [{ uCenter: 19.85, yCenter: eastRangeGroundTopY + 0.44, width: 0.78, height: 0.72 }],
     settingPlasterMat
   );
-  // South Upper Wall of Barn Mezzanine (`u = 18.68..23.02m`, solid brick, 0 windows per Floorplan)
+  // Survey2Plan Floor 1613666: Store Upper Hayloft Deck (`u = 12.31..14.96m, v = 0.284..5.426m, y = 2.52..2.58m`)
+  // seated cleanly above the Golf Simulator corridor & store ceiling zone on `firstFloorGroup`!
+  {
+    const storeLoftSpanU = uBarnStart - (uStoreStart + 0.24); // 2.65m
+    const storeLoftSpanV = vInnerSouth - vInnerNorth - 0.008; // 5.142m
+    const storeLoftMidU = uStoreStart + 0.24 + storeLoftSpanU * 0.5;
+    const storeLoftMidV = (vInnerNorth + vInnerSouth) * 0.5;
+    const storeLoftGeo = new THREE.BoxGeometry(storeLoftSpanU, 0.06, storeLoftSpanV);
+    applyOutbuildingFloorUVs(storeLoftGeo, storeLoftMidU, 2.55, storeLoftMidV, 0.5);
+    storeLoftGeo.computeBoundingSphere();
+    const storeLoftMesh = new THREE.Mesh(storeLoftGeo, lightJoineryOakMat);
+    storeLoftMesh.name = 'outbuildings.store.upperLoftDeck';
+    storeLoftMesh.userData.isArchitecturalShell = true;
+    storeLoftMesh.position.set(storeLoftMidU, 2.55, storeLoftMidV);
+    storeLoftMesh.castShadow = true;
+    storeLoftMesh.receiveShadow = true;
+    firstFloorGroup.add(storeLoftMesh);
+  }
+
+  // South Upper Wall of Barn Mezzanine (`u = 18.68..23.02m`), featuring Survey2Plan `Door 1841339`
+  // (`1.36m` wide double hayloft loading door at `u = 20.78..22.14m`, `y = 1.54..2.84m`, 100% clear of
+  // posters, skateboards, KNX switches & AC unit!) + wrought-iron Juliet safety rail!
+  const hayloftDoorU0 = 20.78;
+  const hayloftDoorU1 = 22.14; // exact 1.36m surveyed width (`Door 1841339`)
+  const hayloftDoorTopY = 2.84;
   addOutbuildingBrickWall(
     firstFloorGroup,
     uMezzanineFront,
+    hayloftDoorU0,
+    mezzanineFloorY,
+    barnUpperTopY,
+    vEastRangeSouth - wallT,
+    vEastRangeSouth,
+    ['-z'],
+    exteriorBrickMat,
+    settingPlasterMat
+  );
+  addOutbuildingBrickWall(
+    firstFloorGroup,
+    hayloftDoorU0,
+    hayloftDoorU1,
+    hayloftDoorTopY,
+    barnUpperTopY,
+    vEastRangeSouth - wallT,
+    vEastRangeSouth,
+    ['-z'],
+    exteriorBrickMat,
+    settingPlasterMat
+  );
+  addOutbuildingBrickWall(
+    firstFloorGroup,
+    hayloftDoorU1,
     uBarnEnd - partT,
     mezzanineFloorY,
     barnUpperTopY,
@@ -421,6 +469,98 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     exteriorBrickMat,
     settingPlasterMat
   );
+  {
+    const hayloftGroup = new THREE.Group();
+    hayloftGroup.name = 'outbuildings.firstFloor.mezzanine.southHayloftDoor';
+    hayloftGroup.userData.zone = 'outbuildingMezzanine';
+    const hMidU = (hayloftDoorU0 + hayloftDoorU1) * 0.5; // 21.46m
+    const hMidV = vEastRangeSouth - wallT * 0.5;
+    const hW = hayloftDoorU1 - hayloftDoorU0; // 1.36m
+    const hH = hayloftDoorTopY - mezzanineFloorY; // 1.30m
+    hayloftGroup.userData.cutawayWall = {
+      axis: 'z',
+      coord: hMidV,
+      minSpan: hayloftDoorU0,
+      maxSpan: hayloftDoorU1,
+      floor: 'first',
+      outwardSide: 'south',
+      includeInFirstFloorCutaway: true,
+    };
+    hayloftGroup.position.set(hMidU, mezzanineFloorY, hMidV);
+    firstFloorGroup.add(hayloftGroup);
+
+    const frameT = 0.04;
+    const sillGeo = new THREE.BoxGeometry(hW + 0.08, 0.03, wallT + 0.05);
+    sillGeo.computeBoundingSphere();
+    const sill = new THREE.Mesh(sillGeo, stoneSillMat);
+    sill.name = 'outbuildings.firstFloor.mezzanine.southHayloftDoor.sill';
+    sill.position.set(0, 0.015, 0.01);
+    hayloftGroup.add(sill);
+
+    const headGeo = new THREE.BoxGeometry(hW, frameT, wallT + 0.02);
+    headGeo.computeBoundingSphere();
+    const head = new THREE.Mesh(headGeo, lightJoineryOakPostMat);
+    head.name = 'outbuildings.firstFloor.mezzanine.southHayloftDoor.headFrame';
+    head.position.set(0, hH - frameT * 0.5, 0);
+    hayloftGroup.add(head);
+
+    for (const sideX of [-1, 1] as const) {
+      const jambGeo = new THREE.BoxGeometry(frameT, hH, wallT + 0.02);
+      jambGeo.computeBoundingSphere();
+      const jamb = new THREE.Mesh(jambGeo, lightJoineryOakPostMat);
+      jamb.name = `outbuildings.firstFloor.mezzanine.southHayloftDoor.jamb.${sideX < 0 ? 'west' : 'east'}`;
+      jamb.position.set(sideX * (hW * 0.5 - frameT * 0.5), hH * 0.5, 0);
+      hayloftGroup.add(jamb);
+
+      // Twin glazed/boarded hayloft leaves (`0.636m` wide each)
+      const leafW = (hW - frameT * 2) * 0.5 - 0.004;
+      const leafH = hH - frameT - 0.03;
+      const leafMidX = sideX * (leafW * 0.5 + 0.002);
+      const lowerBoardGeo = new THREE.BoxGeometry(leafW, leafH * 0.44, 0.042);
+      lowerBoardGeo.computeBoundingSphere();
+      const lowerBoard = new THREE.Mesh(lowerBoardGeo, lightJoineryOakMat);
+      lowerBoard.name = `outbuildings.firstFloor.mezzanine.southHayloftDoor.leaf.${sideX < 0 ? 'west' : 'east'}.lowerPanel`;
+      lowerBoard.position.set(leafMidX, 0.03 + leafH * 0.22, 0.01);
+      hayloftGroup.add(lowerBoard);
+
+      const upperGlassGeo = new THREE.BoxGeometry(leafW - 0.08, leafH * 0.52, 0.018);
+      upperGlassGeo.computeBoundingSphere();
+      const upperGlass = new THREE.Mesh(upperGlassGeo, windowGlassMat);
+      upperGlass.name = `outbuildings.firstFloor.mezzanine.southHayloftDoor.leaf.${sideX < 0 ? 'west' : 'east'}.glass`;
+      upperGlass.position.set(leafMidX, 0.03 + leafH * 0.72, 0.01);
+      hayloftGroup.add(upperGlass);
+
+      for (const sx of [-leafW * 0.5 + 0.024, leafW * 0.5 - 0.024] as const) {
+        const stileGeo = new THREE.BoxGeometry(0.048, leafH, 0.042);
+        stileGeo.computeBoundingSphere();
+        const stile = new THREE.Mesh(stileGeo, lightJoineryOakPostMat);
+        stile.name = `outbuildings.firstFloor.mezzanine.southHayloftDoor.leaf.${sideX < 0 ? 'west' : 'east'}.stile.${sx < 0 ? 'left' : 'right'}`;
+        stile.position.set(leafMidX + sx, 0.03 + leafH * 0.5, 0.01);
+        hayloftGroup.add(stile);
+      }
+      const topRailGeo = new THREE.BoxGeometry(leafW, 0.048, 0.042);
+      topRailGeo.computeBoundingSphere();
+      const topRail = new THREE.Mesh(topRailGeo, lightJoineryOakPostMat);
+      topRail.name = `outbuildings.firstFloor.mezzanine.southHayloftDoor.leaf.${sideX < 0 ? 'west' : 'east'}.topRail`;
+      topRail.position.set(leafMidX, 0.03 + leafH - 0.024, 0.01);
+      hayloftGroup.add(topRail);
+    }
+
+    // Exterior wrought-iron Juliet safety bar (`1.10m` Part K protection height)
+    const julietBarMat = new THREE.MeshStandardMaterial({ color: 0x22252a, roughness: 0.42, metalness: 0.78 });
+    for (const [barTag, by] of [
+      ['bottomRail', 0.14],
+      ['topRail', 1.1],
+    ] as const) {
+      const railGeo = new THREE.CylinderGeometry(0.014, 0.014, hW + 0.08, 12);
+      railGeo.rotateZ(Math.PI / 2);
+      railGeo.computeBoundingSphere();
+      const rail = new THREE.Mesh(railGeo, julietBarMat);
+      rail.name = `outbuildings.firstFloor.mezzanine.southHayloftDoor.juliet.${barTag}`;
+      rail.position.set(0, by, wallT * 0.5 + 0.035);
+      hayloftGroup.add(rail);
+    }
+  }
 
   // Vaulted eave frieze strips inside Store (`u = 12.31..14.96m`) and Barn (`u = 15.20..23.02m`)
   addVaultedRoomEaveFriezeStrips(
@@ -454,7 +594,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     vEastRangeNorth,
     vEastRangeNorth + wallT,
     ['+z'],
-    [{ uCenter: 26.35, yCenter: stableUpperFloorY + 0.66, width: 0.88, height: 0.82 }],
+    [{ uCenter: 26.35, yCenter: stableUpperFloorY + 0.63, width: 0.9, height: 0.76 }],
     cromartyWallMat
   );
   // Issue #11 ("This window needs to be frosted" at `[4.304, 2.734, 19.324]`) +
@@ -502,15 +642,15 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
   //   3. Architectural Up/Down Exterior Wall Sconce Lights mounted symmetrically on the brick piers on either side (`u = 29.05m`).
   const balDoorV0 = 2.215;
   const balDoorV1 = 3.495; // 1.28m wide central French double door opening centered at v = 2.855m
-  const balDoorBotY = stableUpperFloorY; // 2.08m
-  const balDoorTopY = 4.12; // 2.04m total frame height (2.00m clear walkthrough headroom — Part K compliant!)
+  const balDoorBotY = stableUpperFloorY; // 2.475m
+  const balDoorTopY = stableUpperFloorY + 2.04; // 4.515m (2.04m total frame height, 2.00m clear walkthrough headroom — Part K compliant!)
 
   const winNorthV0 = 0.86;
   const winNorthV1 = 1.70; // 0.84m wide North casement window centered at v = 1.28m
   const winSouthV0 = 4.01;
   const winSouthV1 = 4.85; // 0.84m wide South casement window centered at v = 4.43m
-  const winBotY = 2.34;
-  const winTopY = 3.20; // 0.86m high casement windows centered at y = 2.77m
+  const winBotY = stableUpperFloorY + 0.26;
+  const winTopY = stableUpperFloorY + 1.12; // 0.86m high casement windows
 
   // 1A. Floor-zone sill strip under the central French doorway (`y = 1.96m..2.08m, v = 2.215m..3.495m`)
   addOutbuildingBrickWall(
@@ -885,7 +1025,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
   addOutbuildingExteriorUpDownWallLight(
     firstFloorGroup,
     uStableEnd,
-    3.282,
+    stableUpperFloorY + 1.202,
     1.471,
     'outbuildings.firstFloor.stableBalconyWallLight.northInner',
     'first',
@@ -895,7 +1035,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
   addOutbuildingExteriorUpDownWallLight(
     firstFloorGroup,
     uStableEnd,
-    3.282,
+    stableUpperFloorY + 1.202,
     4.239,
     'outbuildings.firstFloor.stableBalconyWallLight.southInner',
     'first',
@@ -1255,8 +1395,8 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     //    Start `s = 0` at `thetaBottom = -0.22 * Math.PI` (`u ≈ 33.33m, v ≈ 4.29m`) on the outward North-East quadrant
     //    so the bottom step faces North/North-West directly toward the Office exit door (`u = 31.85m, v = 1.15..3.85m`)
     //    and outwards into the garden rather than curling behind the column into the West brick wall!
-    const numSpiralSteps = 13;
-    const stepRise = totalExtRise / (numSpiralSteps + 1); // 0.18m per riser (13 treads + top landing = 14 risers)
+    const numSpiralSteps = 15;
+    const stepRise = totalExtRise / (numSpiralSteps + 1); // 0.182m per riser (15 treads + top landing = 16 risers)
     const thetaBottom = -0.22 * Math.PI; // Bottom step on outward North-East side near the Office exit (`u ≈ 33.33m, v ≈ 4.29m`)
     const thetaTop = 0.68 * Math.PI; // Top step arriving at South-West radial edge of top landing (`u ≈ 32.23m, v ≈ 5.53m`)
     const treadSectorSpan = 0.28; // Radians of each fan tread (~16.0°)
@@ -1476,7 +1616,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
   // Because `entranceDoorV0 = 2.405m` and `entranceDoorV1 = 3.305m` sit symmetrically within `±0.45m` of the central ridge,
   // the Barn roof slope at both jambs is `ySlope = 4.033m` (`4.433m` on the Stable side), allowing `stableEntrancePortalTopY = 3.98m`
   // (`1.90m` clear height on the Stable side, `2.44m` above the Mezzanine floor) strictly below the Barn vaulted ceiling!
-  const stableEntrancePortalTopY = 3.98;
+  const stableEntrancePortalTopY = 4.0;
   {
     const addGableWithPortalCutout = (
       uMinG: number,
@@ -1599,10 +1739,10 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
       mezzBaseboardGroup.add(mesh);
     }
 
-    // South Mezzanine Wall West of Stairwell (`v = 5.43m, u = 18.68..21.14m`, projecting North `-z`)
+    // South Mezzanine Wall West of Hayloft Door (`v = 5.43m, u = 18.68..20.74m`, projecting North `-z`)
     const southSegs = buildMitredWallSkirtingSegments(
       [
-        [21.14, vInnerSouth],
+        [20.74, vInnerSouth],
         [uMezzanineFront, vInnerSouth],
       ],
       mezzanineFloorY
@@ -1654,7 +1794,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     addProfiledPathSegments(
       [
         [13.78, vInnerNorth],
-        [15.80, vInnerNorth],
+        [15.62, vInnerNorth],
       ],
       barnWestFloorY,
       ['westNorthLeft']
@@ -1699,7 +1839,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
       const stringerT = 0.022;
       const capRefH = 0.122;
       const plinthTopH = 0.0955; // Matches the 95mm lower plinth of `createWallSkirtingBoardProfile` and `h = -0.027m` of `createSkirtingCapProfile`!
-      const uDoorEast = 16.90;
+      const uDoorEast = 17.56;
       const uRiser1 = 18.00;
       const uRiser2 = 18.24;
       const uPilW = 18.53;
@@ -1920,12 +2060,15 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     // - Turned cylindrical solid-oak newel posts (`r = 0.036m`) with spherical oak finial caps (`r = 0.044m`)
     // - Raked cylindrical solid-oak handrails (`r = 0.026m`) and raked toughened glass banister panels with
     //   brushed stainless-steel stand-off spigot clamps!
-    const numUpSteps = 3;
-    const upRiseTotal = stableUpperFloorY - mezzanineFloorY; // 0.54m
-    const stepRiserH = upRiseTotal / numUpSteps; // 0.18m per step
+    // Survey2Plan FLOOR 1614082 (`+0.935m` rise from `mezzanineFloorY = 1.54m` to `stableUpperFloorY = 2.475m`):
+    // 4 intermediate solid-oak bullnose treads (`s = 0..3`) + 5th riser onto `topNosing` (`5 x 0.187m = 0.935m`,
+    // `242.5mm` going per tread across `u = 22.05..23.02m` — UK Part K compliant!)
+    const numUpSteps = 4;
+    const upRiseTotal = stableUpperFloorY - mezzanineFloorY; // 0.935m
+    const stepRiserH = upRiseTotal / (numUpSteps + 1); // 0.187m per riser (5 risers total!)
     const upFlightEndU = uBarnEnd - partT; // 23.02m (West face of Barn/Stable partition wall)
-    const upStartU = 22.05; // Extended West to u = 22.05m so botNewelU = 22.02m aligns with swEastU = 22.02m (Issues #2 & #3!)
-    const stepGoingU = (upFlightEndU - upStartU) / numUpSteps; // 0.3233m (323mm generous going per tread)
+    const upStartU = 22.05; // Preserves botNewelU = 22.02m aligned with spiral stairwell swEastU = 22.02m!
+    const stepGoingU = (upFlightEndU - upStartU) / numUpSteps; // 0.2425m (242.5mm Part K going per tread)
     const treadT = 0.036; // 36mm thick solid American white oak tread matching spiral staircase
     const bullnoseR = treadT * 0.5; // 18mm half-round bullnose radius
     const nosingOverhangU = 0.026; // 26mm overhanging bullnose nosing (bottom nosing at u = 22.024m — Pin #3!)

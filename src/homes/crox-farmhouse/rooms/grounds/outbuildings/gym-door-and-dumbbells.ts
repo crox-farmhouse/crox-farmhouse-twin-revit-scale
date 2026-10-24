@@ -540,7 +540,9 @@ export function buildGymOakDoorAndSkirting(
     skirtingGroup.add(capMesh);
   };
 
-  addSkirtingAlongV(vInnerNorth, vInnerSouth, wallT, 1);
+  // Segmented skirting along GYM West road wall (`u = wallT`), stopping cleanly at Door 1830288 (`v = 3.82..4.63m`)
+  addSkirtingAlongV(vInnerNorth, 3.8, wallT, 1);
+  addSkirtingAlongV(4.65, vInnerSouth, wallT, 1);
   // Segmented skirting along the GYM East partition wall (`u = 5.77m`), stopping cleanly at
   // the full-height glass double door (`v = 0.88..3.52m`) and the Gym-to-Shower-Room door (`v = 4.18..4.94m`)!
   addSkirtingAlongV(vInnerNorth, 0.82, uGymEnd, -1);

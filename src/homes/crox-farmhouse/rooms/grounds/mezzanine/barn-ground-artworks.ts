@@ -646,7 +646,7 @@ export function buildBarnGroundWallArtworks(
   const stAndrewsGroup = new THREE.Group();
   stAndrewsGroup.name = 'outbuildings.barn.stAndrewsPicture';
   stAndrewsGroup.userData.zone = 'courtyard';
-  stAndrewsGroup.position.set(17.75, 1.12, 0.295);
+  stAndrewsGroup.position.set(18.12, 1.12, 0.295);
   groundGroup.add(stAndrewsGroup);
 
   const stW = 0.76;
@@ -1308,7 +1308,7 @@ export function buildBarnGroundWallArtworks(
     [2, 21.08, 0.50, 5.418, Math.PI],
     [3, 19.05, 0.56, 0.292, 0],
     [4, 23.005, 0.52, 1.56, -Math.PI / 2],
-    [5, 16.92, 0.92, 0.292, 0],
+    [5, 17.66, 1.32, 0.292, 0],
   ];
   for (const [sIdx, su, sy, sv, sRotY] of wallSconceSpecs) {
     const sconce = new THREE.Group();
@@ -1345,9 +1345,9 @@ export function buildBarnGroundWallArtworks(
   }
 
   // 4F. 2 Brushed-Brass Gallery Picture Task Lights (`outbuildings.barn.pictureLight.1..2`)
-  //     over the St Andrews Picture (`u = 17.75m, y = 1.46m, v = 0.295m`) & Horse Show Certificates above the North Door (`u = 16.35m, y = 2.69m, v = 0.295m`)
+  //     over the St Andrews Picture (`u = 18.12m, y = 1.46m, v = 0.295m`) & Horse Show Certificates (`u = 16.88m, y = 2.13m, v = 5.415m`)
   for (const [pIdx, pu, py, pv, pRotY, barW] of [
-    [1, 17.75, 1.46, 0.295, 0, 0.44],
+    [1, 18.12, 1.46, 0.295, 0, 0.44],
     [2, 16.88, 2.13, 5.415, Math.PI, 0.68],
   ] as const) {
     const picLight = new THREE.Group();

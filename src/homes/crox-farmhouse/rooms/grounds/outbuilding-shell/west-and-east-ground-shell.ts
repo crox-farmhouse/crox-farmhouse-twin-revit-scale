@@ -152,13 +152,122 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   garageFloor.receiveShadow = true;
   groundGroup.add(garageFloor);
 
-  // West Gable Wall of GYM facing the Front Road (u = 0.00m..0.28m, v = 0.00m..5.71m — Issue #2: swapped window to v = 2.96..3.64m!)
-  // Small cottage casement window (`0.68m` wide along `v = 2.96..3.64m` x `0.76m` high at `y = baseY0 + 1.00..baseY0 + 1.76m`)
+  // West Gable Wall of GYM facing the Front Road (u = 0.00m..0.28m, v = 0.00m..5.71m):
+  // - Small cottage casement window (`0.68m` wide along `v = 2.96..3.64m` x `0.76m` high at `y = baseY0 + 1.00..baseY0 + 1.76m`)
+  // - Survey2Plan `Door 1830288` (`0.81m` wide x `2.04m` high boarded road door along `v = 3.82..4.63m`, 100% clear of mirrors, window & SW plant!)
+  const gymWestDoorV0 = 3.82;
+  const gymWestDoorV1 = 4.63; // exact 0.81m surveyed width (`Door 1830288`)
+  const gymWestDoorH = 2.04;
   addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, northWestWallTopY, 0, 2.96, ['+x']);
   addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, baseY0 + 1.0, 2.96, 3.64, ['+x']);
   addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 + 1.76, northWestWallTopY, 2.96, 3.64, ['+x']);
-  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, northWestWallTopY, 3.64, vWestRangeSouth, ['+x']);
+  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, northWestWallTopY, 3.64, gymWestDoorV0, ['+x']);
+  addOutbuildingBrickWall(
+    groundGroup,
+    0,
+    wallT,
+    baseY0 + gymWestDoorH,
+    northWestWallTopY,
+    gymWestDoorV0,
+    gymWestDoorV1,
+    ['+x']
+  );
+  addOutbuildingBrickWall(
+    groundGroup,
+    0,
+    wallT,
+    baseY0 - 0.14,
+    northWestWallTopY,
+    gymWestDoorV1,
+    vWestRangeSouth,
+    ['+x']
+  );
   addOutbuildingWindow(groundGroup, wallT * 0.5, baseY0 + 1.38, 3.3, 0.68, 0.76, true);
+  {
+    const roadDoorGroup = new THREE.Group();
+    roadDoorGroup.name = 'outbuildings.gym.westGableRoadDoor';
+    roadDoorGroup.userData.zone = 'outbuildingGym';
+    const rMidU = wallT * 0.5;
+    const rMidV = (gymWestDoorV0 + gymWestDoorV1) * 0.5; // 4.225m
+    const rW = gymWestDoorV1 - gymWestDoorV0; // 0.81m
+    roadDoorGroup.userData.cutawayWall = {
+      axis: 'x',
+      coord: rMidU,
+      minSpan: gymWestDoorV0,
+      maxSpan: gymWestDoorV1,
+      floor: 'ground',
+      outwardSide: 'west',
+      includeInFirstFloorCutaway: false,
+    };
+    roadDoorGroup.position.set(rMidU, baseY0, rMidV);
+    groundGroup.add(roadDoorGroup);
+
+    const frameT = 0.038;
+    const sillGeo = new THREE.BoxGeometry(wallT + 0.05, 0.026, rW + 0.06);
+    sillGeo.computeBoundingSphere();
+    const sill = new THREE.Mesh(sillGeo, stoneSillMat);
+    sill.name = 'outbuildings.gym.westGableRoadDoor.thresholdSill';
+    sill.position.set(-0.01, 0.013, 0);
+    roadDoorGroup.add(sill);
+
+    const lintelGeo = new THREE.BoxGeometry(0.065, 0.075, rW + 0.14);
+    lintelGeo.computeBoundingSphere();
+    const lintel = new THREE.Mesh(lintelGeo, stoneSillMat);
+    lintel.name = 'outbuildings.gym.westGableRoadDoor.extLintel';
+    lintel.position.set(-wallT * 0.5 - 0.01, gymWestDoorH + 0.036, 0);
+    roadDoorGroup.add(lintel);
+
+    for (const sideZ of [-1, 1] as const) {
+      const jambGeo = new THREE.BoxGeometry(wallT + 0.02, gymWestDoorH, frameT);
+      jambGeo.computeBoundingSphere();
+      const jamb = new THREE.Mesh(jambGeo, lightJoineryOakPostMat);
+      jamb.name = `outbuildings.gym.westGableRoadDoor.jamb.${sideZ < 0 ? 'north' : 'south'}`;
+      jamb.position.set(0, gymWestDoorH * 0.5, sideZ * (rW * 0.5 - frameT * 0.5));
+      roadDoorGroup.add(jamb);
+    }
+    const headGeo = new THREE.BoxGeometry(wallT + 0.02, frameT, rW);
+    headGeo.computeBoundingSphere();
+    const head = new THREE.Mesh(headGeo, lightJoineryOakPostMat);
+    head.name = 'outbuildings.gym.westGableRoadDoor.headFrame';
+    head.position.set(0, gymWestDoorH - frameT * 0.5, 0);
+    roadDoorGroup.add(head);
+
+    const clearW = rW - frameT * 2 - 0.006;
+    const clearH = gymWestDoorH - frameT - 0.026;
+    const leafPivot = new THREE.Group();
+    leafPivot.name = 'outbuildings.gym.westGableRoadDoor.leafPivot';
+    leafPivot.position.set(-0.015, 0.026, -clearW * 0.5);
+    roadDoorGroup.add(leafPivot);
+
+    const leafGeo = new THREE.BoxGeometry(0.044, clearH, clearW);
+    leafGeo.computeBoundingSphere();
+    const leafBoard = new THREE.Mesh(leafGeo, courtyardDoorMat);
+    leafBoard.name = 'outbuildings.gym.westGableRoadDoor.leafBoard';
+    leafBoard.position.set(0, clearH * 0.5, clearW * 0.5);
+    leafBoard.castShadow = true;
+    leafPivot.add(leafBoard);
+
+    for (const [hTag, hy] of [
+      ['bottom', 0.34],
+      ['top', clearH - 0.34],
+    ] as const) {
+      const strapGeo = new THREE.BoxGeometry(0.012, 0.042, clearW * 0.62);
+      strapGeo.computeBoundingSphere();
+      const strap = new THREE.Mesh(strapGeo, castIronMat);
+      strap.name = `outbuildings.gym.westGableRoadDoor.strapHinge.${hTag}`;
+      strap.userData.lodTier = 'high';
+      strap.position.set(-0.026, hy, clearW * 0.32);
+      leafPivot.add(strap);
+    }
+
+    ctx.interactions.registerHingedDoor(
+      roadDoorGroup,
+      leafPivot,
+      new THREE.Vector3(0, 0, 0),
+      'y',
+      -Math.PI * 0.45
+    );
+  }
 
   // Painted interior gable lining inside the GYM West Gable wall (`u = 0.25..0.285m`) up to the vaulted ceiling
   addInteriorPlasterGableWall(
@@ -451,7 +560,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     0,
     wallT,
     ['+z'],
-    [{ uCenter: 1.49, yCenter: baseY0 + 1.39, width: 0.68, height: 0.78 }]
+    [{ uCenter: 1.49, yCenter: baseY0 + 1.39, width: 0.8, height: 0.74 }]
   );
 
   // GYM East wide opening (u = 3.05m..5.45m): Full-height glazed screen & interactive glass doors
@@ -1913,14 +2022,63 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     ['-z']
   );
 
-  // North Courtyard Wall of Store & West Barn (`u = 12.07m..18.68m`, rising to `barnUpperTopY = 2.92m` on `groundGroup`
-  // so the over-door wall at `u = 15.85..16.85m, y = 1.68..2.92m` is visible in ground cutaway mode behind the Horse Show Certificates!)
+  // North Courtyard Wall of Store & West Barn (`u = 12.07m..18.68m`, rising to `barnUpperTopY = 2.92m` on `groundGroup`),
+  // calibrated to Survey2Plan `Door 1785745` (`1.07m` wide Store Upper Hayloft Door at `u = 12.765..13.835m, y = 1.80..2.84m`)
+  // and `Door 1864721` (`1.86m` wide Barn Courtyard Double Door at `u = 15.66..17.52m`)!
   const northStoreWallStartIdx = groundGroup.children.length;
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
+    12.765,
+    storeFloorTopY - 0.14,
+    barnUpperTopY,
+    vEastRangeNorth,
+    vEastRangeNorth + wallT,
+    ['+z'],
+    exteriorBrickMat,
+    settingPlasterMat
+  );
+  addOutbuildingBrickWall(
+    groundGroup,
+    12.765,
     12.85,
     storeFloorTopY - 0.14,
+    1.8,
+    vEastRangeNorth,
+    vEastRangeNorth + wallT,
+    ['+z'],
+    exteriorBrickMat,
+    settingPlasterMat
+  );
+  addOutbuildingBrickWall(
+    groundGroup,
+    13.75,
+    13.835,
+    storeFloorTopY - 0.14,
+    1.8,
+    vEastRangeNorth,
+    vEastRangeNorth + wallT,
+    ['+z'],
+    exteriorBrickMat,
+    settingPlasterMat
+  );
+  addOutbuildingBrickWall(
+    groundGroup,
+    12.765,
+    13.835,
+    storeFloorTopY + 2.02,
+    1.8,
+    vEastRangeNorth,
+    vEastRangeNorth + wallT,
+    ['+z'],
+    exteriorBrickMat,
+    settingPlasterMat
+  );
+  addOutbuildingBrickWall(
+    groundGroup,
+    12.765,
+    13.835,
+    2.84,
     barnUpperTopY,
     vEastRangeNorth,
     vEastRangeNorth + wallT,
@@ -1937,18 +2095,6 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       child.castShadow = false;
     }
   }
-  addOutbuildingBrickWall(
-    groundGroup,
-    12.85,
-    13.75,
-    storeFloorTopY + 2.02,
-    barnUpperTopY,
-    vEastRangeNorth,
-    vEastRangeNorth + wallT,
-    ['+z'],
-    exteriorBrickMat,
-    settingPlasterMat
-  );
   addBoardedBarnDoor(
     groundGroup,
     13.3,
@@ -1960,9 +2106,20 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     courtyardDoorMat,
     'Store Courtyard Door'
   );
+  addBoardedBarnDoor(
+    firstFloorGroup,
+    13.3,
+    1.8,
+    vEastRangeNorth + wallT * 0.5,
+    1.07,
+    1.04,
+    true,
+    courtyardDoorMat,
+    'Store Upper Hayloft Door'
+  );
   addOutbuildingBrickWall(
     groundGroup,
-    13.75,
+    13.835,
     uBarnStart + 0.24,
     storeFloorTopY - 0.14,
     barnUpperTopY,
@@ -1975,7 +2132,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   addOutbuildingBrickWall(
     groundGroup,
     uBarnStart + 0.24,
-    15.85,
+    15.66,
     storeFloorTopY - 0.14,
     barnUpperTopY,
     vEastRangeNorth,
@@ -1987,8 +2144,8 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
 
   addOutbuildingBrickWall(
     groundGroup,
-    15.85,
-    16.85,
+    15.66,
+    17.52,
     barnWestFloorY + 2.02,
     barnUpperTopY,
     vEastRangeNorth,
@@ -1999,22 +2156,21 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   );
   addBoardedBarnDoor(
     groundGroup,
-    16.35,
+    16.59,
     barnWestFloorY,
     vEastRangeNorth + wallT * 0.5,
-    1.0,
+    1.86,
     2.02,
-    false,
+    true,
     courtyardDoorMat,
     'Barn Courtyard Door'
   );
 
-
-  // West Barn North Courtyard Wall (`u = 16.85..18.68m`, rising to `barnUpperTopY = 2.92m`) & East Barn Lower North Wall under Mezzanine (`u = 18.68..23.22m, y <= 1.54m`)
+  // West Barn North Courtyard Wall (`u = 17.52..18.68m`, rising to `barnUpperTopY = 2.92m`) & East Barn Lower North Wall under Mezzanine (`u = 18.68..23.22m, y <= 1.54m`)
   // finished in Farrow & Ball "Setting Plaster" (`settingPlasterMat`) per Issues #8 & #9!
   addOutbuildingBrickWall(
     groundGroup,
-    16.85,
+    17.52,
     uMezzanineFront,
     barnLowerFloorY - 0.14,
     barnUpperTopY,
@@ -2050,11 +2206,13 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     settingPlasterMat
   );
 
-  // North Courtyard Wall of 2-Storey Stable (Ground Floor: u = 23.22m..28.77m, rising to `stableGroundTopY = 1.96m` — Issue #11!)
+  // North Courtyard Wall of 2-Storey Stable (Ground Floor: u = 23.22m..31.57m, rising to `stableGroundTopY = 2.355m`):
+  // Calibrated to Survey2Plan `Door 1795405` (`1.35m` wide Stable Courtyard Door at `u = 23.58..24.93m`)
+  // and `Win 1795787` (`1.00m x 0.72m` casement at `u = 26.55m`)!
   addOutbuildingBrickWall(
     groundGroup,
     uStableStart,
-    23.8,
+    23.58,
     stableGroundFloorY - 0.14,
     stableGroundTopY,
     vEastRangeNorth,
@@ -2063,8 +2221,8 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   );
   addOutbuildingBrickWall(
     groundGroup,
-    23.8,
-    24.7,
+    23.58,
+    24.93,
     stableGroundFloorY + 2.04,
     stableGroundTopY,
     vEastRangeNorth,
@@ -2073,21 +2231,21 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   );
   addBoardedBarnDoor(
     groundGroup,
-    24.25,
+    24.255,
     stableGroundFloorY,
     vEastRangeNorth + wallT * 0.5,
-    0.9,
+    1.35,
     2.04,
-    false,
+    true,
     courtyardDoorMat,
     'Stable Courtyard Door'
   );
 
   // East portion of Stable North wall (extended to `uStableExtEnd - wallT = 31.57m` per Issue #6)
-  // with casement windows at `u = 26.55m` and `u = 29.95m`
+  // with Survey2Plan `Win 1795787` (`1.00m x 0.72m` at `u = 26.55m`) and East office casement (`u = 30.75m`)
   addOutbuildingBrickWallWithWindows(
     groundGroup,
-    24.7,
+    24.93,
     uStableExtEnd - wallT,
     stableGroundFloorY - 0.14,
     stableGroundTopY,
@@ -2095,7 +2253,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     vEastRangeNorth + wallT,
     ['+z'],
     [
-      { uCenter: 26.55, yCenter: 1.18, width: 0.92, height: 0.92 },
+      { uCenter: 26.55, yCenter: 1.18, width: 1.0, height: 0.72 },
       { uCenter: 30.75, yCenter: 1.18, width: 0.92, height: 0.92 },
     ]
   );

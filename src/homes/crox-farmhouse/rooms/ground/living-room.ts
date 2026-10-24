@@ -31,9 +31,9 @@ function tagHighLod<T extends THREE.Object3D>(obj: T, maxDistance = 12): T {
  */
 export function buildLivingRoom(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'castIronMat' | 'doorH' | 'exteriorBrickMat' | 'farrowAndBallPantalonMat' | 'frontWallH' | 'oakMat' | 'tagCutawayWall' | 'timberDoorMat' | 'wallCapMat' | 'warmRoomPlasterMat'> &
+  kit: Pick<ReturnType<typeof createGroundFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'castIronMat' | 'doorH' | 'engineeredOakFloorMat' | 'exteriorBrickMat' | 'farrowAndBallPantalonMat' | 'frontWallH' | 'oakMat' | 'tagCutawayWall' | 'timberDoorMat' | 'wallCapMat' | 'warmRoomPlasterMat'> &
     Pick<ReturnType<typeof createGroundFloorShellKit>, 'addSlattedRadiatorCover' | 'addWestCantedBayWindow' | 'applyWorldSpaceBrickUVs' | 'greyRoomCarpetMat'> &
-    Pick<ReturnType<typeof defineTier2Levels>, 'frontTier2WallH' | 'frontTier2WallMidY' | 'tier2FloorY'> &
+    Pick<ReturnType<typeof defineTier2Levels>, 'entranceHallFloorY' | 'frontTier2WallH' | 'frontTier2WallMidY' | 'tier2FloorY'> &
     Pick<ReturnType<typeof buildHall>, 'hallFrontRoomCrossWallFrame'> &
     Pick<ReturnType<typeof buildHallStaircase>, 'buildQAcousticsSpeaker'>
 ): {
@@ -50,6 +50,8 @@ export function buildLivingRoom(
     buildQAcousticsSpeaker,
     castIronMat,
     doorH,
+    engineeredOakFloorMat,
+    entranceHallFloorY,
     exteriorBrickMat,
     farrowAndBallPantalonMat,
     frontTier2WallH,
@@ -210,8 +212,8 @@ export function buildLivingRoom(
     end: [-17.891, 2.48],
     thickness: 0.28,
     topY: frontWallH,
-    frontFloorY: tier2FloorY, // South (Front Entrance Hallway)
-    backFloorY: tier2FloorY,  // North (Front / Cinema Room)
+    frontFloorY: entranceHallFloorY, // South (Front Entrance Hallway at -0.495m per Survey2Plan Floor 1596581)
+    backFloorY: tier2FloorY,  // North (Front / Cinema Room at -0.600m)
     wallMaterial: warmRoomPlasterMat,
     backFaceMaterial: farrowAndBallPantalonMat,
     capMaterial: wallCapMat,
@@ -224,9 +226,10 @@ export function buildLivingRoom(
         kind: 'hinged-door',
         uCenter: 3.74,
         width: 0.84,
-        doorHeight: doorH,
+        doorHeight: doorH - 0.105,
         lowerFloorY: tier2FloorY,
-        upperFloorY: tier2FloorY,
+        upperFloorY: entranceHallFloorY,
+        stepMaterial: engineeredOakFloorMat,
         architraveMaterial: antiqueOakSkirtingMat,
         doorLeafMaterial: timberDoorMat,
         hardwareMaterial: castIronMat,

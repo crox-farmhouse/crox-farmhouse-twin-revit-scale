@@ -83,7 +83,8 @@ export function buildGrapeVinePergola(
   const pergMaxX = 11.85;
   const pergMinZ = -0.95;
   const pergMaxZ = 7.2;
-  const pergFloorY = 0.32;
+  // Survey2Plan Floor 1906212: Upper Pergola Dining Court stepped terrace at +0.470m above Kitchen FFL!
+  const pergFloorY = 0.47;
   const pergWallH = 2.24;
   const pergWallTotalH = pergFloorY + pergWallH;
   const pergBeamY = pergFloorY + 2.32;
@@ -231,20 +232,20 @@ export function buildGrapeVinePergola(
   };
 
   const boundaryStepNorthWall = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(1.54, 2.1, 0.24), 6.05, 1.05, -1.92),
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(1.54, 2.25, 0.24), 6.05, 1.125, -1.92),
     brickWallMat
   );
   if (!boundaryStepNorthWall.name) boundaryStepNorthWall.name = 'courtyard.grapeVinePergola.boundaryStepNorthWall';
-  boundaryStepNorthWall.position.set(6.05, 1.05, -1.92);
+  boundaryStepNorthWall.position.set(6.05, 1.125, -1.92);
   boundaryStepNorthWall.castShadow = true;
   pergolaGroup.add(boundaryStepNorthWall);
 
   const boundaryStepEastReturn = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.24, 2.25, 1.02), pergMinX, 1.125, -1.45),
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.24, 2.4, 1.02), pergMinX, 1.2, -1.45),
     brickWallMat
   );
   if (!boundaryStepEastReturn.name) boundaryStepEastReturn.name = 'courtyard.grapeVinePergola.boundaryStepEastReturn';
-  boundaryStepEastReturn.position.set(pergMinX, 1.125, -1.45);
+  boundaryStepEastReturn.position.set(pergMinX, 1.2, -1.45);
   boundaryStepEastReturn.castShadow = true;
   pergolaGroup.add(boundaryStepEastReturn);
 
@@ -253,7 +254,7 @@ export function buildGrapeVinePergola(
   const plinthMidZ = (pergMinZ + pergMaxZ) * 0.5;
   const pergolaRetainingPlinth = new THREE.Mesh(
     applyDryStoneWallUVs(
-      new THREE.BoxGeometry(pergMaxX - pergMinX + 0.16, pergFloorY + 0.06, pergMaxZ - pergMinZ + 0.16),
+      new THREE.BoxGeometry(pergMaxX - pergMinX + 0.16, pergFloorY + 0.14, pergMaxZ - pergMinZ + 0.16),
       plinthMidX,
       plinthMidY,
       plinthMidZ
@@ -281,38 +282,51 @@ export function buildGrapeVinePergola(
   pergolaCourtFloor.receiveShadow = true;
   pergolaGroup.add(pergolaCourtFloor);
 
-  for (let s = 0; s < 2; s++) {
-    const stepTopY = (s + 1) * 0.16;
-    const stepH = 0.16;
-    const stepY = stepTopY - stepH * 0.5;
+  // Survey2Plan Intermediate Stone Terrace Steps:
+  // - West Steps from Main Kitchen Flagstone Patio (`+0.005m`) up to Pergola Court (`+0.470m`):
+  //   `Floor 1906630` (`+0.215m`), `Floor 1906382` (`+0.275m`), and upper threshold step (`+0.375m`)!
+  const westStepTopYs = [0.215, 0.275, 0.375] as const;
+  for (let s = 0; s < westStepTopYs.length; s++) {
+    const stepTopY = westStepTopYs[s]!;
+    const stepH = stepTopY + 0.04;
+    const stepY = (stepTopY - 0.04) * 0.5;
+    const wnX = pergMinX - (westStepTopYs.length - s - 0.5) * 0.28;
 
-    const wnX = pergMinX + (s - 0.5) * 0.26;
     const westNorthStep = new THREE.Mesh(
-      applyDryStoneWallUVs(new THREE.BoxGeometry(0.28, stepH, 1.8), wnX, stepY, 2.65),
+      applyDryStoneWallUVs(new THREE.BoxGeometry(0.3, stepH, 1.8), wnX, stepY, 2.65),
       dryStoneCopingMat
     );
-    if (!westNorthStep.name) westNorthStep.name = 'courtyard.grapeVinePergola.westNorthStep';
+    westNorthStep.name = `courtyard.grapeVinePergola.westNorthStep.${s + 1}`;
     westNorthStep.position.set(wnX, stepY, 2.65);
     westNorthStep.castShadow = true;
     westNorthStep.receiveShadow = true;
     pergolaGroup.add(westNorthStep);
 
     const westSouthStep = new THREE.Mesh(
-      applyDryStoneWallUVs(new THREE.BoxGeometry(0.28, stepH, 1.15), wnX, stepY, 6.42),
+      applyDryStoneWallUVs(new THREE.BoxGeometry(0.3, stepH, 1.15), wnX, stepY, 6.42),
       dryStoneCopingMat
     );
-    if (!westSouthStep.name) westSouthStep.name = 'courtyard.grapeVinePergola.westSouthStep';
+    westSouthStep.name = `courtyard.grapeVinePergola.westSouthStep.${s + 1}`;
     westSouthStep.position.set(wnX, stepY, 6.42);
     westSouthStep.castShadow = true;
     westSouthStep.receiveShadow = true;
     pergolaGroup.add(westSouthStep);
+  }
 
-    const egX = pergMaxX + (0.5 + (1 - s)) * 0.3;
+  // - East Steps from Pergola Court (`+0.470m`) UP to East Walled Vegetable Garden (`+0.710m`, `Floor 1906995`)
+  //   via surveyed intermediate stone terrace step `Floor 1906829` (`+0.520m`) and upper step (`+0.615m`)!
+  const eastStepTopYs = [0.52, 0.615] as const;
+  for (let s = 0; s < eastStepTopYs.length; s++) {
+    const stepTopY = eastStepTopYs[s]!;
+    const stepH = stepTopY - (pergFloorY - 0.06);
+    const stepY = stepTopY - stepH * 0.5;
+    const egX = pergMaxX - (eastStepTopYs.length - s - 0.5) * 0.28;
+
     const eastGardenStep = new THREE.Mesh(
-      applyDryStoneWallUVs(new THREE.BoxGeometry(0.32, stepH, 1.5), egX, stepY, 2.6),
+      applyDryStoneWallUVs(new THREE.BoxGeometry(0.3, stepH, 1.5), egX, stepY, 2.6),
       dryStoneCopingMat
     );
-    if (!eastGardenStep.name) eastGardenStep.name = 'courtyard.grapeVinePergola.eastGardenStep';
+    eastGardenStep.name = `courtyard.grapeVinePergola.eastGardenStep.${s + 1}`;
     eastGardenStep.position.set(egX, stepY, 2.6);
     eastGardenStep.castShadow = true;
     eastGardenStep.receiveShadow = true;

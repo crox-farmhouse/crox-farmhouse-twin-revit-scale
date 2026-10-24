@@ -2264,4 +2264,129 @@ export function buildCourtyardAndGates(
 
     scene.add(telephoneDropLineGroup);
   }
+
+  // =========================================================================
+  // 9. SURVEYED PERIMETER TOPOGRAPHY (`OST_Topography` 1899024 / 1901599 / 1901983)
+  //    Sculpted natural turf embankments strictly outside all Main House,
+  //    Courtyard, Terrace & Outbuilding footprints:
+  //    - North Hillside Bank (`z = -18.5..-5.8m`, `x = -26.0..+26.0m`): rises from
+  //      `+0.545m` behind the North lawn up to `+1.545m -> +2.545m` toward the NE boundary!
+  //    - East Hillside Bank (`x = +17.82..+26.0m`, `z = -5.8..+16.5m`): rises smoothly
+  //      from the `+0.710m` East Walled Garden retaining plinth up to `+2.545m`!
+  //    - West Road Verge (`x = -29.5..-23.2m`, `z = -5.8..+11.5m`): grades gently
+  //      down to `-0.455m..-0.525m` along the West lane!
+  // =========================================================================
+  {
+    const topoGroup = new THREE.Group();
+    topoGroup.name = 'grounds.surveyedTopography';
+    topoGroup.userData.isArchitecturalShell = true;
+
+    const turfSlopeMat = new THREE.MeshStandardMaterial({
+      color: 0x4f6d3a,
+      roughness: 0.94,
+      metalness: 0.01,
+    });
+
+    const buildGradedTerrainPatch = (
+      patchName: string,
+      minX: number,
+      maxX: number,
+      minZ: number,
+      maxZ: number,
+      segX: number,
+      segZ: number,
+      evalHeight: (wx: number, wz: number) => number
+    ): THREE.Mesh => {
+      const spanX = maxX - minX;
+      const spanZ = maxZ - minZ;
+      const midX = (minX + maxX) * 0.5;
+      const midZ = (minZ + maxZ) * 0.5;
+      const geo = new THREE.BoxGeometry(spanX, 0.24, spanZ, segX, 1, segZ);
+      const pos = geo.attributes.position;
+      if (pos) {
+        for (let i = 0; i < pos.count; i++) {
+          const wx = pos.getX(i) + midX;
+          const wz = pos.getZ(i) + midZ;
+          const topY = evalHeight(wx, wz);
+          if (pos.getY(i) > 0) {
+            pos.setY(i, topY);
+          } else {
+            pos.setY(i, Math.min(-0.65, topY - 0.35));
+          }
+        }
+        pos.needsUpdate = true;
+      }
+      geo.computeVertexNormals();
+      geo.computeBoundingSphere();
+      const mesh = new THREE.Mesh(geo, turfSlopeMat);
+      mesh.name = patchName;
+      mesh.userData.isArchitecturalShell = true;
+      mesh.position.set(midX, 0, midZ);
+      mesh.receiveShadow = true;
+      return mesh;
+    };
+
+    // A. North & North-East Hillside Embankment (`z = -18.5..-5.8m, x = -26.0..+26.0m`)
+    topoGroup.add(
+      buildGradedTerrainPatch(
+        'grounds.surveyedTopography.northHillsideBank',
+        -26.0,
+        26.0,
+        -18.5,
+        -5.8,
+        36,
+        18,
+        (wx, wz) => {
+          const tNorth = Math.max(0, Math.min(1, (-5.8 - wz) / 12.7));
+          const smoothNorth = tNorth * tNorth * (3 - 2 * tNorth);
+          const tEast = Math.max(0, Math.min(1, (wx + 24.0) / 48.0));
+          const southToeY = -0.35 * (1 - tEast) + 0.545 * tEast;
+          const northCrestY = 0.85 + 1.695 * tEast; // reaches +2.545m at NE corner!
+          const undulation = Math.sin(wx * 0.22 + wz * 0.31) * 0.04 * smoothNorth;
+          return southToeY + (northCrestY - southToeY) * smoothNorth + undulation;
+        }
+      )
+    );
+
+    // B. East Hillside Embankment behind Walled Vegetable Garden (`x = 17.82..26.0m, z = -5.8..16.5m`)
+    topoGroup.add(
+      buildGradedTerrainPatch(
+        'grounds.surveyedTopography.eastHillsideBank',
+        17.82,
+        26.0,
+        -5.8,
+        16.5,
+        16,
+        24,
+        (wx, wz) => {
+          const tOut = Math.max(0, Math.min(1, (wx - 17.82) / 8.18));
+          const smoothOut = tOut * tOut * (3 - 2 * tOut);
+          const tSouth = Math.max(0, Math.min(1, (wz - 7.2) / 9.3));
+          const westToeY = 0.545 * Math.max(0, (-0.95 - wz) / 4.85) + 0.66 * (1 - tSouth * 0.65);
+          const eastCrestY = 2.545 - 1.15 * tSouth;
+          return westToeY + (eastCrestY - westToeY) * smoothOut;
+        }
+      )
+    );
+
+    // C. West Lane Road-Verge Grading (`x = -29.5..-23.2m, z = -5.8..11.5m`)
+    topoGroup.add(
+      buildGradedTerrainPatch(
+        'grounds.surveyedTopography.westRoadVerge',
+        -29.5,
+        -23.2,
+        -5.8,
+        11.5,
+        10,
+        18,
+        (wx, wz) => {
+          const tWest = Math.max(0, Math.min(1, (-23.2 - wx) / 6.3));
+          const tSouth = Math.max(0, Math.min(1, (wz + 5.8) / 17.3));
+          return -0.28 - 0.175 * tSouth - 0.07 * tWest; // grades smoothly across -0.455m..-0.525m
+        }
+      )
+    );
+
+    scene.add(topoGroup);
+  }
 }

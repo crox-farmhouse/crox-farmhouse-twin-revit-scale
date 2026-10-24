@@ -3,6 +3,7 @@ import { buildKingCastIronBed } from './king-cast-iron-bed.ts';
 import {
   buildAngledWallSegment,
   buildMitredWallSkirtingGeometry,
+  buildPolygonalFloorSlab,
 } from '../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
@@ -51,30 +52,49 @@ export function buildBedroom3(
     addUpperInteractiveDoor,
     antiqueOakSkirtingMat,
     brassMat,
-    doorH,
     floorTopY,
     oakFloorMat,
     timberDoorMat,
-    upperWallTopY,
     wallCapMat,
     warmRoomPlasterMat,
   } = kit;
+
+  const corridorFloorY = 2.095;
+  const bed4FloorY = 2.05;
+  const alcoveFloorY = 1.938; // Surveyed -142mm sunken NW wardrobe alcove (`Floor 1611622`)
+  const corridorCeilingY = 4.155;
+  const collarCeilingY = 5.05; // Surveyed Room 21/22 vaulted collar ceiling: +2.97m/+3.00m
+
   // =========================================================================
-  // 6. BEDROOM 3 (4.00m x 3.85m / 13'1" x 12'8")
-  //    Directly above Sitting Room: X = -18.40m..-22.19m, Z = +4.85m..+8.15m
-  //    + NW Wardrobe Alcove: X = -22.19m..-20.25m, Z = +4.10m..+4.85m (Issue #14!)
+  // 6. BEDROOM 3 (`4.26m x 3.89m` + `1.85m x 0.61m` `-142mm` sunken NW wardrobe alcove)
+  //    Main slab: `X = -22.33m..-18.21m, Z = +4.68m..+8.27m` at `Y = +2.08m`
+  //    Sunken NW Alcove slab: `X = -22.33m..-20.235m, Z = +3.82m..+4.68m` at `Y = +1.938m`
   // =========================================================================
   {
     const idx0 = scene.children.length;
-    addFirstFloorSlab(-22.33, -18.4, 4.85, 8.27, oakFloorMat);
+    addFirstFloorSlab(-22.33, -18.21, 4.68, 8.27, oakFloorMat);
     ensureNamedAddedChildren(scene, idx0, 'bedroom3.floorSlab.main');
-    const idx1 = scene.children.length;
-    addFirstFloorSlab(-22.33, -20.25, 4.1, 4.85, oakFloorMat);
-    ensureNamedAddedChildren(scene, idx1, 'bedroom3.floorSlab.alcove');
+
+    const alcoveSlab = buildPolygonalFloorSlab(
+      scene,
+      [
+        [-22.33, 3.82],
+        [-20.235, 3.82],
+        [-20.235, 4.68],
+        [-22.33, 4.68],
+      ],
+      alcoveFloorY,
+      0.14,
+      oakFloorMat,
+      0.5
+    );
+    alcoveSlab.name = 'bedroom3.floorSlab.alcove';
+    alcoveSlab.userData.isArchitecturalShell = true;
+    alcoveSlab.geometry.computeBoundingSphere();
   }
 
   // West Front Exterior Brick Wall of Bedroom 3 (X = -22.47m..-22.19m, Z = +4.85m..+8.39m)
-  // With 2-pane Georgian casement window centered at Z = +6.38m (directly above Sitting Room bay — Photo 2!)
+  // Surveyed Win 1764195: 1.47m x 1.00m 3-light casement (sill +644mm = 2.724m, head 3.724m)
   {
     const idx = scene.children.length;
     addUpperBrickWallAlongZWithWindow(
@@ -84,42 +104,41 @@ export function buildBedroom3(
       8.39,
       6.38,
       1.47,
-      2.88,
-      3.88,
+      2.724,
+      3.724,
       'east',
-      2,
-      { skipSkirting: true }
+      3,
+      { windowFamily: 'tripleTopHungCentre', skipSkirting: true }
     );
     ensureNamedAddedChildren(scene, idx, 'bedroom3.westExteriorWall');
   }
 
-  // Single Continuous West Corridor Partition Wall (`X = -18.40m, Z = +4.025m..+8.15m`, 0.15m thick)
-  // Issues #3, #4, #6, #7 & #15: Runs in ONE single unbroken straight wall from the North corner of the Walk-In Shower
-  // (`Z = +4.025m`) all the way South to the Bedroom 4 cross-wall (`Z = +8.15m`), with `bedroom3Door` at Z = +7.42m!
+  // Single Continuous West Corridor Partition Wall (`X = -18.21m, Z = +3.745m..+8.15m`, 0.15m thick)
+  // With surveyed extra-wide solid oak `bedroom3Door` (`Door 1682967`: `1.03m x 1.95m` at `Z = +7.445m`)!
   {
     const idx = scene.children.length;
     buildAngledWallSegment(scene, interactions, {
-      start: [-18.4, 4.025],
-      end: [-18.4, 8.15],
+      start: [-18.21, 3.745],
+      end: [-18.21, 8.15],
       thickness: 0.15,
-      topY: upperWallTopY,
+      topY: corridorCeilingY,
       frontFloorY: floorTopY,
-      backFloorY: floorTopY,
+      backFloorY: corridorFloorY,
       wallMaterial: warmRoomPlasterMat,
       capMaterial: wallCapMat,
-      skipCapRanges: [[0.825, 4.125]],
+      skipCap: true,
       skirtingMaterial: antiqueOakSkirtingMat,
-      addFrontSkirting: false, // West (`-X`) face inside Bedroom 3 uses continuous 45°-mitred skirtings `bedroom3.northWallMitredSkirting` & `bedroom3.southWallMitredSkirting`
-      addBackSkirting: false,  // East (`+X`) face inside Corridor uses 45°-mitred continuous skirting below
+      addFrontSkirting: false,
+      addBackSkirting: false,
       openings: [
         {
           id: 'bedroom3Door',
           kind: 'hinged-door',
-          uCenter: 3.395, // Z = +7.42m
-          width: 0.84,
-          doorHeight: doorH,
+          uCenter: 3.7, // Z = +7.445m
+          width: 1.03,
+          doorHeight: 1.95,
           lowerFloorY: floorTopY,
-          upperFloorY: floorTopY,
+          upperFloorY: corridorFloorY,
           architraveMaterial: antiqueOakSkirtingMat,
           doorLeafMaterial: timberDoorMat,
           hardwareMaterial: brassMat,
@@ -132,42 +151,49 @@ export function buildBedroom3(
     ensureNamedAddedChildren(scene, idx, 'bedroom3.eastCorridorPartitionWall');
   }
 
-  // Issues #3, #4, #6, #7 & #8: Continuous 45°-mitred skirting along the West & North walls of the Corridor & Cut-Out Hallway
+  // Continuous 45°-mitred skirting along the West & North walls of the Corridor & Cut-Out Hallway (`Y = 2.095m`)
   for (const [skirtName, path] of [
     [
       'westWingCorridor.westWallMainMitredSkirting',
       [
-        [-18.325, 6.918],
-        [-18.325, 4.025],
-        [-18.845, 4.025],
-        [-18.845, 3.742],
+        [-18.135, 6.855],
+        [-18.135, 3.895],
+        [-18.087, 3.895],
+      ] as const,
+    ],
+    [
+      'westWingCorridor.upLobbySouthSkirting',
+      [
+        [-18.087, 3.745],
+        [-18.845, 3.745],
+        [-18.845, 3.65],
       ] as const,
     ],
     [
       'westWingCorridor.westWallSouthPierSkirting',
       [
-        [-18.224, 8.15],
-        [-18.325, 8.15],
-        [-18.325, 7.922],
+        [-18.175, 8.15],
+        [-18.135, 8.15],
+        [-18.135, 8.035],
       ] as const,
     ],
     [
       'westWingCorridor.upLobbyNorthPierSkirting',
       [
-        [-18.845, 2.898],
-        [-18.845, 2.117],
+        [-18.845, 2.6],
+        [-18.845, 2.15],
       ] as const,
     ],
     [
       'westWingCorridor.cutoutNorthCornerSkirting',
       [
-        [-18.845, 1.233],
+        [-18.845, 1.24],
         [-18.845, 1.125],
         [-17.755, 1.125],
       ] as const,
     ],
   ] as const) {
-    const skirtGeo = buildMitredWallSkirtingGeometry(path, floorTopY);
+    const skirtGeo = buildMitredWallSkirtingGeometry(path, corridorFloorY);
     skirtGeo.computeBoundingSphere();
     const skirtMesh = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
     skirtMesh.name = skirtName;
@@ -177,11 +203,7 @@ export function buildBedroom3(
     scene.add(skirtMesh);
   }
 
-  const collarCeilingY = 5.02;
-
-  // Issue #2: South Chimney Breast in Bedroom 3 (`X = -19.80m, width = 1.70m [X = -20.65m..-18.95m], depth = 0.47m [Z = +7.68m..+8.15m]`)
-  // Matches the Sitting Room chimney breast directly downstairs (`X = -20.65m..-18.95m, Z = +7.68m..+8.15m`) 100%,
-  // and includes an 1800s farmhouse black cast-iron bedroom fireplace & small honed black slate hearth!
+  // South Chimney Breast in Bedroom 3 (`X = -19.80m, width = 1.70m [X = -20.65m..-18.95m], depth = 0.47m [Z = +7.68m..+8.15m]`)
   {
     const idx = scene.children.length;
     addUpperBedroomChimneyBreastWithFireplace(scene, {
@@ -198,27 +220,43 @@ export function buildBedroom3(
   }
 
   // South Load-Bearing Cross-Wall between Bedroom 3 / Upper Corridor and Bedroom 4
-  // (0.24m thick, Z = +8.15m..+8.39m, X = -17.22m..-22.19m) with doorway centered in the Corridor at X = -17.75m (width = 0.78m)
-  // Built as a SINGLE unbroken full-height vaulted polygon (`Y = 2.08m..5.02m`) so there is zero horizontal split line at Y = 4.16m!
+  // (`0.24m` thick, `Z = +8.15m..+8.39m, X = -17.22m..-22.19m`) with surveyed `Door 1682684` (`0.86m x 1.865m` centered at `X = -17.67m`)!
   {
     const idx = scene.children.length;
-    addUpperInteractiveDoor('x', 8.27, 0.24, -17.75, 0.78, Math.PI * 0.48);
+    addUpperInteractiveDoor('x', 8.27, 0.24, -17.67, 0.86, Math.PI * 0.48, {
+      frontFloorY: bed4FloorY,
+      backFloorY: corridorFloorY,
+      doorFloorY: corridorFloorY,
+      doorH: 1.865,
+    });
     ensureNamedAddedChildren(scene, idx, 'bedroom4.entranceDoor');
+
+    // 45mm solid oak threshold step at `bedroom4.entranceDoor` (`2.050m -> 2.095m`)
+    const bed4StepRise = corridorFloorY - bed4FloorY;
+    const bed4StepGeo = new THREE.BoxGeometry(0.86, bed4StepRise, 0.24);
+    bed4StepGeo.computeBoundingSphere();
+    const bed4Step = new THREE.Mesh(bed4StepGeo, antiqueOakSkirtingMat);
+    bed4Step.name = 'bedroom4.doorThresholdStep';
+    bed4Step.userData.isArchitecturalShell = true;
+    bed4Step.position.set(-17.67, bed4FloorY + bed4StepRise * 0.5, 8.27);
+    bed4Step.receiveShadow = true;
+    scene.add(bed4Step);
   }
   {
-    const doorMinX = -17.75 - 0.39; // -18.14m
-    const doorMaxX = -17.75 + 0.39; // -17.36m
+    const doorMinX = -17.67 - 0.43; // -18.10m
+    const doorMaxX = -17.67 + 0.43; // -17.24m
+    const doorTopY = corridorFloorY + 1.865; // 3.96m
     const northGableShape = new THREE.Shape();
-    northGableShape.moveTo(-22.19, floorTopY);
-    northGableShape.lineTo(doorMinX, floorTopY);
-    northGableShape.lineTo(doorMinX, floorTopY + doorH);
-    northGableShape.lineTo(doorMaxX, floorTopY + doorH);
-    northGableShape.lineTo(doorMaxX, floorTopY);
-    northGableShape.lineTo(-17.22, floorTopY);
-    northGableShape.lineTo(-17.22, upperWallTopY);
+    northGableShape.moveTo(-22.19, bed4FloorY);
+    northGableShape.lineTo(doorMinX, bed4FloorY);
+    northGableShape.lineTo(doorMinX, doorTopY);
+    northGableShape.lineTo(doorMaxX, doorTopY);
+    northGableShape.lineTo(doorMaxX, bed4FloorY);
+    northGableShape.lineTo(-17.15, bed4FloorY);
+    northGableShape.lineTo(-17.15, corridorCeilingY);
     northGableShape.lineTo(-18.62, collarCeilingY);
     northGableShape.lineTo(-20.85, collarCeilingY);
-    northGableShape.lineTo(-22.19, upperWallTopY);
+    northGableShape.lineTo(-22.19, 3.85);
     northGableShape.closePath();
     const northGableGeo = new THREE.ExtrudeGeometry(northGableShape, {
       depth: 0.24,
@@ -234,14 +272,13 @@ export function buildBedroom3(
     scene.add(northUpperGable);
   }
 
-  // Issue #2, #6 & #7: Continuous 45°-mitred skirting along the South-East pier (`X = -18.475m`), South wall, Chimney Breast, and West wall of Bedroom 3,
-  // terminating cleanly against the East (`X = -19.52m`) and West (`X = -20.08m`) jambs of the compact 1800s black cast-iron fireplace and NW wardrobes (`Z = 4.73m`)!
+  // Continuous 45°-mitred skirting along the South-East pier (`X = -18.285m`), South wall, Chimney Breast, and West wall of Bedroom 3 (`Y = 2.08m`)
   for (const [skirtName, path] of [
     [
       'bedroom3.southWallMitredSkirting',
       [
-        [-18.475, 7.922],
-        [-18.475, 8.15],
+        [-18.285, 8.035],
+        [-18.285, 8.15],
         [-18.95, 8.15],
         [-18.95, 7.68],
         [-19.52, 7.68],
@@ -254,7 +291,7 @@ export function buildBedroom3(
         [-20.65, 7.68],
         [-20.65, 8.15],
         [-22.19, 8.15],
-        [-22.19, 4.73],
+        [-22.19, 4.68],
       ] as const,
     ],
   ] as const) {
@@ -268,11 +305,11 @@ export function buildBedroom3(
     scene.add(skirtMesh);
   }
 
-  // King Size Cast-Iron & Aged-Brass Bedstead against the East Wall (`X = -18.475m`, North of `bedroom3Door`) facing West toward the window
+  // King Size Cast-Iron & Aged-Brass Bedstead against the East Wall (`X = -18.285m`, North of `bedroom3Door`) facing West toward the window
   buildKingCastIronBed(scene, {
     name: 'bedroom3.kingCastIronBed',
     zone: 'bedroom3',
-    position: [-18.495, floorTopY, 5.92],
+    position: [-18.305, floorTopY, 5.76],
     rotationY: Math.PI,
     palette: 'frenchBlue',
   });

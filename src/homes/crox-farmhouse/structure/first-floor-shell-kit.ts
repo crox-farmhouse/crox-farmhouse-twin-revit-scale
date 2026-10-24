@@ -506,8 +506,12 @@ export function createFirstFloorShellKit(
       readonly trimFaceOffset?: number;
       readonly skipUnderApron?: boolean;
       readonly skipArchitrave?: boolean;
+      readonly windowFamily?: 'tripleTopHungCentre' | 'tripleHorzBars' | 'singleCasement' | 'doubleCasement';
     }
   ): void => {
+    const family =
+      options?.windowFamily ??
+      (panes === 1 ? 'singleCasement' : panes === 3 ? 'tripleTopHungCentre' : 'doubleCasement');
     const effSillY = Math.max(sillY, options?.minSillY ?? 2.86);
     const effHeadY = Math.min(headY, options?.maxHeadY ?? 3.88);
     const winLeft = winCenterX - winWidth / 2;
@@ -631,13 +635,99 @@ export function createFirstFloorShellKit(
       winGroup.add(mullion);
     }
 
-    const transBar = new THREE.Mesh(
-      new THREE.BoxGeometry(winWidth, 0.026, frameDepth * 0.7),
-      windowFrameMat
-    );
-    transBar.name = `${winId}.transomBar`;
-    transBar.position.set(winCenterX, effSillY + winH * 0.52, frameZ);
-    winGroup.add(transBar);
+    const sashThickZ = 0.046;
+    const sashStileW = 0.026;
+    const sashZ = frameZ + extSignZ * 0.012;
+    const lightClearH = Math.max(0.14, winH - 0.1);
+    const lightSpanW = winWidth / panes;
+
+    for (let p = 0; p < panes; p++) {
+      const lightCenterX = winLeft + (p + 0.5) * lightSpanW;
+      const lightClearW = Math.max(0.12, lightSpanW - 0.044);
+      const isTopHungCentre = family === 'tripleTopHungCentre' && panes === 3 && p === 1;
+
+      if (isTopHungCentre) {
+        const transomY = effHeadY - 0.05 - lightClearH * 0.35;
+        const fanTransom = new THREE.Mesh(
+          new THREE.BoxGeometry(lightClearW + 0.01, 0.034, frameDepth * 0.88),
+          windowFrameMat
+        );
+        fanTransom.name = `${winId}.centreFanlightTransom`;
+        fanTransom.position.set(lightCenterX, transomY, frameZ);
+        winGroup.add(fanTransom);
+
+        const fanH = Math.max(0.08, effHeadY - 0.05 - (transomY + 0.017));
+        const fanMidY = (effHeadY - 0.05 + transomY + 0.017) * 0.5;
+        for (const sx of [-1, 1] as const) {
+          const fStile = new THREE.Mesh(
+            new THREE.BoxGeometry(sashStileW, fanH, sashThickZ),
+            windowFrameMat
+          );
+          fStile.name = `${winId}.fanlightSashStile.${sx < 0 ? 'left' : 'right'}`;
+          fStile.position.set(lightCenterX + sx * (lightClearW * 0.5 - sashStileW * 0.5), fanMidY, sashZ);
+          winGroup.add(fStile);
+        }
+        const lowBar = new THREE.Mesh(
+          new THREE.BoxGeometry(lightClearW, 0.02, sashThickZ * 0.78),
+          windowFrameMat
+        );
+        lowBar.name = `${winId}.centreGlazingBar`;
+        lowBar.position.set(lightCenterX, (effSillY + 0.05 + transomY - 0.017) * 0.5, sashZ);
+        winGroup.add(lowBar);
+      } else {
+        for (const sx of [-1, 1] as const) {
+          const sStile = new THREE.Mesh(
+            new THREE.BoxGeometry(sashStileW, lightClearH, sashThickZ),
+            windowFrameMat
+          );
+          sStile.name = `${winId}.sash.${p + 1}.stile.${sx < 0 ? 'left' : 'right'}`;
+          sStile.position.set(lightCenterX + sx * (lightClearW * 0.5 - sashStileW * 0.5), cy, sashZ);
+          winGroup.add(sStile);
+        }
+        for (const [ry, rTag] of [
+          [effHeadY - 0.05 - sashStileW * 0.5, 'top'],
+          [effSillY + 0.05 + sashStileW * 0.5, 'bottom'],
+        ] as const) {
+          const sRail = new THREE.Mesh(
+            new THREE.BoxGeometry(lightClearW, sashStileW, sashThickZ),
+            windowFrameMat
+          );
+          sRail.name = `${winId}.sash.${p + 1}.rail.${rTag}`;
+          sRail.position.set(lightCenterX, ry, sashZ);
+          winGroup.add(sRail);
+        }
+        if (family !== 'singleCasement') {
+          const barFracs =
+            family === 'tripleHorzBars' || family === 'tripleTopHungCentre'
+              ? ([0.34, 0.67] as const)
+              : ([0.52] as const);
+          for (let bIdx = 0; bIdx < barFracs.length; bIdx++) {
+            const hBar = new THREE.Mesh(
+              new THREE.BoxGeometry(lightClearW - sashStileW, 0.02, sashThickZ * 0.8),
+              windowFrameMat
+            );
+            hBar.name = `${winId}.sash.${p + 1}.glazingBar.${bIdx + 1}`;
+            hBar.position.set(lightCenterX, effSillY + 0.05 + lightClearH * barFracs[bIdx]!, sashZ);
+            winGroup.add(hBar);
+          }
+        }
+      }
+
+      if (panes === 1 || p !== 1 || family !== 'tripleTopHungCentre') {
+        const stay = new THREE.Mesh(
+          new THREE.BoxGeometry(Math.min(0.17, lightClearW * 0.55), 0.01, 0.015),
+          brassMat
+        );
+        stay.name = `${winId}.sash.${p + 1}.casementStay`;
+        stay.userData.lodTier = 'high';
+        stay.position.set(
+          lightCenterX,
+          effSillY + 0.05 + 0.015,
+          frameZ + intSignZ * (frameDepth * 0.48)
+        );
+        winGroup.add(stay);
+      }
+    }
 
     const glass = new THREE.Mesh(
       new THREE.BoxGeometry(winWidth - 0.06, winH - 0.08, 0.016),
@@ -675,8 +765,12 @@ export function createFirstFloorShellKit(
       readonly trimFaceOffset?: number;
       readonly skipUnderApron?: boolean;
       readonly skipArchitrave?: boolean;
+      readonly windowFamily?: 'tripleTopHungCentre' | 'tripleHorzBars' | 'singleCasement' | 'doubleCasement';
     }
   ): void => {
+    const family =
+      options?.windowFamily ??
+      (panes === 1 ? 'singleCasement' : panes === 3 ? 'tripleTopHungCentre' : 'doubleCasement');
     const effSillY = Math.max(sillY, options?.minSillY ?? 2.86);
     const effHeadY = Math.min(headY, options?.maxHeadY ?? 3.88);
     const winNorth = winCenterZ - winWidth / 2;
@@ -825,16 +919,121 @@ export function createFirstFloorShellKit(
       winGroup.add(mullion);
     }
 
-    const transBar = new THREE.Mesh(
-      shearGeometryAlongZ(
-        new THREE.BoxGeometry(frameDepth * 0.7, 0.026, winWidth),
-        slopeXPerZ
-      ),
-      windowFrameMat
-    );
-    transBar.name = `${winId}.transomBar`;
-    transBar.position.set(cx, effSillY + winH * 0.52, winCenterZ);
-    winGroup.add(transBar);
+    const sashThickX = 0.046;
+    const sashStileW = 0.026;
+    const lightClearH = Math.max(0.14, winH - 0.1);
+    const lightSpanW = winWidth / panes;
+
+    for (let p = 0; p < panes; p++) {
+      const lightCenterZ = winNorth + (p + 0.5) * lightSpanW;
+      const lightCx = isAngledEastCourtyardWall
+        ? getEastCourtyardWallCenterX(lightCenterZ)
+        : rawCx;
+      const sashX = lightCx + extSignX * 0.012;
+      const lightClearW = Math.max(0.12, lightSpanW - 0.044);
+      const isTopHungCentre = family === 'tripleTopHungCentre' && panes === 3 && p === 1;
+
+      if (isTopHungCentre) {
+        const transomY = effHeadY - 0.05 - lightClearH * 0.35;
+        const fanTransom = new THREE.Mesh(
+          shearGeometryAlongZ(
+            new THREE.BoxGeometry(frameDepth * 0.88, 0.034, lightClearW + 0.01),
+            slopeXPerZ
+          ),
+          windowFrameMat
+        );
+        fanTransom.name = `${winId}.centreFanlightTransom`;
+        fanTransom.position.set(lightCx, transomY, lightCenterZ);
+        winGroup.add(fanTransom);
+
+        const fanH = Math.max(0.08, effHeadY - 0.05 - (transomY + 0.017));
+        const fanMidY = (effHeadY - 0.05 + transomY + 0.017) * 0.5;
+        for (const sz of [-1, 1] as const) {
+          const stZ = lightCenterZ + sz * (lightClearW * 0.5 - sashStileW * 0.5);
+          const stCx = isAngledEastCourtyardWall ? getEastCourtyardWallCenterX(stZ) : rawCx;
+          const fStile = new THREE.Mesh(
+            new THREE.BoxGeometry(sashThickX, fanH, sashStileW),
+            windowFrameMat
+          );
+          fStile.name = `${winId}.fanlightSashStile.${sz < 0 ? 'north' : 'south'}`;
+          fStile.position.set(stCx + extSignX * 0.012, fanMidY, stZ);
+          winGroup.add(fStile);
+        }
+        const lowBar = new THREE.Mesh(
+          shearGeometryAlongZ(
+            new THREE.BoxGeometry(sashThickX * 0.78, 0.02, lightClearW),
+            slopeXPerZ
+          ),
+          windowFrameMat
+        );
+        lowBar.name = `${winId}.centreGlazingBar`;
+        lowBar.position.set(sashX, (effSillY + 0.05 + transomY - 0.017) * 0.5, lightCenterZ);
+        winGroup.add(lowBar);
+      } else {
+        for (const sz of [-1, 1] as const) {
+          const stZ = lightCenterZ + sz * (lightClearW * 0.5 - sashStileW * 0.5);
+          const stCx = isAngledEastCourtyardWall ? getEastCourtyardWallCenterX(stZ) : rawCx;
+          const sStile = new THREE.Mesh(
+            new THREE.BoxGeometry(sashThickX, lightClearH, sashStileW),
+            windowFrameMat
+          );
+          sStile.name = `${winId}.sash.${p + 1}.stile.${sz < 0 ? 'north' : 'south'}`;
+          sStile.position.set(stCx + extSignX * 0.012, cy, stZ);
+          winGroup.add(sStile);
+        }
+        for (const [ry, rTag] of [
+          [effHeadY - 0.05 - sashStileW * 0.5, 'top'],
+          [effSillY + 0.05 + sashStileW * 0.5, 'bottom'],
+        ] as const) {
+          const sRail = new THREE.Mesh(
+            shearGeometryAlongZ(
+              new THREE.BoxGeometry(sashThickX, sashStileW, lightClearW),
+              slopeXPerZ
+            ),
+            windowFrameMat
+          );
+          sRail.name = `${winId}.sash.${p + 1}.rail.${rTag}`;
+          sRail.position.set(sashX, ry, lightCenterZ);
+          winGroup.add(sRail);
+        }
+        if (family !== 'singleCasement') {
+          const barFracs =
+            family === 'tripleHorzBars' || family === 'tripleTopHungCentre'
+              ? ([0.34, 0.67] as const)
+              : ([0.52] as const);
+          for (let bIdx = 0; bIdx < barFracs.length; bIdx++) {
+            const hBar = new THREE.Mesh(
+              shearGeometryAlongZ(
+                new THREE.BoxGeometry(sashThickX * 0.8, 0.02, lightClearW - sashStileW),
+                slopeXPerZ
+              ),
+              windowFrameMat
+            );
+            hBar.name = `${winId}.sash.${p + 1}.glazingBar.${bIdx + 1}`;
+            hBar.position.set(sashX, effSillY + 0.05 + lightClearH * barFracs[bIdx]!, lightCenterZ);
+            winGroup.add(hBar);
+          }
+        }
+      }
+
+      if (panes === 1 || p !== 1 || family !== 'tripleTopHungCentre') {
+        const stay = new THREE.Mesh(
+          shearGeometryAlongZ(
+            new THREE.BoxGeometry(0.015, 0.01, Math.min(0.17, lightClearW * 0.55)),
+            slopeXPerZ
+          ),
+          brassMat
+        );
+        stay.name = `${winId}.sash.${p + 1}.casementStay`;
+        stay.userData.lodTier = 'high';
+        stay.position.set(
+          lightCx + intSignX * (frameDepth * 0.48),
+          effSillY + 0.05 + 0.015,
+          lightCenterZ
+        );
+        winGroup.add(stay);
+      }
+    }
 
     const glass = new THREE.Mesh(
       shearGeometryAlongZ(

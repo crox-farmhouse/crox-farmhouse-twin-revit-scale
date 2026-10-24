@@ -43,11 +43,14 @@ const sharedChairArmGeo = prepGeo(new THREE.BoxGeometry(0.078, 0.044, 0.78));
 const sharedChairFrontLegGeo = prepGeo(new THREE.CylinderGeometry(0.025, 0.019, 0.62, 10));
 const sharedChairBackLegGeo = prepGeo(new THREE.CylinderGeometry(0.025, 0.019, 0.58, 10));
 
-const sharedOakUprightGeo = prepGeo(new THREE.BoxGeometry(0.24, 2.48, 0.29));
+const sharedWinOakUprightGeo = prepGeo(new THREE.BoxGeometry(0.2, 2.145, 0.29));
+const sharedBifoldLeftUprightGeo = prepGeo(new THREE.BoxGeometry(0.14, 2.105, 0.29));
+const sharedBifoldRightUprightGeo = prepGeo(new THREE.BoxGeometry(0.1, 2.105, 0.29));
 const sharedOakPegGeo = prepGeo(new THREE.CylinderGeometry(0.012, 0.012, 0.31, 8));
 
-const southWinW = 2.5;
-const southWinH = 2.46;
+// Survey2Plan Win 1720246: 2.42m x 2.11m 3-panel sliding glazed screen (`S2P-Windows-SldingDoor3Panel`)
+const southWinW = 2.42;
+const southWinH = 2.11;
 const numWindowPanes = 3;
 const paneW = southWinW / numWindowPanes;
 const sharedSouthWinStileGeo = prepGeo(new THREE.BoxGeometry(0.054, southWinH, 0.058));
@@ -56,10 +59,11 @@ const sharedSouthWinGlassGeo = prepGeo(
   new THREE.BoxGeometry(paneW - 0.108, southWinH - 0.124, 0.016)
 );
 
+// Survey2Plan Win 1722895: 3.55m x 2.07m 4-panel sliding/bifold glazed doors
 const numBifoldLeaves = 4;
-const bifoldTotalWidth = 3.02;
+const bifoldTotalWidth = 3.55;
 const bifoldLeafW = bifoldTotalWidth / numBifoldLeaves;
-const bifoldLeafH = 2.46;
+const bifoldLeafH = 2.07;
 const sharedBifoldStileGeo = prepGeo(new THREE.BoxGeometry(0.054, bifoldLeafH, 0.058));
 const sharedBifoldRailTopGeo = prepGeo(new THREE.BoxGeometry(bifoldLeafW, 0.058, 0.058));
 const sharedBifoldRailBotGeo = prepGeo(new THREE.BoxGeometry(bifoldLeafW, 0.068, 0.058));
@@ -326,36 +330,36 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
     metalness: 0.48,
   });
 
-  // Large, thick structural Oak Mantle (Lintel Beam) spanning across the top of the bifold opening
+  // Large, thick structural Oak Mantle (Lintel Beam) spanning across the top of the 3.55x2.07m bifold opening (Win 1722895)
   const oakMantle = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(3.56, 0.26, 0.3)),
+    prepGeo(new THREE.BoxGeometry(3.79, 0.26, 0.3)),
     structuralOakMat
   );
   oakMantle.name = 'sitting.bifolds.oakMantle';
-  oakMantle.position.set(3.19, 2.61, 2.13);
+  oakMantle.position.set(3.075, 2.235, 2.13);
   oakMantle.castShadow = true;
   oakMantle.receiveShadow = true;
   southWallGroup.add(oakMantle);
 
-  // Large, thick structural Oak Uprights (Posts) on either side of the 4 white bifold doors
+  // Structural Oak Uprights (Posts) on either side of the 4 white bifold doors (X = 1.18..1.32m and 4.87..4.97m)
   let bifoldPegIdx = 0;
-  for (const [uprightX, sideTag] of [
-    [1.56, 'Left'],
-    [4.82, 'Right'],
+  for (const [uprightX, uprightGeo, sideTag] of [
+    [1.25, sharedBifoldLeftUprightGeo, 'Left'],
+    [4.92, sharedBifoldRightUprightGeo, 'Right'],
   ] as const) {
-    const oakUpright = new THREE.Mesh(sharedOakUprightGeo, structuralOakMat);
+    const oakUpright = new THREE.Mesh(uprightGeo, structuralOakMat);
     oakUpright.name = `sitting.bifolds.oakUpright${sideTag}`;
-    oakUpright.position.set(uprightX, 1.24, 2.13);
+    oakUpright.position.set(uprightX, 1.0525, 2.13);
     oakUpright.castShadow = true;
     oakUpright.receiveShadow = true;
     southWallGroup.add(oakUpright);
 
     // Traditional timber-frame oak pegs at the mortise-and-tenon joint between upright and mantle
-    for (const dx of [-0.05, 0.05]) {
+    for (const dx of [-0.03, 0.03]) {
       const peg = new THREE.Mesh(sharedOakPegGeo, darkOakPegMat);
       peg.name = `sitting.bifolds.oakPeg_${bifoldPegIdx++}`;
       peg.rotation.x = Math.PI / 2;
-      peg.position.set(uprightX + dx, 2.55, 2.13);
+      peg.position.set(uprightX + dx, 2.175, 2.13);
       tagHighLod(peg);
       southWallGroup.add(peg);
     }
@@ -363,71 +367,82 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
 
   // Thick Oak Threshold Sill at the base of the 4 white bifold doors
   const sill = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(3.06, 0.035, 0.26)),
+    prepGeo(new THREE.BoxGeometry(bifoldTotalWidth + 0.04, 0.035, 0.26)),
     structuralOakMat
   );
   sill.name = 'sitting.bifolds.oakThresholdSill';
-  sill.position.set(3.19, 0.017, 2.12);
+  sill.position.set(3.095, 0.0175, 2.12);
   southWallGroup.add(sill);
 
   // =========================================================================
-  // LARGE 2.5M-WIDE 3-PANE FULL-HEIGHT WINDOW NEXT TO THE BIFOLDS (shifted 40cm West to X = -2.08m..+0.42m, center X = -0.83m — Issue #6!)
+  // SURVEY2PLAN WIN 1720246: 2.42M x 2.11M 3-PANEL SLIDING GLAZED SCREEN (X = -2.46m..-0.04m, center X = -1.25m)
   // =========================================================================
-  const southWinCenterX = -0.83;
+  const southWinCenterX = -1.25;
 
-  // Matching thick structural Oak Mantel (lintel beam) above the 3-pane full-height window
+  // Matching thick structural Oak Mantel (lintel beam) above the 3-panel sliding glazed screen
   const southWinOakMantle = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(southWinW + 0.54, 0.26, 0.3)),
+    prepGeo(new THREE.BoxGeometry(southWinW + 0.4, 0.26, 0.3)),
     structuralOakMat
   );
   southWinOakMantle.name = 'sitting.southWindow.oakMantle';
-  southWinOakMantle.position.set(southWinCenterX, 2.61, 2.13);
+  southWinOakMantle.position.set(southWinCenterX, 2.275, 2.13);
   southWinOakMantle.castShadow = true;
   southWinOakMantle.receiveShadow = true;
   southWallGroup.add(southWinOakMantle);
 
-  // Matching thick structural Oak Upstands (left & right posts at X = -1.80m and X = +0.94m)
+  // Matching thick structural Oak Upstands (left & right posts at X = -2.56m and X = +0.06m)
   let winPegIdx = 0;
   for (const [winUprightX, sideTag] of [
-    [southWinCenterX - southWinW * 0.5 - 0.12, 'Left'],
-    [southWinCenterX + southWinW * 0.5 + 0.12, 'Right'],
+    [southWinCenterX - southWinW * 0.5 - 0.1, 'Left'],
+    [southWinCenterX + southWinW * 0.5 + 0.1, 'Right'],
   ] as const) {
-    const winOakUpright = new THREE.Mesh(sharedOakUprightGeo, structuralOakMat);
+    const winOakUpright = new THREE.Mesh(sharedWinOakUprightGeo, structuralOakMat);
     winOakUpright.name = `sitting.southWindow.oakUpright${sideTag}`;
-    winOakUpright.position.set(winUprightX, 1.24, 2.13);
+    winOakUpright.position.set(winUprightX, 1.0725, 2.13);
     winOakUpright.castShadow = true;
     winOakUpright.receiveShadow = true;
     southWallGroup.add(winOakUpright);
 
     // Traditional timber-frame oak pegs at the mortise-and-tenon joint
-    for (const dx of [-0.05, 0.05]) {
+    for (const dx of [-0.045, 0.045]) {
       const peg = new THREE.Mesh(sharedOakPegGeo, darkOakPegMat);
       peg.name = `sitting.southWindow.oakPeg_${winPegIdx++}`;
       peg.rotation.x = Math.PI / 2;
-      peg.position.set(winUprightX + dx, 2.55, 2.13);
+      peg.position.set(winUprightX + dx, 2.215, 2.13);
       tagHighLod(peg);
       southWallGroup.add(peg);
     }
   }
 
-  // Matching Oak Threshold Sill at the base of the 3-pane full-height window
+  // Matching Oak Threshold Sill + dual sliding track rail at the base of the 2.42x2.11m 3-panel screen
   const southWinSill = new THREE.Mesh(
     prepGeo(new THREE.BoxGeometry(southWinW + 0.06, 0.035, 0.26)),
     structuralOakMat
   );
   southWinSill.name = 'sitting.southWindow.oakSill';
-  southWinSill.position.set(southWinCenterX, 0.017, 2.12);
+  southWinSill.position.set(southWinCenterX, 0.0175, 2.12);
   southWallGroup.add(southWinSill);
 
-  // 3 Full-Height Glazed Window Panes (each ~0.833m wide x 2.46m tall)
+  const slidingTrackRail = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(southWinW, 0.014, 0.095)),
+    bifoldHardwareMat
+  );
+  slidingTrackRail.name = 'sitting.southWindow.slidingTrackRail';
+  slidingTrackRail.position.set(southWinCenterX, 0.038, 2.12);
+  tagHighLod(slidingTrackRail);
+  southWallGroup.add(slidingTrackRail);
+
+  // 3 Sliding Glazed Screen Panels (staggered slightly in Z along the multi-track rail like S2P-Windows-SldingDoor3Panel)
   const winStartX = southWinCenterX - southWinW * 0.5;
+  const slidingHandleGeo = prepGeo(new THREE.BoxGeometry(0.016, 0.16, 0.024));
 
   for (let p = 0; p < numWindowPanes; p++) {
     const paneCenterX = winStartX + p * paneW + paneW * 0.5;
+    const trackZ = 2.12 + (p - 1) * 0.018;
     const panePrefix = `sitting.southWindow.pane_${p}`;
     const paneGroup = new THREE.Group();
     paneGroup.name = panePrefix;
-    paneGroup.position.set(paneCenterX, 1.25, 2.12);
+    paneGroup.position.set(paneCenterX, 0.035 + southWinH * 0.5, trackZ);
 
     for (const [side, sideTag] of [
       [-1, 'stileLeft'],
@@ -451,6 +466,14 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
       paneGroup.add(rail);
     }
 
+    if (p === 0 || p === 2) {
+      const pull = new THREE.Mesh(slidingHandleGeo, bifoldHardwareMat);
+      pull.name = `${panePrefix}.flushPullHandle`;
+      pull.position.set((p === 0 ? -1 : 1) * (paneW * 0.5 - 0.027), -0.05, -0.032);
+      tagHighLod(pull);
+      paneGroup.add(pull);
+    }
+
     const glass = new THREE.Mesh(sharedSouthWinGlassGeo, glassMat);
     glass.name = `${panePrefix}.glassPane`;
     paneGroup.add(glass);
@@ -458,16 +481,16 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
     southWallGroup.add(paneGroup);
   }
 
-  // 4 Wider White Bifold Door Panes (totalWidth = 3.02m -> each pane is 0.755m wide, spanning X = +1.68m..+4.70m)
-  const startX = 1.68;
-  const hingeKnuckleYs = [-0.85, 0.0, 0.85] as const;
+  // 4 Wider White Bifold Door Panes (Win 1722895: totalWidth = 3.55m x 2.07m -> each pane 0.8875m wide, spanning X = +1.32m..+4.87m)
+  const startX = 1.32;
+  const hingeKnuckleYs = [-0.72, 0.0, 0.72] as const;
 
   for (let i = 0; i < numBifoldLeaves; i++) {
     const leafPrefix = `sitting.bifolds.leaf_${i}`;
     const panelPivot = new THREE.Group();
     panelPivot.name = leafPrefix;
     const closedX = startX + i * bifoldLeafW + bifoldLeafW / 2;
-    panelPivot.position.set(closedX, 1.25, 2.12);
+    panelPivot.position.set(closedX, 0.035 + bifoldLeafH * 0.5, 2.12);
 
     const stileLeft = new THREE.Mesh(sharedBifoldStileGeo, whiteBifoldFrameMat);
     stileLeft.name = `${leafPrefix}.stileLeft`;

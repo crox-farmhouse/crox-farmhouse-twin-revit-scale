@@ -70,7 +70,8 @@ export function buildBedroom4(
     warmRoomPlasterMat,
   } = kit;
 
-  const collarCeilingY = 5.02;
+  const collarCeilingY = 5.05; // Surveyed Room 22 vaulted collar: +3.00m above +2.05m FFL
+  const eastEavesY = 4.05;     // Surveyed +2.00m East eaves above +2.05m FFL
 
   // =========================================================================
   // 7. BEDROOM 4 (4.95m x 3.20m / 16'3" x 10'6")
@@ -83,7 +84,7 @@ export function buildBedroom4(
   }
 
   // West Front Exterior Brick Wall of Bedroom 4 (X = -22.47m..-22.19m, Z = +8.39m..+11.49m, Y = 2.06m..4.16m)
-  // Stops at Z = +11.49m so the South Gable Wall (Z = +11.49m..+11.77m) owns the SW corner with zero coplanar overlap/dithering (Issue #4)!
+  // Surveyed Win 1764373: 1.55m x 0.995m 3-light casement (sill +675mm = 2.725m, head 3.72m)
   {
     const idx = scene.children.length;
     addUpperBrickWallAlongZWithWindow(
@@ -92,12 +93,12 @@ export function buildBedroom4(
       8.39,
       11.49,
       9.94,
-      1.54,
-      2.88,
-      3.88,
+      1.55,
+      2.725,
+      3.72,
       'east',
       3,
-      { skipSkirting: true }
+      { windowFamily: 'tripleTopHungCentre', skipSkirting: true }
     );
     ensureNamedAddedChildren(scene, idx, 'bedroom4.westExteriorWall');
   }
@@ -274,7 +275,7 @@ export function buildBedroom4(
     const getVaultCeilingYAtX = (wx: number): number => {
       if (wx <= collarEastX) return collarCeilingY;
       const t = (wx - collarEastX) / (skeilingEastX - collarEastX);
-      return collarCeilingY - t * (collarCeilingY - upperWallTopY);
+      return collarCeilingY - t * (collarCeilingY - eastEavesY);
     };
 
     // Full-height vaulted wardrobe carcass (`X = -19.25m..-17.34m`, stepping down to `upperWallTopY` inside the East brick wall for `x > -17.348m`)
@@ -375,7 +376,7 @@ export function buildBedroom4(
       [
         'bedroom4.southWallMitredSkirting',
         [
-          [-17.276, 8.39],
+          [-17.165, 8.39],
           [getEastInnerX(8.39), 8.39],
           [getEastInnerX(10.85), 10.85],
           [-19.25, 10.85],
@@ -391,7 +392,7 @@ export function buildBedroom4(
           [-20.45, 11.476],
           [-22.19, 11.476],
           [-22.19, 8.39],
-          [-18.224, 8.39],
+          [-18.175, 8.39],
         ] as const,
       ],
     ] as const) {
