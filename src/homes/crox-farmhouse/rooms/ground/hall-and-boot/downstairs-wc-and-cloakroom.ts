@@ -189,10 +189,10 @@ export function buildDownstairsWcAndCloakroom(
     floor: 'ground',
   };
   const northLiningSpecs = [
-    [-12.665, lowerWallMidY, 0.29, lowerWallH, 'westPier'],
-    [-11.615, lowerWallMidY, 0.29, lowerWallH, 'eastPier'],
-    [-12.14, (lowerFloorY + 0.79) / 2, 0.76, 0.79 - lowerFloorY, 'spandrelLower'],
-    [-12.14, (1.6 + wallH) / 2, 0.76, wallH - 1.6, 'spandrelUpper'],
+    [-12.62, lowerWallMidY, 0.38, lowerWallH, 'westPier'],
+    [-11.65, lowerWallMidY, 0.4, lowerWallH, 'eastPier'],
+    [-12.14, (lowerFloorY + 0.79) / 2, 0.58, 0.79 - lowerFloorY, 'spandrelLower'],
+    [-12.14, (1.6 + wallH) / 2, 0.58, wallH - 1.6, 'spandrelUpper'],
   ] as const;
   for (const [nx, ny, nw, nh, nTag] of northLiningSpecs) {
     const northLining = new THREE.Mesh(

@@ -1,5 +1,9 @@
 import * as THREE from 'three';
-import { addCasedArchitravePortal, createProfiledSkirtingCapGeometry } from '../../../engine/geometry/index.ts';
+import {
+  addCasedArchitravePortal,
+  addSolidOakWindowTrim,
+  createProfiledSkirtingCapGeometry,
+} from '../../../engine/geometry/index.ts';
 import type { CutawayWallDescriptor } from '../../../core/types/scene.ts';
 import type { SceneBuilderContext } from '../../../engine/viewer/scene-types.ts';
 import type { createFirstFloorMaterials } from './first-floor-materials.ts';
@@ -23,7 +27,6 @@ export function createFirstFloorShellKit(
     floorTopY,
     oakFloorMat,
     plasterMat,
-    skirtingMat,
     stoneSillMat,
     timberDoorMat,
     upperWallTopY,
@@ -498,10 +501,15 @@ export function createFirstFloorShellKit(
       readonly skirtingMin?: number;
       readonly skirtingMax?: number;
       readonly floorY?: number;
+      readonly minSillY?: number;
+      readonly maxHeadY?: number;
+      readonly trimFaceOffset?: number;
+      readonly skipUnderApron?: boolean;
+      readonly skipArchitrave?: boolean;
     }
   ): void => {
-    const effSillY = Math.max(sillY, 2.97);
-    const effHeadY = Math.min(headY, 3.83);
+    const effSillY = Math.max(sillY, options?.minSillY ?? 2.86);
+    const effHeadY = Math.min(headY, options?.maxHeadY ?? 3.88);
     const winLeft = winCenterX - winWidth / 2;
     const winRight = winCenterX + winWidth / 2;
 
@@ -579,18 +587,21 @@ export function createFirstFloorShellKit(
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
-    const windowBoard = new THREE.Mesh(
-      new THREE.BoxGeometry(winWidth + 0.04, 0.024, intRevealDepthZ + 0.028),
-      skirtingMat
-    );
-    windowBoard.name = `${winId}.windowBoard`;
-    windowBoard.position.set(
-      winCenterX,
-      effSillY + 0.01,
-      intRevealCenterZ + intSignZ * 0.012
-    );
-    windowBoard.receiveShadow = true;
-    winGroup.add(windowBoard);
+    addSolidOakWindowTrim(winGroup, {
+      axis: 'x',
+      openingCenter: winCenterX,
+      openingWidth: winWidth,
+      sillY: effSillY,
+      headY: effHeadY,
+      interiorWallFaceCoord: intFaceZ,
+      inwardSign: intSignZ as 1 | -1,
+      revealDepth: intRevealDepthZ,
+      material: antiqueOakSkirtingMat,
+      namePrefix: winId,
+      trimFaceOffset: options?.trimFaceOffset,
+      skipUnderApron: options?.skipUnderApron,
+      skipArchitrave: options?.skipArchitrave,
+    });
 
     const frameDepth = 0.11;
     const topRail = new THREE.Mesh(
@@ -659,10 +670,15 @@ export function createFirstFloorShellKit(
       readonly skirtingMin?: number;
       readonly skirtingMax?: number;
       readonly floorY?: number;
+      readonly minSillY?: number;
+      readonly maxHeadY?: number;
+      readonly trimFaceOffset?: number;
+      readonly skipUnderApron?: boolean;
+      readonly skipArchitrave?: boolean;
     }
   ): void => {
-    const effSillY = Math.max(sillY, 2.97);
-    const effHeadY = Math.min(headY, 3.83);
+    const effSillY = Math.max(sillY, options?.minSillY ?? 2.86);
+    const effHeadY = Math.min(headY, options?.maxHeadY ?? 3.88);
     const winNorth = winCenterZ - winWidth / 2;
     const winSouth = winCenterZ + winWidth / 2;
     const rawCx = (minX + maxX) / 2;
@@ -755,21 +771,22 @@ export function createFirstFloorShellKit(
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
-    const windowBoard = new THREE.Mesh(
-      shearGeometryAlongZ(
-        new THREE.BoxGeometry(intRevealDepthX + 0.028, 0.024, winWidth + 0.04),
-        slopeXPerZ
-      ),
-      skirtingMat
-    );
-    windowBoard.name = `${winId}.windowBoard`;
-    windowBoard.position.set(
-      cx + intSignX * (wallDepthX * 0.25 + 0.012),
-      effSillY + 0.01,
-      winCenterZ
-    );
-    windowBoard.receiveShadow = true;
-    winGroup.add(windowBoard);
+    addSolidOakWindowTrim(winGroup, {
+      axis: 'z',
+      openingCenter: winCenterZ,
+      openingWidth: winWidth,
+      sillY: effSillY,
+      headY: effHeadY,
+      interiorWallFaceCoord: cx + intSignX * (wallDepthX * 0.5),
+      inwardSign: intSignX as 1 | -1,
+      revealDepth: intRevealDepthX,
+      material: antiqueOakSkirtingMat,
+      namePrefix: winId,
+      slopeXPerZ,
+      trimFaceOffset: options?.trimFaceOffset,
+      skipUnderApron: options?.skipUnderApron,
+      skipArchitrave: options?.skipArchitrave,
+    });
 
     const frameDepth = 0.11;
     const topRail = new THREE.Mesh(
@@ -849,6 +866,8 @@ export function createFirstFloorShellKit(
       readonly backFloorY?: number;
       readonly doorFloorY?: number;
       readonly doorH?: number;
+      readonly architraveWidth?: number;
+      readonly jambInset?: number;
     }
   ): void => {
     const effDoorH = options?.doorH ?? doorH;
@@ -973,6 +992,8 @@ export function createFirstFloorShellKit(
       backFloorY: effBackFloorY,
       headY: effDoorFloorY + effDoorH,
       material: antiqueOakSkirtingMat,
+      architraveWidth: options?.architraveWidth,
+      jambInset: options?.jambInset,
       namePrefix: 'firstFloorDoor',
     });
 

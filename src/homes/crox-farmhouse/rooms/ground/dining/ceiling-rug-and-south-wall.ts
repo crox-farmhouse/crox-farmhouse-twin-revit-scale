@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import {
   addCasedArchitravePortal,
+  addSolidOakWindowTrim,
   buildMitredWallSkirtingGeometry,
-} from '../../../../../engine/geometry/swept-moulding.ts';
+} from '../../../../../engine/geometry/index.ts';
 import { buildWindowRomanBlind } from '../../../../../objects/decor/roman-blind.ts';
 import type { SceneBuilderContext } from '../../../../../engine/viewer/scene-types.ts';
 import type { DiningRoomKit } from '../dining-room.ts';
@@ -22,7 +23,6 @@ export function buildDiningCeilingRugAndSouthWall(
     courtyardDoorRecessMat,
     exteriorBrickMat,
     oakMat,
-    skirtingMat,
     stoneSillMat,
     tagCutawayWall,
     wallCapMat,
@@ -764,14 +764,18 @@ export function buildDiningCeilingRugAndSouthWall(
     extSill.position.set(diningWinCenterX, sillY - 0.02, 2.5775);
     southCutGroup.add(extSill);
 
-    const intSill = new THREE.Mesh(
-      new THREE.BoxGeometry(diningWinWidth + 0.08, 0.03, 0.18),
-      skirtingMat
-    );
-    if (!intSill.name) intSill.name = 'familyRoom.southWall.intSill';
-    intSill.position.set(diningWinCenterX, sillY + 0.01, 2.41);
-    intSill.receiveShadow = true;
-    southCutGroup.add(intSill);
+    addSolidOakWindowTrim(southCutGroup, {
+      axis: 'x',
+      openingCenter: diningWinCenterX,
+      openingWidth: diningWinWidth,
+      sillY,
+      headY,
+      interiorWallFaceCoord: 2.35,
+      inwardSign: -1,
+      revealDepth: 0.145,
+      material: antiqueOakSkirtingMat,
+      namePrefix: 'familyRoom.southWall.window',
+    });
 
     const winH = headY - sillY;
     const cy = sillY + winH / 2;
@@ -833,7 +837,7 @@ export function buildDiningCeilingRugAndSouthWall(
       width: diningWinWidth,
       railY: headY - 0.035,
       bottomY: headY - 0.39,
-      wallFaceZ: 2.35,
+      wallFaceZ: 2.33,
       facingZ: -1,
       parentGroup: southCutGroup,
     });

@@ -67,7 +67,6 @@ export function buildBootRoomBenchAndLockers(
     lowerWallH,
     lowerWallMidY,
     oakMat,
-    skirtingMat,
     tagCutawayWall,
     wallH,
     warmRoomPlasterMat,
@@ -95,18 +94,19 @@ export function buildBootRoomBenchAndLockers(
   bootLobbyFloor.receiveShadow = true;
   scene.add(bootLobbyFloor);
 
-  // North Exterior Brick Wall across East Cloakroom WC (X = -11.45m..-9.56m) and West Store/Cupboard (X = -12.81m..-11.45m)
+  // North Exterior Brick Wall across East Wine Cellar (X = -11.45m..-9.56m) and West Cloakroom WC (X = -12.81m..-11.45m)
+  // Calibrated to Survey2Plan narrow heritage North slit casement windows (Win 1529400 = 0.54m & Win 1530340 = 0.58m)
   addBrickWallAlongXWithWindow(
     -11.45,
     -9.56,
     -2.78,
     -2.5,
     -10.62,
-    0.85,
-    0.98,
-    1.86,
+    0.54,
+    1.02,
+    1.82,
     'south',
-    2
+    1
   );
   addBrickWallAlongXWithWindow(
     -12.81,
@@ -114,11 +114,12 @@ export function buildBootRoomBenchAndLockers(
     -2.78,
     -2.5,
     -12.14,
-    0.76,
+    0.58,
     0.79,
     1.6,
     'south',
-    2
+    1,
+    { trimFaceOffset: 0.018 }
   );
 
   // Face-fixed linen Roman blind over the Downstairs Cloakroom WC North window (X = -12.14m, lowered to sillY = 0.79m..1.60m — Issue #10)
@@ -126,10 +127,10 @@ export function buildBootRoomBenchAndLockers(
     name: 'bootLobby.downstairsWc.northWindow.romanBlind',
     zone: 'bootLobby',
     centerX: -12.14,
-    width: 0.56,
+    width: 0.58,
     railY: 1.555,
     bottomY: 1.22,
-    wallFaceZ: -2.5,
+    wallFaceZ: -2.462,
     facingZ: 1,
     cutawayWall: {
       axis: 'z',
@@ -912,7 +913,7 @@ export function buildBootRoomBenchAndLockers(
   }
 
   // South Exterior Brick Wall of Boot Lobby (0.28m thick, Z = +2.40m..+2.68m, X = -9.56m..-12.81m):
-  // 2-pane Georgian Casement Window centered at X = -11.65m (above the courtyard wooden bench, Photo 1 & Photo 6 right)
+  // 2-pane Georgian Casement Window centered at X = -11.65m with Solid European Oak bullnose window board & 75mm architrave
   addBrickWallAlongXWithWindow(
     -12.81,
     -9.56,
@@ -926,23 +927,6 @@ export function buildBootRoomBenchAndLockers(
     2
   );
 
-  // Wide White Internal Windowsill Shelf under the Boot Lobby South Window (Issue #8: radiator removed)
-  const bootWindowSillShelf = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(1.32, 0.032, 0.24)),
-    skirtingMat
-  );
-  bootWindowSillShelf.name = 'bootLobby.southWindow.sillShelf';
-  bootWindowSillShelf.position.set(-11.65, 0.84, 2.34);
-  bootWindowSillShelf.castShadow = true;
-  tagCutawayWall(bootWindowSillShelf, {
-    axis: 'z',
-    coord: 2.54,
-    minSpan: -12.81,
-    maxSpan: -9.56,
-    floor: 'ground',
-  });
-  scene.add(bootWindowSillShelf);
-
   // Face-fixed linen Roman blind over the Boot Lobby South window (X = -11.65m)
   buildWindowRomanBlind(scene, tagCutawayWall, {
     name: 'bootLobby.southWindow.romanBlind',
@@ -951,7 +935,7 @@ export function buildBootRoomBenchAndLockers(
     width: 1.18,
     railY: 1.815,
     bottomY: 1.46,
-    wallFaceZ: 2.4,
+    wallFaceZ: 2.38,
     facingZ: -1,
     cutawayWall: {
       axis: 'z',

@@ -589,9 +589,9 @@ export function buildUpperLanding(
       2.22,
       2.68,
       -15.35,
-      1.16,
-      3.02,
-      3.78,
+      1.42,
+      2.98,
+      3.76,
       'north',
       3,
       { skirtingMin: -17.788, skirtingMax: -13.072 }

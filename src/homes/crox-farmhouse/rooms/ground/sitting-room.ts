@@ -80,7 +80,7 @@ export function buildSittingRoom(
     3.7,
     8.15,
     5.92,
-    1.65,
+    1.71,
     0.58,
     1.54,
     'west',
@@ -92,7 +92,7 @@ export function buildSittingRoom(
   // on the Interior West (-X) Face of the Sitting Room East Courtyard Window (centered at Z = +5.92m)
   {
     const eastWinCenterZ = 5.92;
-    const eastWinHalfW = 1.65 / 2; // 0.825m
+    const eastWinHalfW = 1.71 / 2; // 0.855m (Survey2Plan Win 1425735 = 1.71m)
     const eastWallInnerX = getEastCourtyardWallCenterX(eastWinCenterZ) - 0.14;
     const poleY = 1.49;
     const poleOff = -0.078; // Projects 7.8cm West (-X) into the Sitting Room interior

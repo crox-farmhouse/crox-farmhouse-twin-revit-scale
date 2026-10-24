@@ -83,6 +83,7 @@ export function buildSweptMouldingGeometry(
     geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   }
   geo.computeVertexNormals();
+  geo.computeBoundingSphere();
   return geo;
 }
 
@@ -597,6 +598,220 @@ export function addCasedArchitravePortal(
     backArchitrave.receiveShadow = true;
     backArchitrave.userData.isArchitecturalShell = true;
     parent.add(backArchitrave);
+  }
+}
+
+/**
+ * Crown cornice cross-section in `(d, h)` for bespoke floor-to-ceiling Shaker cabinetry & vaulted wardrobes:
+ * - `d` (`0..projection`) projects outward from the cabinetry front face,
+ * - `h` (`-height..+0.004`) hangs downward from the ceiling line (`h = 0`) when swept along an increasing
+ *   horizontal/raked ceiling path `(u0, y0) -> (u1, y1)`.
+ */
+export function createCrownCorniceProfile(projection = 0.042, height = 0.046): THREE.Shape {
+  const s = new THREE.Shape();
+  s.moveTo(-0.004, -height);
+  // Lower bed-mould fascia & crisp quirk step above wardrobe doors
+  s.lineTo(projection * 0.30, -height);
+  s.lineTo(projection * 0.30, -height * 0.78);
+  s.lineTo(projection * 0.42, -height * 0.74);
+  // Sweeping concave cavetto throat into convex cyma recta crown ogee
+  s.quadraticCurveTo(projection * 0.36, -height * 0.54, projection * 0.62, -height * 0.38);
+  s.quadraticCurveTo(projection * 0.88, -height * 0.22, projection, -height * 0.14);
+  // Top corona fillet abutting ceiling soffit
+  s.lineTo(projection, 0.004);
+  s.lineTo(-0.004, 0.004);
+  s.closePath();
+  return s;
+}
+
+export interface SolidOakWindowTrimOptions {
+  /** 'x' = window spans X (wall normal along Z); 'z' = window spans Z (wall normal along X). */
+  readonly axis: 'x' | 'z';
+  /** Center coordinate of the window opening along `axis` (X if `axis === 'x'`, Z if `axis === 'z'`). */
+  readonly openingCenter: number;
+  /** Clear width of the masonry/plaster window reveal opening along `axis`. */
+  readonly openingWidth: number;
+  /** Y coordinate of the masonry sill (bottom of window reveal). */
+  readonly sillY: number;
+  /** Y coordinate of the masonry head (top of window reveal). */
+  readonly headY: number;
+  /** Interior room-side wall face coordinate (Z if `axis === 'x'`, X at `openingCenter` if `axis === 'z'`). */
+  readonly interiorWallFaceCoord: number;
+  /** Sign pointing from the wall into the interior room (+1 or -1). */
+  readonly inwardSign: 1 | -1;
+  /** Depth of the interior plastered reveal from window frame to interior wall face. */
+  readonly revealDepth: number;
+  /** Solid European Oak material (`antiqueOakSkirtingMat`). */
+  readonly material: THREE.Material;
+  /** Prefix for mesh names (e.g. `winId`). */
+  readonly namePrefix: string;
+  /** Architrave moulding width (`75 mm` per Survey2Plan / client joinery schedule, default `0.075`). */
+  readonly architraveWidth?: number;
+  /** Architrave maximum projection thickness (`20 mm`, default `0.020`). */
+  readonly architraveThickness?: number;
+  /** Extra room-ward offset to clear applied wall panelling or timber linings (default `0`). */
+  readonly trimFaceOffset?: number;
+  /** Optional X-per-Z shear slope for angled walls along Z (e.g. East Courtyard Wall, default `0`). */
+  readonly slopeXPerZ?: number;
+  /** Whether to omit the moulded solid oak under-sill apron (e.g. above a built-in window seat). */
+  readonly skipUnderApron?: boolean;
+  /** Whether to omit the 3-sided 45°-mitred solid oak architrave (default `false`). */
+  readonly skipArchitrave?: boolean;
+}
+
+/**
+ * Adds bespoke Solid European Oak internal window trim (`#19` / Survey2Plan calibration):
+ * 1. `26 mm` thick Solid European Oak bullnose window board with `24 mm` wrap-around end-horns,
+ * 2. 3-sided 45°-mitred `75 mm × 20 mm` Ogee/Torus Solid European Oak window architrave seated on the board,
+ * 3. Moulded `46 mm` Cyma/Cavetto Solid European Oak under-sill apron beneath the window board.
+ */
+export function addSolidOakWindowTrim(
+  parent: THREE.Object3D,
+  options: SolidOakWindowTrimOptions
+): void {
+  const archW = options.architraveWidth ?? 0.075;
+  const archT = options.architraveThickness ?? 0.020;
+  const faceOffset = options.trimFaceOffset ?? 0;
+  const slope = options.slopeXPerZ ?? 0;
+  const effWallFace = options.interiorWallFaceCoord + options.inwardSign * faceOffset;
+  const jambInset = 0.006;
+  const uLeft = options.openingCenter - options.openingWidth * 0.5 + jambInset;
+  const uRight = options.openingCenter + options.openingWidth * 0.5 - jambInset;
+
+  // 1. 26mm Solid European Oak Bullnose Window Board with 24mm wrap-around end-horns
+  const hornExt = options.skipArchitrave ? 0.03 : archW + 0.024;
+  const boardSpan = Math.max(0.12, uRight - uLeft + hornExt * 2);
+  const boardH = 0.026;
+  const boardBotY = options.sillY - 0.002;
+  const boardTopY = boardBotY + boardH;
+  const backDepth = Math.max(0.06, options.revealDepth + faceOffset);
+  const nosingProj = archT + 0.014;
+  const bullnoseR = 0.012;
+
+  const boardShape = new THREE.Shape();
+  boardShape.moveTo(-backDepth, 0);
+  boardShape.lineTo(nosingProj - bullnoseR, 0);
+  boardShape.quadraticCurveTo(nosingProj, 0, nosingProj, boardH * 0.5);
+  boardShape.quadraticCurveTo(nosingProj, boardH, nosingProj - bullnoseR, boardH);
+  boardShape.lineTo(-backDepth, boardH);
+  boardShape.closePath();
+
+  const boardGeo = new THREE.ExtrudeGeometry(boardShape, {
+    depth: boardSpan,
+    bevelEnabled: false,
+    curveSegments: 6,
+  });
+  // Local coords after Extrude: x = dLocal (-backDepth..+nosingProj), y = 0..boardH, z = 0..boardSpan
+  boardGeo.translate(0, 0, -boardSpan * 0.5);
+  if (options.axis === 'x') {
+    // Rotate so dLocal maps to inwardSign * Z and span maps to X
+    boardGeo.rotateY(options.inwardSign > 0 ? -Math.PI / 2 : Math.PI / 2);
+  } else if (options.inwardSign < 0) {
+    boardGeo.rotateY(Math.PI);
+  }
+  if (options.axis === 'z' && Math.abs(slope) > 1e-6) {
+    const pos = boardGeo.attributes.position;
+    if (pos) {
+      for (let i = 0; i < pos.count; i++) {
+        pos.setX(i, pos.getX(i) + slope * pos.getZ(i));
+      }
+      pos.needsUpdate = true;
+    }
+  }
+  boardGeo.computeVertexNormals();
+  boardGeo.computeBoundingSphere();
+
+  const windowBoard = new THREE.Mesh(boardGeo, options.material);
+  windowBoard.name = `${options.namePrefix}.windowBoard`;
+  if (options.axis === 'x') {
+    windowBoard.position.set(options.openingCenter, boardBotY, effWallFace);
+  } else {
+    windowBoard.position.set(effWallFace, boardBotY, options.openingCenter);
+  }
+  windowBoard.castShadow = true;
+  windowBoard.receiveShadow = true;
+  parent.add(windowBoard);
+
+  // 2. 3-Sided 45°-Mitred 75mm × 20mm Solid European Oak Window Architrave
+  if (!options.skipArchitrave && uRight - uLeft > 0.08 && options.headY - boardTopY > 0.12) {
+    const innerHeadY = options.headY - 0.006;
+    const archProfile = createArchitraveProfile(archW, archT);
+    const archPath: ReadonlyArray<readonly [number, number]> = [
+      [uLeft, boardTopY],
+      [uLeft, innerHeadY],
+      [uRight, innerHeadY],
+      [uRight, boardTopY],
+    ];
+    const archGeo = buildSweptMouldingGeometry(
+      archProfile,
+      archPath,
+      (u, y, d) =>
+        options.axis === 'x'
+          ? new THREE.Vector3(u, y, effWallFace + options.inwardSign * d)
+          : new THREE.Vector3(
+              effWallFace + slope * (u - options.openingCenter) + options.inwardSign * d,
+              y,
+              u
+            ),
+      6
+    );
+    const oakArchitrave = new THREE.Mesh(archGeo, options.material);
+    oakArchitrave.name = `${options.namePrefix}.oakArchitrave`;
+    oakArchitrave.castShadow = true;
+    oakArchitrave.receiveShadow = true;
+    oakArchitrave.userData.isArchitecturalShell = true;
+    parent.add(oakArchitrave);
+  }
+
+  // 3. Moulded 46mm Cyma/Cavetto Solid European Oak Under-Sill Apron
+  if (!options.skipUnderApron) {
+    const apronSpan = Math.max(0.12, uRight - uLeft + archW * 2);
+    const apronH = 0.046;
+    const apronT = Math.max(0.014, archT * 0.85);
+    const apronShape = new THREE.Shape();
+    apronShape.moveTo(0, 0);
+    apronShape.lineTo(apronT * 0.28, 0);
+    apronShape.quadraticCurveTo(apronT * 0.48, apronH * 0.18, apronT * 0.78, apronH * 0.36);
+    apronShape.quadraticCurveTo(apronT * 1.02, apronH * 0.54, apronT * 0.86, apronH * 0.74);
+    apronShape.lineTo(apronT, apronH * 0.78);
+    apronShape.lineTo(apronT, apronH);
+    apronShape.lineTo(0, apronH);
+    apronShape.closePath();
+
+    const apronGeo = new THREE.ExtrudeGeometry(apronShape, {
+      depth: apronSpan,
+      bevelEnabled: false,
+      curveSegments: 6,
+    });
+    apronGeo.translate(0, 0, -apronSpan * 0.5);
+    if (options.axis === 'x') {
+      apronGeo.rotateY(options.inwardSign > 0 ? -Math.PI / 2 : Math.PI / 2);
+    } else if (options.inwardSign < 0) {
+      apronGeo.rotateY(Math.PI);
+    }
+    if (options.axis === 'z' && Math.abs(slope) > 1e-6) {
+      const pos = apronGeo.attributes.position;
+      if (pos) {
+        for (let i = 0; i < pos.count; i++) {
+          pos.setX(i, pos.getX(i) + slope * pos.getZ(i));
+        }
+        pos.needsUpdate = true;
+      }
+    }
+    apronGeo.computeVertexNormals();
+    apronGeo.computeBoundingSphere();
+
+    const oakApron = new THREE.Mesh(apronGeo, options.material);
+    oakApron.name = `${options.namePrefix}.oakUnderSillApron`;
+    if (options.axis === 'x') {
+      oakApron.position.set(options.openingCenter, boardBotY - apronH, effWallFace);
+    } else {
+      oakApron.position.set(effWallFace, boardBotY - apronH, options.openingCenter);
+    }
+    oakApron.castShadow = true;
+    oakApron.receiveShadow = true;
+    oakApron.userData.tradeCategory = 'finishes';
+    parent.add(oakApron);
   }
 }
 

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import {
   addCasedArchitravePortal,
+  addSolidOakWindowTrim,
+  buildMitredArchitraveSegments,
   buildMiteredPolylineStrip,
   buildPolygonalFloorSlab,
   type Point2D,
@@ -67,7 +69,12 @@ export function createGroundShellWindowsAndDoors(
     headY: number,
     interiorSide: 'north' | 'south',
     panes = 3,
-    wallOptions?: { readonly skipSkirting?: boolean }
+    wallOptions?: {
+      readonly skipSkirting?: boolean;
+      readonly trimFaceOffset?: number;
+      readonly skipUnderApron?: boolean;
+      readonly skipArchitrave?: boolean;
+    }
   ): void => {
     const winLeft = winCenterX - winWidth / 2;
     const winRight = winCenterX + winWidth / 2;
@@ -144,18 +151,21 @@ export function createGroundShellWindowsAndDoors(
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
-    const windowBoard = new THREE.Mesh(
-      new THREE.BoxGeometry(winWidth + 0.04, 0.024, intRevealDepthZ + 0.028),
-      skirtingMat
-    );
-    windowBoard.name = `${winId}.windowBoard`;
-    windowBoard.position.set(
-      winCenterX,
-      effSillY + 0.01,
-      cz + intSignZ * (wallDepthZ * 0.25 + 0.012)
-    );
-    windowBoard.receiveShadow = true;
-    winGroup.add(windowBoard);
+    addSolidOakWindowTrim(winGroup, {
+      axis: 'x',
+      openingCenter: winCenterX,
+      openingWidth: winWidth,
+      sillY: effSillY,
+      headY: effHeadY,
+      interiorWallFaceCoord: cz + intSignZ * (wallDepthZ * 0.5),
+      inwardSign: intSignZ as 1 | -1,
+      revealDepth: intRevealDepthZ,
+      material: antiqueOakSkirtingMat,
+      namePrefix: winId,
+      trimFaceOffset: wallOptions?.trimFaceOffset,
+      skipUnderApron: wallOptions?.skipUnderApron,
+      skipArchitrave: wallOptions?.skipArchitrave,
+    });
 
     // Timber window frame & mullions
     const frameDepth = 0.11;
@@ -218,7 +228,12 @@ export function createGroundShellWindowsAndDoors(
     headY: number,
     interiorSide: 'east' | 'west',
     panes = 3,
-    topWallY = wallH
+    topWallY = wallH,
+    trimOptions?: {
+      readonly trimFaceOffset?: number;
+      readonly skipUnderApron?: boolean;
+      readonly skipArchitrave?: boolean;
+    }
   ): void => {
     const winNorth = winCenterZ - winWidth / 2;
     const winSouth = winCenterZ + winWidth / 2;
@@ -313,21 +328,22 @@ export function createGroundShellWindowsAndDoors(
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
-    const windowBoard = new THREE.Mesh(
-      shearGeometryAlongZ(
-        new THREE.BoxGeometry(intRevealDepthX + 0.028, 0.024, winWidth + 0.04),
-        slopeXPerZ
-      ),
-      skirtingMat
-    );
-    windowBoard.name = `${winId}.windowBoard`;
-    windowBoard.position.set(
-      cx + intSignX * (wallDepthX * 0.25 + 0.012),
-      effSillY + 0.01,
-      winCenterZ
-    );
-    windowBoard.receiveShadow = true;
-    winGroup.add(windowBoard);
+    addSolidOakWindowTrim(winGroup, {
+      axis: 'z',
+      openingCenter: winCenterZ,
+      openingWidth: winWidth,
+      sillY: effSillY,
+      headY: effHeadY,
+      interiorWallFaceCoord: cx + intSignX * (wallDepthX * 0.5),
+      inwardSign: intSignX as 1 | -1,
+      revealDepth: intRevealDepthX,
+      material: antiqueOakSkirtingMat,
+      namePrefix: winId,
+      slopeXPerZ,
+      trimFaceOffset: trimOptions?.trimFaceOffset,
+      skipUnderApron: trimOptions?.skipUnderApron,
+      skipArchitrave: trimOptions?.skipArchitrave,
+    });
 
     const frameDepth = 0.11;
     const topRail = new THREE.Mesh(
@@ -1091,13 +1107,13 @@ export function createGroundShellWindowsAndDoors(
   ): void => {
     const wallInnerX = -22.19;     // Exact interior (+X) face of the West exterior wall
     const bayInnerFrontX = -22.52; // Issue #18: Shallow canted bay projection (0.33m internal recess instead of 0.65m!)
-    const bayHalfZ = 1.08;         // Total internal bay opening = 2.16m
+    const bayHalfZ = 1.12;         // Survey2Plan calibrated internal bay opening = 2.24m
     const hornLen = 0.095;         // Projecting windowsill horn & architrave return along X = -22.19m
     const bayBaseY = -0.6;         // West Wing floor & exterior ground level
     const sillY = 0.08;            // 0.68m above the -0.60m Living/Front Room floor (Issue #2: 10cm lower & 10cm taller windows)
     const headY = frontWallH - 0.26; // Adapted for reduced front-room ceiling height frontWallH = 1.625m (Issue #1: headY = 1.365m)
     const winH = headY - sillY;
-    const frontW = 1.24;
+    const frontW = 1.38;           // Survey2Plan Win 1397299 / 1409822 central facet = 1.38m
 
     // Trapezoidal carpeted bay floor extension slab tucked 4cm inside the 0.28m bay walls (at Y = -0.60m)
     buildPolygonalFloorSlab(
@@ -1396,13 +1412,13 @@ export function createGroundShellWindowsAndDoors(
     );
     bayWallGroup.add(flatHeaderCap);
 
-    // Moulded white head architrave / reveal nosing along the bottom edge of the flat header at X = wallInnerX
+    // Moulded Solid European Oak reveal nosing along the bottom edge of the flat header at X = wallInnerX
     const flatHeaderArchitrave = new THREE.Mesh(
-      new THREE.BoxGeometry(0.032, 0.028, flatHeaderLenZ + 0.12),
-      skirtingMat
+      new THREE.BoxGeometry(0.016, 0.022, flatHeaderLenZ + 0.04),
+      antiqueOakSkirtingMat
     );
     flatHeaderArchitrave.name = 'westBayWindow.flatHeaderArchitrave';
-    flatHeaderArchitrave.position.set(wallInnerX + 0.004, headY + 0.004, centerZ);
+    flatHeaderArchitrave.position.set(wallInnerX - 0.004, headY - 0.002, centerZ);
     bayWallGroup.add(flatHeaderArchitrave);
 
     // Flat horizontal trapezoidal reveal soffit ceiling inside the bay recess at Y = headY
@@ -1481,7 +1497,7 @@ export function createGroundShellWindowsAndDoors(
       false
     );
 
-    // 5. Continuous Mitered White Internal Windowsill Board + Wrap-Around End Horns (y = sillY - 0.006 .. sillY + 0.028)
+    // 5. Continuous Mitered Solid European Oak Internal Windowsill Board + Wrap-Around End Horns + Moulded Under-Sill Apron (y = sillY - 0.006 .. sillY + 0.028)
     buildMiteredPolylineStrip(
       bayWallGroup,
       trimPolyline,
@@ -1489,19 +1505,59 @@ export function createGroundShellWindowsAndDoors(
       0.036,
       sillY - 0.006,
       sillY + 0.028,
-      skirtingMat,
+      antiqueOakSkirtingMat,
       true,
       true
     );
+    buildMiteredPolylineStrip(
+      bayWallGroup,
+      trimPolyline,
+      -0.002,
+      0.017,
+      sillY - 0.048,
+      sillY - 0.006,
+      antiqueOakSkirtingMat,
+      false,
+      true
+    );
 
-    // 6. Continuous Mitered White Window-Head Reveal Soffit & Top Architrave (y = headY - 0.022 .. headY + 0.012)
+    // 5b. 3-Sided 45°-Mitred 75mm × 20mm Solid European Oak Bay Portal Architrave along X = wallInnerX
+    {
+      const [northArchGeo, headArchGeo, southArchGeo] = buildMitredArchitraveSegments(
+        centerZ - bayHalfZ,
+        centerZ + bayHalfZ,
+        sillY + 0.028,
+        sillY + 0.028,
+        headY + 0.006,
+        'z',
+        wallInnerX + 0.002,
+        1,
+        0.075,
+        0.020
+      );
+      const bayArchParts = [
+        ['northLeg', northArchGeo],
+        ['head', headArchGeo],
+        ['southLeg', southArchGeo],
+      ] as const;
+      for (const [partTag, partGeo] of bayArchParts) {
+        const partMesh = new THREE.Mesh(partGeo, antiqueOakSkirtingMat);
+        partMesh.name = `${bayPrefix}.oakArchitrave.${partTag}`;
+        partMesh.castShadow = true;
+        partMesh.receiveShadow = true;
+        partMesh.userData.isArchitecturalShell = true;
+        bayWallGroup.add(partMesh);
+      }
+    }
+
+    // 6. Continuous Mitered White Window-Head Reveal Soffit (y = headY - 0.022 .. headY + 0.006)
     buildMiteredPolylineStrip(
       bayWallGroup,
       trimPolyline,
       -0.115,
-      0.018,
+      0.001,
       headY - 0.022,
-      headY + 0.012,
+      headY + 0.006,
       skirtingMat,
       false,
       true
@@ -1580,7 +1636,7 @@ export function createGroundShellWindowsAndDoors(
     const splayUx = splayDx / splaySegLen;
     const splayUz = splayDz / splaySegLen;
 
-    // North Jamb Reveal + Architrave (around P1)
+    // North Jamb Reveal Lining (around P1)
     buildMiteredPolylineStrip(
       bayWallGroup,
       [
@@ -1589,13 +1645,13 @@ export function createGroundShellWindowsAndDoors(
         [wallInnerX + splayUx * 0.105, centerZ - bayHalfZ + splayUz * 0.105],
       ],
       -0.112,
-      0.018,
+      0.001,
       sillY + 0.022,
       headY - 0.01,
       skirtingMat
     );
 
-    // South Jamb Reveal + Architrave (around P4)
+    // South Jamb Reveal Lining (around P4)
     buildMiteredPolylineStrip(
       bayWallGroup,
       [
@@ -1604,7 +1660,7 @@ export function createGroundShellWindowsAndDoors(
         [wallInnerX, centerZ + bayHalfZ + hornLen],
       ],
       -0.112,
-      0.018,
+      0.001,
       sillY + 0.022,
       headY - 0.01,
       skirtingMat

@@ -1,5 +1,9 @@
 import * as THREE from 'three';
-import { buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/index.ts';
+import {
+  buildMitredWallSkirtingGeometry,
+  buildSweptMouldingGeometry,
+  createCrownCorniceProfile,
+} from '../../../../engine/geometry/index.ts';
 import { buildLeafieldSuperKingBed } from './leafield-super-king-bed.ts';
 import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
@@ -51,7 +55,7 @@ function ensureNamedAddedChildren(
  */
 export function buildMainBedroom(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'exteriorBrickMat' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBrickWallAlongXWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'applyWorldSpaceBrickUVs' | 'tagUpperCutawayWall'>
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
@@ -64,6 +68,7 @@ export function buildMainBedroom(
     addUpperInteriorWall,
     antiqueOakSkirtingMat,
     applyWorldSpaceBrickUVs,
+    brassMat,
     exteriorBrickMat,
     floorTopY,
     oakFloorMat,
@@ -100,7 +105,7 @@ export function buildMainBedroom(
     ensureNamedAddedChildren(scene, idx1, 'mainBedroom.eastExteriorBrickWall');
   }
 
-  // North Exterior Brick Wall of Main Bedroom (Z = -2.78m..-2.50m, X = -9.56m..-4.40m) with casement window
+  // North Exterior Brick Wall of Main Bedroom (Z = -2.78m..-2.50m, X = -9.56m..-4.40m) with Survey2Plan cottage casement window (Win 1757552: 0.98m x 0.72m, low 0.46m cottage sill above 2.34m FFL)
   // Skirting is emitted below via `mainBedroom.perimeterMitredSkirting` for 45°-mitred corners
   {
     const idx = scene.children.length;
@@ -109,19 +114,19 @@ export function buildMainBedroom(
       -4.4,
       -2.78,
       -2.5,
-      -6.35,
-      1.25,
-      3.04,
-      3.94,
+      -6.85,
+      0.98,
+      2.80,
+      3.52,
       'south',
       2,
-      { skipSkirting: true }
+      { skipSkirting: true, minSillY: 2.78 }
     );
     ensureNamedAddedChildren(scene, idx, 'mainBedroom.northExteriorWall');
   }
 
   // South Courtyard Exterior Brick Wall of Main Bedroom (Z = +2.40m..+2.68m, X = -9.56m..-4.40m)
-  // Aligned 100% collinearly with Ground Floor Family Room South wall (Z = 2.40m..2.68m) and Upper Passage South wall (Issue #2)!
+  // Calibrated to Survey2Plan Win 1749749 (1.46m x 0.75m, low 0.47m sill at Y = 2.81m directly above the full-length bespoke Shaker window seat J-M02)!
   {
     const idx = scene.children.length;
     addUpperBrickWallAlongXWithWindow(
@@ -129,13 +134,13 @@ export function buildMainBedroom(
       -4.4,
       2.4,
       2.68,
-      -6.85,
-      1.55,
-      3.04,
-      3.94,
+      -7.41,
+      1.46,
+      2.81,
+      3.56,
       'north',
       3,
-      { skipSkirting: true }
+      { skipSkirting: true, minSillY: 2.78, skipUnderApron: true }
     );
     ensureNamedAddedChildren(scene, idx, 'mainBedroom.southExteriorWall');
   }
@@ -196,29 +201,32 @@ export function buildMainBedroom(
     carcass.receiveShadow = true;
     eastWardGroup.add(carcass);
 
-    // Raked Shaker crown cornice moulding following the vaulted ceiling profile along the front of the wardrobes (`X = -5.28m..-5.24m`)
-    const corniceSegData = [
-      ['northRaked', -2.5, upperWallTopY + 0.008, collarNorthZ, collarCeilingY],
-      ['collar', collarNorthZ, collarCeilingY, collarSouthZ, collarCeilingY],
-      ['southRaked', collarSouthZ, collarCeilingY, 2.4, upperWallTopY + 0.008],
-    ] as const;
-    for (const [segKey, z0, y0, z1, y1] of corniceSegData) {
-      const segLen = Math.hypot(z1 - z0, y1 - y0);
-      const segAngle = Math.atan2(y1 - y0, z1 - z0);
-      const corniceGeo = new THREE.BoxGeometry(0.036, 0.044, segLen + 0.02);
-      corniceGeo.computeBoundingSphere();
-      const corniceSeg = new THREE.Mesh(corniceGeo, wardrobeMat);
-      corniceSeg.name = `mainBedroom.eastWardrobes.cornice.${segKey}`;
-      corniceSeg.position.set(-5.26 - 0.008, (y0 + y1) / 2 - 0.02, (z0 + z1) / 2);
-      corniceSeg.rotation.x = -segAngle;
-      corniceSeg.castShadow = true;
-      eastWardGroup.add(corniceSeg);
+    // Swept 45°-mitred Shaker Cyma/Cavetto crown cornice moulding following the vaulted ceiling profile along X = -5.26m
+    {
+      const corniceProfile = createCrownCorniceProfile(0.042, 0.046);
+      const cornicePath: ReadonlyArray<readonly [number, number]> = [
+        [-2.5, upperWallTopY + 0.008],
+        [collarNorthZ, collarCeilingY],
+        [collarSouthZ, collarCeilingY],
+        [2.4, upperWallTopY + 0.008],
+      ];
+      const corniceGeo = buildSweptMouldingGeometry(
+        corniceProfile,
+        cornicePath,
+        (z, y, d) => new THREE.Vector3(-5.26 - d, y, z),
+        6
+      );
+      const corniceMesh = new THREE.Mesh(corniceGeo, wardrobeMat);
+      corniceMesh.name = 'mainBedroom.eastWardrobes.cornice';
+      corniceMesh.castShadow = true;
+      corniceMesh.receiveShadow = true;
+      eastWardGroup.add(corniceMesh);
     }
 
     // 8 ceiling-height Shaker wardrobe doors (4 pairs of double doors) aligned with the vaulted ceiling segments:
     // - Doors 1 & 2: Z = -2.44m .. -1.156m (raked under North skeiling)
     // - Doors 3..6: Z = -1.144m .. +1.044m (full-height under 5.02m flat collar)
-    // - Doors 7 & 8: Z = +1.056m .. +2.34m (raked under South skeiling)
+    // - Doors 7 & 8: Z = +1.056m .. +2.34m (raked under South skeiling; Door 8 is counter-mounted above the J-M02 South Window Seat so it opens cleanly with zero clash!)
     const doorIntervals: ReadonlyArray<readonly [number, number]> = [
       [-2.44, -1.801],
       [-1.789, -1.156],
@@ -229,19 +237,21 @@ export function buildMainBedroom(
       [1.056, 1.689],
       [1.701, 2.34],
     ];
-    const doorBaseY = floorTopY + 0.15;
-    const corniceClearance = 0.042;
+    const fullDoorBaseY = floorTopY + 0.15;
+    const aboveSeatDoorBaseY = floorTopY + 0.468; // 2.808m: 20mm clear above the 2.788m window-seat squab cushion
+    const corniceClearance = 0.046;
     for (let i = 0; i < doorIntervals.length; i++) {
       const [z0, z1] = doorIntervals[i]!;
       const doorW = z1 - z0;
       const doorZ = (z0 + z1) / 2;
-      const hLeft = getVaultCeilingYAtZ(z0) - corniceClearance - doorBaseY;
-      const hRight = getVaultCeilingYAtZ(z1) - corniceClearance - doorBaseY;
+      const effDoorBaseY = i === 7 ? aboveSeatDoorBaseY : fullDoorBaseY;
+      const hLeft = getVaultCeilingYAtZ(z0) - corniceClearance - effDoorBaseY;
+      const hRight = getVaultCeilingYAtZ(z1) - corniceClearance - effDoorBaseY;
       const maxDoorH = Math.max(hLeft, hRight);
       const dIdx = eastWardGroup.children.length;
       addShakerWardrobeDoor(eastWardGroup, {
         x: -5.273,
-        y: doorBaseY + maxDoorH / 2,
+        y: effDoorBaseY + maxDoorH / 2,
         z: doorZ,
         width: doorW,
         height: maxDoorH,
@@ -260,47 +270,360 @@ export function buildMainBedroom(
       );
     }
 
+    // In-frame Shaker lower fascia panel below Door 8 across Z = 1.701m..1.96m where visible North of the window seat
+    {
+      const lowerFillerH = aboveSeatDoorBaseY - fullDoorBaseY - 0.008;
+      const lowerFillerW = 1.96 - 1.701;
+      const lowerFillerGeo = new THREE.BoxGeometry(0.024, lowerFillerH, lowerFillerW);
+      lowerFillerGeo.computeBoundingSphere();
+      const lowerFiller = new THREE.Mesh(lowerFillerGeo, wardrobeMat);
+      lowerFiller.name = 'mainBedroom.eastWardrobe.seatJunctionFascia';
+      lowerFiller.position.set(-5.272, fullDoorBaseY + lowerFillerH * 0.5, (1.701 + 1.96) * 0.5);
+      lowerFiller.castShadow = true;
+      lowerFiller.receiveShadow = true;
+      eastWardGroup.add(lowerFiller);
+    }
+
     scene.add(eastWardGroup);
   }
 
+  // =========================================================================
+  // BESPOKE FULL-LENGTH SHAKER WINDOW SEAT & STORAGE BENCH (`J-M02`)
+  // Spans the entire 4.30m clear South Courtyard window wall (`X = -9.56m..-5.26m`,
+  // `Z = 1.96m..2.40m`), with 6 in-frame Shaker storage bays, Solid European Oak
+  // bullnose bench top, tailored piped oatmeal-linen squab cushion & scatter cushions!
+  // =========================================================================
+  {
+    const seatMinX = -9.56;
+    const seatMaxX = -5.26;
+    const seatSpanX = seatMaxX - seatMinX; // 4.30m full wall-to-wardrobe clear span
+    const seatCenterX = (seatMinX + seatMaxX) * 0.5; // -7.41m (exact window centerline!)
+    const wallInnerZ = 2.4;
+    const carcassDepthZ = 0.44;
+    const carcassFrontZ = wallInnerZ - carcassDepthZ; // 1.96m (5mm South of Z = 1.955m door architrave!)
+    const plinthH = 0.084;
+    const lidThick = 0.026;
+    const carcassH = 0.40 - plinthH - lidThick; // 0.290m
+    const carcassBotY = floorTopY + plinthH; // 2.424m
+    const lidBotY = carcassBotY + carcassH; // 2.714m
+    const lidTopY = lidBotY + lidThick; // 2.740m
+
+    const windowSeatGroup = new THREE.Group();
+    windowSeatGroup.name = 'mainBedroom.windowSeatJoinery';
+    windowSeatGroup.userData.zone = 'mainBedroom';
+    windowSeatGroup.userData.tradeCategory = 'joinery';
+
+    // 1. Recessed shadow-gap Shaker plinth (`Z = 1.986m..2.40m`)
+    const plinthDepthZ = carcassDepthZ - 0.026;
+    const plinthGeo = new THREE.BoxGeometry(seatSpanX, plinthH, plinthDepthZ);
+    plinthGeo.computeBoundingSphere();
+    const plinthMesh = new THREE.Mesh(plinthGeo, wardrobeMat);
+    plinthMesh.name = 'mainBedroom.windowSeatJoinery.plinth';
+    plinthMesh.position.set(
+      seatCenterX,
+      floorTopY + plinthH * 0.5,
+      wallInnerZ - plinthDepthZ * 0.5
+    );
+    plinthMesh.castShadow = true;
+    plinthMesh.receiveShadow = true;
+    windowSeatGroup.add(plinthMesh);
+
+    // 2. Main 6-bay Shaker bench carcass (`Z = 1.96m..2.40m`)
+    const carcassGeo = new THREE.BoxGeometry(seatSpanX, carcassH, carcassDepthZ);
+    carcassGeo.computeBoundingSphere();
+    const carcassMesh = new THREE.Mesh(carcassGeo, wardrobeMat);
+    carcassMesh.name = 'mainBedroom.windowSeatJoinery.carcass';
+    carcassMesh.position.set(
+      seatCenterX,
+      carcassBotY + carcassH * 0.5,
+      wallInnerZ - carcassDepthZ * 0.5
+    );
+    carcassMesh.castShadow = true;
+    carcassMesh.receiveShadow = true;
+    windowSeatGroup.add(carcassMesh);
+
+    // 3. In-frame Shaker rails, 7 vertical stiles, 6 recessed flat panels & aged-brass cabinet knobs
+    const frameProjZ = 0.016;
+    const railH = 0.046;
+    const stileW = 0.052;
+    for (const [railTag, ry] of [
+      ['bottomRail', carcassBotY + railH * 0.5],
+      ['topRail', lidBotY - railH * 0.5],
+    ] as const) {
+      const railGeo = new THREE.BoxGeometry(seatSpanX, railH, frameProjZ);
+      railGeo.computeBoundingSphere();
+      const railMesh = new THREE.Mesh(railGeo, wardrobeMat);
+      railMesh.name = `mainBedroom.windowSeatJoinery.${railTag}`;
+      railMesh.position.set(seatCenterX, ry, carcassFrontZ - frameProjZ * 0.5);
+      railMesh.castShadow = true;
+      railMesh.receiveShadow = true;
+      windowSeatGroup.add(railMesh);
+    }
+
+    const bayCount = 6;
+    const innerPanelH = carcassH - railH * 2;
+    const innerPanelMidY = carcassBotY + carcassH * 0.5;
+    const clearWidthBetweenStiles = seatSpanX - stileW * (bayCount + 1);
+    const singleBayClearW = clearWidthBetweenStiles / bayCount;
+
+    for (let s = 0; s <= bayCount; s++) {
+      const sx = seatMinX + stileW * 0.5 + s * (singleBayClearW + stileW);
+      const stileGeo = new THREE.BoxGeometry(stileW, innerPanelH + 0.002, frameProjZ);
+      stileGeo.computeBoundingSphere();
+      const stileMesh = new THREE.Mesh(stileGeo, wardrobeMat);
+      stileMesh.name = `mainBedroom.windowSeatJoinery.stile.${s + 1}`;
+      stileMesh.position.set(sx, innerPanelMidY, carcassFrontZ - frameProjZ * 0.5);
+      stileMesh.castShadow = true;
+      stileMesh.receiveShadow = true;
+      windowSeatGroup.add(stileMesh);
+    }
+
+    const panelFrameW = 0.044;
+    for (let b = 0; b < bayCount; b++) {
+      const bayCenterX =
+        seatMinX + stileW + singleBayClearW * 0.5 + b * (singleBayClearW + stileW);
+      const doorLeafW = singleBayClearW - 0.006;
+      const doorLeafH = innerPanelH - 0.006;
+
+      // In-frame Shaker drawer/cupboard surround stiles & rails (proud by 11mm inside the 16mm carcass frame)
+      for (const [subTag, subW, subH, dx, dy] of [
+        ['top', doorLeafW, panelFrameW, 0, doorLeafH * 0.5 - panelFrameW * 0.5],
+        ['bottom', doorLeafW, panelFrameW, 0, -doorLeafH * 0.5 + panelFrameW * 0.5],
+        [
+          'left',
+          panelFrameW,
+          doorLeafH - panelFrameW * 2,
+          -doorLeafW * 0.5 + panelFrameW * 0.5,
+          0,
+        ],
+        [
+          'right',
+          panelFrameW,
+          doorLeafH - panelFrameW * 2,
+          doorLeafW * 0.5 - panelFrameW * 0.5,
+          0,
+        ],
+      ] as const) {
+        const subGeo = new THREE.BoxGeometry(subW, subH, 0.011);
+        subGeo.computeBoundingSphere();
+        const subMesh = new THREE.Mesh(subGeo, wardrobeMat);
+        subMesh.name = `mainBedroom.windowSeatJoinery.bay_${b + 1}.${subTag}`;
+        subMesh.position.set(
+          bayCenterX + dx,
+          innerPanelMidY + dy,
+          carcassFrontZ - 0.0055
+        );
+        subMesh.castShadow = true;
+        subMesh.receiveShadow = true;
+        windowSeatGroup.add(subMesh);
+      }
+
+      // Aged-brass turned Shaker pull knob with backplate rose on each storage bay
+      const knobGeo = new THREE.SphereGeometry(0.013, 12, 10);
+      knobGeo.computeBoundingSphere();
+      const knobMesh = new THREE.Mesh(knobGeo, brassMat);
+      knobMesh.name = `mainBedroom.windowSeatJoinery.knob.${b + 1}`;
+      knobMesh.userData.lodTier = 'high';
+      knobMesh.userData.lodMaxDistance = 12;
+      knobMesh.scale.set(1, 1, 0.78);
+      knobMesh.position.set(
+        bayCenterX,
+        innerPanelMidY + doorLeafH * 0.16,
+        carcassFrontZ - 0.022
+      );
+      windowSeatGroup.add(knobMesh);
+    }
+
+    // 4. Solid European Oak Bullnose Bench Top (`Y = 2.714m..2.740m`, stopped 20mm East of `-9.56m` at the front lip so it clears the 20mm door architrave!)
+    const lidMinX = seatMinX + 0.02;
+    const lidSpanX = seatMaxX - lidMinX;
+    const lidNosingZ = 0.022; // Overhangs to Z = 1.938m
+    const lidShape = new THREE.Shape();
+    lidShape.moveTo(0, 0);
+    lidShape.lineTo(carcassDepthZ + lidNosingZ - 0.012, 0);
+    lidShape.quadraticCurveTo(
+      carcassDepthZ + lidNosingZ,
+      0,
+      carcassDepthZ + lidNosingZ,
+      lidThick * 0.5
+    );
+    lidShape.quadraticCurveTo(
+      carcassDepthZ + lidNosingZ,
+      lidThick,
+      carcassDepthZ + lidNosingZ - 0.012,
+      lidThick
+    );
+    lidShape.lineTo(0, lidThick);
+    lidShape.closePath();
+
+    const lidGeo = new THREE.ExtrudeGeometry(lidShape, {
+      depth: lidSpanX,
+      bevelEnabled: false,
+      curveSegments: 6,
+    });
+    lidGeo.translate(0, 0, -lidSpanX * 0.5);
+    lidGeo.rotateY(Math.PI / 2); // Maps +x shape projection to -Z (North into room) and z depth to +X
+    lidGeo.computeVertexNormals();
+    lidGeo.computeBoundingSphere();
+    const seatBoard = new THREE.Mesh(lidGeo, antiqueOakSkirtingMat);
+    seatBoard.name = 'mainBedroom.windowSeatJoinery.oakBenchTop';
+    seatBoard.position.set((lidMinX + seatMaxX) * 0.5, lidBotY, wallInnerZ);
+    seatBoard.castShadow = true;
+    seatBoard.receiveShadow = true;
+    windowSeatGroup.add(seatBoard);
+
+    scene.add(windowSeatGroup);
+
+    // 5. Tailored Piped Oatmeal-Linen Upholstered Squab Cushion (`Y = 2.740m..2.788m`) & Scatter Cushions
+    const cushionGroup = new THREE.Group();
+    cushionGroup.name = 'mainBedroom.windowSeatCushions';
+    cushionGroup.userData.zone = 'mainBedroom';
+    cushionGroup.userData.tradeCategory = 'decor';
+
+    const oatmealLinenMat = new THREE.MeshStandardMaterial({
+      color: 0xdfd6c5,
+      roughness: 0.9,
+      metalness: 0.01,
+    });
+    const linenPipingMat = new THREE.MeshStandardMaterial({
+      color: 0xc2b6a1,
+      roughness: 0.86,
+      metalness: 0.01,
+    });
+    const sageScatterMat = new THREE.MeshStandardMaterial({
+      color: 0x9aa493,
+      roughness: 0.88,
+      metalness: 0.01,
+    });
+    const warmHerringboneScatterMat = new THREE.MeshStandardMaterial({
+      color: 0xc8b9a2,
+      roughness: 0.9,
+      metalness: 0.01,
+    });
+
+    const squabMinX = seatMinX + 0.024;
+    const squabMaxX = seatMaxX - 0.012;
+    const squabSpanX = squabMaxX - squabMinX;
+    const squabCenterX = (squabMinX + squabMaxX) * 0.5;
+    const squabDepthZ = 0.444;
+    const squabH = 0.048;
+    const squabBackZ = wallInnerZ - 0.006;
+
+    const squabProfile = new THREE.Shape();
+    squabProfile.moveTo(0.012, 0);
+    squabProfile.lineTo(squabDepthZ - 0.018, 0);
+    squabProfile.quadraticCurveTo(squabDepthZ, 0, squabDepthZ, squabH * 0.48);
+    squabProfile.quadraticCurveTo(
+      squabDepthZ,
+      squabH,
+      squabDepthZ - 0.02,
+      squabH
+    );
+    squabProfile.quadraticCurveTo(
+      squabDepthZ * 0.5,
+      squabH + 0.005,
+      0.014,
+      squabH
+    );
+    squabProfile.quadraticCurveTo(0, squabH, 0, squabH * 0.5);
+    squabProfile.quadraticCurveTo(0, 0, 0.012, 0);
+    squabProfile.closePath();
+
+    const squabGeo = new THREE.ExtrudeGeometry(squabProfile, {
+      depth: squabSpanX,
+      bevelEnabled: true,
+      bevelThickness: 0.008,
+      bevelSize: 0.006,
+      bevelSegments: 3,
+      curveSegments: 8,
+    });
+    squabGeo.translate(0, 0, -squabSpanX * 0.5);
+    squabGeo.rotateY(Math.PI / 2);
+    squabGeo.computeVertexNormals();
+    squabGeo.computeBoundingSphere();
+
+    const squabMesh = new THREE.Mesh(squabGeo, oatmealLinenMat);
+    squabMesh.name = 'mainBedroom.windowSeatCushions.squab';
+    squabMesh.position.set(squabCenterX, lidTopY, squabBackZ);
+    squabMesh.castShadow = true;
+    squabMesh.receiveShadow = true;
+    cushionGroup.add(squabMesh);
+
+    // Top & bottom tailored piping welt cords along the front bullnose edge of the squab cushion
+    for (const [weltTag, wy] of [
+      ['lowerWelt', lidTopY + 0.005],
+      ['upperWelt', lidTopY + squabH - 0.003],
+    ] as const) {
+      const weltGeo = new THREE.CylinderGeometry(0.0045, 0.0045, squabSpanX, 10);
+      weltGeo.rotateZ(Math.PI / 2);
+      weltGeo.computeBoundingSphere();
+      const weltMesh = new THREE.Mesh(weltGeo, linenPipingMat);
+      weltMesh.name = `mainBedroom.windowSeatCushions.${weltTag}`;
+      weltMesh.userData.lodTier = 'high';
+      weltMesh.userData.lodMaxDistance = 14;
+      weltMesh.position.set(squabCenterX, wy, squabBackZ - squabDepthZ + 0.006);
+      cushionGroup.add(weltMesh);
+    }
+
+    // 4 plump scatter cushions flanking the 1.46m South Courtyard window (`X = -8.14m..-6.68m`) so the oak sill & architrave remain 100% clear!
+    const scatterGeo = new THREE.SphereGeometry(0.19, 16, 14);
+    scatterGeo.scale(1.05, 0.92, 0.42);
+    scatterGeo.computeBoundingSphere();
+    const scatterSpecs = [
+      ['westOuter', -9.18, 2.24, 0.22, -0.18, sageScatterMat],
+      ['westInner', -8.52, 2.26, 0.08, -0.24, warmHerringboneScatterMat],
+      ['eastInner', -6.30, 2.26, -0.08, -0.24, warmHerringboneScatterMat],
+      ['eastOuter', -5.64, 2.24, -0.22, -0.18, sageScatterMat],
+    ] as const;
+    for (const [scTag, scX, scZ, rotY, rotX, scMat] of scatterSpecs) {
+      const scMesh = new THREE.Mesh(scatterGeo, scMat);
+      scMesh.name = `mainBedroom.windowSeatCushions.scatter.${scTag}`;
+      scMesh.position.set(scX, lidTopY + squabH + 0.145, scZ);
+      scMesh.rotation.set(rotX, rotY, 0);
+      scMesh.castShadow = true;
+      scMesh.receiveShadow = true;
+      cushionGroup.add(scMesh);
+    }
+
+    scene.add(cushionGroup);
+  }
+
   // West Load-Bearing Cross-Wall between Main Bedroom (Y = 2.34m) and Family Bathroom / Upper Passage (Y = 2.16m)
-  // Solid wall piers start at passageFloorTopY = 2.16m so the West (-X) face in the Family Bathroom & Upper Passage reaches their 2.16m floor!
+  // Calibrated to Survey2Plan cottage doorway `Door 1685966` (`width = 0.82m`, `centerZ = 1.48m` -> `Z = 1.07m..1.89m`, `doorH = 1.80m`, `75mm` Solid Oak architrave)
   const passageFloorTopY = 2.16;
-  const mainBedDoorH = 1.72;
+  const mainBedDoorH = 1.8;
   {
     const idx0 = scene.children.length;
-    addUpperInteriorWall(-9.68, passageFloorTopY, upperWallTopY, -0.7, 0.24, 3.6, warmRoomPlasterMat, {
+    addUpperInteriorWall(-9.68, passageFloorTopY, upperWallTopY, -0.715, 0.24, 3.57, warmRoomPlasterMat, {
       skipSkirting: true,
       skipCap: true,
     });
     ensureNamedAddedChildren(scene, idx0, 'mainBedroom.westCrossWall.northPier');
 
     const idx1 = scene.children.length;
-    addUpperInteriorWall(-9.68, passageFloorTopY, upperWallTopY, 2.2, 0.24, 0.4, warmRoomPlasterMat, {
+    addUpperInteriorWall(-9.68, passageFloorTopY, upperWallTopY, 2.145, 0.24, 0.51, warmRoomPlasterMat, {
       skipSkirting: true,
       skipCap: true,
     });
     ensureNamedAddedChildren(scene, idx1, 'mainBedroom.westCrossWall.southPier');
 
     const idx2 = scene.children.length;
-    addUpperInteriorWall(-9.68, floorTopY + mainBedDoorH, upperWallTopY, 1.55, 0.24, 0.9, warmRoomPlasterMat, {
+    addUpperInteriorWall(-9.68, floorTopY + mainBedDoorH, upperWallTopY, 1.48, 0.24, 0.82, warmRoomPlasterMat, {
       skipSkirting: true,
       skipCap: true,
     });
     ensureNamedAddedChildren(scene, idx2, 'mainBedroom.westCrossWall.doorLintel');
   }
 
-  // Continuous 45°-mitred 146mm antique oak skirting around the entire Main Bedroom perimeter
-  // (from North door architrave `Z = 1.018m` -> NW corner -> NE wardrobe corner -> SE wardrobe corner -> SW corner -> South door architrave `Z = 2.082m`)
+  // Continuous 45°-mitred 146mm Solid European Oak skirting around the Main Bedroom perimeter
+  // (from North door architrave `Z = 1.005m` -> NW corner -> NE wardrobe corner -> SE window-seat junction `Z = 1.96m`)
   {
     const mainBedPerimeterSkirtGeo = buildMitredWallSkirtingGeometry(
       [
-        [-9.56, 1.018],
+        [-9.56, 1.005],
         [-9.56, -2.5],
         [-5.26, -2.5],
-        [-5.26, 2.4],
-        [-9.56, 2.4],
-        [-9.56, 2.082],
+        [-5.26, 1.96],
       ],
       floorTopY
     );
@@ -317,17 +640,19 @@ export function buildMainBedroom(
   }
   {
     const idx = scene.children.length;
-    addUpperInteractiveDoor('z', -9.68, 0.24, 1.55, 0.9, Math.PI * 0.48, {
+    addUpperInteractiveDoor('z', -9.68, 0.24, 1.48, 0.82, Math.PI * 0.48, {
       frontFloorY: floorTopY,
       backFloorY: passageFloorTopY,
       doorFloorY: floorTopY,
       doorH: mainBedDoorH,
+      architraveWidth: 0.075,
+      jambInset: 0.01,
     });
     ensureNamedAddedChildren(scene, idx, 'mainBedroom.entranceDoor');
   }
 
-  // Issue #1: 18cm (+0.18m) Solid Antique Oak Threshold Step-Up (`mainBedroom.thresholdStep`)
-  // at the Main Bedroom doorway (`X_ew = -9.80m..-9.56m, Z_ew = 1.10m..2.00m`) stepping up from the
+  // Issue #1: 18cm (+0.18m) Solid European Oak Threshold Step-Up (`mainBedroom.thresholdStep`)
+  // at the calibrated Main Bedroom doorway (`X_ew = -9.80m..-9.56m, Z_ew = 1.07m..1.89m`) stepping up from the
   // Upper South Passage (`Y = 2.16m`) onto the Main Bedroom floor (`Y = 2.34m`)
   {
     const stepGroup = new THREE.Group();
@@ -335,13 +660,13 @@ export function buildMainBedroom(
     stepGroup.userData.zone = 'mainBedroom';
     stepGroup.userData.isArchitecturalShell = true;
 
-    const stepSpanZ = 0.864;
+    const stepSpanZ = 0.8;
     const stepRiserH = floorTopY - passageFloorTopY - 0.028; // 0.152m
     const stepRiserGeo = new THREE.BoxGeometry(0.12, stepRiserH, stepSpanZ);
     stepRiserGeo.computeBoundingSphere();
     const stepRiser = new THREE.Mesh(stepRiserGeo, antiqueOakSkirtingMat);
     stepRiser.name = 'mainBedroom.thresholdStep.riser';
-    stepRiser.position.set(-9.73, passageFloorTopY + stepRiserH * 0.5, 1.55);
+    stepRiser.position.set(-9.73, passageFloorTopY + stepRiserH * 0.5, 1.48);
     stepRiser.castShadow = true;
     stepRiser.receiveShadow = true;
     stepGroup.add(stepRiser);
@@ -350,7 +675,7 @@ export function buildMainBedroom(
     stepTreadGeo.computeBoundingSphere();
     const stepTread = new THREE.Mesh(stepTreadGeo, oakFloorMat);
     stepTread.name = 'mainBedroom.thresholdStep.tread';
-    stepTread.position.set(-9.678, floorTopY - 0.014, 1.55);
+    stepTread.position.set(-9.678, floorTopY - 0.014, 1.48);
     stepTread.castShadow = true;
     stepTread.receiveShadow = true;
     stepGroup.add(stepTread);
@@ -371,7 +696,7 @@ export function buildMainBedroom(
     stepBullnose.name = 'mainBedroom.thresholdStep.bullnose';
     stepBullnose.userData.lodTier = 'high';
     stepBullnose.userData.lodMaxDistance = 12;
-    stepBullnose.position.set(-9.8, floorTopY - 0.014, 1.55);
+    stepBullnose.position.set(-9.8, floorTopY - 0.014, 1.48);
     stepBullnose.castShadow = true;
     stepBullnose.receiveShadow = true;
     stepGroup.add(stepBullnose);

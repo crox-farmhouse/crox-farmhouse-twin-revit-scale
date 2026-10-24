@@ -236,8 +236,8 @@ export function buildWestWingCorridor(
       4.85,
       2.92,
       0.96,
-      2.92,
-      3.94,
+      2.9,
+      3.86,
       'east',
       2,
       { skirtingMin: 2.045, skirtingMax: 4.025 }
@@ -254,9 +254,9 @@ export function buildWestWingCorridor(
       2.74,
       8.15,
       5.92,
-      1.45,
-      2.92,
-      3.94,
+      1.5,
+      2.9,
+      3.86,
       'west',
       3,
       { skipSkirting: true }

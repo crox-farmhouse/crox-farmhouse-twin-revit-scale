@@ -364,9 +364,9 @@ export function buildBedroom2(
       -3.18,
       1.905,
       -0.26,
-      1.35,
+      1.4,
       2.92,
-      3.94,
+      3.86,
       'east',
       2,
       { skirtingMin: -3.165, skirtingMax: 1.766 }

@@ -92,9 +92,9 @@ export function buildBedroom4(
       8.39,
       11.49,
       9.94,
-      1.35,
-      2.92,
-      3.94,
+      1.54,
+      2.88,
+      3.88,
       'east',
       3,
       { skipSkirting: true }

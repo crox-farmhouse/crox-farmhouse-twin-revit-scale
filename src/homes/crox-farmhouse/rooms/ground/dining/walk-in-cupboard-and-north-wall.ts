@@ -29,7 +29,6 @@ export function buildWalkInCupboardAndNorthWall(
     doorLintelY,
     herringboneTerracottaQuarryMat,
     oakMat,
-    skirtingMat,
     tagCutawayWall,
     wallCapMat,
     wallH,
@@ -95,7 +94,7 @@ export function buildWalkInCupboardAndNorthWall(
     -2.78,
     -2.5,
     -8.68,
-    0.66,
+    0.54,
     1.04,
     1.84,
     'south',
@@ -111,7 +110,8 @@ export function buildWalkInCupboardAndNorthWall(
     0.88,
     1.86,
     'south',
-    2
+    2,
+    { trimFaceOffset: 0.019 }
   );
 
   // Deep Slate-Blue interior wall lining on the North wall of the Snug (X = -7.82m..-4.64m, Z = -2.49m)
@@ -163,18 +163,7 @@ export function buildWalkInCupboardAndNorthWall(
   tagCutawayWall(snugNorthAboveWin, snugNorthCutaway);
   scene.add(snugNorthAboveWin);
 
-  // White splayed interior window sill board & reveal for the North Snug window (PH-54, PH-55)
-  const snugWinSillBoard = new THREE.Mesh(
-    new THREE.BoxGeometry(1.38, 0.032, 0.18),
-    skirtingMat
-  );
-  if (!snugWinSillBoard.name) snugWinSillBoard.name = 'familyRoom.walkInCupboard.snugWinSillBoard';
-  snugWinSillBoard.position.set(-6.22, 0.88, -2.45);
-  snugWinSillBoard.receiveShadow = true;
-  tagCutawayWall(snugWinSillBoard, snugNorthCutaway);
-  scene.add(snugWinSillBoard);
-
-  // Two small decorative ornaments on the North window sill (PH-54, PH-55)
+  // Two small decorative ornaments seated on the Solid European Oak North window board (PH-54, PH-55)
   for (const [ox, oh, rad] of [
     [-6.46, 0.14, 0.042],
     [-5.96, 0.11, 0.036],
@@ -184,13 +173,13 @@ export function buildWalkInCupboardAndNorthWall(
       ceramicWhiteMat
     );
     if (!ornament.name) ornament.name = 'familyRoom.walkInCupboard.ornament';
-    ornament.position.set(ox, 0.896 + oh / 2, -2.44);
+    ornament.position.set(ox, 0.904 + oh / 2, -2.455);
     ornament.castShadow = true;
     tagCutawayWall(ornament, snugNorthCutaway);
     scene.add(ornament);
   }
 
-  // Issue #3: Roman blind on the Snug North window (X = -6.22m, Z = -2.48m)
+  // Issue #3: Roman blind on the Snug North window (X = -6.22m, Z = -2.46m proud of Solid Oak architrave)
   buildWindowRomanBlind(scene, tagCutawayWall, {
     name: 'familyRoom.northWindow.romanBlind',
     zone: 'familyRoom',
@@ -198,7 +187,7 @@ export function buildWalkInCupboardAndNorthWall(
     width: 1.28,
     railY: 1.815,
     bottomY: 1.46,
-    wallFaceZ: -2.48,
+    wallFaceZ: -2.46,
     facingZ: 1,
     cutawayWall: snugNorthCutaway,
   });

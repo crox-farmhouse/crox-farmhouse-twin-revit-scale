@@ -12,8 +12,8 @@ permissions:
 
 env:
   NODE_VERSION: '20'
-  # GitHub Pages project-site sub-path.
-  PAGES_BASE: /crox-farmhouse-twin/
+  # GitHub Pages project-site sub-path (dynamically matches repo name so fork/companion preview repos work out of the box).
+  PAGES_BASE: /${{ github.event.repository.name }}/
 
 jobs:
   verify:

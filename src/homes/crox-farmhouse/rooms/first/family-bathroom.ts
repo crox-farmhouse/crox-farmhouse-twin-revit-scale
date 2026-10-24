@@ -97,7 +97,7 @@ export function buildFamilyBathroom(
   }
 
   // North Exterior Brick Wall of Family Bathroom (Z = -2.78m..-2.50m, X = -12.81m..-9.56m)
-  // Skirting is emitted below via `familyBathroom.perimeterMitredSkirting` for 45-deg-mitred corners
+  // Calibrated to Survey2Plan Win 1756577 (1.10m x 0.88m)
   childIdx = scene.children.length;
   addUpperBrickWallAlongXWithWindow(
     -12.81,
@@ -105,9 +105,9 @@ export function buildFamilyBathroom(
     -2.78,
     -2.5,
     -11.35,
-    1.05,
-    3.02,
-    3.94,
+    1.10,
+    2.98,
+    3.86,
     'south',
     2,
     { skipSkirting: true }
@@ -115,7 +115,7 @@ export function buildFamilyBathroom(
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.northExteriorWall');
 
   // South Courtyard Exterior Brick Wall of Upper Passage (Z = +2.40m..+2.68m, X = -12.93m..-9.56m)
-  // Skirting is emitted below via `upperSouthPassage.southMitredSkirting` for 45-deg-mitred corners
+  // Calibrated to Survey2Plan Win 1748869 (0.86m x 0.76m)
   childIdx = scene.children.length;
   addUpperBrickWallAlongXWithWindow(
     -12.93,
@@ -123,9 +123,9 @@ export function buildFamilyBathroom(
     2.4,
     2.68,
     -12.05,
-    0.76,
-    3.06,
-    3.9,
+    0.86,
+    3.02,
+    3.78,
     'north',
     1,
     { skipSkirting: true }
@@ -196,7 +196,7 @@ export function buildFamilyBathroom(
     [
       'upperSouthPassage.southMitredSkirting',
       [
-        [-9.8, 2.082],
+        [-9.8, 1.955],
         [-9.8, 2.4],
         [-12.81, 2.4],
         [-12.81, 2.082],

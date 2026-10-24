@@ -188,9 +188,9 @@ export function buildStudy(
     11.49,
     11.77,
     -21.05,
-    0.78,
-    0.76,
-    1.48,
+    0.75,
+    0.77,
+    1.46,
     'north',
     2,
     { skipSkirting: true }

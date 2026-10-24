@@ -164,23 +164,23 @@ export function buildCentralHallShellAndJoinery(
     -2.78,
     -2.5,
     -14.55,
-    1.22,
+    1.46,
     1.0,
     1.78,
     'south',
     3
   );
 
-  // Face-fixed linen Roman blind over the hall North window (aperture X = -15.16m..-13.94m, Y = 0.68m..1.62m),
+  // Face-fixed linen Roman blind over the hall North window (Survey2Plan Win 1529880 calibrated aperture),
   // shown part-lowered with its soft pleat stack covering the top of the casement.
   buildWindowRomanBlind(scene, tagCutawayWall, {
     name: 'hall.northWindow.romanBlind',
     zone: 'hall',
     centerX: -14.55,
-    width: 1.22,
+    width: 1.46,
     railY: 1.735,
     bottomY: 1.4,
-    wallFaceZ: -2.5,
+    wallFaceZ: -2.48,
     facingZ: 1,
     cutawayWall: {
       axis: 'z',
