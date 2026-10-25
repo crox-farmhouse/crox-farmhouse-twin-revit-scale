@@ -144,22 +144,22 @@ export function buildDefenderStyle5098WheelAssembly(
     // Twin chamfered outer ribs flanking each Style 5098 spoke
     for (const ribSide of [-1, 1] as const) {
       const rib = new THREE.Mesh(
-        new THREE.BoxGeometry(0.016, spokeLen * 0.94, 0.032),
+        new THREE.BoxGeometry(0.016, spokeLen * 0.94, 0.018),
         materials.satinAnthraciteMat
       );
       rib.name = `${meshName}.spokeChamferRib`;
-      rib.position.set(ribSide * 0.026, 0, signZ * 0.003);
+      rib.position.set(ribSide * 0.038, 0, signZ * 0.008);
       rib.rotation.z = -ribSide * 0.045;
       spokeGroup.add(rib);
     }
 
     // Recessed central pocket groove along spoke face
     const spokePocket = new THREE.Mesh(
-      new THREE.BoxGeometry(0.018, spokeLen * 0.72, 0.030),
+      new THREE.BoxGeometry(0.018, spokeLen * 0.72, 0.006),
       materials.narvikGlossBlackMat
     );
     spokePocket.name = `${meshName}.spokePocket`;
-    spokePocket.position.set(0, 0, -signZ * 0.002);
+    spokePocket.position.set(0, 0, signZ * 0.017);
     spokeGroup.add(spokePocket);
   }
 
@@ -219,7 +219,7 @@ export function buildDefenderStyle5098WheelAssembly(
     );
     rotorMesh.name = 'courtyard.landRoverDefender.brakeRotor';
     rotorMesh.rotation.x = Math.PI / 2;
-    rotorMesh.position.set(0, 0, outerFaceZ - signZ * 0.062);
+    rotorMesh.position.set(0, 0, outerFaceZ - signZ * 0.068);
     tagHighLodDetail(rotorMesh);
     wheelGroup.add(rotorMesh);
 
@@ -230,7 +230,7 @@ export function buildDefenderStyle5098WheelAssembly(
     caliperGroup.position.set(
       Math.cos(caliperAngle) * caliperR,
       Math.sin(caliperAngle) * caliperR,
-      outerFaceZ - signZ * 0.054
+      outerFaceZ - signZ * 0.068
     );
     caliperGroup.rotation.z = caliperAngle;
     tagHighLodDetail(caliperGroup);
@@ -245,7 +245,7 @@ export function buildDefenderStyle5098WheelAssembly(
     caliperGroup.add(caliperBody);
 
     const caliperBridge = new THREE.Mesh(
-      new THREE.BoxGeometry(0.084, isFront ? 0.145 : 0.115, 0.042),
+      new THREE.BoxGeometry(0.084, isFront ? 0.145 : 0.115, 0.082),
       materials.narvikGlossBlackMat
     );
     caliperBridge.name = 'courtyard.landRoverDefender.brakeCaliper.bridge';
@@ -397,8 +397,8 @@ export function buildDefender110GlazingTrimAndCabinInterior(
     () => 0.305,
     22,
     24,
-    0.0028,
-    0.0028,
+    0.006,
+    0.006,
     false
   );
   const windshieldBorderMesh = new THREE.Mesh(windshieldBorderGeo, mats.narvikGlossBlackMat);
@@ -412,8 +412,8 @@ export function buildDefender110GlazingTrimAndCabinInterior(
     () => 0.285,
     22,
     24,
-    0.0046,
-    0.0046,
+    0.011,
+    0.011,
     false
   );
   const windshieldMesh = new THREE.Mesh(windshieldGlassGeo, mats.tintedPrivacyGlassMat);
@@ -432,7 +432,7 @@ export function buildDefender110GlazingTrimAndCabinInterior(
         : 1.865,
     42,
     14,
-    0.0028,
+    0.0065,
     [-1, 1]
   );
   const sidePillarSurroundMesh = new THREE.Mesh(sidePillarSurroundGeo, mats.narvikGlossBlackMat);
@@ -450,7 +450,7 @@ export function buildDefender110GlazingTrimAndCabinInterior(
         : 1.845,
     18,
     12,
-    0.0048,
+    0.0115,
     [-1, 1]
   );
   const frontDoorGlassMesh = new THREE.Mesh(frontDoorGlassGeo, mats.tintedPrivacyGlassMat);
@@ -465,7 +465,7 @@ export function buildDefender110GlazingTrimAndCabinInterior(
     () => 1.845,
     16,
     12,
-    0.0048,
+    0.0115,
     [-1, 1]
   );
   const rearDoorGlassMesh = new THREE.Mesh(rearDoorGlassGeo, mats.tintedPrivacyGlassMat);
@@ -480,7 +480,7 @@ export function buildDefender110GlazingTrimAndCabinInterior(
     () => 1.845,
     16,
     12,
-    0.0048,
+    0.0115,
     [-1, 1]
   );
   const rearQuarterGlassMesh = new THREE.Mesh(rearQuarterGlassGeo, mats.tintedPrivacyGlassMat);
@@ -493,7 +493,7 @@ export function buildDefender110GlazingTrimAndCabinInterior(
     mats.tintedPrivacyGlassMat
   );
   rearTailgateGlass.name = 'courtyard.landRoverDefender.glazing';
-  rearTailgateGlass.position.set(2.318, 1.55, 0);
+  rearTailgateGlass.position.set(2.332, 1.55, 0);
   rearTailgateGlass.rotation.z = 0.095;
   glazingGroup.add(rearTailgateGlass);
 
@@ -552,7 +552,7 @@ export function buildDefender110GlazingTrimAndCabinInterior(
       mats.tintedPrivacyGlassMat
     );
     mirrorGlassFace.name = 'courtyard.landRoverDefender.wingMirror.glass';
-    mirrorGlassFace.position.set(0.074, 0.025, sideZ * 0.115);
+    mirrorGlassFace.position.set(0.088, 0.025, sideZ * 0.115);
     mirrorGroup.add(mirrorGlassFace);
 
     const puddleLight = new THREE.Mesh(
@@ -560,7 +560,7 @@ export function buildDefender110GlazingTrimAndCabinInterior(
       mats.ledHaloWhiteMat
     );
     puddleLight.name = 'courtyard.landRoverDefender.wingMirror.puddleLamp';
-    puddleLight.position.set(0.015, -0.046, sideZ * 0.085);
+    puddleLight.position.set(0.015, -0.052, sideZ * 0.085);
     mirrorGroup.add(puddleLight);
   }
 
@@ -586,7 +586,7 @@ export function buildDefender110GlazingTrimAndCabinInterior(
       mats.chequerPlateMat
     );
     stepPad.name = 'courtyard.landRoverDefender.sideStep.chequerStepPad';
-    stepPad.position.set(0.0, 0.285, sideZ * 0.945);
+    stepPad.position.set(0.0, 0.305, sideZ * 0.945);
     stepPad.receiveShadow = true;
     sideStepGroup.add(stepPad);
 
@@ -596,7 +596,7 @@ export function buildDefender110GlazingTrimAndCabinInterior(
         mats.narvikGlossBlackMat
       );
       bracket.name = 'courtyard.landRoverDefender.sideStep.mountBracket';
-      bracket.position.set(bracketX, 0.255, sideZ * 0.89);
+      bracket.position.set(bracketX, 0.245, sideZ * 0.89);
       sideStepGroup.add(bracket);
     }
   }
@@ -699,7 +699,7 @@ export function buildDefender110GlazingTrimAndCabinInterior(
     mats.narvikGlossBlackMat
   );
   driverCluster.name = 'courtyard.landRoverDefender.interior.driverCluster';
-  driverCluster.position.set(-0.58, 1.23, 0.40);
+  driverCluster.position.set(-0.55, 1.335, 0.40);
   tagHighLodDetail(driverCluster);
   interiorGroup.add(driverCluster);
 

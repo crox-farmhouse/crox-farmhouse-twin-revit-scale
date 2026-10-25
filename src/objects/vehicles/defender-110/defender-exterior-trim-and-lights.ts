@@ -176,7 +176,7 @@ export function buildDefender110SignatureExteriorAccessories(
     () => 1.855,
     14,
     12,
-    0.0062,
+    0.013,
     [-1, 1]
   );
   const sigBezelMesh = new THREE.Mesh(sigBezelGeo, mats.magnesiumCrossBeamMat);
@@ -191,7 +191,7 @@ export function buildDefender110SignatureExteriorAccessories(
     () => 1.85,
     14,
     12,
-    0.0076,
+    0.018,
     [-1, 1]
   );
   const sigPanelMesh = new THREE.Mesh(sigPanelGeo, mats.santoriniBlackBodyMat);
@@ -208,7 +208,7 @@ export function buildDefender110SignatureExteriorAccessories(
     () => 1.822,
     12,
     10,
-    0.0086,
+    0.023,
     [-1, 1]
   );
   const sigInlayMesh = new THREE.Mesh(sigInlayGeo, mats.satinAnthraciteMat);
@@ -218,10 +218,10 @@ export function buildDefender110SignatureExteriorAccessories(
   // Recessed black square accessory port in the center of the Signature Graphic panel (`x = +1.04m, y = 1.545m`)
   for (const sideZ of [-1, 1] as const) {
     const zSurf = sampleLateralSurfaceZAtXY(1.04, 1.545);
-    const zBoss = sideZ * (zSurf + 0.010);
+    const zBoss = sideZ * (zSurf + 0.028);
     const xBoss = 1.04 + getPlanWrapShiftX(1.04, zBoss);
     const bossFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(0.135, 0.135, 0.010),
+      new THREE.BoxGeometry(0.135, 0.135, 0.008),
       mats.narvikGlossBlackMat
     );
     bossFrame.name = 'courtyard.landRoverDefender.signatureGraphic.mountBossFrame';
@@ -230,11 +230,11 @@ export function buildDefender110SignatureExteriorAccessories(
     signatureGraphicGroup.add(bossFrame);
 
     const bossCap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.088, 0.088, 0.014),
+      new THREE.BoxGeometry(0.088, 0.088, 0.008),
       mats.satinAnthraciteMat
     );
     bossCap.name = 'courtyard.landRoverDefender.signatureGraphic.mountBossCap';
-    bossCap.position.set(xBoss, 1.545, zBoss + sideZ * 0.002);
+    bossCap.position.set(xBoss, 1.545, zBoss + sideZ * 0.009);
     bossCap.rotation.x = -sideZ * 0.22;
     signatureGraphicGroup.add(bossCap);
   }
@@ -253,8 +253,8 @@ export function buildDefender110SignatureExteriorAccessories(
     () => 0.335,
     24,
     8,
-    0.0035,
-    0.0035,
+    0.0115,
+    0.0115,
     true
   );
   const alpineBezelMesh = new THREE.Mesh(alpineBezelGeo, mats.narvikGlossBlackMat);
@@ -268,8 +268,8 @@ export function buildDefender110SignatureExteriorAccessories(
     () => 0.328,
     22,
     8,
-    0.005,
-    0.005,
+    0.0165,
+    0.0165,
     -1
   );
   const alpineLeftMesh = new THREE.Mesh(alpineLeftGeo, mats.tintedPrivacyGlassMat);
@@ -283,8 +283,8 @@ export function buildDefender110SignatureExteriorAccessories(
     () => 0.328,
     22,
     8,
-    0.005,
-    0.005,
+    0.0165,
+    0.0165,
     1
   );
   const alpineRightMesh = new THREE.Mesh(alpineRightGeo, mats.tintedPrivacyGlassMat);
@@ -299,8 +299,8 @@ export function buildDefender110SignatureExteriorAccessories(
     () => 0.215,
     24,
     16,
-    0.004,
-    0.002,
+    0.0115,
+    0.006,
     false
   );
   const sunroofFrameMesh = new THREE.Mesh(sunroofFrameGeo, mats.narvikGlossBlackMat);
@@ -314,8 +314,8 @@ export function buildDefender110SignatureExteriorAccessories(
     () => 0.202,
     24,
     16,
-    0.0058,
-    0.002,
+    0.0165,
+    0.006,
     false
   );
   const sunroofGlassMesh = new THREE.Mesh(sunroofGlassGeo, mats.tintedPrivacyGlassMat);
@@ -1047,7 +1047,7 @@ export function buildDefender110TailgateTaillightsAndExhaust(
         mats.smokedLensMat
       );
       cubeLens.name = 'courtyard.landRoverDefender.taillight.smokedLens';
-      cubeLens.position.set(0.008, 0, 0);
+      cubeLens.position.set(0.016, 0, 0);
       cubeGroup.add(cubeLens);
     }
 

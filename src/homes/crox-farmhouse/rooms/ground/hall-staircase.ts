@@ -227,18 +227,18 @@ export function buildHallStaircase(
   stairGroup.add(step1Carriage);
 
   const step1Tread = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(1.0, 0.028, 0.24)),
+    createSharedGeo(new THREE.BoxGeometry(0.99, 0.028, 0.24)),
     antiqueOakSkirtingMat
   );
   step1Tread.name = 'hall.stairs.step1.tread';
-  step1Tread.position.set(-17.1, step1TopY - 0.014, -0.46);
+  step1Tread.position.set(-17.105, step1TopY - 0.014, -0.46);
   step1Tread.castShadow = true;
   step1Tread.receiveShadow = true;
   stairGroup.add(step1Tread);
 
   // Curved Bullnose Right End on Step 1 wrapping around the East side of the Bottom Newel Post (X = -16.61m, Z = -0.47m)
   const bullnoseRiser = new THREE.Mesh(
-    createSharedGeo(new THREE.CylinderGeometry(0.11, 0.11, lowerRiserH - 0.026, 20)),
+    createSharedGeo(new THREE.CylinderGeometry(0.11, 0.11, lowerRiserH - 0.026, 20, 1, false, 0, Math.PI)),
     skirtingMat
   );
   bullnoseRiser.name = 'hall.stairs.step1.bullnoseRiser';
@@ -248,7 +248,7 @@ export function buildHallStaircase(
   stairGroup.add(bullnoseRiser);
 
   const bullnoseTreadCap = new THREE.Mesh(
-    createSharedGeo(new THREE.CylinderGeometry(0.122, 0.122, 0.028, 20)),
+    createSharedGeo(new THREE.CylinderGeometry(0.12, 0.12, 0.028, 20, 1, false, 0, Math.PI)),
     antiqueOakSkirtingMat
   );
   bullnoseTreadCap.name = 'hall.stairs.step1.bullnoseTreadCap';
@@ -411,7 +411,8 @@ export function buildHallStaircase(
   carriageSoffit.receiveShadow = true;
   stairGroup.add(carriageSoffit);
 
-  // South, North, and West interior plaster walls of the Understairs Cupboard
+  // South, North, and West interior plaster walls of the Understairs Cupboard (stopping cleanly at bottom of carriageSoffit)
+  const cupWallH = carriageFullH - 0.06;
   for (const [wIdx, [wx, wz, ww, wd]] of (
     [
       [-17.105, -1.635, 0.89, 0.03], // South partition wall under Step 6 riser
@@ -420,11 +421,11 @@ export function buildHallStaircase(
     ] as const
   ).entries()) {
     const cupWall = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(ww, carriageFullH, wd)),
+      createSharedGeo(new THREE.BoxGeometry(ww, cupWallH, wd)),
       warmRoomPlasterMat
     );
     cupWall.name = `hall.stairs.understairsCupboard.wall.${wIdx + 1}`;
-    cupWall.position.set(wx, (lowerFloorY + quarterLandingY - 0.026) * 0.5, wz);
+    cupWall.position.set(wx, lowerFloorY + cupWallH * 0.5, wz);
     cupWall.castShadow = true;
     cupWall.receiveShadow = true;
     stairGroup.add(cupWall);
@@ -435,11 +436,11 @@ export function buildHallStaircase(
 
   // Solid Antique Oak Quarter-Landing Deck with Step 6 Riser Runner & L-Turn Runner Pad (Issue #16)
   const quarterLandingOakDeck = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.9, 0.028, 0.88)),
+    createSharedGeo(new THREE.BoxGeometry(0.9, 0.028, 0.856)),
     antiqueOakSkirtingMat
   );
   quarterLandingOakDeck.name = 'hall.stairs.quarterLanding.oakDeck';
-  quarterLandingOakDeck.position.set(-17.1, quarterLandingY - 0.014, -2.06);
+  quarterLandingOakDeck.position.set(-17.1, quarterLandingY - 0.014, -2.048);
   quarterLandingOakDeck.receiveShadow = true;
   stairGroup.add(quarterLandingOakDeck);
 
@@ -497,15 +498,15 @@ export function buildHallStaircase(
 
   const landingRunnerWE = new THREE.Mesh(
     applyWorldSpaceCarpetUVs(
-      new THREE.BoxGeometry(0.46, 0.008, runnerW),
-      -16.87,
+      new THREE.BoxGeometry(0.18, 0.008, runnerW),
+      -16.73,
       quarterLandingY + 0.004,
       -2.075
     ),
     stairCarpetMat
   );
   landingRunnerWE.name = 'hall.stairs.runner.quarterLandingEast';
-  landingRunnerWE.position.set(-16.87, quarterLandingY + 0.004, -2.075);
+  landingRunnerWE.position.set(-16.73, quarterLandingY + 0.004, -2.075);
   landingRunnerWE.receiveShadow = true;
   stairGroup.add(landingRunnerWE);
 
@@ -690,15 +691,16 @@ export function buildHallStaircase(
     const westWallLen = hallFrontRoomCrossWallFrame.length;
     const landingTurnU = 0.845;
     const bottomMitreU = 2.409;
+    const boardTopOffset = 0.095;
     const skirtBoardH = 0.122;
 
     // Unified 22mm-thick oak stringer & West wall skirting board (`u = 0..westWallLen`, `z = -0.142m..-0.12m`)
     const westStrShape = new THREE.Shape();
     westStrShape.moveTo(0, quarterLandingY - 0.02);
-    westStrShape.lineTo(0, quarterLandingY + skirtBoardH);
-    westStrShape.lineTo(landingTurnU, quarterLandingY + skirtBoardH);
-    westStrShape.lineTo(bottomMitreU, lowerFloorY + skirtBoardH);
-    westStrShape.lineTo(westWallLen, lowerFloorY + skirtBoardH);
+    westStrShape.lineTo(0, quarterLandingY + boardTopOffset);
+    westStrShape.lineTo(landingTurnU, quarterLandingY + boardTopOffset);
+    westStrShape.lineTo(bottomMitreU, lowerFloorY + boardTopOffset);
+    westStrShape.lineTo(westWallLen, lowerFloorY + boardTopOffset);
     westStrShape.lineTo(westWallLen, lowerFloorY);
     westStrShape.lineTo(landingTurnU, lowerFloorY);
     westStrShape.lineTo(landingTurnU, quarterLandingY - 0.02);
@@ -1272,16 +1274,16 @@ export function buildHallStaircase(
   hangingPostPendantTip.position.set(-15.38, hangingPostBottomY - 0.043, -1.64);
   stairGroup.add(hangingPostPendantTip);
 
-  // White-Plastered Ceiling Stairwell Trimmer Fascia & Apron along the First Floor gallery edge (X = -15.36m, Z = -1.65m..-0.58m)
+  // White-Plastered Ceiling Stairwell Trimmer Fascia & Apron along the First Floor gallery edge (X = -15.36m, Z = -1.592m..-0.58m)
   // Leaves the Upper Flight arrival threshold (Z = -2.50m..-1.65m at X = -15.36m, Y = 2.16m) 100% open!
-  const trimmerTopY = topStepY - 0.002;
+  const trimmerTopY = 2.058;
   const trimmerH = trimmerTopY - 1.92;
   const stairwellEastTrimmer = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.052, trimmerH, 1.07)),
+    createSharedGeo(new THREE.BoxGeometry(0.052, trimmerH, 1.012)),
     ceilingWhiteMat
   );
   stairwellEastTrimmer.name = 'hall.stairs.eastTrimmer';
-  stairwellEastTrimmer.position.set(-15.36, 1.92 + trimmerH / 2, -1.115);
+  stairwellEastTrimmer.position.set(-15.36, 1.92 + trimmerH / 2, -1.086);
   stairwellEastTrimmer.castShadow = true;
   stairGroup.add(stairwellEastTrimmer);
 
@@ -1290,16 +1292,17 @@ export function buildHallStaircase(
   // alongside the second span of stairs (X = -16.84m..-15.50m, rising to Y = topStepY + 0.146m), and continuing seamlessly
   // horizontally across the First Floor Landing North Wall all the way to X = -13.05m!
   {
+    const boardTopOffset = 0.095;
     const skirtBoardH = 0.122;
     const northTurnX = -16.84;
     const landingNorthEndX = -13.05;
 
     const northStrShape = new THREE.Shape();
     northStrShape.moveTo(-17.43, quarterLandingY - 0.02);
-    northStrShape.lineTo(-17.43, quarterLandingY + skirtBoardH);
-    northStrShape.lineTo(northTurnX, quarterLandingY + skirtBoardH);
-    northStrShape.lineTo(upperBalustradeEndX, topStepY + skirtBoardH);
-    northStrShape.lineTo(landingNorthEndX, topStepY + skirtBoardH);
+    northStrShape.lineTo(-17.43, quarterLandingY + boardTopOffset);
+    northStrShape.lineTo(northTurnX, quarterLandingY + boardTopOffset);
+    northStrShape.lineTo(upperBalustradeEndX, topStepY + boardTopOffset);
+    northStrShape.lineTo(landingNorthEndX, topStepY + boardTopOffset);
     northStrShape.lineTo(landingNorthEndX, topStepY);
     northStrShape.lineTo(upperEndX, topStepY);
     northStrShape.lineTo(upperEndX, topStepY - 0.04);
@@ -1385,10 +1388,10 @@ export function buildHallStaircase(
   // North Wall Polygonal Brick Panel above the Quarter Landing and Upper Flight Oak Stringer
   // (Issue #15: West Cross-Wall Exposed Brick Panel at [-17.436, 1.547, -1.857] removed!)
   const brickNorthShape = new THREE.Shape();
-  brickNorthShape.moveTo(-17.48, quarterLandingY + 0.142);
-  brickNorthShape.lineTo(-16.84, quarterLandingY + 0.142);
-  brickNorthShape.lineTo(upperBalustradeEndX, topStepY + 0.142);
-  brickNorthShape.lineTo(-17.48, topStepY + 0.142);
+  brickNorthShape.moveTo(-17.48, quarterLandingY + 0.148);
+  brickNorthShape.lineTo(-16.84, quarterLandingY + 0.148);
+  brickNorthShape.lineTo(upperBalustradeEndX, topStepY + 0.148);
+  brickNorthShape.lineTo(-17.48, topStepY + 0.148);
   brickNorthShape.closePath();
   const stairExposedBrickNorthGeo = new THREE.ExtrudeGeometry(brickNorthShape, {
     depth: 0.012,
@@ -1437,20 +1440,20 @@ export function buildHallStaircase(
 
   // Painted-white plasterboard ceiling backing above the Main Hall oak joists (Issue #3, wrapping around the open stairwell void)
   const hallSouthCeilingBacking = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(4.84, 0.036, 3.12)),
+    createSharedGeo(new THREE.BoxGeometry(4.84, 0.022, 3.12)),
     ceilingWhiteMat
   );
   hallSouthCeilingBacking.name = 'hall.ceilingBacking.south';
-  hallSouthCeilingBacking.position.set(-15.45, wallH - 0.005, 0.98);
+  hallSouthCeilingBacking.position.set(-15.45, wallH - 0.014, 0.98);
   hallSouthCeilingBacking.receiveShadow = true;
   groundFloorCeilingGroup.add(hallSouthCeilingBacking);
 
   const hallNorthEastCeilingBacking = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(2.3, 0.036, 2.1)),
+    createSharedGeo(new THREE.BoxGeometry(2.3, 0.022, 2.1)),
     ceilingWhiteMat
   );
   hallNorthEastCeilingBacking.name = 'hall.ceilingBacking.northEast';
-  hallNorthEastCeilingBacking.position.set(-14.2, wallH - 0.005, -1.61);
+  hallNorthEastCeilingBacking.position.set(-14.2, wallH - 0.014, -1.61);
   hallNorthEastCeilingBacking.receiveShadow = true;
   groundFloorCeilingGroup.add(hallNorthEastCeilingBacking);
 

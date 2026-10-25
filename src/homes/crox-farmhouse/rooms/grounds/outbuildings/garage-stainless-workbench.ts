@@ -450,36 +450,36 @@ export function buildGarageStainlessWorkbench(
   const upstandH = 0.032;
   const upstandT = 0.012;
   const rearUpstand = new THREE.Mesh(
-    new THREE.BoxGeometry(benchSpanW, upstandH, upstandT),
+    new THREE.BoxGeometry(benchSpanW, upstandH - 0.004, upstandT),
     brushedStainlessMat
   );
   rearUpstand.name = 'outbuildings.garage.toolBench.rearUpstand';
-  rearUpstand.position.set(benchCenterX, worktopY + upstandH * 0.5, benchD * 0.5 - upstandT * 0.5);
+  rearUpstand.position.set(benchCenterX, worktopY + 0.004 + (upstandH - 0.004) * 0.5, benchD * 0.5 - upstandT * 0.5);
   benchGroup.add(rearUpstand);
 
   const magTrayGroup = new THREE.Group();
   magTrayGroup.name = 'outbuildings.garage.toolBench.magneticPartsTray';
-  magTrayGroup.position.set(-1.24, worktopY, -0.22);
+  magTrayGroup.position.set(-1.24, worktopY + 0.004, -0.22);
   benchGroup.add(magTrayGroup);
 
   const trayRim = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, 0.01, 0.18),
+    new THREE.BoxGeometry(0.28, 0.008, 0.18),
     brushedStainlessMat
   );
   trayRim.name = 'outbuildings.garage.toolBench.magneticPartsTray.rim';
   trayRim.userData.lodTier = 'high';
   trayRim.userData.lodMaxDistance = 12;
-  trayRim.position.set(0, 0.005, 0);
+  trayRim.position.set(0, 0.004, 0);
   magTrayGroup.add(trayRim);
 
   const trayWell = new THREE.Mesh(
-    new THREE.BoxGeometry(0.24, 0.006, 0.14),
+    new THREE.BoxGeometry(0.24, 0.004, 0.14),
     anthraciteSteelMat
   );
   trayWell.name = 'outbuildings.garage.toolBench.magneticPartsTray.well';
   trayWell.userData.lodTier = 'high';
   trayWell.userData.lodMaxDistance = 12;
-  trayWell.position.set(0, 0.008, 0);
+  trayWell.position.set(0, 0.014, 0);
   magTrayGroup.add(trayWell);
 
   for (let s = 0; s < 6; s++) {
@@ -490,47 +490,48 @@ export function buildGarageStainlessWorkbench(
     socket.name = 'outbuildings.garage.toolBench.magneticPartsTray.socket';
     socket.userData.lodTier = 'high';
     socket.userData.lodMaxDistance = 12;
-    socket.position.set(-0.08 + s * 0.032, 0.024, -0.03);
+    socket.position.set(-0.08 + s * 0.032, 0.034, -0.03);
     magTrayGroup.add(socket);
   }
 
   const pegboardH = 0.76;
+  const pegboardClearH = pegboardH - upstandH - 0.008;
   const pegboard = new THREE.Mesh(
-    new THREE.BoxGeometry(benchSpanW - 0.02, pegboardH, 0.024),
+    new THREE.BoxGeometry(benchSpanW - 0.02, pegboardClearH, 0.024),
     anthraciteSteelMat
   );
   pegboard.name = 'outbuildings.garage.toolBench.pegboard';
-  pegboard.position.set(benchCenterX, worktopY + pegboardH * 0.5, benchD * 0.5 - 0.02);
+  pegboard.position.set(benchCenterX, worktopY + upstandH + 0.004 + pegboardClearH * 0.5, benchD * 0.5 - 0.02);
   benchGroup.add(pegboard);
 
   const powerStrip = new THREE.Mesh(
-    new THREE.BoxGeometry(0.78, 0.062, 0.036),
+    new THREE.BoxGeometry(0.78, 0.062, 0.032),
     aluminumTrimMat
   );
   powerStrip.name = 'outbuildings.garage.toolBench.powerStrip';
-  powerStrip.position.set(-0.48, worktopY + 0.11, benchD * 0.5 - 0.045);
+  powerStrip.position.set(-0.48, worktopY + 0.11, benchD * 0.5 - 0.052);
   benchGroup.add(powerStrip);
 
   for (let s = 0; s < 6; s++) {
     const sx = -0.73 + s * 0.1;
     const socketFace = new THREE.Mesh(
-      new THREE.BoxGeometry(0.048, 0.044, 0.008),
+      new THREE.BoxGeometry(0.048, 0.044, 0.006),
       dewaltBlackMat
     );
     socketFace.name = 'outbuildings.garage.toolBench.powerStrip.socketFace';
     socketFace.userData.lodTier = 'high';
     socketFace.userData.lodMaxDistance = 12;
-    socketFace.position.set(sx, worktopY + 0.11, benchD * 0.5 - 0.065);
+    socketFace.position.set(sx, worktopY + 0.11, benchD * 0.5 - 0.075);
     benchGroup.add(socketFace);
 
     const redSwitch = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, 0.018, 0.01),
+      new THREE.BoxGeometry(0.012, 0.018, 0.006),
       rockerSwitchMat
     );
     redSwitch.name = 'outbuildings.garage.toolBench.powerStrip.rockerSwitch';
     redSwitch.userData.lodTier = 'high';
     redSwitch.userData.lodMaxDistance = 12;
-    redSwitch.position.set(sx + 0.016, worktopY + 0.12, benchD * 0.5 - 0.068);
+    redSwitch.position.set(sx + 0.016, worktopY + 0.12, benchD * 0.5 - 0.085);
     benchGroup.add(redSwitch);
   }
 
@@ -552,21 +553,21 @@ export function buildGarageStainlessWorkbench(
   const upperDoorW = 0.81;
   for (const ux of [-1.59, -0.76, 0.07] as const) {
     const upperDoor = new THREE.Mesh(
-      new THREE.BoxGeometry(upperDoorW, upperCabH - 0.03, 0.02),
+      new THREE.BoxGeometry(upperDoorW, upperCabH - 0.03, 0.018),
       brushedStainlessMat
     );
     upperDoor.name = 'outbuildings.garage.toolBench.drawer';
     upperDoor.position.set(
       ux,
       worktopY + pegboardH + upperCabH * 0.5,
-      benchD * 0.5 - upperCabD - 0.008
+      benchD * 0.5 - upperCabD - 0.013
     );
     upperDoor.castShadow = true;
     upperDoor.receiveShadow = true;
     benchGroup.add(upperDoor);
 
     const upperPull = new THREE.Mesh(
-      new THREE.BoxGeometry(upperDoorW - 0.04, 0.016, 0.026),
+      new THREE.BoxGeometry(upperDoorW - 0.04, 0.016, 0.020),
       aluminumTrimMat
     );
     upperPull.name = 'outbuildings.garage.toolBench.upperCabinetPullBar';
@@ -575,7 +576,7 @@ export function buildGarageStainlessWorkbench(
     upperPull.position.set(
       ux,
       worktopY + pegboardH + 0.034,
-      benchD * 0.5 - upperCabD - 0.022
+      benchD * 0.5 - upperCabD - 0.036
     );
     benchGroup.add(upperPull);
 
@@ -589,17 +590,17 @@ export function buildGarageStainlessWorkbench(
     upperLabelStrip.position.set(
       ux,
       worktopY + pegboardH + 0.034,
-      benchD * 0.5 - upperCabD - 0.035
+      benchD * 0.5 - upperCabD - 0.052
     );
     benchGroup.add(upperLabelStrip);
   }
 
   const ledTaskBar = new THREE.Mesh(
-    new THREE.BoxGeometry(benchSpanW - 0.08, 0.014, 0.038),
+    new THREE.BoxGeometry(benchSpanW - 0.08, 0.012, 0.038),
     ledStripMat
   );
   ledTaskBar.name = 'outbuildings.garage.toolBench.ledTaskBar';
-  ledTaskBar.position.set(benchCenterX, worktopY + pegboardH - 0.007, benchD * 0.5 - upperCabD + 0.05);
+  ledTaskBar.position.set(benchCenterX, worktopY + pegboardH - 0.010, benchD * 0.5 - upperCabD + 0.05);
   benchGroup.add(ledTaskBar);
 
   // ---------------------------------------------------------------------------
@@ -750,21 +751,27 @@ export function buildGarageStainlessWorkbench(
   southFrontBullnose.castShadow = true;
   southWingGroup.add(southFrontBullnose);
 
+  const southUpstandBodyH = upstandH - 0.004;
   const southRearUpstand = new THREE.Mesh(
-    new THREE.BoxGeometry(southReturnL + 0.02, upstandH, upstandT),
+    new THREE.BoxGeometry(southReturnL + 0.02, southUpstandBodyH, upstandT),
     brushedStainlessMat
   );
   southRearUpstand.name = 'outbuildings.garage.toolBench.southWing.rearUpstand';
-  southRearUpstand.position.set(0.01, worktopY + upstandH * 0.5, benchD * 0.5 - upstandT * 0.5);
+  southRearUpstand.position.set(
+    0.01,
+    worktopY + 0.004 + southUpstandBodyH * 0.5,
+    benchD * 0.5 - upstandT * 0.5
+  );
   southWingGroup.add(southRearUpstand);
 
-  // Tidy Dark-Anthracite Back Wall Panel (`outbuildings.garage.toolBench.southWing.pegboard`) flush against the Garage South wall (`+sz`)
+  // Tidy Dark-Anthracite Back Wall Panel (`outbuildings.garage.toolBench.southWing.pegboard`) seated cleanly above rearUpstand
+  const southPegH = pegboardH - upstandH - 0.005;
   const southPegboard = new THREE.Mesh(
-    new THREE.BoxGeometry(southReturnL, pegboardH, 0.022),
+    new THREE.BoxGeometry(southReturnL, southPegH, 0.022),
     anthraciteSteelMat
   );
   southPegboard.name = 'outbuildings.garage.toolBench.southWing.pegboard';
-  southPegboard.position.set(0, worktopY + pegboardH * 0.5, benchD * 0.5 - 0.015);
+  southPegboard.position.set(0, worktopY + upstandH + 0.005 + southPegH * 0.5, benchD * 0.5 - 0.015);
   southWingGroup.add(southPegboard);
 
   // Issue #4 ("Smaller screen, only needs to be 32 inch not ultra wide." at `[-11.234, 0.819, 20.361]`):
@@ -776,7 +783,7 @@ export function buildGarageStainlessWorkbench(
   monitorGroup.position.set(-0.04, worktopY + 0.35, benchD * 0.5 - 0.085);
   southWingGroup.add(monitorGroup);
 
-  // Articulated VESA wall-mount bracket attached to the back panel
+  // Articulated VESA wall-mount bracket attached cleanly proud of the back panel
   const vesaWallPlate = new THREE.Mesh(
     new THREE.BoxGeometry(0.14, 0.12, 0.018),
     dewaltBlackMat
@@ -784,17 +791,17 @@ export function buildGarageStainlessWorkbench(
   vesaWallPlate.name = 'outbuildings.garage.toolBench.southWing.monitor.vesaWallPlate';
   vesaWallPlate.userData.lodTier = 'high';
   vesaWallPlate.userData.lodMaxDistance = 12;
-  vesaWallPlate.position.set(0, 0, 0.062);
+  vesaWallPlate.position.set(0, 0, 0.046);
   monitorGroup.add(vesaWallPlate);
 
   const vesaArm = new THREE.Mesh(
-    new THREE.BoxGeometry(0.045, 0.045, 0.072),
+    new THREE.BoxGeometry(0.045, 0.045, 0.022),
     anthraciteSteelMat
   );
   vesaArm.name = 'outbuildings.garage.toolBench.southWing.monitor.vesaArm';
   vesaArm.userData.lodTier = 'high';
   vesaArm.userData.lodMaxDistance = 12;
-  vesaArm.position.set(0, 0, 0.03);
+  vesaArm.position.set(0, 0, 0.024);
   monitorGroup.add(vesaArm);
 
   // 32-inch 16:9 Bezel Chassis (`0.72m wide x 0.41m high x 0.022m deep`)
@@ -819,7 +826,7 @@ export function buildGarageStainlessWorkbench(
   );
   monitorScreen.name = 'outbuildings.garage.toolBench.southWing.monitor.screen';
   monitorScreen.rotation.y = Math.PI; // Faces `-sz` (North into the Garage!)
-  monitorScreen.position.set(0, 0, -0.012);
+  monitorScreen.position.set(0, 0, -0.016);
   monitorGroup.add(monitorScreen);
 
   // Desk Mat, Wireless Mechanical Keyboard & Mouse on the Butcher-Block Desk under the 32-Inch Monitor
@@ -828,7 +835,7 @@ export function buildGarageStainlessWorkbench(
     dewaltBlackMat
   );
   deskMat.name = 'outbuildings.garage.toolBench.southWing.deskMat';
-  deskMat.position.set(-0.04, worktopY + 0.002, -0.06);
+  deskMat.position.set(-0.04, worktopY + 0.006, -0.06);
   southWingGroup.add(deskMat);
 
   const keyboardBody = new THREE.Mesh(
@@ -838,7 +845,7 @@ export function buildGarageStainlessWorkbench(
   keyboardBody.name = 'outbuildings.garage.toolBench.southWing.wirelessKeyboard';
   keyboardBody.userData.lodTier = 'high';
   keyboardBody.userData.lodMaxDistance = 12;
-  keyboardBody.position.set(-0.09, worktopY + 0.011, -0.05);
+  keyboardBody.position.set(-0.09, worktopY + 0.019, -0.05);
   southWingGroup.add(keyboardBody);
 
   const mouseBody = new THREE.Mesh(
@@ -848,13 +855,13 @@ export function buildGarageStainlessWorkbench(
   mouseBody.name = 'outbuildings.garage.toolBench.southWing.wirelessMouse';
   mouseBody.userData.lodTier = 'high';
   mouseBody.userData.lodMaxDistance = 12;
-  mouseBody.position.set(0.16, worktopY + 0.015, -0.05);
+  mouseBody.position.set(0.16, worktopY + 0.024, -0.05);
   southWingGroup.add(mouseBody);
 
   // A. Heavy Cast-Iron Engineer's Bench Vice mounted cleanly at the West front corner of the South Return Wing
   const viceGroup = new THREE.Group();
   viceGroup.name = 'outbuildings.garage.toolBench.vice';
-  viceGroup.position.set(-0.68, worktopY, -0.24);
+  viceGroup.position.set(-0.68, worktopY + 0.004, -0.24);
   southWingGroup.add(viceGroup);
 
   const viceBase = new THREE.Mesh(

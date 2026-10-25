@@ -16,10 +16,10 @@ const sharedToasterBodyGeo = prepGeo(new THREE.BoxGeometry(0.3, 0.18, 0.2));
 const sharedToasterTopRollGeo = prepGeo(new THREE.CylinderGeometry(0.014, 0.014, 0.304, 14));
 const sharedToasterEndCheekGeo = prepGeo(new THREE.BoxGeometry(0.026, 0.184, 0.208));
 const sharedToasterEndCrownGeo = prepGeo(new THREE.CylinderGeometry(0.014, 0.014, 0.206, 14));
-const sharedToasterSlotRimGeo = prepGeo(new THREE.BoxGeometry(0.036, 0.006, 0.145));
-const sharedToasterSlotGeo = prepGeo(new THREE.BoxGeometry(0.026, 0.008, 0.135));
+const sharedToasterSlotRimGeo = prepGeo(new THREE.BoxGeometry(0.036, 0.005, 0.145));
+const sharedToasterSlotGeo = prepGeo(new THREE.BoxGeometry(0.026, 0.005, 0.135));
 const sharedToasterControlPlateGeo = prepGeo(new THREE.BoxGeometry(0.21, 0.135, 0.004));
-const sharedToasterBadgeGeo = prepGeo(new THREE.BoxGeometry(0.065, 0.018, 0.008));
+const sharedToasterBadgeGeo = prepGeo(new THREE.BoxGeometry(0.065, 0.018, 0.006));
 const sharedToasterTimerDialGeo = prepGeo(new THREE.CylinderGeometry(0.018, 0.018, 0.018, 14));
 const sharedToasterLeverTrackGeo = prepGeo(new THREE.BoxGeometry(0.01, 0.085, 0.006));
 const sharedToasterEjectorKnobGeo = prepGeo(new THREE.BoxGeometry(0.034, 0.016, 0.026));
@@ -27,16 +27,16 @@ const sharedToasterCrumbTrayGeo = prepGeo(new THREE.BoxGeometry(0.24, 0.012, 0.0
 
 // Shared geometries for Sage Dual Boiler & Smart Grinder Pro
 const sharedEspressoBodyGeo = prepGeo(new THREE.BoxGeometry(0.37, 0.35, 0.25));
-const sharedEspressoWarmingTrayGeo = prepGeo(new THREE.BoxGeometry(0.31, 0.006, 0.19));
+const sharedEspressoWarmingTrayGeo = prepGeo(new THREE.BoxGeometry(0.31, 0.005, 0.19));
 const sharedEspressoSideColumnGeo = prepGeo(new THREE.CylinderGeometry(0.018, 0.018, 0.35, 14));
-const sharedEspressoUpperHeaderGeo = prepGeo(new THREE.BoxGeometry(0.374, 0.105, 0.095));
+const sharedEspressoUpperHeaderGeo = prepGeo(new THREE.BoxGeometry(0.374, 0.1, 0.095));
 const sharedEspressoHeaderRollGeo = prepGeo(new THREE.CylinderGeometry(0.014, 0.014, 0.374, 14));
 const sharedEspressoCupRailGeo = prepGeo(new THREE.CylinderGeometry(0.005, 0.005, 0.35, 10));
 const sharedEspressoDripBaseGeo = prepGeo(new THREE.BoxGeometry(0.372, 0.044, 0.145));
-const sharedEspressoDripGrilleGeo = prepGeo(new THREE.BoxGeometry(0.352, 0.008, 0.126));
+const sharedEspressoDripGrilleGeo = prepGeo(new THREE.BoxGeometry(0.352, 0.005, 0.126));
 const sharedEspressoSplashPanelGeo = prepGeo(new THREE.PlaneGeometry(0.34, 0.2));
-const sharedEspressoGaugeBezelGeo = prepGeo(new THREE.CylinderGeometry(0.027, 0.027, 0.012, 20));
-const sharedEspressoGaugeFaceGeo = prepGeo(new THREE.CylinderGeometry(0.022, 0.022, 0.014, 20));
+const sharedEspressoGaugeBezelGeo = prepGeo(new THREE.CylinderGeometry(0.027, 0.027, 0.008, 20));
+const sharedEspressoGaugeFaceGeo = prepGeo(new THREE.CylinderGeometry(0.022, 0.022, 0.006, 20));
 const sharedEspressoLcdBezelGeo = prepGeo(new THREE.BoxGeometry(0.042, 0.024, 0.006));
 const sharedEspressoLcdScreenGeo = prepGeo(new THREE.PlaneGeometry(0.036, 0.018));
 const sharedEspressoControlBtnGeo = prepGeo(new THREE.CylinderGeometry(0.008, 0.008, 0.008, 12));
@@ -66,8 +66,8 @@ const sharedGrinderHopperGeo = prepGeo(new THREE.CylinderGeometry(0.078, 0.056, 
 const sharedGrinderHopperLidGeo = prepGeo(new THREE.CylinderGeometry(0.08, 0.08, 0.015, 18));
 
 // Shared geometries for 4-zone Induction Hob
-const sharedHobGlassGeo = prepGeo(new THREE.BoxGeometry(0.82, 0.012, 0.52));
-const sharedHobBevelGeo = prepGeo(new THREE.BoxGeometry(0.835, 0.006, 0.535));
+const sharedHobGlassGeo = prepGeo(new THREE.BoxGeometry(0.82, 0.005, 0.52));
+const sharedHobBevelGeo = prepGeo(new THREE.BoxGeometry(0.835, 0.013, 0.535));
 const sharedHobCrosshairGeo = prepGeo(new THREE.PlaneGeometry(0.03, 0.003));
 const sharedHobTouchBarGeo = prepGeo(new THREE.PlaneGeometry(0.36, 0.028));
 
@@ -154,13 +154,13 @@ export function buildDualitToaster(
     const sx = slotXCoords[i]!;
     const slotRim = new THREE.Mesh(sharedToasterSlotRimGeo, mirrorChromeMat);
     slotRim.name = `kitchen.cabinetry.dualitToaster.slotRim_${i + 1}`;
-    slotRim.position.set(sx, 0.201, 0);
+    slotRim.position.set(sx, 0.205, 0);
     tagHighLod(slotRim, 12);
     toasterGroup.add(slotRim);
 
     const slot = new THREE.Mesh(sharedToasterSlotGeo, darkSlotMat);
     slot.name = `kitchen.cabinetry.dualitToaster.slot_${i + 1}`;
-    slot.position.set(sx, 0.203, 0);
+    slot.position.set(sx, 0.214, 0);
     tagHighLod(slot, 12);
     toasterGroup.add(slot);
   }
@@ -175,33 +175,33 @@ export function buildDualitToaster(
     })
   );
   frontControlPlate.name = 'kitchen.cabinetry.dualitToaster.frontControlPlate';
-  frontControlPlate.position.set(0, 0.112, 0.101);
+  frontControlPlate.position.set(0, 0.112, 0.106);
   tagHighLod(frontControlPlate, 12);
   toasterGroup.add(frontControlPlate);
 
   // Front Dualit badge, rotary mechanical timer dial, and manual ejector lever
   const badge = new THREE.Mesh(sharedToasterBadgeGeo, brassDialMat);
   badge.name = 'kitchen.cabinetry.dualitToaster.badge';
-  badge.position.set(-0.07, 0.16, 0.104);
+  badge.position.set(-0.07, 0.16, 0.115);
   tagHighLod(badge, 12);
   toasterGroup.add(badge);
 
   const timerDial = new THREE.Mesh(sharedToasterTimerDialGeo, darkSlotMat);
   timerDial.name = 'kitchen.cabinetry.dualitToaster.timerDial';
   timerDial.rotation.x = Math.PI / 2;
-  timerDial.position.set(-0.07, 0.095, 0.107);
+  timerDial.position.set(-0.07, 0.095, 0.121);
   tagHighLod(timerDial, 12);
   toasterGroup.add(timerDial);
 
   const leverTrack = new THREE.Mesh(sharedToasterLeverTrackGeo, darkSlotMat);
   leverTrack.name = 'kitchen.cabinetry.dualitToaster.leverTrack';
-  leverTrack.position.set(0.07, 0.105, 0.103);
+  leverTrack.position.set(0.07, 0.105, 0.115);
   tagHighLod(leverTrack, 12);
   toasterGroup.add(leverTrack);
 
   const ejectorKnob = new THREE.Mesh(sharedToasterEjectorKnobGeo, darkSlotMat);
   ejectorKnob.name = 'kitchen.cabinetry.dualitToaster.ejectorKnob';
-  ejectorKnob.position.set(0.07, 0.13, 0.113);
+  ejectorKnob.position.set(0.07, 0.13, 0.126);
   tagHighLod(ejectorKnob, 12);
   toasterGroup.add(ejectorKnob);
 
@@ -292,7 +292,7 @@ export function buildCoffeeMachineAndGrinder(
   // Recessed darker stainless cup-warming tray on top so the top of the machine has realistic contrast
   const topWarmingTray = new THREE.Mesh(sharedEspressoWarmingTrayGeo, darkStainlessRecessMat);
   topWarmingTray.name = 'kitchen.espressoMachineAndGrinder.dualBoiler.topWarmingTray';
-  topWarmingTray.position.set(mx, 0.352, -0.02);
+  topWarmingTray.position.set(mx, 0.3565, -0.02);
   coffeeStation.add(topWarmingTray);
 
   // Brushed stainless vertical curved side columns on left & right of the Sage Dual Boiler
@@ -307,7 +307,7 @@ export function buildCoffeeMachineAndGrinder(
   // 2. Protruding upper front brushed stainless canopy / header
   const upperHeader = new THREE.Mesh(sharedEspressoUpperHeaderGeo, brushedStainlessMat);
   upperHeader.name = 'kitchen.espressoMachineAndGrinder.dualBoiler.upperHeader';
-  upperHeader.position.set(mx, 0.298, 0.135);
+  upperHeader.position.set(mx, 0.295, 0.135);
   upperHeader.castShadow = true;
   coffeeStation.add(upperHeader);
 
@@ -336,27 +336,27 @@ export function buildCoffeeMachineAndGrinder(
 
   const dripTrayGrille = new THREE.Mesh(sharedEspressoDripGrilleGeo, mirrorChromeMat);
   dripTrayGrille.name = 'kitchen.espressoMachineAndGrinder.dualBoiler.dripTrayGrille';
-  dripTrayGrille.position.set(mx, 0.046, 0.155);
+  dripTrayGrille.position.set(mx, 0.0505, 0.155);
   coffeeStation.add(dripTrayGrille);
 
   // Recessed darker brushed stainless splash wall behind the group head
   const groupSplashPanel = new THREE.Mesh(sharedEspressoSplashPanelGeo, darkStainlessRecessMat);
   groupSplashPanel.name = 'kitchen.espressoMachineAndGrinder.dualBoiler.groupSplashPanel';
-  groupSplashPanel.position.set(mx, 0.148, 0.107);
+  groupSplashPanel.position.set(mx, 0.142, 0.11);
   coffeeStation.add(groupSplashPanel);
 
   // 4. Central circular Sage Espresso Pressure Gauge on upper header fascia
   const gaugeBezel = new THREE.Mesh(sharedEspressoGaugeBezelGeo, darkMat);
   gaugeBezel.name = 'kitchen.espressoMachineAndGrinder.dualBoiler.gaugeBezel';
   gaugeBezel.rotation.x = Math.PI / 2;
-  gaugeBezel.position.set(mx, 0.304, 0.184);
+  gaugeBezel.position.set(mx, 0.304, 0.1865);
   tagHighLod(gaugeBezel, 12);
   coffeeStation.add(gaugeBezel);
 
   const gaugeFace = new THREE.Mesh(sharedEspressoGaugeFaceGeo, gaugeFaceMat);
   gaugeFace.name = 'kitchen.espressoMachineAndGrinder.dualBoiler.gaugeFace';
   gaugeFace.rotation.x = Math.PI / 2;
-  gaugeFace.position.set(mx, 0.304, 0.185);
+  gaugeFace.position.set(mx, 0.304, 0.1945);
   tagHighLod(gaugeFace, 12);
   coffeeStation.add(gaugeFace);
 
@@ -365,13 +365,13 @@ export function buildCoffeeMachineAndGrinder(
     const sideLabel = idx === 0 ? 'left' : 'right';
     const lcdBezel = new THREE.Mesh(sharedEspressoLcdBezelGeo, darkMat);
     lcdBezel.name = `kitchen.espressoMachineAndGrinder.dualBoiler.lcdBezel.${sideLabel}`;
-    lcdBezel.position.set(lcdX, 0.292, 0.183);
+    lcdBezel.position.set(lcdX, 0.292, 0.1855);
     tagHighLod(lcdBezel, 12);
     coffeeStation.add(lcdBezel);
 
     const lcdScreen = new THREE.Mesh(sharedEspressoLcdScreenGeo, lcdBacklightMat);
     lcdScreen.name = `kitchen.espressoMachineAndGrinder.dualBoiler.lcdScreen.${sideLabel}`;
-    lcdScreen.position.set(lcdX, 0.292, 0.187);
+    lcdScreen.position.set(lcdX, 0.292, 0.193);
     tagHighLod(lcdScreen, 12);
     coffeeStation.add(lcdScreen);
   }
@@ -456,7 +456,7 @@ export function buildCoffeeMachineAndGrinder(
   for (const [idx, cx] of ([mx - 0.08, mx + 0.08] as const).entries()) {
     const cup = new THREE.Mesh(sharedEspressoWarmingCupGeo, ceramicCupMat);
     cup.name = `kitchen.espressoMachineAndGrinder.dualBoiler.warmingCup_${idx + 1}`;
-    cup.position.set(cx, 0.372, -0.02);
+    cup.position.set(cx, 0.386, -0.02);
     tagHighLod(cup, 12);
     coffeeStation.add(cup);
   }
@@ -471,7 +471,7 @@ export function buildCoffeeMachineAndGrinder(
 
   const grinderBase = new THREE.Mesh(sharedGrinderBaseGeo, brushedStainlessMat);
   grinderBase.name = 'kitchen.espressoMachineAndGrinder.smartGrinder.base';
-  grinderBase.position.set(0.18, 0.13, 0.0);
+  grinderBase.position.set(0.18, 0.138, 0.0);
   grinderBase.castShadow = true;
   coffeeStation.add(grinderBase);
 
@@ -482,7 +482,7 @@ export function buildCoffeeMachineAndGrinder(
 
   const grinderLcd = new THREE.Mesh(sharedGrinderLcdGeo, lcdBacklightMat);
   grinderLcd.name = 'kitchen.espressoMachineAndGrinder.smartGrinder.lcdScreen';
-  grinderLcd.position.set(0.155, 0.2, 0.108);
+  grinderLcd.position.set(0.155, 0.2, 0.112);
   tagHighLod(grinderLcd, 12);
   coffeeStation.add(grinderLcd);
 
@@ -516,7 +516,7 @@ export function buildNorthWallInductionHobAndToaster(
   // 4-Zone Black Ceramic Glass Induction Hob on the Worktop to the right of the AGA (centered at X = -0.82m, Z = -2.15m)
   const hobGroup = new THREE.Group();
   hobGroup.name = 'kitchen.cabinetry.north.inductionHob';
-  hobGroup.position.set(-0.82, 0.945, -2.15);
+  hobGroup.position.set(-0.82, 0.955, -2.15);
 
   const hobGlass = new THREE.Mesh(sharedHobGlassGeo, ovenGlassMat);
   hobGlass.name = 'kitchen.cabinetry.north.inductionHob.glassPlate';
@@ -524,7 +524,7 @@ export function buildNorthWallInductionHobAndToaster(
 
   const hobBevel = new THREE.Mesh(sharedHobBevelGeo, stainlessSteelMat);
   hobBevel.name = 'kitchen.cabinetry.north.inductionHob.bevelTrim';
-  hobBevel.position.set(0, -0.002, 0);
+  hobBevel.position.set(0, -0.0135, 0);
   hobGroup.add(hobBevel);
 
   const zoneRingMat = new THREE.MeshBasicMaterial({
@@ -570,5 +570,5 @@ export function buildNorthWallInductionHobAndToaster(
   northGroup.add(hobGroup);
 
   // Dualit Classic 4-Slot Polished Chrome Toaster at X = +0.34m
-  buildDualitToaster(northGroup, 0.34, 0.943, -2.14);
+  buildDualitToaster(northGroup, 0.34, 0.947, -2.14);
 }

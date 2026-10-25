@@ -877,7 +877,7 @@ export function buildLeafieldSuperKingBed(
       frontFlute.userData.lodTier = 'high';
       frontFlute.userData.lodMaxDistance = 12;
       frontFlute.position.set(
-        headX + postSize / 2 + 0.0005,
+        headX + postSize / 2 + 0.005,
         headPostBottomY + headPostH / 2 + 0.02,
         pz + fIdx
       );
@@ -943,7 +943,7 @@ export function buildLeafieldSuperKingBed(
 
   {
     const crestShape = new THREE.Shape();
-    const transomBaseY = 1.125;
+    const transomBaseY = 1.168;
     crestShape.moveTo(-halfInnerZ, transomBaseY);
     crestShape.lineTo(halfInnerZ, transomBaseY);
     const numSamples = 48;
@@ -1034,11 +1034,11 @@ export function buildLeafieldSuperKingBed(
   // 4. UPHOLSTERED OATMEAL LINEN PADDED HEADBOARD PANEL (`y = 0.54m..1.125m`)
   // =========================================================================
   const headBackPanel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.026, 0.85, innerSpanZ),
+    new THREE.BoxGeometry(0.016, 0.574, innerSpanZ),
     washedOakMat
   );
   headBackPanel.name = 'mainBedroom.leafieldSuperKingBed.headBackPanel';
-  headBackPanel.position.set(headX - 0.008, 0.7, 0);
+  headBackPanel.position.set(headX - 0.015, 0.835, 0);
   headBackPanel.castShadow = true;
   bedGroup.add(headBackPanel);
 
@@ -1055,7 +1055,7 @@ export function buildLeafieldSuperKingBed(
   );
   const linenPadMesh = new THREE.Mesh(linenPadGeo, oatmealLinenMat);
   linenPadMesh.name = 'mainBedroom.leafieldSuperKingBed.upholsteredHeadboardPanel';
-  linenPadMesh.position.set(headX + 0.016, 0.545 + linenPanelH / 2, 0);
+  linenPadMesh.position.set(headX + 0.03, 0.545 + linenPanelH / 2, 0);
   linenPadMesh.castShadow = true;
   linenPadMesh.receiveShadow = true;
   bedGroup.add(linenPadMesh);
@@ -1069,7 +1069,7 @@ export function buildLeafieldSuperKingBed(
     hWelt.userData.lodTier = 'high';
     hWelt.userData.lodMaxDistance = 12;
     hWelt.rotation.x = Math.PI / 2;
-    hWelt.position.set(headX + 0.036, py, 0);
+    hWelt.position.set(headX + 0.05, py, 0);
     bedGroup.add(hWelt);
   }
   for (const pzSign of [-1, 1] as const) {
@@ -1081,7 +1081,7 @@ export function buildLeafieldSuperKingBed(
     vWelt.userData.lodTier = 'high';
     vWelt.userData.lodMaxDistance = 12;
     vWelt.position.set(
-      headX + 0.036,
+      headX + 0.05,
       0.545 + linenPanelH / 2,
       pzSign * (linenPanelW / 2 - 0.004)
     );
@@ -1157,7 +1157,7 @@ export function buildLeafieldSuperKingBed(
       footFlute.userData.lodTier = 'high';
       footFlute.userData.lodMaxDistance = 12;
       footFlute.position.set(
-        footX + postSize / 2 + 0.0005,
+        footX + postSize / 2 + 0.005,
         railBottomY + footPostH / 2,
         fz + fIdx
       );
@@ -1166,11 +1166,11 @@ export function buildLeafieldSuperKingBed(
   }
 
   const footboardCore = new THREE.Mesh(
-    new THREE.BoxGeometry(0.038, railHeight, innerSpanZ),
+    new THREE.BoxGeometry(0.028, railHeight - 0.092, innerSpanZ),
     washedOakMat
   );
   footboardCore.name = 'mainBedroom.leafieldSuperKingBed.footboard';
-  footboardCore.position.set(footX, railBottomY + railHeight / 2, 0);
+  footboardCore.position.set(footX + 0.004, railBottomY + railHeight / 2, 0);
   footboardCore.castShadow = true;
   footboardCore.receiveShadow = true;
   bedGroup.add(footboardCore);
@@ -1275,7 +1275,7 @@ export function buildLeafieldSuperKingBed(
   );
   const mattressMesh = new THREE.Mesh(mattressGeo, ivorySheetMat);
   mattressMesh.name = 'mainBedroom.leafieldSuperKingBed.mattress';
-  mattressMesh.position.set(1.02, 0.448, 0);
+  mattressMesh.position.set(1.035, 0.448, 0);
   mattressMesh.castShadow = true;
   mattressMesh.receiveShadow = true;
   bedGroup.add(mattressMesh);

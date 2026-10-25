@@ -82,7 +82,7 @@ export function buildPlantRoom(
     const stowedHoodRollGeo = createSharedGeo(new THREE.CylinderGeometry(0.022, 0.022, 0.115, 14));
     const shoulderYokeGeo = createSharedGeo(new THREE.SphereGeometry(0.118, 20, 14));
     const upperTorsoGeo = createSharedGeo(new THREE.CylinderGeometry(0.078, 0.098, 0.30, 20));
-    const lowerTorsoGeo = createSharedGeo(new THREE.CylinderGeometry(0.096, 0.118, 0.38, 20));
+    const lowerTorsoGeo = createSharedGeo(new THREE.CylinderGeometry(0.096, 0.115, 0.34, 20));
     const drapeFoldGeo = createSharedGeo(new THREE.CylinderGeometry(0.012, 0.018, 0.58, 10));
     const stormPlacketGeo = createSharedGeo(new THREE.BoxGeometry(0.014, 0.64, 0.036));
     const snapGeo = createSharedGeo(new THREE.CylinderGeometry(0.0045, 0.0045, 0.004, 10));

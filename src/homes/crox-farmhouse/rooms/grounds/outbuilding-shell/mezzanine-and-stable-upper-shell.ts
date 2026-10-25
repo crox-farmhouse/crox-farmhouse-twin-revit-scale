@@ -96,8 +96,8 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
   westUpperRoomSlab.receiveShadow = true;
   firstFloorGroup.add(westUpperRoomSlab);
 
-  // Solid light-oak stairwell edge fascia trim boards (`0.022m` thick x `0.145m` high, `y = 1.395..1.54m`) along the open stairwell cutout edges
-  const stairwellWestFasciaGeo = new THREE.BoxGeometry(0.022, 0.145, 5.426 - 4.85);
+  // Solid light-oak stairwell edge fascia trim boards (`0.022m` thick x `0.137m` high, `y = 1.399..1.536m`) along the open stairwell cutout edges
+  const stairwellWestFasciaGeo = new THREE.BoxGeometry(0.022, 0.137, 5.426 - 4.85);
   applyOutbuildingFloorUVs(stairwellWestFasciaGeo, 21.14, 1.4675, (4.85 + 5.426) * 0.5, 0.5);
   const stairwellWestFascia = new THREE.Mesh(
     stairwellWestFasciaGeo,
@@ -108,7 +108,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
   stairwellWestFascia.castShadow = true;
   firstFloorGroup.add(stairwellWestFascia);
 
-  const stairwellEastLandingFasciaGeo = new THREE.BoxGeometry(0.022, 0.145, 4.44 - 3.305);
+  const stairwellEastLandingFasciaGeo = new THREE.BoxGeometry(0.022, 0.137, 4.44 - 3.305);
   applyOutbuildingFloorUVs(stairwellEastLandingFasciaGeo, 22.04, 1.4675, (3.305 + 4.44) * 0.5, 0.5);
   const stairwellEastLandingFascia = new THREE.Mesh(
     stairwellEastLandingFasciaGeo,
@@ -119,7 +119,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
   stairwellEastLandingFascia.castShadow = true;
   firstFloorGroup.add(stairwellEastLandingFascia);
 
-  const stairwellNorthFasciaGeo = new THREE.BoxGeometry(23.016 - 22.04, 0.145, 0.022);
+  const stairwellNorthFasciaGeo = new THREE.BoxGeometry(23.016 - 22.04, 0.137, 0.022);
   applyOutbuildingFloorUVs(stairwellNorthFasciaGeo, (22.04 + 23.016) * 0.5, 1.4675, 3.305, 0.5);
   const stairwellNorthFascia = new THREE.Mesh(
     stairwellNorthFasciaGeo,
@@ -408,24 +408,9 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     [{ uCenter: 19.85, yCenter: eastRangeGroundTopY + 0.44, width: 0.78, height: 0.72 }],
     settingPlasterMat
   );
-  // Survey2Plan Floor 1613666: Store Upper Hayloft Deck (`u = 12.31..14.96m, v = 0.284..5.426m, y = 2.52..2.58m`)
-  // seated cleanly above the Golf Simulator corridor & store ceiling zone on `firstFloorGroup`!
-  {
-    const storeLoftSpanU = uBarnStart - (uStoreStart + 0.24); // 2.65m
-    const storeLoftSpanV = vInnerSouth - vInnerNorth - 0.008; // 5.142m
-    const storeLoftMidU = uStoreStart + 0.24 + storeLoftSpanU * 0.5;
-    const storeLoftMidV = (vInnerNorth + vInnerSouth) * 0.5;
-    const storeLoftGeo = new THREE.BoxGeometry(storeLoftSpanU, 0.06, storeLoftSpanV);
-    applyOutbuildingFloorUVs(storeLoftGeo, storeLoftMidU, 2.55, storeLoftMidV, 0.5);
-    storeLoftGeo.computeBoundingSphere();
-    const storeLoftMesh = new THREE.Mesh(storeLoftGeo, lightJoineryOakMat);
-    storeLoftMesh.name = 'outbuildings.store.upperLoftDeck';
-    storeLoftMesh.userData.isArchitecturalShell = true;
-    storeLoftMesh.position.set(storeLoftMidU, 2.55, storeLoftMidV);
-    storeLoftMesh.castShadow = true;
-    storeLoftMesh.receiveShadow = true;
-    firstFloorGroup.add(storeLoftMesh);
-  }
+  // Note: North hallway (`u = 12.31..15.00m, v = 0.28..1.24m`) to the right (North) of the Golf Simulator
+  // is kept full double-height up to the vaulted ceiling and `storeNorth` Velux skylight so `loftLadder`
+  // climbs unobstructed onto `outbuildings.store.loftFloor` (`v = 1.24..5.43m`).
 
   // South Upper Wall of Barn Mezzanine (`u = 18.68..23.02m`), featuring Survey2Plan `Door 1841339`
   // (`1.36m` wide double hayloft loading door at `u = 20.78..22.14m`, `y = 1.54..2.84m`, 100% clear of
@@ -490,14 +475,14 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     firstFloorGroup.add(hayloftGroup);
 
     const frameT = 0.04;
-    const sillGeo = new THREE.BoxGeometry(hW + 0.08, 0.03, wallT + 0.05);
+    const sillGeo = new THREE.BoxGeometry(hW - 0.006, 0.026, wallT + 0.05);
     sillGeo.computeBoundingSphere();
     const sill = new THREE.Mesh(sillGeo, stoneSillMat);
     sill.name = 'outbuildings.firstFloor.mezzanine.southHayloftDoor.sill';
-    sill.position.set(0, 0.015, 0.01);
+    sill.position.set(0, 0.017, 0.01);
     hayloftGroup.add(sill);
 
-    const headGeo = new THREE.BoxGeometry(hW, frameT, wallT + 0.02);
+    const headGeo = new THREE.BoxGeometry(hW - frameT * 2, frameT, wallT + 0.02);
     headGeo.computeBoundingSphere();
     const head = new THREE.Mesh(headGeo, lightJoineryOakPostMat);
     head.name = 'outbuildings.firstFloor.mezzanine.southHayloftDoor.headFrame';
@@ -505,18 +490,19 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     hayloftGroup.add(head);
 
     for (const sideX of [-1, 1] as const) {
-      const jambGeo = new THREE.BoxGeometry(frameT, hH, wallT + 0.02);
+      const jambH = hH - 0.034;
+      const jambGeo = new THREE.BoxGeometry(frameT, jambH, wallT + 0.02);
       jambGeo.computeBoundingSphere();
       const jamb = new THREE.Mesh(jambGeo, lightJoineryOakPostMat);
       jamb.name = `outbuildings.firstFloor.mezzanine.southHayloftDoor.jamb.${sideX < 0 ? 'west' : 'east'}`;
-      jamb.position.set(sideX * (hW * 0.5 - frameT * 0.5), hH * 0.5, 0);
+      jamb.position.set(sideX * (hW * 0.5 - frameT * 0.5), 0.034 + jambH * 0.5, 0);
       hayloftGroup.add(jamb);
 
       // Twin glazed/boarded hayloft leaves (`0.636m` wide each)
       const leafW = (hW - frameT * 2) * 0.5 - 0.004;
       const leafH = hH - frameT - 0.03;
       const leafMidX = sideX * (leafW * 0.5 + 0.002);
-      const lowerBoardGeo = new THREE.BoxGeometry(leafW, leafH * 0.44, 0.042);
+      const lowerBoardGeo = new THREE.BoxGeometry(leafW - 0.096, leafH * 0.44, 0.042);
       lowerBoardGeo.computeBoundingSphere();
       const lowerBoard = new THREE.Mesh(lowerBoardGeo, lightJoineryOakMat);
       lowerBoard.name = `outbuildings.firstFloor.mezzanine.southHayloftDoor.leaf.${sideX < 0 ? 'west' : 'east'}.lowerPanel`;
@@ -538,7 +524,7 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
         stile.position.set(leafMidX + sx, 0.03 + leafH * 0.5, 0.01);
         hayloftGroup.add(stile);
       }
-      const topRailGeo = new THREE.BoxGeometry(leafW, 0.048, 0.042);
+      const topRailGeo = new THREE.BoxGeometry(leafW - 0.096, 0.048, 0.042);
       topRailGeo.computeBoundingSphere();
       const topRail = new THREE.Mesh(topRailGeo, lightJoineryOakPostMat);
       topRail.name = `outbuildings.firstFloor.mezzanine.southHayloftDoor.leaf.${sideX < 0 ? 'west' : 'east'}.topRail`;
@@ -757,9 +743,9 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
         [dDoorV1, balDoorTopY],
         [dDoorV1, stableUpperTopY],
         [halfSpanG + 0.075, stableUpperTopY],
-        [halfSpanG + 0.02, stableUpperTopY + 0.028],
-        [0, stableCeilRidgeY + 0.002],
-        [-halfSpanG - 0.02, stableUpperTopY + 0.028],
+        [halfSpanG + 0.02, stableUpperTopY + 0.022],
+        [0, stableCeilRidgeY - 0.004],
+        [-halfSpanG - 0.02, stableUpperTopY + 0.022],
       ],
       0.06
     );
@@ -882,18 +868,19 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
 
     // Outer white-painted timber reveal box frame (`windowFrameMat`, matching the flanking cottage casement windows!)
     for (const sideV of [-1, 1] as const) {
+      const jambH = bDoorH - 0.032;
       const jamb = new THREE.Mesh(
-        new THREE.BoxGeometry(wallT + 0.024, bDoorH, frameT),
+        new THREE.BoxGeometry(wallT + 0.024, jambH, frameT),
         windowFrameMat
       );
       jamb.name = `outbuildings.firstFloor.stableBalconySlidingDoor.jamb.${sideV < 0 ? 'north' : 'south'}`;
-      jamb.position.set(0, bDoorH * 0.5, sideV * (bDoorW * 0.5 - frameT * 0.5));
+      jamb.position.set(0, 0.032 + jambH * 0.5, sideV * (bDoorW * 0.5 - frameT * 0.5));
       jamb.castShadow = true;
       balconyDoorGroup.add(jamb);
     }
 
     const headFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(wallT + 0.024, frameT, bDoorW),
+      new THREE.BoxGeometry(wallT + 0.024, frameT, bDoorW - frameT * 2),
       windowFrameMat
     );
     headFrame.name = 'outbuildings.firstFloor.stableBalconySlidingDoor.headFrame';
@@ -1010,11 +997,11 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
 
     // Neatly retracted solid light-oak interior blind pelmet at the top of the French doors
     const blindPelmet = new THREE.Mesh(
-      new THREE.BoxGeometry(0.046, 0.044, clearSpanV),
+      new THREE.BoxGeometry(0.044, 0.036, clearSpanV),
       lightJoineryOakMat
     );
     blindPelmet.name = 'outbuildings.firstFloor.stableBalconySlidingDoor.blindPelmet';
-    blindPelmet.position.set(-wallT * 0.5 + 0.026, bDoorH - 0.024, 0);
+    blindPelmet.position.set(-wallT * 0.5 - 0.038, bDoorH - 0.018, 0);
     blindPelmet.castShadow = true;
     balconyDoorGroup.add(blindPelmet);
   }
@@ -1058,13 +1045,15 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     const balSpanV = vEastRangeSouth - vEastRangeNorth; // 5.71m
     const balMidV = (vEastRangeNorth + vEastRangeSouth) * 0.5; // 2.855m
 
-    // Perimeter stone fascia coping cornice (`y = stableGroundTopY (1.96m) .. stableUpperFloorY - 0.03m (2.05m)`)
+    // Perimeter stone fascia coping cornice (`y = stableGroundTopY .. stableUpperFloorY - 0.036m`),
+    // starting `4mm` East of `balStartU` (`29.054m`) so it never overlaps the East Gable brick wall.
+    const fasciaSpanU = balSpanU + 0.046;
     const fasciaSlab = new THREE.Mesh(
-      new THREE.BoxGeometry(balSpanU + 0.06, 0.09, balSpanV + 0.08),
+      new THREE.BoxGeometry(fasciaSpanU, 0.084, balSpanV + 0.08),
       stoneSillMat
     );
     fasciaSlab.name = 'outbuildings.firstFloor.stableEastBalcony.copingFascia';
-    fasciaSlab.position.set(balMidU + 0.02, stableGroundTopY + 0.045, balMidV);
+    fasciaSlab.position.set(balStartU + 0.004 + fasciaSpanU * 0.5, stableGroundTopY + 0.042, balMidV);
     fasciaSlab.castShadow = true;
     fasciaSlab.receiveShadow = true;
     balconyGroup.add(fasciaSlab);
@@ -2021,16 +2010,26 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
         'outbuildings.stable.baseboard'
       );
 
-      // East South Pier (`u = 31.57m, v = 3.85..5.43m`) -> South Stable Wall (`u = 31.57..24.83m, v = 5.43m`) -> Cloakroom East Partition (`u = 24.83m, v = 5.43..3.88m`)
+      // East South Pier (`u = 31.57m, v = 3.85..5.43m`) -> South Stable Wall split cleanly around the `u = 25.30..25.60m` brick pilaster -> Cloakroom East Partition (`u = 24.83m, v = 5.43..3.88m`)
       addProfiledPathSegments(
         [
           [uStableExtEnd - wallT, 3.85],
           [uStableExtEnd - wallT, vInnerSouth],
+          [25.605, vInnerSouth],
+        ],
+        stableGroundFloorY,
+        ['eastPierSouth', 'southWallEast'],
+        stableBaseboardGroup,
+        'outbuildings.stable.baseboard'
+      );
+      addProfiledPathSegments(
+        [
+          [25.295, vInnerSouth],
           [24.83, vInnerSouth],
           [24.83, 3.88],
         ],
         stableGroundFloorY,
-        ['eastPierSouth', 'southWall', 'cloakroomEastWall'],
+        ['southWallWest', 'cloakroomEastWall'],
         stableBaseboardGroup,
         'outbuildings.stable.baseboard'
       );
@@ -2164,34 +2163,37 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
       upStairsGroup.add(underRib);
     }
 
-    // 5. Top Threshold Solid-Oak Fascia & 4th Bullnose Light-Oak Threshold Nosing at `u = 23.02m, y = stableUpperFloorY = 2.08m`
+    // 5. Top Threshold Solid-Oak Fascia & Bullnose Light-Oak Threshold Nosing at `u = 23.02m, y = stableUpperFloorY`
     const topFasciaH = stableUpperFloorY - mezzanineFloorY - treadT;
     const topFasciaGeo = new THREE.BoxGeometry(0.022, topFasciaH, stairOpeningW);
-    applyOutbuildingFloorUVs(topFasciaGeo, upFlightEndU - 0.05, mezzanineFloorY + topFasciaH * 0.5, stairCenterV, 0.5);
+    applyOutbuildingFloorUVs(topFasciaGeo, upFlightEndU - 0.011, mezzanineFloorY + topFasciaH * 0.5, stairCenterV, 0.5);
     const topOakFascia = new THREE.Mesh(topFasciaGeo, lightJoineryOakMat);
     topOakFascia.name = 'outbuildings.firstFloor.stableUpStep.topFascia';
     topOakFascia.position.set(
-      upFlightEndU - 0.05,
+      upFlightEndU - 0.011,
       mezzanineFloorY + topFasciaH * 0.5,
       stairCenterV
     );
     topOakFascia.castShadow = true;
     upStairsGroup.add(topOakFascia);
 
-    const topNosingDepthU = partT + 0.036;
+    const topNosingWestU = upFlightEndU - nosingOverhangU + bullnoseR;
+    const topNosingEastU = uStableStart - 0.005;
+    const topNosingDepthU = topNosingEastU - topNosingWestU;
+    const topNosingCenterU = (topNosingWestU + topNosingEastU) * 0.5;
     const topNosingGeo = new THREE.BoxGeometry(topNosingDepthU, treadT, treadClearW);
     applyOutbuildingFloorUVs(
       topNosingGeo,
-      upFlightEndU + partT * 0.5 - 0.006,
-      stableUpperFloorY - treadT * 0.5 + 0.002,
+      topNosingCenterU,
+      stableUpperFloorY - treadT * 0.5,
       stairCenterV,
       0.5
     );
     const topNosingBoard = new THREE.Mesh(topNosingGeo, lightJoineryOakMat);
     topNosingBoard.name = 'outbuildings.firstFloor.stableUpStep.topNosing';
     topNosingBoard.position.set(
-      upFlightEndU + partT * 0.5 - 0.006,
-      stableUpperFloorY - treadT * 0.5 + 0.002,
+      topNosingCenterU,
+      stableUpperFloorY - treadT * 0.5,
       stairCenterV
     );
     topNosingBoard.castShadow = true;
@@ -2205,8 +2207,8 @@ export function buildMezzanineAndStableUpperShell(shellCtx: OutbuildingShellCont
     topBullnoseCyl.name = 'outbuildings.firstFloor.stableUpStep.topNosing';
     topBullnoseCyl.rotation.x = Math.PI / 2;
     topBullnoseCyl.position.set(
-      upFlightEndU - nosingOverhangU + bullnoseR,
-      stableUpperFloorY - treadT * 0.5 + 0.002,
+      topNosingWestU,
+      stableUpperFloorY - treadT * 0.5,
       stairCenterV
     );
     topBullnoseCyl.castShadow = true;

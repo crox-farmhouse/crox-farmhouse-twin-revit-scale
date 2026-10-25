@@ -94,7 +94,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     blockRugMat
   );
   blockRug.name = 'outbuildings.mezzanine.retroBlockRug';
-  blockRug.position.set(19.96, mezzanineFloorY + 0.006, 2.34);
+  blockRug.position.set(19.96, mezzanineFloorY + 0.01, 2.34);
   blockRug.receiveShadow = true;
   loungeGroup.add(blockRug);
 
@@ -108,7 +108,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     persianRugMat
   );
   persianRug.name = 'outbuildings.mezzanine.persianRug';
-  persianRug.position.set(21.62, mezzanineFloorY + 0.005, 1.62);
+  persianRug.position.set(21.62, mezzanineFloorY + 0.009, 1.62);
   persianRug.receiveShadow = true;
   loungeGroup.add(persianRug);
 
@@ -254,27 +254,27 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
   sbCarcassMesh.receiveShadow = true;
   sideboardGroup.add(sbCarcassMesh);
 
-  // 2. Solid Oak Rear Back Panel (`x = -0.218..+0.190m`) & Dark Shadow Reveal Cavity (`x = +0.194m`)
+  // 2. Solid Oak Rear Back Panel (`x = -0.214..+0.182m`) & Dark Shadow Reveal Cavity (`x = +0.186m`)
   const backPanelShape = createRoundedRectPath(
-    sbInnerHalfW + 0.004,
-    sbInnerHalfH + 0.004,
-    sbInnerCornerR,
-    sbInnerCornerR,
-    sbInnerCornerR,
-    sbInnerCornerR,
+    sbInnerHalfW - 0.004,
+    sbInnerHalfH - 0.004,
+    sbInnerCornerR - 0.004,
+    sbInnerCornerR - 0.004,
+    sbInnerCornerR - 0.004,
+    sbInnerCornerR - 0.004,
     false
   ) as THREE.Shape;
   const backPanelGeo = new THREE.ExtrudeGeometry(backPanelShape, {
-    depth: sbDepthU - 0.032,
+    depth: sbDepthU - 0.044,
     bevelEnabled: false,
     curveSegments: 16,
   });
-  backPanelGeo.translate(0, 0, -(sbDepthU - 0.032) * 0.5);
+  backPanelGeo.translate(0, 0, -(sbDepthU - 0.044) * 0.5);
   backPanelGeo.rotateY(Math.PI / 2);
   applyOakJoineryUVs(backPanelGeo, 'z', 0.85, 1.35);
   const sbBackCoreMesh = new THREE.Mesh(backPanelGeo, darkTeakMat);
   sbBackCoreMesh.name = 'outbuildings.mezzanine.retroSideboard.backPanel';
-  sbBackCoreMesh.position.set(-0.012, sbBodyMidY, 0);
+  sbBackCoreMesh.position.set(-0.016, sbBodyMidY, 0);
   sbBackCoreMesh.castShadow = true;
   sbBackCoreMesh.receiveShadow = true;
   sideboardGroup.add(sbBackCoreMesh);
@@ -288,7 +288,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
   shadowCavityGeo.rotateY(Math.PI / 2);
   const shadowCavityMesh = new THREE.Mesh(shadowCavityGeo, shadowCavityMat);
   shadowCavityMesh.name = 'outbuildings.mezzanine.retroSideboard.shadowCavity';
-  shadowCavityMesh.position.set(sbDepthU * 0.5 - 0.023, sbBodyMidY, 0);
+  shadowCavityMesh.position.set(0.186, sbBodyMidY, 0);
   sideboardGroup.add(shadowCavityMesh);
 
   // 3. Internal Vertical Oak Divider Stiles (`z = ±0.236m`) & Horizontal Drawer Rails
@@ -296,7 +296,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
   const dividerStileW = 0.018;
   for (const sideZ of [-1, 1] as const) {
     const stileGeo = applyOakJoineryUVs(
-      new THREE.BoxGeometry(0.022, sbInnerHalfH * 2, dividerStileW),
+      new THREE.BoxGeometry(0.014, sbInnerHalfH * 2 - 0.008, dividerStileW),
       'y',
       1.35,
       1.6,
@@ -304,7 +304,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     );
     const stileMesh = new THREE.Mesh(stileGeo, darkTeakMat);
     stileMesh.name = 'outbuildings.mezzanine.retroSideboard.dividerStile';
-    stileMesh.position.set(sbDepthU * 0.5 - 0.015, sbBodyMidY, sideZ * dividerStileZ);
+    stileMesh.position.set(0.198, sbBodyMidY, sideZ * dividerStileZ);
     sideboardGroup.add(stileMesh);
   }
 
@@ -318,7 +318,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
   const doorHalfH = sbInnerHalfH - 0.005; // 0.229m
   const doorOuterR = sbInnerCornerR - 0.005; // 0.047m
   const doorInnerR = 0.003;
-  const insetFrontX = sbDepthU * 0.5 - 0.020;
+  const insetFrontX = 0.194;
 
   for (const sideZ of [-1, 1] as const) {
     // When sideZ === -1 (Left door at negative Z), in shape space `shapeX = -z > 0`, so the outer cabinet edge is on the RIGHT (`rRightBot, rRightTop`)!
@@ -353,22 +353,22 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     // Sculpted vertical mid-century solid-oak finger-pull handle near the inner stile
     const handleZ = sideZ * (dividerStileZ + 0.042);
     const handleShadow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.006, 0.118, 0.012),
+      new THREE.BoxGeometry(0.004, 0.118, 0.012),
       shadowCavityMat
     );
     handleShadow.name = 'outbuildings.mezzanine.retroSideboard.doorHandleRecess';
-    handleShadow.position.set(insetFrontX + 0.018, sbBodyMidY, handleZ - sideZ * 0.005);
+    handleShadow.position.set(insetFrontX + 0.0235, sbBodyMidY, handleZ - sideZ * 0.005);
     sideboardGroup.add(handleShadow);
 
     const handleGeo = applyOakJoineryUVs(
-      new THREE.BoxGeometry(0.018, 0.122, 0.015),
+      new THREE.BoxGeometry(0.016, 0.122, 0.015),
       'y',
       1.6,
       1.6
     );
     const doorHandle = new THREE.Mesh(handleGeo, darkTeakMat);
     doorHandle.name = 'outbuildings.mezzanine.retroSideboard.doorHandle';
-    doorHandle.position.set(insetFrontX + 0.023, sbBodyMidY, handleZ);
+    doorHandle.position.set(insetFrontX + 0.0375, sbBodyMidY, handleZ);
     doorHandle.castShadow = true;
     sideboardGroup.add(doorHandle);
   }
@@ -413,15 +413,15 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
 
     // Dark finger-recess shadow under the horizontal drawer pull
     const pullShadow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.008, 0.009, 0.118),
+      new THREE.BoxGeometry(0.004, 0.009, 0.118),
       shadowCavityMat
     );
     pullShadow.name = 'outbuildings.mezzanine.retroSideboard.drawerPullRecess';
-    pullShadow.position.set(insetFrontX + 0.019, dy - 0.004, 0);
+    pullShadow.position.set(insetFrontX + 0.0235, dy - 0.004, 0);
     sideboardGroup.add(pullShadow);
 
     const pullGeo = applyOakJoineryUVs(
-      new THREE.BoxGeometry(0.020, 0.016, 0.124),
+      new THREE.BoxGeometry(0.016, 0.016, 0.124),
       'z',
       1.2,
       1.6,
@@ -429,7 +429,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     );
     const drawerPull = new THREE.Mesh(pullGeo, darkTeakMat);
     drawerPull.name = 'outbuildings.mezzanine.retroSideboard.drawerPull';
-    drawerPull.position.set(insetFrontX + 0.024, dy + 0.003, 0);
+    drawerPull.position.set(insetFrontX + 0.0375, dy + 0.003, 0);
     drawerPull.castShadow = true;
     sideboardGroup.add(drawerPull);
   }
@@ -437,41 +437,41 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
   // 6. Sculpted Mid-Century Solid Oak Underframe Stretcher Apron & 4 Splayed Tapered Legs
   for (const railX of [-0.155, 0.155] as const) {
     const railGeo = applyOakJoineryUVs(
-      new THREE.BoxGeometry(0.026, 0.032, sbTotalW - 0.28),
+      new THREE.BoxGeometry(0.026, 0.028, sbTotalW - 0.28),
       'z',
       0.85,
       1.5
     );
     const stretcherRail = new THREE.Mesh(railGeo, darkTeakMat);
     stretcherRail.name = 'outbuildings.mezzanine.retroSideboard.stretcherRail';
-    stretcherRail.position.set(railX, sbLegH - 0.014, 0);
+    stretcherRail.position.set(railX, sbLegH - 0.026, 0);
     stretcherRail.castShadow = true;
     sideboardGroup.add(stretcherRail);
   }
   for (const crossZ of [-0.60, 0, 0.60] as const) {
     const crossGeo = applyOakJoineryUVs(
-      new THREE.BoxGeometry(0.31, 0.028, 0.028),
+      new THREE.BoxGeometry(0.276, 0.028, 0.028),
       'x',
       1.2,
       1.5
     );
     const crossRail = new THREE.Mesh(crossGeo, darkTeakMat);
     crossRail.name = 'outbuildings.mezzanine.retroSideboard.crossRail';
-    crossRail.position.set(0, sbLegH - 0.014, crossZ);
+    crossRail.position.set(0, sbLegH - 0.026, crossZ);
     sideboardGroup.add(crossRail);
   }
 
   for (const lx of [-0.155, 0.155] as const) {
     for (const lz of [-0.61, 0.61] as const) {
       const legGeo = applyOakJoineryUVs(
-        new THREE.CylinderGeometry(0.023, 0.013, sbLegH + 0.02, 16),
+        new THREE.CylinderGeometry(0.023, 0.013, sbLegH - 0.012, 16),
         'y',
         1.4,
         2.0
       );
       const leg = new THREE.Mesh(legGeo, darkTeakMat);
       leg.name = 'outbuildings.mezzanine.retroSideboard.leg';
-      leg.position.set(lx, sbLegH * 0.5, lz);
+      leg.position.set(lx, 0.004 + (sbLegH - 0.012) * 0.5, lz);
       leg.rotation.z = lx > 0 ? 0.10 : -0.10;
       leg.rotation.x = lz > 0 ? -0.09 : 0.09;
       leg.castShadow = true;
@@ -486,26 +486,26 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
   // =========================================================================
   const tvGroup = new THREE.Group();
   tvGroup.name = 'outbuildings.mezzanine.sonyTrinitronTV';
-  tvGroup.position.set(19.20, mezzanineFloorY + sbTopY, 2.38);
+  tvGroup.position.set(19.20, mezzanineFloorY + sbTopY + 0.009, 2.38);
   tvGroup.rotation.y = -0.06; // Slightly angled toward the lounge seating
   loungeGroup.add(tvGroup);
 
   // Swivel base pedestal
   const tvBase = new THREE.Mesh(
-    new THREE.BoxGeometry(0.34, 0.028, 0.52),
+    new THREE.BoxGeometry(0.34, 0.024, 0.52),
     trinitronDarkGrilleMat
   );
   tvBase.name = 'outbuildings.mezzanine.sonyTrinitronTV.swivelBase';
-  tvBase.position.set(-0.02, 0.014, 0);
+  tvBase.position.set(-0.02, 0.012, 0);
   tvGroup.add(tvBase);
 
-  // Main front Trinitron cabinet bezel (`0.64m` wide along Z x `0.52m` high x `0.22m` front box)
+  // Main front Trinitron cabinet bezel (`0.64m` wide along Z x `0.51m` high x `0.22m` front box)
   const tvFrontBody = new THREE.Mesh(
-    new THREE.BoxGeometry(0.22, 0.52, 0.64),
+    new THREE.BoxGeometry(0.22, 0.51, 0.64),
     trinitronCharcoalMat
   );
   tvFrontBody.name = 'outbuildings.mezzanine.sonyTrinitronTV.frontCabinet';
-  tvFrontBody.position.set(0.05, 0.288, 0);
+  tvFrontBody.position.set(0.05, 0.284, 0);
   tvFrontBody.castShadow = true;
   tvFrontBody.receiveShadow = true;
   tvGroup.add(tvFrontBody);
@@ -516,7 +516,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     trinitronCharcoalMat
   );
   tvMidBack.name = 'outbuildings.mezzanine.sonyTrinitronTV.rearHousing';
-  tvMidBack.position.set(-0.14, 0.28, 0);
+  tvMidBack.position.set(-0.155, 0.28, 0);
   tvMidBack.castShadow = true;
   tvGroup.add(tvMidBack);
 
@@ -525,7 +525,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     trinitronDarkGrilleMat
   );
   tvNeckCap.name = 'outbuildings.mezzanine.sonyTrinitronTV.crtNeckCap';
-  tvNeckCap.position.set(-0.27, 0.27, 0);
+  tvNeckCap.position.set(-0.295, 0.27, 0);
   tvGroup.add(tvNeckCap);
 
   // Moulded top & side ventilation slot ribs on the CRT housing
@@ -536,17 +536,17 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     );
     ventRib.name = 'outbuildings.mezzanine.sonyTrinitronTV.ventRib';
     ventRib.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    ventRib.position.set(-0.13, 0.492, vSlot);
+    ventRib.position.set(-0.155, 0.498, vSlot);
     tvGroup.add(ventRib);
   }
 
   // Deep recessed dark bezel framing the 4:3 CRT glass
   const bezelFrame = new THREE.Mesh(
-    new THREE.BoxGeometry(0.022, 0.41, 0.52),
+    new THREE.BoxGeometry(0.016, 0.41, 0.52),
     trinitronDarkGrilleMat
   );
   bezelFrame.name = 'outbuildings.mezzanine.sonyTrinitronTV.bezel';
-  bezelFrame.position.set(0.155, 0.315, 0);
+  bezelFrame.position.set(0.173, 0.318, 0);
   tvGroup.add(bezelFrame);
 
   // Illuminated 4:3 Sony Trinitron CRT Screen (`The Lion King` Young Simba scene!)
@@ -577,26 +577,26 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
   const crtScreen = new THREE.Mesh(screenGeo, crtScreenMat);
   crtScreen.name = 'outbuildings.mezzanine.sonyTrinitronTV.screen';
   crtScreen.rotation.y = Math.PI / 2; // Faces `+x` East into the Mezzanine lounge
-  crtScreen.position.set(0.167, 0.315, 0);
+  crtScreen.position.set(0.186, 0.318, 0);
   tvGroup.add(crtScreen);
 
   // Lower speaker grille & flip-down control panel door below the screen
   const lowerControlBar = new THREE.Mesh(
-    new THREE.BoxGeometry(0.026, 0.068, 0.62),
+    new THREE.BoxGeometry(0.016, 0.062, 0.62),
     trinitronDarkGrilleMat
   );
   lowerControlBar.name = 'outbuildings.mezzanine.sonyTrinitronTV.controlBar';
-  lowerControlBar.position.set(0.158, 0.068, 0);
+  lowerControlBar.position.set(0.173, 0.068, 0);
   tvGroup.add(lowerControlBar);
 
   // Silver 'SONY' badge centered below the screen
   const sonyBadge = new THREE.Mesh(
-    new THREE.BoxGeometry(0.008, 0.014, 0.062),
+    new THREE.BoxGeometry(0.006, 0.012, 0.062),
     silverBadgeMat
   );
   sonyBadge.name = 'outbuildings.mezzanine.sonyTrinitronTV.badge';
   sonyBadge.userData = { lodTier: 'high', lodMaxDistance: 12 };
-  sonyBadge.position.set(0.172, 0.092, 0);
+  sonyBadge.position.set(0.188, 0.106, 0);
   tvGroup.add(sonyBadge);
 
   // Glowing green power indicator LED + power button
@@ -610,7 +610,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
   );
   powerLed.name = 'outbuildings.mezzanine.sonyTrinitronTV.powerLed';
   powerLed.userData = { lodTier: 'high', lodMaxDistance: 12 };
-  powerLed.position.set(0.171, 0.065, 0.22);
+  powerLed.position.set(0.189, 0.068, 0.22);
   tvGroup.add(powerLed);
 
   // =========================================================================
@@ -700,13 +700,13 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
   // 5. Low Warm-Timber Lounge Coffee Table (`u = 21.55m, v = 1.62m`, matching `media_1791202879638_22365d89.jpg`)
   const coffeeTableGroup = new THREE.Group();
   coffeeTableGroup.name = 'outbuildings.mezzanine.coffeeTable';
-  coffeeTableGroup.position.set(21.55, mezzanineFloorY, 1.62);
+  coffeeTableGroup.position.set(21.55, mezzanineFloorY + 0.018, 1.62);
   coffeeTableGroup.rotation.y = 0.06;
   loungeSeatingGroup.add(coffeeTableGroup);
 
   const ctW = 0.62;
   const ctL = 0.96;
-  const ctH = 0.38;
+  const ctH = 0.362;
   const ctTop = new THREE.Mesh(
     applyOakJoineryUVs(new THREE.BoxGeometry(ctW, 0.028, ctL), 'z', 0.95, 1.35),
     teakMat
@@ -720,11 +720,11 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
   for (const lx of [-0.24, 0.24] as const) {
     for (const lz of [-0.40, 0.40] as const) {
       const ctLeg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.018, 0.013, ctH - 0.02, 16),
+        new THREE.CylinderGeometry(0.018, 0.013, ctH - 0.032, 16),
         darkTeakMat
       );
       ctLeg.name = 'outbuildings.mezzanine.coffeeTable.leg';
-      ctLeg.position.set(lx, (ctH - 0.02) * 0.5, lz);
+      ctLeg.position.set(lx, (ctH - 0.032) * 0.5, lz);
       ctLeg.castShadow = true;
       coffeeTableGroup.add(ctLeg);
     }
@@ -740,7 +740,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     })
   );
   monopolyBoard.name = 'outbuildings.mezzanine.monopolyBoard';
-  monopolyBoard.position.set(0, ctH + 0.003, 0.02);
+  monopolyBoard.position.set(0, ctH + 0.007, 0.02);
   monopolyBoard.rotation.y = 0.14;
   coffeeTableGroup.add(monopolyBoard);
 
@@ -760,7 +760,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     );
     token.name = 'outbuildings.mezzanine.monopolyBoard.houseToken';
     token.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    token.position.set(hx, ctH + 0.011, hz);
+    token.position.set(hx, ctH + 0.014 + (isHotel ? 0.007 : 0.005), hz);
     coffeeTableGroup.add(token);
   }
   for (const [dx, dz] of [
@@ -773,7 +773,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     );
     die.name = 'outbuildings.mezzanine.monopolyBoard.die';
     die.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    die.position.set(dx, ctH + 0.012, dz);
+    die.position.set(dx, ctH + 0.02, dz);
     die.rotation.y = 0.4;
     coffeeTableGroup.add(die);
   }
@@ -790,7 +790,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     );
     can.name = 'outbuildings.mezzanine.coffeeTable.sodaCan';
     can.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    can.position.set(cx, ctH + cH * 0.5, cz);
+    can.position.set(cx, ctH + 0.004 + cH * 0.5, cz);
     can.castShadow = true;
     coffeeTableGroup.add(can);
 
@@ -800,7 +800,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     );
     canLid.name = 'outbuildings.mezzanine.coffeeTable.sodaCanLid';
     canLid.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    canLid.position.set(cx, ctH + cH + 0.002, cz);
+    canLid.position.set(cx, ctH + 0.004 + cH + 0.006, cz);
     coffeeTableGroup.add(canLid);
   }
 
@@ -815,7 +815,7 @@ export function buildBarnMezzanineRetroFurnitureAndTv(
     );
     bowl.name = 'outbuildings.mezzanine.coffeeTable.snackBowl';
     bowl.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    bowl.position.set(bx, ctH + 0.024, bz);
+    bowl.position.set(bx, ctH + 0.028, bz);
     bowl.castShadow = true;
     coffeeTableGroup.add(bowl);
   }

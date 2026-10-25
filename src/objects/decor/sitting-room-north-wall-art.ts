@@ -12,7 +12,7 @@ export function buildSittingRoomNorthWallArt(
   const artGroup = new THREE.Group();
   artGroup.name = 'sittingRoom.northWallArt';
   artGroup.userData.zone = 'sittingRoom';
-  artGroup.position.set(-20.208, 0.8, 3.7);
+  artGroup.position.set(-20.208, 0.8, 3.718);
 
   const frameWidth = 1.32;
   const frameHeight = 1.06;
@@ -29,22 +29,24 @@ export function buildSittingRoomNorthWallArt(
     metalness: 0.02,
   });
 
-  // Backing board against North wall
+  // Outer stepped dark-bronze & antique-brass gallery moulding rails (top, bottom, left, right)
+  const outerRailW = 0.052;
+  const outerRailD = 0.038;
+  const innerStepW = 0.034;
+  const innerStepD = 0.016;
+  const linerW = frameWidth - outerRailW * 2;
+  const linerH = frameHeight - outerRailW * 2;
+
+  // Backing board nested inside outer frame opening
   const backingBoard = new THREE.Mesh(
-    new THREE.BoxGeometry(frameWidth - 0.02, frameHeight - 0.02, 0.012),
+    new THREE.BoxGeometry(linerW, linerH, 0.008),
     ceramicWhiteMat
   );
   backingBoard.name = 'sittingRoom.northWallArt.backingBoard';
-  backingBoard.position.set(0, 0, 0.006);
+  backingBoard.position.set(0, 0, 0.004);
   backingBoard.castShadow = true;
   backingBoard.receiveShadow = true;
   artGroup.add(backingBoard);
-
-  // Outer stepped dark-bronze & antique-brass gallery moulding rails (top, bottom, left, right)
-  const outerRailW = 0.052;
-  const outerRailD = 0.042;
-  const innerStepW = 0.034;
-  const innerStepD = 0.032;
 
   // Top & Bottom Horizontal Moulding Rails
   for (const [label, sy] of [
@@ -64,31 +66,27 @@ export function buildSittingRoomNorthWallArt(
 
     // Stepped antique-brass ogee crest along outer perimeter
     const brassCrest = new THREE.Mesh(
-      new THREE.BoxGeometry(frameWidth - 0.016, 0.018, outerRailD + 0.006),
+      new THREE.BoxGeometry(frameWidth - 0.016, 0.018, 0.01),
       brassMat
     );
     brassCrest.name = `sittingRoom.northWallArt.brassCrest.${label}`;
     brassCrest.position.set(
       0,
       sy * (frameHeight * 0.5 - 0.014),
-      outerRailD * 0.5 + 0.003
+      outerRailD + 0.005
     );
     artGroup.add(brassCrest);
 
     // Inner stepped rebate moulding
     const innerStep = new THREE.Mesh(
-      new THREE.BoxGeometry(
-        frameWidth - outerRailW * 1.4,
-        innerStepW,
-        innerStepD
-      ),
+      new THREE.BoxGeometry(linerW, innerStepW, innerStepD),
       darkBronzeMouldingMat
     );
     innerStep.name = `sittingRoom.northWallArt.innerStep.${label}`;
     innerStep.position.set(
       0,
-      sy * (frameHeight * 0.5 - outerRailW - innerStepW * 0.35),
-      innerStepD * 0.5 + 0.004
+      sy * (linerH * 0.5 - innerStepW * 0.5),
+      0.016 + innerStepD * 0.5
     );
     artGroup.add(innerStep);
   }
@@ -111,30 +109,30 @@ export function buildSittingRoomNorthWallArt(
     artGroup.add(outerRail);
 
     const brassCrest = new THREE.Mesh(
-      new THREE.BoxGeometry(0.018, frameHeight - 0.016, outerRailD + 0.006),
+      new THREE.BoxGeometry(0.018, frameHeight - 0.046, 0.01),
       brassMat
     );
     brassCrest.name = `sittingRoom.northWallArt.brassCrest.${label}`;
     brassCrest.position.set(
       sx * (frameWidth * 0.5 - 0.014),
       0,
-      outerRailD * 0.5 + 0.003
+      outerRailD + 0.005
     );
     artGroup.add(brassCrest);
 
     const innerStep = new THREE.Mesh(
       new THREE.BoxGeometry(
         innerStepW,
-        frameHeight - outerRailW * 2,
+        linerH - innerStepW * 2,
         innerStepD
       ),
       darkBronzeMouldingMat
     );
     innerStep.name = `sittingRoom.northWallArt.innerStep.${label}`;
     innerStep.position.set(
-      sx * (frameWidth * 0.5 - outerRailW - innerStepW * 0.35),
+      sx * (linerW * 0.5 - innerStepW * 0.5),
       0,
-      innerStepD * 0.5 + 0.004
+      0.016 + innerStepD * 0.5
     );
     artGroup.add(innerStep);
   }
@@ -149,13 +147,13 @@ export function buildSittingRoomNorthWallArt(
     ] as const
   ).entries()) {
     const cornerMiterSpline = new THREE.Mesh(
-      new THREE.BoxGeometry(0.004, 0.068, outerRailD + 0.008),
+      new THREE.BoxGeometry(0.004, 0.068, 0.006),
       brassMat
     );
     cornerMiterSpline.name = `sittingRoom.northWallArt.cornerMiterSpline.${cIdx + 1}`;
     cornerMiterSpline.userData.lodTier = 'high';
     cornerMiterSpline.userData.lodMaxDistance = 12;
-    cornerMiterSpline.position.set(cx, cy, outerRailD * 0.5 + 0.004);
+    cornerMiterSpline.position.set(cx, cy, outerRailD + 0.011);
     cornerMiterSpline.rotation.z = rotZ;
     artGroup.add(cornerMiterSpline);
 
@@ -167,19 +165,17 @@ export function buildSittingRoomNorthWallArt(
     cornerRosette.userData.lodTier = 'high';
     cornerRosette.userData.lodMaxDistance = 12;
     cornerRosette.rotation.x = Math.PI * 0.5;
-    cornerRosette.position.set(cx, cy, outerRailD + 0.006);
+    cornerRosette.position.set(cx, cy, outerRailD + 0.018);
     artGroup.add(cornerRosette);
   }
 
   // Warm oatmeal linen passepartout slip liner
-  const linerW = frameWidth - outerRailW * 2;
-  const linerH = frameHeight - outerRailW * 2;
   const passepartoutLiner = new THREE.Mesh(
-    new THREE.BoxGeometry(linerW, linerH, 0.022),
+    new THREE.BoxGeometry(linerW, linerH, 0.008),
     warmLinenMat
   );
   passepartoutLiner.name = 'sittingRoom.northWallArt.passepartoutLiner';
-  passepartoutLiner.position.set(0, 0, 0.014);
+  passepartoutLiner.position.set(0, 0, 0.012);
   passepartoutLiner.receiveShadow = true;
   artGroup.add(passepartoutLiner);
 
@@ -187,7 +183,7 @@ export function buildSittingRoomNorthWallArt(
   const canvasW = 1.08;
   const canvasH = 0.82;
   const filletThickness = 0.012;
-  const filletDepth = 0.028;
+  const filletDepth = 0.012;
 
   for (const sy of [-1, 1] as const) {
     const hFillet = new THREE.Mesh(
@@ -202,7 +198,7 @@ export function buildSittingRoomNorthWallArt(
     hFillet.position.set(
       0,
       sy * (canvasH * 0.5 + filletThickness * 0.5),
-      filletDepth * 0.5 + 0.004
+      0.016 + filletDepth * 0.5
     );
     artGroup.add(hFillet);
   }
@@ -215,7 +211,7 @@ export function buildSittingRoomNorthWallArt(
     vFillet.position.set(
       sx * (canvasW * 0.5 + filletThickness * 0.5),
       0,
-      filletDepth * 0.5 + 0.004
+      0.016 + filletDepth * 0.5
     );
     artGroup.add(vFillet);
   }
@@ -476,11 +472,11 @@ export function buildSittingRoomNorthWallArt(
   });
 
   const canvasMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(canvasW, canvasH, 0.008),
+    new THREE.BoxGeometry(canvasW, canvasH, 0.006),
     paintingMat
   );
   canvasMesh.name = 'sittingRoom.northWallArt.canvas';
-  canvasMesh.position.set(0, 0, 0.024);
+  canvasMesh.position.set(0, 0, 0.019);
   canvasMesh.receiveShadow = true;
   artGroup.add(canvasMesh);
 

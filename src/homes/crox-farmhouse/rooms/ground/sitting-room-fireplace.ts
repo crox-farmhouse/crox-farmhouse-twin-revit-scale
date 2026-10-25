@@ -218,14 +218,14 @@ export function buildSittingRoomFireplace(
   );
 
   for (const [plateX, innerJambX, sideTag] of [
-    [-19.1, -19.248, 'east'],
-    [-20.5, -20.352, 'west'],
+    [-19.1, -19.254, 'east'],
+    [-20.5, -20.346, 'west'],
   ] as const) {
     const plateY = tier2FloorY + 0.78;
     // Front black wrought-iron plate (0.195m x 0.19m) flush on the North face of the brick pier
     const frontIronPlate = tagHighLod(new THREE.Mesh(frontIronPlateGeo, castIronMat));
     frontIronPlate.name = `sittingRoom.fireplace.cornerPlate.${sideTag}`;
-    frontIronPlate.position.set(plateX, plateY, 7.675);
+    frontIronPlate.position.set(plateX, plateY, 7.674);
     frontIronPlate.castShadow = true;
     livingFpGroup.add(frontIronPlate);
 
@@ -519,7 +519,7 @@ export function buildSittingRoomFireplace(
   );
 
   for (const [minBx, maxBx, hasTv] of [
-    [-18.95, -17.2, false],
+    [-18.95, -17.228, false],
     [-22.19, -20.65, true],
   ] as const) {
     const alcoveSide = hasTv ? 'west' : 'east';
@@ -531,21 +531,21 @@ export function buildSittingRoomFireplace(
 
     // Deep moulded skirting plinth at bottom of base cabinet (height 0.13m)
     const basePlinth = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(bw, 0.13, 0.45)),
+      createSharedGeo(new THREE.BoxGeometry(bw, 0.13, 0.435)),
       antiqueOakSkirtingMat
     );
     basePlinth.name = 'sittingRoom.alcove.basePlinth';
-    basePlinth.position.set(bcx, tier2FloorY + 0.065, 7.925);
+    basePlinth.position.set(bcx, tier2FloorY + 0.065, 7.9175);
     basePlinth.receiveShadow = true;
     alcoveGroup.add(basePlinth);
 
-    // Lower base cabinet carcass (Y = tier2FloorY + 0.13m..+0.76m, depth 0.43m)
+    // Lower base cabinet carcass (Y = tier2FloorY + 0.13m..+0.76m, depth 0.415m)
     const baseCarcass = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(bw, 0.63, 0.43)),
+      createSharedGeo(new THREE.BoxGeometry(bw, 0.63, 0.415)),
       alcoveJoineryMat
     );
     baseCarcass.name = 'sittingRoom.alcove.baseCarcass';
-    baseCarcass.position.set(bcx, tier2FloorY + 0.445, 7.935);
+    baseCarcass.position.set(bcx, tier2FloorY + 0.445, 7.9275);
     baseCarcass.castShadow = true;
     baseCarcass.receiveShadow = true;
     alcoveGroup.add(baseCarcass);
@@ -615,11 +615,11 @@ export function buildSittingRoomFireplace(
 
     // Projecting Stepped/Moulded Countertop Ledge above the 4 Shaker doors (Y = tier2FloorY + 0.76m..+0.80m)
     const counterLedge = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(bw, 0.042, 0.47)),
+      createSharedGeo(new THREE.BoxGeometry(bw, 0.042, 0.455)),
       alcoveJoineryMat
     );
     counterLedge.name = 'sittingRoom.alcove.counterLedge';
-    counterLedge.position.set(bcx, tier2FloorY + 0.78, 7.915);
+    counterLedge.position.set(bcx, tier2FloorY + 0.78, 7.9075);
     counterLedge.castShadow = true;
     counterLedge.receiveShadow = true;
     alcoveGroup.add(counterLedge);
@@ -686,34 +686,34 @@ export function buildSittingRoomFireplace(
       metalness: 0.45,
     });
 
-    const shelfBoardGeo = createSharedGeo(new THREE.BoxGeometry(bw - 0.1, 0.038, 0.35));
+    const shelfBoardGeo = createSharedGeo(new THREE.BoxGeometry(bw - 0.1, 0.038, 0.326));
     const shelfNosingGeo = createSharedGeo(new THREE.BoxGeometry(bw - 0.1, 0.046, 0.024));
-    const ledChannelGeo = createSharedGeo(new THREE.BoxGeometry(bw - 0.14, 0.008, 0.022));
-    const ledDiffuserGeo = createSharedGeo(new THREE.BoxGeometry(bw - 0.16, 0.006, 0.014));
+    const ledChannelGeo = createSharedGeo(new THREE.BoxGeometry(bw - 0.14, 0.006, 0.022));
+    const ledDiffuserGeo = createSharedGeo(new THREE.BoxGeometry(bw - 0.16, 0.005, 0.014));
 
     const shelfHeights = hasTv ? [1.48, 1.81] : [1.14, 1.48, 1.81];
     for (const sy of shelfHeights) {
       const shelfBoard = new THREE.Mesh(shelfBoardGeo, alcoveJoineryMat);
       shelfBoard.name = 'sittingRoom.alcove.shelfBoard';
-      shelfBoard.position.set(bcx, tier2FloorY + sy, 7.96);
+      shelfBoard.position.set(bcx, tier2FloorY + sy, 7.95);
       shelfBoard.castShadow = true;
       shelfBoard.receiveShadow = true;
       alcoveGroup.add(shelfBoard);
 
       const shelfNosing = new THREE.Mesh(shelfNosingGeo, skirtingMat);
       shelfNosing.name = 'sittingRoom.alcove.shelfNosing';
-      shelfNosing.position.set(bcx, tier2FloorY + sy, 7.782);
+      shelfNosing.position.set(bcx, tier2FloorY + sy, 7.775);
       alcoveGroup.add(shelfNosing);
 
       // Recessed Aluminum LED Profile + Warm 2700K Diffuser Strip under each alcove shelf (Issue #2)
       const ledChannel = tagHighLod(new THREE.Mesh(ledChannelGeo, alcoveLedChannelMat));
       ledChannel.name = 'sittingRoom.alcove.ledChannel';
-      ledChannel.position.set(bcx, tier2FloorY + sy - 0.021, 7.835);
+      ledChannel.position.set(bcx, tier2FloorY + sy - 0.022, 7.835);
       alcoveGroup.add(ledChannel);
 
       const ledDiffuser = tagHighLod(new THREE.Mesh(ledDiffuserGeo, alcoveLedStripMat));
       ledDiffuser.name = 'sittingRoom.alcove.ledStrip';
-      ledDiffuser.position.set(bcx, tier2FloorY + sy - 0.024, 7.835);
+      ledDiffuser.position.set(bcx, tier2FloorY + sy - 0.0275, 7.835);
       alcoveGroup.add(ledDiffuser);
     }
 
@@ -1108,23 +1108,23 @@ export function buildSittingRoomFireplace(
         lgC5Group.add(footNeck);
       }
 
-      // Wafer-thin 6mm OLED evo metallic backplate + 4mm ultra-narrow bezel (932mm x 540mm x 6mm)
+      // Wafer-thin 8mm OLED evo metallic backplate + 4mm ultra-narrow bezel (932mm x 540mm x 8mm)
       const waferPanel = new THREE.Mesh(
-        createSharedGeo(new THREE.BoxGeometry(panelW, panelH, 0.006)),
+        createSharedGeo(new THREE.BoxGeometry(panelW, panelH, 0.008)),
         oledBezelMat
       );
       waferPanel.name = 'sittingRoom.lg42C5Oled.waferPanel';
-      waferPanel.position.set(0, panelCenterY, 0);
+      waferPanel.position.set(0, panelCenterY, 0.001);
       waferPanel.castShadow = true;
       lgC5Group.add(waferPanel);
 
       // Glossy anti-reflective OLED active screen surface (inset 4mm inside bezel)
       const activeOledScreen = new THREE.Mesh(
-        createSharedGeo(new THREE.BoxGeometry(panelW - 0.008, panelH - 0.008, 0.002)),
+        createSharedGeo(new THREE.BoxGeometry(panelW - 0.008, panelH - 0.008, 0.004)),
         oledPanelGlassMat
       );
       activeOledScreen.name = 'sittingRoom.lg42C5Oled.screen';
-      activeOledScreen.position.set(0, panelCenterY, -0.0035);
+      activeOledScreen.position.set(0, panelCenterY, -0.005);
       lgC5Group.add(activeOledScreen);
 
       // Lower-rear sculpted electronics & VESA housing (brings total depth to 41.1mm)

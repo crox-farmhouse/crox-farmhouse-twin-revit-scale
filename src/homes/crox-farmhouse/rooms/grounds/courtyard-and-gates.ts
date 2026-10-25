@@ -588,48 +588,27 @@ export function buildCourtyardAndGates(
   mainCourtyardSlab.receiveShadow = true;
   scene.add(mainCourtyardSlab);
 
-  // North-East Courtyard Cobble Strip connecting the Dining Room South threshold (X = -9.56m..-4.64m)
-  // seamlessly to the Kitchen South Cobble Path at X = -4.64m
-  const northEastCourtyardLink = new THREE.Mesh(
-    createGradedCourtyardGeometry(
-      4.92,
-      0.105,
-      0.9,
-      -7.1,
-      4.1,
-      12,
-      4,
-      true
-    ),
-    courtyardCobbleMat
-  );
-  northEastCourtyardLink.name = 'courtyard.northEastCobbleLink';
-  northEastCourtyardLink.userData.isArchitecturalShell = true;
-  northEastCourtyardLink.position.set(-7.1, -0.064, 4.1);
-  northEastCourtyardLink.receiveShadow = true;
-  scene.add(northEastCourtyardLink);
-
   // Cobbled Courtyard Entrance Bay immediately behind the Split Gate along the South Gable Wall of the Study
-  // (X = -22.33m..-17.11m, Z = +11.77m..+16.05m)
+  // (X = -22.33m..-17.115m, Z = +11.77m..+16.05m, 5mm West of mainCourtyardSlab to prevent edge overlap)
   const gateCourtyardBaySlab = new THREE.Mesh(
-    createGradedCourtyardGeometry(5.22, 0.105, 4.28, -19.72, 13.91, 16, 12, true),
+    createGradedCourtyardGeometry(5.215, 0.105, 4.28, -19.7225, 13.91, 16, 12, true),
     courtyardCobbleMat
   );
   gateCourtyardBaySlab.name = 'courtyard.gateBayCobbleSlab';
   gateCourtyardBaySlab.userData.isArchitecturalShell = true;
-  gateCourtyardBaySlab.position.set(-19.72, -0.064, 13.91);
+  gateCourtyardBaySlab.position.set(-19.7225, -0.064, 13.91);
   gateCourtyardBaySlab.receiveShadow = true;
   scene.add(gateCourtyardBaySlab);
 
   // Issue #3 ("This section seems to get a bit to narrow, look again at the arial shots" at `[5.699, -0.061, 13.178]`):
   // Lower South-East Courtyard Apron & Cobbled Alleyway between the Raised Limestone Patio / Walled Grape-Vine Pergola
-  // and the Barn / 2-Storey Stable North Wall (X = -4.64m..+10.80m) using the same repeating arched granite sett pattern!
+  // and the Barn / 2-Storey Stable North Wall (X = -4.635m..+10.80m, 5mm East of mainCourtyardSlab)
   const southEastCourtyardApron = new THREE.Mesh(
     createGradedCourtyardGeometry(
-      15.44,
+      15.435,
       0.105,
       9.4,
-      3.08,
+      3.0825,
       11.35,
       42,
       30,
@@ -639,18 +618,18 @@ export function buildCourtyardAndGates(
   );
   southEastCourtyardApron.name = 'courtyard.southEastCobbleApron';
   southEastCourtyardApron.userData.isArchitecturalShell = true;
-  southEastCourtyardApron.position.set(3.08, -0.064, 11.35);
+  southEastCourtyardApron.position.set(3.0825, -0.064, 11.35);
   southEastCourtyardApron.receiveShadow = true;
   scene.add(southEastCourtyardApron);
 
-  // Arched Granite-Sett Driveway Apron in front of (West of) the Split Gate (X = -27.85m..-22.33m, Z = +11.77m..+16.25m)
+  // Arched Granite-Sett Driveway Apron in front of (West of) the Split Gate (X = -27.85m..-22.335m, Z = +11.77m..+16.25m)
   const drivewayApron = new THREE.Mesh(
-    createGradedCourtyardGeometry(5.52, 0.095, 4.48, -25.09, 14.01, 16, 14, true),
+    createGradedCourtyardGeometry(5.515, 0.095, 4.48, -25.0925, 14.01, 16, 14, true),
     courtyardCobbleMat
   );
   drivewayApron.name = 'courtyard.drivewayApron';
   drivewayApron.userData.isArchitecturalShell = true;
-  drivewayApron.position.set(-25.09, -0.068, 14.01);
+  drivewayApron.position.set(-25.0925, -0.068, 14.01);
   drivewayApron.receiveShadow = true;
   scene.add(drivewayApron);
 
@@ -1531,23 +1510,23 @@ export function buildCourtyardAndGates(
     post.receiveShadow = true;
     scene.add(post);
 
-    // Moulded necking collar strictly above postTopY (zero volumetric overlap)
+    // Moulded necking collar strictly above postTopY (4mm clearance)
     const postCollar = new THREE.Mesh(
       new THREE.BoxGeometry(postDepthX + 0.018, 0.014, postWidthZ + 0.018),
       courtyardDoorRecessMat
     );
     postCollar.name = `courtyard.splitGate.post.${postId}.collar`;
-    postCollar.position.set(gateX, postTopY + 0.008, postZ);
+    postCollar.position.set(gateX, postTopY + 0.011, postZ);
     postCollar.castShadow = true;
     scene.add(postCollar);
 
-    // Weathered chamfered post cap strictly above necking collar (zero volumetric overlap)
+    // Weathered chamfered post cap strictly above necking collar (4mm clearance)
     const postCap = new THREE.Mesh(
       new THREE.BoxGeometry(postDepthX + 0.034, 0.036, postWidthZ + 0.034),
       courtyardDoorRecessMat
     );
     postCap.name = `courtyard.splitGate.post.${postId}.cap`;
-    postCap.position.set(gateX, postTopY + 0.034, postZ);
+    postCap.position.set(gateX, postTopY + 0.04, postZ);
     postCap.castShadow = true;
     scene.add(postCap);
   }
@@ -1577,11 +1556,11 @@ export function buildCourtyardAndGates(
     leafGroup.position.set(gateX, gateGroundY + gateH / 2 + 0.03, centerZ);
 
     const stileWidthZ = 0.09;
-    const panelSpanZ = leafW - stileWidthZ * 2 - 0.002;
+    const panelSpanZ = leafW - stileWidthZ * 2 - 0.008;
 
     // 1. Main vertical tongue-and-groove timber boarding core panel (strictly between North & South stiles)
     const boardPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.044, gateH - 0.004, panelSpanZ),
+      new THREE.BoxGeometry(0.044, gateH - 0.008, panelSpanZ),
       courtyardDoorMat
     );
     boardPanel.name = `${gateLeafId}.boardPanel`;
@@ -1602,40 +1581,40 @@ export function buildCourtyardAndGates(
       leafGroup.add(stile);
     }
 
-    // 3. Top weather capping rail (strictly above y = +gateH / 2 so it never overlaps stiles or boardPanel)
+    // 3. Top weather capping rail (strictly 4mm above y = +gateH / 2 so it never overlaps stiles or boardPanel)
     const topCap = new THREE.Mesh(
       new THREE.BoxGeometry(0.088, 0.052, leafW + 0.006),
       courtyardDoorRecessMat
     );
     topCap.name = `${gateLeafId}.topCap`;
-    topCap.position.set(0.004, gateH / 2 + 0.027, 0);
+    topCap.position.set(0.004, gateH / 2 + 0.03, 0);
     topCap.castShadow = true;
     topCap.receiveShadow = true;
     leafGroup.add(topCap);
 
     // 4. Front (West, -X driveway face) top frieze rail & bottom chamfered weather drip plinth rail
     const frontBottomRail = new THREE.Mesh(
-      new THREE.BoxGeometry(0.010, 0.076, panelSpanZ - 0.002),
+      new THREE.BoxGeometry(0.01, 0.076, panelSpanZ - 0.006),
       courtyardDoorRecessMat
     );
     frontBottomRail.name = `${gateLeafId}.frontBottomRail`;
-    frontBottomRail.position.set(-0.0275, -gateH / 2 + 0.040, 0);
+    frontBottomRail.position.set(-0.031, -gateH / 2 + 0.04, 0);
     frontBottomRail.castShadow = true;
     frontBottomRail.receiveShadow = true;
     leafGroup.add(frontBottomRail);
 
     const frontTopRail = new THREE.Mesh(
-      new THREE.BoxGeometry(0.010, 0.068, panelSpanZ - 0.002),
+      new THREE.BoxGeometry(0.01, 0.068, panelSpanZ - 0.006),
       courtyardDoorRecessMat
     );
     frontTopRail.name = `${gateLeafId}.frontTopRail`;
-    frontTopRail.position.set(-0.0275, gateH / 2 - 0.036, 0);
+    frontTopRail.position.set(-0.031, gateH / 2 - 0.036, 0);
     frontTopRail.castShadow = true;
     frontTopRail.receiveShadow = true;
     leafGroup.add(frontTopRail);
 
     // 5. Front (West, -X driveway face) Vertical T&G Bevelled Planks & V-Joint Shadow Grooves
-    const tgHeight = gateH - 0.152;
+    const tgHeight = gateH - 0.16;
     const tgCenterY = 0.004;
     const plankCount = Math.max(7, Math.round(panelSpanZ / 0.105));
     const plankPitchZ = panelSpanZ / plankCount;
@@ -1643,11 +1622,11 @@ export function buildCourtyardAndGates(
     for (let p = 0; p < plankCount; p++) {
       const pz = -panelSpanZ / 2 + (p + 0.5) * plankPitchZ;
       const tgPlank = new THREE.Mesh(
-        new THREE.BoxGeometry(0.004, tgHeight, plankPitchZ - 0.009),
+        new THREE.BoxGeometry(0.006, tgHeight, plankPitchZ - 0.014),
         p % 2 === 0 ? courtyardDoorMat : courtyardDoorRecessMat
       );
       tgPlank.name = `${gateLeafId}.tgPlank.${p + 1}`;
-      tgPlank.position.set(-0.0245, tgCenterY, pz);
+      tgPlank.position.set(-0.029, tgCenterY, pz);
       tgPlank.castShadow = true;
       tgPlank.receiveShadow = true;
       leafGroup.add(tgPlank);
@@ -1656,11 +1635,11 @@ export function buildCourtyardAndGates(
     for (let j = 1; j < plankCount; j++) {
       const gz = -panelSpanZ / 2 + j * plankPitchZ;
       const tgGroove = new THREE.Mesh(
-        new THREE.BoxGeometry(0.003, tgHeight, 0.007),
+        new THREE.BoxGeometry(0.004, tgHeight, 0.006),
         gateGrooveShadowMat
       );
       tgGroove.name = `${gateLeafId}.tgGroove.${j}`;
-      tgGroove.position.set(-0.0242, tgCenterY, gz);
+      tgGroove.position.set(-0.028, tgCenterY, gz);
       leafGroup.add(tgGroove);
     }
 
@@ -1678,7 +1657,7 @@ export function buildCourtyardAndGates(
         castIronMat
       );
       knuckle.name = `${gateLeafId}.strapHinge.${hPos}.knuckle`;
-      knuckle.position.set(-0.038, hy, hingeEdgeZ + hingeDir * 0.012);
+      knuckle.position.set(-0.042, hy, hingeEdgeZ + hingeDir * 0.012);
       knuckle.castShadow = true;
       leafGroup.add(knuckle);
 
@@ -1687,27 +1666,27 @@ export function buildCourtyardAndGates(
         castIronMat
       );
       hingePad.name = `${gateLeafId}.strapHinge.${hPos}.pad`;
-      hingePad.position.set(-0.0385, hy, hingeEdgeZ + hingeDir * 0.044);
+      hingePad.position.set(-0.042, hy, hingeEdgeZ + hingeDir * 0.044);
       hingePad.castShadow = true;
       leafGroup.add(hingePad);
 
-      const strapCenterZ = hingeEdgeZ + hingeDir * (0.074 + strapLen / 2);
+      const strapCenterZ = hingeEdgeZ + hingeDir * (0.078 + strapLen / 2);
       const hingeStrap = new THREE.Mesh(
         new THREE.BoxGeometry(0.007, 0.044, strapLen),
         castIronMat
       );
       hingeStrap.name = `${gateLeafId}.strapHinge.${hPos}.strap`;
-      hingeStrap.position.set(-0.038, hy, strapCenterZ);
+      hingeStrap.position.set(-0.0415, hy, strapCenterZ);
       hingeStrap.castShadow = true;
       leafGroup.add(hingeStrap);
 
-      const finialZ = hingeEdgeZ + hingeDir * (0.074 + strapLen + 0.016);
+      const finialZ = hingeEdgeZ + hingeDir * (0.078 + strapLen + 0.028);
       const finial = new THREE.Mesh(
         new THREE.BoxGeometry(0.007, 0.034, 0.034),
         castIronMat
       );
       finial.name = `${gateLeafId}.strapHinge.${hPos}.finial`;
-      finial.position.set(-0.038, hy, finialZ);
+      finial.position.set(-0.0415, hy, finialZ);
       finial.rotation.x = Math.PI / 4;
       finial.castShadow = true;
       leafGroup.add(finial);
@@ -1720,7 +1699,7 @@ export function buildCourtyardAndGates(
           castIronMat
         );
         bolt.name = `${gateLeafId}.strapHinge.${hPos}.bolt.${bIdx + 1}`;
-        bolt.position.set(-0.0435, hy, bz);
+        bolt.position.set(-0.0505, hy, bz);
         leafGroup.add(bolt);
       }
     }
@@ -1728,18 +1707,18 @@ export function buildCourtyardAndGates(
     // 7. Rear (East, +X courtyard side) top, middle, and bottom horizontal ledges (strictly East of boardPanel +0.022)
     for (const ly of [-gateH / 2 + 0.14, 0.0, gateH / 2 - 0.14]) {
       const ledge = new THREE.Mesh(
-        new THREE.BoxGeometry(0.030, 0.11, panelSpanZ - 0.004),
+        new THREE.BoxGeometry(0.03, 0.11, panelSpanZ - 0.008),
         courtyardDoorRecessMat
       );
       ledge.name = `${gateLeafId}.ledge.${ly < -0.1 ? 'bottom' : ly > 0.1 ? 'top' : 'middle'}`;
-      ledge.position.set(0.038, ly, 0);
+      ledge.position.set(0.041, ly, 0);
       ledge.castShadow = true;
       ledge.receiveShadow = true;
       leafGroup.add(ledge);
     }
 
     // 8. Rear (East, +X courtyard side) lower and upper diagonal timber braces (strictly East of boardPanel +0.022 and clear of ledges)
-    const braceSpanZ = panelSpanZ - 0.10;
+    const braceSpanZ = panelSpanZ - 0.1;
     const braceSpanY = gateH / 2 - 0.34;
     const braceLen = Math.hypot(braceSpanZ, braceSpanY);
     const braceSign = hingeSide === 'north' ? 1 : -1;
@@ -1749,7 +1728,7 @@ export function buildCourtyardAndGates(
         courtyardDoorRecessMat
       );
       brace.name = `${gateLeafId}.brace.${by < 0 ? 'lower' : 'upper'}`;
-      brace.position.set(0.036, by, 0);
+      brace.position.set(0.039, by, 0);
       brace.rotation.x = braceSign * Math.atan2(braceSpanY, braceSpanZ);
       brace.castShadow = true;
       brace.receiveShadow = true;
@@ -1765,7 +1744,7 @@ export function buildCourtyardAndGates(
       );
       latchPlate.name = `${gateLeafId}.latchPlate`;
       latchPlate.userData.lodTier = 'high';
-      latchPlate.position.set(-0.0385, 0.04, latchZ);
+      latchPlate.position.set(-0.042, 0.04, latchZ);
       latchPlate.castShadow = true;
       leafGroup.add(latchPlate);
 
@@ -1775,7 +1754,7 @@ export function buildCourtyardAndGates(
       );
       latchBoss.name = `${gateLeafId}.latchBoss`;
       latchBoss.userData.lodTier = 'high';
-      latchBoss.position.set(-0.048, 0.065, latchZ);
+      latchBoss.position.set(-0.061, 0.065, latchZ);
       latchBoss.rotation.z = Math.PI / 2;
       latchBoss.castShadow = true;
       leafGroup.add(latchBoss);
@@ -1786,7 +1765,7 @@ export function buildCourtyardAndGates(
       );
       latchRing.name = `${gateLeafId}.latchRing`;
       latchRing.userData.lodTier = 'high';
-      latchRing.position.set(-0.055, 0.03, latchZ);
+      latchRing.position.set(-0.068, 0.03, latchZ);
       latchRing.rotation.y = Math.PI / 2;
       latchRing.castShadow = true;
       leafGroup.add(latchRing);
@@ -1797,18 +1776,18 @@ export function buildCourtyardAndGates(
       );
       keyEscutcheon.name = `${gateLeafId}.keyEscutcheon`;
       keyEscutcheon.userData.lodTier = 'high';
-      keyEscutcheon.position.set(-0.043, -0.09, latchZ);
+      keyEscutcheon.position.set(-0.045, -0.09, latchZ);
       leafGroup.add(keyEscutcheon);
     }
 
     // 10. Center meeting stile vertical weather astragal strip on the West (-X) driveway face
     if (hasMeetingAstragal) {
       const astragal = new THREE.Mesh(
-        new THREE.BoxGeometry(0.010, gateH - 0.01, 0.042),
+        new THREE.BoxGeometry(0.01, gateH - 0.01, 0.042),
         courtyardDoorRecessMat
       );
       astragal.name = `${gateLeafId}.meetingAstragal`;
-      astragal.position.set(-0.040, 0, leafW / 2 - 0.008);
+      astragal.position.set(-0.043, 0, leafW / 2 - 0.008);
       astragal.castShadow = true;
       leafGroup.add(astragal);
     }
@@ -1845,7 +1824,7 @@ export function buildCourtyardAndGates(
     );
     motorPlate.name = `courtyard.splitGate.motorPlate.${++motorSeq}`;
     motorPlate.userData.lodTier = 'high';
-    motorPlate.position.set(gateX + 0.08, gateGroundY + 0.015, motorZ);
+    motorPlate.position.set(gateX + 0.08, gateGroundY + 0.02, motorZ);
     motorPlate.receiveShadow = true;
     scene.add(motorPlate);
   }

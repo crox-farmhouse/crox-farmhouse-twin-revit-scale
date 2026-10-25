@@ -1248,14 +1248,6 @@ export function buildGarageDeWaltPowerTools(
   sanderUnit.rotation.y = -0.28;
   grinderSanderGroup.add(sanderUnit);
 
-  const sandingPad = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.062, 0.062, 0.014, 22),
-    dewaltBlackMat
-  );
-  sandingPad.name = 'outbuildings.garage.toolBench.angleGrinderAndSander.randomOrbitSander.sandingPad';
-  sandingPad.position.set(0, 0.007, 0);
-  sanderUnit.add(sandingPad);
-
   const sandingDisc = new THREE.Mesh(
     new THREE.CylinderGeometry(0.061, 0.061, 0.003, 22),
     redAccentMat
@@ -1263,15 +1255,23 @@ export function buildGarageDeWaltPowerTools(
   sandingDisc.name = 'outbuildings.garage.toolBench.angleGrinderAndSander.randomOrbitSander.sandingDisc';
   sandingDisc.userData.lodTier = 'high';
   sandingDisc.userData.lodMaxDistance = 12;
-  sandingDisc.position.set(0, 0.0015, 0);
+  sandingDisc.position.set(0, 0.0055, 0);
   sanderUnit.add(sandingDisc);
+
+  const sandingPad = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.062, 0.062, 0.012, 22),
+    dewaltBlackMat
+  );
+  sandingPad.name = 'outbuildings.garage.toolBench.angleGrinderAndSander.randomOrbitSander.sandingPad';
+  sandingPad.position.set(0, 0.017, 0);
+  sanderUnit.add(sandingPad);
 
   const sanderHousing = new THREE.Mesh(
     new THREE.CylinderGeometry(0.042, 0.052, 0.088, 18),
     dewaltYellowMat
   );
   sanderHousing.name = 'outbuildings.garage.toolBench.angleGrinderAndSander.randomOrbitSander.motorHousing';
-  sanderHousing.position.set(0, 0.058, 0);
+  sanderHousing.position.set(0, 0.071, 0);
   sanderHousing.castShadow = true;
   sanderUnit.add(sanderHousing);
 
@@ -1280,7 +1280,7 @@ export function buildGarageDeWaltPowerTools(
     dewaltBlackMat
   );
   sanderPalmCap.name = 'outbuildings.garage.toolBench.angleGrinderAndSander.randomOrbitSander.palmGripCap';
-  sanderPalmCap.position.set(0, 0.098, 0);
+  sanderPalmCap.position.set(0, 0.111, 0);
   sanderUnit.add(sanderPalmCap);
 
   // Dust collection canister & filter bag at rear of random orbit sander

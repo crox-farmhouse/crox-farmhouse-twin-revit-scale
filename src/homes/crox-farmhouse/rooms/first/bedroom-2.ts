@@ -182,13 +182,13 @@ export function buildBedroom2(
     scene.add(northBrickGable);
 
     const northPlasterShape = new THREE.Shape();
-    northPlasterShape.moveTo(0.28, floorTopY);
+    northPlasterShape.moveTo(0.305, floorTopY);
     northPlasterShape.lineTo(5.63, floorTopY);
     northPlasterShape.lineTo(5.63, upperWallTopY);
     northPlasterShape.lineTo(3.91, collarCeilingY);
     northPlasterShape.lineTo(1.53, collarCeilingY);
     northPlasterShape.lineTo(0.72, upperWallTopY);
-    northPlasterShape.lineTo(0.28, upperWallTopY);
+    northPlasterShape.lineTo(0.305, upperWallTopY);
     northPlasterShape.closePath();
     const northPlasterGeo = new THREE.ExtrudeGeometry(northPlasterShape, {
       depth: 0.014,
@@ -242,8 +242,8 @@ export function buildBedroom2(
 
     // Unified full-height vaulted Shaker wardrobe carcass (`u = uStart..uEnd`, `z_local = +0.12m..+frontLocalZ` West into Bedroom 2)
     const carcassShape = new THREE.Shape();
-    carcassShape.moveTo(-frontLocalZ, 0);
-    carcassShape.lineTo(-0.12, 0);
+    carcassShape.moveTo(-frontLocalZ, 0.003);
+    carcassShape.lineTo(-0.12, 0.003);
     carcassShape.lineTo(-0.12, wardEavesH);
     carcassShape.lineTo(-frontLocalZ, wardFrontTopH);
     carcassShape.closePath();
@@ -422,13 +422,13 @@ export function buildBedroom2(
   // 25mm solid oak threshold step at `bedroom2EnsuiteDoor` (`2.050m -> 2.075m` into Room 20 Shower Room)
   {
     const ensuiteStepRise = showerRoomFloorY - floorTopY; // 0.025m
-    const ensuiteStepGeo = new THREE.BoxGeometry(0.9, ensuiteStepRise, 0.28);
+    const ensuiteStepGeo = new THREE.BoxGeometry(0.9, ensuiteStepRise, 0.136);
     ensuiteStepGeo.computeBoundingSphere();
     const ensuiteStepMesh = new THREE.Mesh(ensuiteStepGeo, antiqueOakSkirtingMat);
     ensuiteStepMesh.name = 'bedroom2.ensuiteDoorThresholdStep';
     ensuiteStepMesh.userData.isArchitecturalShell = true;
     ensuiteStepMesh.position.copy(
-      bed2SouthWallFrame.toWorld(0.545, floorTopY + ensuiteStepRise * 0.5, 0)
+      bed2SouthWallFrame.toWorld(0.545, floorTopY + ensuiteStepRise * 0.5, -0.072)
     );
     ensuiteStepMesh.rotation.y = bed2SouthWallFrame.rotationY;
     ensuiteStepMesh.receiveShadow = true;

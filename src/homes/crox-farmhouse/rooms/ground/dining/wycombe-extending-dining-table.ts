@@ -113,11 +113,11 @@ export function buildWycombeExtendingDiningTable(
   const plankSeams: THREE.Mesh[] = [];
   for (const plankSeamX of [-0.3, -0.1, 0.1, 0.3] as const) {
     const plankSeam = new THREE.Mesh(
-      new THREE.BoxGeometry(0.002, 0.002, 2.08),
+      new THREE.BoxGeometry(0.002, 0.0035, 2.08),
       wycombeOakSeamMat
     );
     if (!plankSeam.name) plankSeam.name = 'familyRoom.diningTable.plankSeam';
-    plankSeam.position.set(plankSeamX, 0.7505, 0);
+    plankSeam.position.set(plankSeamX, 0.75475, 0);
     wycombeGroup.add(plankSeam);
     plankSeams.push(plankSeam);
   }
@@ -213,12 +213,12 @@ export function buildWycombeExtendingDiningTable(
     // Subtle diagonal envelope-weave seam lines across the rush seat
     for (const diagAngle of [0.74, -0.74] as const) {
       const weaveSeam = new THREE.Mesh(
-        new THREE.BoxGeometry(0.52, 0.003, 0.004),
+        new THREE.BoxGeometry(0.52, 0.0035, 0.004),
         wycombeOakSeamMat
       );
       if (!weaveSeam.name) weaveSeam.name = 'familyRoom.diningTable.weaveSeam';
       weaveSeam.rotation.y = diagAngle;
-      weaveSeam.position.set(0, 0.473, 0);
+      weaveSeam.position.set(0, 0.47375, 0);
       chair.add(weaveSeam);
     }
 
@@ -362,11 +362,11 @@ export function buildWycombeExtendingDiningTable(
 
   // Linen runner, ceramic vase centerpiece, brass candlesticks & place settings
   const wycombeRunner = new THREE.Mesh(
-    new THREE.BoxGeometry(0.34, 0.005, 1.48),
+    new THREE.BoxGeometry(0.34, 0.004, 1.28),
     wycombeCushionMat
   );
   wycombeRunner.name = 'familyRoom.neptuneWycombeDiningTable.runner';
-  wycombeRunner.position.set(0, 0.753, 0);
+  wycombeRunner.position.set(0, 0.7585, 0);
   wycombeGroup.add(wycombeRunner);
 
   const wycombeVase = new THREE.Mesh(
@@ -457,16 +457,16 @@ export function buildWycombeExtendingDiningTable(
   const buildPlaceSetting = (pIdx: number, px: number, pz: number, pRotY: number): THREE.Group => {
     const placeGrp = new THREE.Group();
     placeGrp.name = `familyRoom.neptuneWycombeDiningTable.placeSetting.${pIdx}`;
-    placeGrp.position.set(px, 0.75, pz);
+    placeGrp.position.set(px, 0.753, pz);
     placeGrp.rotation.y = pRotY;
 
     // Woven round seagrass/rattan placemat
     const matMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.165, 0.165, 0.005, 24),
+      new THREE.CylinderGeometry(0.165, 0.165, 0.004, 24),
       placematMat
     );
     if (!matMesh.name) matMesh.name = 'familyRoom.diningTable.mat';
-    matMesh.position.set(0, 0.0025, 0);
+    matMesh.position.set(0, 0.002, 0);
     matMesh.receiveShadow = true;
     placeGrp.add(matMesh);
 
@@ -507,7 +507,7 @@ export function buildWycombeExtendingDiningTable(
       cutlerySilverMat
     );
     if (!fork.name) fork.name = 'familyRoom.diningTable.fork';
-    fork.position.set(-0.175, 0.004, 0);
+    fork.position.set(-0.175, 0.002, 0);
     placeGrp.add(fork);
 
     const knife = new THREE.Mesh(
@@ -515,7 +515,7 @@ export function buildWycombeExtendingDiningTable(
       cutlerySilverMat
     );
     if (!knife.name) knife.name = 'familyRoom.diningTable.knife';
-    knife.position.set(0.175, 0.004, 0);
+    knife.position.set(0.175, 0.002, 0);
     placeGrp.add(knife);
 
     // Stemmed crystal wine glass & water tumbler at top-right of the plate
@@ -524,7 +524,7 @@ export function buildWycombeExtendingDiningTable(
       crystalGlassMat
     );
     if (!glassBase.name) glassBase.name = 'familyRoom.diningTable.glassBase';
-    glassBase.position.set(0.14, 0.003, 0.13);
+    glassBase.position.set(0.14, 0.002, 0.13);
     placeGrp.add(glassBase);
 
     const glassStem = new THREE.Mesh(
@@ -616,7 +616,7 @@ export function buildWycombeExtendingDiningTable(
       wycombeApron.scale.z = isDiningTableExtended ? 2.64 / 1.88 : 1;
       wycombeApron.position.z = extCenterZ;
 
-      wycombeRunner.scale.z = isDiningTableExtended ? 2.24 / 1.48 : 1;
+      wycombeRunner.scale.z = isDiningTableExtended ? 2.04 / 1.28 : 1;
       wycombeRunner.position.z = extCenterZ;
 
       wycombeVase.position.z = extCenterZ;
@@ -649,7 +649,7 @@ export function buildWycombeExtendingDiningTable(
       const targetPlaceCoords = isDiningTableExtended ? placeSettingCoords10Primary : placeSettingCoords6;
       for (let i = 0; i < primaryPlaceSettings.length; i++) {
         const [px, pz, pRotY] = targetPlaceCoords[i]!;
-        primaryPlaceSettings[i]!.position.set(px, 0.75, pz);
+        primaryPlaceSettings[i]!.position.set(px, 0.753, pz);
         primaryPlaceSettings[i]!.rotation.y = pRotY;
       }
 

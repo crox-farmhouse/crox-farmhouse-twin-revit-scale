@@ -144,7 +144,7 @@ export function buildBarnSpiralStaircase(
     baseFlangeMat
   );
   steelBaseFlange.name = 'outbuildings.barn.spiralStaircase.centerColumn.baseFlange';
-  steelBaseFlange.position.set(0, 0.009, 0);
+  steelBaseFlange.position.set(0, 0.013, 0);
   steelBaseFlange.receiveShadow = true;
   columnGroup.add(steelBaseFlange);
 
@@ -153,7 +153,7 @@ export function buildBarnSpiralStaircase(
     oakHandrailMat
   );
   oakBasePlinth.name = 'outbuildings.barn.spiralStaircase.centerColumn';
-  oakBasePlinth.position.set(0, 0.048, 0);
+  oakBasePlinth.position.set(0, 0.06, 0);
   oakBasePlinth.castShadow = true;
   oakBasePlinth.receiveShadow = true;
   columnGroup.add(oakBasePlinth);
@@ -162,11 +162,11 @@ export function buildBarnSpiralStaircase(
   // Single continuous turned solid European oak center column with zero segmented bamboo rings!
   const totalColumnH = totalRise + 1.02;
   const columnShaft = new THREE.Mesh(
-    new THREE.CylinderGeometry(columnRadius, columnRadius, totalColumnH, 32),
+    new THREE.CylinderGeometry(columnRadius, columnRadius, totalColumnH - 0.098, 32),
     oakHandrailMat
   );
   columnShaft.name = 'outbuildings.barn.spiralStaircase.centerColumn';
-  columnShaft.position.set(0, totalColumnH * 0.5, 0);
+  columnShaft.position.set(0, (0.098 + totalColumnH) * 0.5, 0);
   columnShaft.castShadow = true;
   columnShaft.receiveShadow = true;
   columnGroup.add(columnShaft);
@@ -176,7 +176,7 @@ export function buildBarnSpiralStaircase(
     oakHandrailMat
   );
   capitalCollar.name = 'outbuildings.barn.spiralStaircase.centerColumn.capitalCollar';
-  capitalCollar.position.set(0, totalColumnH + 0.021, 0);
+  capitalCollar.position.set(0, totalColumnH + 0.025, 0);
   columnGroup.add(capitalCollar);
 
   const topFinial = new THREE.Mesh(
@@ -185,7 +185,7 @@ export function buildBarnSpiralStaircase(
   );
   topFinial.name = 'outbuildings.barn.spiralStaircase.centerColumn';
   topFinial.scale.set(1, 1.18, 1);
-  topFinial.position.set(0, totalColumnH + 0.1, 0);
+  topFinial.position.set(0, totalColumnH + 0.11, 0);
   topFinial.castShadow = true;
   columnGroup.add(topFinial);
 
@@ -253,8 +253,8 @@ export function buildBarnSpiralStaircase(
   const ledStripLen = outerRadius - columnRadius - 0.11; // ~0.685m radial strip length
   const ledRadialCenter = columnRadius + 0.055 + ledStripLen * 0.5;
   const ledLeadingAngle = -halfSweep * 0.62; // Positioned near the leading underside nosing of each fan tread
-  const ledChannelGeo = new THREE.BoxGeometry(ledStripLen, 0.008, 0.022);
-  const ledDiffuserGeo = new THREE.BoxGeometry(ledStripLen - 0.012, 0.005, 0.014);
+  const ledChannelGeo = new THREE.BoxGeometry(ledStripLen, 0.005, 0.022);
+  const ledDiffuserGeo = new THREE.BoxGeometry(ledStripLen - 0.012, 0.004, 0.014);
 
   for (let i = 0; i < numSteps; i++) {
     const frac = i / (numSteps - 1);
@@ -275,13 +275,13 @@ export function buildBarnSpiralStaircase(
     stepContainer.add(treadMesh);
 
     const spineBracket = new THREE.Mesh(
-      new THREE.BoxGeometry(outerRadius - columnRadius - 0.08, 0.044, 0.052),
+      new THREE.BoxGeometry(outerRadius - columnRadius - 0.09, 0.036, 0.052),
       oakHandrailMat
     );
     spineBracket.name = `outbuildings.barn.spiralStaircase.treadBracket.${i + 1}`;
     spineBracket.position.set(
-      columnRadius + (outerRadius - columnRadius - 0.08) * 0.5,
-      -0.022,
+      columnRadius + 0.006 + (outerRadius - columnRadius - 0.09) * 0.5,
+      -0.046,
       0
     );
     spineBracket.castShadow = true;
@@ -295,12 +295,12 @@ export function buildBarnSpiralStaircase(
 
     const ledChannel = new THREE.Mesh(ledChannelGeo, ledChannelMat);
     ledChannel.name = `outbuildings.barn.spiralStaircase.treadLedChannel.${i + 1}`;
-    ledChannel.position.set(ledRadialCenter, -0.003, 0);
+    ledChannel.position.set(ledRadialCenter, -0.012, 0);
     ledHolder.add(ledChannel);
 
     const ledStrip = new THREE.Mesh(ledDiffuserGeo, treadLedMat);
     ledStrip.name = 'outbuildings.barn.spiralStaircase.treadLedStrip';
-    ledStrip.position.set(ledRadialCenter, -0.006, 0);
+    ledStrip.position.set(ledRadialCenter, -0.021, 0);
     ledHolder.add(ledStrip);
   }
 
@@ -443,7 +443,6 @@ export function buildBarnSpiralStaircase(
     metalness: 0.12,
     transparent: true,
     opacity: 0.34,
-    side: THREE.DoubleSide,
   });
   const glassEdgeTintMat = new THREE.MeshStandardMaterial({
     color: 0x8fd4c1,
@@ -649,22 +648,26 @@ export function buildBarnSpiralStaircase(
     stairGroup.add(glassPanelMesh);
 
     // Polished green-tinted vertical toughened glass edge strips at start and end of each curved glass panel
-    for (const edgeAng of [aPanelStart, aPanelEnd] as const) {
+    for (const [edgeAng, tangSign] of [
+      [aPanelStart, -1],
+      [aPanelEnd, 1],
+    ] as const) {
+      const shiftedAng = edgeAng + (tangSign * 0.0055) / handrailRadius;
       const gt = (edgeAng - thetaStart) / totalThetaSpan;
       const yBot = riserH * 0.72 + gt * (totalRise - riserH * 0.72) + 0.04;
       const yTop = riserH + gt * (totalRise - riserH) + handrailHeightAboveTread - 0.022;
       const edgeH = yTop - yBot;
       const edgeStrip = new THREE.Mesh(
-        new THREE.BoxGeometry(glassThickR, edgeH, 0.005),
+        new THREE.BoxGeometry(glassThickR - 0.004, edgeH - 0.008, 0.003),
         glassEdgeTintMat
       );
       edgeStrip.name = 'outbuildings.barn.spiralStaircase.glassBanister.edgeStrip';
       edgeStrip.position.set(
-        handrailRadius * Math.cos(edgeAng),
+        handrailRadius * Math.cos(shiftedAng),
         yBot + edgeH * 0.5,
-        handrailRadius * Math.sin(edgeAng)
+        handrailRadius * Math.sin(shiftedAng)
       );
-      edgeStrip.rotation.y = -edgeAng;
+      edgeStrip.rotation.y = -shiftedAng;
       stairGroup.add(edgeStrip);
     }
 

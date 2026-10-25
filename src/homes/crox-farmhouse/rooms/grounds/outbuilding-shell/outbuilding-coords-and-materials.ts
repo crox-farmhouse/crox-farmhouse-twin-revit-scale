@@ -460,7 +460,6 @@ export function createOutbuildingShellContext(
     color: 0xd8cfc6, // Subtle warm weathered slate tint on the West & Center range
     roughness: 0.8,
     metalness: 0.04,
-    side: THREE.DoubleSide,
   });
 
   const welshSlateMat = new THREE.MeshStandardMaterial({
@@ -471,7 +470,6 @@ export function createOutbuildingShellContext(
     color: 0xffffff,
     roughness: 0.76,
     metalness: 0.05,
-    side: THREE.DoubleSide,
   });
 
   // Issue #3 ("Larger limestone tiles here with a bit more texture" at `[-4.737, -0.34, 18.005]`, `outbuildings.barn.westFloor`) &
@@ -883,6 +881,9 @@ export function createOutbuildingShellContext(
     color: 0xc89e65,
     roughness: 0.92,
     metalness: 0.01,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
   });
 
   // Helper to add a brick/plaster wall box in Outbuilding local coordinates (u, y, v).
@@ -1025,7 +1026,7 @@ export function createOutbuildingShellContext(
         overrideExteriorMat,
       ];
       const primary = buildBoxPart(brickUMin, brickUMax, yMin, yMax, vMin, brickVMax, brickMats, '', true);
-      buildBoxPart(iwiUMin, iwiUMax, yMin, yMax + 0.0015, brickVMax, iwiVMax, woodFibreCoreMat, '.woodFibreInsulation', false);
+      buildBoxPart(iwiUMin, iwiUMax, yMin, yMax, brickVMax, iwiVMax, woodFibreCoreMat, '.woodFibreInsulation', false);
       buildBoxPart(uMin, uMax, yMin, yMax, iwiVMax, vMax, overridePlasterMat, '.limePlaster', false);
       return primary;
     }
@@ -1049,7 +1050,7 @@ export function createOutbuildingShellContext(
         overrideExteriorMat,
       ];
       const primary = buildBoxPart(brickUMin, brickUMax, yMin, yMax, iwiVMax, vMax, brickMats, '', true);
-      buildBoxPart(iwiUMin, iwiUMax, yMin, yMax + 0.0015, limeVMax, iwiVMax, woodFibreCoreMat, '.woodFibreInsulation', false);
+      buildBoxPart(iwiUMin, iwiUMax, yMin, yMax, limeVMax, iwiVMax, woodFibreCoreMat, '.woodFibreInsulation', false);
       buildBoxPart(uMin, uMax, yMin, yMax, vMin, limeVMax, innerFinishMat, '.limePlaster', innerFinishMat === overrideExteriorMat);
       return primary;
     }
@@ -1070,7 +1071,7 @@ export function createOutbuildingShellContext(
       ];
       const primary = buildBoxPart(uMin, brickUMax, yMin, yMax, vMin, vMax, brickMats, '', true);
       if (innerV1 > innerV0 + 0.02) {
-        buildBoxPart(brickUMax, iwiUMax, yMin, yMax + 0.0015, innerV0, innerV1, woodFibreCoreMat, '.woodFibreInsulation', false);
+        buildBoxPart(brickUMax, iwiUMax, yMin, yMax, innerV0, innerV1, woodFibreCoreMat, '.woodFibreInsulation', false);
         buildBoxPart(iwiUMax, uMax, yMin, yMax, Math.max(vMin, 0.265), Math.min(vMax, 5.445), overridePlasterMat, '.limePlaster', false);
       }
       return primary;
@@ -1092,7 +1093,7 @@ export function createOutbuildingShellContext(
       ];
       const primary = buildBoxPart(iwiUMax, uMax, yMin, yMax, vMin, vMax, brickMats, '', true);
       if (innerV1 > innerV0 + 0.02) {
-        buildBoxPart(limeUMax, iwiUMax, yMin, yMax + 0.0015, innerV0, innerV1, woodFibreCoreMat, '.woodFibreInsulation', false);
+        buildBoxPart(limeUMax, iwiUMax, yMin, yMax, innerV0, innerV1, woodFibreCoreMat, '.woodFibreInsulation', false);
         buildBoxPart(uMin, limeUMax, yMin, yMax, Math.max(vMin, 0.265), Math.min(vMax, 5.445), overridePlasterMat, '.limePlaster', false);
       }
       return primary;
@@ -1126,16 +1127,18 @@ export function createOutbuildingShellContext(
     const isGarageStoreStepWall = Math.abs(uMin - 12.07) < 0.015 && Math.abs(uMax - 12.31) < 0.015;
     const isStoreBarnGolfBackWall = Math.abs(uMin - 14.96) < 0.015 && Math.abs(uMax - 15.20) < 0.015;
     const isCorridorAlcoveWall = uMin >= 12.30 && uMax <= 14.97 && vMin >= 1.38;
+    const iwiY0 = yMin + 0.004;
+    const iwiY1 = yMax + 0.004;
 
-    if (isGymGaragePartition) {
-      buildBoxPart(uMin + limeT, uMin + limeT + iwiT, yMin, yMax + 0.0015, vMin, vMax, woodFibreCoreMat, '.woodFibreInsulation', false);
-    } else if (isGarageStoreStepWall || isStoreBarnGolfBackWall) {
-      buildBoxPart(uMax - limeT - iwiT, uMax - limeT, yMin, yMax + 0.0015, vMin, vMax, woodFibreCoreMat, '.woodFibreInsulation', false);
-    } else if (isCorridorAlcoveWall) {
-      if (w >= d) {
-        buildBoxPart(uMin, uMax, yMin, yMax + 0.0015, cv - iwiT * 0.5, cv + iwiT * 0.5, woodFibreCoreMat, '.woodFibreInsulation', false);
-      } else {
-        buildBoxPart(cu - iwiT * 0.5, cu + iwiT * 0.5, yMin, yMax + 0.0015, vMin, vMax, woodFibreCoreMat, '.woodFibreInsulation', false);
+    if (isGymGaragePartition && d > 0.012 && iwiY1 > iwiY0 + 0.01) {
+      buildBoxPart(uMin + limeT, uMin + limeT + iwiT, iwiY0, iwiY1, vMin + 0.004, vMax - 0.004, woodFibreCoreMat, '.woodFibreInsulation', false);
+    } else if ((isGarageStoreStepWall || isStoreBarnGolfBackWall) && d > 0.012 && iwiY1 > iwiY0 + 0.01) {
+      buildBoxPart(uMax - limeT - iwiT, uMax - limeT, iwiY0, iwiY1, vMin + 0.004, vMax - 0.004, woodFibreCoreMat, '.woodFibreInsulation', false);
+    } else if (isCorridorAlcoveWall && iwiY1 > iwiY0 + 0.01) {
+      if (w >= d && w > 0.012) {
+        buildBoxPart(uMin + 0.004, uMax - 0.004, iwiY0, iwiY1, cv - iwiT * 0.5, cv + iwiT * 0.5, woodFibreCoreMat, '.woodFibreInsulation', false);
+      } else if (d > w && d > 0.012) {
+        buildBoxPart(cu - iwiT * 0.5, cu + iwiT * 0.5, iwiY0, iwiY1, vMin + 0.004, vMax - 0.004, woodFibreCoreMat, '.woodFibreInsulation', false);
       }
     }
 
@@ -1179,22 +1182,23 @@ export function createOutbuildingShellContext(
     const sillH = 0.028;
 
     const headFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(width, headH, frameDepth),
+      new THREE.BoxGeometry(width - jambW * 2 - 0.008, headH, frameDepth),
       courtyardDoorRecessMat
     );
     headFrame.name = `outbuildings.door.${doorSlug}.headFrame`;
-    headFrame.position.set(0, height - headH * 0.5, 0);
+    headFrame.position.set(0, height - headH * 0.5 - 0.002, 0);
     doorGroup.add(headFrame);
 
+    const jambClearH = height - headH - sillH - 0.01;
     for (const side of [-1, 1]) {
       const jamb = new THREE.Mesh(
-        new THREE.BoxGeometry(jambW, height - headH - sillH, frameDepth),
+        new THREE.BoxGeometry(jambW, jambClearH, frameDepth),
         courtyardDoorRecessMat
       );
       jamb.name = `outbuildings.door.${doorSlug}.jamb.${side < 0 ? "left" : "right"}`;
       jamb.position.set(
-        side * (width * 0.5 - jambW * 0.5),
-        sillH + (height - headH - sillH) * 0.5,
+        side * (width * 0.5 - jambW * 0.5 - 0.002),
+        sillH + 0.005 + jambClearH * 0.5,
         0
       );
       doorGroup.add(jamb);
@@ -1210,14 +1214,14 @@ export function createOutbuildingShellContext(
     const uInnerRight = width * 0.5 - 0.018;
     const yInnerHead = height - 0.014;
     for (const [normalSign, faceWallZ, archMat] of [
-      [-1 as const, -wallT * 0.5, courtyardDoorRecessMat],
-      [1 as const, wallT * 0.5, isDoubleLeaf ? courtyardDoorRecessMat : settingPlasterMat],
+      [-1 as const, -wallT * 0.5 - 0.005, courtyardDoorRecessMat],
+      [1 as const, wallT * 0.5 + 0.005, isDoubleLeaf ? courtyardDoorRecessMat : settingPlasterMat],
     ] as const) {
       const [leftLegGeo, headGeo, rightLegGeo] = buildMitredArchitraveSegments(
         uInnerLeft,
         uInnerRight,
-        sillH,
-        sillH,
+        sillH + 0.005,
+        sillH + 0.005,
         yInnerHead,
         'x',
         faceWallZ,
@@ -1236,11 +1240,11 @@ export function createOutbuildingShellContext(
 
     // Reclaimed stone threshold sill fitted inside the doorway opening (Issue #7: zero gap under door!)
     const sill = new THREE.Mesh(
-      new THREE.BoxGeometry(width, sillH, wallT + 0.05),
+      new THREE.BoxGeometry(width - 0.006, sillH - 0.004, wallT + 0.05),
       stoneSillMat
     );
     sill.name = `outbuildings.door.${doorSlug}.sill`;
-    sill.position.set(0, sillH * 0.5, -0.015);
+    sill.position.set(0, (sillH - 0.004) * 0.5 + 0.002, -0.015);
     sill.receiveShadow = true;
     doorGroup.add(sill);
 
@@ -1326,8 +1330,11 @@ export function createOutbuildingShellContext(
         const numPlanks = Math.max(8, Math.round(leafW / 0.14));
         for (let p = 1; p < numPlanks; p++) {
           const px = leafOffsetX - leafW * 0.5 + (p / numPlanks) * leafW;
+          if (Math.abs(px - leafOffsetX) < 0.032) {
+            continue;
+          }
           const groove = new THREE.Mesh(
-            new THREE.BoxGeometry(0.012, lowerBoardH - 0.06, 0.058),
+            new THREE.BoxGeometry(0.012, lowerBoardH - 0.06, 0.062),
             courtyardDoorRecessMat
           );
           groove.name = `outbuildings.garageDoor.lowerGroove.${doorSlug}.${p}`;
@@ -1338,7 +1345,7 @@ export function createOutbuildingShellContext(
 
         // Central vertical coach-house cover batten on the lower apron (`x = 0`)
         const centerLowerBatten = new THREE.Mesh(
-          new THREE.BoxGeometry(0.044, lowerBoardH - 0.02, 0.06),
+          new THREE.BoxGeometry(0.044, lowerBoardH - 0.06, 0.064),
           mat
         );
         centerLowerBatten.name = `outbuildings.garageDoor.centerLowerBatten.${doorSlug}`;
@@ -1348,7 +1355,7 @@ export function createOutbuildingShellContext(
 
         // Moulded full-width mid lock-rail & weather-drip sill bar at `y = lowerBoardH`
         const lockRail = new THREE.Mesh(
-          new THREE.BoxGeometry(leafW + 0.004, 0.068, 0.064),
+          new THREE.BoxGeometry(leafW + 0.004, 0.068, 0.074),
           courtyardDoorRecessMat
         );
         lockRail.name = `outbuildings.garageDoor.lockRail.${doorSlug}`;
@@ -1357,8 +1364,8 @@ export function createOutbuildingShellContext(
         leafPivot.add(lockRail);
 
         // 2. Left outer stile, center vertical mullion stile, and right outer stile
-        const upperSectionH = clearH - 0.003 - lowerBoardH;
-        const upperSectionMidY = yShift + lowerBoardH + upperSectionH * 0.5;
+        const upperSectionH = clearH - 0.003 - lowerBoardH - 0.02;
+        const upperSectionMidY = yShift + lowerBoardH + 0.02 + upperSectionH * 0.5;
         for (const sSide of [-1, 1] as const) {
           const upperStile = new THREE.Mesh(
             new THREE.BoxGeometry(stileW, upperSectionH, 0.052),
@@ -1374,19 +1381,20 @@ export function createOutbuildingShellContext(
           upperStile.receiveShadow = true;
           leafPivot.add(upperStile);
         }
+        const centerStileH = upperSectionH - topRailH - 0.008;
         const centerUpperStile = new THREE.Mesh(
-          new THREE.BoxGeometry(centerMullionW, upperSectionH, 0.052),
+          new THREE.BoxGeometry(centerMullionW, centerStileH, 0.052),
           mat
         );
         centerUpperStile.name = `outbuildings.garageDoor.centerUpperStile.${doorSlug}`;
-        centerUpperStile.position.set(leafOffsetX, upperSectionMidY, 0);
+        centerUpperStile.position.set(leafOffsetX, yShift + lowerBoardH + 0.02 + centerStileH * 0.5, 0);
         centerUpperStile.castShadow = true;
         centerUpperStile.receiveShadow = true;
         leafPivot.add(centerUpperStile);
 
         // 3. Full-width top solid timber head rail
         const topRail = new THREE.Mesh(
-          new THREE.BoxGeometry(leafW - stileW * 2 + 0.008, topRailH, 0.052),
+          new THREE.BoxGeometry(leafW - stileW * 2 - 0.008, topRailH, 0.052),
           mat
         );
         topRail.name = `outbuildings.garageDoor.topRail.${doorSlug}`;
@@ -1401,54 +1409,54 @@ export function createOutbuildingShellContext(
 
           for (const gSide of [-1, 1] as const) {
             const vBead = new THREE.Mesh(
-              new THREE.BoxGeometry(0.022, winH, 0.056),
+              new THREE.BoxGeometry(0.022, winH - 0.024, 0.062),
               courtyardDoorRecessMat
             );
             vBead.name = `outbuildings.garageDoor.vBead.${doorSlug}.${baySide < 0 ? "left" : "right"}.${gSide < 0 ? "left" : "right"}`;
             vBead.userData.lodTier = 'high';
-            vBead.position.set(bayCenterX + gSide * (bayWinW * 0.5 - 0.011), yShift + winCenterY, 0);
+            vBead.position.set(bayCenterX + gSide * (bayWinW * 0.5 - 0.015), yShift + winCenterY + 0.01, 0);
             leafPivot.add(vBead);
 
             const hBead = new THREE.Mesh(
-              new THREE.BoxGeometry(bayWinW, 0.022, 0.056),
+              new THREE.BoxGeometry(bayWinW - 0.062, 0.022, 0.062),
               courtyardDoorRecessMat
             );
             hBead.name = `outbuildings.garageDoor.hBead.${doorSlug}.${baySide < 0 ? "left" : "right"}.${gSide < 0 ? "bottom" : "top"}`;
             hBead.userData.lodTier = 'high';
-            hBead.position.set(bayCenterX, yShift + winCenterY + gSide * (winH * 0.5 - 0.011), 0);
+            hBead.position.set(bayCenterX, yShift + winCenterY + 0.01 + gSide * (winH * 0.5 - 0.023), 0);
             leafPivot.add(hBead);
           }
 
           const glassPane = new THREE.Mesh(
-            new THREE.BoxGeometry(bayWinW - 0.02, winH - 0.02, 0.014),
+            new THREE.BoxGeometry(bayWinW - 0.062, winH - 0.072, 0.014),
             windowGlassMat
           );
           glassPane.name = 'outbuildings.garageDoor.glass';
-          glassPane.position.set(bayCenterX, yShift + winCenterY, 0);
+          glassPane.position.set(bayCenterX, yShift + winCenterY + 0.01, 0);
           leafPivot.add(glassPane);
 
           for (const colOffset of [-bayWinW / 6, bayWinW / 6] as const) {
             const vMuntin = new THREE.Mesh(
-              new THREE.BoxGeometry(0.022, winH - 0.02, 0.034),
+              new THREE.BoxGeometry(0.022, winH - 0.072, 0.036),
               courtyardDoorRecessMat
             );
             vMuntin.name = `outbuildings.garageDoor.vMuntin.${doorSlug}.${baySide < 0 ? "left" : "right"}.${colOffset < 0 ? 1 : 2}`;
-            vMuntin.position.set(bayCenterX + colOffset, yShift + winCenterY, 0);
+            vMuntin.position.set(bayCenterX + colOffset, yShift + winCenterY + 0.01, 0);
             vMuntin.castShadow = true;
             leafPivot.add(vMuntin);
           }
           const hMuntin = new THREE.Mesh(
-            new THREE.BoxGeometry(bayWinW - 0.02, 0.022, 0.034),
+            new THREE.BoxGeometry(bayWinW - 0.062, 0.022, 0.026),
             courtyardDoorRecessMat
           );
           hMuntin.name = `outbuildings.garageDoor.hMuntin.${doorSlug}.${baySide < 0 ? "left" : "right"}`;
-          hMuntin.position.set(bayCenterX, yShift + winCenterY, 0);
+          hMuntin.position.set(bayCenterX, yShift + winCenterY + 0.01, 0);
           hMuntin.castShadow = true;
           leafPivot.add(hMuntin);
         }
       } else {
         const leafPanel = new THREE.Mesh(
-          new THREE.BoxGeometry(leafW, clearH - 0.006, 0.052),
+          new THREE.BoxGeometry(leafW - 0.008, clearH - 0.012, 0.052),
           mat
         );
         leafPanel.name = `outbuildings.door.${doorSlug}.leafPanel.${l + 1}`;
@@ -1462,7 +1470,7 @@ export function createOutbuildingShellContext(
         for (let p = 1; p < numPlanks; p++) {
           const px = leafOffsetX - leafW * 0.5 + (p / numPlanks) * leafW;
           const groove = new THREE.Mesh(
-            new THREE.BoxGeometry(0.012, clearH - 0.04, 0.058),
+            new THREE.BoxGeometry(0.012, clearH - 0.04, 0.062),
             courtyardDoorRecessMat
           );
           groove.name = `outbuildings.door.${doorSlug}.groove.${l + 1}.${p}`;
@@ -1481,7 +1489,7 @@ export function createOutbuildingShellContext(
           );
           topPivotStrap.name = `outbuildings.garageDoor.topPivotStrap.${doorSlug}.${brkSide < 0 ? "left" : "right"}`;
           topPivotStrap.userData.lodTier = 'high';
-          topPivotStrap.position.set(brkSide * (leafW * 0.5 - 0.08), yShift + clearH - 0.1, -0.03);
+          topPivotStrap.position.set(brkSide * (leafW * 0.5 - 0.08), yShift + clearH - 0.1, -0.038);
           leafPivot.add(topPivotStrap);
         }
 
@@ -1491,7 +1499,7 @@ export function createOutbuildingShellContext(
         );
         liftHandle.name = `outbuildings.garageDoor.liftHandle.${doorSlug}`;
         liftHandle.userData.lodTier = 'high';
-        liftHandle.position.set(0, yShift + clearH * 0.42, -0.032);
+        liftHandle.position.set(0, yShift + clearH * 0.42, -0.056);
         leafPivot.add(liftHandle);
 
         ctx.interactions.registerOverheadGarageDoor(
@@ -1513,7 +1521,7 @@ export function createOutbuildingShellContext(
           );
           strap.name = `outbuildings.door.${doorSlug}.strapHinge.${l + 1}.${hy < clearH * 0.5 ? "lower" : "upper"}`;
           strap.userData.lodTier = 'high';
-          strap.position.set(strapCenterX, yShift + hy, -0.03);
+          strap.position.set(strapCenterX, yShift + hy, -0.043);
           leafPivot.add(strap);
         }
 
@@ -1525,7 +1533,7 @@ export function createOutbuildingShellContext(
           latch.position.set(
             leafOffsetX - hingeSide * (leafW * 0.5 - 0.06),
             yShift + clearH * 0.48,
-            -0.032
+            -0.048
           );
           leafPivot.add(latch);
         }
@@ -1573,25 +1581,26 @@ export function createOutbuildingShellContext(
     // Outer perimeter frame & stone threshold sill set cleanly inside the opening (Issue #6: zero brick z-fighting!)
     const frameDepth = wallT - 0.008;
     const headFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(width, 0.052, frameDepth),
+      new THREE.BoxGeometry(width - 0.092 - 0.008, 0.052, frameDepth),
       courtyardDoorRecessMat
     );
     headFrame.name = 'outbuildings.gym.northGlazedScreen.headFrame';
-    headFrame.position.set(0, height - 0.026, 0);
+    headFrame.position.set(0, height - 0.028, 0);
     screenGroup.add(headFrame);
 
+    const outerJambH = height - 0.054 - 0.026 - 0.008;
     for (const side of [-1, 1]) {
       const outerJamb = new THREE.Mesh(
-        new THREE.BoxGeometry(0.046, height - 0.08, frameDepth),
+        new THREE.BoxGeometry(0.046, outerJambH, frameDepth),
         courtyardDoorRecessMat
       );
       outerJamb.name = `outbuildings.gym.northGlazedScreen.outerJamb.${side < 0 ? "west" : "east"}`;
-      outerJamb.position.set(side * (width * 0.5 - 0.023), height * 0.5 - 0.006, 0);
+      outerJamb.position.set(side * (width * 0.5 - 0.025), 0.03 + outerJambH * 0.5, 0);
       screenGroup.add(outerJamb);
     }
 
     const sill = new THREE.Mesh(
-      new THREE.BoxGeometry(width, 0.028, wallT + 0.05),
+      new THREE.BoxGeometry(width - 0.006, 0.024, wallT + 0.05),
       stoneSillMat
     );
     sill.name = 'outbuildings.gym.northGlazedScreen.sill';
@@ -1601,13 +1610,17 @@ export function createOutbuildingShellContext(
 
     // 4 full-height glazed bays (2 fixed side lights + 2 central hinged French glass doors)
     const numBays = 4;
-    const bayW = width / numBays;
-    const glassH = height - 0.11;
-    const glassCenterY = height * 0.5 + 0.02;
+    const clearScreenW = width - 0.092 - 0.012;
+    const bayW = clearScreenW / numBays;
+    const bayBotY = 0.032;
+    const bayTopY = height - 0.06;
+    const bayClearH = bayTopY - bayBotY;
+    const glassH = bayClearH - 0.055 - 0.075 - 0.012;
+    const glassCenterY = bayBotY + 0.075 + 0.006 + glassH * 0.5;
     const gymScreenDoorPivots: THREE.Group[] = [];
 
     for (let b = 0; b < numBays; b++) {
-      const bx = -width * 0.5 + (b + 0.5) * bayW;
+      const bx = -clearScreenW * 0.5 + (b + 0.5) * bayW;
       const isCentralDoor = b === 1 || b === 2;
       const hingeSide = b === 1 ? -1 : 1;
 
@@ -1626,36 +1639,36 @@ export function createOutbuildingShellContext(
 
       // Top and bottom door/sidelight frame rails
       const topRail = new THREE.Mesh(
-        new THREE.BoxGeometry(bayW - 0.01, 0.055, 0.058),
+        new THREE.BoxGeometry(bayW - 0.084 - 0.016, 0.055, 0.058),
         courtyardDoorMat
       );
       topRail.name = `outbuildings.gym.northGlazedScreen.topRail.${b + 1}`;
-      topRail.position.set(localX, height - 0.028, 0);
+      topRail.position.set(localX, bayTopY - 0.0275, 0);
       bayContainer.add(topRail);
 
       const botRail = new THREE.Mesh(
-        new THREE.BoxGeometry(bayW - 0.01, 0.075, 0.058),
+        new THREE.BoxGeometry(bayW - 0.084 - 0.016, 0.075, 0.058),
         courtyardDoorMat
       );
       botRail.name = `outbuildings.gym.northGlazedScreen.bottomRail.${b + 1}`;
-      botRail.position.set(localX, 0.06, 0);
+      botRail.position.set(localX, bayBotY + 0.0375, 0);
       bayContainer.add(botRail);
 
       // Left and right vertical stiles of each bay
       for (const s of [-1, 1]) {
         const stile = new THREE.Mesh(
-          new THREE.BoxGeometry(0.042, height - 0.03, 0.058),
+          new THREE.BoxGeometry(0.042, bayClearH, 0.058),
           courtyardDoorMat
         );
         stile.name = `outbuildings.gym.northGlazedScreen.stile.${b + 1}.${s < 0 ? "left" : "right"}`;
-        stile.position.set(localX + s * (bayW * 0.5 - 0.024), height * 0.5 + 0.01, 0);
+        stile.position.set(localX + s * (bayW * 0.5 - 0.024), bayBotY + bayClearH * 0.5, 0);
         bayContainer.add(stile);
       }
 
       // Slim horizontal glazing bars dividing each tall glass bay into 3 lights
-      for (const ty of [height * 0.36, height * 0.68]) {
+      for (const ty of [bayBotY + 0.075 + glassH * 0.34, bayBotY + 0.075 + glassH * 0.67]) {
         const transom = new THREE.Mesh(
-          new THREE.BoxGeometry(bayW - 0.07, 0.024, 0.042),
+          new THREE.BoxGeometry(bayW - 0.084 - 0.016, 0.024, 0.044),
           courtyardDoorMat
         );
         transom.name = `outbuildings.gym.northGlazedScreen.transom.${b + 1}.${ty < height * 0.5 ? "lower" : "upper"}`;
@@ -1665,7 +1678,7 @@ export function createOutbuildingShellContext(
 
       // Full-height clear architectural glass pane (`windowGlassMat` — Issue #6: "This is glass")
       const glassPane = new THREE.Mesh(
-        new THREE.BoxGeometry(bayW - 0.08, glassH, 0.024),
+        new THREE.BoxGeometry(bayW - 0.084 - 0.016, glassH, 0.016),
         windowGlassMat
       );
       glassPane.name = `outbuildings.gym.northGlazedScreen.glass.${b + 1}`;
@@ -1683,7 +1696,7 @@ export function createOutbuildingShellContext(
         handle.position.set(
           localX - hingeSide * (bayW * 0.5 - 0.042),
           height * 0.48,
-          -0.032
+          -0.056
         );
         bayContainer.add(handle);
 
@@ -1746,54 +1759,54 @@ export function createOutbuildingShellContext(
 
     // Weathered stone sill & upper brick/stone lintel header projecting proud of both wall faces
     const sill = new THREE.Mesh(
-      new THREE.BoxGeometry(width + 0.1, 0.058, wallT + 0.08),
+      new THREE.BoxGeometry(width - 0.004, 0.056, wallT + 0.08),
       stoneSillMat
     );
     sill.name = `${winId}.sill`;
-    sill.position.set(0, -height * 0.5 - 0.024, 0);
+    sill.position.set(0, -height * 0.5 - 0.033, 0);
     sill.castShadow = true;
     sill.receiveShadow = true;
     winGroup.add(sill);
 
     const lintel = new THREE.Mesh(
-      new THREE.BoxGeometry(width + 0.08, 0.065, wallT + 0.04),
+      new THREE.BoxGeometry(width - 0.004, 0.058, wallT + 0.04),
       stoneSillMat
     );
     lintel.name = `${winId}.lintel`;
-    lintel.position.set(0, height * 0.5 + 0.028, 0);
+    lintel.position.set(0, height * 0.5 + 0.034, 0);
     winGroup.add(lintel);
 
     // Outer white-painted timber reveal box frame lining the full wall thickness
     const frameDepth = wallT + 0.032;
     for (const side of [-1, 1]) {
       const stile = new THREE.Mesh(
-        new THREE.BoxGeometry(0.054, height, frameDepth),
+        new THREE.BoxGeometry(0.054, height - 0.008, frameDepth),
         windowFrameMat
       );
       stile.name = `${winId}.stile.${side < 0 ? "left" : "right"}`;
-      stile.position.set(side * (width * 0.5 - 0.027), 0, 0);
+      stile.position.set(side * (width * 0.5 - 0.031), 0, 0);
       winGroup.add(stile);
 
       const rail = new THREE.Mesh(
-        new THREE.BoxGeometry(width, 0.054, frameDepth),
+        new THREE.BoxGeometry(width - 0.116 - 0.008, 0.054, frameDepth),
         windowFrameMat
       );
       rail.name = `${winId}.rail.${side < 0 ? "bottom" : "top"}`;
-      rail.position.set(0, side * (height * 0.5 - 0.027), 0);
+      rail.position.set(0, side * (height * 0.5 - 0.031), 0);
       winGroup.add(rail);
     }
 
     // Center vertical mullion & horizontal transom (4-pane cottage casement) recessed inside the reveal
     const barDepth = 0.068;
     const midMullion = new THREE.Mesh(
-      new THREE.BoxGeometry(0.036, height - 0.08, barDepth),
+      new THREE.BoxGeometry(0.036, height - 0.116 - 0.008, barDepth),
       windowFrameMat
     );
     midMullion.name = `${winId}.midMullion`;
     winGroup.add(midMullion);
 
     const midTransom = new THREE.Mesh(
-      new THREE.BoxGeometry(width - 0.08, 0.032, barDepth),
+      new THREE.BoxGeometry(width - 0.116 - 0.008, 0.032, 0.05),
       windowFrameMat
     );
     midTransom.name = `${winId}.midTransom`;
@@ -1801,7 +1814,7 @@ export function createOutbuildingShellContext(
 
     // Architectural glazing sheet (clear or frosted per Issue #11) set cleanly inside the open window cutout (no bricks inside!)
     const glass = new THREE.Mesh(
-      new THREE.BoxGeometry(width - 0.09, height - 0.09, 0.018),
+      new THREE.BoxGeometry(width - 0.116 - 0.008, height - 0.116 - 0.008, 0.016),
       isFrosted ? frostedWindowGlassMat : windowGlassMat
     );
     glass.name = isFrosted ? 'outbuildings.window.frostedGlass' : `${winId}.glass`;
@@ -1831,14 +1844,14 @@ export function createOutbuildingShellContext(
     for (const win of sorted) {
       const winUMin = win.uCenter - win.width * 0.5;
       const winUMax = win.uCenter + win.width * 0.5;
-      const winYMin = win.yCenter - win.height * 0.5;
-      const winYMax = win.yCenter + win.height * 0.5;
+      const winYMin = win.yCenter - win.height * 0.5 - 0.066;
+      const winYMax = win.yCenter + win.height * 0.5 + 0.068;
 
       if (winUMin > cursorU + 0.01) {
         addOutbuildingBrickWall(
           parent,
           cursorU,
-          winUMin,
+          winUMin - 0.004,
           yMin,
           yMax,
           vMin,
@@ -1888,7 +1901,7 @@ export function createOutbuildingShellContext(
         win.isFrosted ?? false
       );
 
-      cursorU = winUMax;
+      cursorU = winUMax + 0.004;
     }
 
     if (uMax > cursorU + 0.01) {
@@ -2201,7 +2214,7 @@ export function createOutbuildingShellContext(
         const wU = sk.widthU;
         const lS = sk.lengthS;
         const jambT = 0.036;
-        const lyTop = 0.032;
+        const lyTop = 0.022;
         const lyBot = lyCeilingUnderside - 0.003;
         const revealDepthY = lyTop - lyBot;
         const revealCenterY = (lyTop + lyBot) * 0.5;
@@ -2230,7 +2243,7 @@ export function createOutbuildingShellContext(
           const endBoxDepthS = Math.abs(zAtCeil - zAtExt) + jambT;
           const endBoxCenterS = (zAtExt + zAtCeil) * 0.5 - sideZ * (jambT * 0.25);
           const endReveal = new THREE.Mesh(
-            new THREE.BoxGeometry(wU + 0.012, revealDepthY, endBoxDepthS),
+            new THREE.BoxGeometry(wU - jambT * 1.7 - 0.008, revealDepthY, endBoxDepthS),
             warmRoomPlasterMat
           );
           endReveal.name = `outbuildings.roof.velux.${sk.id}.endReveal.${sideZ < 0 ? "lower" : "upper"}`;
@@ -2246,16 +2259,16 @@ export function createOutbuildingShellContext(
             veluxFlashingMat
           );
           sideFlash.name = `outbuildings.roof.velux.${sk.id}.sideFlashing.${sideX < 0 ? "west" : "east"}`;
-          sideFlash.position.set(sideX * (wU * 0.5 + flashW * 0.5 - 0.015), 0.032, 0);
+          sideFlash.position.set(sideX * (wU * 0.5 + flashW * 0.5 - 0.015), 0.046, 0);
           veluxGroup.add(sideFlash);
         }
         for (const sideZ of [-1, 1] as const) {
           const endFlash = new THREE.Mesh(
-            new THREE.BoxGeometry(wU + 0.04, 0.028, flashW),
+            new THREE.BoxGeometry(wU - 0.038, 0.028, flashW),
             veluxFlashingMat
           );
           endFlash.name = `outbuildings.roof.velux.${sk.id}.endFlashing.${sideZ < 0 ? "lower" : "upper"}`;
-          endFlash.position.set(0, 0.032, sideZ * (lS * 0.5 + flashW * 0.5 - 0.015));
+          endFlash.position.set(0, 0.046, sideZ * (lS * 0.5 + flashW * 0.5 - 0.015));
           veluxGroup.add(endFlash);
         }
 
@@ -2265,7 +2278,7 @@ export function createOutbuildingShellContext(
         const innerClearL = lS - jambT * 2;
         for (const sideX of [-1, 1] as const) {
           const sashStile = new THREE.Mesh(
-            new THREE.BoxGeometry(sashT, 0.045, innerClearL),
+            new THREE.BoxGeometry(sashT, 0.045, innerClearL - 0.008),
             windowFrameMat
           );
           sashStile.name = `outbuildings.roof.velux.${sk.id}.sashStile.${sideX < 0 ? "west" : "east"}`;
@@ -2274,7 +2287,7 @@ export function createOutbuildingShellContext(
         }
         for (const sideZ of [-1, 1] as const) {
           const sashRail = new THREE.Mesh(
-            new THREE.BoxGeometry(innerClearW - sashT * 2, 0.045, sashT),
+            new THREE.BoxGeometry(innerClearW - sashT * 2 - 0.008, 0.045, sashT),
             windowFrameMat
           );
           sashRail.name = `outbuildings.roof.velux.${sk.id}.sashRail.${sideZ < 0 ? "lower" : "upper"}`;
@@ -2289,12 +2302,12 @@ export function createOutbuildingShellContext(
         );
         handleBar.name = `outbuildings.roof.velux.${sk.id}.handleBar`;
         handleBar.userData.lodTier = 'high';
-        handleBar.position.set(0, -0.02, innerClearL * 0.5 - sashT - 0.015);
+        handleBar.position.set(0, -0.024, innerClearL * 0.5 - sashT - 0.018);
         veluxGroup.add(handleBar);
 
         // Clear double-glazed Velux skylight glass pane (`windowGlassMat`)
         const glassPane = new THREE.Mesh(
-          new THREE.BoxGeometry(innerClearW - sashT * 2 + 0.01, 0.018, innerClearL - sashT * 2 + 0.01),
+          new THREE.BoxGeometry(innerClearW - sashT * 2 - 0.008, 0.018, innerClearL - sashT * 2 - 0.008),
           windowGlassMat
         );
         glassPane.name = `outbuildings.roof.velux.${sk.id}.glass`;
@@ -2354,7 +2367,7 @@ export function createOutbuildingShellContext(
       }
 
       const brickExtrudeT = isStepUpGable ? 0.095 : wallT - 0.03;
-      const uStartGable = isStepUpGable && uWallMin < 15 ? uWallMin - 0.005 : uWallMin;
+      const uStartGable = isStepUpGable ? uWallMin - 0.005 : uWallMin;
       const geo = createExtrudedVYPolygon(pointsVY, brickExtrudeT);
       applyWorldSpaceBrickUVs(
         geo,
@@ -2575,27 +2588,27 @@ export function createOutbuildingShellContext(
     };
     sconceGroup.position.set(uWallFace, yCenter, vCenter);
 
-    // 1. Rectangular die-cast anthracite wall mounting backplate & arm stand-off (`x = 0..0.038m`)
+    // 1. Rectangular die-cast anthracite wall mounting backplate & arm stand-off (`x = 0.005..0.0515m`)
     const backplate = new THREE.Mesh(
       new THREE.BoxGeometry(0.014, 0.088, 0.056),
       spotlightHousingMat
     );
     backplate.name = `${lightName}.backplate`;
-    backplate.position.set(0.007, 0, 0);
+    backplate.position.set(0.012, 0, 0);
     backplate.castShadow = true;
     sconceGroup.add(backplate);
 
     const mountArm = new THREE.Mesh(
-      new THREE.BoxGeometry(0.032, 0.044, 0.036),
+      new THREE.BoxGeometry(0.028, 0.044, 0.036),
       spotlightHousingMat
     );
     mountArm.name = `${lightName}.mountArm`;
-    mountArm.position.set(0.028, 0, 0);
+    mountArm.position.set(0.0375, 0, 0);
     mountArm.castShadow = true;
     sconceGroup.add(mountArm);
 
-    // 2. Cylindrical twin-aperture Up/Down architectural luminaire barrel (`r = 0.038m, h = 0.21m` at `x = 0.068m`)
-    const barrelX = 0.068;
+    // 2. Cylindrical twin-aperture Up/Down architectural luminaire barrel (`r = 0.038m, h = 0.21m` at `x = 0.094m`)
+    const barrelX = 0.094;
     const barrelH = 0.21;
     const barrelR = 0.038;
     const barrel = new THREE.Mesh(
@@ -2612,11 +2625,11 @@ export function createOutbuildingShellContext(
     for (const dirY of [-1, 1] as const) {
       const tag = dirY > 0 ? 'up' : 'down';
       const bezel = new THREE.Mesh(
-        new THREE.CylinderGeometry(barrelR + 0.002, barrelR + 0.002, 0.016, 20),
+        new THREE.CylinderGeometry(barrelR + 0.0045, barrelR + 0.0045, 0.016, 20),
         spotlightBrassTrimMat
       );
       bezel.name = `${lightName}.bezel.${tag}`;
-      bezel.position.set(barrelX, dirY * (barrelH * 0.5 - 0.007), 0);
+      bezel.position.set(barrelX, dirY * (barrelH * 0.5 - 0.013), 0);
       sconceGroup.add(bezel);
 
       const lens = new THREE.Mesh(
@@ -2624,7 +2637,7 @@ export function createOutbuildingShellContext(
         upDownLensMat
       );
       lens.name = `${lightName}.lens.${tag}`;
-      lens.position.set(barrelX, dirY * (barrelH * 0.5 + 0.001), 0);
+      lens.position.set(barrelX, dirY * (barrelH * 0.5 + 0.008), 0);
       sconceGroup.add(lens);
     }
 

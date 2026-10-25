@@ -59,11 +59,11 @@ export function buildDiningCeilingRugAndSouthWall(
 
   // White plasterboard ceiling backing above the exposed joists (in groundFloorCeilingGroup so it hides when looking from above in Ground Floor mode and appears when inside at eye level!)
   const familyCeilingBacking = new THREE.Mesh(
-    new THREE.BoxGeometry(4.92, 0.04, 4.85),
+    new THREE.BoxGeometry(4.87, 0.04, 4.8),
     whiteJoistMat
   );
   if (!familyCeilingBacking.name) familyCeilingBacking.name = 'familyRoom.southWall.familyCeilingBacking';
-  familyCeilingBacking.position.set(-7.1, wallH - 0.01, -0.075);
+  familyCeilingBacking.position.set(-7.105, wallH - 0.01, -0.065);
   familyCeilingBacking.receiveShadow = true;
   groundFloorCeilingGroup.add(familyCeilingBacking);
 
@@ -79,7 +79,7 @@ export function buildDiningCeilingRugAndSouthWall(
     const jx = -9.32 + j * 0.44;
     const isCupboardBay = jx <= -7.85;
     const isChimneyBay = jx >= -4.98;
-    const minJoistZ = isCupboardBay ? -0.46 : isChimneyBay ? 0.84 : -2.5;
+    const minJoistZ = isCupboardBay ? -0.46 : isChimneyBay ? 0.84 : -2.475;
     const maxJoistZ = 2.42;
     const joistLen = maxJoistZ - minJoistZ;
     const joist = new THREE.Mesh(
@@ -93,7 +93,7 @@ export function buildDiningCeilingRugAndSouthWall(
     groundFloorCeilingGroup.add(joist);
 
     if (isCupboardBay) {
-      const cupMinZ = -2.5;
+      const cupMinZ = -2.49;
       const cupMaxZ = -0.57;
       const cupJoist = new THREE.Mesh(
         new THREE.BoxGeometry(0.075, 0.1, cupMaxZ - cupMinZ),
@@ -105,7 +105,7 @@ export function buildDiningCeilingRugAndSouthWall(
       cupJoist.receiveShadow = true;
       groundFloorCeilingGroup.add(cupJoist);
     } else if (isChimneyBay) {
-      const snugMinZ = -2.5;
+      const snugMinZ = -2.475;
       const snugMaxZ = -0.84;
       const snugJoist = new THREE.Mesh(
         new THREE.BoxGeometry(0.075, 0.1, snugMaxZ - snugMinZ),
@@ -469,24 +469,23 @@ export function buildDiningCeilingRugAndSouthWall(
     const runnerW = 3.05; // Ruggable 75 x 305 cm runner length along East-West walkway
     const runnerD = 0.78; // Ruggable runner width along North-South
 
-    // Built-in non-slip dark grey rubberized backing pad under the 7mm Tufted All-in-One rug
+    // Built-in non-slip dark grey rubberized backing face under the 8mm Tufted All-in-One rug
     const nonSlipBackingMat = new THREE.MeshStandardMaterial({
       color: 0x262523,
       roughness: 0.92,
       metalness: 0.01,
     });
-    const nonSlipPad = new THREE.Mesh(
-      new THREE.BoxGeometry(runnerW - 0.016, 0.003, runnerD - 0.016),
-      nonSlipBackingMat
-    );
-    nonSlipPad.name = 'familyRoom.southRunnerRug.nonSlipPad';
-    nonSlipPad.position.set(0, -0.003, 0);
-    nonSlipPad.receiveShadow = true;
-    runnerGroup.add(nonSlipPad);
 
     const runnerBody = new THREE.Mesh(
       new THREE.BoxGeometry(runnerW, 0.008, runnerD),
-      runnerMat
+      [
+        runnerMat,
+        runnerMat,
+        runnerMat,
+        nonSlipBackingMat,
+        runnerMat,
+        runnerMat,
+      ]
     );
     runnerBody.name = 'familyRoom.southRunnerRug.body';
     runnerBody.position.set(0, 0.001, 0);
@@ -494,7 +493,7 @@ export function buildDiningCeilingRugAndSouthWall(
     runnerBody.castShadow = true;
     runnerGroup.add(runnerBody);
 
-    // Serged Vintage Blush Beige bound edge trim around all 4 sides of the Ruggable Tufted runner
+    // Serged Vintage Blush Beige bound edge trim abutting all 4 sides of the Ruggable Tufted runner
     const sergedBindingMat = new THREE.MeshStandardMaterial({
       color: 0xdccfbe,
       roughness: 0.86,
@@ -502,20 +501,20 @@ export function buildDiningCeilingRugAndSouthWall(
     });
     for (const endSign of [-1, 1] as const) {
       const endBinding = new THREE.Mesh(
-        new THREE.BoxGeometry(0.012, 0.0085, runnerD + 0.008),
+        new THREE.BoxGeometry(0.012, 0.008, runnerD),
         sergedBindingMat
       );
       if (!endBinding.name) endBinding.name = 'familyRoom.southWall.endBinding';
-      endBinding.position.set(endSign * (runnerW * 0.5 + 0.004), 0.001, 0);
+      endBinding.position.set(endSign * (runnerW * 0.5 + 0.006), 0.001, 0);
       endBinding.receiveShadow = true;
       runnerGroup.add(endBinding);
 
       const sideBinding = new THREE.Mesh(
-        new THREE.BoxGeometry(runnerW, 0.0085, 0.012),
+        new THREE.BoxGeometry(runnerW + 0.024, 0.008, 0.012),
         sergedBindingMat
       );
       if (!sideBinding.name) sideBinding.name = 'familyRoom.southWall.sideBinding';
-      sideBinding.position.set(0, 0.001, endSign * (runnerD * 0.5 + 0.004));
+      sideBinding.position.set(0, 0.001, endSign * (runnerD * 0.5 + 0.006));
       sideBinding.receiveShadow = true;
       runnerGroup.add(sideBinding);
     }
@@ -538,7 +537,7 @@ export function buildDiningCeilingRugAndSouthWall(
 
   // Weathered oak threshold & reclaimed Yorkstone doorstep at the Dining Room Exterior Courtyard Door (X = -8.78m)
   const diningExtDoorThreshold = new THREE.Mesh(
-    new THREE.BoxGeometry(diningDoorWidth + 0.06, 0.036, 0.33),
+    new THREE.BoxGeometry(diningDoorWidth - 0.004, 0.036, 0.33),
     oakMat
   );
   if (!diningExtDoorThreshold.name) diningExtDoorThreshold.name = 'familyRoom.southWall.diningExtDoorThreshold';
@@ -618,11 +617,11 @@ export function buildDiningCeilingRugAndSouthWall(
     }
 
     const southCap = new THREE.Mesh(
-      new THREE.BoxGeometry(5.17, 0.025, 0.288),
+      new THREE.BoxGeometry(5.15, 0.012, 0.272),
       wallCapMat
     );
     if (!southCap.name) southCap.name = 'familyRoom.southWall.southCap';
-    southCap.position.set(-6.98, wallH + 0.012, 2.49);
+    southCap.position.set(-6.98, wallH + 0.01, 2.49);
     southCutGroup.add(southCap);
 
     // Dining Room Exterior Door Frame (45°-mitred ogee/torus architrave) & Interactive Cottage/Courtyard Door Leaf (X = -8.78m, Z = +2.49m)

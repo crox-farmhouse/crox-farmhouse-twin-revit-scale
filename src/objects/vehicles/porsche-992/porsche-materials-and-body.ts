@@ -1063,6 +1063,9 @@ export function buildPorsche992BodyAndUnderbody(
       map: createUnderCarShadowTexture(),
       transparent: true,
       depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
     })
   );
   shadowPlane.name = 'outbuildings.garage.porsche992TurboS.contactShadow';

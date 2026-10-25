@@ -127,17 +127,18 @@ export function buildBedroom4(
       floor: 'first' as const,
     };
 
-    // 1. One-piece full-height interior plaster lining (`Y = floorTopY..collarCeilingY`, `Z = 11.476m..11.49m`)
+    // 1. One-piece full-height interior plaster lining (`Y = floorTopY..collarCeilingY`, `Z = 11.476m..11.487m`)
     const southInteriorPlasterShape = new THREE.Shape();
     southInteriorPlasterShape.moveTo(-22.19, floorTopY);
-    southInteriorPlasterShape.lineTo(-17.22, floorTopY);
+    southInteriorPlasterShape.lineTo(-17.381, floorTopY);
+    southInteriorPlasterShape.lineTo(-17.381, upperWallTopY);
     southInteriorPlasterShape.lineTo(-17.22, upperWallTopY);
     southInteriorPlasterShape.lineTo(collarEastX, collarCeilingY);
     southInteriorPlasterShape.lineTo(-20.85, collarCeilingY);
     southInteriorPlasterShape.lineTo(-22.19, upperWallTopY);
     southInteriorPlasterShape.closePath();
     const southInteriorPlasterGeo = new THREE.ExtrudeGeometry(southInteriorPlasterShape, {
-      depth: 0.014,
+      depth: 0.011,
       bevelEnabled: false,
     });
     southInteriorPlasterGeo.translate(0, 0, 11.476);

@@ -519,65 +519,65 @@ export function buildLivingRoomCinemaWall(
   const frameBezelW = 0.045;
   const screenOuterW = screenActiveW + frameBezelW * 2; // 2.747m
   const screenOuterH = screenActiveH + frameBezelW * 2; // 1.584m
-  const frameDepth = 0.038;
+  const frameDepth = 0.046;
 
   // Recessed acoustic speaker wall cavity backing behind the woven screen
   const acousticSpeakerCavity = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(2.44, 1.04, 0.006)),
+    createSharedGeo(new THREE.BoxGeometry(2.44, 1.04, 0.004)),
     acousticCavityMat
   );
   acousticSpeakerCavity.name = 'livingRoom.projectorScreen.acousticSpeakerCavity';
-  acousticSpeakerCavity.position.set(0, -0.05, 0.003);
+  acousticSpeakerCavity.position.set(0, -0.05, 0.002);
   projectorScreenGroup.add(acousticSpeakerCavity);
 
   // 4 mitred perimeter matte-black velvet-wrapped aluminium frame rails
   const frameTopBottomGeo = createSharedGeo(
-    new THREE.BoxGeometry(screenOuterW, frameBezelW, frameDepth)
+    new THREE.BoxGeometry(screenOuterW + 0.016, frameBezelW, frameDepth)
   );
   const frameSideGeo = createSharedGeo(
-    new THREE.BoxGeometry(frameBezelW, screenActiveH, frameDepth)
+    new THREE.BoxGeometry(frameBezelW, screenActiveH + 0.008, frameDepth)
   );
 
   const frameTop = new THREE.Mesh(frameTopBottomGeo, velvetFrameMat);
   frameTop.name = 'livingRoom.projectorScreen.frameTop';
-  frameTop.position.set(0, (screenActiveH + frameBezelW) * 0.5, frameDepth * 0.5);
+  frameTop.position.set(0, (screenActiveH + frameBezelW) * 0.5 + 0.008, frameDepth * 0.5);
   frameTop.castShadow = true;
   projectorScreenGroup.add(frameTop);
 
   const frameBottom = new THREE.Mesh(frameTopBottomGeo, velvetFrameMat);
   frameBottom.name = 'livingRoom.projectorScreen.frameBottom';
-  frameBottom.position.set(0, -(screenActiveH + frameBezelW) * 0.5, frameDepth * 0.5);
+  frameBottom.position.set(0, -(screenActiveH + frameBezelW) * 0.5 - 0.008, frameDepth * 0.5);
   frameBottom.castShadow = true;
   projectorScreenGroup.add(frameBottom);
 
   const frameLeft = new THREE.Mesh(frameSideGeo, velvetFrameMat);
   frameLeft.name = 'livingRoom.projectorScreen.frameLeft';
-  frameLeft.position.set(-(screenActiveW + frameBezelW) * 0.5, 0, frameDepth * 0.5);
+  frameLeft.position.set(-(screenActiveW + frameBezelW) * 0.5 - 0.008, 0, frameDepth * 0.5);
   frameLeft.castShadow = true;
   projectorScreenGroup.add(frameLeft);
 
   const frameRight = new THREE.Mesh(frameSideGeo, velvetFrameMat);
   frameRight.name = 'livingRoom.projectorScreen.frameRight';
-  frameRight.position.set((screenActiveW + frameBezelW) * 0.5, 0, frameDepth * 0.5);
+  frameRight.position.set((screenActiveW + frameBezelW) * 0.5 + 0.008, 0, frameDepth * 0.5);
   frameRight.castShadow = true;
   projectorScreenGroup.add(frameRight);
 
   // Inner chamfered shadow bezel framing the 120" active image
   const innerBezel = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(screenActiveW + 0.016, screenActiveH + 0.016, 0.008)),
+    createSharedGeo(new THREE.BoxGeometry(screenActiveW + 0.008, screenActiveH + 0.008, 0.004)),
     innerChamferBezelMat
   );
   innerBezel.name = 'livingRoom.projectorScreen.innerBezel';
-  innerBezel.position.set(0, 0, 0.023);
+  innerBezel.position.set(0, 0, 0.039);
   projectorScreenGroup.add(innerBezel);
 
-  // Active 120" (2.657m × 1.494m) acoustically transparent micro-woven projection surface at nWall = 0.028m
+  // Active 120" (2.657m × 1.494m) acoustically transparent micro-woven projection surface
   const projectorScreenSurface = new THREE.Mesh(
     createSharedGeo(new THREE.BoxGeometry(screenActiveW, screenActiveH, 0.003)),
     projectorScreenMat
   );
   projectorScreenSurface.name = 'livingRoom.projectorScreen.screen';
-  projectorScreenSurface.position.set(0, 0, 0.028);
+  projectorScreenSurface.position.set(0, 0, 0.0465);
   projectorScreenGroup.add(projectorScreenSurface);
 
   // Bias light: warm LED perimeter tape on the back of the velvet frame washing the North wall
@@ -597,7 +597,7 @@ export function buildLivingRoomCinemaWall(
     tvBiasGlowMat
   );
   tvBiasGlow.name = 'livingRoom.projectorScreen.biasLight';
-  tvBiasGlow.position.set(0, 0, 0.002);
+  tvBiasGlow.position.set(0, 0, -0.004);
   tvBiasGlow.renderOrder = -1;
   projectorScreenGroup.add(tvBiasGlow);
 
@@ -608,12 +608,11 @@ export function buildLivingRoomCinemaWall(
     projectorScreenGroup,
     northWallCenterU,
     tier2FloorY + 1.115,
-    0.0
+    0.025
   );
 
   // 2. Behind-Screen Architectural In-Wall LCR Speakers & Dual 10" Cinema Subwoofers (Issue #15)
-  //    Recessed flush into the North wall (nWall = 0.008m) directly behind the 120" acoustically
-  //    transparent woven projector screen (`livingRoom.projectorScreen.screen` at nWall = 0.028m).
+  //    Mounted cleanly behind the 120" acoustically transparent woven projector screen.
   const inWallBezelMat = new THREE.MeshStandardMaterial({
     color: 0x1e242b,
     roughness: 0.42,
@@ -625,12 +624,12 @@ export function buildLivingRoomCinemaWall(
     metalness: 0.18,
   });
 
-  const wooferRingGeo = createSharedGeo(new THREE.TorusGeometry(0.068, 0.004, 8, 20));
-  const tweeterRingGeo = createSharedGeo(new THREE.TorusGeometry(0.028, 0.004, 8, 20));
-  const wooferConeGeo = createSharedGeo(new THREE.CylinderGeometry(0.068 - 0.003, 0.068 * 0.42, 0.008, 16));
-  const tweeterConeGeo = createSharedGeo(new THREE.CylinderGeometry(0.028 - 0.003, 0.028 * 0.42, 0.008, 16));
-  const lrSpeakerBezelGeo = createSharedGeo(new THREE.BoxGeometry(0.22, 0.56, 0.012));
-  const lrSpeakerBaffleGeo = createSharedGeo(new THREE.BoxGeometry(0.22 - 0.024, 0.56 - 0.024, 0.014));
+  const wooferRingGeo = createSharedGeo(new THREE.TorusGeometry(0.068, 0.003, 8, 20));
+  const tweeterRingGeo = createSharedGeo(new THREE.TorusGeometry(0.028, 0.003, 8, 20));
+  const wooferConeGeo = createSharedGeo(new THREE.CylinderGeometry(0.068 - 0.003, 0.068 * 0.42, 0.006, 16));
+  const tweeterConeGeo = createSharedGeo(new THREE.CylinderGeometry(0.028 - 0.003, 0.028 * 0.42, 0.006, 16));
+  const lrSpeakerBezelGeo = createSharedGeo(new THREE.BoxGeometry(0.22, 0.56, 0.006));
+  const lrSpeakerBaffleGeo = createSharedGeo(new THREE.BoxGeometry(0.22 - 0.024, 0.56 - 0.024, 0.006));
 
   const buildArchitecturalInWallSpeaker = (
     spkName: string,
@@ -646,18 +645,18 @@ export function buildLivingRoomCinemaWall(
     spkGroup.userData = { zone: 'livingRoom', cutawayWall: frNorthCutawayDescriptor };
 
     const bezel = new THREE.Mesh(
-      isHorizontalCenter ? createSharedGeo(new THREE.BoxGeometry(w, h, 0.012)) : lrSpeakerBezelGeo,
+      isHorizontalCenter ? createSharedGeo(new THREE.BoxGeometry(w, h, 0.006)) : lrSpeakerBezelGeo,
       inWallBezelMat
     );
     bezel.name = `${spkName}.bezel`;
     spkGroup.add(bezel);
 
     const baffle = new THREE.Mesh(
-      isHorizontalCenter ? createSharedGeo(new THREE.BoxGeometry(w - 0.024, h - 0.024, 0.014)) : lrSpeakerBaffleGeo,
+      isHorizontalCenter ? createSharedGeo(new THREE.BoxGeometry(w - 0.024, h - 0.024, 0.006)) : lrSpeakerBaffleGeo,
       inWallGrilleMat
     );
     baffle.name = `${spkName}.grille`;
-    baffle.position.set(0, 0, 0.002);
+    baffle.position.set(0, 0, 0.01);
     spkGroup.add(baffle);
 
     // Dual 165mm mid-bass drivers + central 25mm tweeter ring
@@ -682,7 +681,7 @@ export function buildLivingRoomCinemaWall(
         )
       );
       ring.name = `${spkName}.driverRing`;
-      ring.position.set(dx, dy, 0.01);
+      ring.position.set(dx, dy, 0.018);
       spkGroup.add(ring);
 
       const cone = tagHighLod(
@@ -693,7 +692,7 @@ export function buildLivingRoomCinemaWall(
       );
       cone.name = `${spkName}.driver`;
       cone.rotation.x = Math.PI / 2;
-      cone.position.set(dx, dy, 0.008);
+      cone.position.set(dx, dy, 0.017);
       spkGroup.add(cone);
     }
 
@@ -705,7 +704,7 @@ export function buildLivingRoomCinemaWall(
     'livingRoom.inWallSpeaker.left',
     northWallCenterU - 1.02,
     tier2FloorY + 1.115,
-    0.008,
+    0.036,
     0.22,
     0.56,
     false
@@ -714,7 +713,7 @@ export function buildLivingRoomCinemaWall(
     'livingRoom.inWallSpeaker.right',
     northWallCenterU + 1.02,
     tier2FloorY + 1.115,
-    0.008,
+    0.036,
     0.22,
     0.56,
     false
@@ -723,17 +722,17 @@ export function buildLivingRoomCinemaWall(
     'livingRoom.inWallSpeaker.center',
     northWallCenterU,
     tier2FloorY + 1.115,
-    0.008,
+    0.036,
     0.62,
     0.19,
     true
   );
 
   // Dual Architectural In-Wall 10" Cinema Subwoofers behind the 120" acoustically transparent screen (`du = ±0.52m`, `cy = tier2FloorY + 0.905m`)
-  const subBezelGeo = createSharedGeo(new THREE.BoxGeometry(0.34, 0.34, 0.012));
-  const subBaffleGeo = createSharedGeo(new THREE.BoxGeometry(0.31, 0.31, 0.014));
-  const subRingGeo = createSharedGeo(new THREE.TorusGeometry(0.122, 0.006, 10, 24));
-  const subConeGeo = createSharedGeo(new THREE.CylinderGeometry(0.118, 0.052, 0.01, 20));
+  const subBezelGeo = createSharedGeo(new THREE.BoxGeometry(0.34, 0.34, 0.006));
+  const subBaffleGeo = createSharedGeo(new THREE.BoxGeometry(0.31, 0.31, 0.006));
+  const subRingGeo = createSharedGeo(new THREE.TorusGeometry(0.122, 0.003, 10, 24));
+  const subConeGeo = createSharedGeo(new THREE.CylinderGeometry(0.118, 0.052, 0.006, 20));
 
   for (const [subSide, subDu] of [
     ['left', -0.52],
@@ -750,18 +749,18 @@ export function buildLivingRoomCinemaWall(
 
     const subBaffle = new THREE.Mesh(subBaffleGeo, inWallGrilleMat);
     subBaffle.name = `${subName}.grille`;
-    subBaffle.position.set(0, 0, 0.002);
+    subBaffle.position.set(0, 0, 0.01);
     subGroup.add(subBaffle);
 
     const subRing = tagHighLod(new THREE.Mesh(subRingGeo, spkTrimRingMat));
     subRing.name = `${subName}.driverRing`;
-    subRing.position.set(0, 0, 0.01);
+    subRing.position.set(0, 0, 0.018);
     subGroup.add(subRing);
 
     const subCone = tagHighLod(new THREE.Mesh(subConeGeo, spkConeMat));
     subCone.name = `${subName}.driver`;
     subCone.rotation.x = Math.PI / 2;
-    subCone.position.set(0, 0, 0.008);
+    subCone.position.set(0, 0, 0.017);
     subGroup.add(subCone);
 
     livingRoomNorthWallFrame.placeObject(
@@ -769,7 +768,7 @@ export function buildLivingRoomCinemaWall(
       subGroup,
       northWallCenterU + subDu,
       tier2FloorY + 0.905,
-      0.008
+      0.036
     );
   }
 
@@ -826,11 +825,11 @@ export function buildLivingRoomCinemaWall(
         // Scallop of light grazing the plaster above / below the fitting.
         const wash = new THREE.Mesh(washGeo, wallWashMat);
         wash.name = `${name}.wash.${tag}`;
-        wash.position.set(0, y + Math.sign(y) * 0.22, 0.003);
+        wash.position.set(0, y + Math.sign(y) * 0.22, 0.004);
         wash.renderOrder = 1;
         fitting.add(wash);
       }
-      livingRoomNorthWallFrame.placeObject(scene, fitting, northWallCenterU + du, tier2FloorY + 1.78, 0.0);
+      livingRoomNorthWallFrame.placeObject(scene, fitting, northWallCenterU + du, tier2FloorY + 1.78, 0.017);
       ctx.interactions.registerLightFixture(fitting, 'livingRoomWallLights');
     }
 
@@ -936,7 +935,7 @@ export function buildLivingRoomCinemaWall(
     const chaiseSofaGroup = new THREE.Group();
     chaiseSofaGroup.name = 'livingRoom.chaiseSofa';
     chaiseSofaGroup.userData.zone = 'livingRoom';
-    chaiseSofaGroup.position.set(-20.101, tier2FloorY, -0.044);
+    chaiseSofaGroup.position.set(-20.101, tier2FloorY + 0.012, -0.044);
     chaiseSofaGroup.rotation.y = THREE.MathUtils.degToRad(-8.502);
 
     // Procedural Treacle Tart Yellow Clever Velvet texture (subtle warm golden-ochre velvet nap & pile sheen)
@@ -1165,9 +1164,9 @@ export function buildLivingRoomCinemaWall(
       chaiseSofaGroup.add(armBolsterTop);
     }
 
-    // 5. Full-Width Low-Slung Upholstered Backrest Shell (width 2.94m, height 0.68m, Y = 0.014..0.694m, Z = +0.39m)
+    // 5. Full-Width Low-Slung Upholstered Backrest Shell (width 2.45m between arms, height 0.68m, Y = 0.014..0.694m, Z = +0.39m)
     const backrestShell = new THREE.Mesh(
-      createSharedGeo(createSculptedCushionGeometry(2.94, 0.68, 0.22, 24, 12, 10, 0.38, 'standard')),
+      createSharedGeo(createSculptedCushionGeometry(2.45, 0.68, 0.22, 24, 12, 10, 0.38, 'standard')),
       treacleVelvetMat
     );
     backrestShell.name = 'livingRoom.chaiseSofa.backrestShell';
@@ -1246,18 +1245,18 @@ export function buildLivingRoomCinemaWall(
     ctTop.receiveShadow = true;
     coffeeTableGroup.add(ctTop);
 
-    // Recessed under-top apron frame (1.08m x 0.048m x 0.56m)
+    // Recessed under-top apron frame (1.08m x 0.042m x 0.56m)
     const ctApron = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(1.08, 0.048, 0.56)),
+      createSharedGeo(new THREE.BoxGeometry(1.08, 0.042, 0.56)),
       darkWalnutEndGrainMat
     );
     ctApron.name = 'livingRoom.coffeeTable.apron';
-    ctApron.position.set(0, 0.334, 0);
+    ctApron.position.set(0, 0.331, 0);
     ctApron.castShadow = true;
     coffeeTableGroup.add(ctApron);
 
     // 4 Substantial 92mm x 92mm square corner timber posts
-    const ctPostGeo = createSharedGeo(new THREE.BoxGeometry(0.092, 0.36, 0.092));
+    const ctPostGeo = createSharedGeo(new THREE.BoxGeometry(0.092, 0.294, 0.092));
     for (const [lx, lz] of [
       [-0.49, -0.23],
       [0.49, -0.23],
@@ -1269,7 +1268,7 @@ export function buildLivingRoomCinemaWall(
         darkWalnutCoffeeTableMat
       );
       ctPost.name = 'livingRoom.coffeeTable.leg';
-      ctPost.position.set(lx, 0.18, lz);
+      ctPost.position.set(lx, 0.159, lz);
       ctPost.castShadow = true;
       ctPost.receiveShadow = true;
       coffeeTableGroup.add(ctPost);
@@ -1766,7 +1765,7 @@ export function buildLivingRoomCinemaWall(
     // 2. Valerion VisionMaster Max Core Chassis (exact 260mm W × 186mm H × 234mm D envelope, centered at y = -0.093m)
     const bodyCenterY = -0.093;
     const chassis = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(0.246, 0.174, 0.228)),
+      createSharedGeo(new THREE.BoxGeometry(0.246, 0.174, 0.212)),
       valerionCoreMat
     );
     chassis.name = 'livingRoom.ceilingProjector.chassis';
@@ -1792,7 +1791,7 @@ export function buildLivingRoomCinemaWall(
     }
 
     // Side acoustic/thermal intake louvre shadow strips recessed between the ribs on Left & Right flanks
-    const louvreGeo = createSharedGeo(new THREE.BoxGeometry(0.004, 0.142, 0.214));
+    const louvreGeo = createSharedGeo(new THREE.BoxGeometry(0.004, 0.142, 0.208));
     const coolingLouvresLeft = new THREE.Mesh(louvreGeo, valerionCoreMat);
     coolingLouvresLeft.name = 'livingRoom.ceilingProjector.coolingLouvresLeft';
     coolingLouvresLeft.position.set(-0.124, bodyCenterY, 0);
@@ -1803,16 +1802,16 @@ export function buildLivingRoomCinemaWall(
     coolingLouvresRight.position.set(0.124, bodyCenterY, 0);
     projectorGroup.add(coolingLouvresRight);
 
-    // 4. Volcanic Black Tempered-Glass Front Fascia (Z = -0.115m) & Rear Panel (Z = +0.115m)
+    // 4. Volcanic Black Tempered-Glass Front Fascia (Z = -0.121m) & Rear Panel (Z = +0.121m)
     const glassPanelGeo = createSharedGeo(new THREE.BoxGeometry(0.244, 0.172, 0.004));
     const frontGlass = new THREE.Mesh(glassPanelGeo, volcanicGlassMat);
     frontGlass.name = 'livingRoom.ceilingProjector.frontGlass';
-    frontGlass.position.set(0, bodyCenterY, -0.115);
+    frontGlass.position.set(0, bodyCenterY, -0.121);
     projectorGroup.add(frontGlass);
 
     const rearGlass = tagHighLod(new THREE.Mesh(glassPanelGeo, volcanicGlassMat));
     rearGlass.name = 'livingRoom.ceilingProjector.rearGlass';
-    rearGlass.position.set(0, bodyCenterY, 0.115);
+    rearGlass.position.set(0, bodyCenterY, 0.121);
     projectorGroup.add(rearGlass);
 
     // 5. OpticFlex Motorized Zoom + External Bayonet Short-Throw Conversion Lens & 6-Blade Mechanical Iris

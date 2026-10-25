@@ -12,11 +12,11 @@ import {
 } from './kitchen-joinery-shared.ts';
 
 const sharedWestCornerBaseGeo = prepGeo(new THREE.BoxGeometry(0.65, 0.9, 0.66));
-const sharedWestWorktopGeo = prepGeo(new THREE.BoxGeometry(0.68, 0.045, 1.4));
+const sharedWestWorktopGeo = prepGeo(new THREE.BoxGeometry(0.68, 0.045, 1.39));
 const sharedWestUpperCornerGeo = prepGeo(new THREE.BoxGeometry(0.38, 0.9, 0.39));
-const sharedNorthLeftWorktopGeo = prepGeo(new THREE.BoxGeometry(0.9, 0.045, 0.68));
+const sharedNorthLeftWorktopGeo = prepGeo(new THREE.BoxGeometry(0.818, 0.045, 0.68));
 const sharedNorthRightWorktopGeo = prepGeo(new THREE.BoxGeometry(2.08, 0.045, 0.68));
-const sharedNorthWestUpperCornerGeo = prepGeo(new THREE.BoxGeometry(0.38, 0.9, 0.38));
+const sharedNorthWestUpperCornerGeo = prepGeo(new THREE.BoxGeometry(0.37, 0.89, 0.37));
 
 export function buildWestAndNorthLeftCabinetry(
   ctx: SceneBuilderContext,
@@ -198,7 +198,7 @@ export function buildWestAndNorthLeftCabinetry(
 
   const topLeft = new THREE.Mesh(sharedNorthLeftWorktopGeo, limestoneWorktopMat);
   topLeft.name = 'kitchen.cabinetry.north.leftBaseGroup.worktop';
-  topLeft.position.set(-3.35, 0.92, -2.16);
+  topLeft.position.set(-3.309, 0.92, -2.16);
   topLeft.receiveShadow = true;
   northLeftBaseGroup.add(topLeft);
 
@@ -388,7 +388,7 @@ export function buildNorthWestUpperCorniceAndUpstands(
   const northWestUpperCorner = new THREE.Mesh(sharedNorthWestUpperCornerGeo, doveGreyMat);
   northWestUpperCorner.name =
     'kitchen.cabinetry.north.northWestUpperGroup.blindCornerUpper';
-  northWestUpperCorner.position.set(-4.21, 1.97, -2.31);
+  northWestUpperCorner.position.set(-4.21, 1.97, -2.305);
   northWestUpperCorner.castShadow = true;
   northWestUpperCorner.receiveShadow = true;
   northWestUpperGroup.add(northWestUpperCorner);
@@ -570,13 +570,13 @@ export function buildNorthWestUpperCorniceAndUpstands(
   > = [
     // [centerX, centerZ, widthX, depthZ, heightY, wallGroup, segName]
     // West plaster wall back upstand (Z = -2.50m to -1.11m)
-    [-4.388, -1.805, 0.022, 1.39, 0.095, 'west', 'westWallBackUpstand'],
-    // North plaster wall back upstand (X = -4.39m to -2.92m, left of AGA)
-    [-3.655, -2.488, 1.47, 0.022, 0.095, 'north', 'northWallLeftOfAgaUpstand'],
+    [-4.384, -1.805, 0.022, 1.39, 0.095, 'west', 'westWallBackUpstand'],
+    // North plaster wall back upstand (X = -4.371m to -2.92m, left of AGA)
+    [-3.6455, -2.484, 1.451, 0.022, 0.095, 'north', 'northWallLeftOfAgaUpstand'],
     // North plaster wall back upstand (X = -0.17m to +0.66m, right of backsplash behind Dualit toaster)
-    [0.245, -2.488, 0.83, 0.022, 0.095, 'north', 'northWallBehindToasterUpstand'],
-    // North plaster wall back upstand in the 15cm gap to the right of the upper pantry (X = +1.70m to +1.85m)
-    [1.775, -2.488, 0.15, 0.022, 0.095, 'north', 'northWallPantryGapUpstand'],
+    [0.245, -2.484, 0.83, 0.022, 0.095, 'north', 'northWallBehindToasterUpstand'],
+    // North plaster wall back upstand in the 15cm gap to the right of the upper pantry (X = +1.70m to +1.826m)
+    [1.763, -2.484, 0.126, 0.022, 0.095, 'north', 'northWallPantryGapUpstand'],
     // Right worktop upstand against the X = +1.85m Utility Room West partition wall across the full 0.68m worktop depth (Z = -2.50m to -1.82m)
     [1.839, -2.16, 0.022, 0.68, 0.095, 'north', 'eastPartitionSideUpstand'],
   ];

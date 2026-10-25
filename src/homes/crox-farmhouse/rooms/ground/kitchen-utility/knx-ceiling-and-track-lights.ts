@@ -72,11 +72,27 @@ const sharedFilamentBridgeGeo = prepGeo(new THREE.BoxGeometry(0.034, 0.0065, 0.0
 const sharedLargeEdisonBulbGeo = prepGeo(new THREE.SphereGeometry(0.042, 14, 12));
 const sharedBulbGlowHaloGeo = prepGeo(new THREE.SphereGeometry(0.068, 16, 12));
 
-const sharedUplightBezelGeo = prepGeo(new THREE.CylinderGeometry(0.065, 0.065, 0.012, 16));
-const sharedUplightLensGeo = prepGeo(new THREE.CylinderGeometry(0.046, 0.046, 0.014, 16));
+const uplightBezelProfile: THREE.Vector2[] = [
+  new THREE.Vector2(0.048, 0.0),
+  new THREE.Vector2(0.065, 0.0),
+  new THREE.Vector2(0.065, 0.006),
+  new THREE.Vector2(0.048, 0.006),
+  new THREE.Vector2(0.048, 0.0),
+];
+const sharedUplightBezelGeo = prepGeo(new THREE.LatheGeometry(uplightBezelProfile, 16));
+sharedUplightBezelGeo.computeVertexNormals();
+const sharedUplightLensGeo = prepGeo(new THREE.CylinderGeometry(0.045, 0.045, 0.006, 16));
 
-const sharedSpotTrimGeo = prepGeo(new THREE.CylinderGeometry(0.065, 0.065, 0.02, 10));
-const sharedSpotPuckGeo = prepGeo(new THREE.CylinderGeometry(0.045, 0.045, 0.022, 10));
+const spotTrimProfile: THREE.Vector2[] = [
+  new THREE.Vector2(0.047, 0.0),
+  new THREE.Vector2(0.065, 0.0),
+  new THREE.Vector2(0.065, 0.008),
+  new THREE.Vector2(0.047, 0.008),
+  new THREE.Vector2(0.047, 0.0),
+];
+const sharedSpotTrimGeo = prepGeo(new THREE.LatheGeometry(spotTrimProfile, 12));
+sharedSpotTrimGeo.computeVertexNormals();
+const sharedSpotPuckGeo = prepGeo(new THREE.CylinderGeometry(0.044, 0.044, 0.008, 12));
 
 const sharedPoleBaseCollarGeo = prepGeo(new THREE.CylinderGeometry(0.055, 0.075, 0.12, 10));
 const sharedPatioPoleGeo = prepGeo(new THREE.CylinderGeometry(0.022, 0.032, 2.75, 10));
@@ -364,14 +380,14 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     const ux = uplightXPositions[i];
     const bezel = new THREE.Mesh(sharedUplightBezelGeo, bezelMat);
     bezel.name = `kitchen.lighting.bifoldUplight_${i}.bezel`;
-    bezel.position.set(ux, 0.006, uplightZ);
+    bezel.position.set(ux, 0.0045, uplightZ);
     setInteractiveUserData(bezel, { circuitId: 'bifoldUplights' });
     interactiveMeshes.push(bezel);
     scene.add(bezel);
 
     const lens = new THREE.Mesh(sharedUplightLensGeo, uplightLensMat);
     lens.name = `kitchen.lighting.bifoldUplight_${i}.lens`;
-    lens.position.set(ux, 0.007, uplightZ);
+    lens.position.set(ux, 0.008, uplightZ);
     setInteractiveUserData(lens, { circuitId: 'bifoldUplights' });
     interactiveMeshes.push(lens);
     scene.add(lens);
@@ -423,13 +439,13 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     const [sx, sz] = spotCoords[i];
     const trim = new THREE.Mesh(sharedSpotTrimGeo, spotTrimMat);
     trim.name = `kitchen.lighting.spotlight_${i}.trim`;
-    trim.position.set(sx, 2.532, sz);
+    trim.position.set(sx, 2.526, sz);
     interactions.registerLightFixture(trim, 'spotlights');
     scene.add(trim);
 
     const puck = new THREE.Mesh(sharedSpotPuckGeo, spotEmissive);
     puck.name = `kitchen.lighting.spotlight_${i}.puck`;
-    puck.position.set(sx, 2.527, sz);
+    puck.position.set(sx, 2.528, sz);
     interactions.registerLightFixture(puck, 'spotlights');
     scene.add(puck);
 
@@ -533,7 +549,7 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     stripGroup.position.set(ast.x, ast.baseY, ast.z);
 
     const aluChannel = new THREE.Mesh(
-      prepGeo(new THREE.BoxGeometry(ast.w + 0.008, 0.007, ast.d + 0.008)),
+      prepGeo(new THREE.BoxGeometry(ast.w + 0.008, 0.005, ast.d + 0.008)),
       aboveCabChannelMat
     );
     aluChannel.name = `${ast.name}.aluChannel`;
@@ -542,11 +558,11 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     stripGroup.add(aluChannel);
 
     const ledDiffuser = new THREE.Mesh(
-      prepGeo(new THREE.BoxGeometry(ast.w, 0.007, ast.d)),
+      prepGeo(new THREE.BoxGeometry(ast.w, 0.005, ast.d)),
       aboveCabStripMat
     );
     ledDiffuser.name = `${ast.name}.ledDiffuser`;
-    ledDiffuser.position.set(0, 0.0115, 0);
+    ledDiffuser.position.set(0, 0.0155, 0);
     stripGroup.add(ledDiffuser);
 
     interactions.registerLightFixture(stripGroup, 'aboveCabinet');
@@ -591,13 +607,13 @@ export function buildFiveKNXLightingCircuits(ctx: SceneBuilderContext): void {
     const [ux, uz] = utilitySpotCoords[i];
     const trim = new THREE.Mesh(sharedSpotTrimGeo, spotTrimMat);
     trim.name = `utility.lighting.spotlight_${i}.trim`;
-    trim.position.set(ux, 2.532, uz);
+    trim.position.set(ux, 2.526, uz);
     interactions.registerLightFixture(trim, 'utilitySpotlights');
     scene.add(trim);
 
     const puck = new THREE.Mesh(sharedSpotPuckGeo, utilitySpotEmissive);
     puck.name = `utility.lighting.spotlight_${i}.puck`;
-    puck.position.set(ux, 2.527, uz);
+    puck.position.set(ux, 2.528, uz);
     interactions.registerLightFixture(puck, 'utilitySpotlights');
     scene.add(puck);
 

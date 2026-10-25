@@ -117,16 +117,16 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
 
   // GYM Floor (`5.49m x 5.15m`) built as a dark sub-slab + 3D `1.00m x 1.00m` Chamfered-Edge Rubber Gym Tiles
   const gymSubSlab = new THREE.Mesh(
-    new THREE.BoxGeometry(5.49, 0.095, 5.15),
+    new THREE.BoxGeometry(5.49 - 0.012, 0.095, 5.15 - 0.012),
     gymSubFloorMat
   );
   gymSubSlab.name = 'outbuildings.gym.subSlab';
-  gymSubSlab.position.set(0.28 + 5.49 * 0.5, baseY0 - 0.062, 0.28 + 5.15 * 0.5);
+  gymSubSlab.position.set(0.28 + 5.49 * 0.5, baseY0 - 0.066, 0.28 + 5.15 * 0.5);
   gymSubSlab.receiveShadow = true;
   groundGroup.add(gymSubSlab);
 
   const gymRubberTilesMesh = new THREE.Mesh(
-    createChamferedGymRubberTilesGeometry(0.28, 5.49, 0.28, 5.15, baseY0 - 0.014, 0.026),
+    createChamferedGymRubberTilesGeometry(0.284, 5.482, 0.284, 5.142, baseY0 - 0.014, 0.026),
     gymRubberTileMat
   );
   gymRubberTilesMesh.name = 'outbuildings.gym.rubberTileFloor';
@@ -140,14 +140,14 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   // to `v = 0.02m` right through the two wide garage door thresholds so there is zero gap under the garage doors!
   const garageResinFloorMat = createPouredResinFloorMaterial();
   const garageFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(6.1, garageFloorThickness, 5.41),
+    new THREE.BoxGeometry(6.1 - 0.012, garageFloorThickness, 5.402),
     garageResinFloorMat
   );
   garageFloor.name = 'outbuildings.garage.resinFloor';
   garageFloor.position.set(
     5.97 + 6.1 * 0.5,
     garageFloorTopY - garageFloorThickness * 0.5,
-    (0.02 + 5.43) * 0.5
+    (0.02 + 5.422) * 0.5
   );
   garageFloor.receiveShadow = true;
   groundGroup.add(garageFloor);
@@ -159,17 +159,17 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   const gymWestDoorV1 = 4.63; // exact 0.81m surveyed width (`Door 1830288`)
   const gymWestDoorH = 2.04;
   addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, northWestWallTopY, 0, 2.96, ['+x']);
-  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, baseY0 + 1.0, 2.96, 3.64, ['+x']);
-  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 + 1.76, northWestWallTopY, 2.96, 3.64, ['+x']);
-  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, northWestWallTopY, 3.64, gymWestDoorV0, ['+x']);
+  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, baseY0 + 0.93, 2.96, 3.64, ['+x']);
+  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 + 1.83, northWestWallTopY, 2.96, 3.64, ['+x']);
+  addOutbuildingBrickWall(groundGroup, 0, wallT, baseY0 - 0.14, northWestWallTopY, 3.64, gymWestDoorV0 - 0.005, ['+x']);
   addOutbuildingBrickWall(
     groundGroup,
     0,
     wallT,
-    baseY0 + gymWestDoorH,
+    baseY0 + gymWestDoorH + 0.08,
     northWestWallTopY,
-    gymWestDoorV0,
-    gymWestDoorV1,
+    gymWestDoorV0 - 0.005,
+    gymWestDoorV1 + 0.005,
     ['+x']
   );
   addOutbuildingBrickWall(
@@ -178,7 +178,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     wallT,
     baseY0 - 0.14,
     northWestWallTopY,
-    gymWestDoorV1,
+    gymWestDoorV1 + 0.005,
     vWestRangeSouth,
     ['+x']
   );
@@ -203,40 +203,41 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     groundGroup.add(roadDoorGroup);
 
     const frameT = 0.038;
-    const sillGeo = new THREE.BoxGeometry(wallT + 0.05, 0.026, rW + 0.06);
+    const sillGeo = new THREE.BoxGeometry(wallT + 0.05, 0.022, rW - 0.004);
     sillGeo.computeBoundingSphere();
     const sill = new THREE.Mesh(sillGeo, stoneSillMat);
     sill.name = 'outbuildings.gym.westGableRoadDoor.thresholdSill';
-    sill.position.set(-0.01, 0.013, 0);
+    sill.position.set(-0.01, 0.011, 0);
     roadDoorGroup.add(sill);
 
-    const lintelGeo = new THREE.BoxGeometry(0.065, 0.075, rW + 0.14);
+    const lintelGeo = new THREE.BoxGeometry(0.065, 0.072, rW + 0.004);
     lintelGeo.computeBoundingSphere();
     const lintel = new THREE.Mesh(lintelGeo, stoneSillMat);
     lintel.name = 'outbuildings.gym.westGableRoadDoor.extLintel';
-    lintel.position.set(-wallT * 0.5 - 0.01, gymWestDoorH + 0.036, 0);
+    lintel.position.set(-wallT * 0.5 - 0.01, gymWestDoorH + 0.04, 0);
     roadDoorGroup.add(lintel);
 
+    const jambH = gymWestDoorH - frameT - 0.03;
     for (const sideZ of [-1, 1] as const) {
-      const jambGeo = new THREE.BoxGeometry(wallT + 0.02, gymWestDoorH, frameT);
+      const jambGeo = new THREE.BoxGeometry(wallT + 0.02, jambH, frameT);
       jambGeo.computeBoundingSphere();
       const jamb = new THREE.Mesh(jambGeo, lightJoineryOakPostMat);
       jamb.name = `outbuildings.gym.westGableRoadDoor.jamb.${sideZ < 0 ? 'north' : 'south'}`;
-      jamb.position.set(0, gymWestDoorH * 0.5, sideZ * (rW * 0.5 - frameT * 0.5));
+      jamb.position.set(0, 0.026 + jambH * 0.5, sideZ * (rW * 0.5 - frameT * 0.5));
       roadDoorGroup.add(jamb);
     }
-    const headGeo = new THREE.BoxGeometry(wallT + 0.02, frameT, rW);
+    const headGeo = new THREE.BoxGeometry(wallT + 0.02, frameT, rW - frameT * 2 - 0.008);
     headGeo.computeBoundingSphere();
     const head = new THREE.Mesh(headGeo, lightJoineryOakPostMat);
     head.name = 'outbuildings.gym.westGableRoadDoor.headFrame';
     head.position.set(0, gymWestDoorH - frameT * 0.5, 0);
     roadDoorGroup.add(head);
 
-    const clearW = rW - frameT * 2 - 0.006;
-    const clearH = gymWestDoorH - frameT - 0.026;
+    const clearW = rW - frameT * 2 - 0.008;
+    const clearH = gymWestDoorH - frameT - 0.032;
     const leafPivot = new THREE.Group();
     leafPivot.name = 'outbuildings.gym.westGableRoadDoor.leafPivot';
-    leafPivot.position.set(-0.015, 0.026, -clearW * 0.5);
+    leafPivot.position.set(-0.015, 0.028, -clearW * 0.5);
     roadDoorGroup.add(leafPivot);
 
     const leafGeo = new THREE.BoxGeometry(0.044, clearH, clearW);
@@ -256,7 +257,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       const strap = new THREE.Mesh(strapGeo, castIronMat);
       strap.name = `outbuildings.gym.westGableRoadDoor.strapHinge.${hTag}`;
       strap.userData.lodTier = 'high';
-      strap.position.set(-0.026, hy, clearW * 0.32);
+      strap.position.set(-0.033, hy, clearW * 0.32);
       leafPivot.add(strap);
     }
 
@@ -589,7 +590,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   );
 
   // Central Brick Pier between the two Double Garage Doors (u = 8.72m..9.12m)
-  addOutbuildingBrickWall(groundGroup, 8.72, 9.12, garageFloorTopY - 0.12, northWestWallTopY, 0, wallT, ['+z']);
+  addOutbuildingBrickWall(groundGroup, 8.72, 9.12, garageFloorTopY - 0.14, northWestWallTopY, 0, wallT, ['+z']);
 
   // Garage Double Coach/Garage Door #2 (u = 9.12m..11.76m, width = 2.64m, seated flush at `garageFloorTopY = -0.50m` — Issue #7 & Issue #5!)
   addOutbuildingBrickWall(groundGroup, 9.12, 11.76, garageDoorTopY, northWestWallTopY, 0, wallT, ['+z']);
@@ -607,7 +608,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   );
 
   // East Pier of Garage up to Step #1 at u = 12.07m
-  addOutbuildingBrickWall(groundGroup, 11.76, uGarageEnd, garageFloorTopY - 0.12, northWestWallTopY, 0, wallT, ['+z']);
+  addOutbuildingBrickWall(groundGroup, 11.76, uGarageEnd, garageFloorTopY - 0.14, northWestWallTopY, 0, wallT, ['+z']);
 
   // Level 1 Pitched Pantile Roof + Insulated Plasterboard Vaulted Ceiling (Issue #4)
   // + 2 North-Slope Velux Skylights over the Garage (`u = 6.661m` Issue #5 & `u = 10.507m` Issue #6)
@@ -625,7 +626,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     westRangeWallH,
     westRangeWallH,
     0.14,
-    0.0,
+    -0.004,
     [
       [wallT, uGymEnd],
       [uGymEnd + partT, uGarageEnd],
@@ -653,15 +654,17 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   // Issue #1 ("There is a gap here" at `[-9.565, -0.69, 16.38]`) & Issue #2 & #3:
   // Seamless Garage Resin Floor extension across the entire East Wall Alcove & sub-hallway (`u = 12.05..13.06m, v = 0.28..5.428m`)
   // so no sub-base gap (`y = -0.69m`) is ever visible anywhere between the pass-through doorway, hallway wall, and tall cupboard!
+  const benchAlcoveStartU = 12.074;
+  const benchAlcoveSpanU = 13.06 - benchAlcoveStartU;
   const benchAlcoveFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(1.01, garageFloorThickness, 5.148),
+    new THREE.BoxGeometry(benchAlcoveSpanU, garageFloorThickness, 5.144),
     garageResinFloorMat
   );
   benchAlcoveFloor.name = 'outbuildings.garage.resinFloor.alcove';
   benchAlcoveFloor.position.set(
-    12.555,
+    benchAlcoveStartU + benchAlcoveSpanU * 0.5,
     garageFloorTopY - garageFloorThickness * 0.5,
-    (0.28 + 5.428) * 0.5
+    (0.282 + 5.426) * 0.5
   );
   benchAlcoveFloor.receiveShadow = true;
   groundGroup.add(benchAlcoveFloor);
@@ -691,11 +694,11 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   storeFloor.receiveShadow = true;
   groundGroup.add(storeFloor);
 
-  // Full-width Golf Simulator Bay Subfloor Slab (`u = 12.78..15.20m, v = 1.24..5.435m, yTop = -0.34m`)
+  // Full-width Golf Simulator Bay Subfloor Slab (`u = 13.044..15.20m, v = 1.242..5.427m, yTop = -0.34m`)
   // so no `-0.69m` void is ever visible at the edges of the Golf Simulator bay (Issue #1)!
-  const simBaySubfloorStartU = 12.78;
-  const simBaySubfloorSpanU = (uBarnStart + 0.24) - simBaySubfloorStartU; // 2.42m
-  const simBaySubfloorSpanV = (vEastRangeSouth - wallT + 0.005) - 1.24; // 4.195m (reaches 5mm into South wall limePlaster at v = 5.430m)
+  const simBaySubfloorStartU = 13.044;
+  const simBaySubfloorSpanU = (uBarnStart + 0.24) - simBaySubfloorStartU;
+  const simBaySubfloorSpanV = (vEastRangeSouth - wallT - 0.003) - 1.242;
   const simBaySubfloor = new THREE.Mesh(
     new THREE.BoxGeometry(simBaySubfloorSpanU, 0.38, simBaySubfloorSpanV),
     barnLimestoneFloorMat
@@ -704,7 +707,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   simBaySubfloor.position.set(
     simBaySubfloorStartU + simBaySubfloorSpanU * 0.5,
     barnWestFloorY - 0.19,
-    1.24 + simBaySubfloorSpanV * 0.5
+    1.242 + simBaySubfloorSpanV * 0.5
   );
   simBaySubfloor.receiveShadow = true;
   groundGroup.add(simBaySubfloor);
@@ -715,10 +718,10 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   // so `barnWestFloor` spans `u = 15.20..18.18m` (`2.98m` wide), the 2 bullnose oak steps span `u = 18.18..18.46m`,
   // and the carpeted lower lounge/pool/bar floor (`barnEastLowerFloor`) spans `u = 18.46..23.02m` (`4.56m` wide — 50cm larger!).
   const uBarnStepDropStart = 18.00; // 18.00m (Riser #1 = 18.00m, Riser #2 = 18.24m -> true stair nosing pitch line lands at u = 18.502m before North Pilaster at 18.53m!)
-  const barnWestFloorSpanU = uBarnStepDropStart - (uBarnStart + 0.24); // 2.96m
+  const barnWestFloorSpanU = (uBarnStepDropStart - 0.04) - (uBarnStart + 0.24);
   const barnWestFloorCenterU = uBarnStart + 0.24 + barnWestFloorSpanU * 0.5;
   const barnFloorCenterV = vEastRangeNorth + wallT + eastRangeInternalV * 0.5;
-  const barnWestFloorGeo = new THREE.BoxGeometry(barnWestFloorSpanU, 0.38, eastRangeInternalV);
+  const barnWestFloorGeo = new THREE.BoxGeometry(barnWestFloorSpanU, 0.38, eastRangeInternalV - 0.006);
   applyOutbuildingFloorUVs(barnWestFloorGeo, barnWestFloorCenterU, barnWestFloorY - 0.19, barnFloorCenterV, 0.34);
   const barnWestFloor = new THREE.Mesh(
     barnWestFloorGeo,
@@ -795,17 +798,18 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   barnDropStep1.receiveShadow = true;
   groundGroup.add(barnDropStep1);
 
-  // Top step threshold Honed Limestone nosing slab at `u = 18.18m, y = barnWestFloorY = -0.34m, v = 0.28..3.62m`
+  // Top step threshold Honed Limestone nosing slab at `u = 17.96..18.025m, y = barnWestFloorY = -0.34m, v = 0.28..5.43m`
+  // (extended cleanly across the full Barn width so there is no notch South of `vGolfBarNorthEdge = 3.62m` where `barnWestFloor` stops at `17.96m`)
   const upperNosingFlatU = 0.065;
   const upperNosingCenterU = uBarnStepDropStart - 0.04 + upperNosingFlatU * 0.5;
-  const upperNosingGeo = new THREE.BoxGeometry(upperNosingFlatU, stepTreadT, stepSpanV);
-  applyOutbuildingFloorUVs(upperNosingGeo, upperNosingCenterU, barnWestFloorY - stepTreadT * 0.5 + 0.001, stepCenterV, 0.34);
+  const upperNosingGeo = new THREE.BoxGeometry(upperNosingFlatU, stepTreadT, eastRangeInternalV - 0.006);
+  applyOutbuildingFloorUVs(upperNosingGeo, upperNosingCenterU, barnWestFloorY - stepTreadT * 0.5, barnFloorCenterV, 0.34);
   const upperNosingBoard = new THREE.Mesh(upperNosingGeo, barnLimestoneFloorMat);
   upperNosingBoard.name = 'outbuildings.barn.floorDropStepNosing.1';
   upperNosingBoard.position.set(
     upperNosingCenterU,
-    barnWestFloorY - stepTreadT * 0.5 + 0.001,
-    stepCenterV
+    barnWestFloorY - stepTreadT * 0.5,
+    barnFloorCenterV
   );
   upperNosingBoard.castShadow = true;
   upperNosingBoard.receiveShadow = true;
@@ -813,7 +817,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
 
   // Half-round cylindrical bullnose leading edges (`sIdx = 1` top step & `sIdx = 2` middle step both in `barnLimestoneFloorMat`)
   for (const [sIdx, riserU, treadTopY, nosingMat] of [
-    [1, uBarnStepDropStart, barnWestFloorY + 0.001, barnLimestoneFloorMat],
+    [1, uBarnStepDropStart, barnWestFloorY, barnLimestoneFloorMat],
     [2, uBarnStepDropStart + stepDownDepthU, step1TopY, barnLimestoneFloorMat],
   ] as const) {
     const bullnoseU = riserU + stepOverhangU - stepBullnoseR;
@@ -844,10 +848,10 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   // raised `1.5cm` above the `-0.69m` exterior terrain ground slab so the terrain never bleeds through!)
   // Paved in continuous Honed Limestone (`barnLimestoneFloorMat`, `uvScale = 0.34`) matching `outbuildings.barn.westFloor` (Issue #2)!
   const barnLowerFloorStartU = uBarnStepDropStart + stepDownDepthU; // 18.46m
-  const barnLowerFloorSpanU = uBarnEnd - partT - barnLowerFloorStartU; // 4.56m
+  const barnLowerFloorSpanU = uBarnEnd - partT - barnLowerFloorStartU - 0.006;
   const barnEastFloorCenterU = barnLowerFloorStartU + barnLowerFloorSpanU * 0.5;
-  const barnEastLowerFloorGeo = new THREE.BoxGeometry(barnLowerFloorSpanU + 0.01, 0.145, eastRangeInternalV + 0.02);
-  applyOutbuildingFloorUVs(barnEastLowerFloorGeo, barnEastFloorCenterU, barnCarpetTopY - 0.0725, barnFloorCenterV, 0.34);
+  const barnEastLowerFloorGeo = new THREE.BoxGeometry(barnLowerFloorSpanU, 0.135, eastRangeInternalV - 0.006);
+  applyOutbuildingFloorUVs(barnEastLowerFloorGeo, barnEastFloorCenterU, barnCarpetTopY - 0.0675, barnFloorCenterV, 0.34);
   const barnEastLowerFloor = new THREE.Mesh(
     barnEastLowerFloorGeo,
     barnLimestoneFloorMat
@@ -855,20 +859,20 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   barnEastLowerFloor.name = 'outbuildings.barn.eastLowerFloor';
   barnEastLowerFloor.position.set(
     barnEastFloorCenterU,
-    barnCarpetTopY - 0.0725,
+    barnCarpetTopY - 0.0675,
     barnFloorCenterV
   );
   barnEastLowerFloor.receiveShadow = true;
   groundGroup.add(barnEastLowerFloor);
 
   // South Bar Bay Lower Limestone Floor Extension (`u = 18.18m..18.46m, v = 3.62m..5.43m`) directly beneath the shifted Golf Viewing Bar!
-  const barBayFloorSpanV = (vEastRangeSouth - wallT) - vGolfBarNorthEdge; // 1.81m (3.62m..5.43m)
-  const barBayFloorCenterV = vGolfBarNorthEdge + barBayFloorSpanV * 0.5;   // 4.525m
-  const barBayFloorGeo = new THREE.BoxGeometry(stepDownDepthU, 0.145, barBayFloorSpanV);
+  const barBayFloorSpanV = (vEastRangeSouth - wallT - 0.003) - vGolfBarNorthEdge;
+  const barBayFloorCenterV = vGolfBarNorthEdge + barBayFloorSpanV * 0.5;
+  const barBayFloorGeo = new THREE.BoxGeometry(stepDownDepthU, 0.135, barBayFloorSpanV);
   applyOutbuildingFloorUVs(
     barBayFloorGeo,
     uBarnStepDropStart + stepDownDepthU * 0.5,
-    barnCarpetTopY - 0.0725,
+    barnCarpetTopY - 0.0675,
     barBayFloorCenterV,
     0.34
   );
@@ -876,7 +880,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   barBayLowerFloor.name = 'outbuildings.barn.eastLowerFloor.barBay';
   barBayLowerFloor.position.set(
     uBarnStepDropStart + stepDownDepthU * 0.5,
-    barnCarpetTopY - 0.0725,
+    barnCarpetTopY - 0.0675,
     barBayFloorCenterV
   );
   barBayLowerFloor.receiveShadow = true;
@@ -887,7 +891,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   // Extended Stable Ground-Floor Wide-Plank European Oak Wooden Floor (`u = 23.22m..31.57m`, span `8.35m`, top at `stableGroundFloorY = -0.44m`)
   const stableFloorCenterU = uStableStart + stableGroundSpanU * 0.5; // 27.395m
   const stableFloorCenterV = vEastRangeNorth + wallT + eastRangeInternalV * 0.5; // 2.855m
-  const stableFloorGeo = new THREE.BoxGeometry(stableGroundSpanU, 0.12, eastRangeInternalV);
+  const stableFloorGeo = new THREE.BoxGeometry(stableGroundSpanU - 0.008, 0.12, eastRangeInternalV - 0.008);
   applyOutbuildingFloorUVs(stableFloorGeo, stableFloorCenterU, stableGroundFloorY - 0.06, stableFloorCenterV, 0.5);
   const stableFloor = new THREE.Mesh(
     stableFloorGeo,
@@ -914,13 +918,13 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   const stepWallNorthVMin = vEastRangeNorth + wallT + 0.005; // 0.285m (5mm clear of North wall inner plaster `v = 0.280m` to prevent cutaway grazing dithering)
   const stepWallChildStartIdx = groundGroup.children.length;
 
-  // 1. Lower sill / step wall (`y = barnLowerFloorY (-0.70m) .. garageFloorTopY (-0.50m)`): full span `vInnerNorth .. vInnerSouth`
+  // 1. Lower sill / step wall (`y = barnLowerFloorY (-0.70m) .. garageFloorTopY - garageFloorThickness - 0.004 (-0.624m)`): full span `vInnerNorth .. vInnerSouth`
   addOutbuildingBrickWall(
     groundGroup,
     uStoreStart,
     uStoreStart + 0.24,
     barnLowerFloorY,
-    garageFloorTopY,
+    garageFloorTopY - garageFloorThickness - 0.004,
     stepWallNorthVMin,
     benchAlcoveVMax,
     ['+x', '-x', '+z', '-z'],
@@ -2064,8 +2068,8 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
   );
   addOutbuildingBrickWall(
     groundGroup,
-    12.765,
-    13.835,
+    12.85,
+    13.75,
     storeFloorTopY + 2.02,
     1.8,
     vEastRangeNorth,
@@ -2377,7 +2381,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     stableGroundFloorY - 0.14,
     stableGroundTopY,
     vEastRangeNorth,
-    vEastDoorV0,
+    vEastDoorV0 - 0.005,
     ['-x']
   );
   addOutbuildingBrickWall(
@@ -2385,19 +2389,19 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     uStableExtEnd - wallT,
     uStableExtEnd,
     stableGroundFloorY - 0.14,
-    eastDoorBotY,
-    vEastDoorV0,
-    vEastDoorV1,
+    eastDoorBotY - 0.005,
+    vEastDoorV0 - 0.005,
+    vEastDoorV1 + 0.005,
     ['-x']
   );
   addOutbuildingBrickWall(
     groundGroup,
     uStableExtEnd - wallT,
     uStableExtEnd,
-    eastDoorTopY,
+    eastDoorTopY + 0.088,
     stableGroundTopY,
-    vEastDoorV0,
-    vEastDoorV1,
+    vEastDoorV0 - 0.005,
+    vEastDoorV1 + 0.005,
     ['-x']
   );
   addOutbuildingBrickWall(
@@ -2406,7 +2410,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     uStableExtEnd,
     stableGroundFloorY - 0.14,
     stableGroundTopY,
-    vEastDoorV1,
+    vEastDoorV1 + 0.005,
     vEastRangeSouth,
     ['-x']
   );
@@ -2432,24 +2436,24 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
 
     const frameT = 0.036;
     const sillSlab = new THREE.Mesh(
-      new THREE.BoxGeometry(wallT + 0.06, 0.028, dSpanV + 0.04),
+      new THREE.BoxGeometry(wallT + 0.06, 0.024, dSpanV - 0.004),
       stoneSillMat
     );
     sillSlab.name = 'outbuildings.stable.eastExtensionGlassDoor.sillSlab';
-    sillSlab.position.set(0.01, 0.014, 0);
+    sillSlab.position.set(0.01, 0.012, 0);
     sillSlab.receiveShadow = true;
     eastGlassDoorGroup.add(sillSlab);
 
     const extHeaderLintel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.065, 0.08, dSpanV + 0.16),
+      new THREE.BoxGeometry(0.065, 0.076, dSpanV + 0.004),
       stoneSillMat
     );
     extHeaderLintel.name = 'outbuildings.stable.eastExtensionGlassDoor.extHeaderLintel';
-    extHeaderLintel.position.set(wallT * 0.5 + 0.01, dSpanH + 0.04, 0);
+    extHeaderLintel.position.set(wallT * 0.5 + 0.01, dSpanH + 0.044, 0);
     eastGlassDoorGroup.add(extHeaderLintel);
 
     const headFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(wallT + 0.02, frameT, dSpanV),
+      new THREE.BoxGeometry(wallT + 0.02, frameT, dSpanV - frameT * 2 - 0.008),
       windowFrameMat
     );
     headFrame.name = 'outbuildings.stable.eastExtensionGlassDoor.headFrame';
@@ -2458,6 +2462,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
 
     // Outer jambs + 2 mullion posts separating the North/South fixed sidelights (`0.46m` each) from the central `1.70m` double doors
     const sidelightW = 0.46;
+    const postH = dSpanH - frameT - 0.034;
     let eastDoorPostSeq = 0;
     for (const vz of [
       -dSpanV * 0.5 + frameT * 0.5,
@@ -2466,30 +2471,30 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       dSpanV * 0.5 - frameT * 0.5,
     ] as const) {
       const post = new THREE.Mesh(
-        new THREE.BoxGeometry(wallT + 0.02, dSpanH - frameT, frameT),
+        new THREE.BoxGeometry(wallT + 0.02, postH, frameT),
         windowFrameMat
       );
       post.name = `outbuildings.stable.eastExtensionGlassDoor.framePost.${++eastDoorPostSeq}`;
-      post.position.set(0, (dSpanH - frameT) * 0.5, vz);
+      post.position.set(0, 0.029 + postH * 0.5, vz);
       eastGlassDoorGroup.add(post);
     }
 
     // North & South fixed full-height glazed sidelights
-    const slClearW = sidelightW - frameT * 1.5;
-    const slClearH = dSpanH - frameT - 0.028;
+    const slClearW = sidelightW - frameT * 1.5 - 0.008;
+    const slClearH = dSpanH - frameT - 0.036;
     for (const sideSign of [-1, 1] as const) {
       const slCenterZ = sideSign * (dSpanV * 0.5 - sidelightW * 0.5 - frameT * 0.25);
       const slGlass = new THREE.Mesh(
-        new THREE.BoxGeometry(0.018, slClearH, slClearW),
+        new THREE.BoxGeometry(0.014, slClearH, slClearW),
         windowGlassMat
       );
       slGlass.name = 'outbuildings.stable.eastExtensionGlassDoor.sidelightGlass';
-      slGlass.position.set(0, 0.028 + slClearH * 0.5, slCenterZ);
+      slGlass.position.set(0, 0.032 + slClearH * 0.5, slCenterZ);
       eastGlassDoorGroup.add(slGlass);
 
-      for (const ty of [0.028 + slClearH * 0.34, 0.028 + slClearH * 0.67] as const) {
+      for (const ty of [0.032 + slClearH * 0.34, 0.032 + slClearH * 0.67] as const) {
         const hBar = new THREE.Mesh(
-          new THREE.BoxGeometry(0.032, 0.022, slClearW),
+          new THREE.BoxGeometry(0.034, 0.022, slClearW),
           windowFrameMat
         );
         hBar.name = `outbuildings.stable.eastExtensionGlassDoor.sidelightBar.${sideSign < 0 ? "north" : "south"}.${ty < slClearH * 0.5 ? "lower" : "upper"}`;
@@ -2501,7 +2506,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
     // Twin interactive hinged glazed double patio doors across the central `1.70m` opening
     const centerClearW = dSpanV - sidelightW * 2 - frameT;
     const singleLeafW = centerClearW * 0.5 - 0.004;
-    const leafClearH = dSpanH - frameT - 0.032;
+    const leafClearH = dSpanH - frameT - 0.036;
     const stileW = 0.058;
     const botRailH = 0.18;
     const topRailH = 0.068;
@@ -2514,7 +2519,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       const hingeZ = sideSign * (centerClearW * 0.5);
       const leafPivot = new THREE.Group();
       leafPivot.name = `outbuildings.stable.eastExtensionGlassDoor.leafPivot.${leafIdx}`;
-      leafPivot.position.set(0.02, 0.028, hingeZ);
+      leafPivot.position.set(0.02, 0.032, hingeZ);
       eastGlassDoorGroup.add(leafPivot);
 
       const inwardDir = -sideSign;
@@ -2531,7 +2536,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
         leafPivot.add(stile);
       }
       const botRail = new THREE.Mesh(
-        new THREE.BoxGeometry(0.046, botRailH, singleLeafW - stileW * 2),
+        new THREE.BoxGeometry(0.046, botRailH, singleLeafW - stileW * 2 - 0.008),
         windowFrameMat
       );
       botRail.name = `outbuildings.stable.eastExtensionGlassDoor.bottomRail.${leafIdx}`;
@@ -2540,7 +2545,7 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       leafPivot.add(botRail);
 
       const topRail = new THREE.Mesh(
-        new THREE.BoxGeometry(0.046, topRailH, singleLeafW - stileW * 2),
+        new THREE.BoxGeometry(0.046, topRailH, singleLeafW - stileW * 2 - 0.008),
         windowFrameMat
       );
       topRail.name = `outbuildings.stable.eastExtensionGlassDoor.topRail.${leafIdx}`;
@@ -2548,11 +2553,11 @@ export function buildWestAndEastGroundShell(shellCtx: OutbuildingShellContext): 
       topRail.castShadow = true;
       leafPivot.add(topRail);
 
-      const paneW = singleLeafW - stileW * 2 + 0.01;
-      const paneH = leafClearH - botRailH - topRailH + 0.01;
-      const paneCY = botRailH + paneH * 0.5;
+      const paneW = singleLeafW - stileW * 2 - 0.008;
+      const paneH = leafClearH - botRailH - topRailH - 0.008;
+      const paneCY = botRailH + 0.004 + paneH * 0.5;
       const glassPane = new THREE.Mesh(
-        new THREE.BoxGeometry(0.018, paneH, paneW),
+        new THREE.BoxGeometry(0.014, paneH, paneW),
         windowGlassMat
       );
       glassPane.name = `outbuildings.stable.eastExtensionGlassDoor.glass.${leafIdx}`;

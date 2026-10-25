@@ -60,41 +60,45 @@ export function buildWalledVegetableGarden(
   const vegEastX = 17.65;
   const vegNorthZ = pergMinZ; // -0.95m
   const vegSouthZ = pergMaxZ; // +7.20m
-  const vegSpanX = vegEastX - vegWestX; // 5.80m
   const vegSpanZ = vegSouthZ - vegNorthZ; // 8.15m
-  const vegMidX = (vegWestX + vegEastX) * 0.5; // 14.75m
   const vegMidZ = (vegNorthZ + vegSouthZ) * 0.5; // +3.125m
 
-  // Continuous dry-stone retaining plinth (`y = -0.88..-0.04m` local -> `-0.17..+0.67m` world)
-  // grounding the +0.710m raised East Walled Garden cleanly into the surrounding grounds!
+  // Continuous dry-stone retaining plinth (`y = -0.880..-0.084m` local -> `-0.170..+0.626m` world)
+  // grounding the +0.710m raised East Walled Garden cleanly below the gravel pad and East of the Pergola wall!
+  const plinthStartX = vegWestX + 0.15;
+  const plinthEndX = vegEastX + 0.2;
+  const plinthSpanX = plinthEndX - plinthStartX;
+  const plinthCenterX = (plinthStartX + plinthEndX) * 0.5;
   const vegRetainingPlinth = new THREE.Mesh(
     applyDryStoneWallUVs(
-      new THREE.BoxGeometry(vegSpanX + 0.28, 0.84, vegSpanZ + 0.28),
-      vegMidX + 0.06,
-      vegFloorY - 0.46,
+      new THREE.BoxGeometry(plinthSpanX, 0.796, vegSpanZ + 0.28),
+      plinthCenterX,
+      vegFloorY - 0.482,
       vegMidZ
     ),
     dryStoneWallMat
   );
   vegRetainingPlinth.name = 'courtyard.vegetableGarden.retainingPlinth';
-  vegRetainingPlinth.position.set(vegMidX + 0.06, -0.46, vegMidZ);
+  vegRetainingPlinth.position.set(plinthCenterX, -0.482, vegMidZ);
   vegRetainingPlinth.castShadow = true;
   vegRetainingPlinth.receiveShadow = true;
   vegGardenGroup.add(vegRetainingPlinth);
 
+  const gravelStartX = vegWestX + 0.15;
+  const gravelEndX = vegEastX - 0.125;
   const vegGardenGravelPad = new THREE.Mesh(
-    new THREE.BoxGeometry(vegSpanX, 0.08, vegSpanZ),
+    new THREE.BoxGeometry(gravelEndX - gravelStartX, 0.08, vegSpanZ - 0.25),
     gravelPathMat
   );
   vegGardenGravelPad.name = 'courtyard.vegetableGarden.gravelFloor';
-  vegGardenGravelPad.position.set(vegMidX, -0.04, vegMidZ);
+  vegGardenGravelPad.position.set((gravelStartX + gravelEndX) * 0.5, -0.04, vegMidZ);
   vegGardenGravelPad.receiveShadow = true;
   vegGardenGroup.add(vegGardenGravelPad);
 
-  const horizWallStartX = vegWestX + 0.14; // 11.99m
-  const horizWallEndX = vegEastX + 0.12;   // 17.77m
-  const horizLenX = horizWallEndX - horizWallStartX; // 5.78m
-  const horizCenterX = (horizWallStartX + horizWallEndX) * 0.5; // 14.88m
+  const horizWallStartX = vegWestX + 0.175; // 12.025m (5mm East of Pergola coping)
+  const horizWallEndX = vegEastX - 0.154; // 17.496m (4mm West of corner quoin pier)
+  const horizLenX = horizWallEndX - horizWallStartX;
+  const horizCenterX = (horizWallStartX + horizWallEndX) * 0.5;
   const northWallH = 1.95;
   const southEastWallH = 0.96;
 
@@ -115,15 +119,15 @@ export function buildWalledVegetableGarden(
 
   const vegNorthCoping = new THREE.Mesh(
     applyDryStoneWallUVs(
-      new THREE.BoxGeometry(horizLenX + 0.02, 0.055, 0.30),
-      horizCenterX + 0.01,
-      northWallH + 0.028,
+      new THREE.BoxGeometry(horizLenX, 0.055, 0.30),
+      horizCenterX,
+      northWallH + 0.0315,
       vegNorthZ
     ),
     dryStoneCopingMat
   );
   if (!vegNorthCoping.name) vegNorthCoping.name = 'courtyard.vegetableGarden.vegNorthCoping';
-  vegNorthCoping.position.set(horizCenterX + 0.01, northWallH + 0.028, vegNorthZ);
+  vegNorthCoping.position.set(horizCenterX, northWallH + 0.0315, vegNorthZ);
   vegNorthCoping.castShadow = true;
   vegGardenGroup.add(vegNorthCoping);
 
@@ -144,15 +148,15 @@ export function buildWalledVegetableGarden(
 
   const vegSouthCoping = new THREE.Mesh(
     applyDryStoneWallUVs(
-      new THREE.BoxGeometry(horizLenX + 0.02, 0.055, 0.30),
-      horizCenterX + 0.01,
-      southEastWallH + 0.028,
+      new THREE.BoxGeometry(horizLenX, 0.055, 0.30),
+      horizCenterX,
+      southEastWallH + 0.0315,
       vegSouthZ
     ),
     dryStoneCopingMat
   );
   if (!vegSouthCoping.name) vegSouthCoping.name = 'courtyard.vegetableGarden.vegSouthCoping';
-  vegSouthCoping.position.set(horizCenterX + 0.01, southEastWallH + 0.028, vegSouthZ);
+  vegSouthCoping.position.set(horizCenterX, southEastWallH + 0.0315, vegSouthZ);
   vegSouthCoping.castShadow = true;
   vegGardenGroup.add(vegSouthCoping);
 
@@ -168,7 +172,7 @@ export function buildWalledVegetableGarden(
     73
   );
 
-  const eastLenZ = (vegSouthZ - 0.12) - (vegNorthZ + 0.12); // 7.91m
+  const eastLenZ = (vegSouthZ - 0.154) - (vegNorthZ + 0.154);
   const vegEastWall = new THREE.Mesh(
     applyDryStoneWallUVs(
       new THREE.BoxGeometry(0.24, southEastWallH, eastLenZ),
@@ -184,18 +188,18 @@ export function buildWalledVegetableGarden(
   vegEastWall.receiveShadow = true;
   vegGardenGroup.add(vegEastWall);
 
-  const eastCopingLenZ = (vegSouthZ - 0.15) - (vegNorthZ + 0.15); // 7.85m
+  const eastCopingLenZ = eastLenZ;
   const vegEastCoping = new THREE.Mesh(
     applyDryStoneWallUVs(
       new THREE.BoxGeometry(0.30, 0.055, eastCopingLenZ),
       vegEastX,
-      southEastWallH + 0.028,
+      southEastWallH + 0.0315,
       vegMidZ
     ),
     dryStoneCopingMat
   );
   if (!vegEastCoping.name) vegEastCoping.name = 'courtyard.vegetableGarden.vegEastCoping';
-  vegEastCoping.position.set(vegEastX, southEastWallH + 0.028, vegMidZ);
+  vegEastCoping.position.set(vegEastX, southEastWallH + 0.0315, vegMidZ);
   vegEastCoping.castShadow = true;
   vegGardenGroup.add(vegEastCoping);
 
@@ -226,18 +230,18 @@ export function buildWalledVegetableGarden(
     vegGardenGroup.add(quoinPier);
 
     const quoinCap = new THREE.Mesh(
-      applyDryStoneWallUVs(new THREE.BoxGeometry(0.36, 0.065, 0.36), qx, qh + 0.032, qz),
+      applyDryStoneWallUVs(new THREE.BoxGeometry(0.36, 0.065, 0.36), qx, qh + 0.0365, qz),
       dryStoneCopingMat
     );
     if (!quoinCap.name) quoinCap.name = 'courtyard.vegetableGarden.quoinCap';
-    quoinCap.position.set(qx, qh + 0.032, qz);
+    quoinCap.position.set(qx, qh + 0.0365, qz);
     quoinCap.castShadow = true;
     vegGardenGroup.add(quoinCap);
   }
 
   const greenhouseGroup = new THREE.Group();
   greenhouseGroup.name = 'courtyard.greenhouse';
-  greenhouseGroup.position.set(15.85, 0.0, 2.17);
+  greenhouseGroup.position.set(15.85, 0.004, 2.17);
   greenhouseGroup.rotation.y = -Math.PI / 2;
 
   const ghW = 2.6;
@@ -253,9 +257,9 @@ export function buildWalledVegetableGarden(
   for (const [bx, bz, bw, bd] of [
     [-ghHalfW, 0, 0.12, ghD],
     [ghHalfW, 0, 0.12, ghD],
-    [0, -ghD * 0.5, ghW, 0.12],
-    [-0.82, ghD * 0.5, 0.96, 0.12],
-    [0.82, ghD * 0.5, 0.96, 0.12],
+    [0, -ghD * 0.5, ghW - 0.128, 0.12],
+    [-0.818, ghD * 0.5, 0.836, 0.12],
+    [0.818, ghD * 0.5, 0.836, 0.12],
   ] as const) {
     const dwarfBase = new THREE.Mesh(
       applyCourtyardBrickUVs(new THREE.BoxGeometry(bw, ghBrickH, bd), bx, ghBrickH * 0.5, bz),
@@ -269,13 +273,15 @@ export function buildWalledVegetableGarden(
   }
 
   const ghWallGlassH = ghEaveH - ghBrickH;
+  const ghSideClearH = ghWallGlassH - 0.028;
+  const ghSideMidY = ghBrickH + 0.004 + ghSideClearH * 0.5;
   for (const sideX of [-1, 1]) {
     const sideGlass = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, ghWallGlassH, ghD - 0.08),
+      new THREE.BoxGeometry(0.014, ghSideClearH, ghD - 0.08),
       glassMat
     );
     if (!sideGlass.name) sideGlass.name = 'courtyard.vegetableGarden.sideGlass';
-    sideGlass.position.set(sideX * ghHalfW, ghBrickH + ghWallGlassH * 0.5, 0);
+    sideGlass.position.set(sideX * ghHalfW, ghSideMidY, 0);
     greenhouseGroup.add(sideGlass);
 
     const eaveBar = new THREE.Mesh(
@@ -288,16 +294,16 @@ export function buildWalledVegetableGarden(
 
     for (let gz = -ghD * 0.5; gz <= ghD * 0.5 + 0.01; gz += 0.64) {
       const mullion = new THREE.Mesh(
-        new THREE.BoxGeometry(0.032, ghWallGlassH, 0.032),
+        new THREE.BoxGeometry(0.032, ghSideClearH, 0.032),
         aluminumFrameMat
       );
       if (!mullion.name) mullion.name = 'courtyard.vegetableGarden.mullion';
-      mullion.position.set(sideX * ghHalfW, ghBrickH + ghWallGlassH * 0.5, gz);
+      mullion.position.set(sideX * ghHalfW, ghSideMidY, gz);
       greenhouseGroup.add(mullion);
     }
 
     const roofGlass = new THREE.Mesh(
-      new THREE.BoxGeometry(ghSlopeLen, 0.016, ghD - 0.06),
+      new THREE.BoxGeometry(ghSlopeLen - 0.06, 0.014, ghD - 0.06),
       glassMat
     );
     if (!roofGlass.name) roofGlass.name = 'courtyard.vegetableGarden.roofGlass';
@@ -311,7 +317,7 @@ export function buildWalledVegetableGarden(
 
     for (let gz = -ghD * 0.5; gz <= ghD * 0.5 + 0.01; gz += 0.64) {
       const roofBar = new THREE.Mesh(
-        new THREE.BoxGeometry(ghSlopeLen + 0.04, 0.032, 0.032),
+        new THREE.BoxGeometry(ghSlopeLen - 0.02, 0.032, 0.032),
         aluminumFrameMat
       );
       if (!roofBar.name) roofBar.name = 'courtyard.vegetableGarden.roofBar';
@@ -330,25 +336,29 @@ export function buildWalledVegetableGarden(
     aluminumFrameMat
   );
   if (!ghRidgeBar.name) ghRidgeBar.name = 'courtyard.vegetableGarden.ghRidgeBar';
-  ghRidgeBar.position.set(0, ghRidgeH, 0);
+  ghRidgeBar.position.set(0, ghRidgeH + 0.012, 0);
   greenhouseGroup.add(ghRidgeBar);
 
   for (const endZ of [-ghD * 0.5, ghD * 0.5]) {
     const endGlass = new THREE.Mesh(
-      new THREE.BoxGeometry(ghW - 0.08, ghWallGlassH, 0.016),
+      new THREE.BoxGeometry(ghW - 0.14, ghSideClearH, 0.014),
       glassMat
     );
     if (!endGlass.name) endGlass.name = 'courtyard.vegetableGarden.endGlass';
-    endGlass.position.set(0, ghBrickH + ghWallGlassH * 0.5, endZ);
+    endGlass.position.set(0, ghSideMidY, endZ);
     greenhouseGroup.add(endGlass);
 
     for (const gx of [-0.65, -0.36, 0.36, 0.65]) {
+      const isDoorStile = endZ > 0 && Math.abs(gx) < 0.5;
+      const stileBot = isDoorStile ? 0.0 : ghBrickH + 0.004;
+      const stileTop = ghEaveH - 0.024;
+      const stileH = stileTop - stileBot;
       const stile = new THREE.Mesh(
-        new THREE.BoxGeometry(0.032, ghEaveH, 0.036),
+        new THREE.BoxGeometry(0.032, stileH, 0.036),
         aluminumFrameMat
       );
       if (!stile.name) stile.name = 'courtyard.vegetableGarden.stile';
-      stile.position.set(gx, ghEaveH * 0.5, endZ);
+      stile.position.set(gx, (stileBot + stileTop) * 0.5, endZ);
       greenhouseGroup.add(stile);
     }
   }
@@ -368,7 +378,7 @@ export function buildWalledVegetableGarden(
         potMat
       );
       if (!ghPot.name) ghPot.name = 'courtyard.vegetableGarden.ghPot';
-      ghPot.position.set(sideX, 0.89, pz);
+      ghPot.position.set(sideX, 0.892, pz);
       greenhouseGroup.add(ghPot);
 
       const tomatoFoliage = new THREE.Mesh(botanicalLobeGeos[1]!, brightShrubGreenMat);
@@ -395,7 +405,7 @@ export function buildWalledVegetableGarden(
 
   for (const [bx, bz, hasBeanWigwam] of vegBedCenters) {
     const bedGroup = new THREE.Group();
-    bedGroup.position.set(bx, 0, bz);
+    bedGroup.position.set(bx, 0.004, bz);
 
     for (const sz of [-bedD * 0.5 + 0.05, bedD * 0.5 - 0.05]) {
       const sleeperFB = new THREE.Mesh(
@@ -410,7 +420,7 @@ export function buildWalledVegetableGarden(
     }
     for (const sx of [-bedW * 0.5 + 0.05, bedW * 0.5 - 0.05]) {
       const sleeperLR = new THREE.Mesh(
-        new THREE.BoxGeometry(0.1, bedH, bedD - 0.2),
+        new THREE.BoxGeometry(0.1, bedH - 0.008, bedD - 0.208),
         structuralOakMat
       );
       if (!sleeperLR.name) sleeperLR.name = 'courtyard.vegetableGarden.sleeperLR';
@@ -420,12 +430,13 @@ export function buildWalledVegetableGarden(
       bedGroup.add(sleeperLR);
     }
 
+    const soilFillH = bedH - 0.048;
     const soilFill = new THREE.Mesh(
-      new THREE.BoxGeometry(bedW - 0.18, bedH - 0.04, bedD - 0.18),
+      new THREE.BoxGeometry(bedW - 0.208, soilFillH, bedD - 0.208),
       soilMat
     );
     if (!soilFill.name) soilFill.name = 'courtyard.vegetableGarden.soilFill';
-    soilFill.position.set(0, (bedH - 0.04) * 0.5, 0);
+    soilFill.position.set(0, 0.004 + soilFillH * 0.5, 0);
     soilFill.receiveShadow = true;
     bedGroup.add(soilFill);
 

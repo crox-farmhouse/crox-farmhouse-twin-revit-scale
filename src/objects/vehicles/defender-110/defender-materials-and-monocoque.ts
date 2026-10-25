@@ -1183,11 +1183,14 @@ export function buildDefender110MonocoqueAndCladding(
       map: createUnderCarShadowTexture(),
       transparent: true,
       depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
     })
   );
   shadowPlane.name = 'courtyard.landRoverDefender.contactShadow';
   shadowPlane.rotation.x = -Math.PI / 2;
-  shadowPlane.position.set(0.05, 0.004, 0);
+  shadowPlane.position.set(0.05, 0.022, 0);
   defenderGroup.add(shadowPlane);
 
   const chassisUndertray = new THREE.Mesh(
@@ -1214,8 +1217,8 @@ export function buildDefender110MonocoqueAndCladding(
     () => 0.305,
     36,
     24,
-    0.0025,
-    0.002,
+    0.0065,
+    0.0055,
     false
   );
   const floatingRoofCapMesh = new THREE.Mesh(floatingRoofCapGeo, mats.narvikGlossBlackMat);
@@ -1232,8 +1235,8 @@ export function buildDefender110MonocoqueAndCladding(
     () => 0.558,
     48,
     6,
-    0.0022,
-    0.0025,
+    0.006,
+    0.006,
     true
   );
   const waistShoulderStripMesh = new THREE.Mesh(waistShoulderStripGeo, mats.narvikGlossBlackMat);
@@ -1248,7 +1251,7 @@ export function buildDefender110MonocoqueAndCladding(
     () => 0.50,
     24,
     6,
-    0.004,
+    0.0065,
     [-1, 1]
   );
   const lowerDoorCladdingMesh = new THREE.Mesh(lowerDoorCladdingGeo, mats.narvikGlossBlackMat);
@@ -1287,8 +1290,8 @@ export function buildDefender110MonocoqueAndCladding(
     () => 0.285,
     24,
     8,
-    0.0038,
-    0.002,
+    0.006,
+    0.004,
     true
   );
   const bonnetChequerMesh = new THREE.Mesh(bonnetChequerPatchGeo, mats.chequerPlateMat);

@@ -201,14 +201,16 @@ export function buildWalkInCupboardAndNorthWall(
     roughness: 0.78,
   });
   // East partition wall of Walk-in Cupboard (X = -7.895m, Z = -2.50m..-0.44m)
-  addInteriorWall(-7.895, wallH / 2, -1.47, 0.15, wallH, 2.06, cupboardLightWallMat);
+  addInteriorWall(-7.895, wallH / 2, -1.47, 0.15, wallH, 2.06, cupboardLightWallMat, {
+    skipSkirting: true,
+  });
   // Warm light-colored painted wall lining on the West (-X = -7.97m, Cupboard interior) face (Z = -2.49m..-0.59m)
   const cupboardEastWallWestLining = new THREE.Mesh(
-    new THREE.BoxGeometry(0.012, wallH, 1.9),
+    new THREE.BoxGeometry(0.012, wallH - 0.01, 1.9),
     cupboardLightWallMat
   );
   cupboardEastWallWestLining.name = 'familyRoom.walkInCupboard.eastWallLining';
-  cupboardEastWallWestLining.position.set(-7.972, wallH / 2, -1.54);
+  cupboardEastWallWestLining.position.set(-7.972, (wallH + 0.01) / 2, -1.54);
   cupboardEastWallWestLining.receiveShadow = true;
   cupboardEastWallWestLining.userData.cutawayWall = {
     axis: 'x',
@@ -309,25 +311,35 @@ export function buildWalkInCupboardAndNorthWall(
       maxSpan: -0.44,
       floor: 'ground',
     };
-    picGroup.position.set(-7.979, 1.3, picZ);
+    picGroup.position.set(-7.982, 1.3, picZ);
     picGroup.rotation.y = -Math.PI / 2; // Facing West (-X) into the Walk-In Cupboard
 
     const frameW = 0.44;
     const frameH = 0.36;
-    const frameMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(frameW, frameH, 0.022),
-      oakMat
-    );
-    frameMesh.name = `familyRoom.walkInCupboard.eastWallPicture.${picIdx}.frame`;
-    frameMesh.castShadow = true;
-    frameMesh.receiveShadow = true;
-    picGroup.add(frameMesh);
+    const railW = 0.025;
+    for (const [rSuffix, rx, ry, rw, rh] of [
+      ['', 0, frameH * 0.5 - railW * 0.5, frameW, railW],
+      ['.bottom', 0, -frameH * 0.5 + railW * 0.5, frameW, railW],
+      ['.left', -frameW * 0.5 + railW * 0.5, 0, railW, frameH - railW * 2],
+      ['.right', frameW * 0.5 - railW * 0.5, 0, railW, frameH - railW * 2],
+    ] as const) {
+      const frameMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(rw, rh, 0.02),
+        oakMat
+      );
+      frameMesh.name = `familyRoom.walkInCupboard.eastWallPicture.${picIdx}.frame${rSuffix}`;
+      frameMesh.position.set(rx, ry, 0.01);
+      frameMesh.castShadow = true;
+      frameMesh.receiveShadow = true;
+      picGroup.add(frameMesh);
+    }
 
     const mountMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(frameW - 0.05, frameH - 0.05, 0.025),
+      new THREE.BoxGeometry(frameW - railW * 2, frameH - railW * 2, 0.008),
       ceramicWhiteMat
     );
     if (!mountMesh.name) mountMesh.name = 'familyRoom.walkInCupboard.mount';
+    mountMesh.position.set(0, 0, 0.006);
     picGroup.add(mountMesh);
 
     const artMesh = new THREE.Mesh(
@@ -338,7 +350,7 @@ export function buildWalkInCupboardAndNorthWall(
       })
     );
     artMesh.name = `familyRoom.walkInCupboard.eastWallPicture.${picIdx}.canvas`;
-    artMesh.position.z = 0.014;
+    artMesh.position.z = 0.0145;
     picGroup.add(artMesh);
 
     scene.add(picGroup);
@@ -354,11 +366,11 @@ export function buildWalkInCupboardAndNorthWall(
   snugWestWallLining.receiveShadow = true;
   scene.add(snugWestWallLining);
 
-  // South partition wall of Walk-in Cupboard shifted South +0.34m to Z = -0.515m (X = -9.56m..-7.82m, Issues #2–#9) with Cupboard Door at X = -8.72m
+  // South partition wall of Walk-in Cupboard shifted South +0.34m to Z = -0.515m (X = -9.56m..-7.97m, Issues #2–#9) with Cupboard Door at X = -8.72m
   addInteriorWall(-9.345, wallH / 2, -0.515, 0.43, wallH, 0.15, crispWhiteWallMat, {
     skipSkirting: true,
   });
-  addInteriorWall(-8.065, wallH / 2, -0.515, 0.49, wallH, 0.15, crispWhiteWallMat, {
+  addInteriorWall(-8.14, wallH / 2, -0.515, 0.34, wallH, 0.15, crispWhiteWallMat, {
     skipSkirting: true,
   });
   addInteriorWall(-8.72, doorLintelY, -0.515, 0.82, doorLintelH, 0.15, crispWhiteWallMat, {
@@ -458,7 +470,7 @@ export function buildWalkInCupboardAndNorthWall(
     const cupMinX = -9.555;
     const cupMaxX = -7.97;
     const cupMinZ = -2.495;
-    const cupMaxZ = -0.585;
+    const cupMaxZ = -0.602;
     const checkerFloorMesh = new THREE.Mesh(
       new THREE.BoxGeometry(cupMaxX - cupMinX, 0.006, cupMaxZ - cupMinZ),
       checkerFloorMat
@@ -485,12 +497,12 @@ export function buildWalkInCupboardAndNorthWall(
   }
 
   // Full-Width Built-In Boot Bench & Shaker Mudroom Joinery along the West wall of the Walk-in Cupboard
-  // (Issue #10: extended +0.34m South to span wall-to-wall Z = -2.49m..-0.59m, full width 1.90m, X = -9.55m..-9.07m)
+  // (Issue #10: extended +0.34m South to span wall-to-wall Z = -2.49m..-0.61m, full width 1.88m, X = -9.55m..-9.07m)
   const cupboardBenchGroup = new THREE.Group();
   cupboardBenchGroup.name = 'familyRoom.walkInCupboard.bootBench';
 
-  const benchFullW = 1.9;
-  const benchCenterZ = -1.54;
+  const benchFullW = 1.88;
+  const benchCenterZ = -1.55;
   const benchDepth = 0.48;
   const benchCenterX = -9.31;
   const builtInJoineryMat = new THREE.MeshStandardMaterial({
@@ -499,13 +511,13 @@ export function buildWalkInCupboardAndNorthWall(
     metalness: 0.02,
   });
 
-  // Recessed Shaker front plinth base (Y = 0..0.07m)
+  // Recessed Shaker front plinth base (Y = 0.008m..0.070m above checkerTileFloor)
   const benchPlinth = new THREE.Mesh(
-    new THREE.BoxGeometry(benchDepth - 0.03, 0.07, benchFullW),
+    new THREE.BoxGeometry(benchDepth - 0.03, 0.062, benchFullW),
     builtInJoineryMat
   );
   if (!benchPlinth.name) benchPlinth.name = 'familyRoom.walkInCupboard.benchPlinth';
-  benchPlinth.position.set(benchCenterX - 0.015, 0.035, benchCenterZ);
+  benchPlinth.position.set(benchCenterX - 0.015, 0.039, benchCenterZ);
   benchPlinth.receiveShadow = true;
   cupboardBenchGroup.add(benchPlinth);
 
@@ -519,14 +531,14 @@ export function buildWalkInCupboardAndNorthWall(
   benchBottomDeck.receiveShadow = true;
   cupboardBenchGroup.add(benchBottomDeck);
 
-  // 6 vertical built-in Shaker cubby dividers across the 1.90m bench (5 cubby bays)
-  for (const dz of [-2.476, -2.102, -1.728, -1.352, -0.978, -0.604] as const) {
+  // 6 vertical built-in Shaker cubby dividers across the 1.88m bench (5 cubby bays)
+  for (const dz of [-2.476, -2.104, -1.732, -1.36, -0.988, -0.618] as const) {
     const divider = new THREE.Mesh(
-      new THREE.BoxGeometry(benchDepth - 0.015, 0.37, 0.026),
+      new THREE.BoxGeometry(benchDepth - 0.015, 0.366, 0.026),
       builtInJoineryMat
     );
     if (!divider.name) divider.name = 'familyRoom.walkInCupboard.divider';
-    divider.position.set(benchCenterX - 0.008, 0.275, dz);
+    divider.position.set(benchCenterX - 0.008, 0.277, dz);
     divider.castShadow = true;
     divider.receiveShadow = true;
     cupboardBenchGroup.add(divider);
@@ -554,26 +566,26 @@ export function buildWalkInCupboardAndNorthWall(
   benchTop.receiveShadow = true;
   cupboardBenchGroup.add(benchTop);
 
-  // Built-in tall side cheeks framing the bench & coat alcove against the North and South walls (Y = 0.50m..1.84m)
-  for (const cz of [-2.478, -0.602] as const) {
+  // Built-in tall side cheeks framing the bench & coat alcove against the North and South walls (Y = 0.502m..1.804m)
+  for (const cz of [-2.478, -0.622] as const) {
     const sideCheek = new THREE.Mesh(
-      new THREE.BoxGeometry(0.32, 1.34, 0.024),
+      new THREE.BoxGeometry(0.32, 1.302, 0.024),
       builtInJoineryMat
     );
     if (!sideCheek.name) sideCheek.name = 'familyRoom.walkInCupboard.sideCheek';
-    sideCheek.position.set(-9.39, 1.17, cz);
+    sideCheek.position.set(-9.39, 1.153, cz);
     sideCheek.castShadow = true;
     sideCheek.receiveShadow = true;
     cupboardBenchGroup.add(sideCheek);
   }
 
-  // Full-width Tongue-and-Groove (T&G) painted wainscoting backrest panelling on the West wall (Y = 0.50m..1.82m)
+  // Full-width Tongue-and-Groove (T&G) painted wainscoting backrest panelling on the West wall (Y = 0.502m..1.804m)
   const tgBackPanel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.018, 1.32, benchFullW),
+    new THREE.BoxGeometry(0.018, 1.302, benchFullW),
     builtInJoineryMat
   );
   if (!tgBackPanel.name) tgBackPanel.name = 'familyRoom.walkInCupboard.tgBackPanel';
-  tgBackPanel.position.set(-9.542, 1.16, benchCenterZ);
+  tgBackPanel.position.set(-9.542, 1.153, benchCenterZ);
   tgBackPanel.receiveShadow = true;
   cupboardBenchGroup.add(tgBackPanel);
 

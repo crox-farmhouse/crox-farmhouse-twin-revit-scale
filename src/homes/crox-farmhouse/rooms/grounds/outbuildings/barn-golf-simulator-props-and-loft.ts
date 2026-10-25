@@ -389,14 +389,14 @@ export function buildBarnGolfSimulatorPropsAndLoft(
 
   const northLoftEdgeZ = 1.24 - simCenterV; // -1.94m
   const loftNorthFascia = new THREE.Mesh(
-    new THREE.BoxGeometry(loftLenU, loftSubfloorH + loftOakDeckH, 0.02),
+    new THREE.BoxGeometry(loftLenU - 0.012, loftSubfloorH + loftOakDeckH - 0.008, 0.02),
     loftOakTrimMat
   );
   loftNorthFascia.name = 'outbuildings.store.loftFloor.nosing';
   loftNorthFascia.position.set(
     localLoftX,
     wallBoxH + (loftSubfloorH + loftOakDeckH) * 0.5,
-    northLoftEdgeZ + 0.008
+    northLoftEdgeZ - 0.014
   );
   loftNorthFascia.castShadow = true;
   simGroup.add(loftNorthFascia);
@@ -551,7 +551,6 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     transparent: true,
     opacity: 0.34,
     depthWrite: false,
-    side: THREE.DoubleSide,
   });
   const frostedLidMat = new THREE.MeshStandardMaterial({
     color: 0xf0f4f8,
@@ -613,7 +612,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     const contentsGrp = new THREE.Group();
     contentsGrp.name = `outbuildings.store.loftStorageBox.${boxId}.contents`;
     contentsGrp.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    contentsGrp.position.set(0, wallThick, 0);
+    contentsGrp.position.set(0, wallThick + 0.004, 0);
     boxGrp.add(contentsGrp);
 
     const inW = w - 0.05;
@@ -807,12 +806,14 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     }
 
     // 2. Clear Polypropylene Tote Tub Body (`outbuildings.store.loftStorageBox.tub`)
+    const tubClearBot = 0.005;
+    const tubBodyH = tubH - tubClearBot - 0.004;
     const tubMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(w, tubH, d),
+      new THREE.BoxGeometry(w, tubBodyH, d),
       clearToteTubMat
     );
     tubMesh.name = 'outbuildings.store.loftStorageBox.tub';
-    tubMesh.position.set(0, tubH * 0.5, 0);
+    tubMesh.position.set(0, tubClearBot + tubBodyH * 0.5, 0);
     tubMesh.castShadow = true;
     tubMesh.receiveShadow = true;
     boxGrp.add(tubMesh);
@@ -835,7 +836,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
         latchMat
       );
       clipLatch.name = 'outbuildings.store.loftStorageBox.latch';
-      clipLatch.position.set(sideX * (w * 0.5 + 0.008), tubH, 0);
+      clipLatch.position.set(sideX * (w * 0.5 + 0.019), tubH, 0);
       boxGrp.add(clipLatch);
     }
 
@@ -846,17 +847,17 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     );
     labelSticker.name = `outbuildings.store.loftStorageBox.${boxId}.label`;
     labelSticker.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    labelSticker.position.set(0, tubH * 0.58, -d * 0.5 - 0.002);
+    labelSticker.position.set(0, tubH * 0.58, -d * 0.5 - 0.006);
     boxGrp.add(labelSticker);
   };
 
   addClearStorageBox(1, -0.58, 0.0, -1.07, -Math.PI / 2 + 0.04, 0.58, 0.34, 0.40, 'xmas', true);
-  addClearStorageBox(2, -0.58, 0.34, -1.07, -Math.PI / 2 - 0.03, 0.54, 0.30, 0.38, 'linens', true);
+  addClearStorageBox(2, -0.58, 0.345, -1.07, -Math.PI / 2 - 0.03, 0.54, 0.30, 0.38, 'linens', true);
   addClearStorageBox(3, -0.60, 0.0, -0.37, -Math.PI / 2 - 0.02, 0.58, 0.34, 0.40, 'books', false);
-  addClearStorageBox(4, -0.60, 0.34, -0.37, -Math.PI / 2 + 0.05, 0.52, 0.28, 0.36, 'cables', false);
+  addClearStorageBox(4, -0.60, 0.345, -0.37, -Math.PI / 2 + 0.05, 0.52, 0.28, 0.36, 'cables', false);
   addClearStorageBox(5, -0.58, 0.0, 0.33, -Math.PI / 2 + 0.03, 0.62, 0.36, 0.42, 'camping', true);
   addClearStorageBox(6, -0.72, 0.0, 1.43, Math.PI - 0.06, 0.60, 0.34, 0.40, 'linens', true);
-  addClearStorageBox(7, -0.72, 0.34, 1.43, Math.PI + 0.04, 0.54, 0.30, 0.38, 'sports', true);
+  addClearStorageBox(7, -0.72, 0.345, 1.43, Math.PI + 0.04, 0.54, 0.30, 0.38, 'sports', true);
   addClearStorageBox(8, -1.78, 0.0, 1.68, Math.PI + 0.03, 0.58, 0.34, 0.40, 'cables', false);
   addClearStorageBox(9, -2.42, 0.0, 1.66, Math.PI - 0.04, 0.58, 0.34, 0.40, 'books', true);
 
@@ -1496,7 +1497,7 @@ export function buildBarnGolfSimulatorPropsAndLoft(
     monDisplayMat
   );
   monDisplay.name = 'outbuildings.barn.golfSimulator.controlMonitor.screen';
-  monDisplay.position.set(0, 0, 0.012);
+  monDisplay.position.set(0, 0, 0.0155);
   monHeadGroup.add(monDisplay);
 
   if (interactions) {

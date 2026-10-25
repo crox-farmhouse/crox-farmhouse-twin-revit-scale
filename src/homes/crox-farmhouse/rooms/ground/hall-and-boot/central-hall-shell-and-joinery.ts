@@ -143,10 +143,10 @@ export function buildCentralHallShellAndJoinery(
       [-17.55, -2.5],
       [-13.05, -2.5],
       [-13.05, 2.4],
-      [-16.985, 2.4],
-      [-16.985, 2.652],
-      [-17.745, 2.652],
-      [-17.745, 2.4],
+      [-17.003, 2.4],
+      [-17.032, 2.64],
+      [-17.71, 2.55],
+      [-17.69, 2.4],
       [-17.9, 2.4],
     ],
     lowerFloorY,
@@ -168,7 +168,7 @@ export function buildCentralHallShellAndJoinery(
     1.78,
     'south',
     3,
-    { windowFamily: 'tripleTopHungCentre' }
+    { skipSkirting: true, windowFamily: 'tripleTopHungCentre' }
   );
 
   // Face-fixed linen Roman blind over the hall North window (Survey2Plan Win 1736931 = 1.53x1.10m),
@@ -297,13 +297,13 @@ export function buildCentralHallShellAndJoinery(
     hallFireplaceGroup.add(fpSouthSkirtMesh);
   }
 
-  // Smooth pale-plastered firebox back wall inside the recess (X = -13.10m, Z = -0.99m..-0.11m)
+  // Smooth pale-plastered firebox back wall inside the recess (X = -13.10m, Z = -0.99m..-0.11m, seated atop hearth)
   const fpBackWall = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.06, 1.16, 0.9)),
+    createSharedGeo(new THREE.BoxGeometry(0.06, 1.092, 0.9)),
     warmRoomPlasterMat
   );
   fpBackWall.name = 'hall.fireplace.fireboxBack';
-  fpBackWall.position.set(-13.09, lowerFloorY + 0.58, -0.55);
+  fpBackWall.position.set(-13.09, lowerFloorY + 0.614, -0.55);
   fpBackWall.receiveShadow = true;
   hallFireplaceGroup.add(fpBackWall);
 
@@ -339,14 +339,14 @@ export function buildCentralHallShellAndJoinery(
   fpUpperBeamBand.castShadow = true;
   hallFireplaceGroup.add(fpUpperBeamBand);
 
-  // Red-Brick Fireplace Hearth inside the recess (X = -13.06m..-13.56m, Z = -0.98m..-0.12m)
+  // Red-Brick Fireplace Hearth inside the recess (X = -13.06m..-13.45m, Z = -0.98m..-0.12m)
   // With individual front soldier-course red bricks matching media_1790514908713.webp
-  const hallFpHearthGeo = new THREE.BoxGeometry(0.5, 0.068, 0.86);
-  applyWorldSpaceBrickUVs(hallFpHearthGeo, -13.31, lowerFloorY + 0.034, -0.55);
+  const hallFpHearthGeo = new THREE.BoxGeometry(0.39, 0.068, 0.86);
+  applyWorldSpaceBrickUVs(hallFpHearthGeo, -13.255, lowerFloorY + 0.034, -0.55);
   hallFpHearthGeo.computeBoundingSphere();
   const hallFpHearth = new THREE.Mesh(hallFpHearthGeo, exteriorBrickMat);
   hallFpHearth.name = 'hall.fireplace.hearth';
-  hallFpHearth.position.set(-13.31, lowerFloorY + 0.034, -0.55);
+  hallFpHearth.position.set(-13.255, lowerFloorY + 0.034, -0.55);
   hallFpHearth.receiveShadow = true;
   hallFireplaceGroup.add(hallFpHearth);
 
@@ -598,11 +598,11 @@ export function buildCentralHallShellAndJoinery(
 
   // Antique-Profiled Oak Skirting Board along the North wall of Hall under the 3-pane window and open upper stair soffit (X = -16.64m..-13.05m, Z = -2.488m — Issue #14)
   const hallNorthSkirting = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(3.59, 0.122, 0.022)),
+    createSharedGeo(new THREE.BoxGeometry(3.59, 0.095, 0.022)),
     antiqueOakSkirtingMat
   );
   hallNorthSkirting.name = 'hall.northWall.skirting';
-  hallNorthSkirting.position.set(-14.845, lowerFloorY + 0.061, -2.488);
+  hallNorthSkirting.position.set(-14.845, lowerFloorY + 0.0475, -2.488);
   tagCutawayWall(hallNorthSkirting, {
     axis: 'z',
     coord: -2.64,

@@ -70,7 +70,7 @@ export interface CorstonToggleSwitchHandle {
 // --- Dimensions (metres) ------------------------------------------------------------------------
 
 const PLATE_HEIGHT = 0.088;
-const PLATE_DEPTH = 0.005;
+const PLATE_DEPTH = 0.004;
 const SINGLE_PLATE_WIDTH = 0.088;
 const GANG_PITCH = 0.058;
 const DOLLY_TILT_RAD = 0.32;
@@ -102,14 +102,14 @@ function plateGeo(gangCount: number): THREE.BoxGeometry {
   return geo;
 }
 
-const singleHalfGeo = prepGeo(new THREE.BoxGeometry(0.078, 0.039, 0.004));
-const multiHalfGeo = prepGeo(new THREE.BoxGeometry(GANG_PITCH - 0.004, 0.039, 0.004));
-const collarGeo = prepGeo(new THREE.CylinderGeometry(0.0115, 0.013, 0.007, 16));
+const singleHalfGeo = prepGeo(new THREE.BoxGeometry(0.078, 0.032, 0.003));
+const multiHalfGeo = prepGeo(new THREE.BoxGeometry(GANG_PITCH - 0.004, 0.032, 0.003));
+const collarGeo = prepGeo(new THREE.CylinderGeometry(0.0115, 0.013, 0.006, 16));
 const pivotGeo = prepGeo(new THREE.SphereGeometry(0.0075, 10, 10));
 const leverGeo = prepGeo(new THREE.CylinderGeometry(0.0028, 0.0048, 0.026, 12));
 const tipGeo = prepGeo(new THREE.SphereGeometry(0.0034, 10, 10));
 const ledGeo = prepGeo(new THREE.CylinderGeometry(0.0024, 0.0024, 0.002, 10));
-const screwGeo = prepGeo(new THREE.CylinderGeometry(0.0022, 0.0022, 0.0012, 10));
+const screwGeo = prepGeo(new THREE.CylinderGeometry(0.0022, 0.0022, 0.002, 10));
 
 /** Corston Architectural Detail antique brass (matches corston-power-sockets.ts). */
 const brassMat = new THREE.MeshStandardMaterial({ color: 0xb89146, roughness: 0.27, metalness: 0.85 });
@@ -160,15 +160,15 @@ export function buildCorstonToggleSwitch(
 
   const plate = new THREE.Mesh(plateGeo(gangCount), brassMat);
   plate.name = `${name}.backplate`;
-  plate.position.set(0, 0, PLATE_DEPTH / 2);
+  plate.position.set(0, 0, 0.006);
   group.add(plate);
 
   // Two slotted fixing screws (top / bottom centre) like the Corston plates.
-  for (const sy of [0.036, -0.036]) {
+  for (const sy of [0.038, -0.038]) {
     const screw = new THREE.Mesh(screwGeo, bronzeMat);
     screw.name = `${name}.screw`;
     screw.rotation.x = Math.PI / 2;
-    screw.position.set(0, sy, PLATE_DEPTH + 0.0006);
+    screw.position.set(0, sy, 0.013);
     tagHighLod(screw, 6);
     group.add(screw);
   }
@@ -194,20 +194,20 @@ export function buildCorstonToggleSwitch(
 
     const upper = new THREE.Mesh(halfGeo, brassMat);
     upper.name = `${prefix}.upperHalf`;
-    upper.position.set(offsetX, 0.0195, PLATE_DEPTH + 0.0035);
+    upper.position.set(offsetX, 0.018, 0.0135);
     makeInteractive(upper, up, ctx.interactiveMeshes);
     group.add(upper);
 
     const lower = new THREE.Mesh(halfGeo, brassMat);
     lower.name = `${prefix}.lowerHalf`;
-    lower.position.set(offsetX, -0.0195, PLATE_DEPTH + 0.0035);
+    lower.position.set(offsetX, -0.018, 0.0135);
     makeInteractive(lower, down, ctx.interactiveMeshes);
     group.add(lower);
 
     const collar = new THREE.Mesh(collarGeo, bronzeMat);
     collar.name = `${prefix}.collar`;
     collar.rotation.x = Math.PI / 2;
-    collar.position.set(offsetX, 0, 0.0095);
+    collar.position.set(offsetX, 0, 0.022);
     tagHighLod(collar);
     makeInteractive(collar, up, ctx.interactiveMeshes);
     group.add(collar);
@@ -215,7 +215,7 @@ export function buildCorstonToggleSwitch(
     // Dolly = pivot dome + lever + tip, hinged at the collar so it can tilt up / down.
     const dolly = new THREE.Group();
     dolly.name = `${prefix}.dolly`;
-    dolly.position.set(offsetX, 0, 0.012);
+    dolly.position.set(offsetX, 0, 0.027);
     dolly.rotation.x = -DOLLY_TILT_RAD;
     const pivot = new THREE.Mesh(pivotGeo, brassMat);
     pivot.name = `${prefix}.dolly.pivot`;
@@ -242,7 +242,7 @@ export function buildCorstonToggleSwitch(
     const led = new THREE.Mesh(ledGeo, ledMat);
     led.name = `${prefix}.statusLed`;
     led.rotation.x = Math.PI / 2;
-    led.position.set(offsetX, 0.0405, PLATE_DEPTH + 0.0008);
+    led.position.set(offsetX, 0.0405, 0.013);
     tagHighLod(led);
     group.add(led);
     ledMaterials.set(spec.gang, ledMat);

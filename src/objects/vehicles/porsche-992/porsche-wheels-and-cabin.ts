@@ -186,11 +186,15 @@ export function buildPorsche992GlazingAndInteriorCabin(
     interiorGroup.add(seatHeadrest);
 
     const seatCenterInsert = new THREE.Mesh(
-      new THREE.BoxGeometry(0.115, 0.42, 0.26),
+      new THREE.BoxGeometry(0.018, 0.42, 0.26),
       mats.chalkLeatherMat
     );
     seatCenterInsert.name = 'outbuildings.garage.porsche992TurboS.interior.seatInsert';
-    seatCenterInsert.position.set(0.212, 0.73, seatZ);
+    seatCenterInsert.position.set(
+      0.22 - 0.068 * Math.cos(-0.22),
+      0.74 - 0.068 * Math.sin(-0.22),
+      seatZ
+    );
     seatCenterInsert.rotation.z = -0.22;
     tagHighLodDetail(seatCenterInsert);
     interiorGroup.add(seatCenterInsert);

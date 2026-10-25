@@ -77,7 +77,7 @@ export function buildWestWallAndThresholdStep(
   const westPicGroup = new THREE.Group();
   westPicGroup.name = 'familyRoom.westWallPicture';
   westPicGroup.userData.zone = 'familyRoom';
-  westPicGroup.position.set(-9.552, 1.486, 0.28);
+  westPicGroup.position.set(-9.542, 1.486, 0.28);
   westPicGroup.rotation.y = Math.PI / 2; // Flush on West wall facing East (+X) into Dining Room
 
   const wpW = 0.64;
@@ -103,11 +103,11 @@ export function buildWestWallAndThresholdStep(
   }
 
   const wpMount = new THREE.Mesh(
-    new THREE.BoxGeometry(wpW - wpRail * 2, wpH - wpRail * 2, 0.016),
+    new THREE.BoxGeometry(wpW - wpRail * 2, wpH - wpRail * 2, 0.01),
     ceramicWhiteMat
   );
   if (!wpMount.name) wpMount.name = 'familyRoom.westThreshold.wpMount';
-  wpMount.position.set(0, 0, 0.002);
+  wpMount.position.set(0, 0, -0.002);
   westPicGroup.add(wpMount);
 
   const wpCanvas = document.createElement('canvas');
@@ -169,7 +169,7 @@ export function buildWestWallAndThresholdStep(
     new THREE.MeshStandardMaterial({ map: wpTex, roughness: 0.45 })
   );
   wpArtPlane.name = 'familyRoom.westWallPicture.canvas';
-  wpArtPlane.position.set(0, 0, 0.012);
+  wpArtPlane.position.set(0, 0, 0.007);
   westPicGroup.add(wpArtPlane);
   scene.add(westPicGroup);
 
@@ -222,7 +222,7 @@ export function buildWestWallAndThresholdStep(
   // 30cm (0.30m) Step Down from Dining Room (Y = 0.00m) into the Boot Lobby (Y = -0.30m) at X = -9.56m..-9.99m, Z = +1.35m..+2.25m:
   // 1. Upper threshold slab, recessed oak riser & half-round bullnose nosing at X = -9.56m..-9.725m (top at Y = 0.00m, riser down to Y = -0.15m)
   const upperThresholdStep = new THREE.Mesh(
-    applyWorldSpaceFloorUVs(new THREE.BoxGeometry(0.165, 0.032, 0.92), -9.6425, 1.8, 0.85, 0.85),
+    applyWorldSpaceFloorUVs(new THREE.BoxGeometry(0.165, 0.032, 0.854), -9.6425, 1.8, 0.85, 0.85),
     [
       oakMat,
       oakMat,
@@ -239,7 +239,7 @@ export function buildWestWallAndThresholdStep(
   scene.add(upperThresholdStep);
 
   const upperThresholdRiser = new THREE.Mesh(
-    new THREE.BoxGeometry(0.15, 0.118, 0.92),
+    new THREE.BoxGeometry(0.15, 0.118, 0.854),
     oakMat
   );
   upperThresholdRiser.name = 'familyRoom.thresholdStep.upperRiser';
@@ -251,7 +251,7 @@ export function buildWestWallAndThresholdStep(
   const upperBullnoseGeo = new THREE.CylinderGeometry(
     0.016,
     0.016,
-    0.9,
+    0.854,
     16,
     1,
     false,
@@ -280,7 +280,7 @@ export function buildWestWallAndThresholdStep(
     const buildRoundedStepFootprintShape = (inset: number): THREE.Shape => {
       const xW = xWest + inset;
       const zN = zNorth + inset;
-      const zS = zSouth;
+      const zS = zSouth - (inset > 0 ? 0.006 : 0);
       const rC = Math.max(0.02, cornerR - inset);
       // Shape in (X, -Z) so ExtrudeGeometry rotated by -PI/2 around X puts +extrude along +Y and shape Y along +Z
       const shape = new THREE.Shape();
@@ -337,8 +337,8 @@ export function buildWestWallAndThresholdStep(
     midStepDown.receiveShadow = true;
     scene.add(midStepDown);
 
-    // Recessed rounded-corner vertical oak riser (Y = -0.300m..-0.182m, inset 14mm behind the bullnose overhang)
-    const midRiserGeo = buildExtrudedStepSlab(0.014, 0.15 - treadH, -0.3);
+    // Recessed rounded-corner vertical oak riser (Y = -0.294m..-0.182m, inset 14mm behind the bullnose overhang)
+    const midRiserGeo = buildExtrudedStepSlab(0.014, 0.15 - treadH - 0.006, -0.294);
     const midStepRiser = new THREE.Mesh(midRiserGeo, oakMat);
     midStepRiser.name = 'familyRoom.thresholdStep.midRiser';
     midStepRiser.castShadow = true;

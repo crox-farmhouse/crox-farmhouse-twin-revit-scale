@@ -327,12 +327,12 @@ export function buildFamilyBathroomDrinksCabinet(
 
     const fijiFrontLabel = new THREE.Mesh(fijiFrontLabelGeo, fijiLabelMat);
     fijiFrontLabel.name = `familyBathroom.drinksCabinet.fijiWater_${i + 1}.label`;
-    fijiFrontLabel.position.set(bx, midBottleY + 0.078, bz + 0.032);
+    fijiFrontLabel.position.set(bx, midBottleY + 0.078, bz + 0.037);
     fijiGroup.add(fijiFrontLabel);
 
     const hibiscus = new THREE.Mesh(hibiscusGeo, fijiHibiscusMat);
     hibiscus.name = `familyBathroom.drinksCabinet.fijiWater_${i + 1}.hibiscus`;
-    hibiscus.position.set(bx + 0.01, midBottleY + 0.062, bz + 0.034);
+    hibiscus.position.set(bx + 0.01, midBottleY + 0.062, bz + 0.0445);
     fijiGroup.add(hibiscus);
 
     coolerGroup.add(fijiGroup);
@@ -873,21 +873,38 @@ export function buildFamilyBathroomVanityAndToilet(
   marbleUpstand.castShadow = true;
   vanityGroup.add(marbleUpstand);
 
-  const basinRimGeo = new THREE.BoxGeometry(0.32, 0.016, 0.52);
+  const basinRimShape = new THREE.Shape();
+  basinRimShape.moveTo(-0.16, -0.26);
+  basinRimShape.lineTo(0.16, -0.26);
+  basinRimShape.lineTo(0.16, 0.26);
+  basinRimShape.lineTo(-0.16, 0.26);
+  basinRimShape.closePath();
+  const basinRimHole = new THREE.Path();
+  basinRimHole.moveTo(-0.13, -0.23);
+  basinRimHole.lineTo(0.13, -0.23);
+  basinRimHole.lineTo(0.13, 0.23);
+  basinRimHole.lineTo(-0.13, 0.23);
+  basinRimHole.closePath();
+  basinRimShape.holes.push(basinRimHole);
+  const basinRimGeo = new THREE.ExtrudeGeometry(basinRimShape, {
+    depth: 0.02,
+    bevelEnabled: false,
+  });
+  basinRimGeo.rotateX(-Math.PI / 2);
   basinRimGeo.computeBoundingSphere();
   const basinRim = new THREE.Mesh(basinRimGeo, ceramicWhiteMat);
   basinRim.name = 'familyBathroom.vanityUnit.basinRim';
-  basinRim.position.set(0.26, 0.843, 0);
+  basinRim.position.set(0.26, 0.836, 0);
   vanityGroup.add(basinRim);
 
-  const basinWellGeo = new THREE.BoxGeometry(0.26, 0.018, 0.46);
+  const basinWellGeo = new THREE.BoxGeometry(0.252, 0.006, 0.452);
   basinWellGeo.computeBoundingSphere();
   const basinWell = new THREE.Mesh(
     basinWellGeo,
     new THREE.MeshStandardMaterial({ color: 0xdfe3e6, roughness: 0.14, metalness: 0.06 })
   );
   basinWell.name = 'familyBathroom.vanityUnit.basinWell';
-  basinWell.position.set(0.26, 0.846, 0);
+  basinWell.position.set(0.26, 0.849, 0);
   vanityGroup.add(basinWell);
 
   const tapStemGeo = new THREE.CylinderGeometry(0.016, 0.02, 0.16, 14);
@@ -960,7 +977,6 @@ export function buildFamilyBathroomVanityAndToilet(
     color: 0xf6f5f0,
     roughness: 0.11,
     metalness: 0.05,
-    side: THREE.DoubleSide,
   });
   const innerBowlGlazeMat = new THREE.MeshStandardMaterial({
     color: 0xe6eaec,
@@ -1026,7 +1042,7 @@ export function buildFamilyBathroomVanityAndToilet(
   const soilWallCollar = new THREE.Mesh(soilWallCollarGeo, vitreousChinaMat);
   soilWallCollar.name = 'familyBathroom.toilet.soilWallCollar';
   soilWallCollar.rotation.z = Math.PI / 2;
-  soilWallCollar.position.set(0.013, 0.185, toiletZ);
+  soilWallCollar.position.set(0.016, 0.185, toiletZ);
   toiletGroup.add(soilWallCollar);
 
   const bowlProfilePts = [

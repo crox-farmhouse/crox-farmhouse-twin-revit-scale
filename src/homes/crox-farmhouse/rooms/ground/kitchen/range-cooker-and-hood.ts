@@ -11,9 +11,9 @@ import {
 
 // Closed-loop LatheGeometry profile so the chrome dome lid has a solid rolled bottom lip & underside
 const agaLidProfile: THREE.Vector2[] = [
-  new THREE.Vector2(0.0, 0.004),
-  new THREE.Vector2(0.16, 0.004),
-  new THREE.Vector2(0.164, 0.0),
+  new THREE.Vector2(0.0, 0.028),
+  new THREE.Vector2(0.164, 0.028),
+  new THREE.Vector2(0.168, 0.0),
   new THREE.Vector2(0.182, 0.0),
   new THREE.Vector2(0.18, 0.038),
   new THREE.Vector2(0.172, 0.052),
@@ -22,11 +22,11 @@ const agaLidProfile: THREE.Vector2[] = [
   new THREE.Vector2(0.0, 0.067),
 ];
 const sharedAgaLidGeo = prepGeo(new THREE.LatheGeometry(agaLidProfile, 24));
-const sharedAgaHotplateRingGeo = prepGeo(new THREE.CylinderGeometry(0.19, 0.2, 0.022, 18));
-const sharedAgaHotplateDiscGeo = prepGeo(new THREE.CylinderGeometry(0.168, 0.168, 0.014, 24));
-const sharedAgaLidHeatLinerGeo = prepGeo(new THREE.CylinderGeometry(0.164, 0.164, 0.014, 24));
-const sharedAgaLidInnerStepGeo = prepGeo(new THREE.CylinderGeometry(0.118, 0.122, 0.006, 22));
-const sharedAgaLidCenterBossGeo = prepGeo(new THREE.CylinderGeometry(0.022, 0.022, 0.008, 14));
+const sharedAgaHotplateRingGeo = prepGeo(new THREE.CylinderGeometry(0.19, 0.2, 0.0165, 18));
+const sharedAgaHotplateDiscGeo = prepGeo(new THREE.CylinderGeometry(0.168, 0.168, 0.012, 24));
+const sharedAgaLidHeatLinerGeo = prepGeo(new THREE.CylinderGeometry(0.16, 0.16, 0.005, 24));
+const sharedAgaLidInnerStepGeo = prepGeo(new THREE.CylinderGeometry(0.118, 0.122, 0.005, 22));
+const sharedAgaLidCenterBossGeo = prepGeo(new THREE.CylinderGeometry(0.022, 0.022, 0.005, 14));
 const sharedAgaDomeRearHingeGeo = prepGeo(new THREE.BoxGeometry(0.068, 0.026, 0.038));
 const sharedAgaDomeHandleGeo = prepGeo(new THREE.BoxGeometry(0.085, 0.024, 0.036));
 
@@ -41,19 +41,19 @@ const sharedAgaTopVentGrilleGeo = prepGeo(new THREE.CylinderGeometry(0.044, 0.04
 const sharedAgaHingeStrapGeo = prepGeo(new THREE.BoxGeometry(0.056, 0.042, 0.032));
 const sharedAgaHingeBarrelGeo = prepGeo(new THREE.CylinderGeometry(0.014, 0.014, 0.058, 10));
 const sharedAgaDoorCatchGeo = prepGeo(new THREE.BoxGeometry(0.026, 0.036, 0.028));
-const sharedAgaCrestBackingGeo = prepGeo(new THREE.CylinderGeometry(0.068, 0.068, 0.012, 24));
+const sharedAgaCrestBackingGeo = prepGeo(new THREE.CylinderGeometry(0.068, 0.068, 0.008, 24));
 const sharedAgaCrestFaceGeo = prepGeo(new THREE.PlaneGeometry(0.175, 0.108));
 const sharedAgaTowelBracketGeo = prepGeo(new THREE.BoxGeometry(0.022, 0.022, 0.085));
 const sharedAgaTowelFinialGeo = prepGeo(new THREE.SphereGeometry(0.016, 10, 8));
 
-const sharedBacksplashGeo = prepGeo(new THREE.BoxGeometry(2.77, 1.0, 0.024));
+const sharedBacksplashGeo = prepGeo(new THREE.BoxGeometry(2.77, 0.966, 0.024));
 // Survey2Plan Ceil 1609635 = 2.54m flat plaster ceiling soffit over West Kitchen (hood chimney terminates cleanly at Y = 2.54m)
-const sharedHoodMantleGeo = prepGeo(new THREE.BoxGeometry(2.75, 0.59, 0.46));
-const sharedHoodCorbelGeo = prepGeo(new THREE.BoxGeometry(0.12, 0.22, 0.48));
-const sharedHoodShelfLowerGeo = prepGeo(new THREE.BoxGeometry(2.78, 0.028, 0.485));
-const sharedHoodShelfUpperGeo = prepGeo(new THREE.BoxGeometry(2.81, 0.038, 0.505));
-const sharedHoodTopCorniceGeo = prepGeo(new THREE.BoxGeometry(2.77, 0.04, 0.475));
-const sharedHoodBaffleGeo = prepGeo(new THREE.BoxGeometry(1.02, 0.02, 0.34));
+const sharedHoodMantleGeo = prepGeo(new THREE.BoxGeometry(2.75, 0.59, 0.45));
+const sharedHoodCorbelGeo = prepGeo(new THREE.BoxGeometry(0.12, 0.22, 0.47));
+const sharedHoodShelfLowerGeo = prepGeo(new THREE.BoxGeometry(2.78, 0.028, 0.475));
+const sharedHoodShelfUpperGeo = prepGeo(new THREE.BoxGeometry(2.81, 0.038, 0.495));
+const sharedHoodTopCorniceGeo = prepGeo(new THREE.BoxGeometry(2.77, 0.036, 0.465));
+const sharedHoodBaffleGeo = prepGeo(new THREE.BoxGeometry(1.02, 0.018, 0.34));
 
 export function buildAgaRangeCooker(
   ctx: SceneBuilderContext,
@@ -158,19 +158,19 @@ export function buildAgaRangeCooker(
 
     const ring = new THREE.Mesh(sharedAgaHotplateRingGeo, chromeMat);
     ring.name = `${hobPrefix}.surroundRing`;
-    ring.position.set(domeX, 0.944, -0.02);
+    ring.position.set(domeX, 0.94125, -0.02);
     agaGroup.add(ring);
 
     // Circular machined cast-iron boiling/simmering hotplate inside the chrome surround (revealed when dome lid is lifted!)
     const hotplateDisc = new THREE.Mesh(sharedAgaHotplateDiscGeo, castIronHotplateMat);
     hotplateDisc.name = `${hobPrefix}.hotplateDisc`;
-    hotplateDisc.position.set(domeX, 0.951, -0.02);
+    hotplateDisc.position.set(domeX, 0.9485, -0.02);
     agaGroup.add(hotplateDisc);
 
     // Interactive hinged chrome AGA insulating dome lid (lifts back on its rear hinge when clicked!)
     const lidGroup = new THREE.Group();
     lidGroup.name = `${hobPrefix}.domeLid`;
-    lidGroup.position.set(domeX, 0.952, -0.02);
+    lidGroup.position.set(domeX, 0.96, -0.02);
 
     const lid = new THREE.Mesh(sharedAgaLidGeo, chromeMat);
     lid.name = `${hobPrefix}.domeLid.shell`;
@@ -184,20 +184,20 @@ export function buildAgaRangeCooker(
       agaLidUndersideLinerMat
     );
     undersideHeatLiner.name = `${hobPrefix}.domeLid.undersideHeatLiner`;
-    undersideHeatLiner.position.set(0, 0.008, 0);
+    undersideHeatLiner.position.set(0, 0.0205, 0);
     tagHighLod(undersideHeatLiner, 12);
     lidGroup.add(undersideHeatLiner);
 
     // Stepped inner expansion ring & central retaining boss on the underside of the lid
     const undersideInnerStep = new THREE.Mesh(sharedAgaLidInnerStepGeo, castIronHotplateMat);
     undersideInnerStep.name = `${hobPrefix}.domeLid.undersideInnerStep`;
-    undersideInnerStep.position.set(0, 0.002, 0);
+    undersideInnerStep.position.set(0, 0.0115, 0);
     tagHighLod(undersideInnerStep, 12);
     lidGroup.add(undersideInnerStep);
 
     const undersideCenterBoss = new THREE.Mesh(sharedAgaLidCenterBossGeo, chromeMat);
     undersideCenterBoss.name = `${hobPrefix}.domeLid.undersideCenterBoss`;
-    undersideCenterBoss.position.set(0, 0.0, 0);
+    undersideCenterBoss.position.set(0, 0.0025, 0);
     tagHighLod(undersideCenterBoss, 12);
     lidGroup.add(undersideCenterBoss);
 
@@ -282,20 +282,20 @@ export function buildAgaRangeCooker(
 
     // Fixed black cast-iron surround on the AGA body
     const doorOutline = new THREE.Mesh(
-      prepGeo(new THREE.BoxGeometry(ow + 0.012, oh + 0.012, 0.018)),
+      prepGeo(new THREE.BoxGeometry(ow + 0.012, oh + 0.012, 0.008)),
       agaBlackTrimMat
     );
     doorOutline.name = `${ovenPrefix}.doorOutline`;
-    doorOutline.position.set(ox, oy, 0.356);
+    doorOutline.position.set(ox, oy, 0.364);
     agaGroup.add(doorOutline);
 
     // Interactive hinged cast-iron AGA oven door (with dark heat-shield liner on back of door)
     const agaDoorGroup = new THREE.Group();
     agaDoorGroup.name = `${ovenPrefix}.door`;
-    agaDoorGroup.position.set(ox, oy, 0.365);
+    agaDoorGroup.position.set(ox, oy, 0.39);
 
     const door = new THREE.Mesh(
-      prepGeo(new THREE.BoxGeometry(ow, oh, 0.038)),
+      prepGeo(new THREE.BoxGeometry(ow, oh, 0.022)),
       agaLightBlueMat
     );
     door.name = `${ovenPrefix}.door.castBody`;
@@ -303,20 +303,20 @@ export function buildAgaRangeCooker(
     agaDoorGroup.add(door);
 
     const doorInnerHeatLiner = new THREE.Mesh(
-      prepGeo(new THREE.BoxGeometry(ow - 0.045, oh - 0.045, 0.014)),
+      prepGeo(new THREE.BoxGeometry(ow - 0.045, oh - 0.045, 0.006)),
       castIronHotplateMat
     );
     doorInnerHeatLiner.name = `${ovenPrefix}.door.innerHeatLiner`;
-    doorInnerHeatLiner.position.set(0, 0, -0.02);
+    doorInnerHeatLiner.position.set(0, 0, -0.014);
     tagHighLod(doorInnerHeatLiner, 12);
     agaDoorGroup.add(doorInnerHeatLiner);
 
     const doorRaisedPanel = new THREE.Mesh(
-      prepGeo(new THREE.BoxGeometry(ow - 0.036, oh - 0.036, 0.014)),
+      prepGeo(new THREE.BoxGeometry(ow - 0.036, oh - 0.036, 0.008)),
       agaLightBlueMat
     );
     doorRaisedPanel.name = `${ovenPrefix}.door.raisedPanel`;
-    doorRaisedPanel.position.set(0, 0, 0.021);
+    doorRaisedPanel.position.set(0, 0, 0.015);
     agaDoorGroup.add(doorRaisedPanel);
 
     // Large body-colored cast-iron hinges on the outer edge of each door (top & bottom hinge lugs + vertical pin barrel)
@@ -325,14 +325,14 @@ export function buildAgaRangeCooker(
       const vLabel = hIdx === 0 ? 'bottom' : 'top';
       const hingeStrap = new THREE.Mesh(sharedAgaHingeStrapGeo, agaLightBlueMat);
       hingeStrap.name = `${ovenPrefix}.door.hingeStrap.${vLabel}`;
-      hingeStrap.position.set(hingeSide * (ow * 0.5 - 0.004), hyOffset, 0.011);
+      hingeStrap.position.set(hingeSide * (ow * 0.5 - 0.004), hyOffset, 0.006);
       hingeStrap.castShadow = true;
       tagHighLod(hingeStrap, 12);
       agaDoorGroup.add(hingeStrap);
 
       const hingeBarrel = new THREE.Mesh(sharedAgaHingeBarrelGeo, agaLightBlueMat);
       hingeBarrel.name = `${ovenPrefix}.hingeBarrel.${vLabel}`;
-      hingeBarrel.position.set(hingeX, oy + hyOffset, 0.378);
+      hingeBarrel.position.set(hingeX, oy + hyOffset, 0.395);
       hingeBarrel.castShadow = true;
       tagHighLod(hingeBarrel, 12);
       agaGroup.add(hingeBarrel);
@@ -389,7 +389,7 @@ export function buildAgaRangeCooker(
   agaCrestBacking.name = 'kitchen.cabinetry.north.agaRangeCooker.crest.backing';
   agaCrestBacking.rotation.x = Math.PI / 2;
   agaCrestBacking.scale.set(1.35, 1.0, 0.85);
-  agaCrestBacking.position.set(0.0, 0.66, 0.364);
+  agaCrestBacking.position.set(0.0, 0.66, 0.368);
   tagHighLod(agaCrestBacking, 12);
   agaGroup.add(agaCrestBacking);
 
@@ -403,7 +403,7 @@ export function buildAgaRangeCooker(
     })
   );
   agaCrestFace.name = 'kitchen.cabinetry.north.agaRangeCooker.crest.facePlate';
-  agaCrestFace.position.set(0.0, 0.66, 0.371);
+  agaCrestFace.position.set(0.0, 0.66, 0.3765);
   tagHighLod(agaCrestFace, 12);
   agaGroup.add(agaCrestFace);
 
@@ -469,14 +469,14 @@ export function buildBacksplashAndCookerHood(
 
   const marbleBacksplash = new THREE.Mesh(sharedBacksplashGeo, marbleBacksplashMat);
   marbleBacksplash.name = 'kitchen.cabinetry.north.cookerHoodAndBacksplash.marbleBacksplash';
-  marbleBacksplash.position.set(0, 1.42, -2.482 - -2.27);
+  marbleBacksplash.position.set(0, 1.403, -2.482 - -2.27);
   marbleBacksplash.receiveShadow = true;
   wideHoodGroup.add(marbleBacksplash);
 
   // Mantel shelf at Y = 1.94m, chimney terminating cleanly against the Survey2Plan 2.54m flat ceiling soffit (Ceil 1609635)
   const mantleHood = new THREE.Mesh(sharedHoodMantleGeo, wallPlasterMat);
   mantleHood.name = 'kitchen.cabinetry.north.cookerHoodAndBacksplash.chimneyBreast';
-  mantleHood.position.set(0, 2.245, 0);
+  mantleHood.position.set(0, 2.24, 0.005);
   mantleHood.castShadow = true;
   mantleHood.receiveShadow = true;
   wideHoodGroup.add(mantleHood);
@@ -484,29 +484,29 @@ export function buildBacksplashAndCookerHood(
   for (const cx of [-1.285, 1.285] as const) {
     const corbel = new THREE.Mesh(sharedHoodCorbelGeo, doveGreyMat);
     corbel.name = `kitchen.cabinetry.north.cookerHoodAndBacksplash.corbel.${cx < 0 ? 'left' : 'right'}`;
-    corbel.position.set(cx, 1.8, 0.01);
+    corbel.position.set(cx, 1.796, 0.015);
     wideHoodGroup.add(corbel);
   }
 
   const mantleShelfLower = new THREE.Mesh(sharedHoodShelfLowerGeo, doveGreyMat);
   mantleShelfLower.name = 'kitchen.cabinetry.north.cookerHoodAndBacksplash.mantleShelfLower';
-  mantleShelfLower.position.set(0, 1.905, 0.01);
+  mantleShelfLower.position.set(0, 1.905, 0.015);
   wideHoodGroup.add(mantleShelfLower);
 
   const mantleShelf = new THREE.Mesh(sharedHoodShelfUpperGeo, doveGreyMat);
   mantleShelf.name = 'kitchen.cabinetry.north.cookerHoodAndBacksplash.mantleShelfUpper';
-  mantleShelf.position.set(0, 1.938, 0.018);
+  mantleShelf.position.set(0, 1.938, 0.023);
   wideHoodGroup.add(mantleShelf);
 
   const hoodTopCornice = new THREE.Mesh(sharedHoodTopCorniceGeo, wallPlasterMat);
   hoodTopCornice.name = 'kitchen.cabinetry.north.cookerHoodAndBacksplash.topCornice';
-  hoodTopCornice.position.set(0, 2.52, 0.005);
+  hoodTopCornice.position.set(0, 2.517, 0.01);
   wideHoodGroup.add(hoodTopCornice);
 
   for (const bx of [-0.64, 0.62] as const) {
     const baffle = new THREE.Mesh(sharedHoodBaffleGeo, stainlessSteelMat);
     baffle.name = `kitchen.cabinetry.north.cookerHoodAndBacksplash.greaseBaffle.${bx < 0 ? 'left' : 'right'}`;
-    baffle.position.set(bx, 1.9, 0.02);
+    baffle.position.set(bx, 1.895, 0.02);
     wideHoodGroup.add(baffle);
   }
 

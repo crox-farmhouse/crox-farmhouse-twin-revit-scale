@@ -29,8 +29,16 @@ const bezelMat = new THREE.MeshStandardMaterial({
   roughness: 0.25,
   metalness: 0.88,
 });
-const bezelGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.01, 16);
-const lensGeo = new THREE.CylinderGeometry(0.034, 0.034, 0.012, 16);
+const bezelRingProfile: THREE.Vector2[] = [
+  new THREE.Vector2(0.036, 0.0),
+  new THREE.Vector2(0.05, 0.0),
+  new THREE.Vector2(0.05, 0.006),
+  new THREE.Vector2(0.036, 0.006),
+  new THREE.Vector2(0.036, 0.0),
+];
+const bezelGeo = new THREE.LatheGeometry(bezelRingProfile, 16);
+bezelGeo.computeVertexNormals();
+const lensGeo = new THREE.CylinderGeometry(0.033, 0.033, 0.006, 16);
 
 /**
  * Recessed stainless inground floor uplights (same fitting family as the kitchen bifold uplights),
@@ -58,10 +66,10 @@ export function buildRecessedFloorUplights(
 
     const bezel = new THREE.Mesh(bezelGeo, bezelMat);
     bezel.name = `${fitting.name}.bezel`;
-    bezel.position.y = 0.005;
+    bezel.position.y = 0.0045;
     const lens = new THREE.Mesh(lensGeo, lensMat);
     lens.name = `${fitting.name}.lens`;
-    lens.position.y = 0.006;
+    lens.position.y = 0.008;
     for (const mesh of [bezel, lens]) {
       mesh.userData = { circuitId: options.circuitId };
       interactiveMeshes.push(mesh);

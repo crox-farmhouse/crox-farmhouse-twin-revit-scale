@@ -800,7 +800,7 @@ export function buildSittingRoomSofas(
 
     // Clean tailored perimeter flange seam around the outer edge of the bench cushion (NO flat box slab!)
     const benchFlangeSeam = createPerimeterWeltLoop(
-      benchD - 0.018,
+      benchD + 0.006,
       innerSeatW + 0.004,
       0.0085,
       'XZ',

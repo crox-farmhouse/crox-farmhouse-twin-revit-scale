@@ -215,7 +215,7 @@ export function buildBootRoomBenchAndLockers(
     const picGroup = new THREE.Group();
     picGroup.name = 'bootLobby.westWallPicture';
     picGroup.userData.zone = 'bootLobby';
-    picGroup.position.set(-12.81, 0.95, 0.55);
+    picGroup.position.set(-12.807, 0.95, 0.55);
 
     const picW = 0.62; // Width along Z
     const picH = 0.50; // Height along Y
@@ -256,11 +256,11 @@ export function buildBootRoomBenchAndLockers(
     const innerW = picW - railW * 2;
     const innerH = picH - railW * 2;
     const matBack = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(0.012, innerH, innerW)),
+      createSharedGeo(new THREE.BoxGeometry(0.008, innerH, innerW)),
       matBoardMat
     );
     matBack.name = 'bootLobby.westWallPicture.mat';
-    matBack.position.set(0.006, 0, 0);
+    matBack.position.set(0.004, 0, 0);
     picGroup.add(matBack);
 
     // Painterly English country farmhouse & Chilterns meadow landscape canvas texture
@@ -355,18 +355,18 @@ export function buildBootRoomBenchAndLockers(
     );
     artCanvas.name = 'bootLobby.westWallPicture.canvas';
     artCanvas.rotation.y = Math.PI / 2; // Facing East (+X) into Boot Lobby
-    artCanvas.position.set(0.014, 0, 0);
+    artCanvas.position.set(0.018, 0, 0);
     picGroup.add(artCanvas);
 
     // Brass sight-edge bevel around the painting aperture
     const brassSlip = tagHighLod(
       new THREE.Mesh(
-        createSharedGeo(new THREE.BoxGeometry(0.013, canvasH + 0.012, canvasW + 0.012)),
+        createSharedGeo(new THREE.BoxGeometry(0.006, canvasH + 0.012, canvasW + 0.012)),
         brassMat
       )
     );
     brassSlip.name = 'bootLobby.westWallPicture.brassSlip';
-    brassSlip.position.set(0.007, 0, 0);
+    brassSlip.position.set(0.011, 0, 0);
     picGroup.add(brassSlip);
 
     tagCutawayWall(picGroup, {

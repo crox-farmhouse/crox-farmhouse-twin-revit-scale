@@ -670,7 +670,7 @@ export function buildHallWoodBurningStoveFirebox(
   hearthGlowGeo.rotateX(-Math.PI / 2);
   const hearthGlowMesh = tagHighLod(new THREE.Mesh(hearthGlowGeo, hearthGlowMat));
   hearthGlowMesh.name = `${namePrefix}.hearthFireGlow`;
-  hearthGlowMesh.position.set(-0.245, 0.002, 0);
+  hearthGlowMesh.position.set(-0.245, 0.006, 0);
   stoveGroup.add(hearthGlowMesh);
 
   return new WoodBurningStoveFireController({

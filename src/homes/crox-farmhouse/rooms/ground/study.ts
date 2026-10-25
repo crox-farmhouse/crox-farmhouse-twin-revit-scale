@@ -405,24 +405,24 @@ export function buildStudy(
     fanGroup.add(outerFascia);
 
     const steppedBezel = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(0.236, 0.236, 0.022)),
+      createSharedGeo(new THREE.BoxGeometry(0.236, 0.236, 0.018)),
       fanHousingWhiteMat
     );
     steppedBezel.name = 'study.southWallExtractorFan.steppedBezel';
-    steppedBezel.position.set(0, 0, -0.028);
+    steppedBezel.position.set(0, 0, -0.024);
     steppedBezel.castShadow = true;
     fanGroup.add(steppedBezel);
 
     // 2. Dark circular Ø165mm acoustic fan throat & recessed impeller cavity
     const throatCavity = tagHighLod(
       new THREE.Mesh(
-        createSharedGeo(new THREE.CylinderGeometry(0.084, 0.084, 0.036, 20)),
+        createSharedGeo(new THREE.CylinderGeometry(0.084, 0.084, 0.024, 20)),
         fanDuctThroatMat
       )
     );
     throatCavity.name = 'study.southWallExtractorFan.throatCavity';
     throatCavity.rotation.x = Math.PI / 2;
-    throatCavity.position.set(0, 0.006, -0.022);
+    throatCavity.position.set(0, 0.006, -0.028);
     fanGroup.add(throatCavity);
 
     // Central axial motor hub & 7 angled impeller blades visible inside the throat
@@ -554,17 +554,17 @@ export function buildStudy(
     scene.add(fanGroup);
   }
 
-  // Plasterboard ceiling backing over Study (`Ceil 1620396`, clear height ~2.66m, bottom at wallH - 0.026m)
+  // Plasterboard ceiling backing over Study (`Ceil 1620396`, clear height ~2.63m, kept below firstFloor.slab at Y = 2.05m)
   const studyCeilingSlab = buildPolygonalFloorSlab(
     groundFloorCeilingGroup,
     [
-      [-22.36, 8.27],
-      [-18.84, 8.27],
-      [-18.84, 11.63],
-      [-22.36, 11.63],
+      [-22.19, 8.39],
+      [-18.99, 8.39],
+      [-18.99, 11.49],
+      [-22.19, 11.49],
     ],
-    wallH + 0.012,
-    0.038,
+    2.046,
+    0.014,
     warmRoomPlasterMat,
     0.5
   );

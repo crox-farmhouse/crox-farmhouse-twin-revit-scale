@@ -77,11 +77,11 @@ export function buildFamilyBathroom(
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.eastFloorSlab');
 
   childIdx = scene.children.length;
-  addFirstFloorSlab(-10.695, -9.56, 0.05, 0.975, oakFloorMat);
+  addFirstFloorSlab(-10.695, -9.684, 0.05, 0.975, oakFloorMat);
   ensureNamedAddedChildren(scene, childIdx, 'upperSouthPassage.drinksRecessFloorSlab');
 
   childIdx = scene.children.length;
-  addFirstFloorSlab(-13.05, -9.56, 0.975, 2.54, oakFloorMat);
+  addFirstFloorSlab(-13.05, -9.684, 0.975, 2.54, oakFloorMat);
   ensureNamedAddedChildren(scene, childIdx, 'upperSouthPassage.floorSlab');
 
   // Antique oak threshold transition strip beneath the Family Bathroom doorway (`X = -11.59m..-10.77m, Z = 0.975m`)

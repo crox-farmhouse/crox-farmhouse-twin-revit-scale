@@ -130,28 +130,34 @@ export function createGroundShellWindowsAndDoors(
     // Interior plastered window reveal linings (jambs + head soffit) and painted timber window board
     const interiorRevealMat =
       winCenterX < -17.55 && cz < 1.98 ? farrowAndBallPantalonMat : warmRoomPlasterMat;
-    const intRevealDepthZ = wallDepthZ * 0.52;
-    const intRevealCenterZ = cz + intSignZ * (wallDepthZ * 0.24);
+    const frameDepth = 0.11;
+    const intRevealStartZ = cz + intSignZ * (frameDepth * 0.5 + 0.004);
+    const intRevealEndZ = cz + intSignZ * (wallDepthZ * 0.5 - 0.004);
+    const intRevealDepthZ = Math.max(0.024, Math.abs(intRevealEndZ - intRevealStartZ));
+    const intRevealCenterZ = (intRevealStartZ + intRevealEndZ) * 0.5;
+    const revealJambBotY = effSillY + 0.032;
+    const revealJambTopY = effHeadY - 0.020;
+    const revealJambH = Math.max(0.08, revealJambTopY - revealJambBotY);
     for (const sideX of [-1, 1] as const) {
       const revealJamb = new THREE.Mesh(
-        new THREE.BoxGeometry(0.012, winH, intRevealDepthZ),
+        new THREE.BoxGeometry(0.012, revealJambH, intRevealDepthZ),
         interiorRevealMat
       );
       revealJamb.name = `${winId}.revealJamb.${sideX < 0 ? "left" : "right"}`;
       revealJamb.position.set(
-        winCenterX + sideX * (winWidth * 0.5 - 0.005),
-        cy,
+        winCenterX + sideX * (winWidth * 0.5 - 0.010),
+        (revealJambBotY + revealJambTopY) * 0.5,
         intRevealCenterZ
       );
       revealJamb.receiveShadow = true;
       winGroup.add(revealJamb);
     }
     const revealHead = new THREE.Mesh(
-      new THREE.BoxGeometry(winWidth, 0.012, intRevealDepthZ),
+      new THREE.BoxGeometry(winWidth - 0.008, 0.012, intRevealDepthZ),
       interiorRevealMat
     );
     revealHead.name = `${winId}.revealHead`;
-    revealHead.position.set(winCenterX, effHeadY - 0.005, intRevealCenterZ);
+    revealHead.position.set(winCenterX, effHeadY - 0.010, intRevealCenterZ);
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
@@ -163,7 +169,7 @@ export function createGroundShellWindowsAndDoors(
       headY: effHeadY,
       interiorWallFaceCoord: cz + intSignZ * (wallDepthZ * 0.5),
       inwardSign: intSignZ as 1 | -1,
-      revealDepth: intRevealDepthZ,
+      revealDepth: wallDepthZ * 0.52,
       material: antiqueOakSkirtingMat,
       namePrefix: winId,
       trimFaceOffset: wallOptions?.trimFaceOffset,
@@ -172,7 +178,6 @@ export function createGroundShellWindowsAndDoors(
     });
 
     // Timber window outer box frame, structural mullions & 3D inset casement sashes (Survey2Plan family geometry)
-    const frameDepth = 0.11;
     const topRail = new THREE.Mesh(
       new THREE.BoxGeometry(winWidth, 0.055, frameDepth),
       windowFrameMat
@@ -246,7 +251,7 @@ export function createGroundShellWindowsAndDoors(
         }
 
         const lowBar = new THREE.Mesh(
-          new THREE.BoxGeometry(lightClearW, 0.022, sashThickZ * 0.78),
+          new THREE.BoxGeometry(lightClearW - sashStileW * 2, 0.022, sashThickZ * 0.92),
           windowFrameMat
         );
         lowBar.name = `${winId}.centreGlazingBar`;
@@ -255,7 +260,7 @@ export function createGroundShellWindowsAndDoors(
       } else {
         for (const sx of [-1, 1] as const) {
           const sStile = new THREE.Mesh(
-            new THREE.BoxGeometry(sashStileW, lightClearH, sashThickZ),
+            new THREE.BoxGeometry(sashStileW, lightClearH - sashStileW * 2, sashThickZ),
             windowFrameMat
           );
           sStile.name = `${winId}.sash.${p + 1}.stile.${sx < 0 ? 'left' : 'right'}`;
@@ -282,7 +287,7 @@ export function createGroundShellWindowsAndDoors(
               : ([0.52] as const);
           for (let bIdx = 0; bIdx < barFracs.length; bIdx++) {
             const hBar = new THREE.Mesh(
-              new THREE.BoxGeometry(lightClearW - sashStileW, 0.022, sashThickZ * 0.8),
+              new THREE.BoxGeometry(lightClearW - sashStileW * 2, 0.022, sashThickZ * 0.92),
               windowFrameMat
             );
             hBar.name = `${winId}.sash.${p + 1}.glazingBar.${bIdx + 1}`;
@@ -309,7 +314,7 @@ export function createGroundShellWindowsAndDoors(
       }
     }
 
-    const glass = new THREE.Mesh(new THREE.BoxGeometry(winWidth - 0.06, winH - 0.08, 0.016), windowGlassMat);
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(winWidth - 0.106, winH - 0.122, 0.010), windowGlassMat);
     glass.name = `${winId}.glass`;
     glass.position.set(winCenterX, cy, cz);
     winGroup.add(glass);
@@ -404,35 +409,40 @@ export function createGroundShellWindowsAndDoors(
         : rawCx < -16.8 && winCenterZ > 3.62 && winCenterZ < 8.4
           ? farrowAndBallCordMat
           : warmRoomPlasterMat;
-    const intRevealDepthX = wallDepthX * 0.52;
+    const frameDepth = 0.11;
+    const intRevealOffsetX = ((frameDepth * 0.5 + 0.004) + (wallDepthX * 0.5 - 0.004)) * 0.5;
+    const intRevealDepthX = Math.max(0.024, wallDepthX * 0.5 - frameDepth * 0.5 - 0.008);
+    const revealJambBotY = effSillY + 0.032;
+    const revealJambTopY = effHeadY - 0.020;
+    const revealJambH = Math.max(0.08, revealJambTopY - revealJambBotY);
     for (const sideZ of [-1, 1] as const) {
-      const jambZ = winCenterZ + sideZ * (winWidth * 0.5 - 0.005);
+      const jambZ = winCenterZ + sideZ * (winWidth * 0.5 - 0.010);
       const jambCx = isAngledEastCourtyardWall
         ? getEastCourtyardWallCenterX(jambZ)
         : rawCx;
       const revealJamb = new THREE.Mesh(
-        new THREE.BoxGeometry(intRevealDepthX, winH, 0.012),
+        new THREE.BoxGeometry(intRevealDepthX, revealJambH, 0.012),
         interiorRevealMat
       );
       revealJamb.name = `${winId}.revealJamb.${sideZ < 0 ? "north" : "south"}`;
       revealJamb.position.set(
-        jambCx + intSignX * (wallDepthX * 0.24),
-        cy,
+        jambCx + intSignX * intRevealOffsetX,
+        (revealJambBotY + revealJambTopY) * 0.5,
         jambZ
       );
       revealJamb.receiveShadow = true;
       winGroup.add(revealJamb);
     }
-    const intRevealCenterX = cx + intSignX * (wallDepthX * 0.24);
+    const intRevealCenterX = cx + intSignX * intRevealOffsetX;
     const revealHead = new THREE.Mesh(
       shearGeometryAlongZ(
-        new THREE.BoxGeometry(intRevealDepthX, 0.012, winWidth),
+        new THREE.BoxGeometry(intRevealDepthX, 0.012, winWidth - 0.008),
         slopeXPerZ
       ),
       interiorRevealMat
     );
     revealHead.name = `${winId}.revealHead`;
-    revealHead.position.set(intRevealCenterX, effHeadY - 0.005, winCenterZ);
+    revealHead.position.set(intRevealCenterX, effHeadY - 0.010, winCenterZ);
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
@@ -444,7 +454,7 @@ export function createGroundShellWindowsAndDoors(
       headY: effHeadY,
       interiorWallFaceCoord: cx + intSignX * (wallDepthX * 0.5),
       inwardSign: intSignX as 1 | -1,
-      revealDepth: intRevealDepthX,
+      revealDepth: wallDepthX * 0.52,
       material: antiqueOakSkirtingMat,
       namePrefix: winId,
       slopeXPerZ,
@@ -453,7 +463,6 @@ export function createGroundShellWindowsAndDoors(
       skipArchitrave: trimOptions?.skipArchitrave,
     });
 
-    const frameDepth = 0.11;
     const topRail = new THREE.Mesh(
       shearGeometryAlongZ(
         new THREE.BoxGeometry(frameDepth, 0.055, winWidth),
@@ -548,7 +557,7 @@ export function createGroundShellWindowsAndDoors(
 
         const lowBar = new THREE.Mesh(
           shearGeometryAlongZ(
-            new THREE.BoxGeometry(sashThickX * 0.78, 0.022, lightClearW),
+            new THREE.BoxGeometry(sashThickX * 0.92, 0.022, lightClearW - sashStileW * 2),
             slopeXPerZ
           ),
           windowFrameMat
@@ -561,7 +570,7 @@ export function createGroundShellWindowsAndDoors(
           const stZ = lightCenterZ + sz * (lightClearW * 0.5 - sashStileW * 0.5);
           const stCx = isAngledEastCourtyardWall ? getEastCourtyardWallCenterX(stZ) : rawCx;
           const sStile = new THREE.Mesh(
-            new THREE.BoxGeometry(sashThickX, lightClearH, sashStileW),
+            new THREE.BoxGeometry(sashThickX, lightClearH - sashStileW * 2, sashStileW),
             windowFrameMat
           );
           sStile.name = `${winId}.sash.${p + 1}.stile.${sz < 0 ? 'north' : 'south'}`;
@@ -592,7 +601,7 @@ export function createGroundShellWindowsAndDoors(
           for (let bIdx = 0; bIdx < barFracs.length; bIdx++) {
             const hBar = new THREE.Mesh(
               shearGeometryAlongZ(
-                new THREE.BoxGeometry(sashThickX * 0.8, 0.022, lightClearW - sashStileW),
+                new THREE.BoxGeometry(sashThickX * 0.92, 0.022, lightClearW - sashStileW * 2),
                 slopeXPerZ
               ),
               windowFrameMat
@@ -625,7 +634,7 @@ export function createGroundShellWindowsAndDoors(
 
     const glass = new THREE.Mesh(
       shearGeometryAlongZ(
-        new THREE.BoxGeometry(0.016, winH - 0.08, winWidth - 0.06),
+        new THREE.BoxGeometry(0.010, winH - 0.122, winWidth - 0.106),
         slopeXPerZ
       ),
       windowGlassMat
@@ -679,7 +688,9 @@ export function createGroundShellWindowsAndDoors(
     const bottomRailH = 0.195;
     const muntinW = 0.088;
     const lockRailY = -leafH * 0.07;
-    const innerW = Math.max(0.1, leafW - stileW * 2 + 0.004);
+    const innerW = Math.max(0.1, leafW - stileW * 2);
+    const coreH = Math.max(0.2, leafH - topRailH - bottomRailH);
+    const coreOffsetY = (bottomRailH - topRailH) * 0.5;
     const upperPanelTop = leafH / 2 - topRailH;
     const upperPanelBot = lockRailY + lockRailH / 2;
     const lowerPanelTop = lockRailY - lockRailH / 2;
@@ -693,10 +704,11 @@ export function createGroundShellWindowsAndDoors(
 
       // Recessed panel core slab
       const leafCore = new THREE.Mesh(
-        new THREE.BoxGeometry(0.028, leafH, leafW),
+        new THREE.BoxGeometry(0.028, coreH, innerW),
         timberDoorMat
       );
       leafCore.name = `${doorId}.leafCore`;
+      leafCore.position.set(0, coreOffsetY, 0);
       leafCore.castShadow = true;
       leafCore.receiveShadow = true;
       doorObj.add(leafCore);
@@ -737,7 +749,7 @@ export function createGroundShellWindowsAndDoors(
         const pH = Math.max(0.12, pTop - pBot);
         const pMidY = (pBot + pTop) / 2;
         const muntin = new THREE.Mesh(
-          new THREE.BoxGeometry(0.046, pH + 0.004, muntinW),
+          new THREE.BoxGeometry(0.046, pH, muntinW),
           timberDoorMat
         );
         muntin.name = `${doorId}.muntin.${pMidY > 0 ? "upper" : "lower"}`;
@@ -768,7 +780,7 @@ export function createGroundShellWindowsAndDoors(
         rose.name = `${doorId}.rose.${xSide < 0 ? "west" : "east"}`;
         rose.userData.lodTier = 'high';
         rose.rotation.z = Math.PI / 2;
-        rose.position.set(xSide * 0.026, lockRailY, knobZ);
+        rose.position.set(xSide * 0.028, lockRailY, knobZ);
         doorObj.add(rose);
 
         const knob = new THREE.Mesh(
@@ -798,10 +810,11 @@ export function createGroundShellWindowsAndDoors(
 
       // Recessed panel core slab
       const leafCore = new THREE.Mesh(
-        new THREE.BoxGeometry(leafW, leafH, 0.028),
+        new THREE.BoxGeometry(innerW, coreH, 0.028),
         timberDoorMat
       );
       leafCore.name = `${doorId}.leafCore`;
+      leafCore.position.set(0, coreOffsetY, 0);
       leafCore.castShadow = true;
       leafCore.receiveShadow = true;
       doorObj.add(leafCore);
@@ -842,7 +855,7 @@ export function createGroundShellWindowsAndDoors(
         const pH = Math.max(0.12, pTop - pBot);
         const pMidY = (pBot + pTop) / 2;
         const muntin = new THREE.Mesh(
-          new THREE.BoxGeometry(muntinW, pH + 0.004, 0.046),
+          new THREE.BoxGeometry(muntinW, pH, 0.046),
           timberDoorMat
         );
         muntin.name = `${doorId}.muntin.${pMidY > 0 ? "upper" : "lower"}`;
@@ -873,7 +886,7 @@ export function createGroundShellWindowsAndDoors(
         rose.name = `${doorId}.rose.${zSide < 0 ? "north" : "south"}`;
         rose.userData.lodTier = 'high';
         rose.rotation.x = Math.PI / 2;
-        rose.position.set(knobX, lockRailY, zSide * 0.026);
+        rose.position.set(knobX, lockRailY, zSide * 0.028);
         doorObj.add(rose);
 
         const knob = new THREE.Mesh(
@@ -942,12 +955,12 @@ export function createGroundShellWindowsAndDoors(
 
     // Weathered oak threshold weather sill flush with floor level
     const oakThreshold = new THREE.Mesh(
-      new THREE.BoxGeometry(doorWidth + 0.06, 0.036, wallDepth + 0.05),
+      new THREE.BoxGeometry(doorWidth - 0.008, 0.032, wallDepth + 0.05),
       oakMat
     );
     const cDoorId = `groundFloor.courtyardDoorX.${++cDoorXSeq}`;
     oakThreshold.name = `${cDoorId}.oakThreshold`;
-    oakThreshold.position.set(doorCenterX, baseY + 0.018, cz);
+    oakThreshold.position.set(doorCenterX, baseY + 0.020, cz);
     oakThreshold.receiveShadow = true;
     oakThreshold.userData.isArchitecturalShell = true;
     scene.add(oakThreshold);
@@ -967,19 +980,20 @@ export function createGroundShellWindowsAndDoors(
       material: antiqueOakSkirtingMat,
       jambInset: 0.03,
       headInset: 0.034,
+      bottomClearance: 0.04,
       namePrefix: 'courtyardDoorX',
     });
     scene.add(frameGroup);
 
     // Flush Yorkstone threshold paving outside the Courtyard Door (no step down!)
-    const stepZ = interiorSide === 'north' ? maxZ + 0.16 : minZ - 0.16;
+    const stepZ = interiorSide === 'north' ? maxZ + 0.21 : minZ - 0.21;
     const extGroundY = getCourtyardGroundY(doorCenterX, stepZ);
     const doorstep = new THREE.Mesh(
-      new THREE.BoxGeometry(doorWidth + 0.24, 0.035, 0.36),
+      new THREE.BoxGeometry(doorWidth + 0.24, 0.035, 0.34),
       stoneSillMat
     );
     doorstep.name = `${cDoorId}.doorstep`;
-    doorstep.position.set(doorCenterX, Math.max(baseY, extGroundY) - 0.015, stepZ);
+    doorstep.position.set(doorCenterX, Math.max(baseY, extGroundY) - 0.022, stepZ);
     doorstep.castShadow = true;
     doorstep.receiveShadow = true;
     doorstep.userData.isArchitecturalShell = true;
@@ -992,21 +1006,22 @@ export function createGroundShellWindowsAndDoors(
     doorObj.name = `${cDoorId}.leafGroup`;
     doorObj.position.set(doorCenterX, baseY + 0.035 + leafH / 2, cz);
 
-    // Lower solid Shaker panel section (bottom 0.90m of door)
+    // Lower solid Shaker panel section (bottom 0.90m of door, fitted cleanly between stiles and below midLockRail)
     const lowerPanelH = 0.9;
+    const lowerBodyH = lowerPanelH - 0.055;
     const lowerPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(leafW, lowerPanelH, 0.054),
+      new THREE.BoxGeometry(leafW - 0.232, lowerBodyH, 0.046),
       courtyardDoorMat
     );
     lowerPanel.name = `${cDoorId}.lowerPanel`;
-    lowerPanel.position.set(0, -leafH / 2 + lowerPanelH / 2, 0);
+    lowerPanel.position.set(0, -leafH / 2 + lowerBodyH / 2, 0);
     lowerPanel.castShadow = true;
     lowerPanel.receiveShadow = true;
     doorObj.add(lowerPanel);
 
     // Recessed Shaker moulding on lower door panel
     const lowerRecess = new THREE.Mesh(
-      new THREE.BoxGeometry(leafW - 0.22, lowerPanelH - 0.22, 0.06),
+      new THREE.BoxGeometry(leafW - 0.26, lowerPanelH - 0.22, 0.054),
       courtyardDoorRecessMat
     );
     lowerRecess.name = `${cDoorId}.lowerRecess`;
@@ -1026,7 +1041,7 @@ export function createGroundShellWindowsAndDoors(
       doorObj.add(stile);
     }
     const midLockRail = new THREE.Mesh(
-      new THREE.BoxGeometry(leafW, 0.11, 0.056),
+      new THREE.BoxGeometry(leafW - 0.232, 0.11, 0.056),
       courtyardDoorMat
     );
     midLockRail.name = `${cDoorId}.midLockRail`;
@@ -1035,7 +1050,7 @@ export function createGroundShellWindowsAndDoors(
     doorObj.add(midLockRail);
 
     const topDoorRail = new THREE.Mesh(
-      new THREE.BoxGeometry(leafW, 0.11, 0.056),
+      new THREE.BoxGeometry(leafW - 0.232, 0.11, 0.056),
       courtyardDoorMat
     );
     topDoorRail.name = `${cDoorId}.topDoorRail`;
@@ -1044,11 +1059,11 @@ export function createGroundShellWindowsAndDoors(
     doorObj.add(topDoorRail);
 
     // Upper glass pane + Georgian cross muntins
-    const glassW = leafW - 0.18;
-    const glassH = upperH - 0.08;
-    const glassCenterY = leafH / 2 - 0.055 - glassH / 2;
+    const glassW = leafW - 0.236;
+    const glassH = upperH - 0.168;
+    const glassCenterY = (leafH / 2 - 0.11 + (-leafH / 2 + lowerPanelH + 0.055)) * 0.5;
     const doorGlass = new THREE.Mesh(
-      new THREE.BoxGeometry(glassW, glassH, 0.016),
+      new THREE.BoxGeometry(glassW, glassH, 0.012),
       windowGlassMat
     );
     doorGlass.name = `${cDoorId}.glass`;
@@ -1064,7 +1079,7 @@ export function createGroundShellWindowsAndDoors(
     doorObj.add(vMuntin);
 
     const hMuntin = new THREE.Mesh(
-      new THREE.BoxGeometry(glassW, 0.026, 0.036),
+      new THREE.BoxGeometry(glassW, 0.026, 0.032),
       courtyardDoorMat
     );
     hMuntin.name = `${cDoorId}.hMuntin`;
@@ -1155,30 +1170,30 @@ export function createGroundShellWindowsAndDoors(
     // Weathered oak threshold weather sill flush with the -0.60m Plant Room / Hallway floor & sloped courtyard
     const oakThreshold = new THREE.Mesh(
       shearGeometryAlongZ(
-        new THREE.BoxGeometry(wallDepth + 0.05, 0.036, doorWidth + 0.06),
+        new THREE.BoxGeometry(wallDepth + 0.05, 0.032, doorWidth - 0.008),
         slopeXPerZ
       ),
       oakMat
     );
     const cDoorId = `groundFloor.courtyardDoorZ.${++cDoorZSeq}`;
     oakThreshold.name = `${cDoorId}.oakThreshold`;
-    oakThreshold.position.set(cx, baseY + 0.018, doorCenterZ);
+    oakThreshold.position.set(cx, baseY + 0.020, doorCenterZ);
     oakThreshold.receiveShadow = true;
     oakThreshold.userData.isArchitecturalShell = true;
     scene.add(oakThreshold);
 
     // Flush Yorkstone threshold stone outside the Plant Room Courtyard Door (no step down!)
-    const stepX = interiorSide === 'west' ? effMaxX + 0.16 : effMinX - 0.16;
+    const stepX = interiorSide === 'west' ? effMaxX + 0.21 : effMinX - 0.21;
     const extGroundY = getCourtyardGroundY(stepX, doorCenterZ);
     const doorstep = new THREE.Mesh(
       shearGeometryAlongZ(
-        new THREE.BoxGeometry(0.36, 0.035, doorWidth + 0.24),
+        new THREE.BoxGeometry(0.34, 0.035, doorWidth + 0.24),
         slopeXPerZ
       ),
       stoneSillMat
     );
     doorstep.name = `${cDoorId}.doorstep`;
-    doorstep.position.set(stepX, Math.max(baseY, extGroundY) - 0.015, doorCenterZ);
+    doorstep.position.set(stepX, Math.max(baseY, extGroundY) - 0.022, doorCenterZ);
     doorstep.castShadow = true;
     doorstep.receiveShadow = true;
     doorstep.userData.isArchitecturalShell = true;
@@ -1199,6 +1214,7 @@ export function createGroundShellWindowsAndDoors(
       material: antiqueOakSkirtingMat,
       jambInset: 0.03,
       headInset: 0.034,
+      bottomClearance: 0.04,
       slopeXPerZ,
       namePrefix: 'courtyardDoorZ',
     });
@@ -1214,12 +1230,14 @@ export function createGroundShellWindowsAndDoors(
       doorObj.rotation.y = eastCourtyardWallAngleY;
     }
 
-    // Full-height solid timber door core slab
+    // Solid timber door core slab inset between outer stiles and top/bottom rails
+    const solidCoreH = leafH - 0.12 - 0.15;
     const solidDoorCore = new THREE.Mesh(
-      new THREE.BoxGeometry(0.046, leafH, leafW),
+      new THREE.BoxGeometry(0.040, solidCoreH, leafW - 0.24),
       courtyardDoorMat
     );
     solidDoorCore.name = `${cDoorId}.solidDoorCore`;
+    solidDoorCore.position.set(0, (0.15 - 0.12) * 0.5, 0);
     solidDoorCore.castShadow = true;
     solidDoorCore.receiveShadow = true;
     doorObj.add(solidDoorCore);
@@ -1242,7 +1260,7 @@ export function createGroundShellWindowsAndDoors(
       [-leafH / 2 + 0.075, 0.15],
     ] as const) {
       const rail = new THREE.Mesh(
-        new THREE.BoxGeometry(0.058, rh, leafW - 0.12),
+        new THREE.BoxGeometry(0.058, rh, leafW - 0.24),
         courtyardDoorMat
       );
       rail.name = `${cDoorId}.rail.${ry > 0 ? "top" : ry < -0.2 ? "bottom" : "middle"}`;
@@ -1261,7 +1279,7 @@ export function createGroundShellWindowsAndDoors(
       const pH = pTop - pBot;
       const pMidY = (pBot + pTop) * 0.5;
       const solidRecessPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(0.052, pH, panelClearW),
+        new THREE.BoxGeometry(0.052, pH - 0.008, panelClearW - 0.008),
         courtyardDoorRecessMat
       );
       solidRecessPanel.name = `${cDoorId}.solidRecessPanel.${pMidY > 0 ? "upper" : "lower"}`;
@@ -1276,7 +1294,7 @@ export function createGroundShellWindowsAndDoors(
       for (let p = 1; p < numPlanks; p++) {
         const seamZ = -panelClearW * 0.5 + p * plankStep;
         const vGroove = new THREE.Mesh(
-          new THREE.BoxGeometry(0.054, pH - 0.01, 0.006),
+          new THREE.BoxGeometry(0.058, pH - 0.014, 0.006),
           courtyardDoorMat
         );
         vGroove.name = `${cDoorId}.vGroove.${pMidY > 0 ? "upper" : "lower"}.${p}`;
@@ -1345,14 +1363,14 @@ export function createGroundShellWindowsAndDoors(
     const winH = headY - sillY;
     const frontW = 1.62;           // Survey2Plan S2P-Windows-TplwGlazingBarsK central 3-light facet = 1.62m wide
 
-    // Trapezoidal carpeted bay floor extension slab tucked 4cm inside the 0.28m bay walls (at Y = -0.60m)
+    // Trapezoidal carpeted bay floor extension slab meeting the room floor cleanly at wallInnerX - 0.005m (at Y = -0.60m)
     buildPolygonalFloorSlab(
       scene,
       [
-        [wallInnerX + 0.04, centerZ - bayHalfZ - 0.04],
+        [wallInnerX - 0.005, centerZ - bayHalfZ - 0.04],
         [bayInnerFrontX - 0.04, centerZ - frontW / 2 - 0.04],
         [bayInnerFrontX - 0.04, centerZ + frontW / 2 + 0.04],
-        [wallInnerX + 0.04, centerZ + bayHalfZ + 0.04],
+        [wallInnerX - 0.005, centerZ + bayHalfZ + 0.04],
       ],
       bayBaseY,
       0.08,
@@ -1377,7 +1395,6 @@ export function createGroundShellWindowsAndDoors(
       color: 0x3f4650,
       roughness: 0.52,
       metalness: 0.28,
-      side: THREE.DoubleSide,
     });
     const bayHipRollMat = new THREE.MeshStandardMaterial({
       color: 0x343a42,
@@ -1387,53 +1404,56 @@ export function createGroundShellWindowsAndDoors(
 
     // Solid 3D Flat Lead Bay Roof deck with a subtle 2.5cm weather fall from the main West brick wall
     // exterior face (wallApexX = -22.47m, backTopY = frontWallH + 0.105m) down to the canted eaves
-    // (eaveFrontX = -22.88m, frontTopY = frontWallH + 0.080m), sitting on eaveRoofY = frontWallH + 0.055m
+    // (eaveFrontX = -22.88m, frontTopY = frontWallH + 0.080m), sitting cleanly above eaveRoofY = frontWallH + 0.055m
     const eaveRoofY = frontWallH + 0.055;
+    const leadDeckBotY = eaveRoofY + 0.004;
     const backTopY = frontWallH + 0.105;
     const frontTopY = frontWallH + 0.08;
     const wallApexX = wallInnerX - 0.28; // Exact exterior face of West brick wall (-22.47m)
+    const leadAbutmentX = wallApexX - 0.004;
     const eaveFrontX = bayInnerFrontX - 0.36; // Overhanging front eaves (-22.88m)
     const eaveOuterMinZ = centerZ - bayHalfZ - 0.14;
     const eaveOuterMaxZ = centerZ + bayHalfZ + 0.14;
     const eaveFrontMinZ = centerZ - frontW / 2 - 0.2;
     const eaveFrontMaxZ = centerZ + frontW / 2 + 0.2;
 
-    // Interior bay ceiling soffit (strictly inside the bay walls) & exterior overhanging 3-facet white eaves fascia deck (X <= -22.47m)
+    // Interior bay ceiling soffit (strictly west of flatHeaderWall X = wallInnerX - 0.14m so it never overlaps room ceilingBacking!)
+    // & exterior overhanging 3-facet white eaves fascia deck (X <= -22.474m)
     buildPolygonalFloorSlab(
       bayWallGroup,
       [
-        [wallInnerX, centerZ - bayHalfZ],
+        [wallInnerX - 0.145, centerZ - bayHalfZ + 0.145],
         [bayInnerFrontX - 0.14, centerZ - frontW / 2],
         [bayInnerFrontX - 0.14, centerZ + frontW / 2],
-        [wallInnerX, centerZ + bayHalfZ],
+        [wallInnerX - 0.145, centerZ + bayHalfZ - 0.145],
       ],
-      frontWallH + 0.01,
-      0.03,
+      frontWallH - 0.005,
+      0.025,
       skirtingMat,
       0.5
     );
     buildPolygonalFloorSlab(
       bayWallGroup,
       [
-        [wallApexX, eaveOuterMinZ],
+        [leadAbutmentX, eaveOuterMinZ],
         [eaveFrontX, eaveFrontMinZ],
         [eaveFrontX, eaveFrontMaxZ],
-        [wallApexX, eaveOuterMaxZ],
+        [leadAbutmentX, eaveOuterMaxZ],
       ],
       eaveRoofY,
-      0.055,
+      0.051,
       skirtingMat,
       0.5
     );
 
-    const b0 = new THREE.Vector3(wallApexX, eaveRoofY, eaveOuterMinZ);
-    const b1 = new THREE.Vector3(eaveFrontX, eaveRoofY, eaveFrontMinZ);
-    const b2 = new THREE.Vector3(eaveFrontX, eaveRoofY, eaveFrontMaxZ);
-    const b3 = new THREE.Vector3(wallApexX, eaveRoofY, eaveOuterMaxZ);
-    const t0 = new THREE.Vector3(wallApexX, backTopY, eaveOuterMinZ);
+    const b0 = new THREE.Vector3(leadAbutmentX, leadDeckBotY, eaveOuterMinZ);
+    const b1 = new THREE.Vector3(eaveFrontX, leadDeckBotY, eaveFrontMinZ);
+    const b2 = new THREE.Vector3(eaveFrontX, leadDeckBotY, eaveFrontMaxZ);
+    const b3 = new THREE.Vector3(leadAbutmentX, leadDeckBotY, eaveOuterMaxZ);
+    const t0 = new THREE.Vector3(leadAbutmentX, backTopY, eaveOuterMinZ);
     const t1 = new THREE.Vector3(eaveFrontX, frontTopY, eaveFrontMinZ);
     const t2 = new THREE.Vector3(eaveFrontX, frontTopY, eaveFrontMaxZ);
-    const t3 = new THREE.Vector3(wallApexX, backTopY, eaveOuterMaxZ);
+    const t3 = new THREE.Vector3(leadAbutmentX, backTopY, eaveOuterMaxZ);
 
     const bayRoofPositions: number[] = [];
     const addRoofTri = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3): void => {
@@ -1450,13 +1470,10 @@ export function createGroundShellWindowsAndDoors(
     };
     // 1. Gently sloped flat lead top deck (+Y normal with 2.5cm weather fall toward -X)
     addRoofQuad(t0, t1, t2, t3);
-    // 2. Bottom soffit closure (-Y normal)
-    addRoofQuad(b0, b3, b2, b1);
-    // 3. Perimeter lead drip-edge fascia/apron faces & rear wall closure (outward normals)
+    // 2. Perimeter lead drip-edge fascia/apron faces (outward normals; bottom & rear abutment omitted to avoid coplanar overlap)
     addRoofQuad(b0, b1, t1, t0); // North splay drip edge
     addRoofQuad(b1, b2, t2, t1); // West front drip edge
     addRoofQuad(b2, b3, t3, t2); // South splay drip edge
-    addRoofQuad(b3, b0, t0, t3); // East rear wall abutment
 
     const bayRoofGeo = new THREE.BufferGeometry();
     bayRoofGeo.setAttribute('position', new THREE.Float32BufferAttribute(bayRoofPositions, 3));
@@ -1481,8 +1498,8 @@ export function createGroundShellWindowsAndDoors(
     ];
     let seamIdx = 0;
     for (const [rearZOff, frontZOff, rollRad] of seamRollSpecs) {
-      const pRear = new THREE.Vector3(wallApexX - 0.008, backTopY + 0.004, centerZ + rearZOff);
-      const pFront = new THREE.Vector3(eaveFrontX + 0.008, frontTopY + 0.004, centerZ + frontZOff);
+      const pRear = new THREE.Vector3(wallApexX - 0.022, backTopY + rollRad + 0.002, centerZ + rearZOff);
+      const pFront = new THREE.Vector3(eaveFrontX + 0.012, frontTopY + rollRad + 0.002, centerZ + frontZOff);
       const seamCurve = new THREE.LineCurve3(pRear, pFront);
       const seamRoll = new THREE.Mesh(
         new THREE.TubeGeometry(seamCurve, 6, rollRad, 10, false),
@@ -1497,26 +1514,22 @@ export function createGroundShellWindowsAndDoors(
     }
 
     // Lead wall-abutment upstand & stepped flashing apron (`westBayWindow.leadWallFlashing`)
-    // tucked into the brickwork along x = wallApexX (y = backTopY..backTopY + 0.11)
+    // proud of the brickwork along x = wallApexX - 0.004 (y = backTopY + 0.004..backTopY + 0.114)
     const flashingLenZ = eaveOuterMaxZ - eaveOuterMinZ;
     const flashingProfile = new THREE.Shape();
-    flashingProfile.moveTo(0.012, 0);
+    flashingProfile.moveTo(0, 0);
     flashingProfile.lineTo(-0.026, 0);
     flashingProfile.lineTo(-0.026, 0.014);
     flashingProfile.lineTo(-0.014, 0.018);
     flashingProfile.lineTo(-0.014, 0.11);
-    flashingProfile.lineTo(0.016, 0.11);
-    flashingProfile.lineTo(0.016, 0.094);
-    flashingProfile.lineTo(0.002, 0.094);
-    flashingProfile.lineTo(0.002, 0.012);
-    flashingProfile.lineTo(0.012, 0.012);
+    flashingProfile.lineTo(0, 0.11);
     flashingProfile.closePath();
 
     const flashingGeo = new THREE.ExtrudeGeometry(flashingProfile, {
       depth: flashingLenZ,
       bevelEnabled: false,
     });
-    flashingGeo.translate(wallApexX, backTopY - 0.002, eaveOuterMinZ);
+    flashingGeo.translate(wallApexX - 0.004, backTopY + 0.004, eaveOuterMinZ);
     flashingGeo.computeVertexNormals();
     flashingGeo.computeBoundingSphere();
     const leadWallFlashing = new THREE.Mesh(flashingGeo, bayHipRollMat);
@@ -1538,7 +1551,7 @@ export function createGroundShellWindowsAndDoors(
       [wallInnerX, maxWallZ],
     ];
 
-    // 6-vertex trim polyline for the internal windowsill board (with 9.5cm end horns), head soffit, and exterior stone sill
+    // 6-vertex trim polyline for the internal windowsill board (with 9.5cm end horns)
     const trimPolyline: readonly Point2D[] = [
       [wallInnerX, centerZ - bayHalfZ - hornLen],
       [wallInnerX, centerZ - bayHalfZ],
@@ -1553,6 +1566,11 @@ export function createGroundShellWindowsAndDoors(
       exteriorBrickMat,
       exteriorBrickMat,
     ];
+    const cappedWallMatTuple: readonly [THREE.Material, THREE.Material, THREE.Material] = [
+      interiorLowerWallMat,
+      exteriorBrickMat,
+      wallCapMat,
+    ];
 
     // 1. One-piece Full-Height West Wall Flanks on North (segment 0) and South (segment 4) of the bay window
     //    (y = bayBaseY - 0.04 .. frontWallH, d = -0.28..0 — eliminates horizontal seam splits at sillY/headY, Issues #2 & #3!)
@@ -1563,7 +1581,7 @@ export function createGroundShellWindowsAndDoors(
       0,
       bayBaseY - 0.04,
       frontWallH,
-      wallMatTuple,
+      cappedWallMatTuple,
       true,
       true,
       [0, 1]
@@ -1575,7 +1593,7 @@ export function createGroundShellWindowsAndDoors(
       0,
       bayBaseY - 0.04,
       frontWallH,
-      wallMatTuple,
+      cappedWallMatTuple,
       true,
       true,
       [4, 5]
@@ -1612,12 +1630,32 @@ export function createGroundShellWindowsAndDoors(
 
     // Flat interior header wall across the bay opening at X = wallInnerX (-22.19m), Y = headY..frontWallH,
     // so the room wall is completely flat all the way across the top and the bay recess sits inside below the reveal!
-    const flatHeaderLenZ = bayHalfZ * 2 + 0.04;
-    const flatHeaderDepthX = 0.14;
+    const flatHeaderLenZ = bayHalfZ * 2 - 0.008;
+    const flatHeaderDepthX = 0.136;
     const flatHeaderH = frontWallH - headY;
+    const flatHeaderGeo = new THREE.BoxGeometry(flatHeaderDepthX, flatHeaderH, flatHeaderLenZ);
+    const flatHeaderPos = flatHeaderGeo.attributes.position;
+    if (flatHeaderPos) {
+      for (let vi = 0; vi < flatHeaderPos.count; vi++) {
+        if (flatHeaderPos.getX(vi) < 0) {
+          const vz = flatHeaderPos.getZ(vi);
+          flatHeaderPos.setZ(vi, vz - Math.sign(vz) * (flatHeaderDepthX + 0.004));
+        }
+      }
+      flatHeaderPos.needsUpdate = true;
+      flatHeaderGeo.computeVertexNormals();
+      flatHeaderGeo.computeBoundingSphere();
+    }
     const flatHeaderWall = new THREE.Mesh(
-      new THREE.BoxGeometry(flatHeaderDepthX, flatHeaderH, flatHeaderLenZ),
-      interiorLowerWallMat
+      flatHeaderGeo,
+      [
+        interiorLowerWallMat,
+        interiorLowerWallMat,
+        wallCapMat,
+        interiorLowerWallMat,
+        interiorLowerWallMat,
+        interiorLowerWallMat,
+      ]
     );
     flatHeaderWall.name = 'westBayWindow.flatHeaderWall';
     flatHeaderWall.position.set(
@@ -1629,138 +1667,124 @@ export function createGroundShellWindowsAndDoors(
     flatHeaderWall.receiveShadow = true;
     bayWallGroup.add(flatHeaderWall);
 
-    // Flat cutaway top cap across the bay opening at X = wallInnerX (recessed so it never pokes above frontWallH)
-    const flatHeaderCap = new THREE.Mesh(
-      new THREE.BoxGeometry(flatHeaderDepthX - 0.012, 0.016, flatHeaderLenZ - 0.012),
-      wallCapMat
-    );
-    flatHeaderCap.name = `${bayWallGroup.name}.flatHeaderCap`;
-    flatHeaderCap.position.set(
-      wallInnerX - flatHeaderDepthX / 2,
-      frontWallH - 0.006,
-      centerZ
-    );
-    bayWallGroup.add(flatHeaderCap);
-
     // Moulded Solid European Oak reveal nosing along the bottom edge of the flat header at X = wallInnerX
     const flatHeaderArchitrave = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, 0.022, flatHeaderLenZ + 0.04),
+      new THREE.BoxGeometry(0.016, 0.018, flatHeaderLenZ),
       antiqueOakSkirtingMat
     );
     flatHeaderArchitrave.name = 'westBayWindow.flatHeaderArchitrave';
-    flatHeaderArchitrave.position.set(wallInnerX - 0.004, headY - 0.002, centerZ);
+    flatHeaderArchitrave.position.set(wallInnerX - 0.012, headY - 0.013, centerZ);
     bayWallGroup.add(flatHeaderArchitrave);
 
-    // Flat horizontal trapezoidal reveal soffit ceiling inside the bay recess at Y = headY
-    // filling the space between X = wallInnerX and the 3-sided bay window frame
+    // Flat horizontal trapezoidal reveal soffit ceiling inside the bay recess below headY
+    // filling the space between X = wallInnerX - 0.024 and the 3-sided bay window frame
     {
       const soffitShape = new THREE.Shape();
       // Shape in (x, z) mapped to Shape (x, y) then rotated -PI/2 around X so y -> -z;
-      // since the bay is Z-symmetrical around centerZ, we center the shape at (wallInnerX, centerZ)
-      const baySoffitDepth = wallInnerX - (bayInnerFrontX - 0.115); // ~0.765m
-      soffitShape.moveTo(0, -bayHalfZ - 0.02);
-      soffitShape.lineTo(-baySoffitDepth, -frontW / 2 - 0.02);
-      soffitShape.lineTo(-baySoffitDepth, frontW / 2 + 0.02);
-      soffitShape.lineTo(0, bayHalfZ + 0.02);
+      // since the bay is Z-symmetrical around centerZ, we center the shape at (wallInnerX - 0.024, centerZ)
+      const baySoffitDepth = wallInnerX - 0.024 - (bayInnerFrontX - 0.100);
+      soffitShape.moveTo(0, -bayHalfZ + 0.024);
+      soffitShape.lineTo(-baySoffitDepth, -frontW / 2 - 0.008);
+      soffitShape.lineTo(-baySoffitDepth, frontW / 2 + 0.008);
+      soffitShape.lineTo(0, bayHalfZ - 0.024);
       soffitShape.closePath();
 
       const soffitGeo = new THREE.ExtrudeGeometry(soffitShape, {
-        depth: 0.036,
+        depth: 0.014,
         bevelEnabled: false,
       });
       soffitGeo.rotateX(-Math.PI / 2);
       soffitGeo.computeBoundingSphere();
       const bayRevealSoffit = new THREE.Mesh(soffitGeo, skirtingMat);
       bayRevealSoffit.name = 'westBayWindow.revealSoffit';
-      bayRevealSoffit.position.set(wallInnerX, headY - 0.012, centerZ);
+      bayRevealSoffit.position.set(wallInnerX - 0.024, headY - 0.018, centerZ);
       bayRevealSoffit.receiveShadow = true;
       bayWallGroup.add(bayRevealSoffit);
     }
-
-    // Recessed cutaway top caps on segments 0 and 4 (strictly inside d = -0.268..-0.012 and below frontWallH so they never protrude out of the brick wall — Issues #2 & #3)
-    buildMiteredPolylineStrip(
-      bayWallGroup,
-      bayPolyline,
-      -0.268,
-      -0.012,
-      frontWallH - 0.016,
-      frontWallH - 0.002,
-      wallCapMat,
-      false,
-      false,
-      [0, 1]
-    );
-    buildMiteredPolylineStrip(
-      bayWallGroup,
-      bayPolyline,
-      -0.268,
-      -0.012,
-      frontWallH - 0.016,
-      frontWallH - 0.002,
-      wallCapMat,
-      false,
-      false,
-      [4, 5]
-    );
 
     // 4. Continuous Mitered 0.145m Antique-Profiled Oak Skirting Board across the ENTIRE West wall & bay (Issue #14)
     buildMiteredPolylineStrip(
       bayWallGroup,
       bayPolyline,
-      -0.002,
-      0.022,
-      bayBaseY,
-      bayBaseY + 0.122,
-      antiqueOakSkirtingMat,
-      false,
-      true
-    );
-    buildMiteredPolylineStrip(
-      bayWallGroup,
-      bayPolyline,
-      -0.002,
-      0.016,
-      bayBaseY + 0.122,
-      bayBaseY + 0.146,
-      antiqueOakSkirtingMat,
-      false,
-      false
-    );
-
-    // 5. Continuous Mitered Solid European Oak Internal Windowsill Board + Wrap-Around End Horns + Moulded Under-Sill Apron (y = sillY - 0.006 .. sillY + 0.028)
-    buildMiteredPolylineStrip(
-      bayWallGroup,
-      trimPolyline,
-      -0.115,
-      0.036,
-      sillY - 0.006,
-      sillY + 0.028,
+      0.004,
+      0.024,
+      bayBaseY + 0.004,
+      bayBaseY + 0.118,
       antiqueOakSkirtingMat,
       true,
       true
     );
     buildMiteredPolylineStrip(
       bayWallGroup,
-      trimPolyline,
-      -0.002,
-      0.017,
-      sillY - 0.048,
-      sillY - 0.006,
+      bayPolyline,
+      0.004,
+      0.020,
+      bayBaseY + 0.122,
+      bayBaseY + 0.146,
       antiqueOakSkirtingMat,
-      false,
+      true,
       true
     );
 
-    // 5b. 3-Sided 45°-Mitred 75mm × 20mm Solid European Oak Bay Portal Architrave along X = wallInnerX
+    // 5. Continuous Mitered Solid European Oak Internal Windowsill Board + Wrap-Around End Horns + Moulded Under-Sill Apron
+    buildMiteredPolylineStrip(
+      bayWallGroup,
+      trimPolyline,
+      -0.100,
+      0.036,
+      sillY + 0.004,
+      sillY + 0.028,
+      antiqueOakSkirtingMat,
+      true,
+      true,
+      [1, 4]
+    );
+    buildMiteredPolylineStrip(
+      bayWallGroup,
+      trimPolyline,
+      0.004,
+      0.036,
+      sillY + 0.004,
+      sillY + 0.028,
+      antiqueOakSkirtingMat,
+      true,
+      true,
+      [0, 1]
+    );
+    buildMiteredPolylineStrip(
+      bayWallGroup,
+      trimPolyline,
+      0.004,
+      0.036,
+      sillY + 0.004,
+      sillY + 0.028,
+      antiqueOakSkirtingMat,
+      true,
+      true,
+      [4, 5]
+    );
+    buildMiteredPolylineStrip(
+      bayWallGroup,
+      trimPolyline,
+      0.004,
+      0.019,
+      sillY - 0.044,
+      sillY,
+      antiqueOakSkirtingMat,
+      true,
+      true
+    );
+
+    // 5b. 3-Sided 45°-Mitred 75mm × 20mm Solid European Oak Bay Portal Architrave along X = wallInnerX + 0.005
     {
       const [northArchGeo, headArchGeo, southArchGeo] = buildMitredArchitraveSegments(
         centerZ - bayHalfZ,
         centerZ + bayHalfZ,
-        sillY + 0.028,
-        sillY + 0.028,
-        headY + 0.006,
+        sillY + 0.032,
+        sillY + 0.032,
+        headY - 0.004,
         'z',
-        wallInnerX + 0.002,
+        wallInnerX + 0.005,
         1,
         0.075,
         0.020
@@ -1780,27 +1804,14 @@ export function createGroundShellWindowsAndDoors(
       }
     }
 
-    // 6. Continuous Mitered White Window-Head Reveal Soffit (y = headY - 0.022 .. headY + 0.006)
-    buildMiteredPolylineStrip(
-      bayWallGroup,
-      trimPolyline,
-      -0.115,
-      0.001,
-      headY - 0.022,
-      headY + 0.006,
-      skirtingMat,
-      false,
-      true
-    );
-
-    // 7. Continuous Mitered Exterior Stone Sill (y = sillY - 0.04 .. sillY + 0.02, d = -0.31..-0.11)
+    // 7. Continuous Mitered Exterior Stone Sill (y = sillY - 0.04 .. sillY - 0.004, d = -0.31..-0.19)
     buildMiteredPolylineStrip(
       bayWallGroup,
       bayPolyline,
       -0.31,
-      -0.11,
+      -0.19,
       sillY - 0.04,
-      sillY + 0.02,
+      sillY - 0.004,
       stoneSillMat,
       true,
       true,
@@ -1813,7 +1824,7 @@ export function createGroundShellWindowsAndDoors(
       bayPolyline,
       -0.185,
       -0.105,
-      sillY + 0.022,
+      sillY + 0.032,
       sillY + 0.074,
       windowFrameMat,
       true,
@@ -1847,52 +1858,48 @@ export function createGroundShellWindowsAndDoors(
     buildMiteredPolylineStrip(
       bayWallGroup,
       bayPolyline,
-      -0.152,
-      -0.138,
-      sillY + 0.05,
-      headY - 0.05,
+      -0.150,
+      -0.140,
+      sillY + 0.078,
+      headY - 0.078,
       windowGlassMat,
       false,
       false,
       [1, 4]
     );
 
-    // 9. Mitered Vertical Jamb Reveal Linings + Architraves at P1 (North) and P4 (South)
-    //    Uses dOut = -0.112..+0.018 (so the inner-bend miter shift 0.112 * 0.5174 = 0.058m is strictly
-    //    smaller than hornLen = 0.095m and splayLeg = 0.105m, preventing any face inversion!)
-    const splayDx = bayInnerFrontX - wallInnerX; // -0.65m
-    const splayDz = bayHalfZ - frontW / 2;       // +0.46m
+    // 9. Splay Jamb Reveal Linings inset strictly inside the North (P1) and South (P4) splay reveals
+    const splayDx = bayInnerFrontX - wallInnerX;
+    const splayDz = bayHalfZ - frontW / 2;
     const splaySegLen = Math.hypot(splayDx, splayDz);
     const splayUx = splayDx / splaySegLen;
     const splayUz = splayDz / splaySegLen;
 
-    // North Jamb Reveal Lining (around P1)
+    // North Jamb Reveal Lining (inset inside splay segment 1)
     buildMiteredPolylineStrip(
       bayWallGroup,
       [
-        [wallInnerX, centerZ - bayHalfZ - hornLen],
-        [wallInnerX, centerZ - bayHalfZ],
-        [wallInnerX + splayUx * 0.105, centerZ - bayHalfZ + splayUz * 0.105],
+        [wallInnerX + splayUx * 0.008, centerZ - bayHalfZ + splayUz * 0.008],
+        [wallInnerX + splayUx * 0.020, centerZ - bayHalfZ + splayUz * 0.020],
       ],
-      -0.112,
-      0.001,
-      sillY + 0.022,
-      headY - 0.01,
+      -0.100,
+      -0.006,
+      sillY + 0.032,
+      headY - 0.022,
       skirtingMat
     );
 
-    // South Jamb Reveal Lining (around P4)
+    // South Jamb Reveal Lining (inset inside splay segment 3)
     buildMiteredPolylineStrip(
       bayWallGroup,
       [
-        [wallInnerX + splayUx * 0.105, centerZ + bayHalfZ - splayUz * 0.105],
-        [wallInnerX, centerZ + bayHalfZ],
-        [wallInnerX, centerZ + bayHalfZ + hornLen],
+        [wallInnerX + splayUx * 0.020, centerZ + bayHalfZ - splayUz * 0.020],
+        [wallInnerX + splayUx * 0.008, centerZ + bayHalfZ - splayUz * 0.008],
       ],
-      -0.112,
-      0.001,
-      sillY + 0.022,
-      headY - 0.01,
+      -0.100,
+      -0.006,
+      sillY + 0.032,
+      headY - 0.022,
       skirtingMat
     );
 
@@ -1904,10 +1911,10 @@ export function createGroundShellWindowsAndDoors(
         [bayInnerFrontX, centerZ - frontW / 2],
         [bayInnerFrontX, centerZ - frontW / 2 + 0.024],
       ],
-      -0.185,
+      -0.181,
       -0.102,
-      sillY + 0.022,
-      headY - 0.022,
+      sillY + 0.078,
+      headY - 0.078,
       windowFrameMat
     );
     buildMiteredPolylineStrip(
@@ -1917,10 +1924,10 @@ export function createGroundShellWindowsAndDoors(
         [bayInnerFrontX, centerZ + frontW / 2],
         [bayInnerFrontX - splayUx * 0.024, centerZ + frontW / 2 + splayUz * 0.024],
       ],
-      -0.185,
+      -0.181,
       -0.102,
-      sillY + 0.022,
-      headY - 0.022,
+      sillY + 0.078,
+      headY - 0.078,
       windowFrameMat
     );
 
@@ -1928,7 +1935,7 @@ export function createGroundShellWindowsAndDoors(
     // 11. Two Intermediate Vertical Mullions + 3 Inset Sash Sub-Frames dividing the 1.62m Front Facet into 3 casement bays (`S2P-Windows-TplwGlazingBarsK`)
     for (const mz of [-frontW / 6, frontW / 6]) {
       const mullion = new THREE.Mesh(
-        new THREE.BoxGeometry(0.082, winH - 0.044, 0.052),
+        new THREE.BoxGeometry(0.078, winH - 0.156, 0.052),
         windowFrameMat
       );
       mullion.name = `${bayWallGroup.name}.frontMullion.${mz < 0 ? "north" : "south"}`;
@@ -1936,7 +1943,7 @@ export function createGroundShellWindowsAndDoors(
       bayWallGroup.add(mullion);
     }
     const frontLightW = frontW / 3 - 0.052;
-    const frontClearH = winH - 0.148;
+    const frontClearH = winH - 0.156;
     for (let fl = 0; fl < 3; fl++) {
       const flCenterZ = centerZ + (fl - 1) * (frontW / 3);
       for (const sz of [-1, 1] as const) {
@@ -1954,11 +1961,11 @@ export function createGroundShellWindowsAndDoors(
       }
       for (const barFrac of [0.33, 0.67] as const) {
         const gBar = new THREE.Mesh(
-          new THREE.BoxGeometry(0.036, 0.02, frontLightW - 0.026),
+          new THREE.BoxGeometry(0.042, 0.02, frontLightW - 0.052),
           windowFrameMat
         );
         gBar.name = `${bayWallGroup.name}.frontSash.${fl + 1}.glazingBar.${barFrac < 0.5 ? 1 : 2}`;
-        gBar.position.set(bayInnerFrontX - 0.152, sillY + 0.074 + frontClearH * barFrac, flCenterZ);
+        gBar.position.set(bayInnerFrontX - 0.150, sillY + 0.078 + frontClearH * barFrac, flCenterZ);
         bayWallGroup.add(gBar);
       }
     }

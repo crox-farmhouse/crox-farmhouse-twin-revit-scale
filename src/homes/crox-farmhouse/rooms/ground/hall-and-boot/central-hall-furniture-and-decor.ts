@@ -339,11 +339,11 @@ export function buildCentralHallFurnitureAndDecor(
       metalness: 0.02,
     });
 
-    // 1. East (Hall) face landscape painting at u = 3.27, y = 1.22, n = -0.122 (Issue #15: moved to [-17.567, 1.22, 0.772])
+    // 1. East (Hall) face landscape painting at u = 3.27, y = 1.22, n = -0.123 (Issue #15: moved to [-17.567, 1.22, 0.772])
     {
       const hallPicGroup = new THREE.Group();
       hallPicGroup.name = 'hall.westCrossWallPicture';
-      hallPicGroup.position.copy(hallFrontRoomCrossWallFrame.toWorld(3.27, 1.22, -0.122));
+      hallPicGroup.position.copy(hallFrontRoomCrossWallFrame.toWorld(3.27, 1.22, -0.123));
       hallPicGroup.rotation.y = hallFrontRoomCrossWallFrame.rotationY + Math.PI;
 
       const fw = 0.72;
@@ -371,12 +371,12 @@ export function buildCentralHallFurnitureAndDecor(
 
       const mountBoard = tagHighLod(
         new THREE.Mesh(
-          createSharedGeo(new THREE.BoxGeometry(fw - railW * 2, fh - railW * 2, 0.016)),
+          createSharedGeo(new THREE.BoxGeometry(fw - railW * 2, fh - railW * 2, 0.012)),
           ceramicWhiteMat
         )
       );
       mountBoard.name = 'hall.westCrossWallPicture.mount';
-      mountBoard.position.set(0, 0, 0.01);
+      mountBoard.position.set(0, 0, 0.006);
       hallPicGroup.add(mountBoard);
 
       const canvasMesh = new THREE.Mesh(
@@ -384,7 +384,7 @@ export function buildCentralHallFurnitureAndDecor(
         crossWallArtMat
       );
       canvasMesh.name = 'hall.westCrossWallPicture.canvas';
-      canvasMesh.position.set(0, 0, 0.02);
+      canvasMesh.position.set(0, 0, 0.018);
       hallPicGroup.add(canvasMesh);
 
       tagCutawayWall(hallPicGroup, crossWallCutaway);
@@ -571,7 +571,7 @@ export function buildCentralHallFurnitureAndDecor(
       new THREE.BoxGeometry(posterRailW, posterH - posterRailW * 2, posterD)
     );
     const posterMountBoardGeo = createSharedGeo(
-      new THREE.BoxGeometry(posterW - posterRailW * 2, posterH - posterRailW * 2, 0.016)
+      new THREE.BoxGeometry(posterW - posterRailW * 2, posterH - posterRailW * 2, 0.012)
     );
     const posterCanvasGeo = createSharedGeo(new THREE.PlaneGeometry(posterW - 0.11, posterH - 0.12));
 
@@ -580,7 +580,7 @@ export function buildCentralHallFurnitureAndDecor(
       posterGroup.name = cfg.name;
       posterGroup.userData.zone = 'livingRoom';
       posterGroup.position.copy(
-        hallFrontRoomCrossWallFrame.toWorld(cfg.uPos, cfg.yPos, 0.122)
+        hallFrontRoomCrossWallFrame.toWorld(cfg.uPos, cfg.yPos, 0.137)
       );
       posterGroup.rotation.y = hallFrontRoomCrossWallFrame.rotationY;
 
@@ -602,7 +602,7 @@ export function buildCentralHallFurnitureAndDecor(
 
       const mountBoard = tagHighLod(new THREE.Mesh(posterMountBoardGeo, ceramicWhiteMat));
       mountBoard.name = `${cfg.name}.mount`;
-      mountBoard.position.set(0, 0, 0.01);
+      mountBoard.position.set(0, 0, 0.006);
       posterGroup.add(mountBoard);
 
       const posterMat = new THREE.MeshStandardMaterial({
@@ -612,7 +612,7 @@ export function buildCentralHallFurnitureAndDecor(
       });
       const posterMesh = new THREE.Mesh(posterCanvasGeo, posterMat);
       posterMesh.name = `${cfg.name}.canvas`;
-      posterMesh.position.set(0, 0, 0.02);
+      posterMesh.position.set(0, 0, 0.018);
       posterGroup.add(posterMesh);
 
       tagCutawayWall(posterGroup, crossWallCutaway);
@@ -798,13 +798,13 @@ export function buildCentralHallFurnitureAndDecor(
 
     const rugBraidedEdge = tagHighLod(
       new THREE.Mesh(
-        createSharedGeo(new THREE.TorusGeometry(rugRadius - 0.008, 0.005, 10, 48)),
+        createSharedGeo(new THREE.TorusGeometry(rugRadius + 0.003, 0.004, 10, 48)),
         roundRugBorderMat
       )
     );
     rugBraidedEdge.name = 'hall.roundRug.braidedEdge';
     rugBraidedEdge.rotation.x = Math.PI / 2;
-    rugBraidedEdge.position.set(0, 0.005, 0);
+    rugBraidedEdge.position.set(0, 0.004, 0);
     rugBraidedEdge.receiveShadow = true;
     roundRugGroup.add(rugBraidedEdge);
 
@@ -983,22 +983,22 @@ export function buildCentralHallFurnitureAndDecor(
       const [sx, sz, rad] = speakerSpecs[spkIdx]!;
       const spkRing = tagHighLod(
         new THREE.Mesh(
-          createSharedGeo(new THREE.CylinderGeometry(rad + 0.01, rad + 0.01, 0.006, 20)),
+          createSharedGeo(new THREE.CylinderGeometry(rad + 0.01, rad + 0.01, 0.005, 20)),
           rolandChampagneGoldMat
         )
       );
       spkRing.name = `hall.rolandGP6PE.speakerRing.${spkIdx + 1}`;
-      spkRing.position.set(sx, 0.899, sz);
+      spkRing.position.set(sx, 0.8975, sz);
       pianoGroup.add(spkRing);
 
       const spkGrille = tagHighLod(
         new THREE.Mesh(
-          createSharedGeo(new THREE.CylinderGeometry(rad, rad, 0.008, 20)),
+          createSharedGeo(new THREE.CylinderGeometry(rad, rad, 0.005, 20)),
           rolandSpeakerGrilleMat
         )
       );
       spkGrille.name = 'hall.rolandGP6PE.speakerGrille';
-      spkGrille.position.set(sx, 0.901, sz);
+      spkGrille.position.set(sx, 0.9025, sz);
       pianoGroup.add(spkGrille);
     }
 

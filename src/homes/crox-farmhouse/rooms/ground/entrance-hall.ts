@@ -175,9 +175,11 @@ export function buildEntranceHall(
     const w = 0.28;
     const d = maxZ - minZ;
     const actualYBottom = Math.abs(yBottom) < 0.01 ? tier2FloorY - 0.04 : yBottom;
-    const h = yTop - actualYBottom;
+    const hasCap = Math.abs(yTop - frontWallH) < 0.05;
+    const effectiveYTop = hasCap ? yTop - 0.016 : yTop;
+    const h = effectiveYTop - actualYBottom;
     const cx = -22.33;
-    const cy = (actualYBottom + yTop) * 0.5;
+    const cy = (actualYBottom + effectiveYTop) * 0.5;
     const cz = (minZ + maxZ) * 0.5;
 
     const geo = new THREE.BoxGeometry(w, h, d);
@@ -199,7 +201,7 @@ export function buildEntranceHall(
     mesh.userData.isArchitecturalShell = true;
     scene.add(mesh);
 
-    if (Math.abs(yTop - frontWallH) < 0.05) {
+    if (hasCap) {
       const cap = new THREE.Mesh(
         createSharedGeo(
           new THREE.BoxGeometry(Math.max(0.02, w - 0.016), 0.016, Math.max(0.02, d - 0.012))
@@ -207,7 +209,7 @@ export function buildEntranceHall(
         wallCapMat
       );
       cap.name = `entranceHall.westFrontWall.${pieceName}.cap`;
-      cap.position.set(cx, frontWallH - 0.006, cz);
+      cap.position.set(cx, frontWallH - 0.008, cz);
       cap.userData.isArchitecturalShell = true;
       scene.add(cap);
     }
@@ -332,11 +334,11 @@ export function buildEntranceHall(
   scene.add(transomBar);
 
   const doorCorniceHood = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.24, 0.11, 1.44)),
+    createSharedGeo(new THREE.BoxGeometry(0.21, 0.11, 1.44)),
     frontDoorOakFrameMat
   );
   doorCorniceHood.name = 'entranceHall.frontDoorArchitrave.corniceHood';
-  doorCorniceHood.position.set(-22.56, entranceHallFloorY + 2.065, 2.835);
+  doorCorniceHood.position.set(-22.575, entranceHallFloorY + 2.065, 2.835);
   doorCorniceHood.castShadow = true;
   doorCorniceHood.userData.isArchitecturalShell = true;
   scene.add(doorCorniceHood);
@@ -379,20 +381,20 @@ export function buildEntranceHall(
     });
 
     const matBacking = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(0.62, 0.014, 0.96)),
+      createSharedGeo(new THREE.BoxGeometry(0.62, 0.008, 0.96)),
       coirBorderMat
     );
     matBacking.name = 'entranceHall.doormat.border';
-    matBacking.position.set(0, 0.007, 0);
+    matBacking.position.set(0, 0.004, 0);
     matBacking.receiveShadow = true;
     doormatGroup.add(matBacking);
 
     const matCoirCore = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(0.56, 0.018, 0.9)),
+      createSharedGeo(new THREE.BoxGeometry(0.56, 0.011, 0.9)),
       coirFiberMat
     );
     matCoirCore.name = 'entranceHall.doormat.coir';
-    matCoirCore.position.set(0, 0.01, 0);
+    matCoirCore.position.set(0, 0.0135, 0);
     matCoirCore.castShadow = true;
     matCoirCore.receiveShadow = true;
     doormatGroup.add(matCoirCore);
@@ -532,10 +534,10 @@ export function buildEntranceHall(
     upperSpandrelMesh.receiveShadow = true;
     jutRoofGroup.add(upperSpandrelMesh);
 
-    // Pitched triangular brick cheek / gable infill across X = -16.82m..-16.16m, Z = 2.83m..3.83m
-    const cheekW = 0.66; // X = -16.82m to -16.16m
-    const cheekH = 0.36; // Y = 1.64m at East eaves (-16.16m) rising to 2.00m at West wall (-16.82m)
-    const cheekGeo = new THREE.BoxGeometry(cheekW, cheekH, 1.0);
+    // Pitched triangular brick cheek / gable infill across X = -16.70m..-16.16m, Z = 2.836m..3.824m
+    const cheekW = 0.54; // X = -16.70m to -16.16m (cleanly abutting upperSpandrel +X = -16.70m)
+    const cheekH = 0.31; // Y = 1.64m at East eaves (-16.16m) rising to 1.95m at West spandrel (-16.70m)
+    const cheekGeo = new THREE.BoxGeometry(cheekW, cheekH, 0.988);
     const cheekPos = cheekGeo.attributes.position;
     if (cheekPos) {
       for (let i = 0; i < cheekPos.count; i++) {
@@ -549,11 +551,11 @@ export function buildEntranceHall(
       cheekGeo.computeVertexNormals();
       cheekGeo.userData.isSheared = true;
     }
-    applyWorldSpaceBrickUVs(cheekGeo, -16.49, frontWallH + 0.015 + cheekH / 2, 3.33);
+    applyWorldSpaceBrickUVs(cheekGeo, -16.43, frontWallH + 0.015 + cheekH / 2, 3.33);
     createSharedGeo(cheekGeo);
     const cheekMesh = new THREE.Mesh(cheekGeo, exteriorBrickMat);
     cheekMesh.name = 'entranceHall.eastJutOutRoof.gableCheek';
-    cheekMesh.position.set(-16.49, frontWallH + 0.015 + cheekH / 2, 3.33);
+    cheekMesh.position.set(-16.43, frontWallH + 0.015 + cheekH / 2, 3.33);
     cheekMesh.castShadow = true;
     cheekMesh.receiveShadow = true;
     jutRoofGroup.add(cheekMesh);
@@ -608,7 +610,7 @@ export function buildEntranceHall(
       ceramicWhiteMat
     );
     southBargeBoard.name = 'entranceHall.eastJutOutRoof.southBargeBoard';
-    southBargeBoard.position.set(-16.5, frontWallH + 0.28, 3.88);
+    southBargeBoard.position.set(-16.5, frontWallH + 0.28, 3.909);
     southBargeBoard.rotation.z = -pitchAngle;
     jutRoofGroup.add(southBargeBoard);
 
@@ -778,8 +780,8 @@ export function buildEntranceHall(
         [-16.44, 3.55],
         [-16.88, 3.55],
       ],
-      frontWallH,
-      0.22,
+      frontWallH - 0.014,
+      0.206,
       warmRoomPlasterMat,
       0.5
     );
@@ -941,8 +943,8 @@ export function buildEntranceHall(
       return tex;
     };
 
-    const northPicWestPos = entranceHallNorthWallFrame.toWorld(1.15, 0.879, 0.153);
-    const northPicEastPos = entranceHallNorthWallFrame.toWorld(2.45, 0.971, 0.153);
+    const northPicWestPos = entranceHallNorthWallFrame.toWorld(1.15, 0.879, 0.157);
+    const northPicEastPos = entranceHallNorthWallFrame.toWorld(2.45, 0.971, 0.157);
 
     const hallwayPictures: ReadonlyArray<{
       readonly name: string;
@@ -955,12 +957,12 @@ export function buildEntranceHall(
       readonly frameMat: THREE.Material;
       readonly motif: 'pastoral' | 'botanical' | 'farmhouse' | 'coastal' | 'meadow';
     }> = [
-      // 3 Framed Pictures along the Entrance Hallway South Wall (Z = 3.538m, facing North -Z — Issues #14, #15, #16)
+      // 3 Framed Pictures along the Entrance Hallway South Wall (Z = 3.535m, facing North -Z — Issues #14, #15, #16)
       {
         name: 'entranceHall.picture.southEast',
         x: -18.95,
         y: 0.936,
-        z: 3.538,
+        z: 3.535,
         rotY: Math.PI,
         w: 0.56,
         h: 0.44,
@@ -971,7 +973,7 @@ export function buildEntranceHall(
         name: 'entranceHall.picture.southCenter',
         x: -20.1,
         y: 0.924,
-        z: 3.538,
+        z: 3.535,
         rotY: Math.PI,
         w: 0.62,
         h: 0.48,
@@ -982,7 +984,7 @@ export function buildEntranceHall(
         name: 'entranceHall.picture.southWest',
         x: -21.25,
         y: 0.947,
-        z: 3.538,
+        z: 3.535,
         rotY: Math.PI,
         w: 0.56,
         h: 0.44,
@@ -1021,19 +1023,21 @@ export function buildEntranceHall(
       picGroup.rotation.y = pic.rotY;
 
       const outerFrame = new THREE.Mesh(
-        createSharedGeo(new THREE.BoxGeometry(pic.w, pic.h, 0.024)),
+        createSharedGeo(new THREE.BoxGeometry(pic.w, pic.h, 0.012)),
         pic.frameMat
       );
       outerFrame.name = `${pic.name}.frame`;
+      outerFrame.position.set(0, 0, 0.006);
       outerFrame.castShadow = true;
       outerFrame.receiveShadow = true;
       picGroup.add(outerFrame);
 
       const mountBoard = new THREE.Mesh(
-        createSharedGeo(new THREE.BoxGeometry(pic.w - 0.048, pic.h - 0.048, 0.027)),
+        createSharedGeo(new THREE.BoxGeometry(pic.w - 0.048, pic.h - 0.048, 0.006)),
         ceramicWhiteMat
       );
       mountBoard.name = `${pic.name}.mount`;
+      mountBoard.position.set(0, 0, 0.015);
       picGroup.add(mountBoard);
 
       const artMat = new THREE.MeshStandardMaterial({
@@ -1042,10 +1046,11 @@ export function buildEntranceHall(
         metalness: 0.04,
       });
       const artCanvas = new THREE.Mesh(
-        createSharedGeo(new THREE.BoxGeometry(pic.w - 0.14, pic.h - 0.14, 0.03)),
+        createSharedGeo(new THREE.BoxGeometry(pic.w - 0.14, pic.h - 0.14, 0.005)),
         artMat
       );
       artCanvas.name = `${pic.name}.art`;
+      artCanvas.position.set(0, 0, 0.0205);
       picGroup.add(artCanvas);
 
       scene.add(picGroup);

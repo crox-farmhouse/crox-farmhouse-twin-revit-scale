@@ -99,9 +99,10 @@ export function buildFirstFloorCeilingsAndRoof(
     color: 0xf7f5f0,
     roughness: 0.88,
     metalness: 0.01,
-    side: THREE.DoubleSide,
+    side: THREE.FrontSide,
   });
-  // Helper to build an exact 4-corner sloped or horizontal vaulted ceiling quad slab (`0.03m` thick)
+  const ceilingClearance = 0.005;
+  // Helper to build an exact 4-corner sloped or horizontal vaulted ceiling quad slab (`0.03m` thick, offset +5mm clear of walls)
   const buildVaultedCeilingQuad = (
     name: string,
     p0: THREE.Vector3,
@@ -117,10 +118,14 @@ export function buildFirstFloorCeilingsAndRoof(
     if (normal.y < 0) {
       normal.negate();
     }
-    const t0 = p0.clone().addScaledVector(normal, thickness);
-    const t1 = p1.clone().addScaledVector(normal, thickness);
-    const t2 = p2.clone().addScaledVector(normal, thickness);
-    const t3 = p3.clone().addScaledVector(normal, thickness);
+    const b0 = p0.clone().addScaledVector(normal, ceilingClearance);
+    const b1 = p1.clone().addScaledVector(normal, ceilingClearance);
+    const b2 = p2.clone().addScaledVector(normal, ceilingClearance);
+    const b3 = p3.clone().addScaledVector(normal, ceilingClearance);
+    const t0 = p0.clone().addScaledVector(normal, ceilingClearance + thickness);
+    const t1 = p1.clone().addScaledVector(normal, ceilingClearance + thickness);
+    const t2 = p2.clone().addScaledVector(normal, ceilingClearance + thickness);
+    const t3 = p3.clone().addScaledVector(normal, ceilingClearance + thickness);
 
     const positions: number[] = [];
     const normals: number[] = [];
@@ -150,14 +155,14 @@ export function buildFirstFloorCeilingsAndRoof(
     };
 
     // Underside (room-facing, -normal) & top side (+normal)
-    pushFace(p0, p3, p2, p1, normal.clone().negate());
+    pushFace(b0, b3, b2, b1, normal.clone().negate());
     pushFace(t0, t1, t2, t3, normal);
 
     for (const [e0, e1, e2, e3] of [
-      [p0, p1, t1, t0],
-      [p1, p2, t2, t1],
-      [p2, p3, t3, t2],
-      [p3, p0, t0, t3],
+      [b0, b1, t1, t0],
+      [b1, b2, t2, t1],
+      [b2, b3, t3, t2],
+      [b3, b0, t0, t3],
     ] as const) {
       const dir = new THREE.Vector3().subVectors(e1, e0);
       if (dir.lengthSq() > 1e-6) {
@@ -185,8 +190,8 @@ export function buildFirstFloorCeilingsAndRoof(
   // 2) Main Bedroom (`X = -9.56m..-4.52m`): low eaves `3.69m` North / `3.76m` South pitching up to `5.065m` collar (`2.555m` clear above `+2.51m` FFL!).
   {
     const mainBedWestWallX = -9.68;
-    const mainBedInnerWestX = -9.56;
-    const eastWallX = -4.52;
+    const mainBedInnerWestX = -9.556;
+    const eastWallX = -4.658;
     const landingEavesY = 3.86;
     const collarCeilingY = 4.65;
     const collarNorthZ = -1.15;
@@ -299,7 +304,7 @@ export function buildFirstFloorCeilingsAndRoof(
     const collarEastSouthX = -19.15;
 
     const zNorthAtX = (wx: number): number =>
-      -3.24 + ((wx - -22.19) / (-16.876 - -22.19)) * (-2.529 - -3.24);
+      -3.162 + ((wx - -22.19) / (-16.876 - -22.19)) * (-2.451 - -3.162);
     const zSouthAtX = (wx: number): number =>
       1.925 + ((wx - -22.19) / (-18.92 - -22.19)) * (2.36 - 1.925);
 
@@ -322,7 +327,7 @@ export function buildFirstFloorCeilingsAndRoof(
         [collarEastSouthX, zSouthAtX(collarEastSouthX)],
         [collarWestX, zSouthAtX(collarWestX)],
       ],
-      collarCeilingY + 0.03,
+      collarCeilingY + ceilingClearance + 0.03,
       0.03,
       upperCeilingMat,
       0.5
@@ -356,8 +361,8 @@ export function buildFirstFloorCeilingsAndRoof(
       'showerRoom.vaultedCeiling.westSkeiling',
       new THREE.Vector3(westInnerX, showerWestEavesY, zNorthAtX(westInnerX)),
       new THREE.Vector3(collarWestX, showerCollarY, zNorthAtX(collarWestX)),
-      new THREE.Vector3(collarWestX, showerCollarY, 3.82),
-      new THREE.Vector3(westInnerX, showerWestEavesY, 3.82)
+      new THREE.Vector3(collarWestX, showerCollarY, 3.741),
+      new THREE.Vector3(westInnerX, showerWestEavesY, 3.741)
     );
 
     const showerCollarSlab = buildPolygonalFloorSlab(
@@ -367,10 +372,10 @@ export function buildFirstFloorCeilingsAndRoof(
         [collarEastX, zNorthAtX(collarEastX)],
         [collarEastX, 4.68],
         [-20.235, 4.68],
-        [-20.235, 3.82],
-        [collarWestX, 3.82],
+        [-20.235, 3.741],
+        [collarWestX, 3.741],
       ],
-      showerCollarY + 0.03,
+      showerCollarY + ceilingClearance + 0.03,
       0.03,
       upperCeilingMat,
       0.5
@@ -381,8 +386,8 @@ export function buildFirstFloorCeilingsAndRoof(
 
     buildVaultedCeilingQuad(
       'showerRoom.vaultedCeiling.eastSkeiling',
-      new THREE.Vector3(collarEastX, showerCollarY, 3.82),
-      new THREE.Vector3(-18.21, corridorCeilingY, 3.82),
+      new THREE.Vector3(collarEastX, showerCollarY, 3.899),
+      new THREE.Vector3(-18.21, corridorCeilingY, 3.899),
       new THREE.Vector3(-18.21, corridorCeilingY, 4.68),
       new THREE.Vector3(collarEastX, showerCollarY, 4.68)
     );
@@ -404,7 +409,7 @@ export function buildFirstFloorCeilingsAndRoof(
         [-18.21, 3.82],
         [-18.92, 3.82],
       ],
-      4.155 + 0.03,
+      4.155 + ceilingClearance + 0.03,
       0.03,
       upperCeilingMat,
       0.5
@@ -425,7 +430,7 @@ export function buildFirstFloorCeilingsAndRoof(
     const eastInnerWallX = -18.285;
     const zAlcoveNorth = 3.895;
     const zShowerSouth = 4.755;
-    const zBed3South = 8.15;
+    const zBed3South = 8.146;
 
     // 1. West pitched skeiling slope (`X = -22.19m, Y = 3.85m -> X = -20.85m, Y = 5.05m`)
     buildVaultedCeilingQuad(
@@ -447,7 +452,7 @@ export function buildFirstFloorCeilingsAndRoof(
         [collarEastX, zBed3South],
         [collarWestX, zBed3South],
       ],
-      collarCeilingY + 0.03,
+      collarCeilingY + ceilingClearance + 0.03,
       0.03,
       upperCeilingMat,
       0.5
@@ -475,7 +480,7 @@ export function buildFirstFloorCeilingsAndRoof(
     const collarWestX = -20.85;
     const collarEastX = -18.62;
     const zNorth = 8.25;
-    const zSouth = 11.66;
+    const zSouth = 11.485;
 
     // 1. West pitched skeiling slope (`X = -22.25m, Y = 3.85m` -> `X = -20.85m, Y = 5.05m`)
     buildVaultedCeilingQuad(
@@ -831,17 +836,17 @@ export function buildFirstFloorCeilingsAndRoof(
   //    Boxed Eaves Soffits, Fascias, Pale Sage-Green Half-Round Gutters & Cast-Iron Downpipes
   //    (Sits directly on top of the 4.16m..5.02m `firstFloorMeshGroup` brick gables with zero overlap — Issue #1!)
   // -------------------------------------------------------------------------
-  const eastGableCollarY = 5.065;
-  const eastGableApexH = ridgeY - eastGableCollarY; // 0.755m (Y = 5.065m..5.82m)
+  const eastGableCollarY = 5.069;
+  const eastGableApexH = ridgeY - eastGableCollarY;
 
-  // 1. East Gable Upper Brick Apex at local X = -4.64m..-4.40m (above `mainBedroom.eastWallBrickGable`, Y = 5.065m..5.82m)
+  // 1. East Gable Upper Brick Apex at local X = -4.64m..-4.40m (4mm above `mainBedroom.eastWallBrickGable`, Y = 5.069m..5.82m)
   const ewEastGableShape = new THREE.Shape();
   ewEastGableShape.moveTo(-1.18, 0);
   ewEastGableShape.lineTo(1.28, 0);
   ewEastGableShape.lineTo(0.05, eastGableApexH);
   ewEastGableShape.closePath();
   const ewEastGableGeo = new THREE.ExtrudeGeometry(ewEastGableShape, {
-    depth: 0.24,
+    depth: 0.235,
     bevelEnabled: false,
   });
   ewEastGableGeo.rotateY(Math.PI / 2);
@@ -854,8 +859,8 @@ export function buildFirstFloorCeilingsAndRoof(
   ewEastGable.receiveShadow = true;
   ewCeilingMeshGroup.add(ewEastGable);
 
-  // 2. North Gable Upper Brick Apex above `bedroom2.northWallBrickGable` (`Y = 4.73m..5.745m`, `u = 0.894m..4.599m` -> apex `u = 2.704m` at `X = -19.79m`)
-  const nsNorthCollarY = 4.73;
+  // 2. North Gable Upper Brick Apex above `bedroom2.northWallBrickGable` (`Y = 4.734m..5.745m`, `u = 0.894m..4.599m` -> apex `u = 2.704m` at `X = -19.79m`)
+  const nsNorthCollarY = 4.734;
   const nsNorthGableShape = new THREE.Shape();
   nsNorthGableShape.moveTo(0.894, nsNorthCollarY);
   nsNorthGableShape.lineTo(4.599, nsNorthCollarY);
@@ -886,8 +891,8 @@ export function buildFirstFloorCeilingsAndRoof(
   nsNorthGable.receiveShadow = true;
   ceilingMeshGroup.add(nsNorthGable);
 
-  // 3. South Gable Upper Brick Apex at Z = +11.49m..+11.77m (above `bedroom4.southWallBrickGable`, `Y = 5.05m..5.745m`)
-  const nsSouthCollarY = 5.05;
+  // 3. South Gable Upper Brick Apex at Z = +11.49m..+11.77m (4mm above `bedroom4.southWallBrickGable`, `Y = 5.054m..5.745m`)
+  const nsSouthCollarY = 5.054;
   const nsSouthGableShape = new THREE.Shape();
   nsSouthGableShape.moveTo(-20.99, nsSouthCollarY);
   nsSouthGableShape.lineTo(-18.62, nsSouthCollarY);
@@ -1081,12 +1086,12 @@ export function buildFirstFloorCeilingsAndRoof(
   {
     const northBackingW = -4.64 - -17.78;
     const northBackingCx = (-17.78 + -4.64) * 0.5;
-    const northBackingGeo = new THREE.BoxGeometry(northBackingW, 0.156, 0.18);
-    applyWorldSpaceBrickUVs(northBackingGeo, northBackingCx, 4.142, -2.69);
+    const northBackingGeo = new THREE.BoxGeometry(northBackingW, 0.148, 0.145);
+    applyWorldSpaceBrickUVs(northBackingGeo, northBackingCx, 4.146, -2.6725);
     northBackingGeo.computeBoundingSphere();
     const northEaveBacking = new THREE.Mesh(northBackingGeo, exteriorBrickMat);
     northEaveBacking.name = 'roof.eastWing.northEaveBrickBacking';
-    northEaveBacking.position.set(northBackingCx, 4.142, -2.69);
+    northEaveBacking.position.set(northBackingCx, 4.146, -2.6725);
     ewCeilingMeshGroup.add(northEaveBacking);
   }
 
@@ -1198,12 +1203,12 @@ export function buildFirstFloorCeilingsAndRoof(
     cornerSoffit.name = 'mainHouse.roof.courtyardCornerSoffit';
     cornerSoffit.geometry.computeBoundingSphere();
 
-    const cornerEaveBackingGeo = new THREE.BoxGeometry(0.26, 0.18, 0.3);
-    applyWorldSpaceBrickUVs(cornerEaveBackingGeo, -16.82, eaveY - 0.01, 2.75);
+    const cornerEaveBackingGeo = new THREE.BoxGeometry(0.26, 0.086, 0.3);
+    applyWorldSpaceBrickUVs(cornerEaveBackingGeo, -16.82, 4.207, 2.75);
     cornerEaveBackingGeo.computeBoundingSphere();
     const cornerEaveBacking = new THREE.Mesh(cornerEaveBackingGeo, exteriorBrickMat);
     cornerEaveBacking.name = 'roof.courtyardCorner.brickBacking';
-    cornerEaveBacking.position.set(-16.82, eaveY - 0.01, 2.75);
+    cornerEaveBacking.position.set(-16.82, 4.207, 2.75);
     ceilingMeshGroup.add(cornerEaveBacking);
 
     const gutterCornerUnionGeo = new THREE.BoxGeometry(0.118, 0.058, 0.118);
@@ -1401,8 +1406,8 @@ export function buildFirstFloorCeilingsAndRoof(
     leadApron.position.set(cx, roofExitY + 0.08, cz);
     stackGroup.add(leadApron);
 
-    // Brick chimney shaft starts inside the roof space just below roofExitY so it never pokes outside the exterior gable wall (Issue #8)
-    const shaftBottomY = roofExitY - 0.32;
+    // Brick chimney shaft starts inside the roof space just below roofExitY (clear of vaulted collar ceiling tops)
+    const shaftBottomY = roofExitY - 0.27;
     const shaftH = topY - shaftBottomY;
     const shaftGeo = new THREE.BoxGeometry(stackW, shaftH, stackD);
     applyWorldSpaceBrickUVs(shaftGeo, cx, shaftBottomY + shaftH / 2, cz);
@@ -1415,12 +1420,12 @@ export function buildFirstFloorCeilingsAndRoof(
     stackGroup.add(shaftMesh);
 
     const corbelCourses = [
-      [1, -0.18, 0.06],
-      [2, -0.1, 0.11],
-      [3, -0.03, 0.06],
+      [1, -0.195, 0.06],
+      [2, -0.12, 0.11],
+      [3, -0.045, 0.06],
     ] as const;
     for (const [corbelIdx, yOff, expand] of corbelCourses) {
-      const corbelGeo = new THREE.BoxGeometry(stackW + expand, 0.065, stackD + expand);
+      const corbelGeo = new THREE.BoxGeometry(stackW + expand, 0.058, stackD + expand);
       applyWorldSpaceBrickUVs(corbelGeo, cx, topY + yOff, cz);
       corbelGeo.computeBoundingSphere();
       const corbel = new THREE.Mesh(corbelGeo, exteriorBrickMat);
@@ -1430,11 +1435,11 @@ export function buildFirstFloorCeilingsAndRoof(
       stackGroup.add(corbel);
     }
 
-    const flaunchCapGeo = new THREE.BoxGeometry(stackW + 0.08, 0.055, stackD + 0.08);
+    const flaunchCapGeo = new THREE.BoxGeometry(stackW + 0.08, 0.052, stackD + 0.08);
     flaunchCapGeo.computeBoundingSphere();
     const flaunchCap = new THREE.Mesh(flaunchCapGeo, stoneSillMat);
     flaunchCap.name = `${stackName}.flaunchCap`;
-    flaunchCap.position.set(cx, topY + 0.028, cz);
+    flaunchCap.position.set(cx, topY + 0.03, cz);
     stackGroup.add(flaunchCap);
 
     const spacing = potCount === 3 ? 0.34 : 0.38;
@@ -1448,20 +1453,20 @@ export function buildFirstFloorCeilingsAndRoof(
 
       const potBody = new THREE.Mesh(sharedPotBodyGeo, terracottaPotMat);
       potBody.name = `${stackName}.pot_${i + 1}.body`;
-      potBody.position.set(px, topY + 0.055 + potH / 2, pz);
+      potBody.position.set(px, topY + 0.06 + potH / 2, pz);
       potBody.castShadow = true;
       potGroup.add(potBody);
 
       const potCollar = new THREE.Mesh(sharedPotCollarGeo, terracottaPotMat);
       potCollar.name = `${stackName}.pot_${i + 1}.collar`;
       potCollar.rotation.x = Math.PI / 2;
-      potCollar.position.set(px, topY + 0.055 + potH - 0.05, pz);
+      potCollar.position.set(px, topY + 0.06 + potH - 0.05, pz);
       tagHighLodDetail(potCollar);
       potGroup.add(potCollar);
 
       const flueTop = new THREE.Mesh(sharedFlueTopGeo, sootFlueMat);
       flueTop.name = `${stackName}.pot_${i + 1}.flueTop`;
-      flueTop.position.set(px, topY + 0.055 + potH + 0.002, pz);
+      flueTop.position.set(px, topY + 0.06 + potH + 0.014, pz);
       tagHighLodDetail(flueTop);
       potGroup.add(flueTop);
 

@@ -98,10 +98,11 @@ export function buildUtilityRoomJoineryAndAppliances(
     metalness: 0.08,
   });
   const tvBezel = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(0.7, 0.44, 0.035)),
+    prepGeo(new THREE.BoxGeometry(0.7, 0.44, 0.028)),
     tvFrameOakMat
   );
   tvBezel.name = 'kitchen.frameTv.oakBezel';
+  tvBezel.position.set(0, 0, -0.0035);
   tvBezel.castShadow = true;
   const tvUserData: InteractiveUserData = { isFrameTV: true };
   tvBezel.userData = tvUserData;
@@ -124,7 +125,7 @@ export function buildUtilityRoomJoineryAndAppliances(
     tvScreenMat
   );
   tvScreen.name = 'kitchen.frameTv.artScreen';
-  tvScreen.position.set(0, 0, 0.019);
+  tvScreen.position.set(0, 0, 0.0165);
   tvScreen.receiveShadow = true;
   tvScreen.userData = tvUserData;
   tvGroup.add(tvScreen);
@@ -464,11 +465,11 @@ export function buildUtilityRoomJoineryAndAppliances(
   utilNorthParent.add(utilSinkRim);
 
   const utilSinkBasin = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(0.48, 0.024, 0.38)),
+    prepGeo(new THREE.BoxGeometry(0.48, 0.0115, 0.38)),
     new THREE.MeshStandardMaterial({ color: 0xc8c4ba, roughness: 0.28 })
   );
   utilSinkBasin.name = 'utility.sink.basin';
-  utilSinkBasin.position.set(3.22, 0.947, -2.17);
+  utilSinkBasin.position.set(3.22, 0.95325, -2.17);
   utilNorthParent.add(utilSinkBasin);
 
   // Routed marble drainer grooves to the right of the Utility Sink (X = +3.62m)
@@ -477,7 +478,7 @@ export function buildUtilityRoomJoineryAndAppliances(
   for (let i = 0; i < grooveZs.length; i++) {
     const groove = new THREE.Mesh(sharedDrainerGrooveGeo, grooveMat);
     groove.name = `utility.sink.drainerGroove_${i}`;
-    groove.position.set(3.62, 0.946, grooveZs[i]);
+    groove.position.set(3.62, 0.9485, grooveZs[i]);
     tagHighLod(groove);
     utilNorthParent.add(groove);
   }
@@ -581,7 +582,7 @@ export function buildUtilityRoomJoineryAndAppliances(
     // Red Miele logo badge on the detergent drawer
     const mieleBadge = new THREE.Mesh(sharedMieleBadgeGeo, mieleBadgeRedMat);
     mieleBadge.name = `${machineName}.mieleBadge`;
-    mieleBadge.position.set(-0.19, 0.835, 0.315);
+    mieleBadge.position.set(-0.19, 0.835, 0.321);
     tagHighLod(mieleBadge);
     mieleGroup.add(mieleBadge);
 
@@ -596,13 +597,13 @@ export function buildUtilityRoomJoineryAndAppliances(
     // Right-side dark glass M-Touch status display with glowing warm readout
     const displayPanel = new THREE.Mesh(sharedMieleDisplayPanelGeo, mieleDarkRecessMat);
     displayPanel.name = `${machineName}.displayPanel`;
-    displayPanel.position.set(0.165, 0.815, 0.315);
+    displayPanel.position.set(0.165, 0.815, 0.318);
     tagHighLod(displayPanel);
     mieleGroup.add(displayPanel);
 
     const displayDigits = new THREE.Mesh(sharedMieleDisplayDigitsGeo, mieleDisplayLedMat);
     displayDigits.name = `${machineName}.displayDigits`;
-    displayDigits.position.set(0.155, 0.815, 0.319);
+    displayDigits.position.set(0.155, 0.815, 0.3255);
     tagHighLod(displayDigits);
     mieleGroup.add(displayDigits);
 

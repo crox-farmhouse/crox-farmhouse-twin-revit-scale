@@ -882,11 +882,11 @@ export function buildGymTechnogymRunPersonal(
   // Polished cast-aluminium side trim cheeks hugging the left and right edges of the console
   for (const sideX of [-1, 1] as const) {
     const sideTrim = new THREE.Mesh(
-      new THREE.BoxGeometry(0.018, consoleH + 0.004, consoleD + 0.006),
+      new THREE.BoxGeometry(0.018, consoleH + 0.008, consoleD + 0.016),
       polishedCastAluMat
     );
     sideTrim.name = `outbuildings.gym.technogymRunPersonal.console.sideTrim.${sideX < 0 ? 'left' : 'right'}`;
-    sideTrim.position.set(sideX * (consoleW * 0.5 + 0.005), 0, 0);
+    sideTrim.position.set(sideX * (consoleW * 0.5 + 0.013), 0, 0);
     consoleGroup.add(sideTrim);
   }
 
@@ -896,7 +896,7 @@ export function buildGymTechnogymRunPersonal(
     darkBezelGlassMat
   );
   bezelGlass.name = 'outbuildings.gym.technogymRunPersonal.console.bezelGlass';
-  bezelGlass.position.set(0, 0, -consoleD * 0.5 - 0.002);
+  bezelGlass.position.set(0, 0, -consoleD * 0.5 - 0.007);
   consoleGroup.add(bezelGlass);
 
   // Active 21.5" Technogym Live Touchscreen Display (`outbuildings.gym.technogymRunPersonal.screen`)
@@ -906,7 +906,7 @@ export function buildGymTechnogymRunPersonal(
   );
   screenMesh.name = 'outbuildings.gym.technogymRunPersonal.screen';
   screenMesh.rotation.y = Math.PI; // Face `-Z` toward the runner on the belt!
-  screenMesh.position.set(0, 0, -consoleD * 0.5 - 0.006);
+  screenMesh.position.set(0, 0, -consoleD * 0.5 - 0.015);
   consoleGroup.add(screenMesh);
 
   if (!interactions) {

@@ -424,9 +424,11 @@ export function buildUpperLanding(
   };
   {
     const northW = -12.81 - -17.55; // 4.74m
-    const northH = upperWallTopY - floorBaseY;
+    const northBottomY = floorBaseY + 0.004;
+    const northTopY = upperWallTopY - 0.016;
+    const northH = northTopY - northBottomY;
     const northCx = (-17.55 + -12.81) / 2; // -15.18m
-    const northCy = (floorBaseY + upperWallTopY) / 2;
+    const northCy = (northBottomY + northTopY) / 2;
     const northCz = -2.64;
 
     const northBrickGeo = new THREE.BoxGeometry(northW, northH, 0.28);
@@ -452,17 +454,17 @@ export function buildUpperLanding(
     northWallCapGeo.computeBoundingSphere();
     const northWallCap = new THREE.Mesh(northWallCapGeo, wallCapMat);
     northWallCap.name = 'upperLanding.northSolidBrickWall.cap';
-    northWallCap.position.set(northCx, upperWallTopY - 0.006, northCz);
+    northWallCap.position.set(northCx, upperWallTopY - 0.008, northCz);
     tagUpperCutawayWall(northWallCap, northCutawayDescriptor);
     scene.add(northWallCap);
 
     // Issue #2: Exposed Red-Brick Interior Lower North Wall Panel sitting cleanly above the continuous oak stringer/skirting
-    // (X = -17.48m..-13.05m, Y = floorTopY + 0.142m..floorTopY + 1.05m, Z = -2.496m — zero overlap or Z-fighting with stringer!)
-    const lowerBrickW = -13.05 - -17.48; // 4.43m
-    const lowerBrickBottomY = floorTopY + 0.142;
+    // (X = -17.46m..-13.05m, Y = floorTopY + 0.148m..floorTopY + 1.05m, Z = -2.496m — zero overlap or Z-fighting with stringer!)
+    const lowerBrickW = -13.05 - -17.46; // 4.41m
+    const lowerBrickBottomY = floorTopY + 0.148;
     const lowerBrickTopY = floorTopY + 1.05;
-    const lowerBrickH = lowerBrickTopY - lowerBrickBottomY; // 0.908m
-    const lowerBrickCx = (-17.48 + -13.05) / 2; // -15.265m
+    const lowerBrickH = lowerBrickTopY - lowerBrickBottomY; // 0.902m
+    const lowerBrickCx = (-17.46 + -13.05) / 2; // -15.255m
     const lowerBrickCy = (lowerBrickBottomY + lowerBrickTopY) / 2;
     const northInteriorBrickGeo = new THREE.BoxGeometry(lowerBrickW, lowerBrickH, 0.012);
     applyWorldSpaceBrickUVs(northInteriorBrickGeo, lowerBrickCx, lowerBrickCy, -2.496);
@@ -478,72 +480,72 @@ export function buildUpperLanding(
     scene.add(northInteriorBrickPanel);
 
     // Horizontal Stepped Natural Oak Timber Beam & Framing going across the middle of the North wall
-    // (Y = floorTopY + 1.05m = 3.21m, X = -17.48m..-13.05m, Z = -2.478m — Wooden beams like downstairs!)
-    const northWallMidBeamGeo = new THREE.BoxGeometry(lowerBrickW, 0.14, 0.058);
+    // (Y = floorTopY + 1.05m = 3.21m, X = -17.46m..-13.05m, Z = -2.468m — Wooden beams like downstairs!)
+    const northWallMidBeamGeo = new THREE.BoxGeometry(lowerBrickW, 0.14, 0.044);
     northWallMidBeamGeo.computeBoundingSphere();
     const northWallMidBeam = new THREE.Mesh(
       northWallMidBeamGeo,
       darkTimberBeamMat
     );
     northWallMidBeam.name = 'upperLanding.northWallMiddleBeam';
-    northWallMidBeam.position.set(lowerBrickCx, floorTopY + 1.05, -2.478);
+    northWallMidBeam.position.set(lowerBrickCx, floorTopY + 1.05, -2.468);
     northWallMidBeam.castShadow = true;
     northWallMidBeam.receiveShadow = true;
     tagUpperCutawayWall(northWallMidBeam, northCutawayDescriptor);
     scene.add(northWallMidBeam);
 
-    // Projecting stepped oak moulding fillet along the middle of `northWallMiddleBeam` (matching `hall.fireplaceBeam.midMoulding` downstairs)
-    const northWallMidBeamMouldingGeo = new THREE.BoxGeometry(lowerBrickW + 0.01, 0.036, 0.072);
+    // Projecting stepped oak moulding fillet along the front (+Z) of `northWallMiddleBeam` (matching `hall.fireplaceBeam.midMoulding` downstairs)
+    const northWallMidBeamMouldingGeo = new THREE.BoxGeometry(lowerBrickW + 0.01, 0.036, 0.016);
     northWallMidBeamMouldingGeo.computeBoundingSphere();
     const northWallMidBeamMoulding = new THREE.Mesh(
       northWallMidBeamMouldingGeo,
       antiqueOakSkirtingMat
     );
     northWallMidBeamMoulding.name = 'upperLanding.northWallMiddleBeam.moulding';
-    northWallMidBeamMoulding.position.set(lowerBrickCx, floorTopY + 1.05, -2.471);
+    northWallMidBeamMoulding.position.set(lowerBrickCx, floorTopY + 1.05, -2.438);
     northWallMidBeamMoulding.castShadow = true;
     tagHighLodDetail(northWallMidBeamMoulding);
     tagUpperCutawayWall(northWallMidBeamMoulding, northCutawayDescriptor);
     scene.add(northWallMidBeamMoulding);
 
     // Upper Natural Oak Eaves Wall-Plate Beam along the top of the North wall (Y = interiorEavesY - 0.06m = 3.80m)
-    const northWallTopPlateBeamGeo = new THREE.BoxGeometry(lowerBrickW, 0.12, 0.058);
+    const northWallTopPlateBeamGeo = new THREE.BoxGeometry(lowerBrickW, 0.12, 0.044);
     northWallTopPlateBeamGeo.computeBoundingSphere();
     const northWallTopPlateBeam = new THREE.Mesh(
       northWallTopPlateBeamGeo,
       darkTimberBeamMat
     );
     northWallTopPlateBeam.name = 'upperLanding.northWallTopPlateBeam';
-    northWallTopPlateBeam.position.set(lowerBrickCx, interiorEavesY - 0.06, -2.478);
+    northWallTopPlateBeam.position.set(lowerBrickCx, interiorEavesY - 0.06, -2.468);
     northWallTopPlateBeam.castShadow = true;
     northWallTopPlateBeam.receiveShadow = true;
     tagUpperCutawayWall(northWallTopPlateBeam, northCutawayDescriptor);
     scene.add(northWallTopPlateBeam);
 
     // Shared BufferGeometries for the 3 lower and 3 upper vertical natural oak wall posts
-    const lowerPostH = (floorTopY + 0.98) - (floorTopY + 0.146);
-    const sharedLowerPostGeo = new THREE.BoxGeometry(0.115, lowerPostH, 0.052);
+    const lowerPostH = (floorTopY + 0.98) - (floorTopY + 0.148);
+    const sharedLowerPostGeo = new THREE.BoxGeometry(0.115, lowerPostH, 0.038);
     sharedLowerPostGeo.computeBoundingSphere();
 
     const upperPostBottomY = floorTopY + 1.12;
     const upperPostTopY = interiorEavesY - 0.12;
     const upperPostH = upperPostTopY - upperPostBottomY;
-    const sharedUpperPostGeo = new THREE.BoxGeometry(0.115, upperPostH, 0.052);
+    const sharedUpperPostGeo = new THREE.BoxGeometry(0.115, upperPostH, 0.044);
     sharedUpperPostGeo.computeBoundingSphere();
 
     // Vertical Natural Oak Wall Posts / Studs framing the North wall (West corner, Stairwell Newel alignment at X = -15.38m, and East Chimney Breast corner)
     for (const [postIdx, postX] of [
-      [1, -17.42],
+      [1, -17.39],
       [2, -15.38],
       [3, -13.38],
     ] as const) {
-      // Lower oak post across the exposed brick panel (between oak stringer and middle beam)
+      // Lower oak post across the exposed brick panel (seated cleanly on the +Z = -2.490m face of northInteriorBrickPanel)
       const lowerPost = new THREE.Mesh(sharedLowerPostGeo, darkTimberBeamMat);
       lowerPost.name = `upperLanding.northWallPost.lower.${postIdx}`;
       lowerPost.position.set(
         postX,
-        floorTopY + 0.146 + lowerPostH / 2,
-        -2.478
+        floorTopY + 0.148 + lowerPostH / 2,
+        -2.471
       );
       lowerPost.castShadow = true;
       lowerPost.receiveShadow = true;
@@ -556,7 +558,7 @@ export function buildUpperLanding(
       upperPost.position.set(
         postX,
         (upperPostBottomY + upperPostTopY) / 2,
-        -2.478
+        -2.468
       );
       upperPost.castShadow = true;
       upperPost.receiveShadow = true;
@@ -633,7 +635,7 @@ export function buildUpperLanding(
     southCladShape.lineTo(-17.7988, -2.668);
     southCladShape.closePath();
     const southCladGeo = new THREE.ExtrudeGeometry(southCladShape, {
-      depth: upperWallTopY - floorBaseY,
+      depth: upperWallTopY - floorBaseY - 0.016,
       bevelEnabled: false,
     });
     southCladGeo.rotateX(-Math.PI / 2);
@@ -1190,7 +1192,7 @@ export function buildUpperLanding(
   // Exposed Natural Seasoned Oak Timber Wall Framing on the West Landing Wall (media_1790502987279.webp):
   // - Horizontal natural oak timber beam with stepped moulding across the middle of the wall (`Y = 3.24m`)
   // - Diagonal natural oak timber brace rising from the horizontal beam up to the ceiling (`u = 1.35m, Y = 4.44m`)
-  const westWallTimberHeadBeamGeo = new THREE.BoxGeometry(3.69, 0.14, 0.055);
+  const westWallTimberHeadBeamGeo = new THREE.BoxGeometry(3.69, 0.14, 0.044);
   westWallTimberHeadBeamGeo.computeBoundingSphere();
   const westWallTimberHeadBeam = new THREE.Mesh(
     westWallTimberHeadBeamGeo,
@@ -1198,7 +1200,7 @@ export function buildUpperLanding(
   );
   westWallTimberHeadBeam.name = 'upperLanding.westWallTimberBeam';
   westWallTimberHeadBeam.position.copy(
-    upperLandingCrossWallFrame.toWorld(1.845, floorTopY + 1.08, -0.125)
+    upperLandingCrossWallFrame.toWorld(1.845, floorTopY + 1.08, -0.142)
   );
   westWallTimberHeadBeam.rotation.y = upperLandingCrossWallFrame.rotationY;
   westWallTimberHeadBeam.castShadow = true;
@@ -1212,7 +1214,7 @@ export function buildUpperLanding(
   });
   scene.add(westWallTimberHeadBeam);
 
-  const westWallTimberHeadMouldingGeo = new THREE.BoxGeometry(3.7, 0.036, 0.068);
+  const westWallTimberHeadMouldingGeo = new THREE.BoxGeometry(3.7, 0.036, 0.016);
   westWallTimberHeadMouldingGeo.computeBoundingSphere();
   const westWallTimberHeadMoulding = new THREE.Mesh(
     westWallTimberHeadMouldingGeo,
@@ -1220,7 +1222,7 @@ export function buildUpperLanding(
   );
   westWallTimberHeadMoulding.name = 'upperLanding.westWallTimberBeam.moulding';
   westWallTimberHeadMoulding.position.copy(
-    upperLandingCrossWallFrame.toWorld(1.845, floorTopY + 1.08, -0.13)
+    upperLandingCrossWallFrame.toWorld(1.845, floorTopY + 1.08, -0.172)
   );
   westWallTimberHeadMoulding.rotation.y = upperLandingCrossWallFrame.rotationY;
   westWallTimberHeadMoulding.castShadow = true;

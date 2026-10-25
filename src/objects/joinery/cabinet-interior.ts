@@ -328,9 +328,9 @@ export function buildHollowCabinetCarcass(
       addLocalPanel(
         0,
         sy + (style === 'dishwasher' ? 0.035 : 0),
-        shelfV + shelfDepth * 0.5,
+        shelfV + shelfDepth * 0.5 + 0.0045,
         innerW - 0.006,
-        style === 'dishwasher' ? 0.065 : 0.012,
+        style === 'dishwasher' ? 0.065 : 0.015,
         0.008,
         getChromeRackMat(),
         false
@@ -379,19 +379,19 @@ export function buildHollowCabinetCarcass(
         addLocalPanel(bu, cavBotY + t + 0.09, shelfV, innerW * 0.24, 0.16, shelfDepth * 0.75, wickerMat, false);
       }
       for (const ju of [-innerW * 0.34, -innerW * 0.12, innerW * 0.12, innerW * 0.34]) {
-        addLocalPanel(ju, s0 + 0.08, shelfV, 0.085, 0.14, 0.085, getGlassShelfMat(), false);
-        addLocalPanel(ju, s0 + 0.155, shelfV, 0.075, 0.016, 0.075, interiorMat, false);
-        addLocalPanel(ju, s1 + 0.065, shelfV, 0.075, 0.11, 0.075, ceramicMat, false);
+        addLocalPanel(ju, s0 + 0.084, shelfV, 0.085, 0.14, 0.085, getGlassShelfMat(), false);
+        addLocalPanel(ju, s0 + 0.166, shelfV, 0.075, 0.016, 0.075, interiorMat, false);
+        addLocalPanel(ju, s1 + 0.069, shelfV, 0.075, 0.11, 0.075, ceramicMat, false);
       }
-      addLocalPanel(-innerW * 0.2, s2 + 0.06, shelfV, 0.18, 0.1, 0.14, potMat, false);
-      addLocalPanel(innerW * 0.2, s2 + 0.05, shelfV, 0.16, 0.08, 0.14, ceramicMat, false);
+      addLocalPanel(-innerW * 0.2, s2 + 0.064, shelfV, 0.18, 0.1, 0.14, potMat, false);
+      addLocalPanel(innerW * 0.2, s2 + 0.054, shelfV, 0.16, 0.08, 0.14, ceramicMat, false);
     } else if (style === 'fridge') {
       // Warm internal LED strip at top of fridge + chilled bottles/containers on glass shelves + lower crisper drawers
       const ledMat = new THREE.MeshBasicMaterial({ color: 0xfff6e0 });
       addLocalPanel(0, cavTopY - t - 0.008, shelfV + 0.06, innerW * 0.75, 0.008, 0.025, ledMat, false);
       // Lower salad crisper drawer at the bottom of the fridge
       addLocalPanel(0, cavBotY + t + 0.12, shelfV + shelfDepth * 0.42, innerW - 0.018, 0.21, 0.014, getGlassShelfMat(), false);
-      addLocalPanel(0, cavBotY + t + 0.21, shelfV + shelfDepth * 0.43, innerW * 0.55, 0.018, 0.012, chromeMat, false);
+      addLocalPanel(0, cavBotY + t + 0.21, shelfV + shelfDepth * 0.42 + 0.017, innerW * 0.55, 0.016, 0.01, chromeMat, false);
       for (let idx = 0; idx < shelfFracs.length; idx++) {
         const sy = cavBotY + t + (shelfFracs[idx] ?? 0.5) * innerH;
         addLocalPanel(-innerW * 0.22, sy + 0.055, shelfV, 0.12, 0.09, 0.12, ceramicMat, false);
@@ -421,11 +421,11 @@ export function buildHollowCabinetCarcass(
         // Brushed chrome top grip bar on each freezer drawer
         addLocalPanel(
           0,
-          tierBotY + drawerH + 0.004,
-          shelfV + shelfDepth * 0.45,
+          tierBotY + drawerH + 0.002,
+          shelfV + shelfDepth * 0.44 + 0.017,
           innerW * 0.62,
-          0.016,
-          0.014,
+          0.012,
+          0.01,
           chromeMat,
           false
         );
@@ -433,7 +433,7 @@ export function buildHollowCabinetCarcass(
     } else if (style === 'oven') {
       // Subtle warm amber oven cavity backplate detail + roasting tray on lower wire rack
       const s0 = cavBotY + t + (shelfFracs[0] ?? 0.32) * innerH;
-      addLocalPanel(0, s0 + 0.02, shelfV, innerW * 0.68, 0.028, shelfDepth * 0.72, potMat, false);
+      addLocalPanel(0, s0 + 0.023, shelfV, innerW * 0.68, 0.028, shelfDepth * 0.72, potMat, false);
     } else if (innerW >= 0.38 && shelfFracs.length > 0) {
       // Standard kitchen/utility cupboard: stacked ceramic plates/bowls on shelf & cast-iron pot on floor
       const s0 = cavBotY + t + (shelfFracs[0] ?? 0.48) * innerH;
@@ -441,7 +441,7 @@ export function buildHollowCabinetCarcass(
         const bayCenterU = -innerW * 0.5 + (b + 0.5) * bayW;
         addLocalPanel(
           bayCenterU - bayW * 0.18,
-          s0 + 0.045,
+          s0 + 0.049,
           shelfV,
           Math.min(0.18, bayW * 0.36),
           0.07,
@@ -523,7 +523,7 @@ export function attachDrawerBoxBehindFront(
 
   if (includeCookware && boxW > 0.4) {
     // Nested cast-iron casserole / stainless saucepan inside the pan drawer
-    addPart(-boxW * 0.2, botY + 0.055, -depth * 0.48, 0.22, 0.085, 0.22, getCastIronPotMat());
-    addPart(boxW * 0.2, botY + 0.045, -depth * 0.52, 0.18, 0.065, 0.18, getChromeRackMat());
+    addPart(-boxW * 0.2, botY + 0.063, -depth * 0.48, 0.22, 0.085, 0.22, getCastIronPotMat());
+    addPart(boxW * 0.2, botY + 0.053, -depth * 0.52, 0.18, 0.065, 0.18, getChromeRackMat());
   }
 }

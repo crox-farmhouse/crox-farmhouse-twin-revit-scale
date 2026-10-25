@@ -102,15 +102,15 @@ export function buildStudyMacbookPro(
   thumbNotch.position.set(0, 0.0018 + baseH - 0.002, mbD * 0.5 - 0.002);
   macbookGroup.add(thumbNotch);
 
-  // Recessed Dark Anodized Magic Keyboard Well (y = 0.0144m, z = -0.095..+0.015m)
+  // Recessed Dark Anodized Magic Keyboard Well (y = 0.0148m, z = -0.095..+0.015m)
   const kbWellW = 0.278;
   const kbWellD = 0.108;
   const kbWell = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(kbWellW, 0.0012, kbWellD)),
+    createSharedGeo(new THREE.BoxGeometry(kbWellW, 0.002, kbWellD)),
     keycapMat
   );
   kbWell.name = 'study.macbookPro.keyboardWell';
-  kbWell.position.set(0, 0.0018 + baseH + 0.0002, -0.036);
+  kbWell.position.set(0, 0.0018 + baseH + 0.001, -0.036);
   macbookGroup.add(kbWell);
 
   // 6 Rows of individual sculpted Magic Keyboard keycaps + Touch ID key (shared BufferGeometries)
@@ -131,7 +131,7 @@ export function buildStudyMacbookPro(
             new THREE.Mesh(spacebarGeo, keycapMat)
           );
           spacebar.name = 'study.macbookPro.key.spacebar';
-          spacebar.position.set(0, 0.0018 + baseH + 0.0012, kz);
+          spacebar.position.set(0, 0.0018 + baseH + 0.0028, kz);
           macbookGroup.add(spacebar);
         }
         continue;
@@ -141,29 +141,29 @@ export function buildStudyMacbookPro(
         new THREE.Mesh(r === 0 ? fnKeyGeo : stdKeyGeo, keycapMat)
       );
       keyMesh.name = `study.macbookPro.key.r${r + 1}c${c + 1}`;
-      keyMesh.position.set(kx, 0.0018 + baseH + 0.0012, kz);
+      keyMesh.position.set(kx, 0.0018 + baseH + 0.0028, kz);
       macbookGroup.add(keyMesh);
     }
   }
 
   // Flanking micro-perforated side speaker grilles left & right of the Magic Keyboard
-  const speakerGrilleGeo = createSharedGeo(new THREE.BoxGeometry(0.022, 0.0008, kbWellD - 0.006));
+  const speakerGrilleGeo = createSharedGeo(new THREE.BoxGeometry(0.022, 0.002, kbWellD - 0.006));
   for (const sideX of [-0.156, 0.156] as const) {
     const speakerGrille = tagHighLod(
       new THREE.Mesh(speakerGrilleGeo, trackpadMat)
     );
     speakerGrille.name = `study.macbookPro.speakerGrille.${sideX < 0 ? 'left' : 'right'}`;
-    speakerGrille.position.set(sideX, 0.0018 + baseH + 0.0002, -0.036);
+    speakerGrille.position.set(sideX, 0.0018 + baseH + 0.001, -0.036);
     macbookGroup.add(speakerGrille);
   }
 
   // Large Haptic Force Touch Glass Trackpad centered on the palm rest (z = +0.068m)
   const trackpad = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.158, 0.001, 0.096)),
+    createSharedGeo(new THREE.BoxGeometry(0.158, 0.002, 0.096)),
     trackpadMat
   );
   trackpad.name = 'study.macbookPro.trackpad';
-  trackpad.position.set(0, 0.0018 + baseH + 0.0003, 0.068);
+  trackpad.position.set(0, 0.0018 + baseH + 0.001, 0.068);
   macbookGroup.add(trackpad);
 
   // 2. Hinged Ultra-Thin Liquid Retina XDR Display Lid (tilted open at 108° along the rear -Z edge)
@@ -204,7 +204,7 @@ export function buildStudyMacbookPro(
   );
   rearEmblem.name = 'study.macbookPro.rearEmblem';
   rearEmblem.rotation.x = Math.PI / 2;
-  rearEmblem.position.set(0, lidH * 0.52, -lidThickness * 0.5 - 0.0003);
+  rearEmblem.position.set(0, lidH * 0.52, -lidThickness * 0.5 - 0.002);
   lidPivot.add(rearEmblem);
 
   // Procedural 512x320 Liquid Retina XDR Screen Texture (macOS desktop + VS Code / KNX topology + Terminal + Dock)
@@ -293,7 +293,7 @@ export function buildStudyMacbookPro(
     })
   );
   screenPanel.name = 'study.macbookPro.screen';
-  screenPanel.position.set(0, lidH * 0.5 + 0.002, lidThickness * 0.5 + 0.0005);
+  screenPanel.position.set(0, lidH * 0.5 + 0.002, lidThickness * 0.5 + 0.003);
   lidPivot.add(screenPanel);
 
   macbookGroup.add(lidPivot);
@@ -436,27 +436,27 @@ export function buildStudyShelvingAndMonitors(
     new THREE.Mesh(lcmScreenGeo, unifiLcmTouchscreenMat)
   );
   udmScreen.name = 'study.ubiquitiServerRack.udmProMax.lcmScreen';
-  udmScreen.position.set(-unitW * 0.5 + 0.032, 0.568, faceZ - 0.013);
+  udmScreen.position.set(-unitW * 0.5 + 0.032, 0.568, faceZ - 0.0195);
   rackGroup.add(udmScreen);
 
   // Dual 3.5" NVR HDD drive bay caddies + 8-port GbE switch & dual 10G SFP+ WAN bay on UDM-Pro-Max
-  const driveBayGeo = createSharedGeo(new THREE.BoxGeometry(0.098, 0.028, 0.004));
+  const driveBayGeo = createSharedGeo(new THREE.BoxGeometry(0.098, 0.028, 0.005));
   for (const [bIdx, bayX] of ([-0.095, 0.015] as const).entries()) {
     const driveBay = tagHighLod(
       new THREE.Mesh(driveBayGeo, unifiDarkPortBayMat)
     );
     driveBay.name = `study.ubiquitiServerRack.udmProMax.driveBay.${bIdx + 1}`;
-    driveBay.position.set(bayX, 0.568, faceZ - 0.012);
+    driveBay.position.set(bayX, 0.568, faceZ - 0.0145);
     rackGroup.add(driveBay);
   }
   const udmPortBank = tagHighLod(
     new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(0.135, 0.026, 0.004)),
+      createSharedGeo(new THREE.BoxGeometry(0.135, 0.026, 0.005)),
       unifiDarkPortBayMat
     )
   );
   udmPortBank.name = 'study.ubiquitiServerRack.udmProMax.portBank';
-  udmPortBank.position.set(0.14, 0.568, faceZ - 0.012);
+  udmPortBank.position.set(0.14, 0.568, faceZ - 0.0145);
   rackGroup.add(udmPortBank);
 
   // (c) 1U Ubiquiti UniFi Pro Max 24 PoE Switch (USW-Pro-Max-24-PoE, Y = 0.510m, height 0.043m)
@@ -472,27 +472,27 @@ export function buildStudyShelvingAndMonitors(
     new THREE.Mesh(lcmScreenGeo, unifiLcmTouchscreenMat)
   );
   uswScreen.name = 'study.ubiquitiServerRack.uswProMax24Poe.lcmScreen';
-  uswScreen.position.set(-unitW * 0.5 + 0.032, 0.51, faceZ - 0.013);
+  uswScreen.position.set(-unitW * 0.5 + 0.032, 0.51, faceZ - 0.0195);
   rackGroup.add(uswScreen);
 
   // Glowing Etherlighting™ 24× RJ45 + 2× 10G SFP+ port strip across USW-Pro-Max-24-PoE
   const etherlightBay = tagHighLod(
     new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(0.34, 0.024, 0.004)),
+      createSharedGeo(new THREE.BoxGeometry(0.34, 0.024, 0.005)),
       unifiDarkPortBayMat
     )
   );
   etherlightBay.name = 'study.ubiquitiServerRack.uswProMax24Poe.etherlightBay';
-  etherlightBay.position.set(0.032, 0.51, faceZ - 0.012);
+  etherlightBay.position.set(0.032, 0.51, faceZ - 0.0145);
   rackGroup.add(etherlightBay);
 
-  const portGlowGeo = createSharedGeo(new THREE.BoxGeometry(0.018, 0.008, 0.005));
+  const portGlowGeo = createSharedGeo(new THREE.BoxGeometry(0.018, 0.008, 0.004));
   for (let p = 0; p < 12; p++) {
     const portGlow = tagHighLod(
       new THREE.Mesh(portGlowGeo, unifiEtherlightCyanMat)
     );
     portGlow.name = 'study.ubiquitiServerRack.etherlightingPort';
-    portGlow.position.set(-0.125 + p * 0.027, 0.514, faceZ - 0.013);
+    portGlow.position.set(-0.125 + p * 0.027, 0.514, faceZ - 0.019);
     rackGroup.add(portGlow);
   }
 
@@ -509,7 +509,7 @@ export function buildStudyShelvingAndMonitors(
     new THREE.Mesh(lcmScreenGeo, unifiLcmTouchscreenMat)
   );
   aggScreen.name = 'study.ubiquitiServerRack.uswAggregation.lcmScreen';
-  aggScreen.position.set(-unitW * 0.5 + 0.032, 0.452, faceZ - 0.013);
+  aggScreen.position.set(-unitW * 0.5 + 0.032, 0.452, faceZ - 0.0195);
   rackGroup.add(aggScreen);
 
   // (e) 2U Ubiquiti UniFi Protect NVR Pro (UNVR-Pro, Y = 0.365m, height 0.087m) with 7× 3.5" HDD bays
@@ -525,24 +525,24 @@ export function buildStudyShelvingAndMonitors(
     new THREE.Mesh(lcmScreenGeo, unifiLcmTouchscreenMat)
   );
   unvrScreen.name = 'study.ubiquitiServerRack.unvrPro.lcmScreen';
-  unvrScreen.position.set(-unitW * 0.5 + 0.032, 0.365, faceZ - 0.013);
+  unvrScreen.position.set(-unitW * 0.5 + 0.032, 0.365, faceZ - 0.0195);
   rackGroup.add(unvrScreen);
 
-  const hddSledGeo = createSharedGeo(new THREE.BoxGeometry(0.044, 0.068, 0.004));
-  const hddLedGeo = createSharedGeo(new THREE.BoxGeometry(0.006, 0.006, 0.005));
+  const hddSledGeo = createSharedGeo(new THREE.BoxGeometry(0.044, 0.068, 0.005));
+  const hddLedGeo = createSharedGeo(new THREE.BoxGeometry(0.006, 0.006, 0.004));
   for (let d = 0; d < 7; d++) {
     const hddSled = tagHighLod(
       new THREE.Mesh(hddSledGeo, unifiDarkPortBayMat)
     );
     hddSled.name = `study.ubiquitiServerRack.unvrPro.hddSled.${d + 1}`;
-    hddSled.position.set(-0.13 + d * 0.052, 0.365, faceZ - 0.012);
+    hddSled.position.set(-0.13 + d * 0.052, 0.365, faceZ - 0.0145);
     rackGroup.add(hddSled);
 
     const hddLed = tagHighLod(
       new THREE.Mesh(hddLedGeo, unifiStatusWhiteLedMat)
     );
     hddLed.name = `study.ubiquitiServerRack.unvrPro.hddLed.${d + 1}`;
-    hddLed.position.set(-0.13 + d * 0.052, 0.39, faceZ - 0.013);
+    hddLed.position.set(-0.13 + d * 0.052, 0.39, faceZ - 0.019);
     rackGroup.add(hddLed);
   }
 
@@ -562,7 +562,7 @@ export function buildStudyShelvingAndMonitors(
     )
   );
   upsLcd.name = 'study.ubiquitiServerRack.smartUps.lcdScreen';
-  upsLcd.position.set(0, 0.152, faceZ - 0.013);
+  upsLcd.position.set(0, 0.152, faceZ - 0.0195);
   rackGroup.add(upsLcd);
 
   // Smoked tempered-glass front rack door + brushed silver swing-handle lock
@@ -673,7 +673,7 @@ export function buildStudyShelvingAndMonitors(
     printerGroup.add(sidePanel);
   }
   const rearPanel = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(x1cW - 0.02, x1cH - 0.09, 0.024)),
+    createSharedGeo(new THREE.BoxGeometry(x1cW - 0.048, x1cH - 0.09, 0.024)),
     bambuCharcoalTrimMat
   );
   rearPanel.name = 'study.bambuLab3dPrinter.rearPanel';

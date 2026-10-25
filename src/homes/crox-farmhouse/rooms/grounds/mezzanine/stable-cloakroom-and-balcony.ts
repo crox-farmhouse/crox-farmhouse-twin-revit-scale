@@ -45,18 +45,18 @@ export function buildStableGroundCloakroom(
     metalness: 0.86,
   });
 
-  // 1. Tiled Cloakroom Floor (`u = 23.22..24.70m, v = 3.99..5.425m`)
-  const floorW = uEast - partT * 0.5 - uWest;
-  const floorD = vSouth - (vNorth + partT * 0.5);
+  // 1. Tiled Cloakroom Floor (`u = 23.224..24.696m, v = 3.994..5.424m`)
+  const floorW = uEast - partT * 0.5 - uWest - 0.008;
+  const floorD = vSouth - (vNorth + partT * 0.5) - 0.008;
   const tiledFloor = new THREE.Mesh(
     new THREE.BoxGeometry(floorW, 0.012, floorD),
     marbleTileMat
   );
   tiledFloor.name = 'outbuildings.stable.groundCloakroom.tiledFloor';
   tiledFloor.position.set(
-    uWest + floorW * 0.5,
-    stableGroundFloorY + 0.006,
-    vNorth + partT * 0.5 + floorD * 0.5
+    uWest + 0.004 + floorW * 0.5,
+    stableGroundFloorY + 0.01,
+    vNorth + partT * 0.5 + 0.004 + floorD * 0.5
   );
   tiledFloor.receiveShadow = true;
   cloakGroup.add(tiledFloor);
@@ -67,32 +67,34 @@ export function buildStableGroundCloakroom(
   const doorW = uDoor1 - uDoor0;
   const midU = (uDoor0 + uDoor1) * 0.5;
   const doorH = 1.98;
-  const lintelH = wallH - doorH;
+  const wallClearH = wallH - 0.008;
+  const wallMidY = stableGroundFloorY + 0.004 + wallClearH * 0.5;
+  const lintelH = wallH - doorH - 0.004;
 
   const northWallWest = new THREE.Mesh(
-    new THREE.BoxGeometry(uDoor0 - uWest, wallH, partT),
+    new THREE.BoxGeometry(uDoor0 - uWest - 0.004, wallClearH, partT),
     warmRoomPlasterMat
   );
   northWallWest.name = 'outbuildings.stable.groundCloakroom.northWallWest';
   northWallWest.userData.isArchitecturalShell = true;
-  northWallWest.position.set((uWest + uDoor0) * 0.5, stableGroundFloorY + wallH * 0.5, vNorth);
+  northWallWest.position.set((uWest + 0.004 + uDoor0) * 0.5, wallMidY, vNorth);
   northWallWest.castShadow = true;
   northWallWest.receiveShadow = true;
   cloakGroup.add(northWallWest);
 
   const northWallEast = new THREE.Mesh(
-    new THREE.BoxGeometry(uEast + partT * 0.5 - uDoor1, wallH, partT),
+    new THREE.BoxGeometry(uEast + partT * 0.5 - uDoor1, wallClearH, partT),
     warmRoomPlasterMat
   );
   northWallEast.name = 'outbuildings.stable.groundCloakroom.northWallEast';
   northWallEast.userData.isArchitecturalShell = true;
-  northWallEast.position.set((uDoor1 + uEast + partT * 0.5) * 0.5, stableGroundFloorY + wallH * 0.5, vNorth);
+  northWallEast.position.set((uDoor1 + uEast + partT * 0.5) * 0.5, wallMidY, vNorth);
   northWallEast.castShadow = true;
   northWallEast.receiveShadow = true;
   cloakGroup.add(northWallEast);
 
   const northLintel = new THREE.Mesh(
-    new THREE.BoxGeometry(doorW, lintelH, partT),
+    new THREE.BoxGeometry(doorW - 0.008, lintelH, partT),
     warmRoomPlasterMat
   );
   northLintel.name = 'outbuildings.stable.groundCloakroom.northDoorLintel';
@@ -100,12 +102,12 @@ export function buildStableGroundCloakroom(
   cloakGroup.add(northLintel);
 
   const eastWall = new THREE.Mesh(
-    new THREE.BoxGeometry(partT, wallH, floorD),
+    new THREE.BoxGeometry(partT, wallClearH, floorD),
     warmRoomPlasterMat
   );
   eastWall.name = 'outbuildings.stable.groundCloakroom.eastWall';
   eastWall.userData.isArchitecturalShell = true;
-  eastWall.position.set(uEast, stableGroundFloorY + wallH * 0.5, vNorth + partT * 0.5 + floorD * 0.5);
+  eastWall.position.set(uEast, wallMidY, vNorth + partT * 0.5 + 0.004 + floorD * 0.5);
   eastWall.castShadow = true;
   eastWall.receiveShadow = true;
   cloakGroup.add(eastWall);
@@ -117,70 +119,72 @@ export function buildStableGroundCloakroom(
   // ---------------------------------------------------------------------------
   const jambThick = 0.026;
   const jambDepth = partT + 0.016;
+  const jambH = doorH - jambThick - 0.008;
   for (const jSide of [-1, 1] as const) {
     const jamb = new THREE.Mesh(
-      new THREE.BoxGeometry(jambThick, doorH, jambDepth),
+      new THREE.BoxGeometry(jambThick, jambH, jambDepth),
       lightJoineryOakMat
     );
     jamb.name = 'outbuildings.stable.groundCloakroom.doorFrame.jamb';
     jamb.position.set(
-      midU + jSide * (doorW * 0.5 - jambThick * 0.5),
-      stableGroundFloorY + doorH * 0.5,
+      midU + jSide * (doorW * 0.5 + 0.004 + jambThick * 0.5) - jSide * jambThick,
+      stableGroundFloorY + 0.004 + jambH * 0.5,
       vNorth
     );
     jamb.castShadow = true;
     cloakGroup.add(jamb);
 
-    // Recessed solid oak door stop strip along each vertical jamb
+    // Recessed solid oak door stop strip along each vertical jamb (`4mm` South of closed door leaf!)
+    const stopH = doorH - jambThick - 0.036;
     const stopStrip = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, doorH - jambThick, 0.016),
+      new THREE.BoxGeometry(0.012, stopH, 0.016),
       lightJoineryOakMat
     );
     stopStrip.name = 'outbuildings.stable.groundCloakroom.doorFrame.stopStrip';
     stopStrip.position.set(
-      midU + jSide * (doorW * 0.5 - jambThick - 0.006),
-      stableGroundFloorY + (doorH - jambThick) * 0.5,
-      vNorth + 0.014
+      midU + jSide * (doorW * 0.5 - jambThick - 0.01),
+      stableGroundFloorY + 0.02 + stopH * 0.5,
+      vNorth + 0.034
     );
     cloakGroup.add(stopStrip);
   }
 
   const headJamb = new THREE.Mesh(
-    new THREE.BoxGeometry(doorW, jambThick, jambDepth),
+    new THREE.BoxGeometry(doorW - 0.008, jambThick, jambDepth),
     lightJoineryOakMat
   );
   headJamb.name = 'outbuildings.stable.groundCloakroom.doorFrame.head';
-  headJamb.position.set(midU, stableGroundFloorY + doorH - jambThick * 0.5, vNorth);
+  headJamb.position.set(midU, stableGroundFloorY + doorH - jambThick * 0.5 - 0.004, vNorth);
   cloakGroup.add(headJamb);
 
   const headStop = new THREE.Mesh(
-    new THREE.BoxGeometry(doorW - jambThick * 2, 0.012, 0.016),
+    new THREE.BoxGeometry(doorW - jambThick * 2 - 0.036, 0.012, 0.016),
     lightJoineryOakMat
   );
   headStop.name = 'outbuildings.stable.groundCloakroom.doorFrame.headStop';
-  headStop.position.set(midU, stableGroundFloorY + doorH - jambThick - 0.006, vNorth + 0.014);
+  headStop.position.set(midU, stableGroundFloorY + doorH - jambThick - 0.014, vNorth + 0.034);
   cloakGroup.add(headStop);
 
   // Flush solid light-oak threshold sill strip
   const thresholdSill = new THREE.Mesh(
-    new THREE.BoxGeometry(doorW - jambThick * 2, 0.014, jambDepth),
+    new THREE.BoxGeometry(doorW - jambThick * 2 - 0.008, 0.012, partT - 0.008),
     lightJoineryOakMat
   );
   thresholdSill.name = 'outbuildings.stable.groundCloakroom.doorFrame.threshold';
-  thresholdSill.position.set(midU, stableGroundFloorY + 0.007, vNorth);
+  thresholdSill.position.set(midU, stableGroundFloorY + 0.01, vNorth);
   thresholdSill.receiveShadow = true;
   cloakGroup.add(thresholdSill);
 
-  // Chamfered solid light-oak architraves (`0.058m` wide × `0.016m` thick) on BOTH North exterior (`v = 3.94 - 0.058`) and South interior (`v = 3.94 + 0.058`) faces
+  // Chamfered architraves on BOTH North exterior and South interior faces (`4mm` proud of `jambDepth`)
   const archW = 0.064;
   const archT = 0.020;
   for (const faceDir of [-1, 1] as const) {
-    const archWallZ = vNorth + faceDir * (partT * 0.5);
+    const archWallZ = vNorth + faceDir * (partT * 0.5 + 0.012);
     const [leftLegGeo, headGeo, rightLegGeo] = buildMitredArchitraveSegments(
       midU - (doorW * 0.5 - 0.012),
       midU + (doorW * 0.5 - 0.012),
-      stableGroundFloorY,
-      stableGroundFloorY,
+      stableGroundFloorY + 0.004,
+      stableGroundFloorY + 0.004,
       stableGroundFloorY + doorH - 0.012,
       'x',
       archWallZ,
@@ -198,15 +202,15 @@ export function buildStableGroundCloakroom(
   }
 
   // Interactive Hinged 4-Panel Shaker Solid European Oak Door (`outbuildings.stable.groundCloakroom.door`)
-  // Positioned at the West hinge jamb `(uDoor0 + 0.026, stableGroundFloorY + 0.012, vNorth)`, closed flush by default (`rotation.y = 0`)
+  // Positioned at the West hinge jamb `(uDoor0 + 0.026, stableGroundFloorY + 0.020, vNorth)`, closed flush by default (`rotation.y = 0`)
   const doorPivot = new THREE.Group();
   doorPivot.name = 'outbuildings.stable.groundCloakroom.door';
-  doorPivot.position.set(uDoor0 + jambThick, stableGroundFloorY + 0.012, vNorth);
+  doorPivot.position.set(uDoor0 + jambThick + 0.004, stableGroundFloorY + 0.02, vNorth);
   doorPivot.rotation.y = 0;
   cloakGroup.add(doorPivot);
 
-  const clearW = 0.708; // doorW (0.76) - 2 * jambThick (0.052)
-  const clearH = 1.94;  // doorH (1.98) - jambThick (0.026) - threshold (0.014)
+  const clearW = 0.7; // 4mm gap to jambs on each side
+  const clearH = 1.926; // 4mm gap below headJamb
   const doorT = 0.044;
   const stileW = 0.095;
   const muntinW = 0.075;
@@ -238,7 +242,7 @@ export function buildStableGroundCloakroom(
   doorPivot.add(rightStile);
 
   // Horizontal rails (bottom rail, lock rail, frieze rail, top rail) spanning between stiles
-  const innerRailW = clearW - stileW * 2;
+  const innerRailW = clearW - stileW * 2 - 0.008;
   const railCenterX = clearW * 0.5;
   const friezeRailCenterY = clearH - topRailH - 0.34 - friezeRailH * 0.5;
   for (const [rName, rY, rH] of [
@@ -261,15 +265,18 @@ export function buildStableGroundCloakroom(
   // Central vertical muntin dividing lower & upper panel bays into 4 fielded Shaker panels
   const lowerBayY0 = botRailH;
   const lowerBayY1 = lockRailCenterY - lockRailH * 0.5;
+  const friezeBotY = friezeRailCenterY - friezeRailH * 0.5;
+  const friezeTopY = friezeRailCenterY + friezeRailH * 0.5;
   const upperBayY0 = lockRailCenterY + lockRailH * 0.5;
   const upperBayY1 = clearH - topRailH;
 
   for (const [mName, y0, y1] of [
     ['muntinLower', lowerBayY0, lowerBayY1],
-    ['muntinUpper', upperBayY0, upperBayY1],
+    ['muntinMiddle', upperBayY0, friezeBotY],
+    ['muntinUpper', friezeTopY, upperBayY1],
   ] as const) {
     const muntin = new THREE.Mesh(
-      new THREE.BoxGeometry(muntinW, y1 - y0, doorT),
+      new THREE.BoxGeometry(muntinW, y1 - y0 - 0.008, doorT),
       lightJoineryOakMat
     );
     muntin.name = `outbuildings.stable.groundCloakroom.door.${mName}`;
@@ -278,21 +285,21 @@ export function buildStableGroundCloakroom(
     doorPivot.add(muntin);
   }
 
-  // 4 Recessed solid oak panels (`0.024m` thick) with bevelled bolection/chamfered panel mouldings on both faces
-  const panelW = (innerRailW - muntinW) * 0.5;
+  // 4 Recessed solid oak panels (`0.016m` thick) with bevelled bolection/chamfered panel mouldings on both faces
+  const panelW = (clearW - stileW * 2 - muntinW) * 0.5;
   const panelLeftX = stileW + panelW * 0.5;
   const panelRightX = clearW - stileW - panelW * 0.5;
   const panelBays: ReadonlyArray<readonly [number, number, number]> = [
     [panelLeftX, (lowerBayY0 + lowerBayY1) * 0.5, lowerBayY1 - lowerBayY0],
     [panelRightX, (lowerBayY0 + lowerBayY1) * 0.5, lowerBayY1 - lowerBayY0],
-    [panelLeftX, (upperBayY0 + upperBayY1) * 0.5, upperBayY1 - upperBayY0],
-    [panelRightX, (upperBayY0 + upperBayY1) * 0.5, upperBayY1 - upperBayY0],
+    [panelLeftX, (upperBayY0 + friezeBotY) * 0.5, friezeBotY - upperBayY0],
+    [panelRightX, (upperBayY0 + friezeBotY) * 0.5, friezeBotY - upperBayY0],
   ];
 
   for (let pIdx = 0; pIdx < panelBays.length; pIdx++) {
     const [px, py, ph] = panelBays[pIdx]!;
     const recessedPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(panelW + 0.004, ph + 0.004, 0.024),
+      new THREE.BoxGeometry(panelW - 0.008, ph - 0.008, 0.016),
       lightJoineryOakMat
     );
     recessedPanel.name = `outbuildings.stable.groundCloakroom.door.panel.${pIdx + 1}`;
@@ -301,43 +308,42 @@ export function buildStableGroundCloakroom(
     recessedPanel.receiveShadow = true;
     doorPivot.add(recessedPanel);
 
-    // Raised fielded panel centre bevel on both faces
-    const fieldedCore = new THREE.Mesh(
-      new THREE.BoxGeometry(panelW - 0.032, ph - 0.036, 0.032),
-      lightJoineryOakMat
-    );
-    fieldedCore.name = `outbuildings.stable.groundCloakroom.door.panel.${pIdx + 1}.core`;
-    fieldedCore.position.set(px, py, 0);
-    doorPivot.add(fieldedCore);
-
-    // Chamfered perimeter bolection moulding strips on both North and South faces
+    // Raised fielded panel centre bevel + chamfered perimeter bolection moulding strips on both faces (`4mm` proud of `recessedPanel`)
     for (const fz of [-0.015, 0.015] as const) {
+      const fieldedCore = new THREE.Mesh(
+        new THREE.BoxGeometry(panelW - 0.04, ph - 0.052, 0.006),
+        lightJoineryOakMat
+      );
+      fieldedCore.name = `outbuildings.stable.groundCloakroom.door.panel.${pIdx + 1}.core`;
+      fieldedCore.position.set(px, py, fz);
+      doorPivot.add(fieldedCore);
+
       const topMould = new THREE.Mesh(
-        new THREE.BoxGeometry(panelW, 0.012, 0.008),
+        new THREE.BoxGeometry(panelW - 0.016, 0.012, 0.006),
         lightJoineryOakMat
       );
       topMould.name = `outbuildings.stable.groundCloakroom.door.panel.${pIdx + 1}.topMoulding`;
-      topMould.position.set(px, py + ph * 0.5 - 0.006, fz);
+      topMould.position.set(px, py + ph * 0.5 - 0.012, fz);
       doorPivot.add(topMould);
 
       const botMould = new THREE.Mesh(
-        new THREE.BoxGeometry(panelW, 0.012, 0.008),
+        new THREE.BoxGeometry(panelW - 0.016, 0.012, 0.006),
         lightJoineryOakMat
       );
       botMould.name = `outbuildings.stable.groundCloakroom.door.panel.${pIdx + 1}.bottomMoulding`;
-      botMould.position.set(px, py - ph * 0.5 + 0.006, fz);
+      botMould.position.set(px, py - ph * 0.5 + 0.012, fz);
       doorPivot.add(botMould);
     }
   }
 
-  // 3 Brushed-brass butt hinges (`CylinderGeometry` knuckles) along the West hinge stile (`x = 0`)
+  // 3 Brushed-brass butt hinges (`CylinderGeometry` knuckles) along the West hinge stile (`x = -0.006`)
   for (const hingeY of [0.24, 0.97, 1.68] as const) {
     const hingeKnuckle = new THREE.Mesh(
       new THREE.CylinderGeometry(0.007, 0.007, 0.076, 12),
       brushedBrassMat
     );
     hingeKnuckle.name = 'outbuildings.stable.groundCloakroom.door.hinge';
-    hingeKnuckle.position.set(0, hingeY, -doorT * 0.5 - 0.004);
+    hingeKnuckle.position.set(-0.006, hingeY, -doorT * 0.5 - 0.006);
     doorPivot.add(hingeKnuckle);
   }
 
@@ -354,7 +360,7 @@ export function buildStableGroundCloakroom(
     );
     rose.rotation.x = Math.PI / 2;
     rose.name = `outbuildings.stable.groundCloakroom.door.${faceTag}.rose`;
-    rose.position.set(handleX, handleY, fz * (doorT * 0.5 + 0.004));
+    rose.position.set(handleX, handleY, fz * (doorT * 0.5 + 0.008));
     doorPivot.add(rose);
 
     const spindleNeck = new THREE.Mesh(
@@ -363,7 +369,7 @@ export function buildStableGroundCloakroom(
     );
     spindleNeck.rotation.x = Math.PI / 2;
     spindleNeck.name = `outbuildings.stable.groundCloakroom.door.${faceTag}.spindle`;
-    spindleNeck.position.set(handleX, handleY, fz * (doorT * 0.5 + 0.022));
+    spindleNeck.position.set(handleX, handleY, fz * (doorT * 0.5 + 0.034));
     doorPivot.add(spindleNeck);
 
     const leverGrip = new THREE.Mesh(
@@ -372,7 +378,7 @@ export function buildStableGroundCloakroom(
     );
     leverGrip.name = `outbuildings.stable.groundCloakroom.door.${faceTag}`;
     leverGrip.rotation.z = Math.PI / 2;
-    leverGrip.position.set(handleX - 0.052, handleY, fz * (doorT * 0.5 + 0.038));
+    leverGrip.position.set(handleX - 0.052, handleY, fz * (doorT * 0.5 + 0.06));
     leverGrip.castShadow = true;
     doorPivot.add(leverGrip);
 
@@ -383,7 +389,7 @@ export function buildStableGroundCloakroom(
     );
     lockRose.rotation.x = Math.PI / 2;
     lockRose.name = `outbuildings.stable.groundCloakroom.door.${faceTag}.lockRose`;
-    lockRose.position.set(handleX, handleY - 0.078, fz * (doorT * 0.5 + 0.0035));
+    lockRose.position.set(handleX, handleY - 0.078, fz * (doorT * 0.5 + 0.0075));
     doorPivot.add(lockRose);
 
     if (fz > 0) {
@@ -392,7 +398,7 @@ export function buildStableGroundCloakroom(
         brushedBrassMat
       );
       thumbTurn.name = `outbuildings.stable.groundCloakroom.door.${faceTag}.thumbTurn`;
-      thumbTurn.position.set(handleX, handleY - 0.078, fz * (doorT * 0.5 + 0.012));
+      thumbTurn.position.set(handleX, handleY - 0.078, fz * (doorT * 0.5 + 0.024));
       doorPivot.add(thumbTurn);
     }
   }
@@ -412,7 +418,7 @@ export function buildStableGroundCloakroom(
   // ---------------------------------------------------------------------------
   const toiletGroup = new THREE.Group();
   toiletGroup.name = 'outbuildings.stable.groundCloakroom.toilet';
-  toiletGroup.position.set(24.22, stableGroundFloorY + 0.012, vSouth - 0.32);
+  toiletGroup.position.set(24.22, stableGroundFloorY + 0.02, vSouth - 0.32);
   cloakGroup.add(toiletGroup);
 
   const waterBlueMat = new THREE.MeshStandardMaterial({
@@ -444,7 +450,7 @@ export function buildStableGroundCloakroom(
     lightJoineryOakMat
   );
   cisternOakLedge.name = 'outbuildings.stable.groundCloakroom.toilet.cisternOakLedge';
-  cisternOakLedge.position.set(0, 0.912, 0.215);
+  cisternOakLedge.position.set(0, 0.916, 0.215);
   toiletGroup.add(cisternOakLedge);
 
   // Bevelled Vitreous China Close-Coupled Cistern Tank + Fitted Overhanging Ceramic Cistern Lid + Dual-Flush Coaxial Brass Button
@@ -453,7 +459,7 @@ export function buildStableGroundCloakroom(
     ceramicWhiteMat
   );
   porcelainCistern.name = 'outbuildings.stable.groundCloakroom.toilet.cistern';
-  porcelainCistern.position.set(0, 0.58, 0.075);
+  porcelainCistern.position.set(0, 0.58, 0.055);
   porcelainCistern.castShadow = true;
   toiletGroup.add(porcelainCistern);
 
@@ -462,7 +468,7 @@ export function buildStableGroundCloakroom(
     ceramicWhiteMat
   );
   cisternLid.name = 'outbuildings.stable.groundCloakroom.toilet.cisternLid';
-  cisternLid.position.set(0, 0.772, 0.075);
+  cisternLid.position.set(0, 0.778, 0.055);
   cisternLid.castShadow = true;
   toiletGroup.add(cisternLid);
 
@@ -472,16 +478,16 @@ export function buildStableGroundCloakroom(
   );
   flushCollar.name = 'outbuildings.stable.groundCloakroom.toilet.flushCollar';
   flushCollar.userData = { lodTier: 'high', lodMaxDistance: 12 };
-  flushCollar.position.set(0, 0.788, 0.075);
+  flushCollar.position.set(0, 0.8, 0.055);
   toiletGroup.add(flushCollar);
 
   const flushInnerBtn = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.015, 0.015, 0.011, 18),
+    new THREE.CylinderGeometry(0.015, 0.015, 0.008, 18),
     brushedBrassMat
   );
   flushInnerBtn.name = 'outbuildings.stable.groundCloakroom.toilet.flushButton';
   flushInnerBtn.userData = { lodTier: 'high', lodMaxDistance: 12 };
-  flushInnerBtn.position.set(0, 0.790, 0.075);
+  flushInnerBtn.position.set(0, 0.812, 0.055);
   toiletGroup.add(flushInnerBtn);
 
   // Stepped ceramic base pedestal + sculpted curved D-shaped outer ceramic bowl shell
@@ -496,41 +502,41 @@ export function buildStableGroundCloakroom(
   toiletGroup.add(basePlinth);
 
   const wcPedestal = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.172, 0.138, 0.35, 28),
+    new THREE.CylinderGeometry(0.172, 0.138, 0.31, 28),
     ceramicWhiteMat
   );
   wcPedestal.name = 'outbuildings.stable.groundCloakroom.toilet.bowl';
-  wcPedestal.position.set(0, 0.21, -0.06);
+  wcPedestal.position.set(0, 0.205, -0.06);
   wcPedestal.scale.set(1.02, 1.0, 1.45);
   wcPedestal.castShadow = true;
   wcPedestal.receiveShadow = true;
   toiletGroup.add(wcPedestal);
 
   const rearShroud = new THREE.Mesh(
-    new THREE.BoxGeometry(0.32, 0.39, 0.22),
+    new THREE.BoxGeometry(0.32, 0.36, 0.22),
     ceramicWhiteMat
   );
   rearShroud.name = 'outbuildings.stable.groundCloakroom.toilet.rearShroud';
-  rearShroud.position.set(0, 0.195, 0.04);
+  rearShroud.position.set(0, 0.18, 0.04);
   rearShroud.castShadow = true;
   toiletGroup.add(rearShroud);
 
   // Recessed inner porcelain bowl cavity + translucent water disc (`0xd4eef7`)
   const bowlWell = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.138, 0.088, 0.14, 26),
+    new THREE.CylinderGeometry(0.138, 0.115, 0.024, 26),
     darkCavityMat
   );
   bowlWell.name = 'outbuildings.stable.groundCloakroom.toilet.bowlWell';
-  bowlWell.position.set(0, 0.325, -0.08);
+  bowlWell.position.set(0, 0.376, -0.08);
   bowlWell.scale.set(1.0, 1.0, 1.34);
   toiletGroup.add(bowlWell);
 
   const waterDisc = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.095, 0.095, 0.008, 24),
+    new THREE.CylinderGeometry(0.095, 0.095, 0.006, 24),
     waterBlueMat
   );
   waterDisc.name = 'outbuildings.stable.groundCloakroom.toilet.waterDisc';
-  waterDisc.position.set(0, 0.28, -0.075);
+  waterDisc.position.set(0, 0.395, -0.075);
   waterDisc.scale.set(1.0, 1.0, 1.28);
   toiletGroup.add(waterDisc);
 
@@ -541,7 +547,7 @@ export function buildStableGroundCloakroom(
   );
   seatRing.name = 'outbuildings.stable.groundCloakroom.toilet.seat';
   seatRing.rotation.x = Math.PI / 2;
-  seatRing.position.set(0, 0.402, -0.075);
+  seatRing.position.set(0, 0.422, -0.075);
   seatRing.scale.set(1.0, 1.38, 0.55);
   seatRing.castShadow = true;
   toiletGroup.add(seatRing);
@@ -642,11 +648,11 @@ export function buildStableGroundCloakroom(
 
   // Framed Shaker Solid-Oak Vanity Carcass with internal shelf, recessed Shaker door panel, soft-close brass hinges & knurled brass knob
   const vanityCarcass = new THREE.Mesh(
-    new THREE.BoxGeometry(cabD - 0.02, cabH, cabW),
+    new THREE.BoxGeometry(cabD - 0.03, cabH, cabW),
     lightJoineryOakMat
   );
   vanityCarcass.name = 'outbuildings.stable.groundCloakroom.basin.cabinet';
-  vanityCarcass.position.set(-0.01, 0.56, 0);
+  vanityCarcass.position.set(0, 0.56, 0);
   vanityCarcass.castShadow = true;
   vanityCarcass.receiveShadow = true;
   basinGroup.add(vanityCarcass);
@@ -654,31 +660,31 @@ export function buildStableGroundCloakroom(
   // Shaker door outer stile/rail frame on East (`+x`) front face
   for (const sz of [-1, 1] as const) {
     const doorStile = new THREE.Mesh(
-      new THREE.BoxGeometry(0.018, cabH - 0.02, 0.055),
+      new THREE.BoxGeometry(0.014, cabH - 0.02, 0.055),
       lightJoineryOakMat
     );
     doorStile.name = 'outbuildings.stable.groundCloakroom.basin.cabinet.doorStile';
-    doorStile.position.set(cabD * 0.5 - 0.005, 0.56, sz * (cabW * 0.5 - 0.032));
+    doorStile.position.set(0.146, 0.56, sz * (cabW * 0.5 - 0.032));
     doorStile.castShadow = true;
     basinGroup.add(doorStile);
   }
   for (const sy of [-1, 1] as const) {
     const doorRail = new THREE.Mesh(
-      new THREE.BoxGeometry(0.018, 0.055, cabW - 0.12),
+      new THREE.BoxGeometry(0.014, 0.055, cabW - 0.128),
       lightJoineryOakMat
     );
     doorRail.name = 'outbuildings.stable.groundCloakroom.basin.cabinet.doorRail';
-    doorRail.position.set(cabD * 0.5 - 0.005, 0.56 + sy * (cabH * 0.5 - 0.036), 0);
+    doorRail.position.set(0.146, 0.56 + sy * (cabH * 0.5 - 0.036), 0);
     doorRail.castShadow = true;
     basinGroup.add(doorRail);
   }
 
   const shakerDoorPanel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.010, cabH - 0.11, cabW - 0.11),
+    new THREE.BoxGeometry(0.006, cabH - 0.136, cabW - 0.128),
     lightJoineryOakMat
   );
   shakerDoorPanel.name = 'outbuildings.stable.groundCloakroom.basin.cabinet.doorPanel';
-  shakerDoorPanel.position.set(cabD * 0.5 - 0.012, 0.56, 0);
+  shakerDoorPanel.position.set(0.142, 0.56, 0);
   basinGroup.add(shakerDoorPanel);
 
   // Knurled brushed-brass cabinet pull knob + twin brass hinge knuckles
@@ -688,7 +694,7 @@ export function buildStableGroundCloakroom(
   );
   cabKnob.rotation.z = Math.PI / 2;
   cabKnob.name = 'outbuildings.stable.groundCloakroom.basin.cabinet.knob';
-  cabKnob.position.set(cabD * 0.5 + 0.014, 0.72, -cabW * 0.5 + 0.035);
+  cabKnob.position.set(0.169, 0.72, -cabW * 0.5 + 0.035);
   basinGroup.add(cabKnob);
 
   for (const hy of [0.40, 0.72] as const) {
@@ -697,7 +703,7 @@ export function buildStableGroundCloakroom(
       brushedBrassMat
     );
     cabHinge.name = 'outbuildings.stable.groundCloakroom.basin.cabinet.hinge';
-    cabHinge.position.set(cabD * 0.5 + 0.003, hy, cabW * 0.5 - 0.006);
+    cabHinge.position.set(0.161, hy, cabW * 0.5 - 0.006);
     basinGroup.add(cabHinge);
   }
 
@@ -707,13 +713,13 @@ export function buildStableGroundCloakroom(
     ceramicWhiteMat
   );
   basinBaseSlab.name = 'outbuildings.stable.groundCloakroom.basin.sink';
-  basinBaseSlab.position.set(0.005, 0.818, 0);
+  basinBaseSlab.position.set(0.005, 0.822, 0);
   basinBaseSlab.castShadow = true;
   basinBaseSlab.receiveShadow = true;
   basinGroup.add(basinBaseSlab);
 
   const rimH = 0.068;
-  const rimY = 0.836 + rimH * 0.5;
+  const rimY = 0.844 + rimH * 0.5;
   // Back deck wall (holds tap) & front lip wall
   const backTapDeck = new THREE.Mesh(
     new THREE.BoxGeometry(0.088, rimH, cabW + 0.02),
@@ -735,11 +741,11 @@ export function buildStableGroundCloakroom(
 
   for (const sz of [-1, 1] as const) {
     const sideRimWall = new THREE.Mesh(
-      new THREE.BoxGeometry(cabD + 0.02, rimH, 0.042),
+      new THREE.BoxGeometry(cabD + 0.02 - 0.088 - 0.034 - 0.008, rimH, 0.042),
       ceramicWhiteMat
     );
     sideRimWall.name = 'outbuildings.stable.groundCloakroom.basin.sink.sideRim';
-    sideRimWall.position.set(0.005, rimY, sz * (cabW * 0.5 - 0.011));
+    sideRimWall.position.set(0.032, rimY, sz * (cabW * 0.5 - 0.011));
     sideRimWall.castShadow = true;
     basinGroup.add(sideRimWall);
   }
@@ -750,16 +756,16 @@ export function buildStableGroundCloakroom(
     ceramicWhiteMat
   );
   splashbackUpstand.name = 'outbuildings.stable.groundCloakroom.basin.sink.splashback';
-  splashbackUpstand.position.set(-cabD * 0.5 + 0.006, 0.904 + 0.0275, 0);
+  splashbackUpstand.position.set(-cabD * 0.5 + 0.006, 0.916 + 0.0275, 0);
   basinGroup.add(splashbackUpstand);
 
   // Recessed inner basin bowl well (`basinWell`) + slotted brass overflow ring + brass pop-up click-clack waste plug
   const basinWell = new THREE.Mesh(
-    new THREE.BoxGeometry(cabD - 0.10, 0.012, cabW - 0.07),
+    new THREE.BoxGeometry(cabD - 0.11, 0.01, cabW - 0.08),
     darkCavityMat
   );
   basinWell.name = 'outbuildings.stable.groundCloakroom.basin.well';
-  basinWell.position.set(0.026, 0.838, 0);
+  basinWell.position.set(0.032, 0.849, 0);
   basinGroup.add(basinWell);
 
   const wastePlug = new THREE.Mesh(
@@ -767,7 +773,7 @@ export function buildStableGroundCloakroom(
     brushedBrassMat
   );
   wastePlug.name = 'outbuildings.stable.groundCloakroom.basin.wastePlug';
-  wastePlug.position.set(0.018, 0.844, 0);
+  wastePlug.position.set(0.024, 0.862, 0);
   basinGroup.add(wastePlug);
 
   const overflowRing = new THREE.Mesh(
@@ -776,18 +782,18 @@ export function buildStableGroundCloakroom(
   );
   overflowRing.rotation.z = Math.PI / 2;
   overflowRing.name = 'outbuildings.stable.groundCloakroom.basin.overflowRing';
-  overflowRing.position.set(-0.060, 0.882, 0);
+  overflowRing.position.set(-0.058, 0.886, 0);
   basinGroup.add(overflowRing);
 
   // High-Arc Swan-Neck Brushed-Brass Monobloc Basin Mixer Tap (`CylinderGeometry` collar + stem + `TorusGeometry` arch spout + aerator + side pin lever)
   const tapX = -0.102;
-  const tapDeckTopY = 0.904;
+  const tapDeckTopY = 0.912;
   const tapCollar = new THREE.Mesh(
     new THREE.CylinderGeometry(0.022, 0.024, 0.014, 18),
     brushedBrassMat
   );
   tapCollar.name = 'outbuildings.stable.groundCloakroom.basin.tap.collar';
-  tapCollar.position.set(tapX, tapDeckTopY + 0.007, 0);
+  tapCollar.position.set(tapX, tapDeckTopY + 0.011, 0);
   basinGroup.add(tapCollar);
 
   const tapStem = new THREE.Mesh(
@@ -795,7 +801,7 @@ export function buildStableGroundCloakroom(
     brushedBrassMat
   );
   tapStem.name = 'outbuildings.stable.groundCloakroom.basin.tap';
-  tapStem.position.set(tapX, tapDeckTopY + 0.068, 0);
+  tapStem.position.set(tapX, tapDeckTopY + 0.08, 0);
   tapStem.castShadow = true;
   basinGroup.add(tapStem);
 
@@ -804,7 +810,7 @@ export function buildStableGroundCloakroom(
     brushedBrassMat
   );
   swanNeckSpout.name = 'outbuildings.stable.groundCloakroom.basin.tap.spout';
-  swanNeckSpout.position.set(tapX + 0.052, tapDeckTopY + 0.125, 0);
+  swanNeckSpout.position.set(tapX + 0.052, tapDeckTopY + 0.137, 0);
   swanNeckSpout.castShadow = true;
   basinGroup.add(swanNeckSpout);
 
@@ -813,7 +819,7 @@ export function buildStableGroundCloakroom(
     brushedBrassMat
   );
   aeratorNozzle.name = 'outbuildings.stable.groundCloakroom.basin.tap.aerator';
-  aeratorNozzle.position.set(tapX + 0.104, tapDeckTopY + 0.118, 0);
+  aeratorNozzle.position.set(tapX + 0.104, tapDeckTopY + 0.13, 0);
   basinGroup.add(aeratorNozzle);
 
   const pinLever = new THREE.Mesh(
@@ -822,7 +828,7 @@ export function buildStableGroundCloakroom(
   );
   pinLever.rotation.x = Math.PI * 0.25;
   pinLever.name = 'outbuildings.stable.groundCloakroom.basin.tap.lever';
-  pinLever.position.set(tapX, tapDeckTopY + 0.068, 0.032);
+  pinLever.position.set(tapX, tapDeckTopY + 0.08, 0.032);
   basinGroup.add(pinLever);
 
   // Ceramic Pump Soap Dispenser on the North corner of the basin deck + Folded Waffle Hand Towel on a Brushed-Brass Towel Ring
@@ -831,7 +837,7 @@ export function buildStableGroundCloakroom(
     new THREE.MeshStandardMaterial({ color: 0x3b4d3e, roughness: 0.28, metalness: 0.08 })
   );
   soapBottle.name = 'outbuildings.stable.groundCloakroom.basin.soapDispenser';
-  soapBottle.position.set(-0.095, tapDeckTopY + 0.052, -0.175);
+  soapBottle.position.set(-0.095, tapDeckTopY + 0.0565, -0.175);
   soapBottle.castShadow = true;
   basinGroup.add(soapBottle);
 
@@ -841,7 +847,7 @@ export function buildStableGroundCloakroom(
   );
   soapPumpHead.name = 'outbuildings.stable.groundCloakroom.basin.soapDispenser.pump';
   soapPumpHead.userData = { lodTier: 'high', lodMaxDistance: 12 };
-  soapPumpHead.position.set(-0.095, tapDeckTopY + 0.116, -0.175);
+  soapPumpHead.position.set(-0.095, tapDeckTopY + 0.127, -0.175);
   basinGroup.add(soapPumpHead);
 
   const towelRing = new THREE.Mesh(
@@ -858,13 +864,13 @@ export function buildStableGroundCloakroom(
     new THREE.MeshStandardMaterial({ color: 0xe8e2d5, roughness: 0.88 })
   );
   handTowel.name = 'outbuildings.stable.groundCloakroom.basin.handTowel';
-  handTowel.position.set(-0.125, 0.76, 0.34);
+  handTowel.position.set(-0.105, 0.76, 0.34);
   handTowel.castShadow = true;
   basinGroup.add(handTowel);
 
   // Illuminated Circular Bevelled Brushed-Brass Vanity Mirror (`mirrorFrame` + `mirrorGlass` + warm backlit LED halo ring)
   const mirrorHalo = new THREE.Mesh(
-    new THREE.TorusGeometry(0.268, 0.008, 12, 36),
+    new THREE.TorusGeometry(0.268, 0.006, 12, 36),
     new THREE.MeshStandardMaterial({
       color: 0xfff5e0,
       emissive: new THREE.Color(0xffd28a),
@@ -874,26 +880,26 @@ export function buildStableGroundCloakroom(
   );
   mirrorHalo.rotation.y = Math.PI / 2;
   mirrorHalo.name = 'outbuildings.stable.groundCloakroom.basin.mirrorHalo';
-  mirrorHalo.position.set(-0.152, 1.38, 0);
+  mirrorHalo.position.set(-0.148, 1.38, 0);
   basinGroup.add(mirrorHalo);
 
   const mirrorFrame = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.26, 0.26, 0.022, 32),
+    new THREE.CylinderGeometry(0.26, 0.26, 0.014, 32),
     brushedBrassMat
   );
   mirrorFrame.name = 'outbuildings.stable.groundCloakroom.basin.mirrorFrame';
   mirrorFrame.rotation.z = Math.PI / 2;
-  mirrorFrame.position.set(-0.145, 1.38, 0);
+  mirrorFrame.position.set(-0.131, 1.38, 0);
   mirrorFrame.castShadow = true;
   basinGroup.add(mirrorFrame);
 
   const mirrorGlass = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.242, 0.242, 0.025, 32),
+    new THREE.CylinderGeometry(0.242, 0.242, 0.006, 32),
     new THREE.MeshStandardMaterial({ color: 0xdce8f2, roughness: 0.04, metalness: 0.94 })
   );
   mirrorGlass.name = 'outbuildings.stable.groundCloakroom.basin.mirrorGlass';
   mirrorGlass.rotation.z = Math.PI / 2;
-  mirrorGlass.position.set(-0.143, 1.38, 0);
+  mirrorGlass.position.set(-0.117, 1.38, 0);
   basinGroup.add(mirrorGlass);
 
   const cloakLight = new THREE.PointLight(0xffd488, 1.4, 3.6, 1.6);
@@ -1094,17 +1100,17 @@ export function buildStableBalconyOutdoorFurniture(
     outdoorRugMat
   );
   patioRug.name = 'outbuildings.firstFloor.stableEastBalcony.outdoorRug';
-  patioRug.position.set(rugCenterU, deckY + 0.0035, rugCenterV);
+  patioRug.position.set(rugCenterU, deckY + 0.0075, rugCenterV);
   patioRug.receiveShadow = true;
   furnGroup.add(patioRug);
 
   const patioRugBorder = new THREE.Mesh(
-    new THREE.TorusGeometry(0.96, 0.014, 10, 40),
+    new THREE.TorusGeometry(0.978, 0.012, 10, 40),
     outdoorRugBorderMat
   );
   patioRugBorder.rotation.x = Math.PI / 2;
   patioRugBorder.name = 'outbuildings.firstFloor.stableEastBalcony.outdoorRug.border';
-  patioRugBorder.position.set(rugCenterU, deckY + 0.005, rugCenterV);
+  patioRugBorder.position.set(rugCenterU, deckY + 0.016, rugCenterV);
   furnGroup.add(patioRugBorder);
 
   // 2. Pair of High-LOD Sculpted Solid-Teak & Open-Weave Rope Barrel Lounge Armchairs (`armchair.1` & `armchair.2`)
@@ -1304,7 +1310,7 @@ export function buildStableBalconyOutdoorFurniture(
 
   // Chamfered Honed Travertine Stone Tabletop inset into a Turned Solid-Teak Rim Collar
   const tableTop = new THREE.Mesh(
-    new THREE.CylinderGeometry(tR - 0.012, tR - 0.016, 0.024, 32),
+    new THREE.CylinderGeometry(tR - 0.026, tR - 0.028, 0.024, 32),
     honedTravertineMat
   );
   tableTop.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.top';
@@ -1330,11 +1336,11 @@ export function buildStableBalconyOutdoorFurniture(
     const lx = Math.cos(ang) * legR;
     const lz = Math.sin(ang) * legR;
     const tLeg = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.018, 0.013, tH - 0.016, 14),
+      new THREE.CylinderGeometry(0.018, 0.013, tH - 0.024, 14),
       weatheredTeakMat
     );
     tLeg.name = `outbuildings.firstFloor.stableEastBalcony.coffeeTable.leg.${l + 1}`;
-    tLeg.position.set(lx, (tH - 0.016) * 0.5, lz);
+    tLeg.position.set(lx, 0.004 + (tH - 0.024) * 0.5, lz);
     tLeg.rotation.set(Math.sin(ang) * 0.08, 0, -Math.cos(ang) * 0.08);
     tLeg.castShadow = true;
     tableGrp.add(tLeg);
@@ -1355,7 +1361,7 @@ export function buildStableBalconyOutdoorFurniture(
     brushedBrassHardwareMat
   );
   lanternBase.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.lanternBase';
-  lanternBase.position.set(-0.06, tH + 0.019, -0.02);
+  lanternBase.position.set(-0.06, tH + 0.023, -0.02);
   tableGrp.add(lanternBase);
 
   const lanternGlass = new THREE.Mesh(
@@ -1368,7 +1374,7 @@ export function buildStableBalconyOutdoorFurniture(
     })
   );
   lanternGlass.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.lanternGlass';
-  lanternGlass.position.set(-0.06, tH + 0.112, -0.02);
+  lanternGlass.position.set(-0.06, tH + 0.122, -0.02);
   tableGrp.add(lanternGlass);
 
   const lanternTopRing = new THREE.Mesh(
@@ -1377,7 +1383,7 @@ export function buildStableBalconyOutdoorFurniture(
   );
   lanternTopRing.rotation.x = Math.PI / 2;
   lanternTopRing.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.lanternTopRing';
-  lanternTopRing.position.set(-0.06, tH + 0.20, -0.02);
+  lanternTopRing.position.set(-0.06, tH + 0.215, -0.02);
   tableGrp.add(lanternTopRing);
 
   const pillarCandle = new THREE.Mesh(
@@ -1391,7 +1397,7 @@ export function buildStableBalconyOutdoorFurniture(
   );
   pillarCandle.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.candle';
   pillarCandle.userData = { lodTier: 'high', lodMaxDistance: 12 };
-  pillarCandle.position.set(-0.06, tH + 0.072, -0.02);
+  pillarCandle.position.set(-0.06, tH + 0.0865, -0.02);
   tableGrp.add(pillarCandle);
 
   const ceramicTray = new THREE.Mesh(
@@ -1400,7 +1406,7 @@ export function buildStableBalconyOutdoorFurniture(
   );
   ceramicTray.name = 'outbuildings.firstFloor.stableEastBalcony.coffeeTable.ceramicTray';
   ceramicTray.userData = { lodTier: 'high', lodMaxDistance: 12 };
-  ceramicTray.position.set(0.085, tH + 0.020, 0.035);
+  ceramicTray.position.set(0.085, tH + 0.024, 0.035);
   tableGrp.add(ceramicTray);
 
   // 4. High-LOD Sculpted Mediterranean Olive Trees (`Olea europaea`) in Turned Ribbed Terracotta Amphora Planters
@@ -1430,7 +1436,7 @@ export function buildStableBalconyOutdoorFurniture(
   ] as const) {
     const potGrp = new THREE.Group();
     potGrp.name = `outbuildings.firstFloor.stableEastBalcony.planter.${pIdx}`;
-    potGrp.position.set(pu, deckY, pv);
+    potGrp.position.set(pu, deckY + 0.004, pv);
     potGrp.rotation.y = seedRot;
     furnGroup.add(potGrp);
 
@@ -1453,11 +1459,11 @@ export function buildStableBalconyOutdoorFurniture(
     }
 
     const soilBed = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.182, 0.176, 0.024, 20),
+      new THREE.CylinderGeometry(0.174, 0.17, 0.018, 20),
       pottingSoilMat
     );
     soilBed.name = `outbuildings.firstFloor.stableEastBalcony.planter.${pIdx}.soil`;
-    soilBed.position.set(0, 0.355, 0);
+    soilBed.position.set(0, 0.368, 0);
     potGrp.add(soilBed);
 
     const mainTrunkCurve = new THREE.CatmullRomCurve3([

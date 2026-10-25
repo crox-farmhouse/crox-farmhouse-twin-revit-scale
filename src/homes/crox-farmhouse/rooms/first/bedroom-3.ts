@@ -233,12 +233,12 @@ export function buildBedroom3(
 
     // 45mm solid oak threshold step at `bedroom4.entranceDoor` (`2.050m -> 2.095m`)
     const bed4StepRise = corridorFloorY - bed4FloorY;
-    const bed4StepGeo = new THREE.BoxGeometry(0.86, bed4StepRise, 0.24);
+    const bed4StepGeo = new THREE.BoxGeometry(0.86, bed4StepRise, 0.116);
     bed4StepGeo.computeBoundingSphere();
     const bed4Step = new THREE.Mesh(bed4StepGeo, antiqueOakSkirtingMat);
     bed4Step.name = 'bedroom4.doorThresholdStep';
     bed4Step.userData.isArchitecturalShell = true;
-    bed4Step.position.set(-17.67, bed4FloorY + bed4StepRise * 0.5, 8.27);
+    bed4Step.position.set(-17.67, bed4FloorY + bed4StepRise * 0.5, 8.332);
     bed4Step.receiveShadow = true;
     scene.add(bed4Step);
   }
@@ -252,8 +252,8 @@ export function buildBedroom3(
     northGableShape.lineTo(doorMinX, doorTopY);
     northGableShape.lineTo(doorMaxX, doorTopY);
     northGableShape.lineTo(doorMaxX, bed4FloorY);
-    northGableShape.lineTo(-17.15, bed4FloorY);
-    northGableShape.lineTo(-17.15, corridorCeilingY);
+    northGableShape.lineTo(-17.236, bed4FloorY);
+    northGableShape.lineTo(-17.236, corridorCeilingY);
     northGableShape.lineTo(-18.62, collarCeilingY);
     northGableShape.lineTo(-20.85, collarCeilingY);
     northGableShape.lineTo(-22.19, 3.85);

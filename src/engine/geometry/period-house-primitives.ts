@@ -357,33 +357,38 @@ export function buildAngledWallSegment(
         intervals = next;
       }
     }
+    const cladOffset =
+      (zSign > 0 ? Boolean(config.frontFaceMaterial) : Boolean(config.backFaceMaterial))
+        ? 0.014
+        : 0;
+    const baseFaceZ = config.thickness / 2 + cladOffset + 0.004;
     for (const [segA, segB] of intervals) {
       const segW = segB - segA;
       if (segW <= 0.01) continue;
       const segMid = (segA + segB) / 2;
       const skirt = new THREE.Mesh(
-        new THREE.BoxGeometry(segW, 0.125, 0.022),
+        new THREE.BoxGeometry(segW, 0.125, 0.020),
         config.skirtingMaterial
       );
       if (!skirt.name) skirt.name = 'architecture.primitive.skirt';
       skirt.position.set(
         segMid,
-        floorY + 0.0625,
-        zSign * (config.thickness / 2 + 0.011)
+        floorY + 0.004 + 0.0625,
+        zSign * (baseFaceZ + 0.010)
       );
       skirt.castShadow = true;
       skirt.receiveShadow = true;
       group.add(skirt);
 
       const skirtCap = new THREE.Mesh(
-        new THREE.BoxGeometry(segW, 0.022, 0.016),
+        new THREE.BoxGeometry(segW, 0.022, 0.012),
         config.skirtingMaterial
       );
       if (!skirtCap.name) skirtCap.name = 'architecture.primitive.skirtCap';
       skirtCap.position.set(
         segMid,
-        floorY + 0.136,
-        zSign * (config.thickness / 2 + 0.008)
+        floorY + 0.125 + 0.011,
+        zSign * (baseFaceZ + 0.004 + 0.006)
       );
       skirtCap.castShadow = true;
       skirtCap.receiveShadow = true;
@@ -391,8 +396,19 @@ export function buildAngledWallSegment(
     }
   };
 
+  const useInlineTopCap =
+    !config.skipCap &&
+    !config.skipWallBody &&
+    (!config.skipCapRanges || config.skipCapRanges.length === 0);
+  const withTopCapMaterial = (
+    baseMat: THREE.Material
+  ): THREE.Material | THREE.Material[] =>
+    useInlineTopCap && config.capMaterial !== baseMat
+      ? [baseMat, baseMat, config.capMaterial, baseMat, baseMat, baseMat]
+      : baseMat;
+
   const emitCapSegments = (uStart: number, uEnd: number): void => {
-    if (config.skipCap || uEnd - uStart <= 0.005) return;
+    if (config.skipCap || useInlineTopCap || uEnd - uStart <= 0.005) return;
     let intervals: Array<[number, number]> = [[uStart, uEnd]];
     if (config.skipCapRanges && config.skipCapRanges.length > 0) {
       for (const [ex0, ex1] of config.skipCapRanges) {
@@ -421,7 +437,7 @@ export function buildAngledWallSegment(
         config.capMaterial
       );
       if (!cap.name) cap.name = 'architecture.primitive.cap';
-      cap.position.set(segMid, config.topY - 0.006, 0);
+      cap.position.set(segMid, config.topY - 0.008, 0);
       group.add(cap);
     }
   };
@@ -466,7 +482,7 @@ export function buildAngledWallSegment(
       }
       const pier = new THREE.Mesh(
         applyLocalWallBrickUVs(pierGeo, uMid, fullWallMidY),
-        config.wallMaterial
+        withTopCapMaterial(config.wallMaterial)
       );
       if (!pier.name) pier.name = 'architecture.primitive.pier';
       pier.position.set(uMid, fullWallMidY, 0);
@@ -478,17 +494,18 @@ export function buildAngledWallSegment(
     emitCapSegments(u0, u1);
 
     if (config.backFaceMaterial) {
-      const backH = config.topY - config.backFloorY;
-      const backMidY = (config.backFloorY + config.topY) / 2;
+      const backBotY = config.backFloorY + 0.004;
+      const backH = Math.max(0.02, config.topY - backBotY);
+      const backMidY = (backBotY + config.topY) / 2;
       const backClad = new THREE.Mesh(
-        applyLocalWallBrickUVs(new THREE.BoxGeometry(segW, backH, 0.014), uMid, backMidY),
-        config.backFaceMaterial
+        applyLocalWallBrickUVs(new THREE.BoxGeometry(segW, backH, 0.012), uMid, backMidY),
+        withTopCapMaterial(config.backFaceMaterial)
       );
       if (!backClad.name) backClad.name = 'architecture.primitive.backClad';
       backClad.position.set(
         uMid,
         backMidY,
-        -config.thickness / 2 - 0.007
+        -config.thickness / 2 - 0.008
       );
       backClad.receiveShadow = true;
       group.add(backClad);
@@ -499,25 +516,26 @@ export function buildAngledWallSegment(
       const cladW = u1 - cladU0;
       if (cladW > 0.005) {
         const cladMidU = (cladU0 + u1) / 2;
-        const frontH = config.topY - config.frontFloorY;
-        const frontMidY = (config.frontFloorY + config.topY) / 2;
+        const frontBotY = config.frontFloorY + 0.004;
+        const frontH = Math.max(0.02, config.topY - frontBotY);
+        const frontMidY = (frontBotY + config.topY) / 2;
         const frontClad = new THREE.Mesh(
-          applyLocalWallBrickUVs(new THREE.BoxGeometry(cladW, frontH, 0.014), cladMidU, frontMidY),
-          config.frontFaceMaterial
+          applyLocalWallBrickUVs(new THREE.BoxGeometry(cladW, frontH, 0.012), cladMidU, frontMidY),
+          withTopCapMaterial(config.frontFaceMaterial)
         );
         if (!frontClad.name) frontClad.name = 'architecture.primitive.frontClad';
         frontClad.position.set(
           cladMidU,
           frontMidY,
-          config.thickness / 2 + 0.007
+          config.thickness / 2 + 0.008
         );
         frontClad.receiveShadow = true;
         group.add(frontClad);
       }
     }
 
-    const skirtU0 = Math.max(u0 + (trimLeftArchitrave ? 0.082 : 0), frontInsetStartU);
-    const skirtU1 = u1 - (trimRightArchitrave ? 0.082 : 0);
+    const skirtU0 = Math.max(u0 + (trimLeftArchitrave ? 0.088 : 0), frontInsetStartU);
+    const skirtU1 = u1 - (trimRightArchitrave ? 0.088 : 0);
 
     if (config.skirtingMaterial && config.addFrontSkirting) {
       emitSkirtingSegments(
@@ -561,7 +579,7 @@ export function buildAngledWallSegment(
           op.uCenter,
           lintelMidY
         ),
-        config.wallMaterial
+        withTopCapMaterial(config.wallMaterial)
       );
       if (!lintel.name) lintel.name = 'architecture.primitive.lintel';
       lintel.position.set(op.uCenter, lintelMidY, 0);
@@ -574,17 +592,17 @@ export function buildAngledWallSegment(
       if (config.backFaceMaterial) {
         const backLintelClad = new THREE.Mesh(
           applyLocalWallBrickUVs(
-            new THREE.BoxGeometry(op.width, lintelH, 0.014),
+            new THREE.BoxGeometry(op.width, lintelH, 0.012),
             op.uCenter,
             lintelMidY
           ),
-          config.backFaceMaterial
+          withTopCapMaterial(config.backFaceMaterial)
         );
         if (!backLintelClad.name) backLintelClad.name = 'architecture.primitive.backLintelClad';
         backLintelClad.position.set(
           op.uCenter,
           lintelMidY,
-          -config.thickness / 2 - 0.007
+          -config.thickness / 2 - 0.008
         );
         backLintelClad.receiveShadow = true;
         group.add(backLintelClad);
@@ -593,17 +611,17 @@ export function buildAngledWallSegment(
       if (config.frontFaceMaterial) {
         const frontLintelClad = new THREE.Mesh(
           applyLocalWallBrickUVs(
-            new THREE.BoxGeometry(op.width, lintelH, 0.014),
+            new THREE.BoxGeometry(op.width, lintelH, 0.012),
             op.uCenter,
             lintelMidY
           ),
-          config.frontFaceMaterial
+          withTopCapMaterial(config.frontFaceMaterial)
         );
         if (!frontLintelClad.name) frontLintelClad.name = 'architecture.primitive.frontLintelClad';
         frontLintelClad.position.set(
           op.uCenter,
           lintelMidY,
-          config.thickness / 2 + 0.007
+          config.thickness / 2 + 0.008
         );
         frontLintelClad.receiveShadow = true;
         group.add(frontLintelClad);
@@ -622,6 +640,8 @@ export function buildAngledWallSegment(
         backFloorY: config.backFloorY,
         headY: headBottomY,
         material: op.architraveMaterial,
+        frontFaceOffset: config.frontFaceMaterial ? 0.014 : 0,
+        backFaceOffset: config.backFaceMaterial ? 0.014 : 0,
         namePrefix: `${op.id ?? 'portal'}.architrave`,
       });
     }
@@ -764,16 +784,6 @@ export function buildAngledWallSegment(
       doorObj.position.set(op.uCenter, highFloorY + op.doorHeight / 2, 0);
       doorObj.rotation.y = 0;
 
-      // Central recessed core slab
-      const leafCore = new THREE.Mesh(
-        new THREE.BoxGeometry(leafW, leafH, 0.028),
-        op.doorLeafMaterial
-      );
-      if (!leafCore.name) leafCore.name = 'architecture.primitive.leafCore';
-      leafCore.castShadow = true;
-      leafCore.receiveShadow = true;
-      doorObj.add(leafCore);
-
       // Traditional 4-panel stiles, rails & central muntin (full 0.046m thickness)
       const stileW = Math.min(0.105, leafW * 0.14);
       const topRailH = 0.125;
@@ -781,6 +791,19 @@ export function buildAngledWallSegment(
       const bottomRailH = 0.195;
       const muntinW = 0.088;
       const lockRailY = -leafH * 0.07;
+
+      // Central recessed core slab (tucked inside outer stiles & rails so outer edges never Z-fight)
+      const coreW = Math.max(0.08, leafW - stileW);
+      const coreH = Math.max(0.12, leafH - (topRailH + bottomRailH) * 0.5);
+      const leafCore = new THREE.Mesh(
+        new THREE.BoxGeometry(coreW, coreH, 0.028),
+        op.doorLeafMaterial
+      );
+      if (!leafCore.name) leafCore.name = 'architecture.primitive.leafCore';
+      leafCore.position.set(0, (bottomRailH - topRailH) * 0.25, 0);
+      leafCore.castShadow = true;
+      leafCore.receiveShadow = true;
+      doorObj.add(leafCore);
 
       for (const side of [-1, 1] as const) {
         const stile = new THREE.Mesh(
@@ -1019,6 +1042,29 @@ export function buildMiteredPolylineStrip(
       innerMesh.receiveShadow = receiveShadow;
       stripGroup.add(innerMesh);
 
+      if (materials[2] !== materials[1]) {
+        const topPositions = new Float32Array([
+          ax, yTop, az,
+          bx, yTop, bz,
+          cx, yTop, cz,
+          dx, yTop, dz,
+        ]);
+        const topUvs = new Float32Array([
+          ax / tileW, az / tileH,
+          bx / tileW, bz / tileH,
+          cx / tileW, cz / tileH,
+          dx / tileW, dz / tileH,
+        ]);
+        const topGeo = new THREE.BufferGeometry();
+        topGeo.setAttribute('position', new THREE.BufferAttribute(topPositions, 3));
+        topGeo.setAttribute('uv', new THREE.BufferAttribute(topUvs, 2));
+        topGeo.setIndex([0, 1, 2, 0, 2, 3]);
+        topGeo.computeVertexNormals();
+        const topMesh = new THREE.Mesh(topGeo, materials[2]);
+        topMesh.name = 'architecture.primitive.topCap';
+        stripGroup.add(topMesh);
+      }
+
       const outerPositions = new Float32Array([
         // 0..3: Outer Face (-N): A0, B0, B1, A1
         ax, yBottom, az,
@@ -1073,13 +1119,21 @@ export function buildMiteredPolylineStrip(
         (dIn - dOut) / tileW, v1,
         0, v1,
       ]);
-      const outerIndices = [
-        0, 1, 2, 0, 2, 3,       // Outer Face
-        4, 5, 6, 4, 6, 7,       // Top Face
-        8, 9, 10, 8, 10, 11,    // Bottom Face
-        12, 13, 14, 12, 14, 15, // Start Cap
-        16, 17, 18, 16, 18, 19, // End Cap
-      ];
+      const outerIndices =
+        materials[2] !== materials[1]
+          ? [
+              0, 1, 2, 0, 2, 3,       // Outer Face
+              8, 9, 10, 8, 10, 11,    // Bottom Face
+              12, 13, 14, 12, 14, 15, // Start Cap
+              16, 17, 18, 16, 18, 19, // End Cap
+            ]
+          : [
+              0, 1, 2, 0, 2, 3,       // Outer Face
+              4, 5, 6, 4, 6, 7,       // Top Face
+              8, 9, 10, 8, 10, 11,    // Bottom Face
+              12, 13, 14, 12, 14, 15, // Start Cap
+              16, 17, 18, 16, 18, 19, // End Cap
+            ];
       const outerGeo = new THREE.BufferGeometry();
       outerGeo.setAttribute('position', new THREE.BufferAttribute(outerPositions, 3));
       outerGeo.setAttribute('uv', new THREE.BufferAttribute(outerUvs, 2));

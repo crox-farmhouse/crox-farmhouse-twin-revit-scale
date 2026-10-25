@@ -171,21 +171,21 @@ export function buildLowBrickRetainingWall(
   };
 
   const lowBrickWallWest = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(2.77, 0.24, 0.22), -3.135, 0.11, 3.84),
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(2.58, 0.24, 0.22), -3.035, 0.11, 3.84),
     brickWallMat
   );
   if (!lowBrickWallWest.name) lowBrickWallWest.name = 'courtyard.rattanPatio.lowBrickWallWest';
-  lowBrickWallWest.position.set(-3.135, 0.11, 3.84);
+  lowBrickWallWest.position.set(-3.035, 0.11, 3.84);
   lowBrickWallWest.castShadow = true;
   lowBrickWallWest.receiveShadow = true;
   scene.add(lowBrickWallWest);
 
   const lowBrickCopingWest = new THREE.Mesh(
-    new THREE.BoxGeometry(2.81, 0.048, 0.25),
+    new THREE.BoxGeometry(2.58, 0.048, 0.25),
     blueBrickCopingMat
   );
   if (!lowBrickCopingWest.name) lowBrickCopingWest.name = 'courtyard.rattanPatio.lowBrickCopingWest';
-  lowBrickCopingWest.position.set(-3.135, 0.254, 3.84);
+  lowBrickCopingWest.position.set(-3.035, 0.258, 3.84);
   lowBrickCopingWest.castShadow = true;
   lowBrickCopingWest.receiveShadow = true;
   scene.add(lowBrickCopingWest);
@@ -205,7 +205,7 @@ export function buildLowBrickRetainingWall(
     blueBrickCopingMat
   );
   if (!lowBrickCopingMid.name) lowBrickCopingMid.name = 'courtyard.rattanPatio.lowBrickCopingMid';
-  lowBrickCopingMid.position.set(1.0, 0.254, 3.84);
+  lowBrickCopingMid.position.set(1.0, 0.258, 3.84);
   lowBrickCopingMid.castShadow = true;
   lowBrickCopingMid.receiveShadow = true;
   scene.add(lowBrickCopingMid);
@@ -225,7 +225,7 @@ export function buildLowBrickRetainingWall(
     blueBrickCopingMat
   );
   if (!lowBrickCopingEast.name) lowBrickCopingEast.name = 'courtyard.rattanPatio.lowBrickCopingEast';
-  lowBrickCopingEast.position.set(4.5, 0.254, 3.84);
+  lowBrickCopingEast.position.set(4.5, 0.258, 3.84);
   lowBrickCopingEast.castShadow = true;
   lowBrickCopingEast.receiveShadow = true;
   scene.add(lowBrickCopingEast);
@@ -245,26 +245,26 @@ export function buildLowBrickRetainingWall(
     limestoneEdgingMat
   );
   if (!cornerPierCap.name) cornerPierCap.name = 'courtyard.rattanPatio.cornerPierCap';
-  cornerPierCap.position.set(-4.52, 0.575, 3.84);
+  cornerPierCap.position.set(-4.52, 0.579, 3.84);
   cornerPierCap.castShadow = true;
   scene.add(cornerPierCap);
 
   const lowBrickReturnWest = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.22, 0.28, 3.4), -4.52, 0.08, 5.54),
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.22, 0.28, 3.206), -4.52, 0.08, 5.637),
     brickWallMat
   );
   if (!lowBrickReturnWest.name) lowBrickReturnWest.name = 'courtyard.rattanPatio.lowBrickReturnWest';
-  lowBrickReturnWest.position.set(-4.52, 0.08, 5.54);
+  lowBrickReturnWest.position.set(-4.52, 0.08, 5.637);
   lowBrickReturnWest.castShadow = true;
   lowBrickReturnWest.receiveShadow = true;
   scene.add(lowBrickReturnWest);
 
   const lowBrickReturnCopingWest = new THREE.Mesh(
-    new THREE.BoxGeometry(0.25, 0.048, 3.44),
+    new THREE.BoxGeometry(0.25, 0.048, 3.206),
     blueBrickCopingMat
   );
   if (!lowBrickReturnCopingWest.name) lowBrickReturnCopingWest.name = 'courtyard.rattanPatio.lowBrickReturnCopingWest';
-  lowBrickReturnCopingWest.position.set(-4.52, 0.244, 5.54);
+  lowBrickReturnCopingWest.position.set(-4.52, 0.248, 5.637);
   lowBrickReturnCopingWest.castShadow = true;
   lowBrickReturnCopingWest.receiveShadow = true;
   scene.add(lowBrickReturnCopingWest);
@@ -667,7 +667,7 @@ export function buildRaisedFlagstonePatio(
   };
 
   const rattanPatioSlab = new THREE.Mesh(
-    applyPatioFlagstoneUVs(new THREE.BoxGeometry(8.65, 0.16, 3.15), -0.075, 0.01, 5.525, 1.8, 1.8),
+    applyPatioFlagstoneUVs(new THREE.BoxGeometry(8.65, 0.148, 3.15), -0.075, 0.01, 5.525, 1.8, 1.8),
     rivenYorkstonePatioMat
   );
   rattanPatioSlab.name = 'courtyard.rattanPatioSlab';
@@ -681,26 +681,26 @@ export function buildRaisedFlagstonePatio(
   for (const [bx, bz, bw, bd] of [
     [-0.075, 4.05, 8.63, 0.18],
     [-0.075, 7.00, 8.63, 0.18],
-    [-4.30, 5.525, 0.18, 2.77],
-    [4.15, 5.525, 0.18, 2.77],
-    [-1.52, 5.525, 0.16, 2.77],
+    [-4.30, 5.525, 0.18, 2.762],
+    [4.15, 5.525, 0.18, 2.762],
+    [-1.52, 5.525, 0.16, 2.762],
   ] as const) {
     const borderStrip = new THREE.Mesh(
-      applyCourtyardBrickUVs(new THREE.BoxGeometry(bw, 0.014, bd), bx, 0.09, bz),
+      applyCourtyardBrickUVs(new THREE.BoxGeometry(bw, 0.012, bd), bx, 0.094, bz),
       brickSoldierCopingMat
     );
     if (!borderStrip.name) borderStrip.name = 'courtyard.rattanPatio.borderStrip';
-    borderStrip.position.set(bx, 0.09, bz);
+    borderStrip.position.set(bx, 0.094, bz);
     borderStrip.receiveShadow = true;
     patioBrickBorderGroup.add(borderStrip);
   }
 
   const herringboneInlaySlab = new THREE.Mesh(
-    applyPatioFlagstoneUVs(new THREE.BoxGeometry(2.54, 0.015, 2.72), -2.90, 0.091, 5.525, 1.35, 1.35),
+    applyPatioFlagstoneUVs(new THREE.BoxGeometry(2.54, 0.012, 2.72), -2.90, 0.094, 5.525, 1.35, 1.35),
     herringboneBrickMat
   );
   herringboneInlaySlab.name = 'courtyard.rattanPatioSlab.herringboneInlay';
-  herringboneInlaySlab.position.set(-2.90, 0.091, 5.525);
+  herringboneInlaySlab.position.set(-2.90, 0.094, 5.525);
   herringboneInlaySlab.receiveShadow = true;
   patioBrickBorderGroup.add(herringboneInlaySlab);
 
@@ -718,7 +718,7 @@ export function buildRaisedFlagstonePatio(
         applyPatioFlagstoneUVs(
           new THREE.BoxGeometry(colW - 0.025, 0.012, rowD - 0.025),
           cx,
-          0.091,
+          0.094,
           cz,
           1.8,
           1.8
@@ -726,7 +726,7 @@ export function buildRaisedFlagstonePatio(
         (r + c) % 2 === 0 ? rivenYorkstonePatioMat : rivenYorkstoneAccentMat
       );
       if (!reliefSlab.name) reliefSlab.name = 'courtyard.rattanPatio.reliefSlab';
-      reliefSlab.position.set(cx, 0.091, cz);
+      reliefSlab.position.set(cx, 0.094, cz);
       reliefSlab.receiveShadow = true;
       patioBrickBorderGroup.add(reliefSlab);
       rX += colW + 0.04;
@@ -736,21 +736,21 @@ export function buildRaisedFlagstonePatio(
 
   for (const stepX of [-1.1, 3.1]) {
     const brickRiser = new THREE.Mesh(
-      applyCourtyardBrickUVs(new THREE.BoxGeometry(1.3, 0.11, 0.30), stepX, 0.015, 3.84),
+      applyCourtyardBrickUVs(new THREE.BoxGeometry(1.3, 0.1, 0.24), stepX, 0.01, 3.82),
       brickWallMat
     );
     if (!brickRiser.name) brickRiser.name = 'courtyard.rattanPatio.brickRiser';
-    brickRiser.position.set(stepX, 0.015, 3.84);
+    brickRiser.position.set(stepX, 0.01, 3.82);
     brickRiser.castShadow = true;
     brickRiser.receiveShadow = true;
     patioBrickBorderGroup.add(brickRiser);
 
     const yorkstoneTread = new THREE.Mesh(
-      applyPatioFlagstoneUVs(new THREE.BoxGeometry(1.34, 0.036, 0.34), stepX, 0.082, 3.84, 1.5, 1.5),
+      applyPatioFlagstoneUVs(new THREE.BoxGeometry(1.34, 0.032, 0.26), stepX, 0.08, 3.82, 1.5, 1.5),
       rivenYorkstonePatioMat
     );
     if (!yorkstoneTread.name) yorkstoneTread.name = 'courtyard.rattanPatio.yorkstoneTread';
-    yorkstoneTread.position.set(stepX, 0.082, 3.84);
+    yorkstoneTread.position.set(stepX, 0.08, 3.82);
     yorkstoneTread.castShadow = true;
     yorkstoneTread.receiveShadow = true;
     patioBrickBorderGroup.add(yorkstoneTread);
@@ -768,26 +768,26 @@ export function buildRaisedFlagstonePatio(
   scene.add(patioSouthBrickWall);
 
   const patioSouthBrickCoping = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(9.82, 0.045, 0.22), 0.42, 0.21, 7.82),
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(9.82, 0.045, 0.22), 0.42, 0.2165, 7.82),
     brickSoldierCopingMat
   );
   if (!patioSouthBrickCoping.name) patioSouthBrickCoping.name = 'courtyard.rattanPatio.patioSouthBrickCoping';
-  patioSouthBrickCoping.position.set(0.42, 0.21, 7.82);
+  patioSouthBrickCoping.position.set(0.42, 0.2165, 7.82);
   patioSouthBrickCoping.castShadow = true;
   patioSouthBrickCoping.receiveShadow = true;
   scene.add(patioSouthBrickCoping);
 
   const patioSouthSoilBed = new THREE.Mesh(
-    new THREE.BoxGeometry(9.5, 0.2, 0.72),
+    new THREE.BoxGeometry(9.5, 0.18, 0.56),
     soilMat
   );
   if (!patioSouthSoilBed.name) patioSouthSoilBed.name = 'courtyard.rattanPatio.patioSouthSoilBed';
-  patioSouthSoilBed.position.set(0.35, 0.04, 7.42);
+  patioSouthSoilBed.position.set(0.35, 0.03, 7.42);
   patioSouthSoilBed.receiveShadow = true;
   scene.add(patioSouthSoilBed);
 
   const patioEastBrickWall = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.18, 0.28, 3.98), 5.2, 0.05, 5.84),
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.18, 0.28, 3.768), 5.2, 0.05, 5.84),
     brickWallMat
   );
   if (!patioEastBrickWall.name) patioEastBrickWall.name = 'courtyard.rattanPatio.patioEastBrickWall';
@@ -797,11 +797,11 @@ export function buildRaisedFlagstonePatio(
   scene.add(patioEastBrickWall);
 
   const patioEastSoilBed = new THREE.Mesh(
-    new THREE.BoxGeometry(0.92, 0.2, 3.85),
+    new THREE.BoxGeometry(0.84, 0.18, 3.12),
     soilMat
   );
   if (!patioEastSoilBed.name) patioEastSoilBed.name = 'courtyard.rattanPatio.patioEastSoilBed';
-  patioEastSoilBed.position.set(4.68, 0.04, 5.84);
+  patioEastSoilBed.position.set(4.68, 0.03, 5.54);
   patioEastSoilBed.receiveShadow = true;
   scene.add(patioEastSoilBed);
 
@@ -911,7 +911,7 @@ export function buildRaisedFlagstonePatio(
   ] as const) {
     const potGroup = new THREE.Group();
     potGroup.name = 'courtyard.rattanPatioSlab.plantedPot';
-    potGroup.position.set(px, 0.08, pz);
+    potGroup.position.set(px, pz > 7.2 ? 0.125 : 0.105, pz);
 
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, potH, 16), pMat);
     if (!pot.name) pot.name = 'courtyard.rattanPatio.pot';

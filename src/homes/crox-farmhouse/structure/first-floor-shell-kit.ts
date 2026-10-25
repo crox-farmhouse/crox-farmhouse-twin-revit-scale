@@ -160,11 +160,19 @@ export function createFirstFloorShellKit(
       readonly capMaterial?: THREE.Material;
     }
   ): void => {
-    const h = yTop - yBottom;
-    const cy = (yBottom + yTop) / 2;
+    const effYBottom =
+      Math.abs(yBottom - floorBaseY) < 0.003 ? floorBaseY + 0.004 : yBottom;
+    const h = yTop - effYBottom;
+    const cy = (effYBottom + yTop) / 2;
 
     const wallId = `firstFloor.interiorWall.${++ffIntWallSeq}`;
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    const includeTopCap =
+      !options?.skipCap && Math.abs(yTop - upperWallTopY) < 0.05;
+    const capMat = options?.capMaterial ?? wallCapMat;
+    const resolvedMat: THREE.Material | THREE.Material[] = includeTopCap
+      ? [mat, mat, capMat, mat, mat, mat]
+      : mat;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), resolvedMat);
     mesh.name = wallId;
     mesh.userData.isArchitecturalShell = true;
     mesh.position.set(x, cy, z);
@@ -172,23 +180,13 @@ export function createFirstFloorShellKit(
     mesh.receiveShadow = true;
     scene.add(mesh);
 
-    if (!options?.skipCap && Math.abs(yTop - upperWallTopY) < 0.05) {
-      const cap = new THREE.Mesh(
-        new THREE.BoxGeometry(w + 0.004, 0.025, d + 0.004),
-        options?.capMaterial ?? wallCapMat
-      );
-      cap.name = `${wallId}.cap`;
-      cap.userData.isArchitecturalShell = true;
-      cap.position.set(x, upperWallTopY + 0.012, z);
-      scene.add(cap);
-    }
-
     const effFloorY = options?.floorY ?? floorTopY;
     if (!options?.skipSkirting && yBottom <= effFloorY + 0.05 && h > 1.2) {
-      const baseH = 0.122;
+      const floorGap = 0.004;
+      const wallGap = 0.004;
+      const baseH = 0.114;
       const capH = 0.024;
-      const skirtT = 0.022;
-      const capT = 0.016;
+      const skirtT = 0.020;
       const sides = options?.skirtingSides ?? ([-1, 1] as const);
       if (w >= d) {
         const sMin = options?.skirtingMin ?? x - w / 2;
@@ -197,15 +195,15 @@ export function createFirstFloorShellKit(
         const sCx = (sMin + sMax) / 2;
         if (sW > 0.01) {
           for (const side of sides) {
-            const faceZ = z + side * (d / 2 + skirtT / 2 - 0.002);
-            const capZ = z + side * (d / 2 + capT / 2 - 0.002);
+            const faceZ = z + side * (d / 2 + wallGap + skirtT / 2);
+            const capZ = z + side * (d / 2 + wallGap + 0.008);
             const skirt = new THREE.Mesh(
               new THREE.BoxGeometry(sW, baseH, skirtT),
               antiqueOakSkirtingMat
             );
             skirt.name = `${wallId}.skirting.${side < 0 ? "north" : "south"}`;
             skirt.userData.isArchitecturalShell = true;
-            skirt.position.set(sCx, effFloorY + baseH / 2, faceZ);
+            skirt.position.set(sCx, effFloorY + floorGap + baseH / 2, faceZ);
             skirt.castShadow = true;
             skirt.receiveShadow = true;
             scene.add(skirt);
@@ -216,7 +214,7 @@ export function createFirstFloorShellKit(
             );
             skirtCap.name = `${wallId}.skirtingCap.${side < 0 ? "north" : "south"}`;
             skirtCap.userData.isArchitecturalShell = true;
-            skirtCap.position.set(sCx, effFloorY + baseH + capH / 2, capZ);
+            skirtCap.position.set(sCx, effFloorY + 0.122 + capH / 2, capZ);
             skirtCap.castShadow = true;
             skirtCap.receiveShadow = true;
             scene.add(skirtCap);
@@ -229,15 +227,15 @@ export function createFirstFloorShellKit(
         const sCz = (sMin + sMax) / 2;
         if (sD > 0.01) {
           for (const side of sides) {
-            const faceX = x + side * (w / 2 + skirtT / 2 - 0.002);
-            const capX = x + side * (w / 2 + capT / 2 - 0.002);
+            const faceX = x + side * (w / 2 + wallGap + skirtT / 2);
+            const capX = x + side * (w / 2 + wallGap + 0.008);
             const skirt = new THREE.Mesh(
               new THREE.BoxGeometry(skirtT, baseH, sD),
               antiqueOakSkirtingMat
             );
             skirt.name = `${wallId}.skirting.${side < 0 ? "west" : "east"}`;
             skirt.userData.isArchitecturalShell = true;
-            skirt.position.set(faceX, effFloorY + baseH / 2, sCz);
+            skirt.position.set(faceX, effFloorY + floorGap + baseH / 2, sCz);
             skirt.castShadow = true;
             skirt.receiveShadow = true;
             scene.add(skirt);
@@ -248,7 +246,7 @@ export function createFirstFloorShellKit(
             );
             skirtCap.name = `${wallId}.skirtingCap.${side < 0 ? "west" : "east"}`;
             skirtCap.userData.isArchitecturalShell = true;
-            skirtCap.position.set(capX, effFloorY + baseH + capH / 2, sCz);
+            skirtCap.position.set(capX, effFloorY + 0.122 + capH / 2, sCz);
             skirtCap.castShadow = true;
             skirtCap.receiveShadow = true;
             scene.add(skirtCap);
@@ -318,10 +316,11 @@ export function createFirstFloorShellKit(
     const effMinX = cx - w / 2;
     const effMaxX = cx + w / 2;
 
-    const baseH = 0.122;
+    const floorGap = 0.004;
+    const wallGap = 0.004;
+    const baseH = 0.114;
     const capH = 0.024;
-    const skirtT = 0.022;
-    const capT = 0.016;
+    const skirtT = 0.020;
     const skirtGeo = isAlongX
       ? new THREE.BoxGeometry(sSpan, baseH, skirtT)
       : shearGeometryAlongZ(new THREE.BoxGeometry(skirtT, baseH, sSpan), slopeXPerZ);
@@ -330,17 +329,17 @@ export function createFirstFloorShellKit(
     skirt.name = skirtId;
     const sx =
       interiorSide === 'east'
-        ? effMaxX + skirtT / 2 - 0.002
+        ? effMaxX + wallGap + skirtT / 2
         : interiorSide === 'west'
-          ? effMinX - skirtT / 2 + 0.002
+          ? effMinX - wallGap - skirtT / 2
           : cx;
     const sz =
       interiorSide === 'south'
-        ? maxZ + skirtT / 2 - 0.002
+        ? maxZ + wallGap + skirtT / 2
         : interiorSide === 'north'
-          ? minZ - skirtT / 2 + 0.002
+          ? minZ - wallGap - skirtT / 2
           : cz;
-    skirt.position.set(sx, effFloorY + baseH / 2, sz);
+    skirt.position.set(sx, effFloorY + floorGap + baseH / 2, sz);
     skirt.castShadow = true;
     skirt.receiveShadow = true;
     tagUpperCutawayWall(skirt, descriptor);
@@ -355,17 +354,17 @@ export function createFirstFloorShellKit(
     skirtCap.name = `${skirtId}.cap`;
     const capSx =
       interiorSide === 'east'
-        ? effMaxX + capT / 2 - 0.002
+        ? effMaxX + wallGap + 0.008
         : interiorSide === 'west'
-          ? effMinX - capT / 2 + 0.002
+          ? effMinX - wallGap - 0.008
           : cx;
     const capSz =
       interiorSide === 'south'
-        ? maxZ + capT / 2 - 0.002
+        ? maxZ + wallGap + 0.008
         : interiorSide === 'north'
-          ? minZ - capT / 2 + 0.002
+          ? minZ - wallGap - 0.008
           : cz;
-    skirtCap.position.set(capSx, effFloorY + baseH + capH / 2, capSz);
+    skirtCap.position.set(capSx, effFloorY + 0.122 + capH / 2, capSz);
     skirtCap.castShadow = true;
     skirtCap.receiveShadow = true;
     tagUpperCutawayWall(skirtCap, descriptor);
@@ -395,9 +394,15 @@ export function createFirstFloorShellKit(
   ): void => {
     const w = maxX - minX;
     const d = maxZ - minZ;
-    const h = yTop - yBottom;
+    const effYBottom =
+      Math.abs(yBottom - floorBaseY) < 0.003
+        ? floorBaseY + 0.004
+        : Math.abs(yBottom - 1.625) < 0.003
+          ? 1.629
+          : yBottom;
+    const h = yTop - effYBottom;
     const rawCx = (minX + maxX) / 2;
-    const cy = (yBottom + yTop) / 2;
+    const cy = (effYBottom + yTop) / 2;
     const cz = (minZ + maxZ) / 2;
     const isAlongX = interiorSide === 'north' || interiorSide === 'south';
     const isAngledEastCourtyardWall =
@@ -429,12 +434,14 @@ export function createFirstFloorShellKit(
     applyWorldSpaceBrickUVs(geo, cx, cy, cz);
     shearGeometryAlongZ(geo, slopeXPerZ);
 
+    const includeTopCap =
+      !options?.skipCap && Math.abs(yTop - upperWallTopY) < 0.05;
     const materials: THREE.Material[] = [
       interiorSide === 'east' ? warmRoomPlasterMat : exteriorBrickMat,
       interiorSide === 'west' || (interiorSide === 'north' && Math.abs(minX - -16.92) < 0.05)
         ? warmRoomPlasterMat
         : exteriorBrickMat,
-      exteriorBrickMat,
+      includeTopCap ? wallCapMat : exteriorBrickMat,
       exteriorBrickMat,
       interiorSide === 'south' ? warmRoomPlasterMat : exteriorBrickMat,
       interiorSide === 'north' ? warmRoomPlasterMat : exteriorBrickMat,
@@ -448,20 +455,6 @@ export function createFirstFloorShellKit(
     brickMesh.receiveShadow = true;
     tagUpperCutawayWall(brickMesh, descriptor);
     scene.add(brickMesh);
-
-    if (!options?.skipCap && Math.abs(yTop - upperWallTopY) < 0.05) {
-      const cap = new THREE.Mesh(
-        shearGeometryAlongZ(
-          new THREE.BoxGeometry(Math.max(0.02, w - 0.012), 0.016, Math.max(0.02, d - 0.012)),
-          slopeXPerZ
-        ),
-        wallCapMat
-      );
-      cap.name = `${wallId}.cap`;
-      cap.position.set(cx, upperWallTopY - 0.006, cz);
-      tagUpperCutawayWall(cap, descriptor);
-      scene.add(cap);
-    }
 
     const effFloorY = options?.floorY ?? floorTopY;
     if (
@@ -566,28 +559,35 @@ export function createFirstFloorShellKit(
     winGroup.add(sillMesh);
 
     // Interior plastered window reveal linings (jambs + head soffit) and painted timber window board
-    const intRevealDepthZ = Math.max(0.14, Math.abs(intFaceZ - frameZ));
-    const intRevealCenterZ = (frameZ + intFaceZ) * 0.5;
+    const frameDepth = 0.11;
+    const fullRevealDepthZ = Math.max(0.14, Math.abs(intFaceZ - frameZ));
+    const intRevealStartZ = frameZ + intSignZ * (frameDepth * 0.5 + 0.004);
+    const intRevealEndZ = intFaceZ - intSignZ * 0.004;
+    const intRevealDepthZ = Math.max(0.024, Math.abs(intRevealEndZ - intRevealStartZ));
+    const intRevealCenterZ = (intRevealStartZ + intRevealEndZ) * 0.5;
+    const revealJambBotY = effSillY + 0.032;
+    const revealJambTopY = effHeadY - 0.020;
+    const revealJambH = Math.max(0.08, revealJambTopY - revealJambBotY);
     for (const sideX of [-1, 1] as const) {
       const revealJamb = new THREE.Mesh(
-        new THREE.BoxGeometry(0.012, winH, intRevealDepthZ),
+        new THREE.BoxGeometry(0.012, revealJambH, intRevealDepthZ),
         warmRoomPlasterMat
       );
       revealJamb.name = `${winId}.revealJamb.${sideX < 0 ? "left" : "right"}`;
       revealJamb.position.set(
-        winCenterX + sideX * (winWidth * 0.5 - 0.005),
-        cy,
+        winCenterX + sideX * (winWidth * 0.5 - 0.010),
+        (revealJambBotY + revealJambTopY) * 0.5,
         intRevealCenterZ
       );
       revealJamb.receiveShadow = true;
       winGroup.add(revealJamb);
     }
     const revealHead = new THREE.Mesh(
-      new THREE.BoxGeometry(winWidth, 0.012, intRevealDepthZ),
+      new THREE.BoxGeometry(winWidth - 0.008, 0.012, intRevealDepthZ),
       warmRoomPlasterMat
     );
     revealHead.name = `${winId}.revealHead`;
-    revealHead.position.set(winCenterX, effHeadY - 0.005, intRevealCenterZ);
+    revealHead.position.set(winCenterX, effHeadY - 0.010, intRevealCenterZ);
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
@@ -599,7 +599,7 @@ export function createFirstFloorShellKit(
       headY: effHeadY,
       interiorWallFaceCoord: intFaceZ,
       inwardSign: intSignZ as 1 | -1,
-      revealDepth: intRevealDepthZ,
+      revealDepth: fullRevealDepthZ,
       material: antiqueOakSkirtingMat,
       namePrefix: winId,
       trimFaceOffset: options?.trimFaceOffset,
@@ -607,7 +607,6 @@ export function createFirstFloorShellKit(
       skipArchitrave: options?.skipArchitrave,
     });
 
-    const frameDepth = 0.11;
     const topRail = new THREE.Mesh(
       new THREE.BoxGeometry(winWidth, 0.05, frameDepth),
       windowFrameMat
@@ -668,7 +667,7 @@ export function createFirstFloorShellKit(
           winGroup.add(fStile);
         }
         const lowBar = new THREE.Mesh(
-          new THREE.BoxGeometry(lightClearW, 0.02, sashThickZ * 0.78),
+          new THREE.BoxGeometry(lightClearW - sashStileW * 2, 0.02, sashThickZ * 0.92),
           windowFrameMat
         );
         lowBar.name = `${winId}.centreGlazingBar`;
@@ -677,7 +676,7 @@ export function createFirstFloorShellKit(
       } else {
         for (const sx of [-1, 1] as const) {
           const sStile = new THREE.Mesh(
-            new THREE.BoxGeometry(sashStileW, lightClearH, sashThickZ),
+            new THREE.BoxGeometry(sashStileW, lightClearH - sashStileW * 2, sashThickZ),
             windowFrameMat
           );
           sStile.name = `${winId}.sash.${p + 1}.stile.${sx < 0 ? 'left' : 'right'}`;
@@ -703,7 +702,7 @@ export function createFirstFloorShellKit(
               : ([0.52] as const);
           for (let bIdx = 0; bIdx < barFracs.length; bIdx++) {
             const hBar = new THREE.Mesh(
-              new THREE.BoxGeometry(lightClearW - sashStileW, 0.02, sashThickZ * 0.8),
+              new THREE.BoxGeometry(lightClearW - sashStileW * 2, 0.02, sashThickZ * 0.92),
               windowFrameMat
             );
             hBar.name = `${winId}.sash.${p + 1}.glazingBar.${bIdx + 1}`;
@@ -730,7 +729,7 @@ export function createFirstFloorShellKit(
     }
 
     const glass = new THREE.Mesh(
-      new THREE.BoxGeometry(winWidth - 0.06, winH - 0.08, 0.016),
+      new THREE.BoxGeometry(winWidth - 0.104, winH - 0.116, 0.010),
       windowGlassMat
     );
     glass.name = `${winId}.glass`;
@@ -833,21 +832,26 @@ export function createFirstFloorShellKit(
     winGroup.add(sillMesh);
 
     // Interior plastered window reveal linings (jambs + head soffit) and painted timber window board
-    const intRevealDepthX = wallDepthX * 0.52;
-    const intRevealCenterX = cx + intSignX * (wallDepthX * 0.24);
+    const frameDepth = 0.11;
+    const intRevealOffsetX = ((frameDepth * 0.5 + 0.004) + (wallDepthX * 0.5 - 0.004)) * 0.5;
+    const intRevealDepthX = Math.max(0.024, wallDepthX * 0.5 - frameDepth * 0.5 - 0.008);
+    const intRevealCenterX = cx + intSignX * intRevealOffsetX;
+    const revealJambBotY = effSillY + 0.032;
+    const revealJambTopY = effHeadY - 0.020;
+    const revealJambH = Math.max(0.08, revealJambTopY - revealJambBotY);
     for (const sideZ of [-1, 1] as const) {
-      const jambZ = winCenterZ + sideZ * (winWidth * 0.5 - 0.005);
+      const jambZ = winCenterZ + sideZ * (winWidth * 0.5 - 0.010);
       const jambCx = isAngledEastCourtyardWall
         ? getEastCourtyardWallCenterX(jambZ)
         : rawCx;
       const revealJamb = new THREE.Mesh(
-        new THREE.BoxGeometry(intRevealDepthX, winH, 0.012),
+        new THREE.BoxGeometry(intRevealDepthX, revealJambH, 0.012),
         warmRoomPlasterMat
       );
       revealJamb.name = `${winId}.revealJamb.${sideZ < 0 ? "north" : "south"}`;
       revealJamb.position.set(
-        jambCx + intSignX * (wallDepthX * 0.24),
-        cy,
+        jambCx + intSignX * intRevealOffsetX,
+        (revealJambBotY + revealJambTopY) * 0.5,
         jambZ
       );
       revealJamb.receiveShadow = true;
@@ -855,13 +859,13 @@ export function createFirstFloorShellKit(
     }
     const revealHead = new THREE.Mesh(
       shearGeometryAlongZ(
-        new THREE.BoxGeometry(intRevealDepthX, 0.012, winWidth),
+        new THREE.BoxGeometry(intRevealDepthX, 0.012, winWidth - 0.008),
         slopeXPerZ
       ),
       warmRoomPlasterMat
     );
     revealHead.name = `${winId}.revealHead`;
-    revealHead.position.set(intRevealCenterX, effHeadY - 0.005, winCenterZ);
+    revealHead.position.set(intRevealCenterX, effHeadY - 0.010, winCenterZ);
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
@@ -873,7 +877,7 @@ export function createFirstFloorShellKit(
       headY: effHeadY,
       interiorWallFaceCoord: cx + intSignX * (wallDepthX * 0.5),
       inwardSign: intSignX as 1 | -1,
-      revealDepth: intRevealDepthX,
+      revealDepth: wallDepthX * 0.52,
       material: antiqueOakSkirtingMat,
       namePrefix: winId,
       slopeXPerZ,
@@ -882,7 +886,6 @@ export function createFirstFloorShellKit(
       skipArchitrave: options?.skipArchitrave,
     });
 
-    const frameDepth = 0.11;
     const topRail = new THREE.Mesh(
       shearGeometryAlongZ(
         new THREE.BoxGeometry(frameDepth, 0.05, winWidth),
@@ -961,7 +964,7 @@ export function createFirstFloorShellKit(
         }
         const lowBar = new THREE.Mesh(
           shearGeometryAlongZ(
-            new THREE.BoxGeometry(sashThickX * 0.78, 0.02, lightClearW),
+            new THREE.BoxGeometry(sashThickX * 0.92, 0.02, lightClearW - sashStileW * 2),
             slopeXPerZ
           ),
           windowFrameMat
@@ -974,7 +977,7 @@ export function createFirstFloorShellKit(
           const stZ = lightCenterZ + sz * (lightClearW * 0.5 - sashStileW * 0.5);
           const stCx = isAngledEastCourtyardWall ? getEastCourtyardWallCenterX(stZ) : rawCx;
           const sStile = new THREE.Mesh(
-            new THREE.BoxGeometry(sashThickX, lightClearH, sashStileW),
+            new THREE.BoxGeometry(sashThickX, lightClearH - sashStileW * 2, sashStileW),
             windowFrameMat
           );
           sStile.name = `${winId}.sash.${p + 1}.stile.${sz < 0 ? 'north' : 'south'}`;
@@ -1004,7 +1007,7 @@ export function createFirstFloorShellKit(
           for (let bIdx = 0; bIdx < barFracs.length; bIdx++) {
             const hBar = new THREE.Mesh(
               shearGeometryAlongZ(
-                new THREE.BoxGeometry(sashThickX * 0.8, 0.02, lightClearW - sashStileW),
+                new THREE.BoxGeometry(sashThickX * 0.92, 0.02, lightClearW - sashStileW * 2),
                 slopeXPerZ
               ),
               windowFrameMat
@@ -1037,7 +1040,7 @@ export function createFirstFloorShellKit(
 
     const glass = new THREE.Mesh(
       shearGeometryAlongZ(
-        new THREE.BoxGeometry(0.016, winH - 0.08, winWidth - 0.06),
+        new THREE.BoxGeometry(0.010, winH - 0.116, winWidth - 0.104),
         slopeXPerZ
       ),
       windowGlassMat
@@ -1083,13 +1086,17 @@ export function createFirstFloorShellKit(
     const lockRailY = -0.1;
 
     const populateFourPanelLeaf = (doorObj: THREE.Group, alongZ: boolean): void => {
-      const recessW = alongZ ? 0.028 : leafW;
-      const recessD = alongZ ? leafW : 0.028;
+      const innerSpanW = Math.max(0.1, leafW - stileW * 2);
+      const coreH = Math.max(0.2, leafH - topRailH - botRailH);
+      const coreOffsetY = (botRailH - topRailH) * 0.5;
+      const recessW = alongZ ? 0.028 : innerSpanW;
+      const recessD = alongZ ? innerSpanW : 0.028;
       const recessCore = new THREE.Mesh(
-        new THREE.BoxGeometry(recessW, leafH, recessD),
+        new THREE.BoxGeometry(recessW, coreH, recessD),
         timberDoorMat
       );
       recessCore.name = 'interiorDoor.recessCore';
+      recessCore.position.set(0, coreOffsetY, 0);
       recessCore.castShadow = true;
       recessCore.receiveShadow = true;
       doorObj.add(recessCore);
@@ -1106,7 +1113,6 @@ export function createFirstFloorShellKit(
         doorObj.add(stile);
       }
 
-      const innerSpanW = leafW - stileW * 2;
       for (const [ry, rh] of [
         [leafH * 0.5 - topRailH * 0.5, topRailH],
         [lockRailY, lockRailH],
@@ -1305,26 +1311,29 @@ export function createFirstFloorShellKit(
       return geo;
     };
 
-    // Recessed center backing panel (set back 4mm so front has a 6mm Shaker recess step)
+    // Recessed center backing panel (set back 4mm and inset strictly inside Shaker stiles & top/bottom rails)
     const panelOffsetN = -normalSign * 0.004;
+    const innerW = Math.max(0.06, w - stileW * 2);
+    const flatPanelH = Math.max(0.06, h - topRailH - botRailH);
+    const flatPanelMidY = (botRailH - topRailH) * 0.5;
     const panelGeo = isRaked
       ? buildRakedDoorElementGeo(
-          -w / 2 + 0.006,
-          w / 2 - 0.006,
-          () => yBot + 0.006,
-          (u) => getTopYAtU(u) - 0.006,
+          -innerW / 2,
+          innerW / 2,
+          () => yBot + botRailH,
+          (u) => getTopYAtU(u) - topRailH,
           panelT
         )
       : new THREE.BoxGeometry(
-          alongZ ? panelT : w - 0.012,
-          h - 0.012,
-          alongZ ? w - 0.012 : panelT
+          alongZ ? panelT : innerW,
+          flatPanelH,
+          alongZ ? innerW : panelT
         );
     const panelMesh = new THREE.Mesh(panelGeo, wardrobeMat);
     panelMesh.name = `${prefix}.recessedPanel`;
     panelMesh.position.set(
       alongZ ? panelOffsetN : 0,
-      0,
+      isRaked ? 0 : flatPanelMidY,
       alongZ ? 0 : panelOffsetN
     );
     panelMesh.castShadow = true;
@@ -1354,7 +1363,6 @@ export function createFirstFloorShellKit(
     }
 
     // Top, middle, and bottom horizontal Shaker rails
-    const innerW = Math.max(0.06, w - stileW * 2 + 0.002);
     if (isRaked) {
       const topRailGeo = buildRakedDoorElementGeo(
         -innerW / 2,
@@ -1486,9 +1494,19 @@ export function createFirstFloorShellKit(
     const frontZ = -depth / 2;
 
     // 1. Single one-piece full-width plastered chimney breast body (Issue #1 & #5: zero split lines on face!)
+    const breastBodyMat: THREE.Material | THREE.Material[] = includeTopCap
+      ? [
+          warmRoomPlasterMat,
+          warmRoomPlasterMat,
+          wallCapMat,
+          warmRoomPlasterMat,
+          warmRoomPlasterMat,
+          warmRoomPlasterMat,
+        ]
+      : warmRoomPlasterMat;
     const breastBodyMesh = new THREE.Mesh(
       new THREE.BoxGeometry(width, totalH, depth),
-      warmRoomPlasterMat
+      breastBodyMat
     );
     breastBodyMesh.name = `${namePrefix}.upperBreast`;
     breastBodyMesh.userData.isArchitecturalShell = true;
@@ -1496,17 +1514,6 @@ export function createFirstFloorShellKit(
     breastBodyMesh.castShadow = true;
     breastBodyMesh.receiveShadow = true;
     rootGroup.add(breastBodyMesh);
-
-    if (includeTopCap) {
-      const capMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(width + 0.004, 0.025, depth + 0.004),
-        wallCapMat
-      );
-      capMesh.name = `${namePrefix}.topCap`;
-      capMesh.userData.isArchitecturalShell = true;
-      capMesh.position.set(0, topY + 0.012, 0);
-      rootGroup.add(capMesh);
-    }
 
     // =========================================================================
     // 2. COMPACT LOW-PROFILE 1800s FARMHOUSE BLACK CAST-IRON BEDROOM FIREPLACE
@@ -1525,8 +1532,10 @@ export function createFirstFloorShellKit(
 
     // A. Small Honed Black Slate Hearth Slab (`0.62m` wide × `0.13m` shallow projection in front of breast)
     const hearthW = 0.62;
-    const hearthH = 0.02;
+    const hearthH = 0.018;
     const hearthFrontProj = 0.13;
+    const hearthGapZ = 0.004;
+    const hearthFloorGapY = 0.004;
     const hearthSlab = new THREE.Mesh(
       new THREE.BoxGeometry(hearthW, hearthH, hearthFrontProj),
       blackHearthMat
@@ -1534,25 +1543,25 @@ export function createFirstFloorShellKit(
     hearthSlab.name = `${namePrefix}.fireplace.hearth`;
     hearthSlab.position.set(
       0,
-      floorY + hearthH / 2,
-      frontZ - hearthFrontProj / 2 - 0.001
+      floorY + hearthFloorGapY + hearthH / 2,
+      frontZ - hearthGapZ - hearthFrontProj / 2
     );
     hearthSlab.castShadow = true;
     hearthSlab.receiveShadow = true;
     fpGroup.add(hearthSlab);
 
-    // Low black cast-iron fender kerb around the front & sides of the small black hearth
+    // Low black cast-iron fender kerb around the outer perimeter of the hearth slab
     const kerbH = 0.026;
     const kerbT = 0.018;
     const frontKerb = new THREE.Mesh(
-      new THREE.BoxGeometry(hearthW + 0.008, kerbH, kerbT),
+      new THREE.BoxGeometry(hearthW + kerbT * 2 + 0.008, kerbH, kerbT),
       blackCastIronMat
     );
     frontKerb.name = `${namePrefix}.fireplace.hearthKerb`;
     frontKerb.position.set(
       0,
-      floorY + kerbH / 2,
-      frontZ - hearthFrontProj + kerbT / 2 - 0.001
+      floorY + hearthFloorGapY + kerbH / 2,
+      frontZ - hearthGapZ - hearthFrontProj - 0.004 - kerbT / 2
     );
     frontKerb.castShadow = true;
     frontKerb.receiveShadow = true;
@@ -1560,29 +1569,29 @@ export function createFirstFloorShellKit(
 
     for (const sideSign of [-1, 1] as const) {
       const sideKerb = new THREE.Mesh(
-        new THREE.BoxGeometry(kerbT, kerbH, hearthFrontProj - kerbT),
+        new THREE.BoxGeometry(kerbT, kerbH, hearthFrontProj),
         blackCastIronMat
       );
       sideKerb.name = `${fpGroup.name}.hearthFender.side.${sideSign < 0 ? "left" : "right"}`;
       sideKerb.position.set(
-        sideSign * (hearthW / 2 - kerbT / 2 + 0.004),
-        floorY + kerbH / 2,
-        frontZ - (hearthFrontProj - kerbT) / 2 - 0.001
+        sideSign * (hearthW / 2 + 0.004 + kerbT / 2),
+        floorY + hearthFloorGapY + kerbH / 2,
+        frontZ - hearthGapZ - hearthFrontProj / 2
       );
       sideKerb.castShadow = true;
       sideKerb.receiveShadow = true;
       fpGroup.add(sideKerb);
     }
 
-    const surroundBaseY = floorY + hearthH;
+    const surroundBaseY = floorY + hearthFloorGapY + hearthH + 0.004;
 
     // B. Soot-Blackened Firebox Backplate framed inside the cast-iron surround
     const fireboxBack = new THREE.Mesh(
-      new THREE.BoxGeometry(openW, openH, 0.006),
+      new THREE.BoxGeometry(openW, openH, 0.004),
       sootFireboxMat
     );
     fireboxBack.name = `${namePrefix}.fireplace.fireboxBack`;
-    fireboxBack.position.set(0, surroundBaseY + openH / 2, frontZ - 0.004);
+    fireboxBack.position.set(0, surroundBaseY + openH / 2, frontZ - 0.006);
     fireboxBack.receiveShadow = true;
     fpGroup.add(fireboxBack);
 
@@ -1734,7 +1743,7 @@ export function createFirstFloorShellKit(
     registerPlateGeo.computeBoundingSphere();
     const registerPlate = new THREE.Mesh(registerPlateGeo, blackCastIronMat);
     registerPlate.name = `${namePrefix}.fireplace.registerPlate`;
-    registerPlate.position.set(0, surroundBaseY, frontZ - 0.018);
+    registerPlate.position.set(0, surroundBaseY, frontZ - 0.024);
     registerPlate.castShadow = true;
     registerPlate.receiveShadow = true;
     fpGroup.add(registerPlate);
@@ -1742,29 +1751,29 @@ export function createFirstFloorShellKit(
     // Shallow cast-iron ashpan fretwork base + 4 horizontal grate bars + unlit coal bed tucked inside the surround depth
     const grateW = innerOpenW + 0.016;
     const ashFret = new THREE.Mesh(
-      new THREE.BoxGeometry(grateW, 0.052, 0.018),
+      new THREE.BoxGeometry(grateW, 0.052, 0.012),
       blackCastIronMat
     );
     ashFret.name = `${namePrefix}.fireplace.ashFret`;
-    ashFret.position.set(0, surroundBaseY + 0.026, frontZ - 0.015);
+    ashFret.position.set(0, surroundBaseY + 0.026, frontZ - 0.02);
     ashFret.castShadow = true;
     fpGroup.add(ashFret);
 
     for (let b = 0; b < 4; b++) {
       const barY = surroundBaseY + 0.075 + b * 0.034;
       const grateBar = new THREE.Mesh(
-        new THREE.BoxGeometry(grateW, 0.011, 0.012),
+        new THREE.BoxGeometry(grateW, 0.011, 0.008),
         blackCastIronMat
       );
       grateBar.name = `${namePrefix}.fireplace.grateBar`;
-      grateBar.position.set(0, barY, frontZ - 0.019);
+      grateBar.position.set(0, barY, frontZ - 0.025);
       grateBar.castShadow = true;
       fpGroup.add(grateBar);
     }
 
     for (const sideSign of [-1, 1] as const) {
       const standard = new THREE.Mesh(
-        new THREE.BoxGeometry(0.018, 0.2, 0.018),
+        new THREE.BoxGeometry(0.018, 0.2, 0.014),
         blackCastIronMat
       );
       standard.name = `${namePrefix}.fireplace.grateStandard.${sideSign < 0 ? "left" : "right"}`;
@@ -1772,18 +1781,18 @@ export function createFirstFloorShellKit(
       standard.position.set(
         sideSign * (grateW / 2 - 0.009),
         surroundBaseY + 0.1,
-        frontZ - 0.017
+        frontZ - 0.021
       );
       standard.castShadow = true;
       fpGroup.add(standard);
     }
 
     const coalBed = new THREE.Mesh(
-      new THREE.BoxGeometry(innerOpenW - 0.016, 0.11, 0.014),
+      new THREE.BoxGeometry(innerOpenW - 0.016, 0.1, 0.008),
       coalBedMat
     );
     coalBed.name = `${namePrefix}.fireplace.coalBed`;
-    coalBed.position.set(0, surroundBaseY + 0.105, frontZ - 0.011);
+    coalBed.position.set(0, surroundBaseY + 0.106, frontZ - 0.015);
     coalBed.receiveShadow = true;
     fpGroup.add(coalBed);
 

@@ -50,25 +50,25 @@ const sharedOakPegGeo = prepGeo(new THREE.CylinderGeometry(0.012, 0.012, 0.31, 8
 
 // Survey2Plan Win 1720246: 2.42m x 2.11m 3-panel sliding glazed screen (`S2P-Windows-SldingDoor3Panel`)
 const southWinW = 2.42;
-const southWinH = 2.11;
+const southWinH = 2.1;
 const numWindowPanes = 3;
 const paneW = southWinW / numWindowPanes;
 const sharedSouthWinStileGeo = prepGeo(new THREE.BoxGeometry(0.054, southWinH, 0.058));
-const sharedSouthWinRailGeo = prepGeo(new THREE.BoxGeometry(paneW, 0.062, 0.058));
+const sharedSouthWinRailGeo = prepGeo(new THREE.BoxGeometry(paneW - 0.116, 0.062, 0.05));
 const sharedSouthWinGlassGeo = prepGeo(
-  new THREE.BoxGeometry(paneW - 0.108, southWinH - 0.124, 0.016)
+  new THREE.BoxGeometry(paneW - 0.116, southWinH - 0.132, 0.012)
 );
 
 // Survey2Plan Win 1722895: 3.55m x 2.07m 4-panel sliding/bifold glazed doors
 const numBifoldLeaves = 4;
 const bifoldTotalWidth = 3.55;
 const bifoldLeafW = bifoldTotalWidth / numBifoldLeaves;
-const bifoldLeafH = 2.07;
+const bifoldLeafH = 2.062;
 const sharedBifoldStileGeo = prepGeo(new THREE.BoxGeometry(0.054, bifoldLeafH, 0.058));
-const sharedBifoldRailTopGeo = prepGeo(new THREE.BoxGeometry(bifoldLeafW, 0.058, 0.058));
-const sharedBifoldRailBotGeo = prepGeo(new THREE.BoxGeometry(bifoldLeafW, 0.068, 0.058));
+const sharedBifoldRailTopGeo = prepGeo(new THREE.BoxGeometry(bifoldLeafW - 0.116, 0.058, 0.05));
+const sharedBifoldRailBotGeo = prepGeo(new THREE.BoxGeometry(bifoldLeafW - 0.116, 0.068, 0.05));
 const sharedBifoldGlassGeo = prepGeo(
-  new THREE.BoxGeometry(bifoldLeafW - 0.09, bifoldLeafH - 0.11, 0.012)
+  new THREE.BoxGeometry(bifoldLeafW - 0.116, bifoldLeafH - 0.134, 0.012)
 );
 const sharedBifoldHingeKnuckleGeo = prepGeo(
   new THREE.CylinderGeometry(0.007, 0.007, 0.065, 8)
@@ -94,8 +94,8 @@ const sharedLionMouthRingGeo = prepGeo(new THREE.TorusGeometry(0.028, 0.006, 8, 
 const sharedUrnPlantCrownGeo = prepGeo(new THREE.SphereGeometry(0.28, 14, 12));
 const sharedUrnBloomGeo = prepGeo(new THREE.SphereGeometry(0.045, 8, 8));
 
-const sharedGrindstoneBeamGeo = prepGeo(new THREE.BoxGeometry(0.86, 0.14, 0.075));
-const sharedGrindstoneLegGeo = prepGeo(new THREE.BoxGeometry(0.07, 0.26, 0.07));
+const sharedGrindstoneBeamGeo = prepGeo(new THREE.BoxGeometry(0.86, 0.14, 0.078));
+const sharedGrindstoneLegGeo = prepGeo(new THREE.BoxGeometry(0.066, 0.142, 0.066));
 const sharedGrindstoneWheelGeo = prepGeo(new THREE.CylinderGeometry(0.36, 0.36, 0.13, 28));
 const sharedGrindstoneRingInnerGeo = prepGeo(new THREE.TorusGeometry(0.16, 0.006, 6, 24));
 const sharedGrindstoneRingOuterGeo = prepGeo(new THREE.TorusGeometry(0.26, 0.006, 6, 24));
@@ -112,9 +112,9 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
     color: 0xc8beae,
     roughness: 0.92,
   });
-  const rug = new THREE.Mesh(prepGeo(new THREE.BoxGeometry(2.35, 0.015, 1.8)), rugMat);
+  const rug = new THREE.Mesh(prepGeo(new THREE.BoxGeometry(2.35, 0.012, 1.8)), rugMat);
   rug.name = 'sitting.wovenRug';
-  rug.position.set(3.45, 0.008, 0.68);
+  rug.position.set(3.45, 0.01, 0.68);
   rug.receiveShadow = true;
   scene.add(rug);
 
@@ -147,7 +147,7 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   for (const cfg of chairConfigs) {
     const chair = new THREE.Group();
     chair.name = cfg.name;
-    chair.position.set(cfg.x, 0, cfg.z);
+    chair.position.set(cfg.x, 0.02, cfg.z);
     chair.rotation.y = cfg.rotY;
 
     const seat = new THREE.Mesh(sharedChairSeatGeo, linenMat);
@@ -212,7 +212,7 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   // Modern architectural cast-cement coffee table (monolithic drum plinth + thick slab top)
   const coffeeTable = new THREE.Group();
   coffeeTable.name = 'sitting.coffeeTable';
-  coffeeTable.position.set(3.45, 0, 1.101);
+  coffeeTable.position.set(3.45, 0.02, 1.101);
 
   const cementTex = createCementTexture();
   const cementMat = new THREE.MeshStandardMaterial({
@@ -232,17 +232,17 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
 
   // Recessed dark shadow-gap floor plinth
   const tablePlinth = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.24, 0.24, 0.035, 32)),
+    prepGeo(new THREE.CylinderGeometry(0.24, 0.24, 0.031, 32)),
     cementShadowPlinthMat
   );
   tablePlinth.name = 'sitting.coffeeTable.shadowPlinth';
-  tablePlinth.position.set(0, 0.0175, 0);
+  tablePlinth.position.set(0, 0.0155, 0);
   tablePlinth.receiveShadow = true;
   coffeeTable.add(tablePlinth);
 
   // Monolithic cylindrical cast-cement drum base
   const tableDrumBase = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.285, 0.295, 0.305, 36)),
+    prepGeo(new THREE.CylinderGeometry(0.285, 0.295, 0.3, 36)),
     cementMat
   );
   tableDrumBase.name = 'sitting.coffeeTable.drumBase';
@@ -257,7 +257,7 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
     cementMat
   );
   tableUnderBevel.name = 'sitting.coffeeTable.underBevelCollar';
-  tableUnderBevel.position.set(0, 0.348, 0);
+  tableUnderBevel.position.set(0, 0.35, 0);
   coffeeTable.add(tableUnderBevel);
 
   const tableTop = new THREE.Mesh(
@@ -265,7 +265,7 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
     cementMat
   );
   tableTop.name = 'sitting.coffeeTable.slabTop';
-  tableTop.position.set(0, 0.396, 0);
+  tableTop.position.set(0, 0.4025, 0);
   tableTop.castShadow = true;
   tableTop.receiveShadow = true;
   coffeeTable.add(tableTop);
@@ -275,7 +275,7 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
     new THREE.MeshStandardMaterial({ color: 0x324b61, roughness: 0.6 })
   );
   book.name = 'sitting.coffeeTable.artBook';
-  book.position.set(-0.06, 0.448, 0.03);
+  book.position.set(-0.06, 0.458, 0.03);
   book.rotation.y = 0.28;
   tagHighLod(book);
   coffeeTable.add(book);
@@ -285,7 +285,7 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
     new THREE.MeshStandardMaterial({ color: 0xf4efe6, roughness: 0.25 })
   );
   mug.name = 'sitting.coffeeTable.ceramicMug';
-  mug.position.set(0.11, 0.463, -0.05);
+  mug.position.set(0.11, 0.4815, -0.05);
   tagHighLod(mug);
   coffeeTable.add(mug);
 
@@ -367,11 +367,11 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
 
   // Thick Oak Threshold Sill at the base of the 4 white bifold doors
   const sill = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(bifoldTotalWidth + 0.04, 0.035, 0.26)),
+    prepGeo(new THREE.BoxGeometry(bifoldTotalWidth + 0.04, 0.031, 0.26)),
     structuralOakMat
   );
   sill.name = 'sitting.bifolds.oakThresholdSill';
-  sill.position.set(3.095, 0.0175, 2.12);
+  sill.position.set(3.095, 0.0195, 2.12);
   southWallGroup.add(sill);
 
   // =========================================================================
@@ -398,7 +398,7 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   ] as const) {
     const winOakUpright = new THREE.Mesh(sharedWinOakUprightGeo, structuralOakMat);
     winOakUpright.name = `sitting.southWindow.oakUpright${sideTag}`;
-    winOakUpright.position.set(winUprightX, 1.0725, 2.13);
+    winOakUpright.position.set(winUprightX, 1.0765, 2.13);
     winOakUpright.castShadow = true;
     winOakUpright.receiveShadow = true;
     southWallGroup.add(winOakUpright);
@@ -416,19 +416,19 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
 
   // Matching Oak Threshold Sill + dual sliding track rail at the base of the 2.42x2.11m 3-panel screen
   const southWinSill = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(southWinW + 0.06, 0.035, 0.26)),
+    prepGeo(new THREE.BoxGeometry(southWinW + 0.06, 0.031, 0.26)),
     structuralOakMat
   );
   southWinSill.name = 'sitting.southWindow.oakSill';
-  southWinSill.position.set(southWinCenterX, 0.0175, 2.12);
+  southWinSill.position.set(southWinCenterX, 0.0195, 2.12);
   southWallGroup.add(southWinSill);
 
   const slidingTrackRail = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(southWinW, 0.014, 0.095)),
+    prepGeo(new THREE.BoxGeometry(southWinW, 0.012, 0.095)),
     bifoldHardwareMat
   );
   slidingTrackRail.name = 'sitting.southWindow.slidingTrackRail';
-  slidingTrackRail.position.set(southWinCenterX, 0.038, 2.12);
+  slidingTrackRail.position.set(southWinCenterX, 0.045, 2.12);
   tagHighLod(slidingTrackRail);
   southWallGroup.add(slidingTrackRail);
 
@@ -438,11 +438,11 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
 
   for (let p = 0; p < numWindowPanes; p++) {
     const paneCenterX = winStartX + p * paneW + paneW * 0.5;
-    const trackZ = 2.12 + (p - 1) * 0.018;
+    const trackZ = 2.12 + (p - 1) * 0.062;
     const panePrefix = `sitting.southWindow.pane_${p}`;
     const paneGroup = new THREE.Group();
     paneGroup.name = panePrefix;
-    paneGroup.position.set(paneCenterX, 0.035 + southWinH * 0.5, trackZ);
+    paneGroup.position.set(paneCenterX, 0.055 + southWinH * 0.5, trackZ);
 
     for (const [side, sideTag] of [
       [-1, 'stileLeft'],
@@ -490,7 +490,7 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
     const panelPivot = new THREE.Group();
     panelPivot.name = leafPrefix;
     const closedX = startX + i * bifoldLeafW + bifoldLeafW / 2;
-    panelPivot.position.set(closedX, 0.035 + bifoldLeafH * 0.5, 2.12);
+    panelPivot.position.set(closedX, 0.039 + bifoldLeafH * 0.5, 2.12);
 
     const stileLeft = new THREE.Mesh(sharedBifoldStileGeo, whiteBifoldFrameMat);
     stileLeft.name = `${leafPrefix}.stileLeft`;
@@ -604,8 +604,8 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   // South cobblestone path in front of Kitchen
   const granitePath = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.BoxGeometry(9.92, 0.105, 1.46),
-      0.32,
+      new THREE.BoxGeometry(9.915, 0.098, 1.46),
+      0.3175,
       3.0,
       false
     ),
@@ -613,14 +613,14 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   );
   granitePath.name = 'courtyard.southCobblePath';
   granitePath.userData.isArchitecturalShell = true;
-  granitePath.position.set(0.32, -0.064, 3.0);
+  granitePath.position.set(0.3175, -0.068, 3.0);
   granitePath.receiveShadow = true;
   scene.add(granitePath);
 
   const granitePathReliefTop = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.PlaneGeometry(9.92, 1.46, 160, 24),
-      0.32,
+      new THREE.PlaneGeometry(9.915, 1.46, 160, 24),
+      0.3175,
       3.0,
       true
     ),
@@ -629,14 +629,14 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   granitePathReliefTop.name = 'courtyard.southCobblePathReliefTop';
   granitePathReliefTop.userData.isArchitecturalShell = true;
   granitePathReliefTop.rotation.x = -Math.PI / 2;
-  granitePathReliefTop.position.set(0.32, -0.01, 3.0);
+  granitePathReliefTop.position.set(0.3175, -0.01, 3.0);
   granitePathReliefTop.receiveShadow = true;
   scene.add(granitePathReliefTop);
 
   // East cobblestone path running from the Utility Room Split Stable Exit Door past the Kitchen East Window
   const eastCobblePath = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.BoxGeometry(1.46, 0.105, 5.58),
+      new THREE.BoxGeometry(1.46, 0.098, 5.58),
       6.01,
       0.94,
       false
@@ -644,7 +644,7 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
     graniteSettMat
   );
   eastCobblePath.name = 'kitchen.courtyard.eastCobblePath';
-  eastCobblePath.position.set(6.01, -0.064, 0.94);
+  eastCobblePath.position.set(6.01, -0.068, 0.94);
   eastCobblePath.receiveShadow = true;
   scene.add(eastCobblePath);
 
@@ -666,24 +666,24 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   // Southern continuation of the cobbled path between the Patio Shrub Bank and the Pergola
   const pergolaWestCobblePath = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.BoxGeometry(1.46, 0.105, 3.52),
+      new THREE.BoxGeometry(1.46, 0.098, 3.515),
       6.01,
-      5.49,
+      5.4925,
       false
     ),
     graniteSettMat
   );
   pergolaWestCobblePath.name = 'courtyard.pergolaWestCobblePath';
   pergolaWestCobblePath.userData.isArchitecturalShell = true;
-  pergolaWestCobblePath.position.set(6.01, -0.064, 5.49);
+  pergolaWestCobblePath.position.set(6.01, -0.068, 5.4925);
   pergolaWestCobblePath.receiveShadow = true;
   scene.add(pergolaWestCobblePath);
 
   const pergolaWestCobblePathReliefTop = new THREE.Mesh(
     applyWorldSpaceCobbleLPathUVs(
-      new THREE.PlaneGeometry(1.46, 3.52, 24, 58),
+      new THREE.PlaneGeometry(1.46, 3.515, 24, 58),
       6.01,
-      5.49,
+      5.4925,
       true
     ),
     graniteSettTopReliefMat
@@ -691,44 +691,44 @@ export function buildSittingAreaAndOakBifolds(ctx: SceneBuilderContext): void {
   pergolaWestCobblePathReliefTop.name = 'courtyard.pergolaWestCobblePathReliefTop';
   pergolaWestCobblePathReliefTop.userData.isArchitecturalShell = true;
   pergolaWestCobblePathReliefTop.rotation.x = -Math.PI / 2;
-  pergolaWestCobblePathReliefTop.position.set(6.01, -0.01, 5.49);
+  pergolaWestCobblePathReliefTop.position.set(6.01, -0.01, 5.4925);
   pergolaWestCobblePathReliefTop.receiveShadow = true;
   scene.add(pergolaWestCobblePathReliefTop);
 
   // Limestone border kerb segments along the outer East edge
   const kerbSpans = [
-    [-1.85, 1.72],
+    [-1.845, 1.72],
     [3.58, 5.75],
   ] as const;
   for (let i = 0; i < kerbSpans.length; i++) {
     const [zMin, zMax] = kerbSpans[i];
     const segLen = zMax - zMin;
     const eastPathOuterKerb = new THREE.Mesh(
-      prepGeo(new THREE.BoxGeometry(0.08, 0.115, segLen)),
+      prepGeo(new THREE.BoxGeometry(0.08, 0.11, segLen)),
       limestoneEdgingMat
     );
     eastPathOuterKerb.name = `kitchen.courtyard.eastPathOuterKerb_${i}`;
-    eastPathOuterKerb.position.set(6.78, -0.056, (zMin + zMax) * 0.5);
+    eastPathOuterKerb.position.set(6.78, -0.059, (zMin + zMax) * 0.5);
     eastPathOuterKerb.receiveShadow = true;
     scene.add(eastPathOuterKerb);
   }
 
   const eastPathNorthKerb = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(1.54, 0.115, 0.08)),
+    prepGeo(new THREE.BoxGeometry(1.54, 0.11, 0.08)),
     limestoneEdgingMat
   );
   eastPathNorthKerb.name = 'kitchen.courtyard.eastPathNorthKerb';
-  eastPathNorthKerb.position.set(6.05, -0.056, -1.89);
+  eastPathNorthKerb.position.set(6.05, -0.059, -1.89);
   eastPathNorthKerb.receiveShadow = true;
   scene.add(eastPathNorthKerb);
 
   // Reclaimed Yorkstone doorstep threshold directly outside the Utility Room Split Stable Exit Door
   const utilityDoorStep = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(0.36, 0.055, 1.06)),
+    prepGeo(new THREE.BoxGeometry(0.36, 0.05, 1.06)),
     limestoneEdgingMat
   );
   utilityDoorStep.name = 'utility.exteriorDoorStep';
-  utilityDoorStep.position.set(5.46, -0.012, -1.365);
+  utilityDoorStep.position.set(5.465, 0.019, -1.365);
   utilityDoorStep.castShadow = true;
   utilityDoorStep.receiveShadow = true;
   scene.add(utilityDoorStep);
@@ -777,7 +777,7 @@ function buildLionHeadTrophyUrn(
   const urnPrefix = `kitchen.courtyard.lionHeadUrn_${lionUrnInstanceCounter++}`;
   const urnGroup = new THREE.Group();
   urnGroup.name = urnPrefix;
-  urnGroup.position.set(x, 0, z);
+  urnGroup.position.set(x, 0.094, z);
 
   const weatheredStoneUrnMat = new THREE.MeshStandardMaterial({
     color: 0xd2c9b8,
@@ -795,7 +795,7 @@ function buildLionHeadTrophyUrn(
     metalness: 0.72,
   });
 
-  // 1. Stepped classical square plinth base (Y = 0..0.16m)
+  // 1. Stepped classical square plinth base (Y = 0..0.168m local, seated 4mm proud of patio slab)
   const plinthLower = new THREE.Mesh(sharedUrnPlinthLowerGeo, weatheredStoneUrnMat);
   plinthLower.name = `${urnPrefix}.plinthLower`;
   plinthLower.position.set(0, 0.045, 0);
@@ -805,15 +805,15 @@ function buildLionHeadTrophyUrn(
 
   const plinthUpper = new THREE.Mesh(sharedUrnPlinthUpperGeo, weatheredStoneUrnMat);
   plinthUpper.name = `${urnPrefix}.plinthUpper`;
-  plinthUpper.position.set(0, 0.125, 0);
+  plinthUpper.position.set(0, 0.129, 0);
   plinthUpper.castShadow = true;
   plinthUpper.receiveShadow = true;
   urnGroup.add(plinthUpper);
 
-  // 2. Fluted Trophy Pedestal Foot & Stem (Y = 0.16..0.38m)
+  // 2. Fluted Trophy Pedestal Foot & Stem (Y = 0.168..0.388m)
   const socleFoot = new THREE.Mesh(sharedUrnSocleFootGeo, weatheredStoneUrnMat);
   socleFoot.name = `${urnPrefix}.socleFoot`;
-  socleFoot.position.set(0, 0.205, 0);
+  socleFoot.position.set(0, 0.213, 0);
   urnGroup.add(socleFoot);
 
   const stemKnop = new THREE.Mesh(sharedUrnStemKnopGeo, weatheredStoneUrnMat);
@@ -968,7 +968,7 @@ function buildOldGrindstone(
   const gsPrefix = `kitchen.courtyard.oldGrindstone_${grindstoneInstanceCounter++}`;
   const grindstoneGroup = new THREE.Group();
   grindstoneGroup.name = gsPrefix;
-  grindstoneGroup.position.set(x, 0, z);
+  grindstoneGroup.position.set(x, 0.094, z);
   grindstoneGroup.rotation.y = 0.28;
 
   const gritstoneMat = new THREE.MeshStandardMaterial({
@@ -1003,7 +1003,7 @@ function buildOldGrindstone(
     for (const legZ of [-0.11, 0.11]) {
       const leg = new THREE.Mesh(sharedGrindstoneLegGeo, timberMat);
       leg.name = `${gsPrefix}.cradleLeg_${legIdx++}`;
-      leg.position.set(legX, 0.13, legZ);
+      leg.position.set(legX, 0.075, legZ);
       leg.castShadow = true;
       grindstoneGroup.add(leg);
     }
@@ -1023,7 +1023,7 @@ function buildOldGrindstone(
 
   // Concentric dressed stone tooling rings on both faces of the grindstone
   let ringIdx = 0;
-  for (const faceZ of [-wheelThickness / 2 - 0.002, wheelThickness / 2 + 0.002]) {
+  for (const faceZ of [-wheelThickness / 2 - 0.006, wheelThickness / 2 + 0.006]) {
     for (const ringGeo of [sharedGrindstoneRingInnerGeo, sharedGrindstoneRingOuterGeo]) {
       const dressingRing = new THREE.Mesh(ringGeo, gritstoneDarkBandMat);
       dressingRing.name = `${gsPrefix}.dressingRing_${ringIdx++}`;

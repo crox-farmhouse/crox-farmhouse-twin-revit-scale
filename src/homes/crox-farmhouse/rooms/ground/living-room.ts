@@ -129,7 +129,7 @@ export function buildLivingRoom(
         { name: `livingRoom.eastWallLight.${idx}`, zone: 'livingRoom' }
       );
       // Issues #1–#4: Mount backplate at a level height Y = 1.60m (raised +9cm above previous 1.51m)
-      hallFrontRoomCrossWallFrame.placeObject(scene, wallLightGroup, su, 1.6, 0.122);
+      hallFrontRoomCrossWallFrame.placeObject(scene, wallLightGroup, su, 1.6, 0.133);
 
       tagCutawayWall(wallLightGroup, crossWallCutawayForLights);
       interactions.registerLightFixture(wallLightGroup, 'frontRoomPendant');
@@ -251,7 +251,7 @@ export function buildLivingRoom(
   frontRoomFpGroup.position.set(22.19, 0, -2.035);
   fpWallAnchor.add(frontRoomFpGroup);
 
-  const breastPierGeo = createSharedGeo(new THREE.BoxGeometry(0.32, frontTier2WallH, 0.44));
+  const breastPierGeo = createSharedGeo(new THREE.BoxGeometry(0.32, frontTier2WallH - 0.008, 0.44));
   const frBreastLeft = new THREE.Mesh(
     breastPierGeo,
     farrowAndBallPantalonMat
@@ -307,11 +307,11 @@ export function buildLivingRoom(
   frontRoomFpGroup.add(frBreastRightSkirt);
 
   const frBreastUpper = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(1.2, frontTier2WallH - 0.92, 0.44)),
+    createSharedGeo(new THREE.BoxGeometry(1.2, frontTier2WallH - 0.92 - 0.004, 0.44)),
     farrowAndBallPantalonMat
   );
   frBreastUpper.name = 'livingRoom.fireplaceBreast.upperBreast';
-  frBreastUpper.position.set(-20.5, tier2FloorY + 0.92 + (frontTier2WallH - 0.92) / 2, 1.72);
+  frBreastUpper.position.set(-20.5, tier2FloorY + 0.92 + (frontTier2WallH - 0.92 - 0.004) / 2, 1.72);
   frBreastUpper.castShadow = true;
   frontRoomFpGroup.add(frBreastUpper);
 
@@ -413,20 +413,20 @@ export function buildLivingRoom(
   }
 
   // Exposed Red-Brick Firebox Back & Brick Hearth + Black Cast-Iron Stove (New Photo 5)
-  const frFireboxBrickGeo = new THREE.BoxGeometry(0.58, 0.92, 0.08);
-  applyWorldSpaceBrickUVs(frFireboxBrickGeo, -20.5, tier2FloorY + 0.46, 1.88);
+  const frFireboxBrickGeo = new THREE.BoxGeometry(0.58, 0.836, 0.08);
+  applyWorldSpaceBrickUVs(frFireboxBrickGeo, -20.5, tier2FloorY + 0.502, 1.88);
   frFireboxBrickGeo.computeBoundingSphere();
   const frFireboxBrick = new THREE.Mesh(frFireboxBrickGeo, exteriorBrickMat);
   frFireboxBrick.name = 'livingRoom.fireplaceBreast.fireboxBrickBack';
-  frFireboxBrick.position.set(-20.5, tier2FloorY + 0.46, 1.88);
+  frFireboxBrick.position.set(-20.5, tier2FloorY + 0.502, 1.88);
   frontRoomFpGroup.add(frFireboxBrick);
 
-  const frBrickHearthGeo = new THREE.BoxGeometry(0.92, 0.08, 0.56);
-  applyWorldSpaceBrickUVs(frBrickHearthGeo, -20.5, tier2FloorY + 0.04, 1.62);
+  const frBrickHearthGeo = new THREE.BoxGeometry(0.92, 0.071, 0.56);
+  applyWorldSpaceBrickUVs(frBrickHearthGeo, -20.5, tier2FloorY + 0.0445, 1.62);
   frBrickHearthGeo.computeBoundingSphere();
   const frBrickHearth = new THREE.Mesh(frBrickHearthGeo, exteriorBrickMat);
   frBrickHearth.name = 'livingRoom.fireplaceBreast.brickHearth';
-  frBrickHearth.position.set(-20.5, tier2FloorY + 0.04, 1.62);
+  frBrickHearth.position.set(-20.5, tier2FloorY + 0.0445, 1.62);
   frBrickHearth.receiveShadow = true;
   frontRoomFpGroup.add(frBrickHearth);
 
@@ -860,13 +860,13 @@ export function buildLivingRoom(
     const cabCenterZ = 1.725;
     const doorFrontZ = cabCenterZ - cabDepth * 0.5 - 0.011; // 1.509m (facing North -Z into Front Room)
 
-    // 1. Base Plinth (Y = -0.60m..-0.47m, height 0.13m)
+    // 1. Base Plinth (Y = -0.590m..-0.470m, height 0.120m)
     const alcovePlinth = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(aw + 0.01, 0.13, cabDepth + 0.02)),
+      createSharedGeo(new THREE.BoxGeometry(aw + 0.01, 0.12, cabDepth + 0.008)),
       heavyWalnutShelfMat
     );
     alcovePlinth.name = `livingRoom.alcove.${sideKey}.plinth`;
-    alcovePlinth.position.set(acx, tier2FloorY + 0.065, cabCenterZ);
+    alcovePlinth.position.set(acx, tier2FloorY + 0.07, cabCenterZ - 0.014);
     alcovePlinth.receiveShadow = true;
     alcoveGroup.add(alcovePlinth);
 
@@ -897,8 +897,10 @@ export function buildLivingRoom(
     const doorGap = 0.008;
     const singleDoorW = (aw - 0.036 - doorGap) * 0.5;
     const lowerDoorCY = tier2FloorY + 0.145 + lowerDoorH * 0.5; // -0.05m
-    const lowBackPanelGeo = createSharedGeo(new THREE.BoxGeometry(singleDoorW, lowerDoorH, 0.014));
-    const railGeo = createSharedGeo(new THREE.BoxGeometry(singleDoorW - stileW * 2, railH, 0.022));
+    const lowBackPanelGeo = createSharedGeo(
+      new THREE.BoxGeometry(singleDoorW - stileW * 2 - 0.008, lowerDoorH - railH * 2 - 0.008, 0.012)
+    );
+    const railGeo = createSharedGeo(new THREE.BoxGeometry(singleDoorW - stileW * 2 - 0.008, railH, 0.022));
 
     for (let d = 0; d < 2; d++) {
       const sideSign = d === 0 ? -1 : 1;
@@ -1002,11 +1004,11 @@ export function buildLivingRoom(
     alcoveGroup.add(crownFrieze);
 
     const crownCap = new THREE.Mesh(
-      createSharedGeo(new THREE.BoxGeometry(aw + 0.032, 0.04, cabDepth + 0.052)),
+      createSharedGeo(new THREE.BoxGeometry(aw + 0.032, 0.036, cabDepth + 0.052)),
       heavyWalnutShelfMat
     );
     crownCap.name = `livingRoom.alcove.${sideKey}.crownCap`;
-    crownCap.position.set(acx, tier2FloorY + frontTier2WallH - 0.019, cabCenterZ - 0.014);
+    crownCap.position.set(acx, tier2FloorY + frontTier2WallH - 0.023, cabCenterZ - 0.014);
     crownCap.castShadow = true;
     alcoveGroup.add(crownCap);
 
@@ -1055,10 +1057,11 @@ export function buildLivingRoom(
 
     // Curated Hardcover Books on the counter & middle shelves of each open bookcase
     for (const [shelfIdx, baseSy] of [
-      [0, 1.006],
-      [1, 1.288],
-      [2, 1.568],
+      [0, 1.01],
+      [1, 1.292],
+      [2, 1.572],
     ] as const) {
+      let curOffset = 0;
       for (let b = 0; b < 5; b++) {
         const bookH = 0.18 + ((b + shelfIdx) % 3) * 0.02;
         const bookW = 0.032 + (b % 2) * 0.008;
@@ -1067,10 +1070,9 @@ export function buildLivingRoom(
           new THREE.Mesh(getBookGeo(bookW, bookH), bookMat)
         );
         book.name = `livingRoom.alcove.${sideKey}.shelf.${shelfIdx + 1}.book.${b + 1}`;
-        const bx =
-          sideKey === 'left'
-            ? minAx + 0.14 + b * (bookW + 0.004)
-            : maxAx - 0.14 - b * (bookW + 0.004);
+        const centerDist = 0.14 + curOffset + bookW * 0.5;
+        const bx = sideKey === 'left' ? minAx + centerDist : maxAx - centerDist;
+        curOffset += bookW + 0.005;
         book.position.set(bx, tier2FloorY + baseSy + bookH * 0.5, 1.73);
         alcoveGroup.add(book);
       }

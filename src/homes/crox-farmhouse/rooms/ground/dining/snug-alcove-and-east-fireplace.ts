@@ -40,7 +40,7 @@ export function buildSnugAlcoveAndEastFireplace(
   // Official 42" / 43" Frame dimensions: 969mm W x 558mm H x 25mm D with magnetic warm oak bezel & museum mat passepartout
   const snugTvGroup = new THREE.Group();
   snugTvGroup.name = 'familyRoom.frameTv42';
-  snugTvGroup.position.set(-4.668, 1.34, -1.62);
+  snugTvGroup.position.set(-4.672, 1.34, -1.62);
   snugTvGroup.rotation.y = -Math.PI / 2; // Flush against East Snug wall facing West (-X)
 
   const frameTvW = 0.969;
@@ -48,9 +48,13 @@ export function buildSnugAlcoveAndEastFireplace(
   const frameTvD = 0.025;
   const frameBezelW = 0.022;
 
-  // Slim charcoal chassis backing flush against the wall
+  // Slim charcoal chassis backing nested inside the perimeter bezel opening
   const snugTvChassis = new THREE.Mesh(
-    new THREE.BoxGeometry(frameTvW - 0.016, frameTvH - 0.016, frameTvD - 0.004),
+    new THREE.BoxGeometry(
+      frameTvW - frameBezelW * 2 - 0.004,
+      frameTvH - frameBezelW * 2 - 0.004,
+      0.014
+    ),
     castIronMat
   );
   snugTvChassis.name = 'familyRoom.frameTv42.chassis';
@@ -81,7 +85,7 @@ export function buildSnugAlcoveAndEastFireplace(
     ceramicWhiteMat
   );
   snugTvMatBoard.name = 'familyRoom.frameTv42.passepartout';
-  snugTvMatBoard.position.set(0, 0, frameTvD * 0.5 - 0.001);
+  snugTvMatBoard.position.set(0, 0, 0.0085);
   snugTvGroup.add(snugTvMatBoard);
 
   // Anti-reflective matte QLED Art Mode display canvas inside the passepartout mat
@@ -555,26 +559,38 @@ export function buildSnugAlcoveAndEastFireplace(
   const bwFrameGroup = new THREE.Group();
   bwFrameGroup.name = 'familyRoom.alcovePortrait';
   bwFrameGroup.userData.zone = 'familyRoom';
-  bwFrameGroup.position.set(-7.79, 1.349, -1.48);
+  bwFrameGroup.position.set(-7.8, 1.349, -1.48);
   bwFrameGroup.rotation.y = Math.PI / 2;
 
   const distressedFrameMat = new THREE.MeshStandardMaterial({
     color: 0x9b8e7e,
     roughness: 0.62,
   });
-  const bwOuterFrame = new THREE.Mesh(
-    new THREE.BoxGeometry(0.64, 0.5, 0.028),
-    distressedFrameMat
-  );
-  if (!bwOuterFrame.name) bwOuterFrame.name = 'familyRoom.eastFireplace.bwOuterFrame';
-  bwOuterFrame.castShadow = true;
-  bwFrameGroup.add(bwOuterFrame);
+  const bwFrameW = 0.64;
+  const bwFrameH = 0.5;
+  const bwRailW = 0.04;
+  for (const [rSuffix, rx, ry, rw, rh] of [
+    ['', 0, bwFrameH * 0.5 - bwRailW * 0.5, bwFrameW, bwRailW],
+    ['.bottom', 0, -bwFrameH * 0.5 + bwRailW * 0.5, bwFrameW, bwRailW],
+    ['.left', -bwFrameW * 0.5 + bwRailW * 0.5, 0, bwRailW, bwFrameH - bwRailW * 2],
+    ['.right', bwFrameW * 0.5 - bwRailW * 0.5, 0, bwRailW, bwFrameH - bwRailW * 2],
+  ] as const) {
+    const bwOuterFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(rw, rh, 0.024),
+      distressedFrameMat
+    );
+    bwOuterFrame.name = `familyRoom.eastFireplace.bwOuterFrame${rSuffix}`;
+    bwOuterFrame.position.set(rx, ry, 0.012);
+    bwOuterFrame.castShadow = true;
+    bwFrameGroup.add(bwOuterFrame);
+  }
 
   const bwMount = new THREE.Mesh(
-    new THREE.BoxGeometry(0.56, 0.42, 0.032),
+    new THREE.BoxGeometry(0.56, 0.42, 0.008),
     ceramicWhiteMat
   );
   if (!bwMount.name) bwMount.name = 'familyRoom.eastFireplace.bwMount';
+  bwMount.position.set(0, 0, 0.008);
   bwFrameGroup.add(bwMount);
 
   const bwPhotoMat = new THREE.MeshStandardMaterial({
@@ -582,18 +598,19 @@ export function buildSnugAlcoveAndEastFireplace(
     roughness: 0.35,
   });
   const bwPhoto = new THREE.Mesh(
-    new THREE.BoxGeometry(0.38, 0.26, 0.035),
+    new THREE.PlaneGeometry(0.38, 0.26),
     bwPhotoMat
   );
   if (!bwPhoto.name) bwPhoto.name = 'familyRoom.eastFireplace.bwPhoto';
+  bwPhoto.position.set(0, 0, 0.0165);
   bwFrameGroup.add(bwPhoto);
   scene.add(bwFrameGroup);
 
   // 1F. White-Plastered East Chimney Breast & Recessed Fireplace Alcove
   //     (Issue #12 & Issue #4: X = -4.96m..-4.64m, centered at X = -4.80m, Z = -0.85m..+0.85m so the South pier
   //      is 100% flush with the Z = +0.85m North jamb of the Kitchen <-> Dining Room portal)
-  //     Extends all the way up to Y = 3.00m (flush with the Kitchen cross-wall and continuing into the 1st Floor stack!)
-  const chimneyStackGroundH = 3.0;
+  //     Extends up to Y = 2.42m inside the Main Bedroom step-up floor slab without penetrating Main Bedroom wardrobes above Y = 2.51m!
+  const chimneyStackGroundH = 2.42;
   const addChimneyWallBlock = (
     cx: number,
     cy: number,
@@ -746,6 +763,6 @@ export function buildSnugAlcoveAndEastFireplace(
 
   // Issue #13 & Issue #4: Interior Plastered Wall Pier on the South Jamb of the Open Kitchen Portal
   // (X = -4.64m..-4.402m, Z = +1.99m..+2.35m — flush with the Kitchen South interior wall at Z = +1.99m!)
-  addChimneyWallBlock(-4.521, chimneyStackGroundH / 2, 2.17, 0.238, chimneyStackGroundH, 0.36);
+  addChimneyWallBlock(-4.521, wallH / 2, 2.17, 0.238, wallH, 0.36);
 
 }

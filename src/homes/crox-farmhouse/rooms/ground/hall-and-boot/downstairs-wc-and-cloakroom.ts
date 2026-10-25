@@ -124,13 +124,13 @@ export function buildDownstairsWcAndCloakroom(
     metalness: 0.04,
   });
 
-  // Honed Carrara Marble Tiled Floor covering the entire Downstairs WC room (X = -12.81m..-11.465m, Z = -2.50m..-0.25m)
+  // Honed Carrara Marble Tiled Floor covering the interior Downstairs WC floor (X = -12.792m..-11.480m, Z = -2.483m..-0.267m)
   const wcMarbleFloor = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(1.345, 0.012, 2.25)),
+    createSharedGeo(new THREE.BoxGeometry(1.312, 0.008, 2.216)),
     wcMarbleFloorMat
   );
   wcMarbleFloor.name = 'bootLobby.downstairsWc.marbleFloor';
-  wcMarbleFloor.position.set(-12.1375, lowerFloorY + 0.004, -1.375);
+  wcMarbleFloor.position.set(-12.136, lowerFloorY + 0.004, -1.375);
   wcMarbleFloor.receiveShadow = true;
   wcGroup.add(wcMarbleFloor);
 
@@ -188,10 +188,11 @@ export function buildDownstairsWcAndCloakroom(
     maxSpan: -11.45,
     floor: 'ground',
   };
+  const northSkirtTopY = lowerFloorY + 0.15;
   const northLiningSpecs = [
-    [-12.5725, lowerWallMidY, 0.475, lowerWallH, 'westPier'],
-    [-11.6975, lowerWallMidY, 0.495, lowerWallH, 'eastPier'],
-    [-12.14, (lowerFloorY + 0.86) / 2, 0.39, 0.86 - lowerFloorY, 'spandrelLower'],
+    [-12.5635, (northSkirtTopY + wallH) / 2, 0.457, wallH - northSkirtTopY, 'westPier'],
+    [-11.7125, (northSkirtTopY + wallH) / 2, 0.465, wallH - northSkirtTopY, 'eastPier'],
+    [-12.14, (northSkirtTopY + 0.86) / 2, 0.39, 0.86 - northSkirtTopY, 'spandrelLower'],
     [-12.14, (1.6 + wallH) / 2, 0.39, wallH - 1.6, 'spandrelUpper'],
   ] as const;
   for (const [nx, ny, nw, nh, nTag] of northLiningSpecs) {
@@ -263,13 +264,13 @@ export function buildDownstairsWcAndCloakroom(
   const vanityD = 0.48; // E-W depth along X
   const vanityCarcassH = 0.80;
 
-  // Moulded base plinth (Y = lowerFloorY..lowerFloorY + 0.085m)
+  // Moulded base plinth (Y = lowerFloorY + 0.008m..lowerFloorY + 0.085m, seated on marbleFloor)
   const vanityPlinth = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(vanityD - 0.02, 0.085, vanityW + 0.016)),
+    createSharedGeo(new THREE.BoxGeometry(vanityD - 0.02, 0.077, vanityW + 0.016)),
     vanityTrimMat
   );
   vanityPlinth.name = 'bootLobby.downstairsWc.vanityPlinth';
-  vanityPlinth.position.set(-12.8 + (vanityD - 0.02) / 2, lowerFloorY + 0.0425, vanityZ);
+  vanityPlinth.position.set(-12.8 + (vanityD - 0.02) / 2, lowerFloorY + 0.0465, vanityZ);
   vanityPlinth.castShadow = true;
   vanityPlinth.receiveShadow = true;
   wcGroup.add(vanityPlinth);
@@ -337,19 +338,19 @@ export function buildDownstairsWcAndCloakroom(
 
   // Undermounted glazed white porcelain sink basin bowl & brass waste plug
   const basinRim = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.32, 0.016, 0.52)),
+    createSharedGeo(new THREE.BoxGeometry(0.32, 0.006, 0.52)),
     ceramicWhiteMat
   );
   basinRim.name = 'bootLobby.downstairsWc.basinRim';
-  basinRim.position.set(-12.8 + 0.28, lowerFloorY + 0.843, vanityZ);
+  basinRim.position.set(-12.8 + 0.28, lowerFloorY + 0.845, vanityZ);
   wcGroup.add(basinRim);
 
   const basinWell = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.27, 0.018, 0.46)),
+    createSharedGeo(new THREE.BoxGeometry(0.27, 0.006, 0.46)),
     new THREE.MeshStandardMaterial({ color: 0xdfe3e6, roughness: 0.14, metalness: 0.06 })
   );
   basinWell.name = 'bootLobby.downstairsWc.basinWell';
-  basinWell.position.set(-12.8 + 0.28, lowerFloorY + 0.846, vanityZ);
+  basinWell.position.set(-12.8 + 0.28, lowerFloorY + 0.851, vanityZ);
   wcGroup.add(basinWell);
 
   // Traditional Perrin & Rowe style aged-brass bridge mixer tap with crosshead hot/cold valves
@@ -392,16 +393,16 @@ export function buildDownstairsWcAndCloakroom(
     brassMat
   );
   mirrorFrame.name = 'bootLobby.downstairsWc.mirrorFrame';
-  mirrorFrame.position.set(-12.8 + 0.024, lowerFloorY + 1.44, vanityZ);
+  mirrorFrame.position.set(-12.761, lowerFloorY + 1.44, vanityZ);
   mirrorFrame.castShadow = true;
   wcGroup.add(mirrorFrame);
 
   const mirrorSurface = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.01, 0.82, 0.66)),
+    createSharedGeo(new THREE.BoxGeometry(0.008, 0.82, 0.66)),
     mirrorGlassMat
   );
   mirrorSurface.name = 'bootLobby.downstairsWc.mirror';
-  mirrorSurface.position.set(-12.8 + 0.036, lowerFloorY + 1.44, vanityZ);
+  mirrorSurface.position.set(-12.743, lowerFloorY + 1.44, vanityZ);
   wcGroup.add(mirrorSurface);
 
   // Concealed Warm 2700K Perimeter LED Backlight Frame + Soft Wall-Wash Halo behind the WC Mirror (Issue #7 & Issue #15: toned down)
@@ -422,10 +423,10 @@ export function buildDownstairsWcAndCloakroom(
   // WC mirror backlight + sconces are on their own PIR-controlled circuit (WC PIR 1.1.26)
   lightGroups.cloakroomWcLights.emissives.push(wcMirrorLedMat, wcMirrorHaloMat);
 
-  // 4-sided warm LED diffuser strips tucked behind the outer edge of the brass mirror frame (X = -12.79m)
+  // 4-sided warm LED diffuser strips tucked behind the outer edge of the brass mirror frame (X = -12.781m)
   const mirrorCenterY = lowerFloorY + 1.44;
-  const horizLedGeo = createSharedGeo(new THREE.BoxGeometry(0.014, 0.014, 0.71));
-  const vertLedGeo = createSharedGeo(new THREE.BoxGeometry(0.014, 0.86, 0.014));
+  const horizLedGeo = createSharedGeo(new THREE.BoxGeometry(0.008, 0.014, 0.71));
+  const vertLedGeo = createSharedGeo(new THREE.BoxGeometry(0.008, 0.86, 0.014));
   for (const [dy, dz, ledGeo] of [
     [0.435, 0, horizLedGeo],  // Top LED bar
     [-0.435, 0, horizLedGeo], // Bottom LED bar
@@ -434,22 +435,22 @@ export function buildDownstairsWcAndCloakroom(
   ] as const) {
     const ledBar = tagHighLod(new THREE.Mesh(ledGeo, wcMirrorLedMat));
     ledBar.name = 'bootLobby.downstairsWc.mirrorLedStrip';
-    ledBar.position.set(-12.8 + 0.009, mirrorCenterY + dy, vanityZ + dz);
+    ledBar.position.set(-12.781, mirrorCenterY + dy, vanityZ + dz);
     wcGroup.add(ledBar);
   }
 
   // Soft warm perimeter halo wash on the West wall right behind the mirror
-  const horizHaloGeo = createSharedGeo(new THREE.BoxGeometry(0.004, 0.065, 0.82));
-  const vertHaloGeo = createSharedGeo(new THREE.BoxGeometry(0.004, 0.98, 0.065));
+  const horizHaloGeo = createSharedGeo(new THREE.BoxGeometry(0.003, 0.036, 0.82));
+  const vertHaloGeo = createSharedGeo(new THREE.BoxGeometry(0.003, 0.876, 0.036));
   for (const [dy, dz, haloGeo] of [
-    [0.47, 0, horizHaloGeo],
-    [-0.47, 0, horizHaloGeo],
-    [0, -0.39, vertHaloGeo],
-    [0, 0.39, vertHaloGeo],
+    [0.456, 0, horizHaloGeo],
+    [-0.456, 0, horizHaloGeo],
+    [0, -0.392, vertHaloGeo],
+    [0, 0.392, vertHaloGeo],
   ] as const) {
     const haloStrip = tagHighLod(new THREE.Mesh(haloGeo, wcMirrorHaloMat));
     haloStrip.name = 'bootLobby.downstairsWc.mirrorLedHalo';
-    haloStrip.position.set(-12.8 + 0.003, mirrorCenterY + dy, vanityZ + dz);
+    haloStrip.position.set(-12.7895, mirrorCenterY + dy, vanityZ + dz);
     wcGroup.add(haloStrip);
   }
 
@@ -544,6 +545,11 @@ export function buildDownstairsWcAndCloakroom(
     color: 0xf6f5f0,
     roughness: 0.11,
     metalness: 0.05,
+  });
+  const vitreousChinaBowlMat = new THREE.MeshStandardMaterial({
+    color: 0xf6f5f0,
+    roughness: 0.11,
+    metalness: 0.05,
     side: THREE.DoubleSide,
   });
   const innerBowlGlazeMat = new THREE.MeshStandardMaterial({
@@ -581,7 +587,7 @@ export function buildDownstairsWcAndCloakroom(
     vitreousChinaMat
   );
   wcPanPedestal.name = 'bootLobby.downstairsWc.toiletPedestal';
-  wcPanPedestal.position.set(panCenterX - 0.015, lowerFloorY + 0.01, toiletZ);
+  wcPanPedestal.position.set(panCenterX - 0.015, lowerFloorY + 0.008, toiletZ);
   wcPanPedestal.scale.set(1.26, 1.0, 0.88);
   wcPanPedestal.castShadow = true;
   wcPanPedestal.receiveShadow = true;
@@ -597,36 +603,36 @@ export function buildDownstairsWcAndCloakroom(
   }
 
   // Issue #9: Boxed-out painted plasterboard waste/soil pipe casing (`bootLobby.downstairsWc.wastePipeBoxing`)
-  // on the West wall (`X = -12.80m`)
+  // on the West wall (`X = -12.792m`)
   const wastePipeBoxingGroup = new THREE.Group();
   wastePipeBoxingGroup.name = 'bootLobby.downstairsWc.wastePipeBoxing';
 
   const vertStackBoxing = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.2, lowerWallH, 0.32)),
+    createSharedGeo(new THREE.BoxGeometry(0.192, lowerWallH - 0.008, 0.32)),
     wcDarkWallMat
   );
   vertStackBoxing.name = 'bootLobby.downstairsWc.wastePipeBoxing.verticalStack';
-  vertStackBoxing.position.set(-12.7, lowerWallMidY, -1.48);
+  vertStackBoxing.position.set(-12.696, lowerWallMidY + 0.004, -1.48);
   vertStackBoxing.castShadow = true;
   vertStackBoxing.receiveShadow = true;
   wastePipeBoxingGroup.add(vertStackBoxing);
 
   const horizSoilBoxing = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.18, 0.36, 0.842)),
+    createSharedGeo(new THREE.BoxGeometry(0.172, 0.352, 0.842)),
     wcDarkWallMat
   );
   horizSoilBoxing.name = 'bootLobby.downstairsWc.wastePipeBoxing.horizontalDuct';
-  horizSoilBoxing.position.set(-12.71, lowerFloorY + 0.18, -2.061);
+  horizSoilBoxing.position.set(-12.706, lowerFloorY + 0.184, -2.061);
   horizSoilBoxing.castShadow = true;
   horizSoilBoxing.receiveShadow = true;
   wastePipeBoxingGroup.add(horizSoilBoxing);
 
   const horizBoxingCapShelf = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.194, 0.022, 0.846)),
+    createSharedGeo(new THREE.BoxGeometry(0.186, 0.022, 0.846)),
     vanityCabinetMat
   );
   horizBoxingCapShelf.name = 'bootLobby.downstairsWc.wastePipeBoxing.capShelf';
-  horizBoxingCapShelf.position.set(-12.703, lowerFloorY + 0.371, -2.061);
+  horizBoxingCapShelf.position.set(-12.699, lowerFloorY + 0.371, -2.061);
   horizBoxingCapShelf.castShadow = true;
   horizBoxingCapShelf.receiveShadow = true;
   wastePipeBoxingGroup.add(horizBoxingCapShelf);
@@ -640,9 +646,9 @@ export function buildDownstairsWcAndCloakroom(
           [-12.62, -1.64],
           [-12.6, -1.64],
           [-12.6, -1.32],
-          [-12.8, -1.32],
+          [-12.792, -1.32],
         ],
-        lowerFloorY
+        lowerFloorY + 0.008
       )
     ),
     antiqueOakSkirtingMat
@@ -697,7 +703,7 @@ export function buildDownstairsWcAndCloakroom(
   ];
   const wcPanBowl = new THREE.Mesh(
     createSharedGeo(new THREE.LatheGeometry(bowlProfilePts, 28)),
-    vitreousChinaMat
+    vitreousChinaBowlMat
   );
   wcPanBowl.name = 'bootLobby.downstairsWc.toiletPan';
   wcPanBowl.position.set(panCenterX, lowerFloorY, toiletZ);
@@ -791,7 +797,7 @@ export function buildDownstairsWcAndCloakroom(
   wcGroup.add(hingeCrossBar);
 
   // 2D. Traditional Low/Mid-Level Stepped Cornice Vitreous China Cistern (`bootLobby.downstairsWc.cistern`)
-  const cisternCenterX = -12.8 + 0.11; // -12.69m
+  const cisternCenterX = -12.8 + 0.118; // -12.682m (clears West dark wall lining -12.792m cleanly)
   const cisternBaseY = lowerFloorY + 0.73;
   const cisternH = 0.31;
   const cisternW = 0.46; // N-S width along Z
@@ -823,7 +829,7 @@ export function buildDownstairsWcAndCloakroom(
     vitreousChinaMat
   );
   cisternFrontPanel.name = 'bootLobby.downstairsWc.cisternFrontPanel';
-  cisternFrontPanel.position.set(cisternCenterX + cisternD / 2 + 0.004, cisternBaseY + 0.165, toiletZ);
+  cisternFrontPanel.position.set(cisternCenterX + cisternD / 2 + 0.006, cisternBaseY + 0.165, toiletZ);
   wcGroup.add(cisternFrontPanel);
 
   const makerBadgeRim = tagHighLod(
@@ -834,17 +840,17 @@ export function buildDownstairsWcAndCloakroom(
   );
   makerBadgeRim.name = 'bootLobby.downstairsWc.makerBadgeRim';
   makerBadgeRim.rotation.z = Math.PI / 2;
-  makerBadgeRim.position.set(cisternCenterX + cisternD / 2 + 0.011, cisternBaseY + 0.17, toiletZ);
+  makerBadgeRim.position.set(cisternCenterX + cisternD / 2 + 0.016, cisternBaseY + 0.17, toiletZ);
   makerBadgeRim.scale.set(1.0, 1.35, 0.72);
   wcGroup.add(makerBadgeRim);
 
   // Stepped overhanging architectural bell-top porcelain cistern lid + central finial boss
   const cisternCorniceStep = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(cisternD + 0.022, 0.024, cisternW + 0.026)),
+    createSharedGeo(new THREE.BoxGeometry(cisternD + 0.016, 0.024, cisternW + 0.026)),
     vitreousChinaMat
   );
   cisternCorniceStep.name = 'bootLobby.downstairsWc.cisternCorniceStep';
-  cisternCorniceStep.position.set(cisternCenterX + 0.004, cisternBaseY + cisternH + 0.012, toiletZ);
+  cisternCorniceStep.position.set(cisternCenterX + 0.006, cisternBaseY + cisternH + 0.012, toiletZ);
   cisternCorniceStep.castShadow = true;
   wcGroup.add(cisternCorniceStep);
 
@@ -853,7 +859,7 @@ export function buildDownstairsWcAndCloakroom(
     vitreousChinaMat
   );
   cisternLid.name = 'bootLobby.downstairsWc.cisternLid';
-  cisternLid.position.set(cisternCenterX + 0.002, cisternBaseY + cisternH + 0.034, toiletZ);
+  cisternLid.position.set(cisternCenterX + 0.004, cisternBaseY + cisternH + 0.035, toiletZ);
   cisternLid.castShadow = true;
   wcGroup.add(cisternLid);
 

@@ -548,7 +548,7 @@ export function buildGroundFloorPendantsAndSwitches(
     const sconceGroup = new THREE.Group();
     sconceGroup.name = `sittingRoom.wallLight.${sconceIdx}`;
     sconceGroup.userData.zone = 'sittingRoom';
-    sconceGroup.position.set(sconceX, 1.04, 3.7);
+    sconceGroup.position.set(sconceX, 1.04, 3.715);
 
     const armY = 0.14;   // Wall rose & horizontal brass arm height above sconce origin
     const dropZ = 0.145; // Z projection of downward lamp holder & hanging shade

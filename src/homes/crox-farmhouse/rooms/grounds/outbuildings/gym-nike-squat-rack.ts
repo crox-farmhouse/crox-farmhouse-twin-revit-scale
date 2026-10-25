@@ -316,7 +316,7 @@ export function buildGymNikeSquatRack(
 
     // Raised Competition Stainless-Steel Center Hub Insert (`r = 0.068m`)
     const steelHub = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.068, 0.068, spec.thickness + 0.003, 24),
+      new THREE.CylinderGeometry(0.068, 0.068, spec.thickness + 0.007, 24),
       chromeHubMat
     );
     steelHub.name = `${name}.steelHub`;
@@ -410,7 +410,7 @@ export function buildGymNikeSquatRack(
       stencilPlaques.name = 'outbuildings.gym.nikeSquatRack.uprightStencilPlaque';
       stencilPlaques.userData.lodTier = 'high';
       stencilPlaques.userData.lodMaxDistance = 12;
-      stencilPlaques.position.set(ux, 1.88, zFrontUpright + uprightSize * 0.5 + 0.001);
+      stencilPlaques.position.set(ux, 1.88, zFrontUpright + uprightSize * 0.5 + 0.0035);
       rackGroup.add(stencilPlaques);
     }
 

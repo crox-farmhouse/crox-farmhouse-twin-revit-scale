@@ -39,23 +39,23 @@ export function buildFamilyBathroomBathAndShower(
     showerDrainGrate.position.set(-12.52, floorTopY + 0.046, 0.58);
     showerGroup.add(showerDrainGrate);
 
-    // Frameless low-iron glass walk-in screen running lengthwise (North-South) along the East edge (`X = -11.97m, Z = +0.06m..+0.90m`)
+    // Frameless low-iron glass walk-in screen running lengthwise (North-South) along the East edge (`X = -11.982m, Z = +0.06m..+0.872m`)
     // leaving a generous walk-in entry at the North end (`Z = -0.30m..+0.06m`)
-    const showerGlassScreenGeo = new THREE.BoxGeometry(0.018, 1.92, 0.84);
+    const showerGlassScreenGeo = new THREE.BoxGeometry(0.018, 1.875, 0.812);
     showerGlassScreenGeo.computeBoundingSphere();
     const showerGlassScreen = new THREE.Mesh(showerGlassScreenGeo, windowGlassMat);
     showerGlassScreen.name = 'familyBathroom.showerGlass';
-    showerGlassScreen.position.set(-11.97, floorTopY + 0.96, 0.48);
+    showerGlassScreen.position.set(-11.982, floorTopY + 0.045 + 1.875 * 0.5, 0.466);
     showerGroup.add(showerGlassScreen);
 
     // Brass vertical wall channel at the South wall (`Z = +0.89m`) & horizontal overhead bracing arm to the West wall (`X = -12.81m`)
-    const glassWallChannelGeo = new THREE.BoxGeometry(0.026, 1.92, 0.024);
+    const glassWallChannelGeo = new THREE.BoxGeometry(0.026, 1.875, 0.024);
     glassWallChannelGeo.computeBoundingSphere();
     const glassWallChannel = new THREE.Mesh(glassWallChannelGeo, brassMat);
     glassWallChannel.name = 'familyBathroom.showerEnclosure.wallChannel';
     glassWallChannel.userData.lodTier = 'high';
     glassWallChannel.userData.lodMaxDistance = 12;
-    glassWallChannel.position.set(-11.97, floorTopY + 0.96, 0.888);
+    glassWallChannel.position.set(-11.982, floorTopY + 0.045 + 1.875 * 0.5, 0.888);
     showerGroup.add(glassWallChannel);
 
     const glassSupportArmGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.84, 10);

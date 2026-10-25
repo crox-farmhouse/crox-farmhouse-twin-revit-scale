@@ -185,22 +185,22 @@ export function buildGarageStihlWallRack(
   // 1. Anthracite Steel Wall Mounting Rails, Perforated Backboard & Upper Accessory Shelf
   // ---------------------------------------------------------------------------
   const backboard = new THREE.Mesh(
-    new THREE.BoxGeometry(rackW, 1.18, 0.016),
+    new THREE.BoxGeometry(rackW, 1.18, 0.014),
     rackSteelMat
   );
   backboard.name = 'outbuildings.garage.stihlWallRack.backboard';
-  backboard.position.set(0, 1.08, 0.008);
+  backboard.position.set(0, 1.08, 0.011);
   backboard.castShadow = true;
   backboard.receiveShadow = true;
   rackGroup.add(backboard);
 
   // Signature STIHL orange top header stripe & brand sign plate across the top of the wall rack
   const headerStripe = new THREE.Mesh(
-    new THREE.BoxGeometry(rackW, 0.055, 0.022),
+    new THREE.BoxGeometry(rackW, 0.055, 0.016),
     stihlOrangeMat
   );
   headerStripe.name = 'outbuildings.garage.stihlWallRack.headerStripe';
-  headerStripe.position.set(0, 1.64, 0.012);
+  headerStripe.position.set(0, 1.64, 0.030);
   rackGroup.add(headerStripe);
 
   const headerSign = new THREE.Mesh(
@@ -208,7 +208,7 @@ export function buildGarageStihlWallRack(
     stihlBadgeMat
   );
   headerSign.name = 'outbuildings.garage.stihlWallRack.headerBrandSign';
-  headerSign.position.set(0, 1.64, 0.025);
+  headerSign.position.set(0, 1.64, 0.044);
   rackGroup.add(headerSign);
 
   // Horizontal heavy-duty steel mounting rails (`y = 0.62m, 1.02m, 1.42m`)
@@ -216,22 +216,22 @@ export function buildGarageStihlWallRack(
   for (const ry of [0.62, 1.02, 1.42] as const) {
     railIdx++;
     const rail = new THREE.Mesh(
-      new THREE.BoxGeometry(rackW - 0.04, 0.042, 0.028),
+      new THREE.BoxGeometry(rackW - 0.04, 0.042, 0.014),
       rackSteelMat
     );
     rail.name = `outbuildings.garage.stihlWallRack.mountingRail.${railIdx}`;
-    rail.position.set(0, ry, 0.022);
+    rail.position.set(0, ry, 0.045);
     rail.castShadow = true;
     rackGroup.add(rail);
 
     const orangeInlay = new THREE.Mesh(
-      new THREE.BoxGeometry(rackW - 0.06, 0.01, 0.032),
+      new THREE.BoxGeometry(rackW - 0.06, 0.01, 0.006),
       stihlOrangeMat
     );
     orangeInlay.name = `outbuildings.garage.stihlWallRack.mountingRailInlay.${railIdx}`;
     orangeInlay.userData.lodTier = 'high';
     orangeInlay.userData.lodMaxDistance = 12;
-    orangeInlay.position.set(0, ry, 0.023);
+    orangeInlay.position.set(0, ry, 0.059);
     rackGroup.add(orangeInlay);
   }
 
@@ -240,11 +240,11 @@ export function buildGarageStihlWallRack(
   for (const sx of [-1.16, -0.58, 0.0, 0.58, 1.16] as const) {
     stanchionIdx++;
     const stanchion = new THREE.Mesh(
-      new THREE.BoxGeometry(0.034, 1.14, 0.024),
+      new THREE.BoxGeometry(0.034, 1.14, 0.012),
       rackSteelMat
     );
     stanchion.name = `outbuildings.garage.stihlWallRack.stanchion.${stanchionIdx}`;
-    stanchion.position.set(sx, 1.06, 0.018);
+    stanchion.position.set(sx, 1.06, 0.028);
     rackGroup.add(stanchion);
   }
 

@@ -72,7 +72,7 @@ function buildIndoorAirToAirAcUnit(
   fasciaGeo.computeBoundingSphere();
   const fascia = new THREE.Mesh(fasciaGeo, casingMat);
   fascia.name = `${unitName}.frontFascia`;
-  fascia.position.set(0, 0.004, 0.185);
+  fascia.position.set(0, 0.004, 0.187);
   fascia.castShadow = true;
   acGroup.add(fascia);
 
@@ -81,22 +81,22 @@ function buildIndoorAirToAirAcUnit(
   accentGeo.computeBoundingSphere();
   const accentStrip = new THREE.Mesh(accentGeo, brushedSilverMat);
   accentStrip.name = `${unitName}.silverTrim`;
-  accentStrip.position.set(0, -0.11, 0.209);
+  accentStrip.position.set(0, -0.11, 0.217);
   acGroup.add(accentStrip);
 
   // 3. Dark discharge slot & motorized Coanda airflow vane at bottom
-  const slotGeo = new THREE.BoxGeometry(0.84, 0.036, 0.04);
+  const slotGeo = new THREE.BoxGeometry(0.84, 0.024, 0.04);
   slotGeo.computeBoundingSphere();
   const dischargeSlot = new THREE.Mesh(slotGeo, trimAnthraciteMat);
   dischargeSlot.name = `${unitName}.dischargeSlot`;
-  dischargeSlot.position.set(0, -0.128, 0.165);
+  dischargeSlot.position.set(0, -0.161, 0.14);
   acGroup.add(dischargeSlot);
 
   const vaneGeo = new THREE.BoxGeometry(0.82, 0.006, 0.048);
   vaneGeo.computeBoundingSphere();
   const louvreVane = new THREE.Mesh(vaneGeo, casingMat);
   louvreVane.name = `${unitName}.coandaLouvreVane`;
-  louvreVane.position.set(0, -0.138, 0.182);
+  louvreVane.position.set(0, -0.168, 0.166);
   louvreVane.rotation.x = 0.42;
   acGroup.add(louvreVane);
 
@@ -106,14 +106,14 @@ function buildIndoorAirToAirAcUnit(
   const sensorEye = new THREE.Mesh(eyeGeo, trimAnthraciteMat);
   sensorEye.name = `${unitName}.thermalSensorEye`;
   sensorEye.rotation.x = Math.PI / 2;
-  sensorEye.position.set(0.38, -0.11, 0.208);
+  sensorEye.position.set(0.38, -0.11, 0.218);
   acGroup.add(sensorEye);
 
   const ledGeo = new THREE.BoxGeometry(0.022, 0.004, 0.004);
   ledGeo.computeBoundingSphere();
   const statusLed = new THREE.Mesh(ledGeo, coolLedMat);
   statusLed.name = `${unitName}.knxCoolingLed`;
-  statusLed.position.set(0.34, -0.11, 0.209);
+  statusLed.position.set(0.34, -0.11, 0.217);
   acGroup.add(statusLed);
 
   return acGroup;
@@ -176,7 +176,7 @@ function buildOutdoorVrfCondenserBank(groundGroup: THREE.Group): void {
     footGeo.computeBoundingSphere();
     const foot = new THREE.Mesh(footGeo, copperInsulationMat);
     foot.name = `outbuildings.mep.acOutdoorCondenser.antiVibFoot.${fx < 0 ? 'west' : 'east'}`;
-    foot.position.set(fx, 0.122, 0);
+    foot.position.set(fx, 0.1265, 0);
     condGroup.add(foot);
   }
 
@@ -185,7 +185,7 @@ function buildOutdoorVrfCondenserBank(groundGroup: THREE.Group): void {
   cabGeo.computeBoundingSphere();
   const cabinet = new THREE.Mesh(cabGeo, cabinetMat);
   cabinet.name = 'outbuildings.mep.acOutdoorCondenser.cabinet';
-  cabinet.position.set(0, 0.815, 0);
+  cabinet.position.set(0, 0.823, 0);
   cabinet.castShadow = true;
   cabinet.receiveShadow = true;
   condGroup.add(cabinet);
@@ -195,7 +195,7 @@ function buildOutdoorVrfCondenserBank(groundGroup: THREE.Group): void {
   topCapGeo.computeBoundingSphere();
   const topCap = new THREE.Mesh(topCapGeo, cabinetMat);
   topCap.name = 'outbuildings.mep.acOutdoorCondenser.topCap';
-  topCap.position.set(0, 1.49, 0);
+  topCap.position.set(0, 1.513, 0);
   condGroup.add(topCap);
 
   // 3. Twin circular acoustic fan shrouds & hubs on South (+z) discharge face
@@ -203,20 +203,20 @@ function buildOutdoorVrfCondenserBank(groundGroup: THREE.Group): void {
     ['lowerFan', 0.49],
     ['upperFan', 1.12],
   ] as const) {
-    const shroudGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.022, 24);
+    const shroudGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.018, 24);
     shroudGeo.computeBoundingSphere();
     const shroud = new THREE.Mesh(shroudGeo, darkGrilleMat);
     shroud.name = `outbuildings.mep.acOutdoorCondenser.${tag}.grille`;
     shroud.rotation.x = Math.PI / 2;
-    shroud.position.set(-0.14, cy, 0.195);
+    shroud.position.set(-0.14, cy, 0.203);
     condGroup.add(shroud);
 
-    const hubGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.03, 16);
+    const hubGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.016, 16);
     hubGeo.computeBoundingSphere();
     const hub = new THREE.Mesh(hubGeo, cabinetMat);
     hub.name = `outbuildings.mep.acOutdoorCondenser.${tag}.hub`;
     hub.rotation.x = Math.PI / 2;
-    hub.position.set(-0.14, cy, 0.2);
+    hub.position.set(-0.14, cy, 0.224);
     condGroup.add(hub);
   }
 
@@ -248,7 +248,7 @@ function buildOutdoorVrfCondenserBank(groundGroup: THREE.Group): void {
   const dial = new THREE.Mesh(dialGeo, isolatorRedMat);
   dial.name = 'outbuildings.mep.acOutdoorCondenser.rotaryIsolator.handle';
   dial.rotation.x = Math.PI / 2;
-  dial.position.set(0.84, 1.18, -0.31);
+  dial.position.set(0.84, 1.18, -0.302);
   condGroup.add(dial);
 
   groundGroup.add(condGroup);
@@ -264,9 +264,9 @@ function buildGarageSubDistributionAndKnxBoard(groundGroup: THREE.Group): void {
   const boardGroup = new THREE.Group();
   boardGroup.name = 'outbuildings.garage.mepSubBoard';
   boardGroup.userData = { zone: 'outbuildingGarage' };
-  // Mounted inside the Garage on the East exterior wall of the Shower Room (`u = 8.922m, v = 4.45m`, facing East `+u`)
+  // Mounted inside the Garage on the East exterior wall of the Shower Room (`u = 8.926m, v = 4.45m`, facing East `+u`)
   // rather than in the Store corridor where it clipped the loft ladder (Issue #9)!
-  boardGroup.position.set(8.922, 0.85, 4.45);
+  boardGroup.position.set(8.926, 0.85, 4.45);
   boardGroup.rotation.y = Math.PI / 2; // Facing East (+u) into the Garage workshop bay
 
 
@@ -310,11 +310,11 @@ function buildGarageSubDistributionAndKnxBoard(groundGroup: THREE.Group): void {
   boardGroup.add(knxCab);
 
   // Glazed inspection window frame on KNX enclosure
-  const windowBezelGeo = new THREE.BoxGeometry(0.38, 0.42, 0.012);
+  const windowBezelGeo = new THREE.BoxGeometry(0.38, 0.42, 0.008);
   windowBezelGeo.computeBoundingSphere();
   const windowBezel = new THREE.Mesh(windowBezelGeo, darkFrameMat);
   windowBezel.name = 'outbuildings.garage.mepSubBoard.knxWindowFrame';
-  windowBezel.position.set(0.24, 0, 0.142);
+  windowBezel.position.set(0.24, 0, 0.148);
   boardGroup.add(windowBezel);
 
   // 3 Rows of DIN-rail KNX modules visible behind the inspection window (Line Coupler 2.1.0, PSU, Actuator 2.1.20, AC Gateway 2.1.30)
@@ -323,18 +323,18 @@ function buildGarageSubDistributionAndKnxBoard(groundGroup: THREE.Group): void {
     [2, 0.0],
     [3, -0.12],
   ] as const) {
-    const railModGeo = new THREE.BoxGeometry(0.32, 0.075, 0.016);
+    const railModGeo = new THREE.BoxGeometry(0.32, 0.075, 0.008);
     railModGeo.computeBoundingSphere();
     const railMod = new THREE.Mesh(railModGeo, dinModuleMat);
     railMod.name = `outbuildings.garage.mepSubBoard.dinRow.${idx}`;
-    railMod.position.set(0.24, ry, 0.146);
+    railMod.position.set(0.24, ry, 0.16);
     boardGroup.add(railMod);
 
     const busLedGeo = new THREE.BoxGeometry(0.018, 0.006, 0.004);
     busLedGeo.computeBoundingSphere();
     const busLed = new THREE.Mesh(busLedGeo, knxGreenLedMat);
     busLed.name = `outbuildings.garage.mepSubBoard.dinRow.${idx}.statusLed`;
-    busLed.position.set(0.12, ry + 0.018, 0.155);
+    busLed.position.set(0.12, ry + 0.018, 0.17);
     boardGroup.add(busLed);
   }
 
@@ -365,7 +365,7 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
   const officeLampGroup = ctx.lightGroups.stableOfficeLamps5A;
   const barnLampGroup = ctx.lightGroups.barnBarsAndLamps5A;
 
-  // 1. Six Recessed Warm-White Ceiling Spotlights in Empty Office (`y = stableGroundTopY = 1.96m`)
+  // 1. Six Recessed Warm-White Ceiling Spotlights in Empty Office (seated cleanly below `stable.groundCeilingSoffit` bottom face `stableGroundTopY - 0.035`)
   const officeSpotCoords: ReadonlyArray<readonly [number, number]> = [
     [25.0, 1.58],
     [27.6, 1.58],
@@ -375,9 +375,9 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
     [30.15, 3.85],
   ];
 
-  const bezelGeo = new THREE.CylinderGeometry(0.052, 0.052, 0.008, 18);
+  const bezelGeo = new THREE.CylinderGeometry(0.052, 0.052, 0.006, 18);
   bezelGeo.computeBoundingSphere();
-  const baffleGeo = new THREE.CylinderGeometry(0.038, 0.038, 0.012, 16);
+  const baffleGeo = new THREE.CylinderGeometry(0.038, 0.038, 0.008, 16);
   baffleGeo.computeBoundingSphere();
   const lensGeo = new THREE.CylinderGeometry(0.032, 0.032, 0.004, 16);
   lensGeo.computeBoundingSphere();
@@ -401,22 +401,23 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
       switchPa: '2.1.14',
       switchLocation: `Office Ceiling Spot ${spotIdx}`,
     };
-    fixture.position.set(u, stableGroundTopY - 0.004, v);
+    fixture.position.set(u, stableGroundTopY - 0.035, v);
+
+    const baffle = new THREE.Mesh(baffleGeo, spotlightHousingMat);
+    baffle.name = `${fixtureName}.baffle`;
+    baffle.position.set(0, -0.008, 0);
+    fixture.add(baffle);
 
     const bezel = new THREE.Mesh(bezelGeo, spotlightBrassTrimMat);
     bezel.name = `${fixtureName}.bezel`;
+    bezel.position.set(0, -0.019, 0);
     setInteractiveTreeUserData(bezel, fixture.userData as InteractiveUserData);
     ctx.interactiveMeshes.push(bezel);
     fixture.add(bezel);
 
-    const baffle = new THREE.Mesh(baffleGeo, spotlightHousingMat);
-    baffle.name = `${fixtureName}.baffle`;
-    baffle.position.set(0, 0.003, 0);
-    fixture.add(baffle);
-
     const lens = new THREE.Mesh(lensGeo, spotLensMat);
     lens.name = `${fixtureName}.emitter`;
-    lens.position.set(0, -0.002, 0);
+    lens.position.set(0, -0.028, 0);
     setInteractiveTreeUserData(lens, fixture.userData as InteractiveUserData);
     ctx.interactiveMeshes.push(lens);
     fixture.add(lens);
@@ -451,10 +452,10 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
     readonly rotY: number;
     readonly label: string;
   }> = [
-    { idx: 1, u: 25.4, v: 0.292, rotY: 0, label: 'Office North-West Wall Light' },
-    { idx: 2, u: 29.1, v: 0.292, rotY: 0, label: 'Office North-East Wall Light' },
-    { idx: 3, u: 28.45, v: 5.418, rotY: Math.PI, label: 'Office South Wall Light' },
-    { idx: 4, u: 24.865, v: 4.68, rotY: Math.PI / 2, label: 'Office Cloakroom Partition Wall Light' },
+    { idx: 1, u: 25.4, v: 0.296, rotY: 0, label: 'Office North-West Wall Light' },
+    { idx: 2, u: 29.1, v: 0.296, rotY: 0, label: 'Office North-East Wall Light' },
+    { idx: 3, u: 28.45, v: 5.414, rotY: Math.PI, label: 'Office South Wall Light' },
+    { idx: 4, u: 24.869, v: 4.68, rotY: Math.PI / 2, label: 'Office Cloakroom Partition Wall Light' },
   ];
 
   const sconceBackplateGeo = new THREE.BoxGeometry(0.075, 0.22, 0.012);
@@ -492,8 +493,8 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
     sconceGroup.add(glassShade);
 
     for (const [capTag, cy] of [
-      ['topRing', 0.122],
-      ['bottomRing', -0.122],
+      ['topRing', 0.13],
+      ['bottomRing', -0.13],
     ] as const) {
       const cap = new THREE.Mesh(sconceCapGeo, spotlightBrassTrimMat);
       cap.name = `${sconceName}.${capTag}`;
@@ -516,7 +517,7 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
     switchLocation: 'Office 5V Floor Lamp',
   };
   officeFloorLamp.userData = { zone: 'outbuildingStableOffice', ...officeLampData };
-  officeFloorLamp.position.set(30.85, stableGroundFloorY, 4.88);
+  officeFloorLamp.position.set(30.85, stableGroundFloorY + 0.004, 4.88);
 
   const floorBaseGeo = new THREE.CylinderGeometry(0.15, 0.16, 0.022, 22);
   floorBaseGeo.computeBoundingSphere();
@@ -572,7 +573,7 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
     switchLocation: 'Barn Corner Bar 5V Lamp',
   };
   barLamp.userData = { zone: 'outbuildingBarn', ...barLampData };
-  barLamp.position.set(22.58, barnCarpetTopY + 1.06, 0.62);
+  barLamp.position.set(22.58, barnCarpetTopY + 1.064, 0.62);
 
   const barBaseGeo = new THREE.CylinderGeometry(0.065, 0.075, 0.16, 18);
   barBaseGeo.computeBoundingSphere();
@@ -586,7 +587,7 @@ function buildEmptyOfficeAndBarnCounterLighting(s: OutbuildingShellContext): voi
   barShadeGeo.computeBoundingSphere();
   const barShade = new THREE.Mesh(barShadeGeo, barnBarLampMat);
   barShade.name = 'outbuildings.barn.cornerBar.counterLamp.shade';
-  barShade.position.set(0, 0.24, 0);
+  barShade.position.set(0, 0.245, 0);
   setInteractiveTreeUserData(barShade, barLampData);
   ctx.interactiveMeshes.push(barShade);
   barLamp.add(barShade);
@@ -620,7 +621,7 @@ function buildGuestSuiteVaultSpots(s: OutbuildingShellContext): void {
 
   // Flush recessed ceiling downlight cans so they sit tight against the sloping vaulted ceiling plaster
   // without protruding into the room volume, and attach to `roofGroup` so they hide cleanly when `ceilingCutaway === true`.
-  const canGeo = new THREE.CylinderGeometry(0.038, 0.038, 0.012, 18);
+  const canGeo = new THREE.CylinderGeometry(0.038, 0.038, 0.008, 18);
   canGeo.computeBoundingSphere();
   const roseGeo = new THREE.CylinderGeometry(0.052, 0.052, 0.006, 18);
   roseGeo.computeBoundingSphere();
@@ -650,17 +651,17 @@ function buildGuestSuiteVaultSpots(s: OutbuildingShellContext): void {
 
     const rose = new THREE.Mesh(roseGeo, spotlightBrassTrimMat);
     rose.name = `${name}.rose`;
-    rose.position.y = -0.003;
+    rose.position.y = -0.007;
     fixture.add(rose);
     const can = new THREE.Mesh(canGeo, spotlightHousingMat);
     can.name = `${name}.can`;
-    can.position.y = -0.006;
+    can.position.y = -0.018;
     setInteractiveTreeUserData(can, data);
     ctx.interactiveMeshes.push(can);
     fixture.add(can);
     const lens = new THREE.Mesh(lensGeo, lensMat);
     lens.name = `${name}.emitter`;
-    lens.position.y = -0.011;
+    lens.position.y = -0.028;
     fixture.add(lens);
     roofGroup.add(fixture);
   });

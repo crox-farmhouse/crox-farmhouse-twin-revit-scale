@@ -164,18 +164,18 @@ export function buildStableUpperEnsuiteBathroom(
     roughness: 0.2,
   });
 
-  // 1. Honed Carrara Marble Tiled Ensuite Floor (`y = stableUpperFloorY + 0.007m`, spanning `y = 2.081..2.093m`) across `u = 23.22..25.99m, v = 3.47..5.428m`
-  //    plus doorway threshold tile infill (`u = 24.644..25.356m, v = 3.372..3.469m` — Issue #4: zero coplanar z-fighting with jambs or `thresholdStrip`!)
+  // 1. Honed Carrara Marble Tiled Ensuite Floor (`y = stableUpperFloorY + 0.009m`, spanning `+0.004..+0.014m`) across `u = 23.224..25.986m, v = 3.474..5.424m`
+  //    plus doorway threshold tile infill (`u = 24.648..25.352m, v = 3.374..3.466m` — Issue #4: zero coplanar z-fighting with jambs or `thresholdStrip`!)
   const floorW = uEast - wallT * 0.5 - uWest; // 2.77m
   const floorD = vSouth - (vNorth + wallT * 0.5); // 1.958m (+25cm deeper!)
   const tiledFloor = new THREE.Mesh(
-    new THREE.BoxGeometry(floorW, 0.012, floorD),
+    new THREE.BoxGeometry(floorW - 0.008, 0.010, floorD - 0.008),
     marbleTileMat
   );
   tiledFloor.name = 'outbuildings.firstFloor.stableEnsuite.tiledFloor';
   tiledFloor.position.set(
     uWest + floorW * 0.5,
-    stableUpperFloorY + 0.007,
+    stableUpperFloorY + 0.009,
     vNorth + wallT * 0.5 + floorD * 0.5
   );
   tiledFloor.receiveShadow = true;
@@ -188,49 +188,49 @@ export function buildStableUpperEnsuiteBathroom(
   const doorClearH = 1.98; // Full 1.98m (6'6") standard UK doorway clear height under the 2.27m–2.32m ceiling!
 
   const doorThresholdTile = new THREE.Mesh(
-    new THREE.BoxGeometry(clearThresholdW, 0.012, wallT - 0.004),
+    new THREE.BoxGeometry(clearThresholdW - 0.008, 0.010, wallT - 0.008),
     marbleTileMat
   );
   doorThresholdTile.name = 'outbuildings.firstFloor.stableEnsuite.doorThresholdTile';
   doorThresholdTile.position.set(
     (doorU0 + doorU1) * 0.5,
-    stableUpperFloorY + 0.007,
-    vNorth - 0.001
+    stableUpperFloorY + 0.009,
+    vNorth
   );
   doorThresholdTile.receiveShadow = true;
   ensuiteGroup.add(doorThresholdTile);
 
   // 2. Full-Height Vaulted Partition Walls in `ensuiteGroup` (`firstFloorGroup` — Issue #1!):
-  //    - `northWallWest` (`u = 23.22..24.62m, v = 3.37..3.47m, y = 2.08..4.399m`)
-  //    - `northWallEast` (`u = 25.38..26.09m, v = 3.37..3.47m, y = 2.08..4.399m`)
-  //    - `northDoorLintel` (`u = 24.62..25.38m, v = 3.37..3.47m, y = 4.06..4.399m`)
-  //    - `eastWall` (`u = 25.99..26.09m, v = 3.47..5.428m`, raked from `2.267m` at `v = 3.47m` down to `1.24m` at `v = 5.428m`)
+  //    - `northWallWest` (`u = 23.224..24.62m, v = 3.37..3.47m`)
+  //    - `northWallEast` (`u = 25.38..26.09m, v = 3.37..3.47m`)
+  //    - `northDoorLintel` (`u = 24.62..25.38m, v = 3.37..3.47m`)
+  //    - `eastWall` (`u = 25.99..26.09m, v = 3.474..5.424m`)
   const vNorthFace = vNorth - wallT * 0.5; // 3.37m
   const vSouthFace = vNorth + wallT * 0.5; // 3.47m
-  const hNorthFace = ceilHAtV(vNorthFace); // 2.319m
-  const hSouthFace = ceilHAtV(vSouthFace); // 2.267m
+  const hNorthFace = ceilHAtV(vNorthFace) - 0.006; // 6mm below vaulted ceiling
+  const hSouthFace = ceilHAtV(vSouthFace) - 0.006;
 
   const northWallWestGeo = createRakedVYExtrusion(
     [
-      [vNorthFace, 0],
-      [vSouthFace, 0],
+      [vNorthFace, 0.004],
+      [vSouthFace, 0.004],
       [vSouthFace, hSouthFace],
       [vNorthFace, hNorthFace],
     ],
-    doorU0 - uWest
+    doorU0 - (uWest + 0.004)
   );
   const northWallWest = new THREE.Mesh(northWallWestGeo, warmRoomPlasterMat);
   northWallWest.name = 'outbuildings.firstFloor.stableEnsuite.northWallWest';
   northWallWest.userData.isArchitecturalShell = true;
-  northWallWest.position.set(uWest, stableUpperFloorY, 0);
+  northWallWest.position.set(uWest + 0.004, stableUpperFloorY, 0);
   northWallWest.castShadow = true;
   northWallWest.receiveShadow = true;
   ensuiteGroup.add(northWallWest);
 
   const northWallEastGeo = createRakedVYExtrusion(
     [
-      [vNorthFace, 0],
-      [vSouthFace, 0],
+      [vNorthFace, 0.004],
+      [vSouthFace, 0.004],
       [vSouthFace, hSouthFace],
       [vNorthFace, hNorthFace],
     ],
@@ -246,28 +246,28 @@ export function buildStableUpperEnsuiteBathroom(
 
   const northDoorLintelGeo = createRakedVYExtrusion(
     [
-      [vNorthFace, doorClearH],
-      [vSouthFace, doorClearH],
+      [vNorthFace, doorClearH + 0.004],
+      [vSouthFace, doorClearH + 0.004],
       [vSouthFace, hSouthFace],
       [vNorthFace, hNorthFace],
     ],
-    doorW
+    doorW - 0.008
   );
   const northDoorLintel = new THREE.Mesh(northDoorLintelGeo, warmRoomPlasterMat);
   northDoorLintel.name = 'outbuildings.firstFloor.stableEnsuite.northDoorLintel';
   northDoorLintel.userData.isArchitecturalShell = true;
-  northDoorLintel.position.set(doorU0, stableUpperFloorY, 0);
+  northDoorLintel.position.set(doorU0 + 0.004, stableUpperFloorY, 0);
   northDoorLintel.castShadow = true;
   northDoorLintel.receiveShadow = true;
   ensuiteGroup.add(northDoorLintel);
 
-  // Full-height raked East partition wall (`u = 25.99..26.09m, v = 3.47..5.428m`, zero overlap with `northWallEast`!)
+  // Full-height raked East partition wall (`u = 25.99..26.09m, v = 3.474..5.424m`, zero overlap with `northWallEast`!)
   const eastWallGeo = createRakedVYExtrusion(
     [
-      [vSouthFace, 0],
-      [vSouth, 0],
-      [vSouth, eaveWallH],
-      [vSouthFace, hSouthFace],
+      [vSouthFace + 0.004, 0.004],
+      [vSouth - 0.004, 0.004],
+      [vSouth - 0.004, eaveWallH - 0.006],
+      [vSouthFace + 0.004, ceilHAtV(vSouthFace + 0.004) - 0.006],
     ],
     wallT
   );
@@ -280,37 +280,37 @@ export function buildStableUpperEnsuiteBathroom(
   ensuiteGroup.add(eastWall);
 
   // Full-Height (`1.98m`) Light-Oak Doorway Jambs, Architraves, Brass Threshold & 4-Panel Oak Door Leaf in `ensuiteGroup` (`firstFloorGroup` — Issue #1!)
-  // Issue #4 ("dithering here" at `[2.589, 2.092, 17.237]`):
-  // Seat `thresholdStrip` (`y = 2.093..2.098m`) cleanly ON TOP of `doorThresholdTile` (`top = 2.093m`) instead of coplanar at `y = 2.092m`!
+  // Seat `thresholdStrip` (`+0.018..+0.023m`) cleanly `4mm` above `doorThresholdTile` (`top = +0.014m`)!
   const thresholdStrip = new THREE.Mesh(
-    new THREE.BoxGeometry(clearThresholdW, 0.005, 0.036),
+    new THREE.BoxGeometry(clearThresholdW - 0.008, 0.005, 0.036),
     brushedBrassMat
   );
   thresholdStrip.name = 'outbuildings.firstFloor.stableEnsuite.doorThresholdStrip';
   thresholdStrip.position.set(
     (doorU0 + doorU1) * 0.5,
-    stableUpperFloorY + 0.0155,
+    stableUpperFloorY + 0.0205,
     vNorth - 0.022
   );
   ensuiteGroup.add(thresholdStrip);
 
   for (const jSide of [-1, 1] as const) {
     const ju = (doorU0 + doorU1) * 0.5 + jSide * (doorW * 0.5 - 0.012);
+    const jambH = doorClearH - 0.036;
     const jamb = new THREE.Mesh(
-      new THREE.BoxGeometry(0.024, doorClearH - 0.013, wallT + 0.024),
+      new THREE.BoxGeometry(0.020, jambH, wallT + 0.016),
       lightJoineryOakMat
     );
     jamb.name = 'outbuildings.firstFloor.stableEnsuite.doorFrame.jamb';
-    jamb.position.set(ju, stableUpperFloorY + 0.013 + (doorClearH - 0.013) * 0.5, vNorth);
+    jamb.position.set(ju, stableUpperFloorY + 0.004 + jambH * 0.5, vNorth);
     jamb.castShadow = true;
     ensuiteGroup.add(jamb);
   }
   const doorHeadJamb = new THREE.Mesh(
-    new THREE.BoxGeometry(doorW, 0.024, wallT + 0.024),
+    new THREE.BoxGeometry(doorW - 0.008, 0.024, wallT + 0.016),
     lightJoineryOakMat
   );
   doorHeadJamb.name = 'outbuildings.firstFloor.stableEnsuite.doorFrame.headJamb';
-  doorHeadJamb.position.set((doorU0 + doorU1) * 0.5, stableUpperFloorY + doorClearH - 0.012, vNorth);
+  doorHeadJamb.position.set((doorU0 + doorU1) * 0.5, stableUpperFloorY + doorClearH - 0.016, vNorth);
   ensuiteGroup.add(doorHeadJamb);
 
   // 45°-Mitred Ogee/Torus Profiled & Colour-Drenched Architraves on both Bedroom (`-z`) and Ensuite (`+z`) faces
@@ -318,11 +318,11 @@ export function buildStableUpperEnsuiteBathroom(
     const [leftLegGeo, headGeo, rightLegGeo] = buildMitredArchitraveSegments(
       doorU0 + 0.012,
       doorU1 - 0.012,
-      stableUpperFloorY,
-      stableUpperFloorY,
+      stableUpperFloorY + 0.004,
+      stableUpperFloorY + 0.004,
       stableUpperFloorY + doorClearH - 0.012,
       'x',
-      vNorth + faceZ * (wallT * 0.5),
+      vNorth + faceZ * (wallT * 0.5 + 0.012),
       faceZ,
       0.064,
       0.020
@@ -349,11 +349,11 @@ export function buildStableUpperEnsuiteBathroom(
 
   const doorPivot = new THREE.Group();
   doorPivot.name = 'outbuildings.firstFloor.stableEnsuite.door';
-  doorPivot.position.set(doorU0 + 0.024, stableUpperFloorY + 0.012, vNorth + 0.02);
+  doorPivot.position.set(doorU0 + 0.028, stableUpperFloorY + 0.027, vNorth + 0.02);
   doorFrameAssy.add(doorPivot);
 
-  const leafW = doorW - 0.048; // 0.712m
-  const leafH = doorClearH - 0.026; // 1.954m full-height door leaf!
+  const leafW = doorW - 0.056; // 0.704m
+  const leafH = doorClearH - 0.060; // 1.920m full-height door leaf!
   const doorLeaf = new THREE.Mesh(
     new THREE.BoxGeometry(leafW, leafH, 0.042),
     lightJoineryOakMat
@@ -367,24 +367,26 @@ export function buildStableUpperEnsuiteBathroom(
   // Recessed Shaker/fielded panels on both faces of the Ensuite oak door
   for (const [py, ph] of [
     [0.44, 0.62],
-    [1.37, 0.86],
+    [1.36, 0.84],
   ] as const) {
-    const panelBead = new THREE.Mesh(
-      new THREE.BoxGeometry(leafW - 0.18, ph, 0.048),
-      lightJoineryOakMat
-    );
-    panelBead.name = 'outbuildings.firstFloor.stableEnsuite.doorPanelBead';
-    panelBead.position.set(leafW * 0.5, py, 0);
-    doorPivot.add(panelBead);
+    for (const bSideZ of [-0.028, 0.028] as const) {
+      const panelBead = new THREE.Mesh(
+        new THREE.BoxGeometry(leafW - 0.18, ph, 0.006),
+        lightJoineryOakMat
+      );
+      panelBead.name = 'outbuildings.firstFloor.stableEnsuite.doorPanelBead';
+      panelBead.position.set(leafW * 0.5, py, bSideZ);
+      doorPivot.add(panelBead);
+    }
   }
 
-  for (const hSideZ of [-0.032, 0.032] as const) {
+  for (const hSideZ of [-0.046, 0.046] as const) {
     const lever = new THREE.Mesh(
       new THREE.BoxGeometry(0.115, 0.016, 0.022),
       brushedBrassMat
     );
     lever.name = 'outbuildings.firstFloor.stableEnsuite.doorHandle';
-    lever.position.set(leafW - 0.085, 0.98, hSideZ);
+    lever.position.set(leafW - 0.085, 0.96, hSideZ);
     doorPivot.add(lever);
   }
 
@@ -408,22 +410,25 @@ export function buildStableUpperEnsuiteBathroom(
   const shU0 = uWest + 0.01; // 23.23m
   const shU1 = 24.48; // 1.25m wide walk-in shower (leaves 1.06m wide central walkway to vanity at u = 25.54m!)
   const shW = shU1 - shU0; // 1.25m
-  const shV0 = vNorth + wallT * 0.5 + 0.005; // 3.475m
-  const shV1 = 4.395; // 0.92m deep walk-in shower (+12cm deeper than before!)
-  const shD = shV1 - shV0; // 0.92m
+  const shV0 = vNorth + wallT * 0.5 + 0.006; // 3.476m
+  const shV1 = 4.395; // 0.919m deep walk-in shower
+  const shD = shV1 - shV0;
   const shCenterU = (shU0 + shU1) * 0.5; // 23.855m
-  const shCenterV = (shV0 + shV1) * 0.5; // 3.935m
-  const shNorthWallH = ceilHAtV(shV0) - 0.01; // 2.254m at v = 3.475m
-  const shSouthWallH = ceilHAtV(shV1) - 0.01; // 1.772m at v = 4.395m
-  const shGlassH = shSouthWallH; // 1.772m full-height frameless glass enclosure
+  const shNorthWallH = ceilHAtV(shV0) - 0.024;
+  const shSouthWallH = ceilHAtV(shV1) - 0.024;
+  const shGlassH = shSouthWallH; // full-height frameless glass enclosure
 
   // White stone-resin low-profile walk-in shower tray + linear brushed-brass drain grate
   const showerTray = new THREE.Mesh(
-    new THREE.BoxGeometry(shW, 0.042, shD),
+    new THREE.BoxGeometry(shW - 0.044, 0.038, shD - 0.044),
     matteStoneResinMat
   );
   showerTray.name = 'outbuildings.firstFloor.stableEnsuite.showerTray';
-  showerTray.position.set(shCenterU, stableUpperFloorY + 0.025, shCenterV);
+  showerTray.position.set(
+    shU0 + 0.022 + (shW - 0.044) * 0.5,
+    stableUpperFloorY + 0.037,
+    shV0 + 0.022 + (shD - 0.044) * 0.5
+  );
   showerTray.receiveShadow = true;
   showerGroup.add(showerTray);
 
@@ -432,24 +437,24 @@ export function buildStableUpperEnsuiteBathroom(
     brushedBrassMat
   );
   linearDrain.name = 'outbuildings.firstFloor.stableEnsuite.shower.linearDrain';
-  linearDrain.position.set(shU0 + 0.50, stableUpperFloorY + 0.048, shV0 + 0.16);
+  linearDrain.position.set(shU0 + 0.50, stableUpperFloorY + 0.062, shV0 + 0.16);
   showerGroup.add(linearDrain);
 
   // Full-height North & Raked West Carrara marble tile wall linings inside the shower
   const northTilePanel = new THREE.Mesh(
-    new THREE.BoxGeometry(shW, shNorthWallH, 0.016),
+    new THREE.BoxGeometry(shW - 0.008, shNorthWallH - 0.018, 0.016),
     marbleTileMat
   );
   northTilePanel.name = 'outbuildings.firstFloor.stableEnsuite.shower.northTilePanel';
-  northTilePanel.position.set(shCenterU, stableUpperFloorY + shNorthWallH * 0.5, shV0 + 0.008);
+  northTilePanel.position.set(shCenterU, stableUpperFloorY + 0.018 + (shNorthWallH - 0.018) * 0.5, shV0 + 0.008);
   showerGroup.add(northTilePanel);
 
   const westTileGeo = createRakedVYExtrusion(
     [
-      [shV0, 0],
-      [shV1, 0],
-      [shV1, shSouthWallH],
-      [shV0, shNorthWallH],
+      [shV0 + 0.020, 0.018],
+      [shV1 - 0.012, 0.018],
+      [shV1 - 0.012, shSouthWallH],
+      [shV0 + 0.020, shNorthWallH],
     ],
     0.016
   );
@@ -458,89 +463,96 @@ export function buildStableUpperEnsuiteBathroom(
   westTilePanel.position.set(shU0, stableUpperFloorY, 0);
   showerGroup.add(westTilePanel);
 
-  // Recessed Brushed-Brass & Illuminated Marble Shampoo Niche on the North shower wall (`u = 24.14m, y = 2.08 + 1.12m`)
+  // Recessed Brushed-Brass & Illuminated Marble Shampoo Niche on the North shower wall (`u = 24.14m, y = stableUpperFloorY + 1.12m`)
   const nicheFrame = new THREE.Mesh(
-    new THREE.BoxGeometry(0.36, 0.24, 0.026),
+    new THREE.BoxGeometry(0.36, 0.24, 0.020),
     brushedBrassMat
   );
   nicheFrame.name = 'outbuildings.firstFloor.stableEnsuite.shower.nicheFrame';
-  nicheFrame.position.set(24.14, stableUpperFloorY + 1.12, shV0 + 0.016);
+  nicheFrame.position.set(24.14, stableUpperFloorY + 1.12, shV0 + 0.030);
   showerGroup.add(nicheFrame);
 
   const nicheLedStrip = new THREE.Mesh(
-    new THREE.BoxGeometry(0.32, 0.008, 0.018),
+    new THREE.BoxGeometry(0.32, 0.008, 0.008),
     warmLedGlowMat
   );
   nicheLedStrip.name = 'outbuildings.firstFloor.stableEnsuite.shower.nicheLedStrip';
-  nicheLedStrip.position.set(24.14, stableUpperFloorY + 1.225, shV0 + 0.022);
+  nicheLedStrip.position.set(24.14, stableUpperFloorY + 1.225, shV0 + 0.048);
   showerGroup.add(nicheLedStrip);
 
   // Full-Height Frameless Toughened Glass East Screen (`u = 24.48m`) & South Screen + Hinged Door (`v = 4.395m`)
+  const glassBottomOff = 0.060;
+  const glassTopOff = shGlassH - 0.028;
+  const glassNetH = glassTopOff - glassBottomOff;
+  const eastGlassSpanD = (shV1 - 0.016) - (shV0 + 0.028);
   const eastGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(0.014, shGlassH - 0.04, shD - 0.02),
+    new THREE.BoxGeometry(0.014, glassNetH, eastGlassSpanD),
     windowGlassMat
   );
   eastGlass.name = 'outbuildings.firstFloor.stableEnsuite.showerGlass';
-  eastGlass.position.set(shU1, stableUpperFloorY + 0.04 + (shGlassH - 0.04) * 0.5, shCenterV);
+  eastGlass.position.set(shU1, stableUpperFloorY + glassBottomOff + glassNetH * 0.5, (shV0 + 0.028 + shV1 - 0.016) * 0.5);
   showerGroup.add(eastGlass);
 
-  const southFixedW = 0.62;
-  const southDoorW = shW - southFixedW - 0.02; // 0.61m
+  const southFixedU0 = shU0 + 0.020;
+  const southFixedW = 0.60;
+  const southDoorW = (shU1 - 0.018) - (southFixedU0 + southFixedW + 0.012);
   const southGlassPanel = new THREE.Mesh(
-    new THREE.BoxGeometry(southFixedW, shGlassH - 0.04, 0.014),
+    new THREE.BoxGeometry(southFixedW, glassNetH, 0.014),
     windowGlassMat
   );
   southGlassPanel.name = 'outbuildings.firstFloor.stableEnsuite.showerGlass';
   southGlassPanel.position.set(
-    shU0 + southFixedW * 0.5,
-    stableUpperFloorY + 0.04 + (shGlassH - 0.04) * 0.5,
+    southFixedU0 + southFixedW * 0.5,
+    stableUpperFloorY + glassBottomOff + glassNetH * 0.5,
     shV1
   );
   showerGroup.add(southGlassPanel);
 
   const showerDoorMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(southDoorW, shGlassH - 0.04, 0.014),
+    new THREE.BoxGeometry(southDoorW, glassNetH, 0.014),
     windowGlassMat
   );
   showerDoorMesh.name = 'outbuildings.firstFloor.stableEnsuite.showerDoor';
   showerDoorMesh.position.set(
-    shU0 + southFixedW + 0.01 + southDoorW * 0.5,
-    stableUpperFloorY + 0.04 + (shGlassH - 0.04) * 0.5,
+    southFixedU0 + southFixedW + 0.012 + southDoorW * 0.5,
+    stableUpperFloorY + glassBottomOff + glassNetH * 0.5,
     shV1
   );
   showerGroup.add(showerDoorMesh);
 
   // Brushed-brass vertical channels, corner post & top header stabilizer bar (`height = shGlassH`)
+  const postNetH = (shGlassH - 0.028) - 0.018;
   const northBrassChannel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.024, shGlassH - 0.02, 0.024),
+    new THREE.BoxGeometry(0.024, postNetH, 0.020),
     brushedBrassMat
   );
   northBrassChannel.name = 'outbuildings.firstFloor.stableEnsuite.shower.northBrassChannel';
-  northBrassChannel.position.set(shU1, stableUpperFloorY + 0.02 + (shGlassH - 0.02) * 0.5, shV0 + 0.012);
+  northBrassChannel.position.set(shU1, stableUpperFloorY + 0.018 + postNetH * 0.5, shV0 + 0.014);
   showerGroup.add(northBrassChannel);
 
   const cornerBrassPost = new THREE.Mesh(
-    new THREE.BoxGeometry(0.024, shGlassH - 0.02, 0.024),
+    new THREE.BoxGeometry(0.024, postNetH, 0.024),
     brushedBrassMat
   );
   cornerBrassPost.name = 'outbuildings.firstFloor.stableEnsuite.shower.cornerBrassPost';
-  cornerBrassPost.position.set(shU1, stableUpperFloorY + 0.02 + (shGlassH - 0.02) * 0.5, shV1);
+  cornerBrassPost.position.set(shU1, stableUpperFloorY + 0.018 + postNetH * 0.5, shV1);
   showerGroup.add(cornerBrassPost);
 
   const topSouthBrassHeader = new THREE.Mesh(
-    new THREE.BoxGeometry(shW, 0.022, 0.024),
+    new THREE.BoxGeometry(shW - 0.024, 0.022, 0.024),
     brushedBrassMat
   );
   topSouthBrassHeader.name = 'outbuildings.firstFloor.stableEnsuite.shower.topSouthBrassHeader';
-  topSouthBrassHeader.position.set(shCenterU, stableUpperFloorY + shGlassH - 0.011, shV1);
+  topSouthBrassHeader.position.set(shU0 + 0.020 + (shW - 0.024) * 0.5, stableUpperFloorY + shGlassH - 0.011, shV1);
   showerGroup.add(topSouthBrassHeader);
 
+  const topEastSpanD = (shV1 - 0.016) - (shV0 + 0.020);
   const topEastBrassHeader = new THREE.Mesh(
-    new THREE.BoxGeometry(0.024, 0.022, shD),
+    new THREE.BoxGeometry(0.024, 0.022, topEastSpanD),
     brushedBrassMat
   );
   topEastBrassHeader.name = 'outbuildings.firstFloor.stableEnsuite.shower.topEastBrassHeader';
-  topEastBrassHeader.position.set(shU1, stableUpperFloorY + shGlassH - 0.011, shCenterV);
+  topEastBrassHeader.position.set(shU1, stableUpperFloorY + shGlassH - 0.011, (shV0 + 0.020 + shV1 - 0.016) * 0.5);
   showerGroup.add(topEastBrassHeader);
 
   const showerPull = new THREE.Mesh(
@@ -548,7 +560,7 @@ export function buildStableUpperEnsuiteBathroom(
     brushedBrassMat
   );
   showerPull.name = 'outbuildings.firstFloor.stableEnsuite.shower.doorPull';
-  showerPull.position.set(shU1 - southDoorW + 0.08, stableUpperFloorY + 0.98, shV1 + 0.022);
+  showerPull.position.set(shU1 - southDoorW + 0.08, stableUpperFloorY + 0.98, shV1 + 0.024);
   showerGroup.add(showerPull);
 
   // Brushed-Brass Thermostatic Mixer Valve, Vertical Riser Rail & 300mm Overhead Rainfall Deluge Rose at `y = +2.00m`!
@@ -558,36 +570,36 @@ export function buildStableUpperEnsuiteBathroom(
     brushedBrassMat
   );
   mixerPlate.name = 'outbuildings.firstFloor.stableEnsuite.shower.mixerPlate';
-  mixerPlate.position.set(shFixU, stableUpperFloorY + 1.02, shV0 + 0.022);
+  mixerPlate.position.set(shFixU, stableUpperFloorY + 1.02, shV0 + 0.030);
   showerGroup.add(mixerPlate);
 
   for (const dialDx of [-0.05, 0.05] as const) {
     const dial = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.020, 0.020, 0.028, 14),
+      new THREE.CylinderGeometry(0.020, 0.020, 0.024, 14),
       brushedBrassMat
     );
     dial.rotation.x = Math.PI / 2;
     dial.name = 'outbuildings.firstFloor.stableEnsuite.shower.mixerDial';
     dial.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    dial.position.set(shFixU + dialDx, stableUpperFloorY + 1.02, shV0 + 0.038);
+    dial.position.set(shFixU + dialDx, stableUpperFloorY + 1.02, shV0 + 0.054);
     showerGroup.add(dial);
   }
 
   const riserPipe = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.010, 0.010, 0.98, 14),
+    new THREE.CylinderGeometry(0.010, 0.010, 0.96, 14),
     brushedBrassMat
   );
   riserPipe.name = 'outbuildings.firstFloor.stableEnsuite.shower.riserPipe';
-  riserPipe.position.set(shFixU, stableUpperFloorY + 1.51, shV0 + 0.042);
+  riserPipe.position.set(shFixU, stableUpperFloorY + 1.56, shV0 + 0.048);
   showerGroup.add(riserPipe);
 
   const showerArm = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.010, 0.010, 0.36, 14),
+    new THREE.CylinderGeometry(0.010, 0.010, 0.34, 14),
     brushedBrassMat
   );
   showerArm.rotation.x = Math.PI / 2;
   showerArm.name = 'outbuildings.firstFloor.stableEnsuite.shower.showerArm';
-  showerArm.position.set(shFixU, stableUpperFloorY + 2.00, shV0 + 0.22);
+  showerArm.position.set(shFixU, stableUpperFloorY + 2.04, shV0 + 0.23);
   showerGroup.add(showerArm);
 
   const delugeHead = new THREE.Mesh(
@@ -595,7 +607,7 @@ export function buildStableUpperEnsuiteBathroom(
     brushedBrassMat
   );
   delugeHead.name = 'outbuildings.firstFloor.stableEnsuite.showerHead';
-  delugeHead.position.set(shFixU, stableUpperFloorY + 1.97, shV0 + 0.38);
+  delugeHead.position.set(shFixU, stableUpperFloorY + 2.01, shV0 + 0.38);
   showerGroup.add(delugeHead);
 
   const handWand = new THREE.Mesh(
@@ -603,7 +615,7 @@ export function buildStableUpperEnsuiteBathroom(
     brushedBrassMat
   );
   handWand.name = 'outbuildings.firstFloor.stableEnsuite.shower.handWand';
-  handWand.position.set(shFixU + 0.16, stableUpperFloorY + 1.16, shV0 + 0.055);
+  handWand.position.set(shFixU + 0.16, stableUpperFloorY + 1.16, shV0 + 0.058);
   showerGroup.add(handWand);
 
   // 4. Full-Size `0.90m` Fluted-Oak & Carrara Marble Vanity Sink Unit (`outbuildings.firstFloor.stableEnsuite.vanitySink`)
@@ -615,26 +627,27 @@ export function buildStableUpperEnsuiteBathroom(
   const vanH = 0.80;
   const vanCenterU = uEast - wallT * 0.5 - vanD * 0.5 - 0.01; // 25.76m
   const vanCenterV = 3.98;
-  vanityGroup.position.set(vanCenterU, stableUpperFloorY + 0.012, vanCenterV);
+  vanityGroup.position.set(vanCenterU, stableUpperFloorY + 0.018, vanCenterV);
   ensuiteGroup.add(vanityGroup);
 
+  const vanCabH = vanH - 0.14 - 0.020;
   const vanCabinet = new THREE.Mesh(
-    new THREE.BoxGeometry(vanD, vanH - 0.14, vanW),
+    new THREE.BoxGeometry(vanD, vanCabH, vanW),
     lightJoineryOakMat
   );
   vanCabinet.name = 'outbuildings.firstFloor.stableEnsuite.vanitySink.cabinet';
-  vanCabinet.position.set(0, 0.12 + (vanH - 0.14) * 0.5, 0);
+  vanCabinet.position.set(0, 0.12 + vanCabH * 0.5, 0);
   vanCabinet.castShadow = true;
   vanCabinet.receiveShadow = true;
   vanityGroup.add(vanCabinet);
 
-  for (const dy of [0.29, 0.60] as const) {
+  for (const dy of [0.28, 0.58] as const) {
     const drawerFront = new THREE.Mesh(
-      new THREE.BoxGeometry(0.018, 0.27, vanW - 0.04),
+      new THREE.BoxGeometry(0.016, 0.27, vanW - 0.04),
       lightJoineryOakMat
     );
     drawerFront.name = 'outbuildings.firstFloor.stableEnsuite.vanitySink.drawerFront';
-    drawerFront.position.set(-vanD * 0.5 - 0.008, dy, 0);
+    drawerFront.position.set(-vanD * 0.5 - 0.012, dy, 0);
     vanityGroup.add(drawerFront);
 
     const pullBar = new THREE.Mesh(
@@ -643,42 +656,42 @@ export function buildStableUpperEnsuiteBathroom(
     );
     pullBar.rotation.x = Math.PI / 2;
     pullBar.name = 'outbuildings.firstFloor.stableEnsuite.vanitySink.drawerPull';
-    pullBar.position.set(-vanD * 0.5 - 0.026, dy + 0.08, 0);
+    pullBar.position.set(-vanD * 0.5 - 0.030, dy + 0.08, 0);
     vanityGroup.add(pullBar);
   }
 
   const vanMarbleTop = new THREE.Mesh(
-    new THREE.BoxGeometry(vanD + 0.028, 0.034, vanW + 0.032),
+    new THREE.BoxGeometry(vanD + 0.024, 0.032, vanW + 0.032),
     marbleTileMat
   );
   vanMarbleTop.name = 'outbuildings.firstFloor.stableEnsuite.vanitySink.marbleTop';
-  vanMarbleTop.position.set(-0.006, vanH, 0);
+  vanMarbleTop.position.set(-0.008, vanH, 0);
   vanMarbleTop.castShadow = true;
   vanityGroup.add(vanMarbleTop);
 
   const vanSplashback = new THREE.Mesh(
-    new THREE.BoxGeometry(0.018, 0.068, vanW + 0.032),
+    new THREE.BoxGeometry(0.016, 0.068, vanW + 0.032),
     marbleTileMat
   );
   vanSplashback.name = 'outbuildings.firstFloor.stableEnsuite.vanitySink.splashback';
-  vanSplashback.position.set(vanD * 0.5 - 0.009, vanH + 0.048, 0);
+  vanSplashback.position.set(vanD * 0.5 - 0.008, vanH + 0.054, 0);
   vanityGroup.add(vanSplashback);
 
   const sinkBasinRim = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.18, 0.155, 0.06, 24),
+    new THREE.CylinderGeometry(0.18, 0.155, 0.056, 24),
     ceramicWhiteMat
   );
   sinkBasinRim.name = 'outbuildings.firstFloor.stableEnsuite.sinkBasin';
-  sinkBasinRim.position.set(-0.02, vanH + 0.03, 0);
+  sinkBasinRim.position.set(-0.02, vanH + 0.048, 0);
   sinkBasinRim.scale.set(0.88, 1.0, 1.28);
   vanityGroup.add(sinkBasinRim);
 
   const sinkWell = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.155, 0.13, 0.018, 22),
+    new THREE.CylinderGeometry(0.155, 0.13, 0.012, 22),
     new THREE.MeshStandardMaterial({ color: 0xe2e6ea, roughness: 0.2 })
   );
   sinkWell.name = 'outbuildings.firstFloor.stableEnsuite.vanitySink.sinkWell';
-  sinkWell.position.set(-0.02, vanH + 0.052, 0);
+  sinkWell.position.set(-0.02, vanH + 0.086, 0);
   sinkWell.scale.set(0.86, 1.0, 1.25);
   vanityGroup.add(sinkWell);
 
@@ -688,7 +701,7 @@ export function buildStableUpperEnsuiteBathroom(
   );
   sinkDrainPlug.name = 'outbuildings.firstFloor.stableEnsuite.vanitySink.drainPlug';
   sinkDrainPlug.userData = { lodTier: 'high', lodMaxDistance: 12 };
-  sinkDrainPlug.position.set(-0.02, vanH + 0.059, 0);
+  sinkDrainPlug.position.set(-0.02, vanH + 0.099, 0);
   vanityGroup.add(sinkDrainPlug);
 
   const tapBody = new THREE.Mesh(
@@ -696,7 +709,7 @@ export function buildStableUpperEnsuiteBathroom(
     brushedBrassMat
   );
   tapBody.name = 'outbuildings.firstFloor.stableEnsuite.vanitySink.tapBody';
-  tapBody.position.set(vanD * 0.5 - 0.068, vanH + 0.088, 0);
+  tapBody.position.set(vanD * 0.5 - 0.068, vanH + 0.0925, 0);
   vanityGroup.add(tapBody);
 
   const tapSpout = new THREE.Mesh(
@@ -705,33 +718,33 @@ export function buildStableUpperEnsuiteBathroom(
   );
   tapSpout.rotation.z = Math.PI * 0.42;
   tapSpout.name = 'outbuildings.firstFloor.stableEnsuite.vanitySink.tapSpout';
-  tapSpout.position.set(vanD * 0.5 - 0.118, vanH + 0.138, 0);
+  tapSpout.position.set(vanD * 0.5 - 0.128, vanH + 0.142, 0);
   vanityGroup.add(tapSpout);
 
   // Full-Size Standing Eye-Level Backlit Brushed-Brass Vanity Mirror (`0.68m W x 0.56m H` centered at `y = +1.24m`,
   // spanning `y = 0.96m..1.52m` cleanly below the `1.82m–2.18m` East wall ceiling across `v = 3.64..4.32m`!)
   const mirrorHalo = new THREE.Mesh(
-    new THREE.BoxGeometry(0.008, 0.58, 0.70),
+    new THREE.BoxGeometry(0.006, 0.58, 0.70),
     warmLedGlowMat
   );
   mirrorHalo.name = 'outbuildings.firstFloor.stableEnsuite.vanitySink.mirrorHalo';
-  mirrorHalo.position.set(vanD * 0.5 + 0.004, 1.24, 0);
+  mirrorHalo.position.set(vanD * 0.5 + 0.002, 1.24, 0);
   vanityGroup.add(mirrorHalo);
 
   const mirrorFrame = new THREE.Mesh(
-    new THREE.BoxGeometry(0.020, 0.56, 0.68),
+    new THREE.BoxGeometry(0.014, 0.56, 0.68),
     brushedBrassMat
   );
   mirrorFrame.name = 'outbuildings.firstFloor.stableEnsuite.mirror';
-  mirrorFrame.position.set(vanD * 0.5 - 0.002, 1.24, 0);
+  mirrorFrame.position.set(vanD * 0.5 - 0.012, 1.24, 0);
   vanityGroup.add(mirrorFrame);
 
   const mirrorGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(0.024, 0.532, 0.652),
+    new THREE.BoxGeometry(0.006, 0.532, 0.652),
     new THREE.MeshStandardMaterial({ color: 0xdce8f2, roughness: 0.05, metalness: 0.92 })
   );
   mirrorGlass.name = 'outbuildings.firstFloor.stableEnsuite.vanitySink.mirrorGlass';
-  mirrorGlass.position.set(vanD * 0.5 - 0.004, 1.24, 0);
+  mirrorGlass.position.set(vanD * 0.5 - 0.026, 1.24, 0);
   vanityGroup.add(mirrorGlass);
 
   // 5. Back-to-Wall Vitreous China Toilet (`outbuildings.firstFloor.stableEnsuite.toilet`)
@@ -739,51 +752,51 @@ export function buildStableUpperEnsuiteBathroom(
   //    between the Shower (`u <= 24.48m`) and Vanity (`u >= 25.54m`), facing North (`-v`) into `1.33m` of open central floor space!
   const toiletGroup = new THREE.Group();
   toiletGroup.name = 'outbuildings.firstFloor.stableEnsuite.toilet';
-  toiletGroup.position.set(24.88, stableUpperFloorY + 0.012, 5.05);
+  toiletGroup.position.set(24.88, stableUpperFloorY + 0.018, 5.05);
   ensuiteGroup.add(toiletGroup);
 
   const cisternBox = new THREE.Mesh(
-    new THREE.BoxGeometry(0.86, 0.94, 0.22),
+    new THREE.BoxGeometry(0.86, 0.94, 0.20),
     marbleTileMat
   );
   cisternBox.name = 'outbuildings.firstFloor.stableEnsuite.toilet.cisternBox';
-  cisternBox.position.set(0, 0.47, 0.25);
+  cisternBox.position.set(0, 0.47, 0.24);
   cisternBox.castShadow = true;
   cisternBox.receiveShadow = true;
   toiletGroup.add(cisternBox);
 
   const cisternOakShelf = new THREE.Mesh(
-    new THREE.BoxGeometry(0.88, 0.026, 0.24),
+    new THREE.BoxGeometry(0.88, 0.026, 0.22),
     lightJoineryOakMat
   );
   cisternOakShelf.name = 'outbuildings.firstFloor.stableEnsuite.toilet.cisternShelf';
-  cisternOakShelf.position.set(0, 0.953, 0.245);
+  cisternOakShelf.position.set(0, 0.957, 0.24);
   toiletGroup.add(cisternOakShelf);
 
   const flushPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.21, 0.14, 0.012),
+    new THREE.BoxGeometry(0.21, 0.14, 0.010),
     brushedBrassMat
   );
   flushPlate.name = 'outbuildings.firstFloor.stableEnsuite.toilet.flushPlate';
-  flushPlate.position.set(0, 0.78, 0.136);
+  flushPlate.position.set(0, 0.78, 0.131);
   toiletGroup.add(flushPlate);
 
   const wcPedestal = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.165, 0.145, 0.38, 22),
+    new THREE.CylinderGeometry(0.165, 0.145, 0.35, 22),
     ceramicWhiteMat
   );
   wcPedestal.name = 'outbuildings.firstFloor.stableEnsuite.toilet.pedestal';
-  wcPedestal.position.set(0, 0.19, -0.02);
+  wcPedestal.position.set(0, 0.175, -0.04);
   wcPedestal.scale.set(1.0, 1.0, 1.32);
   wcPedestal.castShadow = true;
   toiletGroup.add(wcPedestal);
 
   const wcRearShroud = new THREE.Mesh(
-    new THREE.BoxGeometry(0.32, 0.38, 0.24),
+    new THREE.BoxGeometry(0.32, 0.35, 0.18),
     ceramicWhiteMat
   );
   wcRearShroud.name = 'outbuildings.firstFloor.stableEnsuite.toilet.rearShroud';
-  wcRearShroud.position.set(0, 0.19, 0.06);
+  wcRearShroud.position.set(0, 0.175, 0.046);
   toiletGroup.add(wcRearShroud);
 
   const wcSeatRim = new THREE.Mesh(
@@ -791,16 +804,16 @@ export function buildStableUpperEnsuiteBathroom(
     ceramicWhiteMat
   );
   wcSeatRim.name = 'outbuildings.firstFloor.stableEnsuite.toilet.seatRim';
-  wcSeatRim.position.set(0, 0.395, -0.02);
+  wcSeatRim.position.set(0, 0.382, -0.04);
   wcSeatRim.scale.set(1.0, 1.0, 1.34);
   toiletGroup.add(wcSeatRim);
 
   const wcBowlWater = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.125, 0.10, 0.012, 20),
+    new THREE.CylinderGeometry(0.125, 0.10, 0.008, 20),
     new THREE.MeshStandardMaterial({ color: 0xd6eef8, roughness: 0.08, metalness: 0.1 })
   );
   wcBowlWater.name = 'outbuildings.firstFloor.stableEnsuite.toilet.bowlWater';
-  wcBowlWater.position.set(0, 0.385, -0.03);
+  wcBowlWater.position.set(0, 0.358, -0.05);
   wcBowlWater.scale.set(1.0, 1.0, 1.25);
   toiletGroup.add(wcBowlWater);
 

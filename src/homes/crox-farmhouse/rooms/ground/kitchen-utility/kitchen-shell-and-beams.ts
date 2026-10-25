@@ -46,7 +46,7 @@ const sharedDoorBackplateGeo = prepGeo(new THREE.BoxGeometry(0.042, 0.15, 0.085)
 const sharedDoorSpindleGeo = prepGeo(new THREE.BoxGeometry(0.018, 0.018, 0.13));
 const sharedDoorLeverGeo = prepGeo(new THREE.BoxGeometry(0.115, 0.02, 0.02));
 
-const sharedStableVGrooveGeo = prepGeo(new THREE.BoxGeometry(0.005, 0.75, 0.068));
+const sharedStableVGrooveGeo = prepGeo(new THREE.BoxGeometry(0.005, 0.75, 0.074));
 const sharedStableLowerRailGeo = prepGeo(new THREE.BoxGeometry(0.81, 0.112, 0.068));
 const sharedStableLowerStileGeo = prepGeo(new THREE.BoxGeometry(0.11, 0.984, 0.068));
 const sharedStableLowerLeverGeo = prepGeo(new THREE.BoxGeometry(0.11, 0.018, 0.018));
@@ -430,13 +430,13 @@ export function buildSplitStableDoor(
     upperLeafGroup.add(rail);
   }
 
-  // Projecting weathered oak weather-drip bar along the bottom rail of the upper leaf (right above the split seam!)
+  // Projecting weathered oak weather-drip bar along the exterior face of the bottom rail of the upper leaf
   const weatherDripBar = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(0.82, 0.026, 0.095)),
+    prepGeo(new THREE.BoxGeometry(0.82, 0.026, 0.032)),
     oakWeatherMat
   );
   weatherDripBar.name = 'utility.stableDoor.upperLeaf.weatherDripBar';
-  weatherDripBar.position.set(0, -0.502, -0.012);
+  weatherDripBar.position.set(0, -0.495, -0.054);
   weatherDripBar.castShadow = true;
   upperLeafGroup.add(weatherDripBar);
 
@@ -521,7 +521,7 @@ export function buildSplitStableDoor(
   parent.add(doorGroup);
 }
 
-const sharedEastWinPostGeo = prepGeo(new THREE.BoxGeometry(0.26, 2.09, 0.055));
+const sharedEastWinPostGeo = prepGeo(new THREE.BoxGeometry(0.26, 1.977, 0.055));
 
 export function buildFullHeightEastWindow(
   parent: THREE.Object3D,
@@ -580,7 +580,7 @@ export function buildFullHeightEastWindow(
   for (let i = 0; i < postPositions.length; i++) {
     const post = new THREE.Mesh(sharedEastWinPostGeo, oakFrameMat);
     post.name = `kitchen.eastWindow.mullionPost_${i}`;
-    post.position.set(0, winH / 2, postPositions[i]);
+    post.position.set(0, 0.049 + 1.977 * 0.5, postPositions[i]);
     post.castShadow = true;
     winGroup.add(post);
   }
@@ -591,25 +591,25 @@ export function buildFullHeightEastWindow(
   const sashW = 0.032;
   for (const sSign of [-1, 1] as const) {
     const sStile = new THREE.Mesh(
-      prepGeo(new THREE.BoxGeometry(0.052, clearH, sashW)),
+      prepGeo(new THREE.BoxGeometry(0.052, clearH - sashW * 2 - 0.008, sashW)),
       whiteSashMat
     );
     sStile.name = `kitchen.eastWindow.sashStile_${sSign < 0 ? 'north' : 'south'}`;
-    sStile.position.set(0, 0.045 + clearH * 0.5, sSign * (clearW * 0.5 - sashW * 0.5));
+    sStile.position.set(0, 0.045 + clearH * 0.5, sSign * (clearW * 0.5 - sashW * 0.5 - 0.004));
     winGroup.add(sStile);
 
     const sRail = new THREE.Mesh(
-      prepGeo(new THREE.BoxGeometry(0.052, sashW, clearW)),
+      prepGeo(new THREE.BoxGeometry(0.052, sashW, clearW - 0.008)),
       whiteSashMat
     );
     sRail.name = `kitchen.eastWindow.sashRail_${sSign < 0 ? 'bottom' : 'top'}`;
-    sRail.position.set(0, 0.045 + clearH * 0.5 + sSign * (clearH * 0.5 - sashW * 0.5), 0);
+    sRail.position.set(0, 0.045 + clearH * 0.5 + sSign * (clearH * 0.5 - sashW * 0.5 - 0.004), 0);
     winGroup.add(sRail);
   }
 
   // Full-height glass pane
   const glass = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(0.016, clearH - sashW * 2 + 0.008, clearW - sashW * 2 + 0.008)),
+    prepGeo(new THREE.BoxGeometry(0.016, clearH - sashW * 2 - 0.016, clearW - sashW * 2 - 0.016)),
     glassMat
   );
   glass.name = 'kitchen.eastWindow.glassPane';
@@ -681,13 +681,13 @@ function buildHighLevelEastCasementWindow(
     oakTrimMat
   );
   intBoard.name = 'kitchen.eastHighWindow.oakBoard';
-  intBoard.position.set(-0.08, 0.016, 0);
+  intBoard.position.set(-0.125, 0.016, 0);
   winGroup.add(intBoard);
 
   // Outer casement frame + 3D inset sash sub-frame & brass casement stay
   for (const zSide of [-1, 1] as const) {
     const jamb = new THREE.Mesh(
-      prepGeo(new THREE.BoxGeometry(0.11, winH, 0.042)),
+      prepGeo(new THREE.BoxGeometry(0.11, winH - 0.084 - 0.008, 0.042)),
       whiteFrameMat
     );
     jamb.name = `kitchen.eastHighWindow.jamb_${zSide < 0 ? 'north' : 'south'}`;
@@ -712,7 +712,7 @@ function buildHighLevelEastCasementWindow(
   const sashW = 0.028;
   for (const sSign of [-1, 1] as const) {
     const sStile = new THREE.Mesh(
-      prepGeo(new THREE.BoxGeometry(0.046, clearH - 0.008, sashW)),
+      prepGeo(new THREE.BoxGeometry(0.046, clearH - sashW * 2 - 0.016, sashW)),
       whiteFrameMat
     );
     sStile.name = `kitchen.eastHighWindow.sashStile_${sSign < 0 ? 'north' : 'south'}`;
@@ -738,7 +738,7 @@ function buildHighLevelEastCasementWindow(
   winGroup.add(stay);
 
   const glass = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(0.016, clearH - sashW * 2 + 0.008, clearW - sashW * 2 + 0.008)),
+    prepGeo(new THREE.BoxGeometry(0.016, clearH - sashW * 2 - 0.016, clearW - sashW * 2 - 0.016)),
     glassMat
   );
   glass.name = 'kitchen.eastHighWindow.glassPane';
@@ -787,11 +787,11 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   scene.add(plinth);
 
   const eastPlinthCollar = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(11.38, 0.56, 9.78)),
+    prepGeo(new THREE.BoxGeometry(11.38, 0.54, 9.78)),
     plinthMat
   );
   eastPlinthCollar.name = 'kitchen.foundation.eastPlinthCollar';
-  eastPlinthCollar.position.set(1.05, -0.39, 2.09);
+  eastPlinthCollar.position.set(1.05, -0.4, 2.09);
   eastPlinthCollar.receiveShadow = true;
   scene.add(eastPlinthCollar);
 
@@ -885,10 +885,10 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   // North Back Wall
   const backWallLowBase = createExteriorBrickWallBox(
     'kitchen.northWall.lowBase',
-    9.64,
+    9.395,
     0.18,
     extWallThick,
-    0.18,
+    0.3025,
     0.09,
     -2.5 - extWallThick / 2,
     ['+z']
@@ -897,10 +897,10 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
 
   const backWall = createExteriorBrickWallBox(
     'kitchen.northWall.main',
-    9.64,
+    9.395,
     wallHeight - 0.18,
     extWallThick,
-    0.18,
+    0.3025,
     0.18 + (wallHeight - 0.18) / 2,
     -2.5 - extWallThick / 2,
     ['+z']
@@ -923,10 +923,10 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   const westWallMain = createExteriorBrickWallBox(
     'kitchen.westCrossWall.main',
     crossWallThick,
-    wallHeight - 0.18,
+    2.325,
     3.35,
     -4.4 - crossWallThick / 2,
-    0.18 + (wallHeight - 0.18) / 2,
+    1.3425,
     -0.825,
     ['+x', '-x', '+y', '-y', '+z', '-z']
   );
@@ -935,10 +935,10 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   const westOpeningHeader = createExteriorBrickWallBox(
     'kitchen.westCrossWall.portalHeader',
     crossWallThick,
-    0.94,
+    0.445,
     1.14,
     -4.4 - crossWallThick / 2,
-    2.53,
+    2.2825,
     1.42,
     ['+x', '-x', '+y', '-y', '+z', '-z']
   );
@@ -1243,21 +1243,21 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
 
   // Backing & off-white museum passe-partout mount board
   const mountBacking = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(frameW - mouldingW * 1.6, frameH - mouldingW * 1.6, 0.02)),
+    prepGeo(new THREE.BoxGeometry(frameW - mouldingW * 2 - 0.008, frameH - mouldingW * 2 - 0.008, 0.01)),
     museumMatBoardMat
   );
   mountBacking.name = 'kitchen.sitting.hawaiiArtworkFrame.mountBacking';
-  mountBacking.position.set(0, 0, -0.004);
+  mountBacking.position.set(0, 0, -0.01);
   mountBacking.receiveShadow = true;
   hawaiiFrameGroup.add(mountBacking);
 
   // Inner beveled mat window rim around the Hawaii print
   const innerBevelRim = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(0.868, 0.568, 0.023)),
+    prepGeo(new THREE.BoxGeometry(0.868, 0.568, 0.006)),
     matBevelMat
   );
   innerBevelRim.name = 'kitchen.sitting.hawaiiArtworkFrame.innerBevelRim';
-  innerBevelRim.position.set(0, 0, -0.003);
+  innerBevelRim.position.set(0, 0, 0.002);
   hawaiiFrameGroup.add(innerBevelRim);
 
   // High-resolution Hawaii Na Pali / Hanalei Bay golden-hour artwork print
@@ -1278,14 +1278,14 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   ] as const) {
     const hRail = new THREE.Mesh(hawaiiHRailGeo, galleryOakFrameMat);
     hRail.name = `kitchen.sitting.hawaiiArtworkFrame.${railTag}`;
-    hRail.position.set(0, sy * (frameH * 0.5 - mouldingW * 0.5), 0.004);
+    hRail.position.set(0, sy * (frameH * 0.5 - mouldingW * 0.5), 0.006);
     hRail.castShadow = true;
     hRail.receiveShadow = true;
     hawaiiFrameGroup.add(hRail);
   }
 
   const hawaiiVStileGeo = prepGeo(
-    new THREE.BoxGeometry(mouldingW, frameH - mouldingW * 2, frameDepth)
+    new THREE.BoxGeometry(mouldingW, frameH - mouldingW * 2 - 0.008, frameDepth)
   );
   for (const [sx, stileTag] of [
     [-1, 'leftStile'],
@@ -1293,7 +1293,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   ] as const) {
     const vStile = new THREE.Mesh(hawaiiVStileGeo, galleryOakFrameMat);
     vStile.name = `kitchen.sitting.hawaiiArtworkFrame.${stileTag}`;
-    vStile.position.set(sx * (frameW * 0.5 - mouldingW * 0.5), 0, 0.004);
+    vStile.position.set(sx * (frameW * 0.5 - mouldingW * 0.5), 0, 0.006);
     vStile.castShadow = true;
     vStile.receiveShadow = true;
     hawaiiFrameGroup.add(vStile);

@@ -229,48 +229,49 @@ export function buildGymOakDoorAndSkirting(
   glassDoorScreenGroup.position.set(screenUMid, baseY0, screenVMid);
   groundGroup.add(glassDoorScreenGroup);
 
-  // Solid European Oak & Brushed-Stainless Threshold Step (`y = 0..0.10m` above `baseY0`)
+  // Solid European Oak & Brushed-Stainless Threshold Step (`y = 0.002..0.098m` above `baseY0`, clear of garage resinFloor)
   const thresholdStep = new THREE.Mesh(
-    new THREE.BoxGeometry(partT + 0.04, thresholdStepH, screenW),
+    new THREE.BoxGeometry(partT - 0.012, thresholdStepH - 0.004, screenW - 0.008),
     lightOakFrameMat
   );
   thresholdStep.name = 'outbuildings.gymGarageGlassDoor.threshold';
-  thresholdStep.position.set(0, thresholdStepH * 0.5, 0);
+  thresholdStep.position.set(-0.002, thresholdStepH * 0.5, 0);
   thresholdStep.receiveShadow = true;
   glassDoorScreenGroup.add(thresholdStep);
 
   const thresholdSillPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.006, screenW - jambT * 2),
+    new THREE.BoxGeometry(0.08, 0.004, screenW - jambT * 2 - 0.012),
     brushedSteelHardwareMat
   );
   thresholdSillPlate.name = 'outbuildings.gymGarageGlassDoor.thresholdSillPlate';
   thresholdSillPlate.userData.lodTier = 'high';
   thresholdSillPlate.userData.lodMaxDistance = 12;
-  thresholdSillPlate.position.set(0, thresholdStepH + 0.003, 0);
+  thresholdSillPlate.position.set(-0.002, thresholdStepH + 0.005, 0);
   glassDoorScreenGroup.add(thresholdSillPlate);
 
   // Full-depth outer frame jamb linings (North & South) and top head lining
+  const jambSpanH = screenH - thresholdStepH - 0.008;
   for (const sideZ of [-1, 1] as const) {
     const jamb = new THREE.Mesh(
-      new THREE.BoxGeometry(partT + 0.01, screenH - thresholdStepH, jambT),
+      new THREE.BoxGeometry(partT + 0.01, jambSpanH, jambT),
       satinBlackMullionMat
     );
     jamb.name = `outbuildings.gymGarageGlassDoor.jamb.${sideZ < 0 ? 'north' : 'south'}`;
     jamb.position.set(
       0,
-      thresholdStepH + (screenH - thresholdStepH) * 0.5,
-      sideZ * (screenW * 0.5 - jambT * 0.5)
+      thresholdStepH + 0.004 + jambSpanH * 0.5,
+      sideZ * (screenW * 0.5 - jambT * 0.5 - 0.002)
     );
     jamb.castShadow = true;
     jamb.receiveShadow = true;
     glassDoorScreenGroup.add(jamb);
   }
   const headLining = new THREE.Mesh(
-    new THREE.BoxGeometry(partT + 0.01, jambT, screenW),
+    new THREE.BoxGeometry(partT + 0.01, jambT, screenW - jambT * 2 - 0.012),
     satinBlackMullionMat
   );
   headLining.name = 'outbuildings.gymGarageGlassDoor.headLining';
-  headLining.position.set(0, screenH - jambT * 0.5, 0);
+  headLining.position.set(0, screenH - jambT * 0.5 - 0.004, 0);
   glassDoorScreenGroup.add(headLining);
 
   // 45°-Mitred Ogee/Torus Profiled Perimeter Architraves on both the GYM (`-u`) and Garage (`+u`) wall faces
@@ -279,11 +280,11 @@ export function buildGymOakDoorAndSkirting(
     const [northLegGeo, headGeo, southLegGeo] = buildMitredArchitraveSegments(
       -(screenW * 0.5 - 0.012),
       screenW * 0.5 - 0.012,
-      thresholdStepH,
-      thresholdStepH,
+      thresholdStepH + 0.004,
+      thresholdStepH + 0.004,
       screenH - 0.006,
       'z',
-      sideX * (partT * 0.5),
+      sideX * (partT * 0.5 + 0.006),
       sideX,
       archW,
       0.020
@@ -308,9 +309,9 @@ export function buildGymOakDoorAndSkirting(
   // - North Fixed Full-Height Glazed Sidelight (`z = -1.286m .. -0.78m`, width `0.506m`)
   // - Central Full-Height Interactive Double Glass Doors (`z = -0.78m .. +0.78m`, width `1.56m`, two `0.774m` leaves)
   // - South Fixed Full-Height Glazed Sidelight (`z = +0.78m .. +1.286m`, width `0.506m`)
-  const clearBottomY = thresholdStepH; // 0.10m
-  const clearTopY = screenH - jambT; // 2.346m
-  const clearH = clearTopY - clearBottomY; // 2.246m
+  const clearBottomY = thresholdStepH + 0.012; // clear above thresholdSillPlate
+  const clearTopY = screenH - jambT - 0.008;
+  const clearH = clearTopY - clearBottomY;
   const clearMidY = clearBottomY + clearH * 0.5;
   const doorOpeningHalfW = 0.78;
   const mullionW = 0.036;
@@ -330,8 +331,8 @@ export function buildGymOakDoorAndSkirting(
     glassDoorScreenGroup.add(mullionPost);
 
     // Fixed Full-Height Sidelight between `postZ` and outer jamb (`±(screenW * 0.5 - jambT)`)
-    const sidelightInnerZ = sideZ * (doorOpeningHalfW + mullionW);
-    const sidelightOuterZ = sideZ * (screenW * 0.5 - jambT);
+    const sidelightInnerZ = sideZ * (doorOpeningHalfW + mullionW + 0.004);
+    const sidelightOuterZ = sideZ * (screenW * 0.5 - jambT - 0.006);
     const sidelightW = Math.abs(sidelightOuterZ - sidelightInnerZ);
     const sidelightMidZ = (sidelightInnerZ + sidelightOuterZ) * 0.5;
 
@@ -348,7 +349,7 @@ export function buildGymOakDoorAndSkirting(
     }
 
     const sidelightGlass = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, clearH - 0.036, sidelightW - 0.012),
+      new THREE.BoxGeometry(0.016, clearH - 0.072, sidelightW - 0.008),
       viewingGlassMat
     );
     sidelightGlass.name = 'outbuildings.gymGarageGlassDoor.sidelightGlass';
@@ -358,7 +359,7 @@ export function buildGymOakDoorAndSkirting(
 
   // Two Interactive Full-Height ("Double Height") Glazed Door Leaves (`northLeaf` & `southLeaf`)
   const leafW = doorOpeningHalfW - 0.004; // 0.776m per leaf
-  const leafH = clearH - 0.008; // 2.238m tall!
+  const leafH = clearH - 0.008;
   const leafT = 0.044;
   const stileW = 0.046;
 
@@ -403,7 +404,7 @@ export function buildGymOakDoorAndSkirting(
     ] as const) {
       railIdx++;
       const rail = new THREE.Mesh(
-        new THREE.BoxGeometry(leafT, railH, leafW - stileW * 2),
+        new THREE.BoxGeometry(leafT, railH, leafW - stileW * 2 - 0.008),
         satinBlackMullionMat
       );
       rail.name = `${leafName}.rail.${railIdx}`;
@@ -414,11 +415,11 @@ export function buildGymOakDoorAndSkirting(
 
     // Full-Height Toughened Acoustic Glass Pane (`outbuildings.gymGarageGlassDoor.glass` & legacy alias `.gymGarageViewingWindow.glass`)
     const doorGlass = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, leafH - 0.11, leafW - stileW * 2 + 0.008),
+      new THREE.BoxGeometry(0.016, leafH - 0.128, leafW - stileW * 2 - 0.008),
       viewingGlassMat
     );
     doorGlass.name = 'outbuildings.gymGarageGlassDoor.glass';
-    doorGlass.position.set(0, 0.004, leafCenterRelZ);
+    doorGlass.position.set(0, 0.008, leafCenterRelZ);
     leafPivot.add(doorGlass);
 
     // Issue #4 ("black handles" at `[-16.448, 0.523, 17.616]`, `outbuildings.gymGarageGlassDoor.glass`):
@@ -430,19 +431,19 @@ export function buildGymOakDoorAndSkirting(
         satinBlackMullionMat
       );
       pullBar.name = 'outbuildings.gymGarageGlassDoor.handle';
-      pullBar.position.set(faceX * (leafT * 0.5 + 0.026), -0.06, handleRelZ);
+      pullBar.position.set(faceX * (leafT * 0.5 + 0.036), -0.06, handleRelZ);
       leafPivot.add(pullBar);
 
       for (const standY of [-0.22, 0.1] as const) {
         const standoff = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.008, 0.008, 0.028, 10),
+          new THREE.CylinderGeometry(0.008, 0.008, 0.02, 10),
           satinBlackMullionMat
         );
         standoff.name = 'outbuildings.gymGarageGlassDoor.handleStandoff';
         standoff.userData.lodTier = 'high';
         standoff.userData.lodMaxDistance = 12;
         standoff.rotation.z = Math.PI / 2;
-        standoff.position.set(faceX * (leafT * 0.5 + 0.013), standY, handleRelZ);
+        standoff.position.set(faceX * (leafT * 0.5 + 0.015), standY, handleRelZ);
         leafPivot.add(standoff);
       }
     }
@@ -465,10 +466,12 @@ export function buildGymOakDoorAndSkirting(
   skirtingGroup.userData.isArchitecturalShell = true;
   groundGroup.add(skirtingGroup);
 
-  const skirtBaseH = 0.118;
+  const skirtFloorClearY = baseY0 + 0.016; // 4mm above gymRubberTileFloor (`baseY0 + 0.012`)
+  const skirtBaseH = 0.102;
   const skirtCapH = 0.024;
   const skirtBaseT = 0.02;
   const skirtCapT = 0.014;
+  const wallGap = 0.004;
   const vInnerNorth = wallT; // 0.28m
   const vInnerSouth = vWestRangeSouth - wallT; // 5.43m
 
@@ -486,8 +489,8 @@ export function buildGymOakDoorAndSkirting(
     baseMesh.name = `outbuildings.gym.skirting.base.${skirtingSegIdx}`;
     baseMesh.position.set(
       midU,
-      baseY0 + skirtBaseH * 0.5,
-      vWallFace + inwardSignV * (skirtBaseT * 0.5)
+      skirtFloorClearY + skirtBaseH * 0.5,
+      vWallFace + inwardSignV * (wallGap + skirtBaseT * 0.5)
     );
     baseMesh.receiveShadow = true;
     skirtingGroup.add(baseMesh);
@@ -501,8 +504,8 @@ export function buildGymOakDoorAndSkirting(
     capMesh.userData.lodMaxDistance = 12;
     capMesh.position.set(
       midU,
-      baseY0 + skirtBaseH + skirtCapH * 0.5,
-      vWallFace + inwardSignV * (skirtCapT * 0.5)
+      skirtFloorClearY + skirtBaseH + 0.004 + skirtCapH * 0.5,
+      vWallFace + inwardSignV * (wallGap + skirtCapT * 0.5)
     );
     skirtingGroup.add(capMesh);
   };
@@ -518,8 +521,8 @@ export function buildGymOakDoorAndSkirting(
     );
     baseMesh.name = `outbuildings.gym.skirting.base.${skirtingSegIdx}`;
     baseMesh.position.set(
-      uWallFace + inwardSignU * (skirtBaseT * 0.5),
-      baseY0 + skirtBaseH * 0.5,
+      uWallFace + inwardSignU * (wallGap + skirtBaseT * 0.5),
+      skirtFloorClearY + skirtBaseH * 0.5,
       midV
     );
     baseMesh.receiveShadow = true;
@@ -533,33 +536,34 @@ export function buildGymOakDoorAndSkirting(
     capMesh.userData.lodTier = 'high';
     capMesh.userData.lodMaxDistance = 12;
     capMesh.position.set(
-      uWallFace + inwardSignU * (skirtCapT * 0.5),
-      baseY0 + skirtBaseH + skirtCapH * 0.5,
+      uWallFace + inwardSignU * (wallGap + skirtCapT * 0.5),
+      skirtFloorClearY + skirtBaseH + 0.004 + skirtCapH * 0.5,
       midV
     );
     skirtingGroup.add(capMesh);
   };
 
-  // Segmented skirting along GYM West road wall (`u = wallT`), stopping cleanly at Door 1830288 (`v = 3.82..4.63m`)
-  addSkirtingAlongV(vInnerNorth, 3.8, wallT, 1);
-  addSkirtingAlongV(4.65, vInnerSouth, wallT, 1);
+  // Segmented skirting along GYM West road wall (`u = wallT`), stopping cleanly at Door 1830288 (`v = 3.82..4.63m`) & corners
+  const cornerStop = wallGap + skirtBaseT + 0.006;
+  addSkirtingAlongV(vInnerNorth + cornerStop, 3.8, wallT, 1);
+  addSkirtingAlongV(4.65, vInnerSouth - cornerStop, wallT, 1);
   // Segmented skirting along the GYM East partition wall (`u = 5.77m`), stopping cleanly at
-  // the full-height glass double door (`v = 0.88..3.52m`) and the Gym-to-Shower-Room door (`v = 4.18..4.94m`)!
-  addSkirtingAlongV(vInnerNorth, 0.82, uGymEnd, -1);
+  // the full-height glass double door (`v = 0.88..3.52m`), Gym-to-Shower-Room door (`v = 4.18..4.94m`), & corners!
+  addSkirtingAlongV(vInnerNorth + cornerStop, 0.82, uGymEnd, -1);
   addSkirtingAlongV(3.58, 4.12, uGymEnd, -1);
-  addSkirtingAlongV(5.0, vInnerSouth, uGymEnd, -1);
+  addSkirtingAlongV(5.0, vInnerSouth - cornerStop, uGymEnd, -1);
 
-  addSkirtingAlongU(wallT, 2.71, vInnerNorth, 1);
-  addSkirtingAlongV(vInnerNorth, vInnerNorth + 0.16 + skirtBaseT, 2.71, -1);
+  addSkirtingAlongU(wallT + 0.006, 2.71 - cornerStop, vInnerNorth, 1);
+  addSkirtingAlongV(vInnerNorth + 0.006, vInnerNorth + 0.16, 2.71, -1);
   addSkirtingAlongU(2.71 - skirtBaseT, 3.01 + skirtBaseT, vInnerNorth + 0.16, 1);
-  addSkirtingAlongV(vInnerNorth, vInnerNorth + 0.16 + skirtBaseT, 3.01, 1);
-  addSkirtingAlongU(5.45, uGymEnd, vInnerNorth, 1);
+  addSkirtingAlongV(vInnerNorth + 0.006, vInnerNorth + 0.16, 3.01, 1);
+  addSkirtingAlongU(5.45 + 0.006, uGymEnd - 0.006, vInnerNorth, 1);
 
-  addSkirtingAlongU(wallT, 2.71, vInnerSouth, -1);
-  addSkirtingAlongV(vInnerSouth - 0.16 - skirtBaseT, vInnerSouth, 2.71, -1);
+  addSkirtingAlongU(wallT + 0.006, 2.71 - cornerStop, vInnerSouth, -1);
+  addSkirtingAlongV(vInnerSouth - 0.16, vInnerSouth - 0.006, 2.71, -1);
   addSkirtingAlongU(2.71 - skirtBaseT, 3.01 + skirtBaseT, vInnerSouth - 0.16, -1);
-  addSkirtingAlongV(vInnerSouth - 0.16 - skirtBaseT, vInnerSouth, 3.01, 1);
-  addSkirtingAlongU(3.01, uGymEnd, vInnerSouth, -1);
+  addSkirtingAlongV(vInnerSouth - 0.16, vInnerSouth - 0.006, 3.01, 1);
+  addSkirtingAlongU(3.01 + cornerStop, uGymEnd - 0.006, vInnerSouth, -1);
 }
 
 /**

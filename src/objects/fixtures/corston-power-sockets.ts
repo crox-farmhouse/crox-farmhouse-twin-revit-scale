@@ -123,7 +123,7 @@ function addBs1363OutletAperture(
     corstonDarkBronzeMat
   );
   surround.name = `${parent.name}.${outletTag}.surround`;
-  surround.position.set(offsetX, -0.002, 0.0052);
+  surround.position.set(offsetX, -0.002, 0.0186);
   parent.add(surround);
 
   // Top vertical rectangular Earth slot (4mm x 8mm)
@@ -134,7 +134,7 @@ function addBs1363OutletAperture(
   earthSlot.name = `${parent.name}.${outletTag}.earthSlot`;
   earthSlot.userData.lodTier = 'high';
   earthSlot.userData.lodMaxDistance = 12;
-  earthSlot.position.set(offsetX, 0.0095, 0.0056);
+  earthSlot.position.set(offsetX, 0.0095, 0.024);
   parent.add(earthSlot);
 
   // Bottom-left (Neutral) and bottom-right (Line) horizontal shuttered slots (6.5mm x 4mm, 22.2mm pitch)
@@ -146,7 +146,7 @@ function addBs1363OutletAperture(
     liveNeutralSlot.name = `${parent.name}.${outletTag}.${side < 0 ? 'neutralSlot' : 'liveSlot'}`;
     liveNeutralSlot.userData.lodTier = 'high';
     liveNeutralSlot.userData.lodMaxDistance = 12;
-    liveNeutralSlot.position.set(offsetX + side * 0.0111, -0.0105, 0.0056);
+    liveNeutralSlot.position.set(offsetX + side * 0.0111, -0.0105, 0.024);
     parent.add(liveNeutralSlot);
   }
 }
@@ -165,7 +165,7 @@ function addCorstonRockerSwitch(
     bs1363InsertMat
   );
   bezel.name = `${parent.name}.${switchTag}.bezel`;
-  bezel.position.set(offsetX, offsetY, 0.0054);
+  bezel.position.set(offsetX, offsetY, 0.0188);
   parent.add(bezel);
 
   const rocker = new THREE.Mesh(
@@ -173,7 +173,7 @@ function addCorstonRockerSwitch(
     corstonBrassMat
   );
   rocker.name = `${parent.name}.${switchTag}.rocker`;
-  rocker.position.set(offsetX, offsetY, 0.0072);
+  rocker.position.set(offsetX, offsetY, 0.026);
   rocker.rotation.x = 0.14;
   rocker.castShadow = true;
   parent.add(rocker);
@@ -185,7 +185,7 @@ function addCorstonRockerSwitch(
   redPip.name = `${parent.name}.${switchTag}.redOnPip`;
   redPip.userData.lodTier = 'high';
   redPip.userData.lodMaxDistance = 12;
-  redPip.position.set(offsetX, offsetY + 0.0105, 0.0065);
+  redPip.position.set(offsetX, offsetY + 0.0095, 0.032);
   parent.add(redPip);
 }
 
@@ -196,23 +196,22 @@ function addCorstonRockerSwitch(
 function addCorstonDouble13ASocketPlate(group: THREE.Group, offsetX = 0): void {
   const plateW = 0.146;
   const plateH = 0.086;
-  const plateD = 0.0045;
 
   const bevelPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(plateW, plateH, plateD * 0.65),
+    new THREE.BoxGeometry(plateW, plateH, 0.003),
     corstonDarkBronzeMat
   );
   bevelPlate.name = `${group.name}.bevelPlate`;
-  bevelPlate.position.set(offsetX, 0, plateD * 0.325);
+  bevelPlate.position.set(offsetX, 0, 0.0055);
   bevelPlate.castShadow = true;
   group.add(bevelPlate);
 
   const frontPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(plateW - 0.003, plateH - 0.003, plateD * 0.6),
+    new THREE.BoxGeometry(plateW - 0.003, plateH - 0.003, 0.003),
     corstonBrassMat
   );
   frontPlate.name = `${group.name}.frontPlate`;
-  frontPlate.position.set(offsetX, 0, plateD * 0.72);
+  frontPlate.position.set(offsetX, 0, 0.0125);
   frontPlate.castShadow = true;
   frontPlate.receiveShadow = true;
   group.add(frontPlate);
@@ -227,7 +226,7 @@ function addCorstonDouble13ASocketPlate(group: THREE.Group, offsetX = 0): void {
     screw.userData.lodTier = 'high';
     screw.userData.lodMaxDistance = 12;
     screw.rotation.x = Math.PI / 2;
-    screw.position.set(offsetX + side * 0.0603, 0, 0.0054);
+    screw.position.set(offsetX + side * 0.0603, 0, 0.0187);
     group.add(screw);
   }
 
@@ -244,23 +243,22 @@ function addCorstonDouble13ASocketPlate(group: THREE.Group, offsetX = 0): void {
 function addCorstonSingle13ASocketPlate(group: THREE.Group, offsetX = 0): void {
   const plateW = 0.086;
   const plateH = 0.086;
-  const plateD = 0.0045;
 
   const bevelPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(plateW, plateH, plateD * 0.65),
+    new THREE.BoxGeometry(plateW, plateH, 0.003),
     corstonDarkBronzeMat
   );
   bevelPlate.name = `${group.name}.bevelPlate`;
-  bevelPlate.position.set(offsetX, 0, plateD * 0.325);
+  bevelPlate.position.set(offsetX, 0, 0.0055);
   bevelPlate.castShadow = true;
   group.add(bevelPlate);
 
   const frontPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(plateW - 0.003, plateH - 0.003, plateD * 0.6),
+    new THREE.BoxGeometry(plateW - 0.003, plateH - 0.003, 0.003),
     corstonBrassMat
   );
   frontPlate.name = `${group.name}.frontPlate`;
-  frontPlate.position.set(offsetX, 0, plateD * 0.72);
+  frontPlate.position.set(offsetX, 0, 0.0125);
   frontPlate.castShadow = true;
   frontPlate.receiveShadow = true;
   group.add(frontPlate);
@@ -275,7 +273,7 @@ function addCorstonSingle13ASocketPlate(group: THREE.Group, offsetX = 0): void {
     screw.userData.lodTier = 'high';
     screw.userData.lodMaxDistance = 12;
     screw.rotation.x = Math.PI / 2;
-    screw.position.set(offsetX + side * 0.03015, 0, 0.0054);
+    screw.position.set(offsetX + side * 0.03015, 0, 0.0187);
     group.add(screw);
   }
 
@@ -300,23 +298,22 @@ function addCorston5ALampSocketPlate(
 
   const plateW = 0.086;
   const plateH = 0.086;
-  const plateD = 0.0045;
 
   const bevelPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(plateW, plateH, plateD * 0.65),
+    new THREE.BoxGeometry(plateW, plateH, 0.003),
     corstonDarkBronzeMat
   );
   bevelPlate.name = `${lampSubGroup.name}.bevelPlate`;
-  bevelPlate.position.set(0, 0, plateD * 0.325);
+  bevelPlate.position.set(0, 0, 0.0055);
   bevelPlate.castShadow = true;
   lampSubGroup.add(bevelPlate);
 
   const frontPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(plateW - 0.003, plateH - 0.003, plateD * 0.6),
+    new THREE.BoxGeometry(plateW - 0.003, plateH - 0.003, 0.003),
     corstonBrassMat
   );
   frontPlate.name = `${lampSubGroup.name}.frontPlate`;
-  frontPlate.position.set(0, 0, plateD * 0.72);
+  frontPlate.position.set(0, 0, 0.0125);
   frontPlate.castShadow = true;
   frontPlate.receiveShadow = true;
   lampSubGroup.add(frontPlate);
@@ -330,7 +327,7 @@ function addCorston5ALampSocketPlate(
     screw.userData.lodTier = 'high';
     screw.userData.lodMaxDistance = 12;
     screw.rotation.x = Math.PI / 2;
-    screw.position.set(side * 0.03015, 0, 0.0054);
+    screw.position.set(side * 0.03015, 0, 0.0187);
     lampSubGroup.add(screw);
   }
 
@@ -341,7 +338,7 @@ function addCorston5ALampSocketPlate(
   );
   roundSurround.name = `${lampSubGroup.name}.roundSurround`;
   roundSurround.rotation.x = Math.PI / 2;
-  roundSurround.position.set(0, 0, 0.0052);
+  roundSurround.position.set(0, 0, 0.0186);
   lampSubGroup.add(roundSurround);
 
   // Circular black BS 546 5A 3-round-pin shuttered socket insert face
@@ -351,7 +348,7 @@ function addCorston5ALampSocketPlate(
   );
   roundInsert.name = `${lampSubGroup.name}.roundInsert`;
   roundInsert.rotation.x = Math.PI / 2;
-  roundInsert.position.set(0, 0, 0.0054);
+  roundInsert.position.set(0, 0, 0.024);
   lampSubGroup.add(roundInsert);
 
   // 3 round BS 546 pin apertures (top Earth + bottom L/N)
@@ -368,7 +365,7 @@ function addCorston5ALampSocketPlate(
     pinHole.userData.lodTier = 'high';
     pinHole.userData.lodMaxDistance = 12;
     pinHole.rotation.x = Math.PI / 2;
-    pinHole.position.set(px, py, 0.0058);
+    pinHole.position.set(px, py, 0.0297);
     lampSubGroup.add(pinHole);
   }
 
@@ -380,7 +377,7 @@ function addCorston5ALampSocketPlate(
     );
     plugBody.name = `${group.name}.lampPlug5A`;
     plugBody.rotation.x = Math.PI / 2;
-    plugBody.position.set(0, 0, 0.012);
+    plugBody.position.set(0, 0, 0.041);
     plugBody.castShadow = true;
     lampSubGroup.add(plugBody);
 
@@ -390,7 +387,7 @@ function addCorston5ALampSocketPlate(
     );
     plugBrassCap.name = `${group.name}.lampPlug5A.brassCap`;
     plugBrassCap.rotation.x = Math.PI / 2;
-    plugBrassCap.position.set(0, 0, 0.0195);
+    plugBrassCap.position.set(0, 0, 0.0532);
     lampSubGroup.add(plugBrassCap);
 
     const cordGland = new THREE.Mesh(
@@ -400,7 +397,7 @@ function addCorston5ALampSocketPlate(
     cordGland.name = `${group.name}.lampPlug5A.cordGland`;
     cordGland.userData.lodTier = 'high';
     cordGland.userData.lodMaxDistance = 12;
-    cordGland.position.set(0, -0.019, 0.012);
+    cordGland.position.set(0, -0.022, 0.041);
     lampSubGroup.add(cordGland);
   }
 
@@ -417,23 +414,22 @@ function addCorston5ALampSocketPlate(
 function addCorstonFlushBrassFloorSocket(group: THREE.Group, withPlug = false): void {
   const plateW = 0.146;
   const plateD = 0.086;
-  const plateH = 0.0032;
 
   const gasket = new THREE.Mesh(
-    new THREE.BoxGeometry(plateW + 0.004, plateH * 0.6, plateD + 0.004),
+    new THREE.BoxGeometry(plateW + 0.004, 0.002, plateD + 0.004),
     corstonDarkBronzeMat
   );
   gasket.name = `${group.name}.gasket`;
-  gasket.position.set(0, plateH * 0.3, 0);
+  gasket.position.set(0, 0.005, 0);
   gasket.receiveShadow = true;
   group.add(gasket);
 
   const brassPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(plateW, plateH, plateD),
+    new THREE.BoxGeometry(plateW, 0.0024, plateD),
     corstonBrassMat
   );
   brassPlate.name = `${group.name}.brassPlate`;
-  brassPlate.position.set(0, plateH * 0.6, 0);
+  brassPlate.position.set(0, 0.0112, 0);
   brassPlate.receiveShadow = true;
   group.add(brassPlate);
 
@@ -444,7 +440,7 @@ function addCorstonFlushBrassFloorSocket(group: THREE.Group, withPlug = false): 
       corstonDarkBronzeMat
     );
     flapRim.name = `${group.name}.flap.${sideLabel}.rim`;
-    flapRim.position.set(sideX, plateH + 0.0006, 0);
+    flapRim.position.set(sideX, 0.017, 0);
     group.add(flapRim);
 
     const hingeBarrel = new THREE.Mesh(
@@ -455,7 +451,7 @@ function addCorstonFlushBrassFloorSocket(group: THREE.Group, withPlug = false): 
     hingeBarrel.userData.lodTier = 'high';
     hingeBarrel.userData.lodMaxDistance = 12;
     hingeBarrel.rotation.z = Math.PI / 2;
-    hingeBarrel.position.set(sideX, plateH + 0.0022, -0.029);
+    hingeBarrel.position.set(sideX, 0.023, -0.033);
     group.add(hingeBarrel);
 
     const isOpenWithPlug = withPlug && sideX < 0;
@@ -466,13 +462,13 @@ function addCorstonFlushBrassFloorSocket(group: THREE.Group, withPlug = false): 
         bs1363InsertMat
       );
       socketWell.name = `${group.name}.flap.${sideLabel}.socketWell`;
-      socketWell.position.set(sideX, plateH + 0.001, 0);
+      socketWell.position.set(sideX, 0.0223, 0);
       group.add(socketWell);
 
       // Spring-loaded brass flap lid hinged open ~105° back behind the plug
       const openFlapPivot = new THREE.Group();
       openFlapPivot.name = `${group.name}.openFlap`;
-      openFlapPivot.position.set(sideX, plateH + 0.0022, -0.029);
+      openFlapPivot.position.set(sideX, 0.023, -0.033);
       openFlapPivot.rotation.x = -1.82;
 
       const flapLid = new THREE.Mesh(
@@ -491,7 +487,7 @@ function addCorstonFlushBrassFloorSocket(group: THREE.Group, withPlug = false): 
       liftTab.name = `${group.name}.openFlap.liftTab`;
       liftTab.userData.lodTier = 'high';
       liftTab.userData.lodMaxDistance = 12;
-      liftTab.position.set(0, 0.0008, 0.053);
+      liftTab.position.set(0, 0.0056, 0.053);
       openFlapPivot.add(liftTab);
       group.add(openFlapPivot);
 
@@ -501,7 +497,7 @@ function addCorstonFlushBrassFloorSocket(group: THREE.Group, withPlug = false): 
         lampPlugBodyMat
       );
       plugBody.name = `${group.name}.plug13A`;
-      plugBody.position.set(sideX, plateH + 0.0105, 0.002);
+      plugBody.position.set(sideX, 0.0365, 0.002);
       plugBody.castShadow = true;
       group.add(plugBody);
 
@@ -510,7 +506,7 @@ function addCorstonFlushBrassFloorSocket(group: THREE.Group, withPlug = false): 
         bs1363InsertMat
       );
       plugTopCap.name = `${group.name}.plug13A.topCap`;
-      plugTopCap.position.set(sideX, plateH + 0.0205, 0.002);
+      plugTopCap.position.set(sideX, 0.0515, 0.002);
       group.add(plugTopCap);
 
       const cordGland = new THREE.Mesh(
@@ -522,7 +518,7 @@ function addCorstonFlushBrassFloorSocket(group: THREE.Group, withPlug = false): 
       cordGland.userData.lodMaxDistance = 12;
       cordGland.rotation.x = Math.PI / 2;
       cordGland.rotation.z = 0.55;
-      cordGland.position.set(sideX - 0.006, plateH + 0.008, 0.031);
+      cordGland.position.set(sideX - 0.006, 0.034, 0.034);
       group.add(cordGland);
     } else {
       const flapLid = new THREE.Mesh(
@@ -530,7 +526,7 @@ function addCorstonFlushBrassFloorSocket(group: THREE.Group, withPlug = false): 
         corstonBrassMat
       );
       flapLid.name = `${group.name}.flap.${sideLabel}.lid`;
-      flapLid.position.set(sideX, plateH + 0.0014, 0);
+      flapLid.position.set(sideX, 0.0225, 0);
       group.add(flapLid);
 
       const liftTab = new THREE.Mesh(
@@ -540,7 +536,7 @@ function addCorstonFlushBrassFloorSocket(group: THREE.Group, withPlug = false): 
       liftTab.name = `${group.name}.flap.${sideLabel}.liftTab`;
       liftTab.userData.lodTier = 'high';
       liftTab.userData.lodMaxDistance = 12;
-      liftTab.position.set(sideX, plateH + 0.002, 0.024);
+      liftTab.position.set(sideX, 0.0281, 0.024);
       group.add(liftTab);
     }
   }
@@ -554,7 +550,7 @@ function addCorstonFlushBrassFloorSocket(group: THREE.Group, withPlug = false): 
       screw.name = `${group.name}.screw.${sx < 0 ? 'left' : 'right'}.${sz < 0 ? 'back' : 'front'}`;
       screw.userData.lodTier = 'high';
       screw.userData.lodMaxDistance = 12;
-      screw.position.set(sx, plateH + 0.0012, sz);
+      screw.position.set(sx, 0.0169, sz);
       group.add(screw);
     }
   }
@@ -585,9 +581,9 @@ const metalcladShadowTrimMat = new THREE.MeshStandardMaterial({
 function addSurfaceMountedMetalDouble13ASocket(group: THREE.Group, offsetX = 0): void {
   const boxW = 0.148;
   const boxH = 0.088;
-  const boxD = 0.036;
-  const plateD = 0.006;
-  const faceZ = boxD + plateD; // 0.042m total projection from wall surface
+  const boxD = 0.034;
+  const plateD = 0.005;
+  const faceZ = 0.053;
 
   // 1. Pressed-steel surface mounting backbox (pattress)
   const backbox = new THREE.Mesh(
@@ -595,7 +591,7 @@ function addSurfaceMountedMetalDouble13ASocket(group: THREE.Group, offsetX = 0):
     metalcladBackboxMat
   );
   backbox.name = `${group.name}.backbox`;
-  backbox.position.set(offsetX, 0, boxD * 0.5);
+  backbox.position.set(offsetX, 0, 0.021);
   backbox.castShadow = true;
   backbox.receiveShadow = true;
   group.add(backbox);
@@ -610,7 +606,7 @@ function addSurfaceMountedMetalDouble13ASocket(group: THREE.Group, offsetX = 0):
       knockout.name = `${group.name}.knockout.${ky < 0 ? 'bottom' : 'top'}.${kx < 0 ? 'left' : 'right'}`;
       knockout.userData.lodTier = 'high';
       knockout.userData.lodMaxDistance = 12;
-      knockout.position.set(offsetX + kx, ky, boxD * 0.5);
+      knockout.position.set(offsetX + kx, ky + (ky < 0 ? -0.0048 : 0.0048), 0.021);
       group.add(knockout);
     }
   }
@@ -621,7 +617,7 @@ function addSurfaceMountedMetalDouble13ASocket(group: THREE.Group, offsetX = 0):
     metalcladShadowTrimMat
   );
   gasketCollar.name = `${group.name}.gasketCollar`;
-  gasketCollar.position.set(offsetX, 0, boxD + 0.001);
+  gasketCollar.position.set(offsetX, 0, 0.043);
   group.add(gasketCollar);
 
   // 2. Heavy-gauge bevelled brushed steel Metalclad frontplate
@@ -630,7 +626,7 @@ function addSurfaceMountedMetalDouble13ASocket(group: THREE.Group, offsetX = 0):
     metalcladFaceplateMat
   );
   frontplate.name = `${group.name}.frontplate`;
-  frontplate.position.set(offsetX, 0, boxD + plateD * 0.5);
+  frontplate.position.set(offsetX, 0, 0.0505);
   frontplate.castShadow = true;
   frontplate.receiveShadow = true;
   group.add(frontplate);
@@ -645,7 +641,7 @@ function addSurfaceMountedMetalDouble13ASocket(group: THREE.Group, offsetX = 0):
     screw.userData.lodTier = 'high';
     screw.userData.lodMaxDistance = 12;
     screw.rotation.x = Math.PI / 2;
-    screw.position.set(offsetX + side * 0.0603, 0, faceZ + 0.0005);
+    screw.position.set(offsetX + side * 0.0603, 0, faceZ + 0.0047);
     group.add(screw);
   }
 
@@ -659,7 +655,7 @@ function addSurfaceMountedMetalDouble13ASocket(group: THREE.Group, offsetX = 0):
       metalcladShadowTrimMat
     );
     surround.name = `${group.name}.${outletTag}.surround`;
-    surround.position.set(outletX, -0.002, faceZ + 0.0006);
+    surround.position.set(outletX, -0.002, faceZ + 0.0047);
     group.add(surround);
 
     const earthSlot = new THREE.Mesh(
@@ -669,7 +665,7 @@ function addSurfaceMountedMetalDouble13ASocket(group: THREE.Group, offsetX = 0):
     earthSlot.name = `${group.name}.${outletTag}.earthSlot`;
     earthSlot.userData.lodTier = 'high';
     earthSlot.userData.lodMaxDistance = 12;
-    earthSlot.position.set(outletX, 0.0095, faceZ + 0.001);
+    earthSlot.position.set(outletX, 0.0095, faceZ + 0.0103);
     group.add(earthSlot);
 
     for (const pinSide of [-1, 1] as const) {
@@ -680,7 +676,7 @@ function addSurfaceMountedMetalDouble13ASocket(group: THREE.Group, offsetX = 0):
       liveNeutralSlot.name = `${group.name}.${outletTag}.${pinSide < 0 ? 'neutralSlot' : 'liveSlot'}`;
       liveNeutralSlot.userData.lodTier = 'high';
       liveNeutralSlot.userData.lodMaxDistance = 12;
-      liveNeutralSlot.position.set(outletX + pinSide * 0.0111, -0.0105, faceZ + 0.001);
+      liveNeutralSlot.position.set(outletX + pinSide * 0.0111, -0.0105, faceZ + 0.0103);
       group.add(liveNeutralSlot);
     }
   }
@@ -695,7 +691,7 @@ function addSurfaceMountedMetalDouble13ASocket(group: THREE.Group, offsetX = 0):
       bs1363InsertMat
     );
     bezel.name = `${group.name}.${switchTag}.bezel`;
-    bezel.position.set(switchX, 0.005, faceZ + 0.0007);
+    bezel.position.set(switchX, 0.005, faceZ + 0.0048);
     group.add(bezel);
 
     const rocker = new THREE.Mesh(
@@ -703,7 +699,7 @@ function addSurfaceMountedMetalDouble13ASocket(group: THREE.Group, offsetX = 0):
       bs1363InsertMat
     );
     rocker.name = `${group.name}.${switchTag}.rocker`;
-    rocker.position.set(switchX, 0.005, faceZ + 0.0026);
+    rocker.position.set(switchX, 0.005, faceZ + 0.012);
     rocker.rotation.x = 0.14;
     rocker.castShadow = true;
     group.add(rocker);
@@ -715,7 +711,7 @@ function addSurfaceMountedMetalDouble13ASocket(group: THREE.Group, offsetX = 0):
     redPip.name = `${group.name}.${switchTag}.redOnPip`;
     redPip.userData.lodTier = 'high';
     redPip.userData.lodMaxDistance = 12;
-    redPip.position.set(switchX, 0.0155, faceZ + 0.0018);
+    redPip.position.set(switchX, 0.0145, faceZ + 0.018);
     group.add(redPip);
   }
 }

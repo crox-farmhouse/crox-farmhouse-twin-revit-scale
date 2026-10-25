@@ -90,8 +90,8 @@ export function buildDiningRoomWestWallSideboard(scene: THREE.Scene): void {
   const sideboardGroup = new THREE.Group();
   sideboardGroup.name = 'familyRoom.westWallSideboard';
   sideboardGroup.userData.zone = 'familyRoom';
-  // Center at X = -9.35m (spanning -9.55m..-9.15m), Y = 0.00m, Z = 0.28m (spanning -0.24m..+0.80m)
-  sideboardGroup.position.set(-9.35, 0, 0.28);
+  // Center at X = -9.335m (spanning -9.535m..-9.135m), Y = 0.00m, Z = 0.28m (spanning -0.24m..+0.80m)
+  sideboardGroup.position.set(-9.335, 0, 0.28);
 
   // Materials
   const carcassPaintMat = new THREE.MeshStandardMaterial({
@@ -331,14 +331,24 @@ export function buildDiningRoomWestWallSideboard(scene: THREE.Scene): void {
       basketGroup.add(ribBand);
     }
 
-    // Thick braided top rim collar
-    const rimCollar = new THREE.Mesh(
-      new THREE.BoxGeometry(bw + 0.014, 0.018, bd + 0.014),
-      wickerSecondaryMat
-    );
-    rimCollar.name = `${bPrefix}.rimCollar`;
-    rimCollar.position.y = bh;
-    basketGroup.add(rimCollar);
+    // Thick braided top rim collar (4 hollow perimeter bars so interior cavity has zero coplanar bottom overlap)
+    const collarOuterW = bw + 0.014;
+    const collarOuterD = bd + 0.014;
+    const collarBarW = 0.02;
+    for (const [cLabel, cx, cz, cw, cd] of [
+      ['west', -(collarOuterW - collarBarW) * 0.5, 0, collarBarW, collarOuterD],
+      ['east', (collarOuterW - collarBarW) * 0.5, 0, collarBarW, collarOuterD],
+      ['north', 0, -(collarOuterD - collarBarW) * 0.5, collarOuterW - collarBarW * 2, collarBarW],
+      ['south', 0, (collarOuterD - collarBarW) * 0.5, collarOuterW - collarBarW * 2, collarBarW],
+    ] as const) {
+      const rimCollarBar = new THREE.Mesh(
+        new THREE.BoxGeometry(cw, 0.018, cd),
+        wickerSecondaryMat
+      );
+      rimCollarBar.name = `${bPrefix}.rimCollar.${cLabel}`;
+      rimCollarBar.position.set(cx, bh, cz);
+      basketGroup.add(rimCollarBar);
+    }
 
     // Cut-out front handle slot on the East (+X) face
     const handleCutout = new THREE.Mesh(
@@ -503,41 +513,41 @@ export function buildDiningRoomWestWallSideboard(scene: THREE.Scene): void {
 
     // Shadow reveal behind door
     const doorReveal = new THREE.Mesh(
-      new THREE.BoxGeometry(0.01, doorH + 0.01, doorW + 0.01),
+      new THREE.BoxGeometry(0.006, doorH + 0.01, doorW + 0.01),
       shadowRevealMat
     );
     doorReveal.name = `${doorPrefix}.reveal`;
-    doorReveal.position.x = -0.006;
+    doorReveal.position.x = -0.009;
     doorGroup.add(doorReveal);
 
     // Recessed center Shaker flat panel
     const centerPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.012, doorH - railH * 1.6, doorW - stileW * 1.6),
+      new THREE.BoxGeometry(0.006, doorH - railH * 1.6, doorW - stileW * 1.6),
       carcassPaintMat
     );
     centerPanel.name = `${doorPrefix}.centerPanel`;
-    centerPanel.position.x = -0.001;
+    centerPanel.position.x = -0.003;
     doorGroup.add(centerPanel);
 
     // Inner bevel/chamfer shadow frame around recessed panel
     const innerShadowFrame = new THREE.Mesh(
       new THREE.BoxGeometry(
-        0.015,
+        0.004,
         doorH - railH * 1.92,
         doorW - stileW * 1.92
       ),
       shadowRevealMat
     );
     innerShadowFrame.name = `${doorPrefix}.innerShadowFrame`;
-    innerShadowFrame.position.x = 0.001;
+    innerShadowFrame.position.x = 0.002;
     doorGroup.add(innerShadowFrame);
 
     const raisedCenterPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, doorH - railH * 2.0, doorW - stileW * 2.0),
+      new THREE.BoxGeometry(0.006, doorH - railH * 2.0, doorW - stileW * 2.0),
       carcassPaintMat
     );
     raisedCenterPanel.name = `${doorPrefix}.raisedCenterPanel`;
-    raisedCenterPanel.position.x = 0.002;
+    raisedCenterPanel.position.x = 0.007;
     doorGroup.add(raisedCenterPanel);
 
     // Left & right Shaker stiles
@@ -911,7 +921,7 @@ export function buildDiningRoomWestWallSideboard(scene: THREE.Scene): void {
     soilMat
   );
   soilBed.name = 'familyRoom.westWallSideboard.plant.soilBed';
-  soilBed.position.y = 0.154;
+  soilBed.position.y = 0.148;
   plantGroup.add(soilBed);
 
   // 15 Sculpted arching botanical leaves & cascading stems (built with curved leaf blade geometries)

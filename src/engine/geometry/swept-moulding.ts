@@ -170,23 +170,24 @@ export function createProfiledSkirtingCapGeometry(
  */
 export function createWallSkirtingBoardProfile(): THREE.Shape {
   const s = new THREE.Shape();
-  s.moveTo(-0.003, -0.002);
-  s.lineTo(-0.003, 0.022);
-  // Flat lower plinth face (0 .. 95mm)
-  s.lineTo(0.095, 0.022);
+  const backGap = 0.004;
+  s.moveTo(0.004, backGap);
+  s.lineTo(0.004, backGap + 0.020);
+  // Flat lower plinth face (4mm .. 95mm)
+  s.lineTo(0.095, backGap + 0.020);
   // Crisp 4.5mm quirk step at 95mm height
-  s.lineTo(0.097, 0.0175);
-  s.lineTo(0.101, 0.0175);
+  s.lineTo(0.097, backGap + 0.0155);
+  s.lineTo(0.101, backGap + 0.0155);
   // Swept cyma reversa ogee curve (101mm .. 120mm)
-  s.quadraticCurveTo(0.107, 0.0195, 0.113, 0.0155);
-  s.quadraticCurveTo(0.117, 0.0115, 0.120, 0.0135);
+  s.quadraticCurveTo(0.107, backGap + 0.0175, 0.113, backGap + 0.0135);
+  s.quadraticCurveTo(0.117, backGap + 0.0095, 0.120, backGap + 0.0115);
   // Projecting upper torus roll (120mm .. 135mm)
-  s.lineTo(0.121, 0.0165);
-  s.quadraticCurveTo(0.128, 0.0205, 0.135, 0.0165);
+  s.lineTo(0.121, backGap + 0.0145);
+  s.quadraticCurveTo(0.128, backGap + 0.0185, 0.135, backGap + 0.0145);
   // Upper cavetto neck & top chamfered wall-return fillet (135mm .. 146mm)
-  s.quadraticCurveTo(0.139, 0.011, 0.143, 0.0095);
-  s.lineTo(0.146, 0.006);
-  s.lineTo(0.146, -0.002);
+  s.quadraticCurveTo(0.139, backGap + 0.009, 0.143, backGap + 0.0075);
+  s.lineTo(0.146, backGap + 0.004);
+  s.lineTo(0.146, backGap);
   s.closePath();
   return s;
 }
@@ -459,6 +460,12 @@ export interface CasedArchitravePortalOptions {
   includeFrontArchitrave?: boolean;
   /** Whether to include the -normal face architrave (defaults to `true`). */
   includeBackArchitrave?: boolean;
+  /** Extra outward offset from `wallThickness / 2` on the +normal face (e.g. `0.014` for wall cladding). */
+  frontFaceOffset?: number;
+  /** Extra outward offset from `-wallThickness / 2` on the -normal face (e.g. `0.014` for wall cladding). */
+  backFaceOffset?: number;
+  /** Vertical clearance at the bottom of the reveal jambs above `minFloorY` (defaults to `0.004`). */
+  bottomClearance?: number;
   /** Optional base name prefix for the generated meshes. */
   namePrefix?: string;
 }
@@ -479,15 +486,26 @@ export function addCasedArchitravePortal(
   const minFloorY = Math.min(frontFloorY, backFloorY);
   const uLeft = options.openingCenter - options.openingWidth / 2 + jambInset;
   const uRight = options.openingCenter + options.openingWidth / 2 - jambInset;
-  const innerHeadY = options.headY - headInset;
+  const liningT = 0.018;
+  const hasRevealLining = options.includeRevealLining !== false;
+  const headTopY = options.headY - 0.004;
+  const innerHeadY = hasRevealLining
+    ? Math.min(options.headY - headInset, headTopY - liningT)
+    : options.headY - headInset;
   const slope = options.slopeXPerZ ?? 0;
   const prefix = options.namePrefix ?? 'architravePortal';
 
-  if (options.includeRevealLining !== false) {
-    const liningT = 0.018;
-    const liningDepth = options.wallThickness + 0.004;
-    const jambH = Math.max(0.05, innerHeadY + liningT - minFloorY);
-    const jambY = minFloorY + jambH / 2;
+  const halfWall = options.wallThickness / 2;
+  const frontWallN = halfWall + (options.frontFaceOffset ?? 0);
+  const backWallN = -halfWall - (options.backFaceOffset ?? 0);
+
+  if (hasRevealLining) {
+    const liningDepth = Math.max(0.02, frontWallN - backWallN - 0.008);
+    const liningCenterN = (frontWallN + backWallN) * 0.5;
+    const jambBotY = minFloorY + (options.bottomClearance ?? 0.004);
+    const jambTopY = innerHeadY - 0.004;
+    const jambH = Math.max(0.05, jambTopY - jambBotY);
+    const jambY = jambBotY + jambH / 2;
 
     for (const side of [-1, 1] as const) {
       const uJamb = side < 0 ? uLeft - liningT / 2 : uRight + liningT / 2;
@@ -499,10 +517,10 @@ export function addCasedArchitravePortal(
       );
       revealJamb.name = `${prefix}.revealJamb`;
       if (options.axis === 'x') {
-        revealJamb.position.set(uJamb, jambY, options.wallCoord);
+        revealJamb.position.set(uJamb, jambY, options.wallCoord + liningCenterN);
       } else {
         revealJamb.position.set(
-          options.wallCoord + slope * (uJamb - options.openingCenter),
+          options.wallCoord + liningCenterN + slope * (uJamb - options.openingCenter),
           jambY,
           uJamb
         );
@@ -531,9 +549,17 @@ export function addCasedArchitravePortal(
     const revealHead = new THREE.Mesh(headGeo, options.material);
     revealHead.name = `${prefix}.revealHead`;
     if (options.axis === 'x') {
-      revealHead.position.set(options.openingCenter, innerHeadY + liningT / 2, options.wallCoord);
+      revealHead.position.set(
+        options.openingCenter,
+        innerHeadY + liningT / 2,
+        options.wallCoord + liningCenterN
+      );
     } else {
-      revealHead.position.set(options.wallCoord, innerHeadY + liningT / 2, options.openingCenter);
+      revealHead.position.set(
+        options.wallCoord + liningCenterN,
+        innerHeadY + liningT / 2,
+        options.openingCenter
+      );
     }
     revealHead.castShadow = true;
     revealHead.receiveShadow = true;
@@ -542,23 +568,28 @@ export function addCasedArchitravePortal(
   }
 
   const profile = createArchitraveProfile(width);
-  const halfWall = options.wallThickness / 2;
+  const archWallClear = 0.004;
+  const archFloorClear = 0.004;
 
   if (options.includeFrontArchitrave !== false) {
     const frontPath: ReadonlyArray<readonly [number, number]> = [
-      [uLeft, frontFloorY],
+      [uLeft, frontFloorY + archFloorClear],
       [uLeft, innerHeadY],
       [uRight, innerHeadY],
-      [uRight, frontFloorY],
+      [uRight, frontFloorY + archFloorClear],
     ];
     const frontGeo = buildSweptMouldingGeometry(
       profile,
       frontPath,
       (u, y, d) =>
         options.axis === 'x'
-          ? new THREE.Vector3(u, y, options.wallCoord + halfWall + d)
+          ? new THREE.Vector3(u, y, options.wallCoord + frontWallN + archWallClear + d)
           : new THREE.Vector3(
-              options.wallCoord + slope * (u - options.openingCenter) + halfWall + d,
+              options.wallCoord +
+                slope * (u - options.openingCenter) +
+                frontWallN +
+                archWallClear +
+                d,
               y,
               u
             ),
@@ -574,19 +605,23 @@ export function addCasedArchitravePortal(
 
   if (options.includeBackArchitrave !== false) {
     const backPath: ReadonlyArray<readonly [number, number]> = [
-      [uLeft, backFloorY],
+      [uLeft, backFloorY + archFloorClear],
       [uLeft, innerHeadY],
       [uRight, innerHeadY],
-      [uRight, backFloorY],
+      [uRight, backFloorY + archFloorClear],
     ];
     const backGeo = buildSweptMouldingGeometry(
       profile,
       backPath,
       (u, y, d) =>
         options.axis === 'x'
-          ? new THREE.Vector3(u, y, options.wallCoord - halfWall - d)
+          ? new THREE.Vector3(u, y, options.wallCoord + backWallN - archWallClear - d)
           : new THREE.Vector3(
-              options.wallCoord + slope * (u - options.openingCenter) - halfWall - d,
+              options.wallCoord +
+                slope * (u - options.openingCenter) +
+                backWallN -
+                archWallClear -
+                d,
               y,
               u
             ),
@@ -672,20 +707,21 @@ export function addSolidOakWindowTrim(
   const archW = options.architraveWidth ?? 0.075;
   const archT = options.architraveThickness ?? 0.020;
   const faceOffset = options.trimFaceOffset ?? 0;
+  const wallClear = 0.004;
   const slope = options.slopeXPerZ ?? 0;
-  const effWallFace = options.interiorWallFaceCoord + options.inwardSign * faceOffset;
+  const effWallFace = options.interiorWallFaceCoord + options.inwardSign * (faceOffset + wallClear);
   const jambInset = 0.006;
   const uLeft = options.openingCenter - options.openingWidth * 0.5 + jambInset;
   const uRight = options.openingCenter + options.openingWidth * 0.5 - jambInset;
 
-  // 1. 26mm Solid European Oak Bullnose Window Board with 24mm wrap-around end-horns
+  // 1. 24mm Solid European Oak Bullnose Window Board seated 4mm proud of masonry sill & clear of window bottomRail
   const hornExt = options.skipArchitrave ? 0.03 : archW + 0.024;
   const boardSpan = Math.max(0.12, uRight - uLeft + hornExt * 2);
-  const boardH = 0.026;
-  const boardBotY = options.sillY - 0.002;
+  const boardH = 0.024;
+  const boardBotY = options.sillY + 0.004;
   const boardTopY = boardBotY + boardH;
-  const backDepth = Math.max(0.06, options.revealDepth + faceOffset);
-  const nosingProj = archT + 0.014;
+  const backDepth = Math.max(0.036, options.revealDepth - 0.064 + faceOffset + wallClear);
+  const nosingProj = Math.max(0.01, archT + 0.014 - wallClear);
   const bullnoseR = 0.012;
 
   const boardShape = new THREE.Shape();
@@ -733,14 +769,15 @@ export function addSolidOakWindowTrim(
   parent.add(windowBoard);
 
   // 2. 3-Sided 45°-Mitred 75mm × 20mm Solid European Oak Window Architrave
-  if (!options.skipArchitrave && uRight - uLeft > 0.08 && options.headY - boardTopY > 0.12) {
+  const archBotY = boardTopY + 0.004;
+  if (!options.skipArchitrave && uRight - uLeft > 0.08 && options.headY - archBotY > 0.12) {
     const innerHeadY = options.headY - 0.006;
     const archProfile = createArchitraveProfile(archW, archT);
     const archPath: ReadonlyArray<readonly [number, number]> = [
-      [uLeft, boardTopY],
+      [uLeft, archBotY],
       [uLeft, innerHeadY],
       [uRight, innerHeadY],
-      [uRight, boardTopY],
+      [uRight, archBotY],
     ];
     const archGeo = buildSweptMouldingGeometry(
       archProfile,
@@ -804,9 +841,9 @@ export function addSolidOakWindowTrim(
     const oakApron = new THREE.Mesh(apronGeo, options.material);
     oakApron.name = `${options.namePrefix}.oakUnderSillApron`;
     if (options.axis === 'x') {
-      oakApron.position.set(options.openingCenter, boardBotY - apronH, effWallFace);
+      oakApron.position.set(options.openingCenter, boardBotY - 0.004 - apronH, effWallFace);
     } else {
-      oakApron.position.set(effWallFace, boardBotY - apronH, options.openingCenter);
+      oakApron.position.set(effWallFace, boardBotY - 0.004 - apronH, options.openingCenter);
     }
     oakApron.castShadow = true;
     oakApron.receiveShadow = true;

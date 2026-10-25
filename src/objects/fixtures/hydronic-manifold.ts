@@ -1651,13 +1651,13 @@ function buildSecondaryHydronicManifoldStation(
     manifoldGroup.add(aavCap);
   }
 
-  // Galvanized Floor Pipe Shroud at floorY
+  // Galvanized Floor Pipe Shroud above floorY
   const shroud = new THREE.Mesh(
-    new THREE.BoxGeometry(0.38, 0.12, 0.11),
+    new THREE.BoxGeometry(0.38, 0.108, 0.11),
     galvSteelMat
   );
   shroud.name = `${prefix}.floorPipeShroud`;
-  shroud.position.set(0.035, 0.06, 0.055);
+  shroud.position.set(0.035, 0.066, 0.055);
   manifoldGroup.add(shroud);
 
   scene.add(manifoldGroup);
@@ -1768,13 +1768,13 @@ export function buildBootRoomHeatingManifold(
   const cupCenterX = (wallX + frontX) * 0.5; // -8.092m
   const carcassH = 0.925;
 
-  // 1. Recessed Shaker Plinth Base (`Y = 0.00m..0.07m`) along West front & South return
+  // 1. Recessed Shaker Plinth Base (`Y = 0.008m..0.070m` above checkerTileFloor) along West front & South return
   const plinthMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(cupDepthX - 0.024, 0.07, cupSpanZ - 0.01),
+    new THREE.BoxGeometry(cupDepthX - 0.024, 0.062, cupSpanZ - 0.01),
     joineryPaintMat
   );
   plinthMesh.name = 'familyRoom.bootRoomManifoldCupboard.plinth';
-  plinthMesh.position.set(cupCenterX + 0.012, floorY + 0.035, cupCenterZ + 0.005);
+  plinthMesh.position.set(cupCenterX + 0.012, floorY + 0.039, cupCenterZ + 0.005);
   plinthMesh.castShadow = true;
   plinthMesh.receiveShadow = true;
   cupboardGroup.add(plinthMesh);

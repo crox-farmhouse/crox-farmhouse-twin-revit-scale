@@ -100,7 +100,7 @@ export function buildMainBedroom(
     ensureNamedAddedChildren(scene, idx0, 'mainBedroom.eastWallInteriorLining');
 
     const idx1 = scene.children.length;
-    addUpperExteriorBrickWall(-4.64, -4.4, -2.78, 2.68, 3.08, upperWallTopY, 'west', {
+    addUpperExteriorBrickWall(-4.64, -4.4, -2.5, 2.4, 3.08, upperWallTopY, 'west', {
       skipSkirting: true,
       skipCap: true,
     });
@@ -190,17 +190,17 @@ export function buildMainBedroom(
     const carcassShape = new THREE.Shape();
     carcassShape.moveTo(-2.5, floorTopY);
     carcassShape.lineTo(2.4, floorTopY);
-    carcassShape.lineTo(2.4, southEavesY + 0.015);
-    carcassShape.lineTo(collarSouthZ, collarCeilingY + 0.015);
-    carcassShape.lineTo(collarNorthZ, collarCeilingY + 0.015);
-    carcassShape.lineTo(-2.5, northEavesY + 0.015);
+    carcassShape.lineTo(2.4, southEavesY - 0.002);
+    carcassShape.lineTo(collarSouthZ, collarCeilingY - 0.002);
+    carcassShape.lineTo(collarNorthZ, collarCeilingY - 0.002);
+    carcassShape.lineTo(-2.5, northEavesY - 0.002);
     carcassShape.closePath();
     const carcassGeo = new THREE.ExtrudeGeometry(carcassShape, {
-      depth: wardD,
+      depth: wardD - 0.018,
       bevelEnabled: false,
     });
     carcassGeo.rotateY(-Math.PI / 2);
-    carcassGeo.translate(-4.64, 0, 0);
+    carcassGeo.translate(-4.658, 0, 0);
     carcassGeo.computeBoundingSphere();
     const carcass = new THREE.Mesh(carcassGeo, wardrobeMat);
     carcass.name = 'mainBedroom.eastWardrobes.carcass';
@@ -212,10 +212,10 @@ export function buildMainBedroom(
     {
       const corniceProfile = createCrownCorniceProfile(0.042, 0.046);
       const cornicePath: ReadonlyArray<readonly [number, number]> = [
-        [-2.5, northEavesY + 0.006],
-        [collarNorthZ, collarCeilingY],
-        [collarSouthZ, collarCeilingY],
-        [2.4, southEavesY + 0.006],
+        [-2.5, northEavesY - 0.006],
+        [collarNorthZ, collarCeilingY - 0.006],
+        [collarSouthZ, collarCeilingY - 0.006],
+        [2.4, southEavesY - 0.006],
       ];
       const corniceGeo = buildSweptMouldingGeometry(
         corniceProfile,
@@ -693,21 +693,21 @@ export function buildMainBedroom(
     lowerTread.receiveShadow = true;
     stepGroup.add(lowerTread);
 
-    // Step 2 (Upper threshold step inside cased reveal: X = -9.74m..-9.56m, top at Y = 2.510m)
-    const stepRiserGeo = new THREE.BoxGeometry(0.18, riserH, stepSpanZ);
+    // Step 2 (Upper threshold step inside cased reveal: X = -9.74m..-9.684m, top at Y = 2.510m)
+    const stepRiserGeo = new THREE.BoxGeometry(0.056, riserH, stepSpanZ);
     stepRiserGeo.computeBoundingSphere();
     const stepRiser = new THREE.Mesh(stepRiserGeo, antiqueOakSkirtingMat);
     stepRiser.name = 'mainBedroom.thresholdStep.riser';
-    stepRiser.position.set(-9.65, midStepTopY + riserH * 0.5, 1.48);
+    stepRiser.position.set(-9.712, midStepTopY + riserH * 0.5, 1.48);
     stepRiser.castShadow = true;
     stepRiser.receiveShadow = true;
     stepGroup.add(stepRiser);
 
-    const stepTreadGeo = new THREE.BoxGeometry(0.186, treadThick, stepSpanZ);
+    const stepTreadGeo = new THREE.BoxGeometry(0.058, treadThick, stepSpanZ);
     stepTreadGeo.computeBoundingSphere();
     const stepTread = new THREE.Mesh(stepTreadGeo, oakFloorMat);
     stepTread.name = 'mainBedroom.thresholdStep.tread';
-    stepTread.position.set(-9.649, floorTopY - treadThick * 0.5, 1.48);
+    stepTread.position.set(-9.713, floorTopY - treadThick * 0.5, 1.48);
     stepTread.castShadow = true;
     stepTread.receiveShadow = true;
     stepGroup.add(stepTread);

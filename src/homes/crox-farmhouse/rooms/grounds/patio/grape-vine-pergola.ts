@@ -87,8 +87,8 @@ export function buildGrapeVinePergola(
   const pergFloorY = 0.47;
   const pergWallH = 2.24;
   const pergWallTotalH = pergFloorY + pergWallH;
-  const pergBeamY = pergFloorY + 2.32;
-  const pergRafterY = pergFloorY + 2.44;
+  const pergBeamY = pergFloorY + 2.385;
+  const pergRafterY = pergFloorY + 2.53;
 
   const dryStoneTextures = createDryStoneWallTextures();
   const dryStoneWallMat = new THREE.MeshStandardMaterial({
@@ -201,68 +201,48 @@ export function buildGrapeVinePergola(
       }
     }
 
-    let cCursor = spanMin - 0.02;
-    let cIdx = 0;
-    while (cCursor < spanMax - 0.05) {
-      const cLen = Math.min(spanMax + 0.02 - cCursor, 0.38 + ((cIdx * 13 + seedOffset) % 5) * 0.06);
-      if (cLen < 0.12) break;
-      const cMid = cCursor + cLen * 0.5;
-      const cH = 0.058 + (cIdx % 3) * 0.008;
-      const cOverhang = wallThickness + 0.075 + (cIdx % 2) * 0.014;
-      const cw = axis === 'x' ? cLen - 0.012 : cOverhang;
-      const cd = axis === 'x' ? cOverhang : cLen - 0.012;
-      const cx = axis === 'x' ? cMid : fixedCoord;
-      const cz = axis === 'x' ? fixedCoord : cMid;
-
-      const copingStone = new THREE.Mesh(
-        applyDryStoneWallUVs(new THREE.BoxGeometry(cw, cH, cd), cx, topY + 0.032, cz),
-        dryStoneCopingMat
-      );
-      if (!copingStone.name) copingStone.name = 'courtyard.grapeVinePergola.copingStone';
-      copingStone.position.set(cx, topY + 0.032, cz);
-      copingStone.castShadow = true;
-      copingStone.receiveShadow = true;
-      reliefGroup.add(copingStone);
-
-      cCursor += cLen;
-      cIdx++;
-    }
-
     parent.add(reliefGroup);
   };
 
   const boundaryStepNorthWall = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(1.54, 2.25, 0.24), 6.05, 1.125, -1.92),
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(1.416, 2.25, 0.24), 5.988, 1.125, -1.92),
     brickWallMat
   );
   if (!boundaryStepNorthWall.name) boundaryStepNorthWall.name = 'courtyard.grapeVinePergola.boundaryStepNorthWall';
-  boundaryStepNorthWall.position.set(6.05, 1.125, -1.92);
+  boundaryStepNorthWall.position.set(5.988, 1.125, -1.92);
   boundaryStepNorthWall.castShadow = true;
   pergolaGroup.add(boundaryStepNorthWall);
 
   const boundaryStepEastReturn = new THREE.Mesh(
-    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.24, 2.4, 1.02), pergMinX, 1.2, -1.45),
+    applyCourtyardBrickUVs(new THREE.BoxGeometry(0.24, 2.4, 0.816), pergMinX, 1.2, -1.552),
     brickWallMat
   );
   if (!boundaryStepEastReturn.name) boundaryStepEastReturn.name = 'courtyard.grapeVinePergola.boundaryStepEastReturn';
-  boundaryStepEastReturn.position.set(pergMinX, 1.2, -1.45);
+  boundaryStepEastReturn.position.set(pergMinX, 1.2, -1.552);
   boundaryStepEastReturn.castShadow = true;
   pergolaGroup.add(boundaryStepEastReturn);
 
+  const plinthMinX = pergMinX + 0.004;
+  const plinthMaxX = pergMaxX + 0.08;
+  const plinthSpanX = plinthMaxX - plinthMinX;
+  const plinthCenterX = (plinthMinX + plinthMaxX) * 0.5;
   const plinthMidX = (pergMinX + pergMaxX) * 0.5;
-  const plinthMidY = (pergFloorY - 0.14) * 0.5;
+  const plinthTopY = pergFloorY - 0.084;
+  const plinthBotY = -0.14;
+  const plinthH = plinthTopY - plinthBotY;
+  const plinthMidY = (plinthTopY + plinthBotY) * 0.5;
   const plinthMidZ = (pergMinZ + pergMaxZ) * 0.5;
   const pergolaRetainingPlinth = new THREE.Mesh(
     applyDryStoneWallUVs(
-      new THREE.BoxGeometry(pergMaxX - pergMinX + 0.16, pergFloorY + 0.14, pergMaxZ - pergMinZ + 0.16),
-      plinthMidX,
+      new THREE.BoxGeometry(plinthSpanX, plinthH, pergMaxZ - pergMinZ + 0.16),
+      plinthCenterX,
       plinthMidY,
       plinthMidZ
     ),
     dryStoneWallMat
   );
   if (!pergolaRetainingPlinth.name) pergolaRetainingPlinth.name = 'courtyard.grapeVinePergola.pergolaRetainingPlinth';
-  pergolaRetainingPlinth.position.set(plinthMidX, plinthMidY, plinthMidZ);
+  pergolaRetainingPlinth.position.set(plinthCenterX, plinthMidY, plinthMidZ);
   pergolaRetainingPlinth.receiveShadow = true;
   pergolaGroup.add(pergolaRetainingPlinth);
 
@@ -293,7 +273,7 @@ export function buildGrapeVinePergola(
     const wnX = pergMinX - (westStepTopYs.length - s - 0.5) * 0.28;
 
     const westNorthStep = new THREE.Mesh(
-      applyDryStoneWallUVs(new THREE.BoxGeometry(0.3, stepH, 1.8), wnX, stepY, 2.65),
+      applyDryStoneWallUVs(new THREE.BoxGeometry(0.272, stepH, 1.8), wnX, stepY, 2.65),
       dryStoneCopingMat
     );
     westNorthStep.name = `courtyard.grapeVinePergola.westNorthStep.${s + 1}`;
@@ -303,7 +283,7 @@ export function buildGrapeVinePergola(
     pergolaGroup.add(westNorthStep);
 
     const westSouthStep = new THREE.Mesh(
-      applyDryStoneWallUVs(new THREE.BoxGeometry(0.3, stepH, 1.15), wnX, stepY, 6.42),
+      applyDryStoneWallUVs(new THREE.BoxGeometry(0.272, stepH, 1.15), wnX, stepY, 6.42),
       dryStoneCopingMat
     );
     westSouthStep.name = `courtyard.grapeVinePergola.westSouthStep.${s + 1}`;
@@ -318,12 +298,13 @@ export function buildGrapeVinePergola(
   const eastStepTopYs = [0.52, 0.615] as const;
   for (let s = 0; s < eastStepTopYs.length; s++) {
     const stepTopY = eastStepTopYs[s]!;
-    const stepH = stepTopY - (pergFloorY - 0.06);
-    const stepY = stepTopY - stepH * 0.5;
+    const stepBotY = pergFloorY + 0.004;
+    const stepH = stepTopY - stepBotY;
+    const stepY = (stepTopY + stepBotY) * 0.5;
     const egX = pergMaxX - (eastStepTopYs.length - s - 0.5) * 0.28;
 
     const eastGardenStep = new THREE.Mesh(
-      applyDryStoneWallUVs(new THREE.BoxGeometry(0.3, stepH, 1.5), egX, stepY, 2.6),
+      applyDryStoneWallUVs(new THREE.BoxGeometry(0.272, stepH, 1.5), egX, stepY, 2.6),
       dryStoneCopingMat
     );
     eastGardenStep.name = `courtyard.grapeVinePergola.eastGardenStep.${s + 1}`;
@@ -333,8 +314,10 @@ export function buildGrapeVinePergola(
     pergolaGroup.add(eastGardenStep);
   }
 
-  const northWallSpanX = pergMaxX - pergMinX;
-  const northWallMidX = (pergMinX + pergMaxX) * 0.5;
+  const horizWallMinX = pergMinX + 0.194;
+  const horizWallMaxX = pergMaxX + 0.14;
+  const northWallSpanX = horizWallMaxX - horizWallMinX;
+  const northWallMidX = (horizWallMinX + horizWallMaxX) * 0.5;
   const northStoneWall = new THREE.Mesh(
     applyDryStoneWallUVs(
       new THREE.BoxGeometry(northWallSpanX, pergWallTotalH, 0.28),
@@ -350,17 +333,21 @@ export function buildGrapeVinePergola(
   northStoneWall.receiveShadow = true;
   pergolaGroup.add(northStoneWall);
 
+  const horizCopingMinX = pergMinX + 0.224;
+  const horizCopingMaxX = pergMaxX + 0.17;
+  const horizCopingSpanX = horizCopingMaxX - horizCopingMinX;
+  const horizCopingMidX = (horizCopingMinX + horizCopingMaxX) * 0.5;
   const northStoneCoping = new THREE.Mesh(
     applyDryStoneWallUVs(
-      new THREE.BoxGeometry(northWallSpanX + 0.06, 0.06, 0.34),
-      northWallMidX,
-      pergWallTotalH + 0.03,
+      new THREE.BoxGeometry(horizCopingSpanX, 0.06, 0.34),
+      horizCopingMidX,
+      pergWallTotalH + 0.034,
       pergMinZ
     ),
     dryStoneCopingMat
   );
   if (!northStoneCoping.name) northStoneCoping.name = 'courtyard.grapeVinePergola.northStoneCoping';
-  northStoneCoping.position.set(northWallMidX, pergWallTotalH + 0.03, pergMinZ);
+  northStoneCoping.position.set(horizCopingMidX, pergWallTotalH + 0.034, pergMinZ);
   northStoneCoping.castShadow = true;
   pergolaGroup.add(northStoneCoping);
   addDryStoneReliefCourses(
@@ -370,66 +357,66 @@ export function buildGrapeVinePergola(
     pergMaxX - 0.16,
     pergMinZ,
     0.28,
-    pergFloorY,
+    pergFloorY + 0.04,
     pergWallTotalH,
     11
   );
 
   const eastStoneBenchBase = new THREE.Mesh(
     applyDryStoneWallUVs(
-      new THREE.BoxGeometry(0.34, 0.38, 3.5),
-      pergMaxX - 0.3,
-      pergFloorY + 0.19,
+      new THREE.BoxGeometry(0.32, 0.376, 3.5),
+      pergMaxX - 0.304,
+      pergFloorY + 0.192,
       5.25
     ),
     dryStoneWallMat
   );
   if (!eastStoneBenchBase.name) eastStoneBenchBase.name = 'courtyard.grapeVinePergola.eastStoneBenchBase';
-  eastStoneBenchBase.position.set(pergMaxX - 0.3, pergFloorY + 0.19, 5.25);
+  eastStoneBenchBase.position.set(pergMaxX - 0.304, pergFloorY + 0.192, 5.25);
   eastStoneBenchBase.castShadow = true;
   eastStoneBenchBase.receiveShadow = true;
   pergolaGroup.add(eastStoneBenchBase);
 
   const eastStoneBenchSlab = new THREE.Mesh(
     applyDryStoneWallUVs(
-      new THREE.BoxGeometry(0.38, 0.05, 3.56),
-      pergMaxX - 0.3,
-      pergFloorY + 0.405,
+      new THREE.BoxGeometry(0.35, 0.05, 3.54),
+      pergMaxX - 0.319,
+      pergFloorY + 0.409,
       5.25
     ),
     dryStoneCopingMat
   );
   if (!eastStoneBenchSlab.name) eastStoneBenchSlab.name = 'courtyard.grapeVinePergola.eastStoneBenchSlab';
-  eastStoneBenchSlab.position.set(pergMaxX - 0.3, pergFloorY + 0.405, 5.25);
+  eastStoneBenchSlab.position.set(pergMaxX - 0.319, pergFloorY + 0.409, 5.25);
   eastStoneBenchSlab.castShadow = true;
   pergolaGroup.add(eastStoneBenchSlab);
 
   const southStoneBenchBase = new THREE.Mesh(
     applyDryStoneWallUVs(
-      new THREE.BoxGeometry(3.45, 0.36, 0.34),
+      new THREE.BoxGeometry(3.45, 0.356, 0.30),
       9.65,
-      pergFloorY + 0.18,
-      pergMaxZ - 0.28
+      pergFloorY + 0.182,
+      pergMaxZ - 0.304
     ),
     dryStoneWallMat
   );
   if (!southStoneBenchBase.name) southStoneBenchBase.name = 'courtyard.grapeVinePergola.southStoneBenchBase';
-  southStoneBenchBase.position.set(9.65, pergFloorY + 0.18, pergMaxZ - 0.28);
+  southStoneBenchBase.position.set(9.65, pergFloorY + 0.182, pergMaxZ - 0.304);
   southStoneBenchBase.castShadow = true;
   southStoneBenchBase.receiveShadow = true;
   pergolaGroup.add(southStoneBenchBase);
 
   const southStoneBenchSlab = new THREE.Mesh(
     applyDryStoneWallUVs(
-      new THREE.BoxGeometry(3.52, 0.05, 0.38),
-      9.65,
-      pergFloorY + 0.385,
-      pergMaxZ - 0.28
+      new THREE.BoxGeometry(3.42, 0.05, 0.33),
+      9.63,
+      pergFloorY + 0.389,
+      pergMaxZ - 0.314
     ),
     dryStoneCopingMat
   );
   if (!southStoneBenchSlab.name) southStoneBenchSlab.name = 'courtyard.grapeVinePergola.southStoneBenchSlab';
-  southStoneBenchSlab.position.set(9.65, pergFloorY + 0.385, pergMaxZ - 0.28);
+  southStoneBenchSlab.position.set(9.63, pergFloorY + 0.389, pergMaxZ - 0.314);
   southStoneBenchSlab.castShadow = true;
   pergolaGroup.add(southStoneBenchSlab);
 
@@ -447,14 +434,14 @@ export function buildGrapeVinePergola(
   ] as const) {
     const ledgePot = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.76, h, 12), pMat);
     if (!ledgePot.name) ledgePot.name = 'courtyard.grapeVinePergola.ledgePot';
-    ledgePot.position.set(pergMaxX - 0.28, pergFloorY + 0.43 + h / 2, pz);
+    ledgePot.position.set(pergMaxX - 0.28, pergFloorY + 0.438 + h / 2, pz);
     ledgePot.castShadow = true;
     pergolaGroup.add(ledgePot);
 
     addSculptedBotanicalShrub(
       pergolaGroup,
       pergMaxX - 0.28,
-      pergFloorY + 0.43 + h + r * 0.48,
+      pergFloorY + 0.438 + h + r * 0.48,
       pz,
       r * 1.22,
       r * 0.96,
@@ -465,9 +452,9 @@ export function buildGrapeVinePergola(
     );
   }
 
-  for (const [zMin, zMax, seedOff] of [
-    [pergMinZ, 1.85, 23],
-    [3.35, pergMaxZ, 41],
+  for (const [zMin, zMax, cMin, cMax, seedOff] of [
+    [pergMinZ + 0.144, 1.85, pergMinZ + 0.174, 1.88, 23],
+    [3.35, pergMaxZ - 0.144, 3.32, pergMaxZ - 0.174, 41],
   ] as const) {
     const segD = zMax - zMin;
     const segMidZ = (zMin + zMax) * 0.5;
@@ -486,17 +473,19 @@ export function buildGrapeVinePergola(
     eastStoneWall.receiveShadow = true;
     pergolaGroup.add(eastStoneWall);
 
+    const copingD = cMax - cMin;
+    const copingMidZ = (cMin + cMax) * 0.5;
     const eastStoneCoping = new THREE.Mesh(
       applyDryStoneWallUVs(
-        new THREE.BoxGeometry(0.34, 0.06, segD + 0.06),
+        new THREE.BoxGeometry(0.34, 0.06, copingD),
         pergMaxX,
-        pergWallTotalH + 0.03,
-        segMidZ
+        pergWallTotalH + 0.034,
+        copingMidZ
       ),
       dryStoneCopingMat
     );
     if (!eastStoneCoping.name) eastStoneCoping.name = 'courtyard.grapeVinePergola.eastStoneCoping';
-    eastStoneCoping.position.set(pergMaxX, pergWallTotalH + 0.03, segMidZ);
+    eastStoneCoping.position.set(pergMaxX, pergWallTotalH + 0.034, copingMidZ);
     eastStoneCoping.castShadow = true;
     pergolaGroup.add(eastStoneCoping);
 
@@ -507,14 +496,14 @@ export function buildGrapeVinePergola(
       zMax - 0.08,
       pergMaxX,
       0.28,
-      pergFloorY,
+      pergFloorY + 0.04,
       pergWallTotalH,
       seedOff
     );
   }
 
-  const southWallSpanX = pergMaxX - pergMinX;
-  const southWallMidX = (pergMinX + pergMaxX) * 0.5;
+  const southWallSpanX = northWallSpanX;
+  const southWallMidX = northWallMidX;
   const southPergolaBrickWall = new THREE.Mesh(
     applyDryStoneWallUVs(
       new THREE.BoxGeometry(southWallSpanX, pergWallTotalH, 0.28),
@@ -532,15 +521,15 @@ export function buildGrapeVinePergola(
 
   const southPergolaBrickCoping = new THREE.Mesh(
     applyDryStoneWallUVs(
-      new THREE.BoxGeometry(southWallSpanX + 0.06, 0.06, 0.34),
-      southWallMidX,
-      pergWallTotalH + 0.03,
+      new THREE.BoxGeometry(horizCopingSpanX, 0.06, 0.34),
+      horizCopingMidX,
+      pergWallTotalH + 0.034,
       pergMaxZ
     ),
     dryStoneCopingMat
   );
   if (!southPergolaBrickCoping.name) southPergolaBrickCoping.name = 'courtyard.grapeVinePergola.southPergolaBrickCoping';
-  southPergolaBrickCoping.position.set(southWallMidX, pergWallTotalH + 0.03, pergMaxZ);
+  southPergolaBrickCoping.position.set(horizCopingMidX, pergWallTotalH + 0.034, pergMaxZ);
   southPergolaBrickCoping.castShadow = true;
   pergolaGroup.add(southPergolaBrickCoping);
 
@@ -551,7 +540,7 @@ export function buildGrapeVinePergola(
     pergMaxX - 0.14,
     pergMaxZ,
     0.28,
-    0.16,
+    0.13,
     pergWallTotalH,
     59
   );
@@ -571,11 +560,11 @@ export function buildGrapeVinePergola(
   pergolaGroup.add(southAlleyHerbBedKerb);
 
   const southAlleyHerbSoil = new THREE.Mesh(
-    new THREE.BoxGeometry(southWallSpanX - 0.08, 0.2, 0.32),
+    new THREE.BoxGeometry(southWallSpanX - 0.08, 0.2, 0.21),
     soilMat
   );
   if (!southAlleyHerbSoil.name) southAlleyHerbSoil.name = 'courtyard.grapeVinePergola.southAlleyHerbSoil';
-  southAlleyHerbSoil.position.set(southWallMidX, 0.04, pergMaxZ + 0.26);
+  southAlleyHerbSoil.position.set(southWallMidX, 0.04, pergMaxZ + 0.255);
   pergolaGroup.add(southAlleyHerbSoil);
 
   for (let hx = pergMinX + 0.38; hx <= pergMaxX - 0.38; hx += 0.68) {
@@ -601,17 +590,21 @@ export function buildGrapeVinePergola(
     [pergMinX, 5.65, 0.38, 0.38],
     [pergMinX, pergMaxZ, 0.38, 0.38],
   ] as const) {
+    const isInnerPier = pz > pergMinZ + 0.1 && pz < pergMaxZ - 0.1;
+    const pierBotY = isInnerPier ? pergFloorY + 0.004 : 0;
+    const pierH = pergWallTotalH - pierBotY;
+    const pierMidY = (pierBotY + pergWallTotalH) * 0.5;
     const pier = new THREE.Mesh(
       applyCourtyardBrickUVs(
-        new THREE.BoxGeometry(pw, pergWallTotalH, pd),
+        new THREE.BoxGeometry(pw, pierH, pd),
         px,
-        pergWallTotalH * 0.5,
+        pierMidY,
         pz
       ),
       brickWallMat
     );
     if (!pier.name) pier.name = 'courtyard.grapeVinePergola.pier';
-    pier.position.set(px, pergWallTotalH * 0.5, pz);
+    pier.position.set(px, pierMidY, pz);
     pier.castShadow = true;
     pier.receiveShadow = true;
     pergolaGroup.add(pier);
@@ -620,37 +613,37 @@ export function buildGrapeVinePergola(
       applyDryStoneWallUVs(
         new THREE.BoxGeometry(pw + 0.06, 0.06, pd + 0.06),
         px,
-        pergWallTotalH + 0.03,
+        pergWallTotalH + 0.034,
         pz
       ),
       dryStoneCopingMat
     );
     if (!pierCap.name) pierCap.name = 'courtyard.grapeVinePergola.pierCap';
-    pierCap.position.set(px, pergWallTotalH + 0.03, pz);
+    pierCap.position.set(px, pergWallTotalH + 0.034, pz);
     pierCap.castShadow = true;
     pergolaGroup.add(pierCap);
   }
 
   for (const [wz, wd] of [
-    [0.3, 2.12],
-    [4.7, 1.52],
+    [0.3, 2.1],
+    [4.7, 1.5],
   ] as const) {
     const dwarfWall = new THREE.Mesh(
-      applyDryStoneWallUVs(new THREE.BoxGeometry(0.26, 0.38, wd), pergMinX, pergFloorY + 0.19, wz),
+      applyDryStoneWallUVs(new THREE.BoxGeometry(0.26, 0.376, wd), pergMinX, pergFloorY + 0.192, wz),
       dryStoneWallMat
     );
     if (!dwarfWall.name) dwarfWall.name = 'courtyard.grapeVinePergola.dwarfWall';
-    dwarfWall.position.set(pergMinX, pergFloorY + 0.19, wz);
+    dwarfWall.position.set(pergMinX, pergFloorY + 0.192, wz);
     dwarfWall.castShadow = true;
     dwarfWall.receiveShadow = true;
     pergolaGroup.add(dwarfWall);
 
     const dwarfCoping = new THREE.Mesh(
-      applyDryStoneWallUVs(new THREE.BoxGeometry(0.32, 0.05, wd + 0.04), pergMinX, pergFloorY + 0.405, wz),
+      applyDryStoneWallUVs(new THREE.BoxGeometry(0.32, 0.05, wd + 0.004), pergMinX, pergFloorY + 0.409, wz),
       dryStoneCopingMat
     );
     if (!dwarfCoping.name) dwarfCoping.name = 'courtyard.grapeVinePergola.dwarfCoping';
-    dwarfCoping.position.set(pergMinX, pergFloorY + 0.405, wz);
+    dwarfCoping.position.set(pergMinX, pergFloorY + 0.409, wz);
     dwarfCoping.castShadow = true;
     pergolaGroup.add(dwarfCoping);
   }
@@ -664,7 +657,7 @@ export function buildGrapeVinePergola(
   ] as const) {
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, 14), pMat);
     if (!pot.name) pot.name = 'courtyard.grapeVinePergola.pot';
-    pot.position.set(px, pergFloorY + h / 2, pz);
+    pot.position.set(px, pergFloorY + 0.004 + h / 2, pz);
     pot.castShadow = true;
     pot.receiveShadow = true;
     pergolaGroup.add(pot);
@@ -672,7 +665,7 @@ export function buildGrapeVinePergola(
     addSculptedBotanicalShrub(
       pergolaGroup,
       px,
-      pergFloorY + h + rTop * 0.55,
+      pergFloorY + 0.004 + h + rTop * 0.55,
       pz,
       rTop * 1.22,
       rTop * 1.05,
@@ -717,7 +710,7 @@ export function buildGrapeVinePergola(
       structuralOakMat
     );
     if (!batten.name) batten.name = 'courtyard.grapeVinePergola.batten';
-    batten.position.set(beamMidX, pergRafterY + 0.08, bz);
+    batten.position.set(beamMidX, pergRafterY + 0.087, bz);
     pergolaGroup.add(batten);
   }
 
@@ -1075,7 +1068,7 @@ export function buildGrapeVinePergola(
 
   const diningSetGroup = new THREE.Group();
   diningSetGroup.name = 'courtyard.grapeVinePergola.diningSet';
-  diningSetGroup.position.set(9.35, pergFloorY, 3.55);
+  diningSetGroup.position.set(9.35, pergFloorY + 0.004, 3.55);
 
   const pergolaTeakMat = new THREE.MeshStandardMaterial({
     color: 0x91795e,
@@ -1100,32 +1093,32 @@ export function buildGrapeVinePergola(
   }
   for (const sideX of [-tableW / 2 + 0.04, tableW / 2 - 0.04]) {
     const sideApron = new THREE.Mesh(
-      new THREE.BoxGeometry(0.032, 0.075, tableD - 0.12),
+      new THREE.BoxGeometry(0.032, 0.075, tableD - 0.2),
       pergolaTeakMat
     );
     if (!sideApron.name) sideApron.name = 'courtyard.grapeVinePergola.sideApron';
-    sideApron.position.set(sideX, tableH - 0.055, 0);
+    sideApron.position.set(sideX, tableH - 0.07, 0);
     sideApron.castShadow = true;
     diningSetGroup.add(sideApron);
   }
   for (const endZ of [-tableD / 2 + 0.04, tableD / 2 - 0.04]) {
     const endApron = new THREE.Mesh(
-      new THREE.BoxGeometry(tableW - 0.12, 0.075, 0.032),
+      new THREE.BoxGeometry(tableW - 0.2, 0.075, 0.032),
       pergolaTeakMat
     );
     if (!endApron.name) endApron.name = 'courtyard.grapeVinePergola.endApron';
-    endApron.position.set(0, tableH - 0.055, endZ);
+    endApron.position.set(0, tableH - 0.07, endZ);
     endApron.castShadow = true;
     diningSetGroup.add(endApron);
   }
   for (const lx of [-tableW / 2 + 0.06, tableW / 2 - 0.06]) {
     for (const lz of [-tableD / 2 + 0.06, tableD / 2 - 0.06]) {
       const leg = new THREE.Mesh(
-        new THREE.BoxGeometry(0.068, tableH - 0.02, 0.068),
+        new THREE.BoxGeometry(0.068, tableH - 0.032, 0.068),
         pergolaTeakMat
       );
       if (!leg.name) leg.name = 'courtyard.grapeVinePergola.leg';
-      leg.position.set(lx, (tableH - 0.02) / 2, lz);
+      leg.position.set(lx, (tableH - 0.032) / 2, lz);
       leg.castShadow = true;
       diningSetGroup.add(leg);
     }
@@ -1146,7 +1139,7 @@ export function buildGrapeVinePergola(
     chair.rotation.y = rotY;
 
     const seat = new THREE.Mesh(
-      new THREE.BoxGeometry(0.52, 0.034, 0.48),
+      new THREE.BoxGeometry(0.428, 0.034, 0.44),
       pergolaTeakMat
     );
     if (!seat.name) seat.name = 'courtyard.grapeVinePergola.seat';
@@ -1156,7 +1149,7 @@ export function buildGrapeVinePergola(
     chair.add(seat);
 
     const crestRail = new THREE.Mesh(
-      new THREE.BoxGeometry(0.54, 0.055, 0.032),
+      new THREE.BoxGeometry(0.428, 0.055, 0.032),
       pergolaTeakMat
     );
     if (!crestRail.name) crestRail.name = 'courtyard.grapeVinePergola.crestRail';
@@ -1166,22 +1159,22 @@ export function buildGrapeVinePergola(
 
     for (let b = -3; b <= 3; b++) {
       const backSlat = new THREE.Mesh(
-        new THREE.BoxGeometry(0.042, 0.4, 0.018),
+        new THREE.BoxGeometry(0.042, 0.376, 0.018),
         pergolaTeakMat
       );
       if (!backSlat.name) backSlat.name = 'courtyard.grapeVinePergola.backSlat';
-      backSlat.position.set(b * 0.068, 0.66, -0.22);
+      backSlat.position.set(b * 0.058, 0.66, -0.22);
       backSlat.castShadow = true;
       chair.add(backSlat);
     }
 
     for (const sx of [-0.24, 0.24]) {
       const fLeg = new THREE.Mesh(
-        new THREE.BoxGeometry(0.042, 0.64, 0.042),
+        new THREE.BoxGeometry(0.042, 0.621, 0.042),
         pergolaTeakMat
       );
       if (!fLeg.name) fLeg.name = 'courtyard.grapeVinePergola.fLeg';
-      fLeg.position.set(sx, 0.32, 0.21);
+      fLeg.position.set(sx, 0.621 / 2, 0.21);
       fLeg.castShadow = true;
       chair.add(fLeg);
 
@@ -1195,11 +1188,11 @@ export function buildGrapeVinePergola(
       chair.add(rLeg);
 
       const arm = new THREE.Mesh(
-        new THREE.BoxGeometry(0.052, 0.03, 0.48),
+        new THREE.BoxGeometry(0.056, 0.03, 0.43),
         pergolaTeakMat
       );
       if (!arm.name) arm.name = 'courtyard.grapeVinePergola.arm';
-      arm.position.set(sx, 0.64, 0.0);
+      arm.position.set(sx, 0.64, 0.025);
       arm.castShadow = true;
       chair.add(arm);
     }

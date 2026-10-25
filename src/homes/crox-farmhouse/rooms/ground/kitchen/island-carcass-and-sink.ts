@@ -62,7 +62,7 @@ const sharedIslandOverhangLegGeo = prepGeo(new THREE.BoxGeometry(0.06, 0.9, 0.36
 const sharedDishwasherTopLipGeo = prepGeo(new THREE.BoxGeometry(0.598, 0.014, 0.024));
 const sharedIslandWorktopGeo = prepGeo(new THREE.BoxGeometry(3.8, 0.055, 1.52));
 const sharedSinkRimGeo = prepGeo(new THREE.BoxGeometry(0.72, 0.02, 0.5));
-const sharedSinkBasinGeo = prepGeo(new THREE.BoxGeometry(0.66, 0.024, 0.44));
+const sharedSinkBasinGeo = prepGeo(new THREE.BoxGeometry(0.66, 0.016, 0.44));
 const sharedIslandDrainerGrooveGeo = prepGeo(new THREE.BoxGeometry(0.46, 0.004, 0.011));
 const sharedTapBaseGeo = prepGeo(new THREE.BoxGeometry(0.16, 0.025, 0.042));
 const sharedTapStemGeo = prepGeo(new THREE.CylinderGeometry(0.014, 0.016, 0.26, 12));
@@ -162,7 +162,7 @@ export function buildUnderCounterWineCooler(
     new THREE.MeshBasicMaterial({ color: 0x6ec6ff })
   );
   tempDisplay.name = 'wineCooler.tempDisplay';
-  tempDisplay.position.set(0, 0.48, -0.003);
+  tempDisplay.position.set(0, 0.48, -0.0005);
   tagHighLod(tempDisplay, 12);
   coolerGroup.add(tempDisplay);
 
@@ -453,7 +453,7 @@ export function buildIslandCarcassWorktopAndSink(
     new THREE.MeshStandardMaterial({ color: 0x0b0e12, roughness: 0.7 })
   );
   plinthVent.name = 'island.wineCoolerPier.plinthVent';
-  plinthVent.position.set(pierCx, 0.05, 0.726);
+  plinthVent.position.set(pierCx, 0.05, 0.73);
   tagHighLod(plinthVent, 12);
   islandGroup.add(plinthVent);
 
@@ -589,7 +589,7 @@ export function buildIslandCarcassWorktopAndSink(
     new THREE.MeshStandardMaterial({ color: 0xc8c4ba, roughness: 0.28 })
   );
   sinkBasin.name = 'kitchen.island.sink.basin';
-  sinkBasin.position.set(sinkX, 0.953, sinkZ);
+  sinkBasin.position.set(sinkX, 0.957, sinkZ);
   islandGroup.add(sinkBasin);
 
   // Routed Sink Drainage Grooves in the marble worktop above the Integrated Dishwasher
@@ -598,7 +598,7 @@ export function buildIslandCarcassWorktopAndSink(
     const gz = grooveZCoords[i]!;
     const groove = new THREE.Mesh(sharedIslandDrainerGrooveGeo, drainerGrooveMat);
     groove.name = `kitchen.island.sink.drainerGroove_${i + 1}`;
-    groove.position.set(-1.33, 0.955, gz);
+    groove.position.set(-1.33, 0.9605, gz);
     tagHighLod(groove, 12);
     islandGroup.add(groove);
   }

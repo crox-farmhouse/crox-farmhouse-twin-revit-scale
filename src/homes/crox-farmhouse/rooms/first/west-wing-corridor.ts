@@ -105,8 +105,8 @@ export function buildWestWingCorridor(
   const corridorFloorSlab = buildPolygonalFloorSlab(
     scene,
     [
-      [-18.92, 0.975],
-      [-17.65, 0.975],
+      [-18.92, 1.125],
+      [-17.65, 1.125],
       [landingSouthWestX, landingSouthWestZ],
       [-16.83, landingSouthEastZ],
       [-17.09, 8.27],
@@ -220,17 +220,17 @@ export function buildWestWingCorridor(
   // Solid antique oak threshold steps at `bedroom2Door` (`2.050m -> 2.095m`, 45mm rise) and `showerRoomDoor` (`2.075m -> 2.095m`, 20mm rise)
   {
     const bed2StepRise = floorTopY - bed2FloorY; // 0.045m
-    const bed2StepGeo = new THREE.BoxGeometry(0.15, bed2StepRise, 0.76);
+    const bed2StepGeo = new THREE.BoxGeometry(0.072, bed2StepRise, 0.76);
     bed2StepGeo.computeBoundingSphere();
     const bed2Step = new THREE.Mesh(bed2StepGeo, antiqueOakSkirtingMat);
     bed2Step.name = 'bedroom2.doorThresholdStep';
     bed2Step.userData.isArchitecturalShell = true;
-    bed2Step.position.set(-18.92, bed2FloorY + bed2StepRise * 0.5, 1.695);
+    bed2Step.position.set(-18.959, bed2FloorY + bed2StepRise * 0.5, 1.695);
     bed2Step.receiveShadow = true;
     scene.add(bed2Step);
 
     const showerStepRise = floorTopY - showerFloorY; // 0.020m
-    const showerThresholdGeo = new THREE.BoxGeometry(0.15, showerStepRise, 0.9);
+    const showerThresholdGeo = new THREE.BoxGeometry(0.072, showerStepRise, 0.9);
     showerThresholdGeo.computeBoundingSphere();
     const showerThresholdStrip = new THREE.Mesh(
       showerThresholdGeo,
@@ -238,7 +238,7 @@ export function buildWestWingCorridor(
     );
     showerThresholdStrip.name = 'showerRoom.doorThresholdStrip';
     showerThresholdStrip.userData.isArchitecturalShell = true;
-    showerThresholdStrip.position.set(-18.92, showerFloorY + showerStepRise * 0.5, 3.125);
+    showerThresholdStrip.position.set(-18.959, showerFloorY + showerStepRise * 0.5, 3.125);
     showerThresholdStrip.receiveShadow = true;
     scene.add(showerThresholdStrip);
   }
@@ -631,12 +631,12 @@ export function buildWestWingCorridor(
     archSpandrelMesh.receiveShadow = true;
     showerGroup.add(archSpandrelMesh);
 
-    // 2. Step-Up Tiled Shower Plinth (`0.10m` surveyed rise, `Y = 2.075m..2.175m`) & Ceramic Step-Up Shower Tray (`1.875m x 0.785m` clear inside `1.95m x 0.86m` stall)
+    // 2. Step-Up Tiled Shower Plinth (`0.10m` surveyed rise, `Y = 2.075m..2.175m`) & Ceramic Step-Up Shower Tray (`1.875m x 0.706m` clear inside stall)
     const plinthH = 0.1;
     const trayW = 1.875; // X = -20.16m..-18.285m
-    const trayD = 0.785; // Z = +3.82m..+4.605m
+    const trayD = 0.706; // Z = +3.899m..+4.605m (4mm South of southEastPartitionWall at Z = 3.895m)
     const trayCenterX = -19.2225;
-    const trayCenterZ = 4.2125;
+    const trayCenterZ = 4.252;
 
     const showerStepPlinthGeo = new THREE.BoxGeometry(trayW, plinthH, trayD);
     showerStepPlinthGeo.computeBoundingSphere();
@@ -682,7 +682,7 @@ export function buildWestWingCorridor(
 
     const trayRecessedWellGeo = new THREE.BoxGeometry(
       trayW - 0.14,
-      0.012,
+      0.006,
       trayD - 0.12
     );
     trayRecessedWellGeo.computeBoundingSphere();
@@ -691,15 +691,15 @@ export function buildWestWingCorridor(
       new THREE.MeshStandardMaterial({ color: 0xebeae4, roughness: 0.22, metalness: 0.04 })
     );
     trayRecessedWell.name = 'showerRoom.showerTray.recessedWell';
-    trayRecessedWell.position.set(trayCenterX, trayBaseY + 0.043, trayCenterZ);
+    trayRecessedWell.position.set(trayCenterX, trayBaseY + 0.045, trayCenterZ);
     showerGroup.add(trayRecessedWell);
 
     // Aged-brass square shower waste grate
-    const showerDrainGrateGeo = new THREE.BoxGeometry(0.11, 0.014, 0.11);
+    const showerDrainGrateGeo = new THREE.BoxGeometry(0.11, 0.004, 0.11);
     showerDrainGrateGeo.computeBoundingSphere();
     const showerDrainGrate = new THREE.Mesh(showerDrainGrateGeo, brassMat);
     showerDrainGrate.name = 'showerRoom.showerDrainGrate';
-    showerDrainGrate.position.set(-18.58, trayBaseY + 0.044, trayCenterZ);
+    showerDrainGrate.position.set(-18.58, trayBaseY + 0.05, trayCenterZ);
     tagHighLodDetail(showerDrainGrate);
     showerGroup.add(showerDrainGrate);
 
@@ -851,21 +851,38 @@ export function buildWestWingCorridor(
     marbleUpstand.castShadow = true;
     vanitySubGroup.add(marbleUpstand);
 
-    const basinRimGeo = new THREE.BoxGeometry(0.3, 0.016, 0.48);
+    const basinRimShape = new THREE.Shape();
+    basinRimShape.moveTo(-0.15, -0.24);
+    basinRimShape.lineTo(0.15, -0.24);
+    basinRimShape.lineTo(0.15, 0.24);
+    basinRimShape.lineTo(-0.15, 0.24);
+    basinRimShape.closePath();
+    const basinRimHole = new THREE.Path();
+    basinRimHole.moveTo(-0.125, -0.21);
+    basinRimHole.lineTo(0.125, -0.21);
+    basinRimHole.lineTo(0.125, 0.21);
+    basinRimHole.lineTo(-0.125, 0.21);
+    basinRimHole.closePath();
+    basinRimShape.holes.push(basinRimHole);
+    const basinRimGeo = new THREE.ExtrudeGeometry(basinRimShape, {
+      depth: 0.02,
+      bevelEnabled: false,
+    });
+    basinRimGeo.rotateX(-Math.PI / 2);
     basinRimGeo.computeBoundingSphere();
     const basinRim = new THREE.Mesh(basinRimGeo, ceramicWhiteMat);
     basinRim.name = 'showerRoom.sinkBasinRim';
-    basinRim.position.set(0.26, 0.843, vanityZ);
+    basinRim.position.set(0.26, 0.836, vanityZ);
     vanitySubGroup.add(basinRim);
 
-    const basinWellGeo = new THREE.BoxGeometry(0.25, 0.018, 0.42);
+    const basinWellGeo = new THREE.BoxGeometry(0.242, 0.006, 0.412);
     basinWellGeo.computeBoundingSphere();
     const basinWell = new THREE.Mesh(
       basinWellGeo,
       new THREE.MeshStandardMaterial({ color: 0xdfe3e6, roughness: 0.14, metalness: 0.06 })
     );
     basinWell.name = 'showerRoom.sinkBasinWell';
-    basinWell.position.set(0.26, 0.846, vanityZ);
+    basinWell.position.set(0.26, 0.849, vanityZ);
     vanitySubGroup.add(basinWell);
 
     const tapStemGeo = new THREE.CylinderGeometry(0.016, 0.02, 0.16, 14);
@@ -929,7 +946,6 @@ export function buildWestWingCorridor(
       color: 0xf6f5f0,
       roughness: 0.11,
       metalness: 0.05,
-      side: THREE.DoubleSide,
     });
     const innerBowlGlazeMat = new THREE.MeshStandardMaterial({
       color: 0xe6eaec,
@@ -997,7 +1013,7 @@ export function buildWestWingCorridor(
     const soilWallCollar = new THREE.Mesh(soilWallCollarGeo, vitreousChinaMat);
     soilWallCollar.name = 'showerRoom.toiletSoilWallCollar';
     soilWallCollar.rotation.z = Math.PI / 2;
-    soilWallCollar.position.set(0.013, 0.185, toiletZ);
+    soilWallCollar.position.set(0.016, 0.185, toiletZ);
     tagHighLodDetail(soilWallCollar);
     toiletSubGroup.add(soilWallCollar);
 

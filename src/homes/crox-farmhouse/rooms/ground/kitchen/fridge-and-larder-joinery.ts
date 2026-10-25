@@ -17,10 +17,10 @@ const sharedNeffFanImpellerGeo = prepGeo(new THREE.CylinderGeometry(0.062, 0.062
 const sharedNeffMainLampGeo = prepGeo(new THREE.BoxGeometry(0.045, 0.008, 0.075));
 const sharedNeffTopLampGeo = prepGeo(new THREE.BoxGeometry(0.045, 0.006, 0.075));
 
-const sharedNeffFasciaGlassGeo = prepGeo(new THREE.BoxGeometry(0.024, 0.112, 0.558));
-const sharedNeffFasciaEdgeTrimGeo = prepGeo(new THREE.BoxGeometry(0.026, 0.112, 0.018));
+const sharedNeffFasciaGlassGeo = prepGeo(new THREE.BoxGeometry(0.02, 0.106, 0.558));
+const sharedNeffFasciaEdgeTrimGeo = prepGeo(new THREE.BoxGeometry(0.026, 0.106, 0.018));
 const sharedNeffFasciaBottomStripGeo = prepGeo(new THREE.BoxGeometry(0.026, 0.006, 0.594));
-const sharedNeffFasciaOverlayGeo = prepGeo(new THREE.PlaneGeometry(0.554, 0.104));
+const sharedNeffFasciaOverlayGeo = prepGeo(new THREE.PlaneGeometry(0.554, 0.102));
 const sharedNeffDialBezelGeo = prepGeo(new THREE.CylinderGeometry(0.022, 0.022, 0.006, 24));
 const sharedNeffDialBarrelGeo = prepGeo(new THREE.CylinderGeometry(0.018, 0.018, 0.018, 24));
 const sharedNeffDialGripBladeGeo = prepGeo(new THREE.BoxGeometry(0.008, 0.036, 0.006));
@@ -291,6 +291,7 @@ export function buildWestWallFridgeAndOvenTowers(
   // Central gloss black ceramic glass fascia panel (between Graphite vertical edge trims)
   const fasciaBlackGlass = new THREE.Mesh(sharedNeffFasciaGlassGeo, neffBlackGlassMat);
   fasciaBlackGlass.name = 'kitchen.cabinetry.west.neffOvenTower.controlFascia.blackGlass';
+  fasciaBlackGlass.position.set(0, 0.003, 0);
   fasciaBlackGlass.castShadow = true;
   neffFasciaGroup.add(fasciaBlackGlass);
 
@@ -298,7 +299,7 @@ export function buildWestWallFridgeAndOvenTowers(
   for (const sideZ of [-1, 1] as const) {
     const fasciaEdgeTrim = new THREE.Mesh(sharedNeffFasciaEdgeTrimGeo, neffGraphiteMat);
     fasciaEdgeTrim.name = `kitchen.cabinetry.west.neffOvenTower.controlFascia.edgeTrim.${sideZ < 0 ? 'right' : 'left'}`;
-    fasciaEdgeTrim.position.set(0.001, 0, sideZ * 0.288);
+    fasciaEdgeTrim.position.set(0.001, 0.003, sideZ * 0.288);
     fasciaEdgeTrim.castShadow = true;
     neffFasciaGroup.add(fasciaEdgeTrim);
   }
@@ -382,7 +383,7 @@ export function buildWestWallFridgeAndOvenTowers(
   );
   neffFasciaOverlay.name = 'kitchen.cabinetry.west.neffOvenTower.controlFascia.displayOverlay';
   neffFasciaOverlay.rotation.y = Math.PI / 2;
-  neffFasciaOverlay.position.set(0.0125, 0, 0);
+  neffFasciaOverlay.position.set(0.0145, 0.003, 0);
   neffFasciaGroup.add(neffFasciaOverlay);
 
   // Two Retractable / Elongated NEFF Rotary Control Dials (Left = Function, Right = Temperature)
@@ -392,14 +393,14 @@ export function buildWestWallFridgeAndOvenTowers(
     const dialBezel = new THREE.Mesh(sharedNeffDialBezelGeo, neffGraphiteMat);
     dialBezel.name = `kitchen.cabinetry.west.neffOvenTower.controlFascia.dial.${dialSide}.bezel`;
     dialBezel.rotation.z = Math.PI / 2;
-    dialBezel.position.set(0.014, -0.002, dialZ);
+    dialBezel.position.set(0.022, -0.002, dialZ);
     tagHighLod(dialBezel, 12);
     neffFasciaGroup.add(dialBezel);
 
     const dialBarrel = new THREE.Mesh(sharedNeffDialBarrelGeo, neffBlackGlassMat);
     dialBarrel.name = `kitchen.cabinetry.west.neffOvenTower.controlFascia.dial.${dialSide}.barrel`;
     dialBarrel.rotation.z = Math.PI / 2;
-    dialBarrel.position.set(0.021, -0.002, dialZ);
+    dialBarrel.position.set(0.03, -0.002, dialZ);
     dialBarrel.castShadow = true;
     tagHighLod(dialBarrel, 12);
     neffFasciaGroup.add(dialBarrel);
@@ -407,14 +408,14 @@ export function buildWestWallFridgeAndOvenTowers(
     // Characteristic NEFF elongated vertical selector blade across the rotary dial face
     const dialGripBlade = new THREE.Mesh(sharedNeffDialGripBladeGeo, neffGraphiteMat);
     dialGripBlade.name = `kitchen.cabinetry.west.neffOvenTower.controlFascia.dial.${dialSide}.gripBlade`;
-    dialGripBlade.position.set(0.031, -0.002, dialZ);
+    dialGripBlade.position.set(0.041, -0.002, dialZ);
     dialGripBlade.castShadow = true;
     tagHighLod(dialGripBlade, 12);
     neffFasciaGroup.add(dialGripBlade);
 
     const dialPointerTick = new THREE.Mesh(sharedNeffDialPointerTickGeo, dialPointerMat);
     dialPointerTick.name = `kitchen.cabinetry.west.neffOvenTower.controlFascia.dial.${dialSide}.pointerTick`;
-    dialPointerTick.position.set(0.0315, 0.012, dialZ);
+    dialPointerTick.position.set(0.0465, 0.012, dialZ);
     tagHighLod(dialPointerTick, 12);
     neffFasciaGroup.add(dialPointerTick);
   }
@@ -491,30 +492,30 @@ export function buildWestWallFridgeAndOvenTowers(
 
     // 4. Inner Silver/Graphite Pinstripe Framing the Viewing Window Aperture
     const pThick = 0.004;
-    const hPinGeo = prepGeo(new THREE.BoxGeometry(doorThick + 0.001, pThick, winW + pThick * 2));
+    const hPinGeo = prepGeo(new THREE.BoxGeometry(0.005, pThick, winW + pThick * 2));
     for (const sy of [-1, 1] as const) {
       const hPin = new THREE.Mesh(hPinGeo, neffSilverPinstripeMat);
       hPin.name = `${doorName}.pinstripe.${sy < 0 ? 'bottom' : 'top'}`;
-      hPin.position.set(0.001, winCenterY + sy * (winH * 0.5 + pThick * 0.5), 0);
+      hPin.position.set(0.0165, winCenterY + sy * (winH * 0.5 + pThick * 0.5), 0);
       tagHighLod(hPin, 12);
       doorGroup.add(hPin);
     }
-    const vPinGeo = prepGeo(new THREE.BoxGeometry(doorThick + 0.001, winH, pThick));
+    const vPinGeo = prepGeo(new THREE.BoxGeometry(0.005, winH, pThick));
     for (const sz of [-1, 1] as const) {
       const vPin = new THREE.Mesh(vPinGeo, neffSilverPinstripeMat);
       vPin.name = `${doorName}.pinstripe.${sz < 0 ? 'right' : 'left'}`;
-      vPin.position.set(0.001, winCenterY, sz * (winW * 0.5 + pThick * 0.5));
+      vPin.position.set(0.0165, winCenterY, sz * (winW * 0.5 + pThick * 0.5));
       tagHighLod(vPin, 12);
       doorGroup.add(vPin);
     }
 
     // 5. Transparent Smoked Glass Viewing Window Pane (see-through into the lit NEFF cavity!)
     const windowGlass = new THREE.Mesh(
-      prepGeo(new THREE.BoxGeometry(0.01, winH, winW)),
+      prepGeo(new THREE.BoxGeometry(0.008, winH - 0.008, winW - 0.008)),
       neffSmokedWindowMat
     );
     windowGlass.name = `${doorName}.windowGlass`;
-    windowGlass.position.set(0.004, winCenterY, 0);
+    windowGlass.position.set(0.003, winCenterY, 0);
     doorGroup.add(windowGlass);
 
     // 6. Sculpted NEFF N50 Brushed Graphite Grey Bar Handle & Standoffs

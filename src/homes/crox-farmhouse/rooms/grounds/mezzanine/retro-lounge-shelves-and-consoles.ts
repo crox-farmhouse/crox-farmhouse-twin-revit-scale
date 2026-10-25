@@ -32,7 +32,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
   // =========================================================================
   const vcrGroup = new THREE.Group();
   vcrGroup.name = 'outbuildings.mezzanine.vcrPlayer';
-  vcrGroup.position.set(19.17, mezzanineFloorY + sbTopY, 1.82);
+  vcrGroup.position.set(19.17, mezzanineFloorY + sbTopY + 0.009, 1.82);
   loungeGroup.add(vcrGroup);
 
   const vcrBody = new THREE.Mesh(
@@ -50,15 +50,15 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
 
   // VCR front cassette loading slot door & glowing VFD clock display (`+x` face)
   const vcrTapeSlot = new THREE.Mesh(
-    new THREE.BoxGeometry(0.012, 0.032, 0.195),
+    new THREE.BoxGeometry(0.008, 0.032, 0.195),
     trinitronDarkGrilleMat
   );
   vcrTapeSlot.name = 'outbuildings.mezzanine.vcrPlayer.tapeSlot';
-  vcrTapeSlot.position.set(0.148, 0.058, 0.06);
+  vcrTapeSlot.position.set(0.158, 0.058, 0.06);
   vcrGroup.add(vcrTapeSlot);
 
   const vcrDisplay = new THREE.Mesh(
-    new THREE.BoxGeometry(0.012, 0.022, 0.11),
+    new THREE.BoxGeometry(0.008, 0.022, 0.11),
     new THREE.MeshStandardMaterial({
       color: 0x102820,
       emissive: 0x28d888,
@@ -67,21 +67,24 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     })
   );
   vcrDisplay.name = 'outbuildings.mezzanine.vcrPlayer.display';
-  vcrDisplay.position.set(0.149, 0.056, -0.11);
+  vcrDisplay.position.set(0.158, 0.056, -0.11);
   vcrGroup.add(vcrDisplay);
 
   // 2 VHS Cassettes + TV Remote stacked on top of the VCR
   for (let t = 0; t < 2; t++) {
+    const tapeItem = new THREE.Group();
+    tapeItem.position.set(0.01, 0.092 + t * 0.03 + 0.0125, 0.04);
+    tapeItem.rotation.y = t * 0.12 - 0.04;
+    vcrGroup.add(tapeItem);
+
     const vhsTape = new THREE.Mesh(
       new THREE.BoxGeometry(0.104, 0.025, 0.188),
       cordBlackMat
     );
     vhsTape.name = `outbuildings.mezzanine.vcrPlayer.vhsTape.${t + 1}`;
     vhsTape.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    vhsTape.position.set(0.01, 0.088 + t * 0.026 + 0.0125, 0.04);
-    vhsTape.rotation.y = t * 0.12 - 0.04;
     vhsTape.castShadow = true;
-    vcrGroup.add(vhsTape);
+    tapeItem.add(vhsTape);
 
     const spineLabel = new THREE.Mesh(
       new THREE.BoxGeometry(0.004, 0.018, 0.14),
@@ -92,14 +95,14 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     );
     spineLabel.name = `outbuildings.mezzanine.vcrPlayer.vhsTape.${t + 1}.label`;
     spineLabel.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    spineLabel.position.set(0.061, 0.088 + t * 0.026 + 0.0125, 0.04);
-    vcrGroup.add(spineLabel);
+    spineLabel.position.set(0.058, 0, 0);
+    tapeItem.add(spineLabel);
   }
 
   // Clamshell VHS Case (*The Lion King* 1994 VHS) on the south/left end of the sideboard (`v = 2.94m`)
   const vhsCaseGroup = new THREE.Group();
   vhsCaseGroup.name = 'outbuildings.mezzanine.vhsCaseStack';
-  vhsCaseGroup.position.set(19.20, mezzanineFloorY + sbTopY, 2.94);
+  vhsCaseGroup.position.set(19.20, mezzanineFloorY + sbTopY + 0.009, 2.94);
   vhsCaseGroup.rotation.y = 0.28;
   loungeGroup.add(vhsCaseGroup);
 
@@ -113,7 +116,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     );
     clamshell.name = `outbuildings.mezzanine.vhsCaseStack.case.${c + 1}`;
     clamshell.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    clamshell.position.set(c * 0.02, c * 0.028 + 0.014, 0);
+    clamshell.position.set(c * 0.02, c * 0.033 + 0.014, 0);
     clamshell.rotation.y = c * -0.18;
     clamshell.castShadow = true;
     vhsCaseGroup.add(clamshell);
@@ -125,7 +128,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
   // =========================================================================
   const ps1Group = new THREE.Group();
   ps1Group.name = 'outbuildings.mezzanine.playstation1';
-  ps1Group.position.set(19.64, mezzanineFloorY + 0.012, 2.46);
+  ps1Group.position.set(19.64, mezzanineFloorY + 0.02, 2.46);
   ps1Group.rotation.y = 0.24;
   loungeGroup.add(ps1Group);
 
@@ -142,11 +145,11 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
 
   // Circular CD-ROM Lid on top center (`r = 0.076m`)
   const ps1CdLid = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.076, 0.076, 0.008, 28),
+    new THREE.CylinderGeometry(0.076, 0.076, 0.006, 28),
     ps1DarkGreyMat
   );
   ps1CdLid.name = 'outbuildings.mezzanine.playstation1.cdLid';
-  ps1CdLid.position.set(0, 0.054, 0);
+  ps1CdLid.position.set(0, 0.059, 0);
   ps1Group.add(ps1CdLid);
 
   // PlayStation Diamond Logo badge on CD lid
@@ -156,7 +159,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
   );
   psLogo.name = 'outbuildings.mezzanine.playstation1.logo';
   psLogo.userData = { lodTier: 'high', lodMaxDistance: 12 };
-  psLogo.position.set(0.048, 0.058, 0);
+  psLogo.position.set(0.048, 0.0675, 0);
   psLogo.rotation.y = Math.PI / 4;
   ps1Group.add(psLogo);
 
@@ -167,33 +170,33 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     [-0.102, 0.018], // OPEN button (right/north)
   ] as const) {
     const btn = new THREE.Mesh(
-      new THREE.CylinderGeometry(br, br, 0.008, 18),
+      new THREE.CylinderGeometry(br, br, 0.006, 18),
       ps1DarkGreyMat
     );
     btn.name = 'outbuildings.mezzanine.playstation1.deckButton';
     btn.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    btn.position.set(0.042, 0.054, bz);
+    btn.position.set(0.042, 0.059, bz);
     ps1Group.add(btn);
   }
 
   // Front Controller Plugs & Memory Card in Slot 1 (`+x` front face of PS1)
   for (const portZ of [-0.055, 0.055] as const) {
     const ctrlPlug = new THREE.Mesh(
-      new THREE.BoxGeometry(0.032, 0.016, 0.042),
+      new THREE.BoxGeometry(0.024, 0.016, 0.042),
       trinitronDarkGrilleMat
     );
     ctrlPlug.name = 'outbuildings.mezzanine.playstation1.controllerPlug';
     ctrlPlug.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    ctrlPlug.position.set(0.102, 0.022, portZ);
+    ctrlPlug.position.set(0.111, 0.022, portZ);
     ps1Group.add(ctrlPlug);
   }
   const memoryCard = new THREE.Mesh(
-    new THREE.BoxGeometry(0.024, 0.007, 0.038),
+    new THREE.BoxGeometry(0.018, 0.007, 0.038),
     ps1GreyMat
   );
   memoryCard.name = 'outbuildings.mezzanine.playstation1.memoryCard';
   memoryCard.userData = { lodTier: 'high', lodMaxDistance: 12 };
-  memoryCard.position.set(0.10, 0.040, 0.055);
+  memoryCard.position.set(0.108, 0.04, 0.055);
   ps1Group.add(memoryCard);
 
   // Issue #2 ("These dualshock controllers still look terrible." at `[-2.458, 1.574, 17.054]`, `outbuildings.mezzanine.playstation1.controller.2`):
@@ -256,7 +259,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
   ): void => {
     const ctrlGroup = new THREE.Group();
     ctrlGroup.name = `outbuildings.mezzanine.playstation1.controller.${idx}`;
-    ctrlGroup.position.set(cx, mezzanineFloorY + 0.012, cz);
+    ctrlGroup.position.set(cx, mezzanineFloorY + 0.02, cz);
     ctrlGroup.rotation.y = rotY;
     loungeGroup.add(ctrlGroup);
 
@@ -319,8 +322,8 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
 
       // Top L1/R1 trigger + lower L2/R2 trigger
       for (const [ty, tx, th] of [
-        [0.0145, -0.036, 0.0055],
-        [0.0075, -0.037, 0.0065],
+        [0.0175, -0.0485, 0.0055],
+        [0.0065, -0.0495, 0.0065],
       ] as const) {
         const triggerBtn = new THREE.Mesh(
           new THREE.BoxGeometry(0.007, th, 0.021),
@@ -351,7 +354,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
       );
       stickWell.name = `outbuildings.mezzanine.playstation1.controller.${idx}.stickWell`;
       stickWell.userData = { lodTier: 'high', lodMaxDistance: 12 };
-      stickWell.position.set(0.018, 0.0202, sideZ * 0.022);
+      stickWell.position.set(0.018, 0.0255, sideZ * 0.022);
       ctrlGroup.add(stickWell);
 
       // Pivoting inner ball-dome base + slender thumbstick shaft + domed rubber mushroom cap
@@ -441,7 +444,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     );
     dpadRecess.name = `outbuildings.mezzanine.playstation1.controller.${idx}.dpadRecess`;
     dpadRecess.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    dpadRecess.position.set(-0.005, 0.0238, 0.044);
+    dpadRecess.position.set(-0.005, 0.0285, 0.044);
     ctrlGroup.add(dpadRecess);
 
     for (const [dx, dz, rotAngle] of [
@@ -452,7 +455,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     ] as const) {
       const dKeyGroup = new THREE.Group();
       dKeyGroup.name = `outbuildings.mezzanine.playstation1.controller.${idx}.dpadKey`;
-      dKeyGroup.position.set(-0.005 + dx, 0.0252, 0.044 + dz);
+      dKeyGroup.position.set(-0.005 + dx, 0.0345, 0.044 + dz);
       dKeyGroup.rotation.y = rotAngle;
       ctrlGroup.add(dKeyGroup);
 
@@ -490,7 +493,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
       );
       btnBase.name = `outbuildings.mezzanine.playstation1.controller.${idx}.button.${sym}.base`;
       btnBase.userData = { lodTier: 'high', lodMaxDistance: 12 };
-      btnBase.position.set(bx, 0.025, bz);
+      btnBase.position.set(bx, 0.0295, bz);
       ctrlGroup.add(btnBase);
 
       const btnCap = new THREE.Mesh(
@@ -502,7 +505,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
       btnCap.rotation.z = -Math.PI / 2;
       btnCap.name = `outbuildings.mezzanine.playstation1.controller.${idx}.button.${sym}.cap`;
       btnCap.userData = { lodTier: 'high', lodMaxDistance: 12 };
-      btnCap.position.set(bx, 0.0269, bz);
+      btnCap.position.set(bx, 0.0355, bz);
       ctrlGroup.add(btnCap);
     }
 
@@ -513,7 +516,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     );
     selectBtn.name = `outbuildings.mezzanine.playstation1.controller.${idx}.selectButton`;
     selectBtn.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    selectBtn.position.set(-0.005, 0.0198, 0.011);
+    selectBtn.position.set(-0.005, 0.0245, 0.011);
     ctrlGroup.add(selectBtn);
 
     const startBtn = new THREE.Mesh(
@@ -523,7 +526,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     startBtn.rotation.x = -Math.PI / 2;
     startBtn.name = `outbuildings.mezzanine.playstation1.controller.${idx}.startButton`;
     startBtn.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    startBtn.position.set(-0.005, 0.0198, -0.011);
+    startBtn.position.set(-0.005, 0.0245, -0.011);
     ctrlGroup.add(startBtn);
 
     const analogBtn = new THREE.Mesh(
@@ -532,7 +535,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     );
     analogBtn.name = `outbuildings.mezzanine.playstation1.controller.${idx}.analogButton`;
     analogBtn.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    analogBtn.position.set(0.0045, 0.0195, 0);
+    analogBtn.position.set(0.0045, 0.0245, 0);
     ctrlGroup.add(analogBtn);
 
     const analogLed = new THREE.Mesh(
@@ -541,7 +544,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     );
     analogLed.name = `outbuildings.mezzanine.playstation1.controller.${idx}.analogLed`;
     analogLed.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    analogLed.position.set(0.0105, 0.0195, 0);
+    analogLed.position.set(0.0105, 0.0245, 0);
     ctrlGroup.add(analogLed);
 
     // Subtle SONY & PlayStation logo recess bar at top of center bridge
@@ -551,7 +554,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     );
     sonyLogoStrip.name = `outbuildings.mezzanine.playstation1.controller.${idx}.logoStrip`;
     sonyLogoStrip.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    sonyLogoStrip.position.set(-0.014, 0.0192, 0);
+    sonyLogoStrip.position.set(-0.014, 0.024, 0);
     ctrlGroup.add(sonyLogoStrip);
   };
 
@@ -602,7 +605,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
   // Scattered PS1 CD Jewel Cases (including open double-disc case showing silver/black CD-ROMs!) & VHS boxes on the rug
   const openCaseGroup = new THREE.Group();
   openCaseGroup.name = 'outbuildings.mezzanine.playstation1.openJewelCase';
-  openCaseGroup.position.set(19.76, mezzanineFloorY + 0.013, 2.72);
+  openCaseGroup.position.set(19.76, mezzanineFloorY + 0.02, 2.72);
   openCaseGroup.rotation.y = 0.42;
   loungeGroup.add(openCaseGroup);
 
@@ -626,17 +629,17 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     );
     cdDisc.name = 'outbuildings.mezzanine.playstation1.openJewelCase.disc';
     cdDisc.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    cdDisc.position.set(trayX, 0.007, 0);
+    cdDisc.position.set(trayX, 0.011, 0);
     openCaseGroup.add(cdDisc);
   }
 
   // Issue #4 ("Some dithering on this book" at `[-2.831, 1.574, 17.094]` -> `(u = 19.48m, v = 2.78m)`):
-  // Stacked `[19.48, 2.78]` and `[19.50, 2.80]` at distinct Y heights (`+0.024m` and `+0.047m`) so their faces never coplanar z-fight!
+  // Stacked `[19.48, 2.78]` and `[19.50, 2.80]` at distinct Y heights (`+0.031m` and `+0.058m`) so their faces never coplanar z-fight!
   const floorCases: ReadonlyArray< readonly [number, number, number, number, number] > = [
-    [19.48, 0.024, 2.78, 0.32, 0x24344d],
-    [19.50, 0.047, 2.80, 0.18, 0x8c2d24],
-    [19.96, 0.024, 1.88, -0.25, 0x2e543c],
-    [20.14, 0.024, 2.68, 0.55, 0xd8cfc0],
+    [19.48, 0.031, 2.78, 0.32, 0x24344d],
+    [19.50, 0.058, 2.80, 0.18, 0x8c2d24],
+    [19.96, 0.031, 1.88, -0.25, 0x2e543c],
+    [20.14, 0.031, 2.68, 0.55, 0xd8cfc0],
   ];
   for (const [fx, fyOff, fz, frot, fcol] of floorCases) {
     const gameBox = new THREE.Mesh(
@@ -684,9 +687,9 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
 
   // =========================================================================
   // 8. FRAMED 1990s BRITPOP & CULT CINEMA POSTERS ON THE WALLS
-  //    - `blur` on East wall (`u = 23.005m, v = 2.04m`, facing West `-x`)
-  //    - `oasis`, `spiceGirls`, `pulpFiction`, `trainspotting`, `bigLebowski` on North wall (`v = 0.295m`, facing South `+z`)
-  //    - `jurassicPark` & `bigLebowski` on South wall (`v = 5.41m`, facing North `-z`)
+  //    - `blur` on East wall (`u = 23.016m, v = 1.46m`, facing West `-x`)
+  //    - `oasis`, `spiceGirls` on North wall (`v = 0.284m`, facing South `+z`)
+  //    - `jurassicPark`, `pulpFiction` on South wall (`v = 5.426m`, facing North `-z`)
   // =========================================================================
   const postersGroup = new THREE.Group();
   postersGroup.name = 'outbuildings.mezzanine.retroPosters';
@@ -714,9 +717,10 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     postersGroup.add(pGroup);
 
     const frameBacking = new THREE.Mesh(
-      new THREE.BoxGeometry(width + 0.036, height + 0.036, 0.018),
+      new THREE.BoxGeometry(width + 0.036, height + 0.036, 0.016),
       frameBlackMat
     );
+    frameBacking.position.set(0, 0, 0.013);
     frameBacking.castShadow = true;
     frameBacking.name = `outbuildings.mezzanine.poster.${style}.frame`;
     pGroup.add(frameBacking);
@@ -730,31 +734,31 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
       })
     );
     posterPlane.name = `outbuildings.mezzanine.poster.${style}.print`;
-    posterPlane.position.set(0, 0, 0.010);
+    posterPlane.position.set(0, 0, 0.026);
     pGroup.add(posterPlane);
   };
 
-  // Issue #7 ("CEnter the blur picture here" at `[0.596, 3.116, 15.55]` -> `u = 23.005m, v = 1.46m`):
+  // Issue #7 ("CEnter the blur picture here" at `[0.596, 3.116, 15.55]` -> `u = 23.016m, v = 1.46m`):
   // Centered the framed orange `blur` poster on the North pier of the East Barn/Stable partition wall (`v = 0.28..2.40m`)!
-  addFramedPoster(23.005, mezzanineFloorY + 1.02, 1.46, 0.54, 0.70, -Math.PI / 2, 'blur');
+  addFramedPoster(23.016, mezzanineFloorY + 1.02, 1.46, 0.54, 0.70, -Math.PI / 2, 'blur');
 
-  // Issue #4 & Issue #5 ("Put one of hte pictures over here" at `[0.831, 2.585, 18.287]` -> `u = 23.005m, v = 4.28m`):
+  // Issue #4 & Issue #5 ("Put one of hte pictures over here" at `[0.831, 2.585, 18.287]` -> `u = 23.016m, v = 4.28m`):
   // Moved `bigLebowski` off the South wall and centered it on the South pier of the East Barn/Stable partition wall (`v = 3.30..5.43m`),
-  // leaving `jurassicPark` centered cleanly on the South wall (`u = 20.48m, v = 5.412m`) beside the 4 skateboards!
-  addFramedPoster(20.48, mezzanineFloorY + 0.84, 5.412, 0.40, 0.52, Math.PI, 'jurassicPark');
-  addFramedPoster(23.005, mezzanineFloorY + 0.96, 4.28, 0.44, 0.58, -Math.PI / 2, 'bigLebowski');
+  // leaving `jurassicPark` centered cleanly on the South wall (`u = 20.48m, v = 5.426m`) beside the 4 skateboards!
+  addFramedPoster(20.48, mezzanineFloorY + 0.84, 5.426, 0.40, 0.52, Math.PI, 'jurassicPark');
+  addFramedPoster(23.016, mezzanineFloorY + 0.96, 4.28, 0.44, 0.58, -Math.PI / 2, 'bigLebowski');
 
   // Issues #7, #8 & #10:
   // - Issue #7 ("this picture overlaps skirting" on `outbuildings.mezzanine.poster.pulpFiction`) &
-  //   Issue #8 ("move it to here" at `[0.292, 2.325, 19.494]` -> `local u = 22.38m, y = 2.325m, v = 5.412m`):
-  //   Moved `pulpFiction` from the lower North wall to `(22.38, 2.325, 5.412)` on the South Mezzanine wall (`rotY = Math.PI`).
+  //   Issue #8 ("move it to here" at `[0.292, 2.325, 19.494]` -> `local u = 22.38m, y = 2.325m, v = 5.426m`):
+  //   Moved `pulpFiction` from the lower North wall to `(22.38, 2.325, 5.426)` on the South Mezzanine wall (`rotY = Math.PI`).
   // - Issue #10 ("get rid of this picture, center the spice girls better" on `outbuildings.mezzanine.poster.trainspotting`):
-  //   Removed `trainspotting` and centered `spiceGirls` at `(20.82, 2.325, 0.295)` (exact horizontal midpoint between the
+  //   Removed `trainspotting` and centered `spiceGirls` at `(20.82, 2.325, 0.284)` (exact horizontal midpoint between the
   //   hayloft window architrave `u = 20.28m` and bookcase `u = 21.36m`, and centered vertically at eye level `y = 2.325m`
-  //   well clear of the skirting board, matching `oasis` at `(19.07, 2.325, 0.295)`).
-  addFramedPoster(19.07, 2.325, 0.295, 0.40, 0.52, 0, 'oasis');
-  addFramedPoster(22.38, 2.325, 5.412, 0.40, 0.52, Math.PI, 'pulpFiction');
-  addFramedPoster(20.82, 2.325, 0.295, 0.42, 0.54, 0, 'spiceGirls');
+  //   well clear of the skirting board, matching `oasis` at `(19.07, 2.325, 0.284)`).
+  addFramedPoster(19.07, 2.325, 0.284, 0.40, 0.52, 0, 'oasis');
+  addFramedPoster(22.38, 2.325, 5.426, 0.40, 0.52, Math.PI, 'pulpFiction');
+  addFramedPoster(20.82, 2.325, 0.284, 0.42, 0.54, 0, 'spiceGirls');
 
   // =========================================================================
   // 9. 5-SHELF WOODEN RETRO BOOKCASE, BOARD GAMES, VHS/CD COLLECTION, LAVA LAMP
@@ -764,7 +768,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
   // =========================================================================
   const bookcaseGroup = new THREE.Group();
   bookcaseGroup.name = 'outbuildings.mezzanine.bookcase';
-  bookcaseGroup.position.set(21.88, mezzanineFloorY, 0.435);
+  bookcaseGroup.position.set(21.88, mezzanineFloorY + 0.004, 0.48);
   bookcaseGroup.rotation.y = Math.PI / 2;
   loungeGroup.add(bookcaseGroup);
 
@@ -790,13 +794,13 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     darkTeakMat
   );
   bcBack.name = 'outbuildings.mezzanine.bookcase.backPanel';
-  bcBack.position.set(bcDepthU * 0.5 - 0.007, bcHeightY * 0.5, 0);
+  bcBack.position.set(bcDepthU * 0.5 + 0.011, bcHeightY * 0.5, 0);
   bookcaseGroup.add(bcBack);
 
-  const shelfHeights = [0.06, 0.31, 0.54, 0.85, 1.08, 1.29];
+  const shelfHeights = [0.06, 0.31, 0.54, 0.85, 1.08, 1.288];
   for (const sy of shelfHeights) {
     const shelf = new THREE.Mesh(
-      applyOakJoineryUVs(new THREE.BoxGeometry(bcDepthU, shelfT, bcWidthV - shelfT * 2), 'z', 0.9, 1.4, sy * 0.4),
+      applyOakJoineryUVs(new THREE.BoxGeometry(bcDepthU, shelfT, bcWidthV - shelfT * 2 - 0.008), 'z', 0.9, 1.4, sy * 0.4),
       teakMat
     );
     shelf.name = 'outbuildings.mezzanine.bookcase.shelf';
@@ -813,13 +817,13 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     emissiveIntensity: 1.35,
     roughness: 0.24,
   });
-  for (const ledShelfY of [0.54, 0.85, 1.08, 1.29] as const) {
+  for (const ledShelfY of [0.54, 0.85, 1.08, 1.288] as const) {
     const ledStrip = new THREE.Mesh(
       new THREE.BoxGeometry(0.018, 0.008, bcWidthV - shelfT * 2 - 0.06),
       underShelfLedMat
     );
     ledStrip.name = 'outbuildings.mezzanine.bookcase.taskLight';
-    ledStrip.position.set(-bcDepthU * 0.5 + 0.04, ledShelfY - shelfT * 0.5 - 0.004, 0);
+    ledStrip.position.set(-bcDepthU * 0.5 + 0.04, ledShelfY - shelfT * 0.5 - 0.008, 0);
     bookcaseGroup.add(ledStrip);
   }
 
@@ -838,21 +842,22 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
       );
       gameBox.name = `outbuildings.mezzanine.bookcase.boardGame.${stack + 1}_${layer + 1}`;
       gameBox.userData = { lodTier: 'high', lodMaxDistance: 12 };
-      gameBox.position.set(-0.02, 0.095 + layer * 0.046, sz);
+      gameBox.position.set(-0.02, 0.098 + layer * 0.049, sz);
       bookcaseGroup.add(gameBox);
     }
   }
 
   // Second & third shelves (`y = 0.322m` & `0.552m`): vertical rows of VHS tapes, books & CDs
   for (const [shelfBaseY, itemH, count, isLavaShelf] of [
-    [0.322, 0.19, 18, false],
-    [0.552, 0.14, 14, true],
+    [0.326, 0.19, 18, false],
+    [0.556, 0.14, 14, true],
   ] as const) {
     for (let i = 0; i < count; i++) {
       const iz = -0.44 + i * 0.036;
       if (isLavaShelf && iz > 0.16) continue;
+      const spineH = itemH - (i % 3) * 0.012;
       const spine = new THREE.Mesh(
-        new THREE.BoxGeometry(0.16, itemH - (i % 3) * 0.012, 0.028),
+        new THREE.BoxGeometry(0.16, spineH, 0.028),
         new THREE.MeshStandardMaterial({
           color: itemColors[(i * 5) % itemColors.length],
           roughness: 0.52,
@@ -860,7 +865,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
       );
       spine.name = `outbuildings.mezzanine.bookcase.mediaSpine.${i + 1}`;
       spine.userData = { lodTier: 'high', lodMaxDistance: 12 };
-      spine.position.set(-0.02, shelfBaseY + itemH * 0.5, iz);
+      spine.position.set(-0.02, shelfBaseY + spineH * 0.5, iz);
       bookcaseGroup.add(spine);
     }
   }
@@ -871,7 +876,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     trinitronCharcoalMat
   );
   boombox.name = 'outbuildings.mezzanine.bookcase.boombox';
-  boombox.position.set(-0.02, 0.862 + 0.065, 0);
+  boombox.position.set(-0.02, 0.866 + 0.065, 0);
   bookcaseGroup.add(boombox);
 
   // Helper to build a glowing 1990s Iconic Double-Cone Lava Lamp (`Mathmos Astro`)
@@ -921,7 +926,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     );
     glassBottle.name = `${name}.bottle`;
     glassBottle.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    glassBottle.position.set(0, 0.175, 0);
+    glassBottle.position.set(0, 0.1835, 0);
     lampGroup.add(glassBottle);
 
     // Top metal cap
@@ -931,15 +936,15 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     );
     topCap.name = `${name}.cap`;
     topCap.userData = { lodTier: 'high', lodMaxDistance: 12 };
-    topCap.position.set(0, 0.275, 0);
+    topCap.position.set(0, 0.291, 0);
     lampGroup.add(topCap);
   };
 
-  // Warm crimson-amber Mathmos Astro Lava Lamp inside the North-wall wooden bookcase (`u = 22.18m, y = mezzanineFloorY + 0.552m, v = 0.45m, scale = 0.72`)
+  // Warm crimson-amber Mathmos Astro Lava Lamp inside the North-wall wooden bookcase (`u = 22.18m, y = mezzanineFloorY + 0.56m, v = 0.47m, scale = 0.72`)
   addRetroLavaLamp(
     22.18,
-    mezzanineFloorY + 0.552,
-    0.45,
+    mezzanineFloorY + 0.56,
+    0.47,
     0xe04828,
     0xd8dde4,
     'outbuildings.mezzanine.lavaLamp.bookcase',
@@ -952,7 +957,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     teakMat
   );
   sideCabinet.name = 'outbuildings.mezzanine.sideCabinet';
-  sideCabinet.position.set(22.64, mezzanineFloorY + 0.27, 0.46);
+  sideCabinet.position.set(22.64, mezzanineFloorY + 0.274, 0.46);
   sideCabinet.castShadow = true;
   sideCabinet.receiveShadow = true;
   loungeGroup.add(sideCabinet);
@@ -962,7 +967,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     darkTeakMat
   );
   lampStem.name = 'outbuildings.mezzanine.tableLamp.stem';
-  lampStem.position.set(22.64, mezzanineFloorY + 0.65, 0.46);
+  lampStem.position.set(22.64, mezzanineFloorY + 0.658, 0.46);
   loungeGroup.add(lampStem);
 
   const lampShade = new THREE.Mesh(
@@ -975,7 +980,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     })
   );
   lampShade.name = 'outbuildings.mezzanine.tableLamp.shade';
-  lampShade.position.set(22.64, mezzanineFloorY + 0.78, 0.46);
+  lampShade.position.set(22.64, mezzanineFloorY + 0.862, 0.46);
   loungeGroup.add(lampShade);
 
   // =========================================================================
@@ -1044,7 +1049,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     teakMat
   );
   flBaseOak.name = 'outbuildings.mezzanine.floorTaskLamp.baseOak';
-  flBaseOak.position.set(0, 0.013, 0);
+  flBaseOak.position.set(0, 0.017, 0);
   flBaseOak.castShadow = true;
   floorLampGroup.add(flBaseOak);
 
@@ -1053,15 +1058,15 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
     warmBrassMat
   );
   flBaseBrass.name = 'outbuildings.mezzanine.floorTaskLamp.baseBrass';
-  flBaseBrass.position.set(0, 0.032, 0);
+  flBaseBrass.position.set(0, 0.043, 0);
   floorLampGroup.add(flBaseBrass);
 
   const flStem = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.013, 0.015, 1.36, 16),
+    new THREE.CylinderGeometry(0.013, 0.015, 1.34, 16),
     warmBrassMat
   );
   flStem.name = 'outbuildings.mezzanine.floorTaskLamp.stem';
-  flStem.position.set(0, 0.71, 0);
+  flStem.position.set(0, 0.726, 0);
   flStem.castShadow = true;
   floorLampGroup.add(flStem);
 
@@ -1105,10 +1110,10 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
   flTaskPointLight.position.set(0.32, 1.30, 0);
   floorLampGroup.add(flTaskPointLight);
 
-  // 5. Articulated 1990s Anglepoise Task Desk Lamp on the South End of the Sideboard (`u = 19.04m, y = mezzanineFloorY + 0.72m, v = 3.04m`)
+  // 5. Articulated 1990s Anglepoise Task Desk Lamp on the South End of the Sideboard (`u = 19.16m, y = mezzanineFloorY + sbTopY + 0.009m, v = 3.04m`)
   const deskLampGroup = new THREE.Group();
   deskLampGroup.name = 'outbuildings.mezzanine.sideboardTaskLamp';
-  deskLampGroup.position.set(19.16, mezzanineFloorY + 0.72, 3.04);
+  deskLampGroup.position.set(19.16, mezzanineFloorY + sbTopY + 0.009, 3.04);
   deskLampGroup.rotation.y = -0.45;
   lightingGroup.add(deskLampGroup);
 
@@ -1164,7 +1169,7 @@ export function buildBarnMezzanineRetroShelvesAndConsoles(
   // 6. Warm Brass & Pleated-Linen Wall Sconce (`outbuildings.mezzanine.wallSconce.1` on East wall;
   //    removed `.2` on South wall per Issue #9: "remove this wall light" at `[-1.946, 2.731, 19.687]`)
   for (const [sIdx, su, sy, sv, sRotY] of [
-    [1, 23.005, mezzanineFloorY + 1.22, 0.72, -Math.PI / 2],
+    [1, 23.011, mezzanineFloorY + 1.22, 0.72, -Math.PI / 2],
   ] as const) {
     const sconceGroup = new THREE.Group();
     sconceGroup.name = `outbuildings.mezzanine.wallSconce.${sIdx}`;

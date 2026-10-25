@@ -71,7 +71,15 @@ export function createGroundShellWallsAndFloors(
     }
   ): void => {
     const wallId = `groundFloor.interiorWall.${++intWallSeq}`;
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    const topEdgeY = y + h / 2;
+    const includeTopCap =
+      Math.abs(topEdgeY - wallH) < 0.05 || Math.abs(topEdgeY - frontWallH) < 0.05;
+    const resolvedMat: THREE.Material | THREE.Material[] = includeTopCap
+      ? Array.isArray(mat)
+        ? mat.map((m, idx) => (idx === 2 ? wallCapMat : m))
+        : [mat, mat, wallCapMat, mat, mat, mat]
+      : mat;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), resolvedMat);
     mesh.name = wallId;
     mesh.userData.isArchitecturalShell = true;
     mesh.position.set(x, y, z);
@@ -79,25 +87,14 @@ export function createGroundShellWallsAndFloors(
     mesh.receiveShadow = true;
     scene.add(mesh);
 
-    const topEdgeY = y + h / 2;
-    if (Math.abs(topEdgeY - wallH) < 0.05 || Math.abs(topEdgeY - frontWallH) < 0.05) {
-      const cap = new THREE.Mesh(
-        new THREE.BoxGeometry(Math.max(0.01, w - 0.012), 0.016, Math.max(0.01, d - 0.012)),
-        wallCapMat
-      );
-      cap.name = `${wallId}.cap`;
-      cap.userData.isArchitecturalShell = true;
-      cap.position.set(x, topEdgeY - 0.006, z);
-      scene.add(cap);
-    }
-
     // Automatically add consistent 0.145m-tall antique-profiled oak skirting boards on both faces of full-height interior walls that reach or span across floorY (Issue #10)
     // Skip short doorway return nib piers (Math.max(w, d) <= 0.28) so skirting never protrudes across a doorlining reveal (Issue #8)
     if (!wallOptions?.skipSkirting && h > 1.5 && Math.max(w, d) > 0.28) {
-      const baseH = 0.122;
+      const floorGap = 0.004;
+      const wallGap = 0.004;
+      const baseH = 0.114;
       const capH = 0.024;
-      const skirtT = 0.022;
-      const capT = 0.016;
+      const skirtT = 0.020;
       const sides = wallOptions?.skirtingSides ?? ([-1, 1] as const);
       if (w >= d) {
         const sMin = wallOptions?.skirtingMin ?? x - w / 2;
@@ -109,15 +106,15 @@ export function createGroundShellWallsAndFloors(
           for (const side of sides) {
             const floorY = getInteriorFloorY(sCx, z + side * (d / 2 + 0.08));
             if (y - h / 2 > floorY + 0.12 || y + h / 2 < floorY + 0.5) continue;
-            const faceZ = z + side * (d / 2 + skirtT / 2 - 0.002);
-            const capZ = z + side * (d / 2 + capT / 2 - 0.002);
+            const faceZ = z + side * (d / 2 + wallGap + skirtT / 2);
+            const capZ = z + side * (d / 2 + wallGap + 0.008);
             const skirt = new THREE.Mesh(
               new THREE.BoxGeometry(sW, baseH, skirtT),
               antiqueOakSkirtingMat
             );
             skirt.name = `${wallId}.skirting.${side < 0 ? "north" : "south"}`;
             skirt.userData.isArchitecturalShell = true;
-            skirt.position.set(sCx, floorY + baseH / 2, faceZ);
+            skirt.position.set(sCx, floorY + floorGap + baseH / 2, faceZ);
             skirt.receiveShadow = true;
             scene.add(skirt);
 
@@ -127,7 +124,7 @@ export function createGroundShellWallsAndFloors(
             );
             skirtCap.name = `${wallId}.skirtingCap.${side < 0 ? "north" : "south"}`;
             skirtCap.userData.isArchitecturalShell = true;
-            skirtCap.position.set(sCx, floorY + baseH + capH / 2, capZ);
+            skirtCap.position.set(sCx, floorY + 0.122 + capH / 2, capZ);
             scene.add(skirtCap);
           }
         }
@@ -141,15 +138,15 @@ export function createGroundShellWallsAndFloors(
           for (const side of sides) {
             const floorY = getInteriorFloorY(x + side * (w / 2 + 0.08), sCz);
             if (y - h / 2 > floorY + 0.12 || y + h / 2 < floorY + 0.5) continue;
-            const faceX = x + side * (w / 2 + skirtT / 2 - 0.002);
-            const capX = x + side * (w / 2 + capT / 2 - 0.002);
+            const faceX = x + side * (w / 2 + wallGap + skirtT / 2);
+            const capX = x + side * (w / 2 + wallGap + 0.008);
             const skirt = new THREE.Mesh(
               new THREE.BoxGeometry(skirtT, baseH, sD),
               antiqueOakSkirtingMat
             );
             skirt.name = `${wallId}.skirting.${side < 0 ? "west" : "east"}`;
             skirt.userData.isArchitecturalShell = true;
-            skirt.position.set(faceX, floorY + baseH / 2, sCz);
+            skirt.position.set(faceX, floorY + floorGap + baseH / 2, sCz);
             skirt.receiveShadow = true;
             scene.add(skirt);
 
@@ -159,7 +156,7 @@ export function createGroundShellWallsAndFloors(
             );
             skirtCap.name = `${wallId}.skirtingCap.${side < 0 ? "west" : "east"}`;
             skirtCap.userData.isArchitecturalShell = true;
-            skirtCap.position.set(capX, floorY + baseH + capH / 2, sCz);
+            skirtCap.position.set(capX, floorY + 0.122 + capH / 2, sCz);
             scene.add(skirtCap);
           }
         }
@@ -349,11 +346,14 @@ export function createGroundShellWallsAndFloors(
 
     const hasWestInteriorReturn = interiorSide === 'north' && Math.abs(minX - -16.92) < 0.05;
 
+    const includeTopCap =
+      Math.abs(yTop - wallH) < 0.05 || Math.abs(yTop - frontWallH) < 0.05;
+
     // BoxGeometry face material order: [0: +X (East), 1: -X (West), 2: +Y (Top), 3: -Y (Bottom), 4: +Z (South), 5: -Z (North)]
     const materials: THREE.Material[] = [
       interiorSide === 'east' ? interiorMat : exteriorBrickMat,
       interiorSide === 'west' || hasWestInteriorReturn ? interiorMat : exteriorBrickMat,
-      exteriorBrickMat,
+      includeTopCap ? wallCapMat : exteriorBrickMat,
       exteriorBrickMat,
       interiorSide === 'south' ? interiorMat : exteriorBrickMat,
       interiorSide === 'north' ? interiorMat : exteriorBrickMat,
@@ -368,26 +368,13 @@ export function createGroundShellWallsAndFloors(
     tagCutawayWall(brickMesh, cutawayWall);
     scene.add(brickMesh);
 
-    if (Math.abs(yTop - wallH) < 0.05 || Math.abs(yTop - frontWallH) < 0.05) {
-      const cap = new THREE.Mesh(
-        shearGeometryAlongZ(
-          new THREE.BoxGeometry(Math.max(0.01, w - 0.012), 0.016, Math.max(0.01, d - 0.012)),
-          slopeXPerZ
-        ),
-        wallCapMat
-      );
-      cap.name = `${wallId}.cap`;
-      cap.position.set(cx, yTop - 0.006, cz);
-      tagCutawayWall(cap, cutawayWall);
-      scene.add(cap);
-    }
-
     // Automatically add a consistent 0.145m-tall antique-profiled oak skirting board along the interior base of floor-reaching exterior walls (Issue #14)
     if (!wallOptions?.skipSkirting && Math.abs(yBottom) < 0.01 && yTop - intFloorY > 0.35) {
-      const baseH = 0.122;
+      const floorGap = 0.004;
+      const wallGap = 0.004;
+      const baseH = 0.114;
       const capH = 0.024;
-      const skirtT = 0.022;
-      const capT = 0.016;
+      const skirtT = 0.020;
       const skirtGeo = isAlongX
         ? new THREE.BoxGeometry(w, baseH, skirtT)
         : shearGeometryAlongZ(new THREE.BoxGeometry(skirtT, baseH, d), slopeXPerZ);
@@ -395,17 +382,17 @@ export function createGroundShellWallsAndFloors(
       skirtMesh.name = `${wallId}.skirting`;
       const sx =
         interiorSide === 'east'
-          ? effMaxX + skirtT / 2 - 0.002
+          ? effMaxX + wallGap + skirtT / 2
           : interiorSide === 'west'
-            ? effMinX - skirtT / 2 + 0.002
+            ? effMinX - wallGap - skirtT / 2
             : cx;
       const sz =
         interiorSide === 'south'
-          ? maxZ + skirtT / 2 - 0.002
+          ? maxZ + wallGap + skirtT / 2
           : interiorSide === 'north'
-            ? minZ - skirtT / 2 + 0.002
+            ? minZ - wallGap - skirtT / 2
             : cz;
-      skirtMesh.position.set(sx, intFloorY + baseH / 2, sz);
+      skirtMesh.position.set(sx, intFloorY + floorGap + baseH / 2, sz);
       skirtMesh.receiveShadow = true;
       tagCutawayWall(skirtMesh, cutawayWall);
       scene.add(skirtMesh);
@@ -419,17 +406,17 @@ export function createGroundShellWallsAndFloors(
       skirtCap.name = `${wallId}.skirtingCap`;
       const capSx =
         interiorSide === 'east'
-          ? effMaxX + capT / 2 - 0.002
+          ? effMaxX + wallGap + 0.008
           : interiorSide === 'west'
-            ? effMinX - capT / 2 + 0.002
+            ? effMinX - wallGap - 0.008
             : cx;
       const capSz =
         interiorSide === 'south'
-          ? maxZ + capT / 2 - 0.002
+          ? maxZ + wallGap + 0.008
           : interiorSide === 'north'
-            ? minZ - capT / 2 + 0.002
+            ? minZ - wallGap - 0.008
             : cz;
-      skirtCap.position.set(capSx, intFloorY + baseH + capH / 2, capSz);
+      skirtCap.position.set(capSx, intFloorY + 0.122 + capH / 2, capSz);
       tagCutawayWall(skirtCap, cutawayWall);
       scene.add(skirtCap);
 
@@ -440,7 +427,7 @@ export function createGroundShellWallsAndFloors(
           antiqueOakSkirtingMat
         );
         westSkirt.name = `${wallId}.westReturnSkirting`;
-        westSkirt.position.set(minX - skirtT / 2 + 0.002, westFloorY + baseH / 2, cz);
+        westSkirt.position.set(minX - wallGap - skirtT / 2, westFloorY + floorGap + baseH / 2, cz);
         westSkirt.receiveShadow = true;
         tagCutawayWall(westSkirt, cutawayWall);
         scene.add(westSkirt);
@@ -450,7 +437,7 @@ export function createGroundShellWallsAndFloors(
           antiqueOakSkirtingMat
         );
         westSkirtCap.name = `${wallId}.westReturnSkirtingCap`;
-        westSkirtCap.position.set(minX - capT / 2 + 0.002, westFloorY + baseH + capH / 2, cz);
+        westSkirtCap.position.set(minX - wallGap - 0.008, westFloorY + 0.122 + capH / 2, cz);
         tagCutawayWall(westSkirtCap, cutawayWall);
         scene.add(westSkirtCap);
       }

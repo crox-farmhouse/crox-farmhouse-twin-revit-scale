@@ -188,7 +188,7 @@ export function buildGarageShowerRoom(
   // ---------------------------------------------------------------------------
   const northMainSpanU = uMax - uMin; // 2.95m (`u = 5.97..8.92m`)
   const northMainWall = new THREE.Mesh(
-    new THREE.BoxGeometry(northMainSpanU, wallH, partWallT),
+    new THREE.BoxGeometry(northMainSpanU - 0.008, wallH - 0.008, partWallT),
     wallPlasterMat
   );
   northMainWall.name = 'outbuildings.garage.showerRoom.northWall';
@@ -198,15 +198,17 @@ export function buildGarageShowerRoom(
   northMainWall.receiveShadow = true;
   roomGroup.add(northMainWall);
 
-  // 1B. East Partition Wall (`u = 8.80..8.92m, v = 3.97..5.43m, y = -0.50..1.94m`)
-  const eastWallSpanV = vSouthInner - vNorthInner; // 1.46m
+  // 1B. East Partition Wall (`u = 8.80..8.92m, v = 3.974..5.246m`, meeting the Garage South brick pilaster cleanly)
+  const eastWallSouthV = vSouthInner - 0.184;
+  const eastWallSpanV = eastWallSouthV - (vNorthInner + 0.004);
+  const eastWallMidV = (vNorthInner + 0.004 + eastWallSouthV) * 0.5;
   const eastWall = new THREE.Mesh(
-    new THREE.BoxGeometry(partWallT, wallH, eastWallSpanV),
+    new THREE.BoxGeometry(partWallT, wallH - 0.016, eastWallSpanV),
     wallPlasterMat
   );
   eastWall.name = 'outbuildings.garage.showerRoom.eastWall';
   eastWall.userData.isArchitecturalShell = true;
-  eastWall.position.set((uEastInner + uMax) * 0.5, wallMidY, (vNorthInner + vSouthInner) * 0.5);
+  eastWall.position.set((uEastInner + uMax) * 0.5, wallMidY - 0.004, eastWallMidV);
   eastWall.castShadow = true;
   eastWall.receiveShadow = true;
   roomGroup.add(eastWall);
@@ -216,9 +218,12 @@ export function buildGarageShowerRoom(
     color: 0xc89e65,
     roughness: 0.92,
     metalness: 0.01,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
   });
   const northWallIwi = new THREE.Mesh(
-    new THREE.BoxGeometry(northMainSpanU - 0.02, wallH + 0.0015, 0.06),
+    new THREE.BoxGeometry(northMainSpanU - 0.03, wallH - 0.024, 0.06),
     showerIwiMat
   );
   northWallIwi.name = 'outbuildings.garage.showerRoom.northWall.woodFibreInsulation';
@@ -227,59 +232,59 @@ export function buildGarageShowerRoom(
   roomGroup.add(northWallIwi);
 
   const eastWallIwi = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, wallH + 0.0015, eastWallSpanV),
+    new THREE.BoxGeometry(0.06, wallH - 0.028, eastWallSpanV - 0.024),
     showerIwiMat
   );
   eastWallIwi.name = 'outbuildings.garage.showerRoom.eastWall.woodFibreInsulation';
   eastWallIwi.userData.isArchitecturalShell = true;
-  eastWallIwi.position.set((uEastInner + uMax) * 0.5, wallMidY, (vNorthInner + vSouthInner) * 0.5);
+  eastWallIwi.position.set((uEastInner + uMax) * 0.5, wallMidY - 0.004, eastWallMidV);
   roomGroup.add(eastWallIwi);
 
-  // 1C. Interior Calacatta Marble Porcelain Tile Wall Linings (`y = -0.49..1.92m`)
-  const tileWallH = wallH - 0.03;
+  // 1C. Interior Calacatta Marble Porcelain Tile Wall Linings (`y = -0.49..1.87m`, clear of ceilingLid)
+  const tileWallH = wallH - 0.08;
   const tileWallMidY = garageFloorTopY + 0.01 + tileWallH * 0.5;
 
-  // North interior tiled lining across the full 2.815m interior North wall (`u = 5.98..8.795m, v = 3.974m`)
+  // North interior tiled lining across the full 2.815m interior North wall (`u = 5.98..8.795m`)
   const northTileLining = new THREE.Mesh(
-    new THREE.BoxGeometry(2.815, tileWallH, 0.008),
+    new THREE.BoxGeometry(2.8, tileWallH, 0.008),
     calacattaTileMat
   );
   northTileLining.name = 'outbuildings.garage.showerRoom.northTileWall';
-  northTileLining.position.set(7.3875, tileWallMidY, vNorthInner + 0.004);
+  northTileLining.position.set(7.382, tileWallMidY, vNorthInner + 0.0085);
   northTileLining.receiveShadow = true;
   roomGroup.add(northTileLining);
 
-  // East interior tiled lining (`u = 8.796m, v = 3.975..5.425m`)
+  // East interior tiled lining (`u = 8.7915m, v = 3.985..5.265m`, stopping cleanly at the South brick pilaster)
   const eastTileLining = new THREE.Mesh(
-    new THREE.BoxGeometry(0.008, tileWallH, 1.45),
+    new THREE.BoxGeometry(0.008, tileWallH, 1.28),
     calacattaTileMat
   );
   eastTileLining.name = 'outbuildings.garage.showerRoom.eastTileWall';
-  eastTileLining.position.set(uEastInner - 0.004, tileWallMidY, 4.7);
+  eastTileLining.position.set(uEastInner - 0.0085, tileWallMidY, 4.625);
   eastTileLining.receiveShadow = true;
   roomGroup.add(eastTileLining);
 
-  // South interior tiled lining (`u = 5.98..8.795m, v = 5.424m`)
+  // South interior tiled lining (`u = 5.98..8.705m`, stopping 5mm West of the `u = 8.71m` South brick pilaster)
   const southTileLining = new THREE.Mesh(
-    new THREE.BoxGeometry(2.815, tileWallH, 0.008),
+    new THREE.BoxGeometry(2.725, tileWallH, 0.008),
     calacattaTileMat
   );
   southTileLining.name = 'outbuildings.garage.showerRoom.southTileWall';
-  southTileLining.position.set(7.3875, tileWallMidY, vSouthInner - 0.004);
+  southTileLining.position.set(7.3425, tileWallMidY, vSouthInner - 0.009);
   southTileLining.receiveShadow = true;
   roomGroup.add(southTileLining);
 
   // ---------------------------------------------------------------------------
   // 2. Honed Travertine / Limestone Tiled Floor Slab (`outbuildings.garage.showerRoom.tiledFloor`)
   // ---------------------------------------------------------------------------
-  const floorW = uEastInner - uMin; // 2.83m
-  const floorD = vSouthInner - vNorthInner; // 1.46m
+  const floorW = uEastInner - uMin - 0.012;
+  const floorD = vSouthInner - vNorthInner - 0.012;
   const floorSlab = new THREE.Mesh(
-    new THREE.BoxGeometry(floorW, 0.008, floorD),
+    new THREE.BoxGeometry(floorW, 0.004, floorD),
     floorStoneTileMat
   );
   floorSlab.name = 'outbuildings.garage.showerRoom.tiledFloor';
-  floorSlab.position.set(uMin + floorW * 0.5, garageFloorTopY + 0.004, vNorthInner + floorD * 0.5);
+  floorSlab.position.set(uMin + (uEastInner - uMin) * 0.5, garageFloorTopY + 0.006, vNorthInner + (vSouthInner - vNorthInner) * 0.5);
   floorSlab.receiveShadow = true;
   roomGroup.add(floorSlab);
 
@@ -318,7 +323,7 @@ export function buildGarageShowerRoom(
       dAssy.add(jamb);
     }
     const head = new THREE.Mesh(
-      new THREE.BoxGeometry(frameDepthT + 0.008, jambT, openingW),
+      new THREE.BoxGeometry(frameDepthT + 0.008, jambT, openingW - jambT * 2 - 0.008),
       lightOakDoorMat
     );
     head.name = `${doorGroupName}.headLining`;
@@ -335,7 +340,7 @@ export function buildGarageShowerRoom(
         0,
         doorOpeningH - 0.005,
         'z',
-        faceX * (frameDepthT * 0.5),
+        faceX * (frameDepthT * 0.5 + 0.005),
         faceX,
         archW,
         0.020
@@ -369,7 +374,7 @@ export function buildGarageShowerRoom(
 
     const leafCenterZ = -hingeSign * (leafW * 0.5);
     const leafCore = new THREE.Mesh(
-      new THREE.BoxGeometry(leafT - 0.012, leafH, leafW),
+      new THREE.BoxGeometry(leafT - 0.012, leafH - 0.04, leafW - 0.04),
       darkOakRecessMat
     );
     leafCore.name = doorGroupName;
@@ -458,11 +463,11 @@ export function buildGarageShowerRoom(
   // Entrance #1: Gym-to-Shower-Room Door (`u = 5.87m, v = 4.18..4.94m`, width `0.76m`) + Solid Oak Threshold Step
   const gymStepH = garageFloorTopY - gymFloorY; // ~0.088m
   const gymThreshold = new THREE.Mesh(
-    new THREE.BoxGeometry(0.24, Math.max(0.02, gymStepH), 0.76),
+    new THREE.BoxGeometry(0.19, Math.max(0.02, gymStepH - 0.008), 0.74),
     lightOakDoorMat
   );
   gymThreshold.name = 'outbuildings.garage.showerRoom.gymThreshold';
-  gymThreshold.position.set(5.87, gymFloorY + Math.max(0.02, gymStepH) * 0.5, 4.56);
+  gymThreshold.position.set(5.865, gymFloorY + 0.004 + Math.max(0.02, gymStepH - 0.008) * 0.5, 4.56);
   gymThreshold.receiveShadow = true;
   roomGroup.add(gymThreshold);
 
@@ -525,54 +530,54 @@ export function buildGarageShowerRoom(
     opacity: 0.76,
   });
 
-  // Low-profile honed stone-resin wet-room tray (`0.86m x 1.44m`)
+  // Low-profile honed stone-resin wet-room tray (`0.84m x 1.41m`, clear of floorSlab & tile walls)
   const showerTray = new THREE.Mesh(
-    new THREE.BoxGeometry(0.86, 0.026, 1.44),
+    new THREE.BoxGeometry(0.84, 0.02, 1.41),
     ceramicWhiteMat
   );
   showerTray.name = 'outbuildings.garage.showerRoom.shower.tray';
-  showerTray.position.set(0, 0.013, 0);
+  showerTray.position.set(-0.004, 0.016, 0);
   showerTray.receiveShadow = true;
   showerGroup.add(showerTray);
 
   // Frameless 10mm Low-Iron Toughened Glass Walk-In Shower Screen anchored to the SOUTH Wall (`z = +0.71m`)
-  // Spans `z = -0.13m .. +0.71m` (centered at `z = +halfD - 0.01 - screenSpanV * 0.5 = +0.29m`),
-  // leaving the North half (`z = -0.73m .. -0.13m`) completely open as the walk-in entry!
+  // Spans `z = -0.13m .. +0.684m` (clear of wallChannel), leaving the North half (`z = -0.73m .. -0.13m`) open!
   const screenSpanV = 0.84;
   const screenH = 2.0;
-  const screenCenterZ = halfD - 0.01 - screenSpanV * 0.5; // +0.29m
+  const screenGlassSpanV = screenSpanV - 0.026;
+  const screenCenterZ = halfD - 0.036 - screenGlassSpanV * 0.5;
   const showerScreen = new THREE.Mesh(
-    new THREE.BoxGeometry(0.012, screenH, screenSpanV),
+    new THREE.BoxGeometry(0.012, screenH - 0.04, screenGlassSpanV),
     showerGlassMat
   );
   showerScreen.name = 'outbuildings.garage.showerRoom.showerScreen';
-  showerScreen.position.set(-0.43, screenH * 0.5 + 0.01, screenCenterZ);
+  showerScreen.position.set(-0.43, 0.048 + (screenH - 0.04) * 0.5, screenCenterZ);
   showerGroup.add(showerScreen);
 
-  // Slim Brushed-Brass U-Channel Wall Profile (on South wall `z = +halfD - 0.018`), Floor Profile & Overhead Support Bar (`z = -0.09m`)
+  // Slim Brushed-Brass U-Channel Wall Profile (on South wall `z = +halfD - 0.022`), Floor Profile & Overhead Support Bar (`z = -0.09m`)
   const wallChannel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.022, screenH, 0.022),
+    new THREE.BoxGeometry(0.022, screenH - 0.02, 0.022),
     brushedBrassMat
   );
   wallChannel.name = 'outbuildings.garage.showerRoom.shower.glassScreen';
-  wallChannel.position.set(-0.43, screenH * 0.5 + 0.01, halfD - 0.018);
+  wallChannel.position.set(-0.43, 0.048 + (screenH - 0.02) * 0.5, halfD - 0.022);
   showerGroup.add(wallChannel);
 
   const floorChannel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.022, 0.018, screenSpanV),
+    new THREE.BoxGeometry(0.022, 0.014, screenSpanV - 0.02),
     brushedBrassMat
   );
   floorChannel.name = 'outbuildings.garage.showerRoom.shower.floorChannel';
-  floorChannel.position.set(-0.43, 0.015, screenCenterZ);
+  floorChannel.position.set(-0.43, 0.037, halfD - 0.02 - (screenSpanV - 0.02) * 0.5);
   showerGroup.add(floorChannel);
 
   const supportArm = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.009, 0.009, 0.86, 14),
+    new THREE.CylinderGeometry(0.009, 0.009, 0.84, 14),
     brushedBrassMat
   );
   supportArm.name = 'outbuildings.garage.showerRoom.shower.stabilizerBar';
   supportArm.rotation.z = Math.PI / 2;
-  supportArm.position.set(0, screenH - 0.04, halfD - 0.01 - screenSpanV + 0.04);
+  supportArm.position.set(-0.005, screenH - 0.04, halfD - 0.01 - screenSpanV + 0.04);
   showerGroup.add(supportArm);
 
   // High-LOD Brushed-Brass Shower Fixture Assembly (`outbuildings.garage.showerRoom.showerFixture`)
@@ -582,72 +587,72 @@ export function buildGarageShowerRoom(
 
   // 4A. Slotted Brushed-Brass Linear Floor Drain Channel (`0.065m x 0.004m x 0.68m`) in the sheltered South zone (`z = +0.22m`)
   const drainTrough = new THREE.Mesh(
-    new THREE.BoxGeometry(0.072, 0.004, 0.69),
+    new THREE.BoxGeometry(0.072, 0.003, 0.69),
     darkGunmetalMat
   );
   drainTrough.name = 'outbuildings.garage.showerRoom.showerFixture.drainTrough';
-  drainTrough.position.set(0.32, 0.0265, 0.22);
+  drainTrough.position.set(0.32, 0.0315, 0.22);
   showerFixtureGroup.add(drainTrough);
 
   const linearDrain = new THREE.Mesh(
-    new THREE.BoxGeometry(0.058, 0.005, 0.67),
+    new THREE.BoxGeometry(0.058, 0.003, 0.67),
     brushedBrassMat
   );
   linearDrain.name = 'outbuildings.garage.showerRoom.showerFixture.linearDrainGrate';
-  linearDrain.position.set(0.32, 0.028, 0.22);
+  linearDrain.position.set(0.32, 0.0385, 0.22);
   showerFixtureGroup.add(linearDrain);
 
   let drainSlotIdx = 0;
   for (const sx of [-0.016, 0, 0.016] as const) {
     drainSlotIdx++;
     const drainSlot = new THREE.Mesh(
-      new THREE.BoxGeometry(0.005, 0.006, 0.62),
+      new THREE.BoxGeometry(0.005, 0.002, 0.62),
       darkGunmetalMat
     );
     drainSlot.name = `outbuildings.garage.showerRoom.showerFixture.drainSlot.${drainSlotIdx}`;
     drainSlot.userData.lodTier = 'high';
     drainSlot.userData.lodMaxDistance = 12;
-    drainSlot.position.set(0.32 + sx, 0.0285, 0.22);
+    drainSlot.position.set(0.32 + sx, 0.045, 0.22);
     showerFixtureGroup.add(drainSlot);
   }
 
   // 4B. Concealed Thermostatic Mixer Valve Backplate, Knurled Dials & Diverter Button (`z = +0.22m`)
   const mixerBezel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.008, 0.24, 0.12),
+    new THREE.BoxGeometry(0.004, 0.24, 0.12),
     darkGunmetalMat
   );
   mixerBezel.name = 'outbuildings.garage.showerRoom.showerFixture.mixerBezel';
-  mixerBezel.position.set(0.431, 1.12, 0.22);
+  mixerBezel.position.set(0.421, 1.12, 0.22);
   showerFixtureGroup.add(mixerBezel);
 
   const mixerPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.012, 0.225, 0.108),
+    new THREE.BoxGeometry(0.008, 0.225, 0.108),
     brushedBrassMat
   );
   mixerPlate.name = 'outbuildings.garage.showerRoom.showerFixture.mixerBackplate';
-  mixerPlate.position.set(0.427, 1.12, 0.22);
+  mixerPlate.position.set(0.411, 1.12, 0.22);
   showerFixtureGroup.add(mixerPlate);
 
   for (const dy of [-0.06, 0.06] as const) {
     const dialRole = dy < 0 ? 'temperature' : 'flow';
     const indexRing = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.028, 0.028, 0.006, 20),
+      new THREE.CylinderGeometry(0.028, 0.028, 0.004, 20),
       darkGunmetalMat
     );
     indexRing.name = `outbuildings.garage.showerRoom.showerFixture.mixerIndexRing.${dialRole}`;
     indexRing.userData.lodTier = 'high';
     indexRing.userData.lodMaxDistance = 12;
     indexRing.rotation.z = Math.PI / 2;
-    indexRing.position.set(0.42, 1.12 + dy, 0.22);
+    indexRing.position.set(0.401, 1.12 + dy, 0.22);
     showerFixtureGroup.add(indexRing);
 
     const dial = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.024, 0.024, 0.038, 20),
+      new THREE.CylinderGeometry(0.024, 0.024, 0.034, 20),
       brushedBrassMat
     );
     dial.name = `outbuildings.garage.showerRoom.showerFixture.mixerDial.${dialRole}`;
     dial.rotation.z = Math.PI / 2;
-    dial.position.set(0.404, 1.12 + dy, 0.22);
+    dial.position.set(0.378, 1.12 + dy, 0.22);
     showerFixtureGroup.add(dial);
 
     const dialPin = new THREE.Mesh(
@@ -829,29 +834,29 @@ export function buildGarageShowerRoom(
 
   // 4F. Recessed Brass-Trimmed Illuminated Bottle Niche on East Shower Wall (`z = -0.32m, y = 1.22m`) + 3 Apothecary Pump Bottles
   const nicheBack = new THREE.Mesh(
-    new THREE.BoxGeometry(0.008, 0.30, 0.42),
+    new THREE.BoxGeometry(0.004, 0.30, 0.42),
     darkGunmetalMat
   );
   nicheBack.name = 'outbuildings.garage.showerRoom.showerFixture.nicheBackplate';
-  nicheBack.position.set(0.428, 1.22, -0.32);
+  nicheBack.position.set(0.421, 1.22, -0.32);
   showerFixtureGroup.add(nicheBack);
 
   const nicheFrame = new THREE.Mesh(
-    new THREE.BoxGeometry(0.026, 0.32, 0.44),
+    new THREE.BoxGeometry(0.012, 0.32, 0.44),
     brushedBrassMat
   );
   nicheFrame.name = 'outbuildings.garage.showerRoom.showerFixture.nicheBrassTrim';
-  nicheFrame.position.set(0.42, 1.22, -0.32);
+  nicheFrame.position.set(0.409, 1.22, -0.32);
   showerFixtureGroup.add(nicheFrame);
 
   const nicheLedStrip = new THREE.Mesh(
-    new THREE.BoxGeometry(0.018, 0.008, 0.40),
+    new THREE.BoxGeometry(0.008, 0.008, 0.40),
     warmDownlightLedMat
   );
   nicheLedStrip.name = 'outbuildings.garage.showerRoom.showerFixture.nicheLedStrip';
   nicheLedStrip.userData.lodTier = 'high';
   nicheLedStrip.userData.lodMaxDistance = 12;
-  nicheLedStrip.position.set(0.418, 1.365, -0.32);
+  nicheLedStrip.position.set(0.395, 1.365, -0.32);
   showerFixtureGroup.add(nicheLedStrip);
 
   let bottleIdx = 0;
@@ -865,17 +870,17 @@ export function buildGarageShowerRoom(
     bottleBody.name = `${bottlePrefix}.body`;
     bottleBody.userData.lodTier = 'high';
     bottleBody.userData.lodMaxDistance = 12;
-    bottleBody.position.set(0.412, 1.135, bz);
+    bottleBody.position.set(0.365, 1.135, bz);
     showerFixtureGroup.add(bottleBody);
 
     const bottleLabel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0285, 0.0285, 0.058, 16),
+      new THREE.CylinderGeometry(0.0315, 0.0315, 0.058, 16),
       ceramicWhiteMat
     );
     bottleLabel.name = `${bottlePrefix}.label`;
     bottleLabel.userData.lodTier = 'high';
     bottleLabel.userData.lodMaxDistance = 12;
-    bottleLabel.position.set(0.412, 1.132, bz);
+    bottleLabel.position.set(0.365, 1.132, bz);
     showerFixtureGroup.add(bottleLabel);
 
     const pumpCollar = new THREE.Mesh(
@@ -885,7 +890,7 @@ export function buildGarageShowerRoom(
     pumpCollar.name = `${bottlePrefix}.pumpCollar`;
     pumpCollar.userData.lodTier = 'high';
     pumpCollar.userData.lodMaxDistance = 12;
-    pumpCollar.position.set(0.412, 1.21, bz);
+    pumpCollar.position.set(0.365, 1.215, bz);
     showerFixtureGroup.add(pumpCollar);
 
     const pumpSpout = new THREE.Mesh(
@@ -895,7 +900,7 @@ export function buildGarageShowerRoom(
     pumpSpout.name = `${bottlePrefix}.pumpSpout`;
     pumpSpout.userData.lodTier = 'high';
     pumpSpout.userData.lodMaxDistance = 12;
-    pumpSpout.position.set(0.402, 1.222, bz);
+    pumpSpout.position.set(0.355, 1.233, bz);
     showerFixtureGroup.add(pumpSpout);
   }
 
@@ -905,7 +910,7 @@ export function buildGarageShowerRoom(
   // ---------------------------------------------------------------------------
   const toiletGroup = new THREE.Group();
   toiletGroup.name = 'outbuildings.garage.showerRoom.toilet';
-  toiletGroup.position.set(7.56, garageFloorTopY + 0.008, vSouthInner - 0.01);
+  toiletGroup.position.set(7.56, garageFloorTopY + 0.012, vSouthInner - 0.01);
   toiletGroup.rotation.y = Math.PI; // Local `+z` projects North (`-v`) into the room!
   roomGroup.add(toiletGroup);
 
@@ -915,17 +920,17 @@ export function buildGarageShowerRoom(
     calacattaTileMat
   );
   cisternBox.name = 'outbuildings.garage.showerRoom.toilet.cisternBox';
-  cisternBox.position.set(0, 0.54, 0.08);
+  cisternBox.position.set(0, 0.54, 0.088);
   cisternBox.castShadow = true;
   cisternBox.receiveShadow = true;
   toiletGroup.add(cisternBox);
 
   const cisternBrassTrim = new THREE.Mesh(
-    new THREE.BoxGeometry(0.546, 0.008, 0.166),
+    new THREE.BoxGeometry(0.546, 0.006, 0.166),
     brushedBrassMat
   );
   cisternBrassTrim.name = 'outbuildings.garage.showerRoom.toilet.cisternBrassTrim';
-  cisternBrassTrim.position.set(0, 1.082, 0.082);
+  cisternBrassTrim.position.set(0, 1.087, 0.09);
   toiletGroup.add(cisternBrassTrim);
 
   const cisternOakShelf = new THREE.Mesh(
@@ -933,25 +938,25 @@ export function buildGarageShowerRoom(
     lightOakDoorMat
   );
   cisternOakShelf.name = 'outbuildings.garage.showerRoom.toilet.cisternOakShelf';
-  cisternOakShelf.position.set(0, 1.098, 0.085);
+  cisternOakShelf.position.set(0, 1.107, 0.096);
   cisternOakShelf.castShadow = true;
   toiletGroup.add(cisternOakShelf);
 
   // 5B. Brushed-Brass Dual-Flush Actuator Plate (`0.22m x 0.145m`) with Bevelled Bezel & Tactile Circular Buttons
   const flushBezel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.228, 0.152, 0.006),
+    new THREE.BoxGeometry(0.228, 0.152, 0.004),
     darkGunmetalMat
   );
   flushBezel.name = 'outbuildings.garage.showerRoom.toilet.flushBezel';
-  flushBezel.position.set(0, 0.94, 0.162);
+  flushBezel.position.set(0, 0.94, 0.174);
   toiletGroup.add(flushBezel);
 
   const flushPlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.218, 0.142, 0.01),
+    new THREE.BoxGeometry(0.218, 0.142, 0.006),
     brushedBrassMat
   );
   flushPlate.name = 'outbuildings.garage.showerRoom.toilet.flushPlate';
-  flushPlate.position.set(0, 0.94, 0.166);
+  flushPlate.position.set(0, 0.94, 0.183);
   toiletGroup.add(flushPlate);
 
   for (const [bx, br] of [
@@ -960,35 +965,35 @@ export function buildGarageShowerRoom(
   ] as const) {
     const flushMode = bx < 0 ? 'full' : 'half';
     const btnRecess = new THREE.Mesh(
-      new THREE.CylinderGeometry(br + 0.003, br + 0.003, 0.006, 20),
+      new THREE.CylinderGeometry(br + 0.003, br + 0.003, 0.004, 20),
       darkGunmetalMat
     );
     btnRecess.name = `outbuildings.garage.showerRoom.toilet.flushButtonRecess.${flushMode}`;
     btnRecess.userData.lodTier = 'high';
     btnRecess.userData.lodMaxDistance = 12;
     btnRecess.rotation.x = Math.PI / 2;
-    btnRecess.position.set(bx, 0.94, 0.17);
+    btnRecess.position.set(bx, 0.94, 0.192);
     toiletGroup.add(btnRecess);
 
     const flushBtn = new THREE.Mesh(
-      new THREE.CylinderGeometry(br, br, 0.008, 20),
+      new THREE.CylinderGeometry(br, br, 0.006, 20),
       brushedBrassMat
     );
     flushBtn.name = `outbuildings.garage.showerRoom.toilet.flushButton.${flushMode}`;
     flushBtn.userData.lodTier = 'high';
     flushBtn.userData.lodMaxDistance = 12;
     flushBtn.rotation.x = Math.PI / 2;
-    flushBtn.position.set(bx, 0.94, 0.173);
+    flushBtn.position.set(bx, 0.94, 0.201);
     toiletGroup.add(flushBtn);
   }
 
   // 5C. Sculpted Multi-Part D-Shaped Wall-Hung Rimless Ceramic WC Pan (`outbuildings.garage.showerRoom.toilet.pan`)
   const toiletRearShroud = new THREE.Mesh(
-    new THREE.BoxGeometry(0.36, 0.31, 0.24),
+    new THREE.BoxGeometry(0.36, 0.31, 0.22),
     ceramicWhiteMat
   );
   toiletRearShroud.name = 'outbuildings.garage.showerRoom.toilet.rearShroud';
-  toiletRearShroud.position.set(0, 0.245, 0.28);
+  toiletRearShroud.position.set(0, 0.245, 0.283);
   toiletRearShroud.castShadow = true;
   toiletRearShroud.receiveShadow = true;
   toiletGroup.add(toiletRearShroud);
@@ -1170,7 +1175,7 @@ export function buildGarageShowerRoom(
   rollBackplate.userData.lodTier = 'high';
   rollBackplate.userData.lodMaxDistance = 12;
   rollBackplate.rotation.x = Math.PI / 2;
-  rollBackplate.position.set(0.35, 0.64, 0.004);
+  rollBackplate.position.set(0.35, 0.64, 0.011);
   toiletGroup.add(rollBackplate);
 
   const rollHolderArm = new THREE.Mesh(
@@ -1178,7 +1183,7 @@ export function buildGarageShowerRoom(
     brushedBrassMat
   );
   rollHolderArm.name = 'outbuildings.garage.showerRoom.toilet.rollHolderArm';
-  rollHolderArm.position.set(0.35, 0.64, 0.045);
+  rollHolderArm.position.set(0.35, 0.64, 0.062);
   toiletGroup.add(rollHolderArm);
 
   const paperRoll = new THREE.Mesh(
@@ -1219,12 +1224,12 @@ export function buildGarageShowerRoom(
     lightOakDoorMat
   );
   vanityCabinet.name = 'outbuildings.garage.showerRoom.vanity.cabinet';
-  vanityCabinet.position.set(0, 0.4 + vanityH * 0.5, vanityD * 0.5);
+  vanityCabinet.position.set(0, 0.4 + vanityH * 0.5, vanityD * 0.5 + 0.008);
   vanityCabinet.castShadow = true;
   vanityCabinet.receiveShadow = true;
   vanityGroup.add(vanityCabinet);
 
-  // Vertical fluted oak ribs across the front drawer face (`z = vanityD + 0.004m`)
+  // Vertical fluted oak ribs across the front drawer face (`z = vanityD + 0.016m`)
   for (let r = -8; r <= 8; r++) {
     const fluteRib = new THREE.Mesh(
       new THREE.BoxGeometry(0.018, vanityH - 0.03, 0.008),
@@ -1233,7 +1238,7 @@ export function buildGarageShowerRoom(
     fluteRib.name = `outbuildings.garage.showerRoom.vanity.fluteRib.${r + 9}`;
     fluteRib.userData.lodTier = 'high';
     fluteRib.userData.lodMaxDistance = 12;
-    fluteRib.position.set(r * 0.031, 0.4 + vanityH * 0.5, vanityD + 0.004);
+    fluteRib.position.set(r * 0.031, 0.4 + vanityH * 0.5, vanityD + 0.016);
     vanityGroup.add(fluteRib);
   }
 
@@ -1246,7 +1251,7 @@ export function buildGarageShowerRoom(
   vanityPull.userData.lodTier = 'high';
   vanityPull.userData.lodMaxDistance = 12;
   vanityPull.rotation.z = Math.PI / 2;
-  vanityPull.position.set(0, 0.76, vanityD + 0.022);
+  vanityPull.position.set(0, 0.76, vanityD + 0.03);
   vanityGroup.add(vanityPull);
 
   // Carrara Marble Countertop (`0.60m x 0.028m x 0.38m`) + Oval Ceramic Countertop Vessel Basin
@@ -1255,7 +1260,7 @@ export function buildGarageShowerRoom(
     calacattaTileMat
   );
   marbleTop.name = 'outbuildings.garage.showerRoom.vanity.carraraCountertop';
-  marbleTop.position.set(0, 0.854, (vanityD + 0.02) * 0.5);
+  marbleTop.position.set(0, 0.858, (vanityD + 0.02) * 0.5 + 0.008);
   marbleTop.castShadow = true;
   vanityGroup.add(marbleTop);
 
@@ -1265,17 +1270,17 @@ export function buildGarageShowerRoom(
   );
   vesselBasin.name = 'outbuildings.garage.showerRoom.vanity.basin';
   vesselBasin.scale.set(1.18, 1.0, 0.78);
-  vesselBasin.position.set(0, 0.93, 0.2);
+  vesselBasin.position.set(0, 0.9385, 0.208);
   vesselBasin.castShadow = true;
   vanityGroup.add(vesselBasin);
 
-  // Brushed-Brass Tall Monobloc Basin Mixer Tap (`y = 0.87..1.09m, z = 0.06m`)
+  // Brushed-Brass Tall Monobloc Basin Mixer Tap (`y = 0.876..1.086m, z = 0.072m`)
   const tapStem = new THREE.Mesh(
     new THREE.CylinderGeometry(0.018, 0.02, 0.21, 16),
     brushedBrassMat
   );
   tapStem.name = 'outbuildings.garage.showerRoom.vanity.mixerTapStem';
-  tapStem.position.set(0, 0.97, 0.065);
+  tapStem.position.set(0, 0.981, 0.072);
   vanityGroup.add(tapStem);
 
   const tapSpout = new THREE.Mesh(
@@ -1284,35 +1289,35 @@ export function buildGarageShowerRoom(
   );
   tapSpout.name = 'outbuildings.garage.showerRoom.vanity.mixerTapSpout';
   tapSpout.rotation.x = Math.PI / 2 + 0.18;
-  tapSpout.position.set(0, 1.055, 0.12);
+  tapSpout.position.set(0, 1.066, 0.127);
   vanityGroup.add(tapSpout);
 
   // Circular Backlit Brushed-Brass Vanity Mirror (`r = 0.29m, y = 1.44m`)
   const mirrorHalo = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.305, 0.305, 0.008, 32),
+    new THREE.CylinderGeometry(0.305, 0.305, 0.004, 32),
     warmDownlightLedMat
   );
   mirrorHalo.name = 'outbuildings.garage.showerRoom.vanity.mirrorHaloBacklight';
   mirrorHalo.rotation.x = Math.PI / 2;
-  mirrorHalo.position.set(0, 1.44, 0.008);
+  mirrorHalo.position.set(0, 1.44, 0.009);
   vanityGroup.add(mirrorHalo);
 
   const mirrorRim = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.29, 0.29, 0.022, 32),
+    new THREE.CylinderGeometry(0.29, 0.29, 0.014, 32),
     brushedBrassMat
   );
   mirrorRim.name = 'outbuildings.garage.showerRoom.vanity.mirrorBrassRim';
   mirrorRim.rotation.x = Math.PI / 2;
-  mirrorRim.position.set(0, 1.44, 0.016);
+  mirrorRim.position.set(0, 1.44, 0.022);
   vanityGroup.add(mirrorRim);
 
   const mirrorGlass = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.278, 0.278, 0.006, 32),
+    new THREE.CylinderGeometry(0.278, 0.278, 0.004, 32),
     mirrorSilverMat
   );
   mirrorGlass.name = 'outbuildings.garage.showerRoom.vanity.mirror';
   mirrorGlass.rotation.x = Math.PI / 2;
-  mirrorGlass.position.set(0, 1.44, 0.026);
+  mirrorGlass.position.set(0, 1.44, 0.035);
   vanityGroup.add(mirrorGlass);
 
   // ---------------------------------------------------------------------------
@@ -1357,13 +1362,13 @@ export function buildGarageShowerRoom(
   groundCeilingGroup.add(ceilingGroup);
 
   const ceilingLid = new THREE.Mesh(
-    new THREE.BoxGeometry(uMax - uMin, 0.06, vSouthInner - vNorthOuter),
+    new THREE.BoxGeometry(uMax - uMin - 0.012, 0.05, vSouthInner - vNorthOuter - 0.012),
     wallPlasterMat
   );
   ceilingLid.name = 'outbuildings.garage.showerRoom.ceilingLid';
   ceilingLid.position.set(
     (uMin + uMax) * 0.5,
-    eaveTopY - 0.03,
+    eaveTopY - 0.035,
     (vNorthOuter + vSouthInner) * 0.5
   );
   ceilingGroup.add(ceilingLid);
