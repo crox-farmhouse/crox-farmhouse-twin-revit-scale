@@ -1,4 +1,12 @@
 import * as THREE from 'three';
+import {
+  buildArmstrongPaperHolder,
+  buildArmstrongRobeHook,
+  buildLefroyBrooksCharterhouseWc,
+  buildLefroyBrooksLissaDoonWashstand,
+  getBathroomBrassMaterials,
+  wallFacingToRotY,
+} from '../../../../../objects/sanitaryware/index.ts';
 
 export interface FamilyBathroomDrinksCabinetKit {
   brassMat: THREE.Material;
@@ -768,538 +776,102 @@ export function buildFamilyBathroomDrinksCabinet(
 }
 
 /**
- * Builds the Family Bathroom Bespoke Period Shaker Vanity Unit with Mirror (`familyBathroom.vanityUnit`)
- * and High-LOD Edwardian Low-Level Vitreous China Toilet (`familyBathroom.toilet`).
+ * Builds the Principal / Master Bathroom (`familyBathroom`, Room 17):
+ * - Open-legged Polished Brass (`BR`) console washstand w/ 3TH heritage ceramic basin, Perrin & Rowe
+ *   `3705BR` Traditional 3-hole deck basin mixer (porcelain levers & pop-up waste) & exposed `6303BR` bottle trap
+ * - Balineum `Mercer` Unlacquered Brass `H24BHB95345` wall mirror
+ * - `GSI Classic Swirlflush®` (`871411`) heritage vortex WC + P&R `6797BR` Traditional Brass/Porcelain concealed lever + Walnut timber seat w/ Brass hinges
+ * - `1x 6960BR` Traditional Pivot Toilet Roll Holder + `2x 6921BR` Traditional Robe Hooks
  */
 export function buildFamilyBathroomVanityAndToilet(
   scene: THREE.Group,
   kit: FamilyBathroomVanityAndToiletKit
 ): void {
-  const { brassMat, ceramicWhiteMat, floorTopY } = kit;
+  const { floorTopY } = kit;
+  const brBrass = getBathroomBrassMaterials('BR');
 
-  const vanityCabinetMat = new THREE.MeshStandardMaterial({
-    color: 0x3b443c,
-    roughness: 0.48,
-    metalness: 0.04,
+  // 1. Open-Legged Solid Polished Brass (`BR`) Console Washstand + 3TH Heritage Ceramic Basin (`760mm W x 510mm D x 850mm H`)
+  //    Centered in the 970mm SE Bulkhead alcove (`X = -10.285m, Z = -0.01m`, facing North `-Z`)
+  //    Includes Perrin & Rowe `3705BR` Traditional 3-Hole Deck Mixer w/ Porcelain Levers & Pop-Up Waste + exposed `6303BR` Bottle Trap!
+  const masterWashstand = buildLefroyBrooksLissaDoonWashstand({
+    namePrefix: 'familyBathroom.brassConsoleWashstand',
+    finish: 'BR',
+    widthM: 0.76,
+    depthM: 0.51,
+    rimHeightM: 0.85,
+    tapHoles: 3,
+    includeDeckMixer: true,
+    mixerStyle: 'traditional',
+    mountVariant: 'consoleLegs',
   });
-  const vanityTrimMat = new THREE.MeshStandardMaterial({
-    color: 0x2d352e,
-    roughness: 0.52,
-    metalness: 0.04,
-  });
-  const marbleCounterMat = new THREE.MeshStandardMaterial({
-    color: 0xf1eee8,
-    roughness: 0.3,
-    metalness: 0.04,
-  });
+  masterWashstand.position.set(-10.285, floorTopY, -0.01);
+  masterWashstand.rotation.y = wallFacingToRotY('north');
+  scene.add(masterWashstand);
+
+  // 2. Balineum Mercer Unlacquered Brass (`H24BHB95345`) Wall Mirror above washstand
+  const mirrorGroup = new THREE.Group();
+  mirrorGroup.name = 'familyBathroom.vanityMirror';
+
   const mirrorGlassMat = new THREE.MeshStandardMaterial({
     color: 0xdce6eb,
     roughness: 0.1,
     metalness: 0.22,
   });
+  const mirrorCenterY = floorTopY + 1.52;
 
-  // 4. Floor-Standing Bespoke Period Shaker Vanity Unit + Mirror against the South-East Bathroom Wall
-  // (`X = -10.285m, Z = -0.01m`, facing North `-Z` into the Family Bathroom — Issue #2: "Vanity unit against this wall with mirror")
-  const vanityGroup = new THREE.Group();
-  vanityGroup.name = 'familyBathroom.vanityUnit';
-  vanityGroup.position.set(-10.285, floorTopY, -0.01);
-  vanityGroup.rotation.y = Math.PI / 2; // local +X points North (-Z) into the bathroom; local +Z runs East (+X) along the wall
-
-  const vanityW = 0.82;
-  const vanityD = 0.46;
-  const vanityCarcassH = 0.8;
-
-  const vanityPlinthGeo = new THREE.BoxGeometry(vanityD - 0.02, 0.085, vanityW + 0.016);
-  vanityPlinthGeo.computeBoundingSphere();
-  const vanityPlinth = new THREE.Mesh(vanityPlinthGeo, vanityTrimMat);
-  vanityPlinth.name = 'familyBathroom.vanityUnit.plinth';
-  vanityPlinth.position.set((vanityD - 0.02) / 2, 0.0425, 0);
-  vanityPlinth.castShadow = true;
-  vanityPlinth.receiveShadow = true;
-  vanityGroup.add(vanityPlinth);
-
-  const vanityCabGeo = new THREE.BoxGeometry(vanityD, vanityCarcassH - 0.08, vanityW);
-  vanityCabGeo.computeBoundingSphere();
-  const vanityCab = new THREE.Mesh(vanityCabGeo, vanityCabinetMat);
-  vanityCab.name = 'familyBathroom.vanityCabinet';
-  vanityCab.position.set(vanityD / 2, 0.44, 0);
-  vanityCab.castShadow = true;
-  vanityCab.receiveShadow = true;
-  vanityGroup.add(vanityCab);
-
-  const shakerDoorFrameGeo = new THREE.BoxGeometry(0.022, 0.62, 0.36);
-  shakerDoorFrameGeo.computeBoundingSphere();
-  const shakerDoorPanelGeo = new THREE.BoxGeometry(0.014, 0.5, 0.26);
-  shakerDoorPanelGeo.computeBoundingSphere();
-  const doorKnobGeo = new THREE.SphereGeometry(0.015, 12, 12);
-  doorKnobGeo.computeBoundingSphere();
-
-  for (const sideZ of [-1, 1] as const) {
-    const sideLabel = sideZ < 0 ? 'west' : 'east';
-    const doorZ = sideZ * 0.19;
-    const shakerDoorFrame = new THREE.Mesh(shakerDoorFrameGeo, vanityTrimMat);
-    shakerDoorFrame.name = `familyBathroom.vanityUnit.doorFrame.${sideLabel}`;
-    shakerDoorFrame.position.set(vanityD + 0.008, 0.44, doorZ);
-    shakerDoorFrame.castShadow = true;
-    vanityGroup.add(shakerDoorFrame);
-
-    const shakerDoorPanel = new THREE.Mesh(shakerDoorPanelGeo, vanityCabinetMat);
-    shakerDoorPanel.name = `familyBathroom.vanityUnit.doorPanel.${sideLabel}`;
-    shakerDoorPanel.position.set(vanityD + 0.015, 0.44, doorZ);
-    vanityGroup.add(shakerDoorPanel);
-
-    const doorKnob = new THREE.Mesh(doorKnobGeo, brassMat);
-    doorKnob.name = `familyBathroom.vanityUnit.doorKnob.${sideLabel}`;
-    doorKnob.userData.lodTier = 'high';
-    doorKnob.userData.lodMaxDistance = 12;
-    doorKnob.position.set(vanityD + 0.032, 0.52, sideZ * 0.045);
-    vanityGroup.add(doorKnob);
-  }
-
-  const basinSlabGeo = new THREE.BoxGeometry(vanityD + 0.03, 0.042, vanityW + 0.04);
-  basinSlabGeo.computeBoundingSphere();
-  const basinSlab = new THREE.Mesh(basinSlabGeo, marbleCounterMat);
-  basinSlab.name = 'familyBathroom.sinkBasin';
-  basinSlab.position.set((vanityD + 0.03) / 2, 0.821, 0);
-  basinSlab.castShadow = true;
-  basinSlab.receiveShadow = true;
-  vanityGroup.add(basinSlab);
-
-  const marbleUpstandGeo = new THREE.BoxGeometry(0.024, 0.11, vanityW + 0.04);
-  marbleUpstandGeo.computeBoundingSphere();
-  const marbleUpstand = new THREE.Mesh(marbleUpstandGeo, marbleCounterMat);
-  marbleUpstand.name = 'familyBathroom.vanityUnit.marbleUpstand';
-  marbleUpstand.position.set(0.012, 0.897, 0);
-  marbleUpstand.castShadow = true;
-  vanityGroup.add(marbleUpstand);
-
-  const basinRimShape = new THREE.Shape();
-  basinRimShape.moveTo(-0.16, -0.26);
-  basinRimShape.lineTo(0.16, -0.26);
-  basinRimShape.lineTo(0.16, 0.26);
-  basinRimShape.lineTo(-0.16, 0.26);
-  basinRimShape.closePath();
-  const basinRimHole = new THREE.Path();
-  basinRimHole.moveTo(-0.13, -0.23);
-  basinRimHole.lineTo(0.13, -0.23);
-  basinRimHole.lineTo(0.13, 0.23);
-  basinRimHole.lineTo(-0.13, 0.23);
-  basinRimHole.closePath();
-  basinRimShape.holes.push(basinRimHole);
-  const basinRimGeo = new THREE.ExtrudeGeometry(basinRimShape, {
-    depth: 0.02,
-    bevelEnabled: false,
-  });
-  basinRimGeo.rotateX(-Math.PI / 2);
-  basinRimGeo.computeBoundingSphere();
-  const basinRim = new THREE.Mesh(basinRimGeo, ceramicWhiteMat);
-  basinRim.name = 'familyBathroom.vanityUnit.basinRim';
-  basinRim.position.set(0.26, 0.836, 0);
-  vanityGroup.add(basinRim);
-
-  const basinWellGeo = new THREE.BoxGeometry(0.252, 0.006, 0.452);
-  basinWellGeo.computeBoundingSphere();
-  const basinWell = new THREE.Mesh(
-    basinWellGeo,
-    new THREE.MeshStandardMaterial({ color: 0xdfe3e6, roughness: 0.14, metalness: 0.06 })
-  );
-  basinWell.name = 'familyBathroom.vanityUnit.basinWell';
-  basinWell.position.set(0.26, 0.849, 0);
-  vanityGroup.add(basinWell);
-
-  const tapStemGeo = new THREE.CylinderGeometry(0.016, 0.02, 0.16, 14);
-  tapStemGeo.computeBoundingSphere();
-  const tapStem = new THREE.Mesh(tapStemGeo, brassMat);
-  tapStem.name = 'familyBathroom.vanityUnit.tapStem';
-  tapStem.userData.lodTier = 'high';
-  tapStem.userData.lodMaxDistance = 12;
-  tapStem.position.set(0.085, 0.92, 0);
-  vanityGroup.add(tapStem);
-
-  const tapSpoutGeo = new THREE.BoxGeometry(0.14, 0.018, 0.02);
-  tapSpoutGeo.computeBoundingSphere();
-  const tapSpout = new THREE.Mesh(tapSpoutGeo, brassMat);
-  tapSpout.name = 'familyBathroom.vanityUnit.tapSpout';
-  tapSpout.userData.lodTier = 'high';
-  tapSpout.userData.lodMaxDistance = 12;
-  tapSpout.position.set(0.145, 0.99, 0);
-  vanityGroup.add(tapSpout);
-
-  const valveBodyGeo = new THREE.CylinderGeometry(0.014, 0.018, 0.065, 12);
-  valveBodyGeo.computeBoundingSphere();
-  const crossBarGeo = new THREE.BoxGeometry(0.052, 0.01, 0.052);
-  crossBarGeo.computeBoundingSphere();
-
-  for (const valveZ of [-0.11, 0.11] as const) {
-    const sideLabel = valveZ < 0 ? 'west' : 'east';
-    const valveBody = new THREE.Mesh(valveBodyGeo, brassMat);
-    valveBody.name = `familyBathroom.vanityUnit.valveBody.${sideLabel}`;
-    valveBody.userData.lodTier = 'high';
-    valveBody.userData.lodMaxDistance = 12;
-    valveBody.position.set(0.085, 0.875, valveZ);
-    vanityGroup.add(valveBody);
-
-    const crossBar = new THREE.Mesh(crossBarGeo, brassMat);
-    crossBar.name = `familyBathroom.vanityUnit.valveCrossBar.${sideLabel}`;
-    crossBar.userData.lodTier = 'high';
-    crossBar.userData.lodMaxDistance = 12;
-    crossBar.position.set(0.085, 0.91, valveZ);
-    vanityGroup.add(crossBar);
-  }
-
-  const mirrorFrameGeo = new THREE.BoxGeometry(0.028, 0.84, 0.72);
+  const mirrorFrameGeo = new THREE.BoxGeometry(0.68, 0.78, 0.026);
   mirrorFrameGeo.computeBoundingSphere();
-  const mirrorFrame = new THREE.Mesh(mirrorFrameGeo, brassMat);
+  const mirrorFrame = new THREE.Mesh(mirrorFrameGeo, brBrass.primary);
   mirrorFrame.name = 'familyBathroom.mirrorFrame';
-  mirrorFrame.position.set(0.024, 1.42, 0);
+  mirrorFrame.position.set(-10.285, mirrorCenterY, -0.025);
   mirrorFrame.castShadow = true;
-  vanityGroup.add(mirrorFrame);
+  mirrorGroup.add(mirrorFrame);
 
-  const mirrorSurfaceGeo = new THREE.BoxGeometry(0.01, 0.78, 0.66);
+  const mirrorSurfaceGeo = new THREE.BoxGeometry(0.62, 0.72, 0.008);
   mirrorSurfaceGeo.computeBoundingSphere();
   const mirrorSurface = new THREE.Mesh(mirrorSurfaceGeo, mirrorGlassMat);
   mirrorSurface.name = 'familyBathroom.mirror';
-  mirrorSurface.position.set(0.036, 1.42, 0);
-  vanityGroup.add(mirrorSurface);
+  mirrorSurface.position.set(-10.285, mirrorCenterY, -0.036);
+  mirrorGroup.add(mirrorSurface);
 
-  scene.add(vanityGroup);
+  scene.add(mirrorGroup);
 
-  // 3. High-LOD Traditional Edwardian Low-Level Vitreous China Toilet on North Wall (`X = -10.22m, Z = -2.50m`, facing South `+Z`)
-  const toiletGroup = new THREE.Group();
-  toiletGroup.name = 'familyBathroom.toilet';
-  toiletGroup.position.set(-10.22, floorTopY, -2.5);
-  toiletGroup.rotation.y = -Math.PI / 2; // local +X points South (+Z) into the bathroom
-
-  const toiletZ = 0;
-  const panCenterX = 0.455;
-
-  const vitreousChinaMat = new THREE.MeshStandardMaterial({
-    color: 0xf6f5f0,
-    roughness: 0.11,
-    metalness: 0.05,
+  // 3. GSI Classic Swirlflush® (`871411` BTW) Heritage Vortex WC + P&R `6797BR` Traditional Brass Concealed Lever + Walnut Timber Seat w/ Brass Hinges
+  const heritageVortexWc = buildLefroyBrooksCharterhouseWc({
+    namePrefix: 'familyBathroom.gsiSwirlflushWc',
+    finish: 'BR',
+    variant: 'backToWallVortex',
+    collection: 'gsiClassicSwirlflush',
+    seatFinish: 'walnut',
+    concealedLeverYM: 0.86,
+    concealedLeverXM: 0.135,
+    leverStyle: 'traditional',
   });
-  const innerBowlGlazeMat = new THREE.MeshStandardMaterial({
-    color: 0xe6eaec,
-    roughness: 0.08,
-    metalness: 0.06,
-    side: THREE.DoubleSide,
-  });
-  const waterSealMat = new THREE.MeshStandardMaterial({
-    color: 0xd4edf4,
-    roughness: 0.04,
-    metalness: 0.12,
-    transparent: true,
-    opacity: 0.78,
-  });
-  const walnutSeatMat = new THREE.MeshStandardMaterial({
-    color: 0x5c3a21,
-    roughness: 0.28,
-    metalness: 0.04,
-  });
+  heritageVortexWc.position.set(-10.18, floorTopY, -2.5);
+  heritageVortexWc.rotation.y = wallFacingToRotY('south');
+  scene.add(heritageVortexWc);
 
-  const pedestalFootPts = [
-    new THREE.Vector2(0.001, 0.0),
-    new THREE.Vector2(0.148, 0.0),
-    new THREE.Vector2(0.146, 0.018),
-    new THREE.Vector2(0.132, 0.028),
-    new THREE.Vector2(0.126, 0.046),
-    new THREE.Vector2(0.106, 0.068),
-    new THREE.Vector2(0.098, 0.145),
-    new THREE.Vector2(0.112, 0.188),
-  ];
-  const wcPanPedestalGeo = new THREE.LatheGeometry(pedestalFootPts, 24);
-  wcPanPedestalGeo.computeBoundingSphere();
-  const wcPanPedestal = new THREE.Mesh(wcPanPedestalGeo, vitreousChinaMat);
-  wcPanPedestal.name = 'familyBathroom.toiletPedestal';
-  wcPanPedestal.position.set(panCenterX - 0.015, 0.01, toiletZ);
-  wcPanPedestal.scale.set(1.26, 1.0, 0.88);
-  wcPanPedestal.castShadow = true;
-  wcPanPedestal.receiveShadow = true;
-  toiletGroup.add(wcPanPedestal);
+  // 4. Perrin & Rowe Traditional `BR` Accessories (`1x 6960BR` Pivot Paper Holder + `2x 6921BR` Robe Hooks)
+  const paperHolder = buildArmstrongPaperHolder({
+    namePrefix: 'familyBathroom.paperHolder',
+    finish: 'BR',
+    style: 'traditional',
+  });
+  paperHolder.position.set(-9.8, floorTopY + 0.66, -2.05);
+  paperHolder.rotation.y = wallFacingToRotY('west');
+  scene.add(paperHolder);
 
-  const floorBoltGeo = new THREE.SphereGeometry(0.011, 10, 10);
-  floorBoltGeo.computeBoundingSphere();
-  for (const boltSideZ of [-1, 1] as const) {
-    const floorBolt = new THREE.Mesh(floorBoltGeo, brassMat);
-    floorBolt.name = `familyBathroom.toilet.floorBolt.${boltSideZ < 0 ? 'west' : 'east'}`;
-    floorBolt.userData.lodTier = 'high';
-    floorBolt.userData.lodMaxDistance = 12;
-    floorBolt.position.set(panCenterX - 0.015, 0.026, toiletZ + boltSideZ * 0.116);
-    toiletGroup.add(floorBolt);
+  for (const [hookSuffix, hookZ] of [
+    ['north', 0.25],
+    ['south', 0.55],
+  ] as const) {
+    const robeHook = buildArmstrongRobeHook({
+      namePrefix: `familyBathroom.robeHook.${hookSuffix}`,
+      finish: 'BR',
+      style: 'traditional',
+    });
+    robeHook.position.set(-10.77, floorTopY + 1.68, hookZ);
+    robeHook.rotation.y = wallFacingToRotY('west');
+    scene.add(robeHook);
   }
-
-  const soilPipeShroudGeo = new THREE.CylinderGeometry(0.056, 0.058, 0.22, 16);
-  soilPipeShroudGeo.computeBoundingSphere();
-  const soilPipeShroud = new THREE.Mesh(soilPipeShroudGeo, vitreousChinaMat);
-  soilPipeShroud.name = 'familyBathroom.toilet.soilPipeShroud';
-  soilPipeShroud.rotation.z = Math.PI / 2;
-  soilPipeShroud.position.set(0.11, 0.185, toiletZ);
-  soilPipeShroud.castShadow = true;
-  toiletGroup.add(soilPipeShroud);
-
-  const soilWallCollarGeo = new THREE.CylinderGeometry(0.076, 0.08, 0.026, 18);
-  soilWallCollarGeo.computeBoundingSphere();
-  const soilWallCollar = new THREE.Mesh(soilWallCollarGeo, vitreousChinaMat);
-  soilWallCollar.name = 'familyBathroom.toilet.soilWallCollar';
-  soilWallCollar.rotation.z = Math.PI / 2;
-  soilWallCollar.position.set(0.016, 0.185, toiletZ);
-  toiletGroup.add(soilWallCollar);
-
-  const bowlProfilePts = [
-    new THREE.Vector2(0.001, 0.175),
-    new THREE.Vector2(0.068, 0.18),
-    new THREE.Vector2(0.112, 0.172),
-    new THREE.Vector2(0.146, 0.235),
-    new THREE.Vector2(0.174, 0.315),
-    new THREE.Vector2(0.182, 0.365),
-    new THREE.Vector2(0.198, 0.376),
-    new THREE.Vector2(0.202, 0.398),
-    new THREE.Vector2(0.192, 0.406),
-    new THREE.Vector2(0.154, 0.404),
-    new THREE.Vector2(0.148, 0.382),
-    new THREE.Vector2(0.132, 0.315),
-    new THREE.Vector2(0.088, 0.235),
-    new THREE.Vector2(0.064, 0.192),
-    new THREE.Vector2(0.001, 0.188),
-  ];
-  const wcPanBowlGeo = new THREE.LatheGeometry(bowlProfilePts, 28);
-  wcPanBowlGeo.computeBoundingSphere();
-  const wcPanBowl = new THREE.Mesh(wcPanBowlGeo, vitreousChinaMat);
-  wcPanBowl.name = 'familyBathroom.toiletPan';
-  wcPanBowl.position.set(panCenterX, 0, toiletZ);
-  wcPanBowl.scale.set(1.18, 1.0, 0.95);
-  wcPanBowl.castShadow = true;
-  wcPanBowl.receiveShadow = true;
-  toiletGroup.add(wcPanBowl);
-
-  const innerWellLinerGeo = new THREE.CylinderGeometry(0.138, 0.068, 0.16, 24, 1, true);
-  innerWellLinerGeo.computeBoundingSphere();
-  const innerWellLiner = new THREE.Mesh(innerWellLinerGeo, innerBowlGlazeMat);
-  innerWellLiner.name = 'familyBathroom.toilet.innerWellLiner';
-  innerWellLiner.position.set(panCenterX, 0.285, toiletZ);
-  innerWellLiner.scale.set(1.16, 1.0, 0.93);
-  toiletGroup.add(innerWellLiner);
-
-  const waterSealDiscGeo = new THREE.CylinderGeometry(0.086, 0.072, 0.008, 22);
-  waterSealDiscGeo.computeBoundingSphere();
-  const waterSealDisc = new THREE.Mesh(waterSealDiscGeo, waterSealMat);
-  waterSealDisc.name = 'familyBathroom.waterSeal';
-  waterSealDisc.position.set(panCenterX - 0.01, 0.224, toiletZ);
-  waterSealDisc.scale.set(1.15, 1.0, 0.92);
-  toiletGroup.add(waterSealDisc);
-
-  const rearPanDeckGeo = new THREE.BoxGeometry(0.15, 0.048, 0.25);
-  rearPanDeckGeo.computeBoundingSphere();
-  const rearPanDeck = new THREE.Mesh(rearPanDeckGeo, vitreousChinaMat);
-  rearPanDeck.name = 'familyBathroom.toilet.rearPanDeck';
-  rearPanDeck.position.set(panCenterX - 0.185, 0.38, toiletZ);
-  rearPanDeck.castShadow = true;
-  toiletGroup.add(rearPanDeck);
-
-  const rearInletHornGeo = new THREE.CylinderGeometry(0.036, 0.044, 0.07, 16);
-  rearInletHornGeo.computeBoundingSphere();
-  const rearInletHorn = new THREE.Mesh(rearInletHornGeo, vitreousChinaMat);
-  rearInletHorn.name = 'familyBathroom.toilet.rearInletHorn';
-  rearInletHorn.rotation.z = Math.PI / 2;
-  rearInletHorn.position.set(panCenterX - 0.255, 0.382, toiletZ);
-  toiletGroup.add(rearInletHorn);
-
-  const wcSeatGeo = new THREE.TorusGeometry(0.164, 0.027, 18, 36);
-  wcSeatGeo.computeBoundingSphere();
-  const wcSeat = new THREE.Mesh(wcSeatGeo, walnutSeatMat);
-  wcSeat.name = 'familyBathroom.toiletSeat';
-  wcSeat.rotation.x = Math.PI / 2;
-  wcSeat.position.set(panCenterX + 0.006, 0.418, toiletZ);
-  wcSeat.scale.set(1.17, 0.95, 0.36);
-  wcSeat.castShadow = true;
-  wcSeat.receiveShadow = true;
-  toiletGroup.add(wcSeat);
-
-  const walnutHingeBlockGeo = new THREE.BoxGeometry(0.052, 0.018, 0.21);
-  walnutHingeBlockGeo.computeBoundingSphere();
-  const walnutHingeBlock = new THREE.Mesh(walnutHingeBlockGeo, walnutSeatMat);
-  walnutHingeBlock.name = 'familyBathroom.toilet.walnutHingeBlock';
-  walnutHingeBlock.userData.lodTier = 'high';
-  walnutHingeBlock.userData.lodMaxDistance = 12;
-  walnutHingeBlock.position.set(panCenterX - 0.175, 0.418, toiletZ);
-  walnutHingeBlock.castShadow = true;
-  toiletGroup.add(walnutHingeBlock);
-
-  const hingePillarGeo = new THREE.CylinderGeometry(0.012, 0.015, 0.034, 12);
-  hingePillarGeo.computeBoundingSphere();
-  for (const hingeSideZ of [-1, 1] as const) {
-    const hingePillar = new THREE.Mesh(hingePillarGeo, brassMat);
-    hingePillar.name = `familyBathroom.toilet.hingePillar.${hingeSideZ < 0 ? 'west' : 'east'}`;
-    hingePillar.userData.lodTier = 'high';
-    hingePillar.userData.lodMaxDistance = 12;
-    hingePillar.position.set(panCenterX - 0.182, 0.418, toiletZ + hingeSideZ * 0.078);
-    toiletGroup.add(hingePillar);
-  }
-  const hingeCrossBarGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.18, 12);
-  hingeCrossBarGeo.computeBoundingSphere();
-  const hingeCrossBar = new THREE.Mesh(hingeCrossBarGeo, brassMat);
-  hingeCrossBar.name = 'familyBathroom.toilet.hingeCrossBar';
-  hingeCrossBar.userData.lodTier = 'high';
-  hingeCrossBar.userData.lodMaxDistance = 12;
-  hingeCrossBar.rotation.x = Math.PI / 2;
-  hingeCrossBar.position.set(panCenterX - 0.182, 0.426, toiletZ);
-  toiletGroup.add(hingeCrossBar);
-
-  const cisternCenterX = 0.11;
-  const cisternBaseY = 0.73;
-  const cisternH = 0.31;
-  const cisternW = 0.46;
-  const cisternD = 0.2;
-
-  const cisternLowerSkirtGeo = new THREE.BoxGeometry(cisternD - 0.016, 0.028, cisternW - 0.02);
-  cisternLowerSkirtGeo.computeBoundingSphere();
-  const cisternLowerSkirt = new THREE.Mesh(cisternLowerSkirtGeo, vitreousChinaMat);
-  cisternLowerSkirt.name = 'familyBathroom.toilet.cisternLowerSkirt';
-  cisternLowerSkirt.position.set(cisternCenterX - 0.005, cisternBaseY + 0.014, toiletZ);
-  cisternLowerSkirt.castShadow = true;
-  toiletGroup.add(cisternLowerSkirt);
-
-  const wcCisternGeo = new THREE.BoxGeometry(cisternD, cisternH - 0.028, cisternW);
-  wcCisternGeo.computeBoundingSphere();
-  const wcCistern = new THREE.Mesh(wcCisternGeo, vitreousChinaMat);
-  wcCistern.name = 'familyBathroom.cistern';
-  wcCistern.position.set(cisternCenterX, cisternBaseY + 0.028 + (cisternH - 0.028) / 2, toiletZ);
-  wcCistern.castShadow = true;
-  wcCistern.receiveShadow = true;
-  toiletGroup.add(wcCistern);
-
-  const cisternFrontPanelGeo = new THREE.BoxGeometry(0.012, 0.19, 0.36);
-  cisternFrontPanelGeo.computeBoundingSphere();
-  const cisternFrontPanel = new THREE.Mesh(cisternFrontPanelGeo, vitreousChinaMat);
-  cisternFrontPanel.name = 'familyBathroom.toilet.cisternFrontPanel';
-  cisternFrontPanel.position.set(cisternCenterX + cisternD / 2 + 0.004, cisternBaseY + 0.165, toiletZ);
-  toiletGroup.add(cisternFrontPanel);
-
-  const makerBadgeRimGeo = new THREE.CylinderGeometry(0.032, 0.032, 0.008, 16);
-  makerBadgeRimGeo.computeBoundingSphere();
-  const makerBadgeRim = new THREE.Mesh(makerBadgeRimGeo, brassMat);
-  makerBadgeRim.name = 'familyBathroom.toilet.makerBadgeRim';
-  makerBadgeRim.userData.lodTier = 'high';
-  makerBadgeRim.userData.lodMaxDistance = 12;
-  makerBadgeRim.rotation.z = Math.PI / 2;
-  makerBadgeRim.position.set(cisternCenterX + cisternD / 2 + 0.011, cisternBaseY + 0.17, toiletZ);
-  makerBadgeRim.scale.set(1.0, 1.35, 0.72);
-  toiletGroup.add(makerBadgeRim);
-
-  const cisternCorniceStepGeo = new THREE.BoxGeometry(cisternD + 0.022, 0.024, cisternW + 0.026);
-  cisternCorniceStepGeo.computeBoundingSphere();
-  const cisternCorniceStep = new THREE.Mesh(cisternCorniceStepGeo, vitreousChinaMat);
-  cisternCorniceStep.name = 'familyBathroom.toilet.cisternCorniceStep';
-  cisternCorniceStep.position.set(cisternCenterX + 0.004, cisternBaseY + cisternH + 0.012, toiletZ);
-  cisternCorniceStep.castShadow = true;
-  toiletGroup.add(cisternCorniceStep);
-
-  const cisternLidGeo = new THREE.BoxGeometry(cisternD + 0.006, 0.022, cisternW + 0.008);
-  cisternLidGeo.computeBoundingSphere();
-  const cisternLid = new THREE.Mesh(cisternLidGeo, vitreousChinaMat);
-  cisternLid.name = 'familyBathroom.cisternLid';
-  cisternLid.position.set(cisternCenterX + 0.002, cisternBaseY + cisternH + 0.034, toiletZ);
-  cisternLid.castShadow = true;
-  toiletGroup.add(cisternLid);
-
-  const wallLegGeo = new THREE.BoxGeometry(0.016, 0.13, 0.024);
-  wallLegGeo.computeBoundingSphere();
-  const topArmGeo = new THREE.BoxGeometry(0.165, 0.014, 0.022);
-  topArmGeo.computeBoundingSphere();
-  const scrollStrutGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.16, 10);
-  scrollStrutGeo.computeBoundingSphere();
-
-  for (const brkSideZ of [-1, 1] as const) {
-    const sideLabel = brkSideZ < 0 ? 'west' : 'east';
-    const brkZ = toiletZ + brkSideZ * 0.155;
-    const wallLeg = new THREE.Mesh(wallLegGeo, brassMat);
-    wallLeg.name = `familyBathroom.toilet.bracketWallLeg.${sideLabel}`;
-    wallLeg.userData.lodTier = 'high';
-    wallLeg.userData.lodMaxDistance = 12;
-    wallLeg.position.set(0.014, cisternBaseY - 0.055, brkZ);
-    toiletGroup.add(wallLeg);
-
-    const topArm = new THREE.Mesh(topArmGeo, brassMat);
-    topArm.name = `familyBathroom.toilet.bracketTopArm.${sideLabel}`;
-    topArm.userData.lodTier = 'high';
-    topArm.userData.lodMaxDistance = 12;
-    topArm.position.set(0.09, cisternBaseY - 0.004, brkZ);
-    toiletGroup.add(topArm);
-
-    const scrollStrut = new THREE.Mesh(scrollStrutGeo, brassMat);
-    scrollStrut.name = `familyBathroom.toilet.bracketScrollStrut.${sideLabel}`;
-    scrollStrut.userData.lodTier = 'high';
-    scrollStrut.userData.lodMaxDistance = 12;
-    scrollStrut.rotation.z = -0.82;
-    scrollStrut.position.set(0.075, cisternBaseY - 0.055, brkZ);
-    toiletGroup.add(scrollStrut);
-  }
-
-  const leverZ = toiletZ + 0.155;
-  const leverY = cisternBaseY + 0.235;
-  const leverFulcrumGeo = new THREE.CylinderGeometry(0.018, 0.022, 0.026, 14);
-  leverFulcrumGeo.computeBoundingSphere();
-  const leverFulcrum = new THREE.Mesh(leverFulcrumGeo, brassMat);
-  leverFulcrum.name = 'familyBathroom.toilet.leverFulcrum';
-  leverFulcrum.userData.lodTier = 'high';
-  leverFulcrum.userData.lodMaxDistance = 12;
-  leverFulcrum.rotation.z = Math.PI / 2;
-  leverFulcrum.position.set(cisternCenterX + cisternD / 2 + 0.016, leverY, leverZ);
-  toiletGroup.add(leverFulcrum);
-
-  const leverArmGeo = new THREE.CylinderGeometry(0.0055, 0.0055, 0.075, 10);
-  leverArmGeo.computeBoundingSphere();
-  const leverArm = new THREE.Mesh(leverArmGeo, brassMat);
-  leverArm.name = 'familyBathroom.toilet.leverArm';
-  leverArm.userData.lodTier = 'high';
-  leverArm.userData.lodMaxDistance = 12;
-  leverArm.rotation.x = Math.PI / 2;
-  leverArm.rotation.z = -0.22;
-  leverArm.position.set(cisternCenterX + cisternD / 2 + 0.032, leverY - 0.008, leverZ + 0.032);
-  toiletGroup.add(leverArm);
-
-  const ceramicTorpedoHandleGeo = new THREE.CylinderGeometry(0.011, 0.009, 0.068, 14);
-  ceramicTorpedoHandleGeo.computeBoundingSphere();
-  const ceramicTorpedoHandle = new THREE.Mesh(ceramicTorpedoHandleGeo, vitreousChinaMat);
-  ceramicTorpedoHandle.name = 'familyBathroom.flushLever';
-  ceramicTorpedoHandle.userData.lodTier = 'high';
-  ceramicTorpedoHandle.userData.lodMaxDistance = 12;
-  ceramicTorpedoHandle.rotation.x = Math.PI / 2;
-  ceramicTorpedoHandle.position.set(cisternCenterX + cisternD / 2 + 0.036, leverY - 0.014, leverZ + 0.078);
-  ceramicTorpedoHandle.castShadow = true;
-  toiletGroup.add(ceramicTorpedoHandle);
-
-  const handleFinialGeo = new THREE.SphereGeometry(0.009, 10, 10);
-  handleFinialGeo.computeBoundingSphere();
-  const handleFinial = new THREE.Mesh(handleFinialGeo, brassMat);
-  handleFinial.name = 'familyBathroom.toilet.handleFinial';
-  handleFinial.userData.lodTier = 'high';
-  handleFinial.userData.lodMaxDistance = 12;
-  handleFinial.position.set(cisternCenterX + cisternD / 2 + 0.036, leverY - 0.014, leverZ + 0.114);
-  toiletGroup.add(handleFinial);
-
-  const flushPipeX = 0.125;
-  const cisternNutGeo = new THREE.CylinderGeometry(0.028, 0.028, 0.026, 14);
-  cisternNutGeo.computeBoundingSphere();
-  const cisternNut = new THREE.Mesh(cisternNutGeo, brassMat);
-  cisternNut.name = 'familyBathroom.toilet.cisternNut';
-  cisternNut.userData.lodTier = 'high';
-  cisternNut.userData.lodMaxDistance = 12;
-  cisternNut.position.set(flushPipeX, cisternBaseY - 0.012, toiletZ);
-  toiletGroup.add(cisternNut);
-
-  const flushPipeCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(flushPipeX, cisternBaseY, toiletZ),
-    new THREE.Vector3(flushPipeX, 0.43, toiletZ),
-    new THREE.Vector3(flushPipeX + 0.02, 0.385, toiletZ),
-    new THREE.Vector3(panCenterX - 0.25, 0.382, toiletZ),
-  ]);
-  const flushPipeGeo = new THREE.TubeGeometry(flushPipeCurve, 18, 0.019, 12, false);
-  flushPipeGeo.computeBoundingSphere();
-  const flushPipe = new THREE.Mesh(flushPipeGeo, brassMat);
-  flushPipe.name = 'familyBathroom.flushPipe';
-  flushPipe.castShadow = true;
-  toiletGroup.add(flushPipe);
-
-  scene.add(toiletGroup);
 }
