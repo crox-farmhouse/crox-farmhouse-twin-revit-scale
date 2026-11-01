@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { addCasedArchitravePortal, buildMitredWallSkirtingGeometry } from '../../../../engine/geometry/index.ts';
 import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
-import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
+import { EAST_WING_BATHROOM_VAULT, type createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
 import { buildFamilyBathroomBathAndShower } from './bathroom/bathroom-bath-and-shower.ts';
+import { buildFamilyBathroomPanellingAndLinings } from './bathroom/bathroom-panelling-and-linings.ts';
 import {
   buildFamilyBathroomDrinksCabinet,
   buildFamilyBathroomVanityAndToilet,
@@ -40,8 +41,8 @@ function ensureNamedAddedChildren(parent: THREE.Object3D, startIdx: number, pref
  */
 export function buildFamilyBathroom(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'floorTopY' | 'masterLimestoneFloorMat' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
-    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBrickWallAlongXWithWindow' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'floorTopY' | 'masterLimestoneFloorMat' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'schoolHouseWhiteMat' | 'warmRoomPlasterMat' | 'wimborneWhitePanellingMat' | 'windowGlassMat'> &
+    Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBrickWallAlongXWithWindow' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH' | 'tagUpperCutawayWall'>
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
   const {
@@ -57,7 +58,10 @@ export function buildFamilyBathroom(
     floorTopY,
     oakFloorMat,
     upperWallTopY,
+    schoolHouseWhiteMat,
+    tagUpperCutawayWall,
     warmRoomPlasterMat,
+    wimborneWhitePanellingMat,
     windowGlassMat,
   } = kit;
   // =========================================================================
@@ -97,7 +101,7 @@ export function buildFamilyBathroom(
   }
 
   // North Exterior Brick Wall of Family Bathroom (Z = -2.78m..-2.50m, X = -12.81m..-9.56m)
-  // Calibrated to Survey2Plan Win 1756577 / 1763678 (1.10m x 0.90m, doubleCasement below 3.86m eaves)
+  // Calibrated to measurements.rvt Win 1763678 (1.10m x 0.92m, doubleCasement directly below 3.33m 49° cottage eaves)
   childIdx = scene.children.length;
   addUpperBrickWallAlongXWithWindow(
     -12.81,
@@ -110,12 +114,21 @@ export function buildFamilyBathroom(
     3.24,
     'south',
     2,
-    { skipSkirting: true, minSillY: 2.3, skipUnderApron: true, windowFamily: 'doubleCasement' }
+    {
+      skipSkirting: true,
+      minSillY: 2.3,
+      wallTopY: EAST_WING_BATHROOM_VAULT.northEavesY + 0.002,
+      skipUnderApron: true,
+      seamMinusX: true,
+      seamPlusX: true,
+      trimFaceOffset: 0.01,
+      windowFamily: 'doubleCasement',
+    }
   );
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.northExteriorWall');
 
   // South Courtyard Exterior Brick Wall of Upper Passage (Z = +2.40m..+2.68m, X = -12.93m..-9.56m)
-  // Calibrated to Survey2Plan Win 1747147 (0.88m x 0.76m, 670mm sill above 2.16m FFL)
+  // Calibrated to Survey2Plan Win 1747147 (0.88m x 0.76m, 670mm sill above 2.16m FFL, below 3.765m 50° South eaves)
   childIdx = scene.children.length;
   addUpperBrickWallAlongXWithWindow(
     -12.93,
@@ -128,58 +141,54 @@ export function buildFamilyBathroom(
     3.59,
     'north',
     2,
-    { skipSkirting: true, windowFamily: 'doubleCasement' }
+    {
+      skipSkirting: true,
+      wallTopY: EAST_WING_BATHROOM_VAULT.southEavesY + 0.002,
+      windowFamily: 'doubleCasement',
+    }
   );
   ensureNamedAddedChildren(scene, childIdx, 'upperSouthPassage.southExteriorWall');
 
-  const interiorEavesY = 3.86;
-  const collarCeilingY = 4.65;
+  const interiorEavesY = EAST_WING_BATHROOM_VAULT.northEavesY;
+  const collarCeilingY = EAST_WING_BATHROOM_VAULT.collarCeilingY;
+  const collarWallTopY = collarCeilingY + EAST_WING_BATHROOM_VAULT.wallTopEmbed;
 
   // =========================================================================
   // BESPOKE HOTEL DRINKS & REFRESHMENT CABINET (`X = -10.62m..-9.80m, Z = +0.36m..+1.05m`)
   // & MANIFOLD L-SHAPED BATHROOM BULKHEAD (`X = -10.77m..-9.80m, Z = -0.01m..+1.05m`) (Issues #1 & #5)
   // =========================================================================
   childIdx = scene.children.length;
-  addUpperInteriorWall(-10.695, floorTopY, collarCeilingY, 0.52, 0.15, 1.06, warmRoomPlasterMat, {
+  addUpperInteriorWall(-10.695, floorTopY, collarWallTopY, 0.52, 0.15, 1.06, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.bulkheadWestWall');
 
   childIdx = scene.children.length;
-  addUpperInteriorWall(-10.21, floorTopY, collarCeilingY, 0.175, 0.82, 0.37, warmRoomPlasterMat, {
+  addUpperInteriorWall(-10.21, floorTopY, collarWallTopY, 0.175, 0.82, 0.37, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.bulkheadNorthWall');
 
   childIdx = scene.children.length;
-  addUpperInteriorWall(-10.21, upperWallTopY, collarCeilingY, 0.705, 0.82, 0.69, warmRoomPlasterMat, {
+  addUpperInteriorWall(-10.21, 3.85, collarWallTopY, 0.705, 0.82, 0.69, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.bulkheadUpperSoffit');
 
-  // Continuous 45-deg-mitred 146mm antique oak skirtings around the Family Bathroom & Upper South Passage
+  // Room 17 Farrow & Ball School House White upper wall linings + Wimborne White 3D V-groove T&G panelling,
+  // moulded dado cap rail, and painted Wimborne White bathroom skirtings
+  buildFamilyBathroomPanellingAndLinings(scene, {
+    floorTopY,
+    schoolHouseWhiteMat,
+    wimborneWhitePanellingMat,
+    tagUpperCutawayWall,
+  });
+
+  // Continuous 45-deg-mitred 146mm antique oak skirtings along the Upper South Passage (outside the bathroom)
   for (const [skirtName, path] of [
-    [
-      'familyBathroom.perimeterMitredSkirting',
-      [
-        [-12.81, -0.654],
-        [-12.81, -2.5],
-        [-9.8, -2.5],
-        [-9.8, -0.01],
-        [-10.77, -0.01],
-        [-10.77, 0.832],
-      ] as const,
-    ],
-    [
-      'familyBathroom.southPierSkirting',
-      [
-        [-11.672, 0.9],
-        [-11.906, 0.9],
-      ] as const,
-    ],
     [
       'upperSouthPassage.northWestSkirting',
       [
@@ -226,14 +235,14 @@ export function buildFamilyBathroom(
   // Partition wall between Family Bathroom and Upper South Passage (0.15m thick, Z = +0.90m..+1.05m, X = -10.77m..-12.81m)
   // With bathroom entrance doorway at X = -11.18m (`width = 0.82m`, `X = -11.59m..-10.77m`)
   childIdx = scene.children.length;
-  addUpperInteriorWall(-12.2, floorTopY, collarCeilingY, 0.975, 1.22, 0.15, warmRoomPlasterMat, {
+  addUpperInteriorWall(-12.2, floorTopY, collarWallTopY, 0.975, 1.22, 0.15, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.southPartitionWall');
 
   childIdx = scene.children.length;
-  addUpperInteriorWall(-11.18, floorTopY + doorH, collarCeilingY, 0.975, 0.82, 0.15, warmRoomPlasterMat, {
+  addUpperInteriorWall(-11.18, floorTopY + doorH, collarWallTopY, 0.975, 0.82, 0.15, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
@@ -262,7 +271,7 @@ export function buildFamilyBathroom(
   // West Load-Bearing Cross-Wall between Family Bathroom/Passage and Main Staircase Landing (0.24m thick, X = -12.81m..-13.05m)
   // Open passage/doorway at Z = +1.55m with cased antique oak architrave portal matching downstairs
   childIdx = scene.children.length;
-  addUpperInteriorWall(-12.93, floorTopY, interiorEavesY, -0.7, 0.24, 3.6, warmRoomPlasterMat, {
+  addUpperInteriorWall(-12.93, floorTopY, interiorEavesY, -0.715, 0.24, 3.63, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
@@ -293,8 +302,9 @@ export function buildFamilyBathroom(
   }
 
   // Stop the South cross-wall pier at `Z = 2.398m` (`z = 2.199, d = 0.398`)
+  const southEavesY = EAST_WING_BATHROOM_VAULT.southEavesY;
   childIdx = scene.children.length;
-  addUpperInteriorWall(-12.93, floorTopY, interiorEavesY, 2.199, 0.24, 0.398, warmRoomPlasterMat, {
+  addUpperInteriorWall(-12.93, floorTopY, southEavesY, 2.199, 0.24, 0.398, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
@@ -322,24 +332,54 @@ export function buildFamilyBathroom(
   });
   ensureNamedAddedChildren(scene, childIdx, 'upperLanding.eastPassagePortal');
 
-  // Full-Span Trapezoidal Upper Gable Extension on the X = -12.93m Cross-Wall (`Y = 3.86m..4.65m`)
+  // Split Upper Gable Extensions on the X = -12.93m Cross-Wall so:
+  // - West half (`X = -13.05..-12.928m`) meets Upper Landing's 3.86m -> 4.65m vault cleanly, and
+  // - East half (`X = -12.932..-12.81m`) meets Room 17's 49.0° North skeiling (3.33m) & Passage's 50.0° South skeiling (3.765m) with zero roof protrusion!
   {
-    const crossGableShape = new THREE.Shape();
-    crossGableShape.moveTo(-2.5, interiorEavesY);
-    crossGableShape.lineTo(1.1, interiorEavesY);
-    crossGableShape.lineTo(1.1, 4.18);
-    crossGableShape.lineTo(2.0, 4.18);
-    crossGableShape.lineTo(2.0, interiorEavesY);
-    crossGableShape.lineTo(2.398, interiorEavesY);
-    crossGableShape.lineTo(1.35, collarCeilingY);
-    crossGableShape.lineTo(-1.15, collarCeilingY);
-    crossGableShape.closePath();
-    const crossGableGeo = new THREE.ExtrudeGeometry(crossGableShape, {
-      depth: 0.24,
+    const landingGableShape = new THREE.Shape();
+    landingGableShape.moveTo(-2.53, interiorEavesY - 0.008);
+    landingGableShape.lineTo(1.1, interiorEavesY - 0.008);
+    landingGableShape.lineTo(1.1, 4.172);
+    landingGableShape.lineTo(2.0, 4.172);
+    landingGableShape.lineTo(2.0, southEavesY - 0.008);
+    landingGableShape.lineTo(2.42, southEavesY - 0.008);
+    landingGableShape.lineTo(2.42, 3.86 + EAST_WING_BATHROOM_VAULT.wallTopEmbed);
+    landingGableShape.lineTo(1.35, collarWallTopY);
+    landingGableShape.lineTo(-1.15, collarWallTopY);
+    landingGableShape.lineTo(-2.53, 3.86 + EAST_WING_BATHROOM_VAULT.wallTopEmbed);
+    landingGableShape.closePath();
+    const landingGableGeo = new THREE.ExtrudeGeometry(landingGableShape, {
+      depth: 0.122,
+      bevelEnabled: false,
+    });
+    landingGableGeo.rotateY(-Math.PI / 2);
+    landingGableGeo.translate(-12.928, 0, 0);
+    landingGableGeo.computeBoundingSphere();
+    const landingGableMesh = new THREE.Mesh(landingGableGeo, warmRoomPlasterMat);
+    landingGableMesh.name = 'upperLanding.eastWallUpperGable';
+    landingGableMesh.userData.isArchitecturalShell = true;
+    landingGableMesh.castShadow = true;
+    landingGableMesh.receiveShadow = true;
+    scene.add(landingGableMesh);
+
+    const bathGableShape = new THREE.Shape();
+    bathGableShape.moveTo(-2.52, interiorEavesY - 0.008);
+    bathGableShape.lineTo(1.1, interiorEavesY - 0.008);
+    bathGableShape.lineTo(1.1, 4.172);
+    bathGableShape.lineTo(2.0, 4.172);
+    bathGableShape.lineTo(2.0, southEavesY - 0.008);
+    bathGableShape.lineTo(2.41, southEavesY - 0.008);
+    bathGableShape.lineTo(2.41, southEavesY + EAST_WING_BATHROOM_VAULT.wallTopEmbed);
+    bathGableShape.lineTo(EAST_WING_BATHROOM_VAULT.collarSouthZ, collarWallTopY);
+    bathGableShape.lineTo(EAST_WING_BATHROOM_VAULT.collarNorthZ, collarWallTopY);
+    bathGableShape.lineTo(-2.52, interiorEavesY + EAST_WING_BATHROOM_VAULT.wallTopEmbed);
+    bathGableShape.closePath();
+    const crossGableGeo = new THREE.ExtrudeGeometry(bathGableShape, {
+      depth: 0.122,
       bevelEnabled: false,
     });
     crossGableGeo.rotateY(-Math.PI / 2);
-    crossGableGeo.translate(-12.93 + 0.12, 0, 0);
+    crossGableGeo.translate(-12.81, 0, 0);
     crossGableGeo.computeBoundingSphere();
     const crossGableMesh = new THREE.Mesh(crossGableGeo, warmRoomPlasterMat);
     crossGableMesh.name = 'familyBathroom.westWallUpperGable';

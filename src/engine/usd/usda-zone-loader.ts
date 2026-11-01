@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { getLivingCopperPatinaMaps } from '../textures/timber-and-metal-textures.ts';
 
 export type UsdaSceneLayerTarget =
   | 'ground'
@@ -137,7 +136,7 @@ function buildProceduralTextureFromUsdSpec(
     }
     ctx.globalAlpha = 1;
   } else if (kind === 'natural_stone') {
-    // Staggered rectangular tumbled limestone flagstones with soft mortar joints & subtle mottling
+    // Staggered rectangular tumbled limestone flagstones with fine 2-3mm hairline pale ivory grout
     const rowH = 64;
     const colW = 96;
     for (let r = 0; r < 4; r++) {
@@ -147,12 +146,12 @@ function buildProceduralTextureFromUsdSpec(
         const x = c * colW + shift;
         ctx.fillStyle = (r + c) % 2 === 0 ? primaryCss : secondaryCss;
         ctx.globalAlpha = (r + c) % 2 === 0 ? 1.0 : 0.35;
-        ctx.fillRect(x + 2, y + 2, colW - 4, rowH - 4);
+        ctx.fillRect(x + 0.5, y + 0.5, colW - 1, rowH - 1);
       }
     }
     ctx.globalAlpha = 1.0;
-    ctx.strokeStyle = 'rgba(242, 238, 229, 0.85)';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(224, 217, 202, 0.88)';
+    ctx.lineWidth = 1;
     for (let r = 0; r < 4; r++) {
       const y = r * rowH;
       const shift = (r % 2) * 48;
@@ -285,15 +284,14 @@ export function parseUsdaMaterialLibrary(
       spec.name.includes('copperBurnishedShell') ||
       spec.name.includes('copperPatinatedPlinth')
     ) {
-      const patina = getLivingCopperPatinaMaps();
       const isPlinth = spec.name.includes('copperPatinatedPlinth');
-      mat.color.setHex(isPlinth ? 0xb8663b : 0xc26e41);
-      mat.map = isPlinth ? patina.plinthColorModMap : patina.shellColorModMap;
-      mat.roughnessMap = isPlinth ? patina.plinthRoughnessMap : patina.shellRoughnessMap;
-      mat.normalMap = patina.normalMap;
-      mat.normalScale = new THREE.Vector2(isPlinth ? 0.12 : 0.11, isPlinth ? 0.12 : 0.11);
-      mat.roughness = 1.0;
-      mat.metalness = isPlinth ? 0.87 : 0.89;
+      mat.color.setHex(isPlinth ? 0xa4562e : 0xb96539);
+      mat.roughness = 0.13;
+      mat.metalness = 0.90;
+      if (mat instanceof THREE.MeshPhysicalMaterial) {
+        mat.clearcoat = 0.42;
+        mat.clearcoatRoughness = 0.08;
+      }
       mat.needsUpdate = true;
     }
 

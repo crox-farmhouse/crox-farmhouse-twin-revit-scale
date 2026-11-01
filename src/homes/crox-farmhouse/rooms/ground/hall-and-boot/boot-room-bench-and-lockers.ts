@@ -30,6 +30,7 @@ export type BootRoomBenchAndLockersKit = Pick<
   | 'engineeredOakFloorMat'
   | 'oakMat'
   | 'skirtingMat'
+  | 'wimborneWhiteJoineryMat'
   | 'tagCutawayWall'
   | 'wallH'
   | 'warmRoomPlasterMat'
@@ -70,6 +71,7 @@ export function buildBootRoomBenchAndLockers(
     tagCutawayWall,
     wallH,
     warmRoomPlasterMat,
+    wimborneWhiteJoineryMat,
   } = kit;
 
   // =========================================================================
@@ -120,7 +122,7 @@ export function buildBootRoomBenchAndLockers(
     1.6,
     'south',
     1,
-    { trimFaceOffset: 0.018, windowFamily: 'singleCasement' }
+    { trimFaceOffset: 0.018, windowFamily: 'singleCasement', skirtingMaterial: wimborneWhiteJoineryMat }
   );
 
   // Face-fixed linen Roman blind over the Downstairs Cloakroom WC North window (X = -12.14m, Win 1736291 = 0.39x0.74m)
@@ -148,6 +150,7 @@ export function buildBootRoomBenchAndLockers(
     skirtingSides: [-1],
     skirtingMin: -2.5,
     skirtingMax: -0.258,
+    skirtingMaterial: wimborneWhiteJoineryMat,
   });
 
   // North Wall of Boot Lobby / South Wall of Downstairs WC & Wine Cellar (0.15m thick at Z = -0.175m, X = -9.80m..-12.81m):

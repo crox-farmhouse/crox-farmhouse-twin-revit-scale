@@ -71,6 +71,7 @@ export function createGroundShellWindowsAndDoors(
     panes = 3,
     wallOptions?: {
       readonly skipSkirting?: boolean;
+      readonly skirtingMaterial?: THREE.Material;
       readonly trimFaceOffset?: number;
       readonly skipUnderApron?: boolean;
       readonly skipArchitrave?: boolean;

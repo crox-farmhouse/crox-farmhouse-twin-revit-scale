@@ -603,7 +603,7 @@ export function buildMainBedroom(
   const westCrossWallEavesY = 3.86; // Seals cleanly to BOTH Family Bathroom 3.86m eaves (West) & Main Bedroom 3.69m/3.76m eaves (East)
   {
     const idx0 = scene.children.length;
-    addUpperInteriorWall(-9.68, passageFloorTopY, westCrossWallEavesY, -0.715, 0.24, 3.57, warmRoomPlasterMat, {
+    addUpperInteriorWall(-9.68, passageFloorTopY, westCrossWallEavesY, -0.73, 0.24, 3.6, warmRoomPlasterMat, {
       skipSkirting: true,
       skipCap: true,
     });
@@ -751,14 +751,14 @@ export function buildMainBedroom(
   // and East Exterior Brick Gable Wall (`X = -4.64m..-4.40m, Y = 4.16m..5.065m`)
   {
     const westGableShape = new THREE.Shape();
-    westGableShape.moveTo(-2.5, westCrossWallEavesY);
-    westGableShape.lineTo(1.07, westCrossWallEavesY);
-    westGableShape.lineTo(1.07, 4.24);
-    westGableShape.lineTo(1.89, 4.24);
-    westGableShape.lineTo(1.89, westCrossWallEavesY);
-    westGableShape.lineTo(2.4, westCrossWallEavesY);
-    westGableShape.lineTo(collarSouthZ, collarCeilingY);
-    westGableShape.lineTo(collarNorthZ, collarCeilingY);
+    westGableShape.moveTo(-2.53, westCrossWallEavesY - 0.008);
+    westGableShape.lineTo(1.07, westCrossWallEavesY - 0.008);
+    westGableShape.lineTo(1.07, 4.232);
+    westGableShape.lineTo(1.89, 4.232);
+    westGableShape.lineTo(1.89, westCrossWallEavesY - 0.008);
+    westGableShape.lineTo(2.42, westCrossWallEavesY - 0.008);
+    westGableShape.lineTo(collarSouthZ, collarCeilingY + 0.014);
+    westGableShape.lineTo(collarNorthZ, collarCeilingY + 0.014);
     westGableShape.closePath();
 
     // 1. West interior cross-wall upper gable (`X = -9.80m..-9.56m`, `warmRoomPlasterMat`)

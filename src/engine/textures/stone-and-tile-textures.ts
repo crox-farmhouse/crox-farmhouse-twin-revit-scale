@@ -802,7 +802,9 @@ export function createTumbledLimestoneFlagstoneTextures(): {
   readonly roughnessMap: THREE.CanvasTexture;
 } {
   return getOrCreateCachedTexture('tumbled-limestone-flagstone-pbr', () => {
-    const size = 512;
+    // 1024x1024 across a 1.60m world repeat (2.0m slab UV / 1.25 repeat = 1.5625mm/px):
+    // groutHalf = 0.85px -> 1.70px total joint width = exact 2.66mm hairline interior bathroom grout!
+    const size = 1024;
     const [colorCanvas, bumpCanvas] = getOrCreateCachedCanvasPair(
       'tumbled-limestone-flagstone',
       size,
@@ -810,99 +812,115 @@ export function createTumbledLimestoneFlagstoneTextures(): {
       (cCtx, bCtx) => {
         const clampByte = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
 
-        // Soft warm off-white/cream lime grout base (#efebe1)
-        cCtx.fillStyle = '#f3efe6';
+        // Warm pale ivory/limestone-matched interior bathroom grout (#e2dacb)
+        cCtx.fillStyle = '#e2dacb';
         cCtx.fillRect(0, 0, size, size);
 
-        // Recessed mortar joint depth in bump map
-        bCtx.fillStyle = 'rgb(48, 48, 48)';
+        // Shallow, crisp interior micro-joint depth in bump map (subtle bevel, not deep patio mortar)
+        bCtx.fillStyle = 'rgb(154, 154, 154)';
         bCtx.fillRect(0, 0, size, size);
 
-        // 4 staggered horizontal courses across 2.0m tile repeat (~400-500mm course heights, ~600-850mm flagstone lengths)
+        // 4 seamlessly wrapping staggered courses across 1024px (~400mm course height, ~520-620mm slab lengths)
         const courses: ReadonlyArray<{
           readonly y: number;
           readonly h: number;
           readonly xSplits: readonly number[];
         }> = [
-          { y: 0, h: 128, xSplits: [0, 186, 356, 512] },
-          { y: 128, h: 128, xSplits: [0, 104, 294, 444, 512] },
-          { y: 256, h: 128, xSplits: [0, 204, 378, 512] },
-          { y: 384, h: 128, xSplits: [0, 138, 322, 512] },
+          { y: 0, h: 256, xSplits: [0, 368, 708, 1024] },
+          { y: 256, h: 256, xSplits: [184, 548, 884, 1208] },
+          { y: 512, h: 256, xSplits: [56, 432, 776, 1080] },
+          { y: 768, h: 256, xSplits: [236, 596, 940, 1260] },
         ];
 
-        // Warm tumbled/honed oatmeal-buff limestone palette matching Slide 3 bottom-left swatch (#dbd2c0 .. #cbbda6)
+        // Warm honed/tumbled oatmeal-buff limestone palette matching Slide 3 bottom-left swatch (#dbd2c0 .. #cfc4b1)
         const palette: ReadonlyArray<readonly [number, number, number]> = [
-          [219, 210, 192], // #dbd2c0 warm tumbled cream-buff limestone
-          [211, 201, 182], // #d3c9b6 honed oatmeal-buff limestone
-          [203, 189, 166], // #cbbda6 warm aged buff flagstone
-          [216, 207, 190], // #d8cfbe pale Cotswold-buff limestone
-          [207, 196, 177], // #cfc4b1 soft warm parchment stone
+          [219, 211, 194], // #dbd3c2 warm honed cream-buff limestone
+          [213, 204, 186], // #d5ccba honed oatmeal-buff limestone
+          [208, 197, 178], // #d0c5b2 soft warm parchment buff
+          [217, 208, 192], // #d9d0c0 pale Cotswold-buff limestone
+          [210, 200, 182], // #d2c8b6 natural warm limestone
         ];
 
-        const groutHalf = 3.0;
+        const groutHalf = 0.85; // 1.7px total joint = 2.66mm hairline grout!
         let slabIdx = 0;
+
+        const drawSlabPass = (
+          sx: number,
+          sy: number,
+          sw: number,
+          sh: number,
+          br: number,
+          bg: number,
+          bb: number,
+          seedIdx: number
+        ): void => {
+          cCtx.fillStyle = `rgb(${br}, ${bg}, ${bb})`;
+          cCtx.beginPath();
+          cCtx.roundRect(sx, sy, sw, sh, 1.4);
+          cCtx.fill();
+
+          // Gentle honed micro-chamfer edge (1.5px) into flat honed slab face in bump map
+          bCtx.fillStyle = 'rgb(192, 192, 192)';
+          bCtx.beginPath();
+          bCtx.roundRect(sx, sy, sw, sh, 1.4);
+          bCtx.fill();
+
+          bCtx.fillStyle = 'rgb(206, 206, 206)';
+          bCtx.beginPath();
+          bCtx.roundRect(sx + 1.6, sy + 1.6, Math.max(2, sw - 3.2), Math.max(2, sh - 3.2), 1.0);
+          bCtx.fill();
+
+          // Subtle sedimentary clouding & warm mineral mottling inside each limestone flagstone
+          for (let py = sy + 6; py < sy + sh - 12; py += 20) {
+            for (let px = sx + 6; px < sx + sw - 16; px += 26) {
+              const lx = Math.round(px - sx);
+              const ly = Math.round(py - sy);
+              const n = (((lx * 23 + ly * 37 + seedIdx * 13) % 9) - 4);
+              cCtx.fillStyle = `rgba(${clampByte(br + n)}, ${clampByte(bg + n)}, ${clampByte(bb + n - 1)}, 0.26)`;
+              cCtx.fillRect(px, py, 24, 18);
+
+              const bn = clampByte(206 + n * 1.5);
+              bCtx.fillStyle = `rgba(${bn}, ${bn}, ${bn}, 0.28)`;
+              bCtx.fillRect(px, py, 24, 18);
+            }
+          }
+
+          // Delicate calcite / shell fossil flecks characteristic of honed English & Bourgogne limestone
+          for (let f = 0; f < 24; f++) {
+            const fx = sx + 10 + ((f * 73 + seedIdx * 41) % Math.max(6, Math.floor(sw - 20)));
+            const fy = sy + 10 + ((f * 97 + seedIdx * 29) % Math.max(6, Math.floor(sh - 20)));
+            cCtx.fillStyle =
+              f % 3 === 0 ? 'rgba(242, 238, 229, 0.28)' : 'rgba(194, 185, 170, 0.20)';
+            cCtx.fillRect(fx, fy, f % 4 === 0 ? 5.5 : 3.0, 2.2);
+          }
+
+          // Whisper-soft 0.75px honed stone edge kiss next to the hairline grout
+          cCtx.strokeStyle = 'rgba(238, 233, 222, 0.28)';
+          cCtx.lineWidth = 0.75;
+          cCtx.strokeRect(sx + 0.5, sy + 0.5, sw - 1, sh - 1);
+        };
 
         for (let r = 0; r < courses.length; r++) {
           const course = courses[r]!;
           for (let c = 0; c < course.xSplits.length - 1; c++) {
             const x0 = course.xSplits[c]!;
             const x1 = course.xSplits[c + 1]!;
-            // Wrap seam-straddling slabs on course 2 cleanly if narrow
             const sx = x0 + groutHalf;
             const sy = course.y + groutHalf;
             const sw = x1 - x0 - groutHalf * 2;
             const sh = course.h - groutHalf * 2;
-            if (sw <= 4 || sh <= 4) continue;
+            if (sw <= 6 || sh <= 6) continue;
 
             const base = palette[slabIdx % palette.length]!;
-            const toneShift = ((slabIdx * 11 + r * 7) % 7) - 3;
+            const toneShift = ((slabIdx * 11 + r * 7) % 5) - 2;
             const br = clampByte(base[0] + toneShift);
             const bg = clampByte(base[1] + toneShift);
             const bb = clampByte(base[2] + toneShift);
 
-            cCtx.fillStyle = `rgb(${br}, ${bg}, ${bb})`;
-            cCtx.beginPath();
-            cCtx.roundRect(sx, sy, sw, sh, 2.5);
-            cCtx.fill();
-
-            // Raised honed slab surface with gently tumbled pillowed edge in bump map
-            bCtx.fillStyle = 'rgb(168, 168, 168)';
-            bCtx.beginPath();
-            bCtx.roundRect(sx, sy, sw, sh, 2.5);
-            bCtx.fill();
-
-            bCtx.fillStyle = 'rgb(208, 208, 208)';
-            bCtx.beginPath();
-            bCtx.roundRect(sx + 3, sy + 3, Math.max(2, sw - 6), Math.max(2, sh - 6), 2);
-            bCtx.fill();
-
-            // Subtle sedimentary clouding & warm mineral mottling inside each limestone flagstone
-            for (let py = sy + 4; py < sy + sh - 8; py += 12) {
-              for (let px = sx + 4; px < sx + sw - 10; px += 16) {
-                const n = (((px * 23 + py * 37 + slabIdx * 13) % 11) - 5);
-                cCtx.fillStyle = `rgba(${clampByte(br + n)}, ${clampByte(bg + n)}, ${clampByte(bb + n - 1)}, 0.30)`;
-                cCtx.fillRect(px, py, 15, 11);
-
-                const bn = clampByte(208 + n * 2);
-                bCtx.fillStyle = `rgba(${bn}, ${bn}, ${bn}, 0.35)`;
-                bCtx.fillRect(px, py, 15, 11);
-              }
+            drawSlabPass(sx, sy, sw, sh, br, bg, bb, slabIdx);
+            if (sx + sw > size) {
+              drawSlabPass(sx - size, sy, sw, sh, br, bg, bb, slabIdx);
             }
-
-            // Delicate calcite / shell fossil flecks characteristic of English & Bourgogne tumbled limestone
-            for (let f = 0; f < 18; f++) {
-              const fx = sx + 6 + ((f * 47 + slabIdx * 29) % Math.max(4, Math.floor(sw - 12)));
-              const fy = sy + 6 + ((f * 61 + slabIdx * 19) % Math.max(4, Math.floor(sh - 12)));
-              cCtx.fillStyle =
-                f % 3 === 0 ? 'rgba(244, 240, 232, 0.34)' : 'rgba(192, 183, 168, 0.24)';
-              cCtx.fillRect(fx, fy, f % 4 === 0 ? 4 : 2.2, 1.8);
-            }
-
-            // Soft tumbled limestone edge highlight
-            cCtx.strokeStyle = 'rgba(247, 244, 236, 0.42)';
-            cCtx.lineWidth = 1.2;
-            cCtx.strokeRect(sx + 1, sy + 1, sw - 2, sh - 2);
-
             slabIdx++;
           }
         }
@@ -914,28 +932,30 @@ export function createTumbledLimestoneFlagstoneTextures(): {
     colorMap.wrapT = THREE.RepeatWrapping;
     colorMap.repeat.set(1.25, 1.25);
     colorMap.colorSpace = THREE.SRGBColorSpace;
-    colorMap.anisotropy = 8;
+    colorMap.anisotropy = 16;
 
     const bumpMap = new THREE.CanvasTexture(bumpCanvas);
     bumpMap.wrapS = THREE.RepeatWrapping;
     bumpMap.wrapT = THREE.RepeatWrapping;
     bumpMap.repeat.set(1.25, 1.25);
-    bumpMap.anisotropy = 8;
+    bumpMap.anisotropy = 16;
 
     const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
       'tumbled-limestone-flagstone',
       bumpCanvas,
       {
-        normalStrength: 1.85,
-        mortarThreshold: 0.35,
-        mortarRoughness: 0.92,
-        surfaceRoughnessMin: 0.48,
-        surfaceRoughnessMax: 0.68,
-        microGrainRoughness: 0.03,
+        normalStrength: 0.95,
+        mortarThreshold: 0.65,
+        mortarRoughness: 0.68,
+        surfaceRoughnessMin: 0.45,
+        surfaceRoughnessMax: 0.61,
+        microGrainRoughness: 0.024,
       }
     );
     normalMap.repeat.set(1.25, 1.25);
+    normalMap.anisotropy = 16;
     roughnessMap.repeat.set(1.25, 1.25);
+    roughnessMap.anisotropy = 16;
 
     return { colorMap, bumpMap, normalMap, roughnessMap };
   });

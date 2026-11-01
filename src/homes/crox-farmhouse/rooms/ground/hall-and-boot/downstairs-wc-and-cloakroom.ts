@@ -28,7 +28,7 @@ function tagHighLod<T extends THREE.Object3D>(obj: T, maxDistance = 12): T {
 
 export type DownstairsWcAndCloakroomKit = Pick<
   ReturnType<typeof createGroundFloorMaterials>,
-  'antiqueOakSkirtingMat' | 'brassMat' | 'ceramicWhiteMat' | 'tagCutawayWall' | 'wallH'
+  'antiqueOakSkirtingMat' | 'brassMat' | 'ceramicWhiteMat' | 'tagCutawayWall' | 'wallH' | 'wimborneWhiteJoineryMat'
 > &
   Pick<
     ReturnType<typeof buildDiningRoom>,
@@ -49,8 +49,8 @@ export function buildDownstairsWcAndCloakroom(
 ): void {
   const { lightGroups, scene } = ctx;
   const {
-    antiqueOakSkirtingMat,
     brassMat,
+    wimborneWhiteJoineryMat,
     lowerDoorLintelH,
     lowerDoorLintelY,
     lowerFloorY,
@@ -506,33 +506,37 @@ export function buildDownstairsWcAndCloakroom(
   vertStackBoxing.receiveShadow = true;
   wastePipeBoxingGroup.add(vertStackBoxing);
 
+  // Neat low horizontal soil-pipe boxing (`0.278m` high) running along the lower West wall into the vertical corner soil stack,
+  // stopping cleanly behind the close-coupled WC pan shroud so the stepped white porcelain cistern sits flush on the West wall!
   const horizSoilBoxing = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.184, 0.858, 0.842)),
+    createSharedGeo(new THREE.BoxGeometry(0.156, 0.278, 0.42)),
     wcDarkWallMat
   );
   horizSoilBoxing.name = 'bootLobby.downstairsWc.wastePipeBoxing.horizontalDuct';
-  horizSoilBoxing.position.set(-12.7, lowerFloorY + 0.437, -2.061);
+  horizSoilBoxing.position.set(-12.714, marbleTopY + 0.139, -1.85);
   horizSoilBoxing.castShadow = true;
   horizSoilBoxing.receiveShadow = true;
   wastePipeBoxingGroup.add(horizSoilBoxing);
 
   const horizBoxingCapShelf = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.198, 0.022, 0.848)),
+    createSharedGeo(new THREE.BoxGeometry(0.17, 0.02, 0.426)),
     oliveJoineryMat
   );
   horizBoxingCapShelf.name = 'bootLobby.downstairsWc.wastePipeBoxing.capShelf';
-  horizBoxingCapShelf.position.set(-12.693, lowerFloorY + 0.877, -2.061);
+  horizBoxingCapShelf.position.set(-12.707, marbleTopY + 0.288, -1.85);
   horizBoxingCapShelf.castShadow = true;
   horizBoxingCapShelf.receiveShadow = true;
   wastePipeBoxingGroup.add(horizBoxingCapShelf);
 
-  // 45-degree mitred 146mm antique oak skirting wrapping the waste-pipe boxing up to the X = -12.70m false stud
+  // 45-degree mitred 146mm painted Wimborne White skirting wrapping the West wall, low soil-pipe boxing, and corner vertical stack
   const boxSkirt = new THREE.Mesh(
     createSharedGeo(
       buildMitredWallSkirtingGeometry(
         [
-          [-12.62, -2.482],
-          [-12.62, -1.64],
+          [-12.792, -2.482],
+          [-12.792, -2.06],
+          [-12.636, -2.06],
+          [-12.636, -1.64],
           [-12.6, -1.64],
           [-12.6, -1.32],
           [-12.7, -1.32],
@@ -540,7 +544,7 @@ export function buildDownstairsWcAndCloakroom(
         marbleTopY
       )
     ),
-    antiqueOakSkirtingMat
+    wimborneWhiteJoineryMat
   );
   boxSkirt.name = 'bootLobby.downstairsWc.wastePipeBoxing.skirting';
   boxSkirt.castShadow = true;
@@ -549,19 +553,16 @@ export function buildDownstairsWcAndCloakroom(
   wcGroup.add(wastePipeBoxingGroup);
 
   // =========================================================================
-  // 4. GEBERIT ACANTO TURBOFLUSH VORTEX WC (`502.719.00.1`) + PERRIN & ROWE `6772SB` CONCEALED CISTERN LEVER
+  // 4. GSI CLASSIC SWIRLFLUSH CLOSE-COUPLED WC + VISIBLE WHITE PORCELAIN CISTERN + PERRIN & ROWE `6772SB` SATIN BRASS LEVER
   // =========================================================================
   const vortexWc = buildLefroyBrooksCharterhouseWc({
     namePrefix: 'bootLobby.downstairsWc.acantoVortexWc',
     finish: 'SB',
-    variant: 'backToWallVortex',
-    collection: 'acantoVortex',
-    lowBoxingDepthM: 0.195,
-    concealedLeverYM: 0.74,
-    concealedLeverXM: 0.135,
+    variant: 'closeCoupled',
+    collection: 'gsiClassicSwirlflush',
     leverStyle: 'armstrong',
   });
-  vortexWc.position.set(-12.8, marbleTopY, -2.04);
+  vortexWc.position.set(-12.792, marbleTopY, -2.04);
   vortexWc.rotation.y = wallFacingToRotY('east');
   wcGroup.add(vortexWc);
 

@@ -435,7 +435,7 @@ export function buildUpperLanding(
     applyWorldSpaceBrickUVs(northBrickGeo, northCx, northCy, northCz);
     northBrickGeo.computeBoundingSphere();
     const northWallMats: THREE.Material[] = [
-      exteriorBrickMat,
+      warmRoomPlasterMat, // +X buried internal junction at X = -12.81m (zero brick leak into Room 17 NW corner!)
       exteriorBrickMat,
       exteriorBrickMat,
       warmRoomPlasterMat,

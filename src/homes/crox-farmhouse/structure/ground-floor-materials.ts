@@ -135,6 +135,14 @@ export function createGroundFloorMaterials(
     metalness: 0.03,
   });
 
+  // Farrow & Ball Wimborne White (No. 239) Modern Eggshell for painted bathroom skirtings & joinery
+  const wimborneWhiteJoineryMat = new THREE.MeshStandardMaterial({
+    name: 'farrowAndBallWimborneWhite239Ground',
+    color: 0xf7f4ec,
+    roughness: 0.34,
+    metalness: 0.02,
+  });
+
   // Natural raw-effect matte-satin European oak for all wall skirting boards, architraves, interior doors & beams
   // (matching reference photo media_1791557597873_0dec7400.jpg — pale muted sandy-taupe oak without Danish-oil orange cast)
   const naturalOakJoineryTextures = createNaturalOakJoineryTextures();
@@ -321,6 +329,7 @@ export function createGroundFloorMaterials(
     plasterMat,
     singleClayBrickMat,
     skirtingMat,
+    wimborneWhiteJoineryMat,
     stoneSillMat,
     tagCutawayWall,
     timberDoorMat,

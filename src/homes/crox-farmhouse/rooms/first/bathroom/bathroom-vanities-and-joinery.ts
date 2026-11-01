@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { EAST_WING_BATHROOM_VAULT } from '../../../structure/first-floor-materials.ts';
 import {
   buildArmstrongDeck3HoleBasinMixer,
   buildArmstrongPaperHolder,
@@ -798,7 +799,7 @@ function buildHangingWaffleBathrobe(
   const loop = new THREE.Mesh(loopGeo, collarTrimMat);
   loop.name = `${namePrefix}.hangingLoop`;
   loop.rotation.y = Math.PI * 0.5;
-  loop.position.set(0.036, 0.004, 0);
+  loop.position.set(0.020, 0.004, 0);
   group.add(loop);
 
   // Tapered pleated main robe drape (Y = -0.02 .. -1.08m) built from 5 vertical fabric fold lobes
@@ -812,7 +813,7 @@ function buildHangingWaffleBathrobe(
   ];
   for (const [fName, fx, fz, topR, botR] of foldOffsets) {
     const lobeGeo = prepGeo(new THREE.CylinderGeometry(topR, botR, robeLen, 14, 4));
-    lobeGeo.scale(0.68, 1, 1);
+    lobeGeo.scale(0.68, 1, 1.28);
     const lobe = new THREE.Mesh(lobeGeo, robeMat);
     lobe.name = `${namePrefix}.${fName}`;
     lobe.position.set(fx, -0.02 - robeLen * 0.5, fz * 1.12);
@@ -913,7 +914,7 @@ export function buildFamilyBathroomVanityAndToilet(
   const chinaMat = getVitreousChinaMaterial();
   const textiles = getBathroomTextileMaterials();
 
-  const collarCeilingY = 4.65;
+  const collarCeilingY = EAST_WING_BATHROOM_VAULT.collarCeilingY + EAST_WING_BATHROOM_VAULT.ceilingClearance + 0.001;
   const alcoveCx = -10.285; // 970mm SE alcove: X = -10.77m .. -9.80m
   const alcoveRearZ = -0.01;
 
@@ -1523,7 +1524,7 @@ export function buildFamilyBathroomVanityAndToilet(
     seatFinish: 'walnut',
     leverStyle: 'traditional',
   });
-  heritageVortexWc.position.set(-10.18, floorTopY, -2.5);
+  heritageVortexWc.position.set(-10.18, floorTopY, -2.5 + 0.0138);
   heritageVortexWc.rotation.y = wallFacingToRotY('south');
   scene.add(heritageVortexWc);
 
@@ -1535,7 +1536,7 @@ export function buildFamilyBathroomVanityAndToilet(
     finish: 'BR',
     style: 'traditional',
   });
-  paperHolder.position.set(-9.8, floorTopY + 0.66, -2.02);
+  paperHolder.position.set(-9.8 - 0.0138, floorTopY + 0.66, -2.02);
   paperHolder.rotation.y = wallFacingToRotY('west');
   scene.add(paperHolder);
 
@@ -1550,7 +1551,7 @@ export function buildFamilyBathroomVanityAndToilet(
       finish: 'BR',
       style: 'traditional',
     });
-    robeHook.position.set(-12.81, hookY, hookZ);
+    robeHook.position.set(-12.81 + 0.012, hookY, hookZ);
     robeHook.rotation.y = wallFacingToRotY('east');
     scene.add(robeHook);
 
@@ -1559,7 +1560,8 @@ export function buildFamilyBathroomVanityAndToilet(
       robeMat,
       trimMat
     );
-    hangingRobe.position.set(-12.81, hookY, hookZ);
+    // Shift +21mm clear East of the -12.7858m dado rail front nose so 0.0mm of dado rail clips through the fabric!
+    hangingRobe.position.set(-12.81 + 0.034, hookY, hookZ);
     scene.add(hangingRobe);
   }
 }

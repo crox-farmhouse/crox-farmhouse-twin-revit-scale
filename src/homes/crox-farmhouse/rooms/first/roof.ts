@@ -7,7 +7,7 @@ import {
   transformEastWingTuple,
 } from '../../structure/ground-floor-materials.ts';
 import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
-import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
+import { EAST_WING_BATHROOM_VAULT, getEastWingCeilingHeightAtZ, type createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
 
 function tagHighLodDetail(mesh: THREE.Mesh): void {
@@ -20,7 +20,7 @@ function tagHighLodDetail(mesh: THREE.Mesh): void {
  */
 export function buildFirstFloorCeilingsAndRoof(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'exteriorBrickMat' | 'stoneSillMat' | 'upperWallTopY'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'exteriorBrickMat' | 'schoolHouseWhiteMat' | 'stoneSillMat' | 'upperWallTopY'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'applyWorldSpaceBrickUVs'>,
   eastWingCtx: SceneBuilderContext = ctx
 ): void {
@@ -29,6 +29,7 @@ export function buildFirstFloorCeilingsAndRoof(
   const {
     applyWorldSpaceBrickUVs,
     exteriorBrickMat,
+    schoolHouseWhiteMat,
     stoneSillMat,
   } = kit;
   // =========================================================================
@@ -110,7 +111,8 @@ export function buildFirstFloorCeilingsAndRoof(
     p2: THREE.Vector3,
     p3: THREE.Vector3,
     thickness = 0.03,
-    targetGroup: THREE.Group = ceilingMeshGroup
+    targetGroup: THREE.Group = ceilingMeshGroup,
+    material: THREE.Material = upperCeilingMat
   ): THREE.Mesh => {
     const edgeA = new THREE.Vector3().subVectors(p1, p0);
     const edgeB = new THREE.Vector3().subVectors(p3, p0);
@@ -176,7 +178,7 @@ export function buildFirstFloorCeilingsAndRoof(
     geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geo.computeBoundingSphere();
-    const mesh = new THREE.Mesh(geo, upperCeilingMat);
+    const mesh = new THREE.Mesh(geo, material);
     mesh.name = name;
     mesh.userData.isArchitecturalShell = true;
     mesh.castShadow = true;
@@ -189,26 +191,38 @@ export function buildFirstFloorCeilingsAndRoof(
   // 1) Upper Landing & Family Bathroom (`X = -17.90m..-9.68m`): skeilings from `Y = 3.86m` (`Z = -2.50m / +2.40m`) up to `4.65m` collar (`Z = -1.15m..+1.35m`).
   // 2) Main Bedroom (`X = -9.56m..-4.52m`): low eaves `3.69m` North / `3.76m` South pitching up to `5.065m` collar (`2.555m` clear above `+2.51m` FFL!).
   {
+    const bathWestWallCenterX = -12.93;
+    const bathSouthPartitionCenterZ = 0.975;
     const mainBedWestWallX = -9.68;
     const mainBedInnerWestX = -9.565;
     const eastWallX = -4.64;
-    const landingEavesY = 3.86;
-    const collarCeilingY = 4.65;
-    const collarNorthZ = -1.15;
-    const collarSouthZ = 1.35;
+    const {
+      collarCeilingY,
+      collarNorthZ,
+      collarSouthZ,
+      northPitchBaseZ,
+      southPitchBaseZ,
+    } = EAST_WING_BATHROOM_VAULT;
     const mainBedNorthEavesY = 3.69;
     const mainBedSouthEavesY = 3.76;
     const mainBedCollarCeilingY = 5.065;
     const mainBedCollarNorthZ = -1.0;
     const mainBedCollarSouthZ = 1.2;
-    const northPitchBaseZ = -2.54;
-    const southPitchBaseZ = 2.44;
+    const landingEavesY = 3.86;
+    const landingCollarNorthZ = -1.15;
+    const landingCollarSouthZ = 1.35;
+    const landingNorthPitchBaseZ = -2.54;
+    const landingSouthPitchBaseZ = 2.44;
     const landingNorthBaseY =
       landingEavesY -
-      ((-2.5 - northPitchBaseZ) / (collarNorthZ - -2.5)) * (collarCeilingY - landingEavesY);
+      ((-2.5 - landingNorthPitchBaseZ) / (landingCollarNorthZ - -2.5)) *
+        (collarCeilingY - landingEavesY);
     const landingSouthBaseY =
       landingEavesY -
-      ((southPitchBaseZ - 2.4) / (2.4 - collarSouthZ)) * (collarCeilingY - landingEavesY);
+      ((landingSouthPitchBaseZ - 2.4) / (2.4 - landingCollarSouthZ)) *
+        (collarCeilingY - landingEavesY);
+    const bathNorthBaseY = getEastWingCeilingHeightAtZ(northPitchBaseZ);
+    const bathSouthBaseY = getEastWingCeilingHeightAtZ(southPitchBaseZ);
     const mainBedNorthBaseY =
       mainBedNorthEavesY -
       ((-2.5 - northPitchBaseZ) / (mainBedCollarNorthZ - -2.5)) *
@@ -220,35 +234,91 @@ export function buildFirstFloorCeilingsAndRoof(
     const xWestAtZ = (z: number): number =>
       -17.55 + ((z - -2.5) / (2.68 - -2.5)) * (-17.92 - -17.55) - 0.04;
 
-    // 1A. Upper Landing & Family Bathroom — North pitched skeiling (`Z = -2.50m, Y = 3.86m -> Z = -1.15m, Y = 4.65m`)
+    // 1A. Upper Landing (`X = xWest..bathWestWallCenterX`) — vaulted skeilings & collar in upperCeilingMat
     buildVaultedCeilingQuad(
       'eastWing.vaultedCeiling.northSkeiling',
-      new THREE.Vector3(xWestAtZ(northPitchBaseZ), landingNorthBaseY, northPitchBaseZ),
-      new THREE.Vector3(mainBedWestWallX, landingNorthBaseY, northPitchBaseZ),
-      new THREE.Vector3(mainBedWestWallX, collarCeilingY, collarNorthZ),
-      new THREE.Vector3(xWestAtZ(collarNorthZ), collarCeilingY, collarNorthZ),
+      new THREE.Vector3(xWestAtZ(landingNorthPitchBaseZ), landingNorthBaseY, landingNorthPitchBaseZ),
+      new THREE.Vector3(bathWestWallCenterX, landingNorthBaseY, landingNorthPitchBaseZ),
+      new THREE.Vector3(bathWestWallCenterX, collarCeilingY, landingCollarNorthZ),
+      new THREE.Vector3(xWestAtZ(landingCollarNorthZ), collarCeilingY, landingCollarNorthZ),
       0.03,
       ewCeilingMeshGroup
     );
-
-    // 1B. Upper Landing & Family Bathroom — Central horizontal collar ceiling (`Y = 4.65m, Z = -1.15m..+1.35m`)
     buildVaultedCeilingQuad(
       'eastWing.vaultedCeiling.collar',
-      new THREE.Vector3(xWestAtZ(collarNorthZ), collarCeilingY, collarNorthZ),
-      new THREE.Vector3(mainBedWestWallX, collarCeilingY, collarNorthZ),
-      new THREE.Vector3(mainBedWestWallX, collarCeilingY, collarSouthZ),
-      new THREE.Vector3(xWestAtZ(collarSouthZ), collarCeilingY, collarSouthZ),
+      new THREE.Vector3(xWestAtZ(landingCollarNorthZ), collarCeilingY, landingCollarNorthZ),
+      new THREE.Vector3(bathWestWallCenterX, collarCeilingY, landingCollarNorthZ),
+      new THREE.Vector3(bathWestWallCenterX, collarCeilingY, landingCollarSouthZ),
+      new THREE.Vector3(xWestAtZ(landingCollarSouthZ), collarCeilingY, landingCollarSouthZ),
+      0.03,
+      ewCeilingMeshGroup
+    );
+    buildVaultedCeilingQuad(
+      'eastWing.vaultedCeiling.southSkeiling',
+      new THREE.Vector3(xWestAtZ(landingCollarSouthZ), collarCeilingY, landingCollarSouthZ),
+      new THREE.Vector3(bathWestWallCenterX, collarCeilingY, landingCollarSouthZ),
+      new THREE.Vector3(bathWestWallCenterX, landingSouthBaseY, landingSouthPitchBaseZ),
+      new THREE.Vector3(xWestAtZ(landingSouthPitchBaseZ), landingSouthBaseY, landingSouthPitchBaseZ),
       0.03,
       ewCeilingMeshGroup
     );
 
-    // 1C. Upper Landing & Family Bathroom — South pitched skeiling (`Z = +1.35m, Y = 4.65m -> Z = +2.40m, Y = 3.86m`)
+    // 1B. Family Bathroom (`X = -12.93..-9.68m, Z = -2.52..+0.975m`, measurements.rvt eid 1608095: 49.0° North skeiling from 3.33m) — Farrow & Ball School House White (No. 291)
+    const bathCollarSouthEndZ = Math.min(collarSouthZ, bathSouthPartitionCenterZ);
     buildVaultedCeilingQuad(
-      'eastWing.vaultedCeiling.southSkeiling',
-      new THREE.Vector3(xWestAtZ(collarSouthZ), collarCeilingY, collarSouthZ),
-      new THREE.Vector3(mainBedWestWallX, collarCeilingY, collarSouthZ),
-      new THREE.Vector3(mainBedWestWallX, landingSouthBaseY, southPitchBaseZ),
-      new THREE.Vector3(xWestAtZ(southPitchBaseZ), landingSouthBaseY, southPitchBaseZ),
+      'familyBathroom.vaultedCeiling.northSkeiling',
+      new THREE.Vector3(bathWestWallCenterX, bathNorthBaseY, northPitchBaseZ),
+      new THREE.Vector3(mainBedWestWallX, bathNorthBaseY, northPitchBaseZ),
+      new THREE.Vector3(mainBedWestWallX, collarCeilingY, collarNorthZ),
+      new THREE.Vector3(bathWestWallCenterX, collarCeilingY, collarNorthZ),
+      0.03,
+      ewCeilingMeshGroup,
+      schoolHouseWhiteMat
+    );
+    buildVaultedCeilingQuad(
+      'familyBathroom.vaultedCeiling.collar',
+      new THREE.Vector3(bathWestWallCenterX, collarCeilingY, collarNorthZ),
+      new THREE.Vector3(mainBedWestWallX, collarCeilingY, collarNorthZ),
+      new THREE.Vector3(mainBedWestWallX, collarCeilingY, bathCollarSouthEndZ),
+      new THREE.Vector3(bathWestWallCenterX, collarCeilingY, bathCollarSouthEndZ),
+      0.03,
+      ewCeilingMeshGroup,
+      schoolHouseWhiteMat
+    );
+    if (collarSouthZ < bathSouthPartitionCenterZ - 1e-4) {
+      const bathPartitionSkeilingY = getEastWingCeilingHeightAtZ(bathSouthPartitionCenterZ);
+      buildVaultedCeilingQuad(
+        'familyBathroom.vaultedCeiling.southSkeiling',
+        new THREE.Vector3(bathWestWallCenterX, collarCeilingY, collarSouthZ),
+        new THREE.Vector3(mainBedWestWallX, collarCeilingY, collarSouthZ),
+        new THREE.Vector3(mainBedWestWallX, bathPartitionSkeilingY, bathSouthPartitionCenterZ),
+        new THREE.Vector3(bathWestWallCenterX, bathPartitionSkeilingY, bathSouthPartitionCenterZ),
+        0.03,
+        ewCeilingMeshGroup,
+        schoolHouseWhiteMat
+      );
+    }
+
+    // 1C. Upper South Passage (`X = -12.93..-9.68m, Z = +0.975..+2.42m`, 50.0° South skeiling from 3.765m) — upperCeilingMat
+    if (collarSouthZ > bathSouthPartitionCenterZ + 1e-4) {
+      buildVaultedCeilingQuad(
+        'upperSouthPassage.vaultedCeiling.collar',
+        new THREE.Vector3(bathWestWallCenterX, collarCeilingY, bathSouthPartitionCenterZ),
+        new THREE.Vector3(mainBedWestWallX, collarCeilingY, bathSouthPartitionCenterZ),
+        new THREE.Vector3(mainBedWestWallX, collarCeilingY, collarSouthZ),
+        new THREE.Vector3(bathWestWallCenterX, collarCeilingY, collarSouthZ),
+        0.03,
+        ewCeilingMeshGroup
+      );
+    }
+    const passageSkeilingStartZ = Math.max(collarSouthZ, bathSouthPartitionCenterZ);
+    const passageSkeilingStartY = getEastWingCeilingHeightAtZ(passageSkeilingStartZ);
+    buildVaultedCeilingQuad(
+      'upperSouthPassage.vaultedCeiling.southSkeiling',
+      new THREE.Vector3(bathWestWallCenterX, passageSkeilingStartY, passageSkeilingStartZ),
+      new THREE.Vector3(mainBedWestWallX, passageSkeilingStartY, passageSkeilingStartZ),
+      new THREE.Vector3(mainBedWestWallX, bathSouthBaseY, southPitchBaseZ),
+      new THREE.Vector3(bathWestWallCenterX, bathSouthBaseY, southPitchBaseZ),
       0.03,
       ewCeilingMeshGroup
     );
@@ -1093,6 +1163,27 @@ export function buildFirstFloorCeilingsAndRoof(
     northEaveBacking.name = 'roof.eastWing.northEaveBrickBacking';
     northEaveBacking.position.set(northBackingCx, 4.146, -2.6725);
     ewCeilingMeshGroup.add(northEaveBacking);
+
+    // Outer-leaf brick eaves spandrels behind low cottage skeilings (`z_ew = -2.78..-2.65m` North & `z_ew = +2.55..+2.68m` South):
+    // 150mm outside interior wall faces and >=180mm below the 29.1° exterior slate roof underside so exterior facades meet the 4.075m soffit seamlessly!
+    for (const [spName, minX, maxX, yBot, yTop, zMin, zMax] of [
+      ['roof.eastWing.northCottageEaveSpandrel', -12.81, -4.64, 3.32, 4.09, -2.78, -2.65],
+      ['roof.eastWing.southCottageEaveSpandrel', -12.93, -4.64, 3.75, 4.09, 2.55, 2.68],
+    ] as const) {
+      const spW = maxX - minX;
+      const spH = yTop - yBot;
+      const spD = zMax - zMin;
+      const spCx = (minX + maxX) * 0.5;
+      const spCy = (yBot + yTop) * 0.5;
+      const spCz = (zMin + zMax) * 0.5;
+      const spGeo = new THREE.BoxGeometry(spW, spH, spD);
+      applyWorldSpaceBrickUVs(spGeo, spCx, spCy, spCz);
+      spGeo.computeBoundingSphere();
+      const spMesh = new THREE.Mesh(spGeo, exteriorBrickMat);
+      spMesh.name = spName;
+      spMesh.position.set(spCx, spCy, spCz);
+      ewCeilingMeshGroup.add(spMesh);
+    }
   }
 
   // West Front Eaves Fascia, Soffit & Gutter (straight along X = westEaveX = -22.69m)

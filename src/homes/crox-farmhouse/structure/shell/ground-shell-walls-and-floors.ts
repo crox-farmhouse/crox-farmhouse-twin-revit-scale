@@ -68,6 +68,7 @@ export function createGroundShellWallsAndFloors(
       readonly skirtingSides?: readonly (-1 | 1)[];
       readonly skirtingMin?: number;
       readonly skirtingMax?: number;
+      readonly skirtingMaterial?: THREE.Material;
     }
   ): void => {
     const wallId = `groundFloor.interiorWall.${++intWallSeq}`;
@@ -96,6 +97,7 @@ export function createGroundShellWallsAndFloors(
       const capH = 0.024;
       const skirtT = 0.020;
       const sides = wallOptions?.skirtingSides ?? ([-1, 1] as const);
+      const effSkirtMat = wallOptions?.skirtingMaterial ?? antiqueOakSkirtingMat;
       if (w >= d) {
         const sMin = wallOptions?.skirtingMin ?? x - w / 2;
         const sMax = wallOptions?.skirtingMax ?? x + w / 2;
@@ -110,7 +112,7 @@ export function createGroundShellWallsAndFloors(
             const capZ = z + side * (d / 2 + wallGap + 0.008);
             const skirt = new THREE.Mesh(
               new THREE.BoxGeometry(sW, baseH, skirtT),
-              antiqueOakSkirtingMat
+              effSkirtMat
             );
             skirt.name = `${wallId}.skirting.${side < 0 ? "north" : "south"}`;
             skirt.userData.isArchitecturalShell = true;
@@ -120,7 +122,7 @@ export function createGroundShellWallsAndFloors(
 
             const skirtCap = new THREE.Mesh(
               createProfiledSkirtingCapGeometry(sW, true, side),
-              antiqueOakSkirtingMat
+              effSkirtMat
             );
             skirtCap.name = `${wallId}.skirtingCap.${side < 0 ? "north" : "south"}`;
             skirtCap.userData.isArchitecturalShell = true;
@@ -142,7 +144,7 @@ export function createGroundShellWallsAndFloors(
             const capX = x + side * (w / 2 + wallGap + 0.008);
             const skirt = new THREE.Mesh(
               new THREE.BoxGeometry(skirtT, baseH, sD),
-              antiqueOakSkirtingMat
+              effSkirtMat
             );
             skirt.name = `${wallId}.skirting.${side < 0 ? "west" : "east"}`;
             skirt.userData.isArchitecturalShell = true;
@@ -152,7 +154,7 @@ export function createGroundShellWallsAndFloors(
 
             const skirtCap = new THREE.Mesh(
               createProfiledSkirtingCapGeometry(sD, false, side),
-              antiqueOakSkirtingMat
+              effSkirtMat
             );
             skirtCap.name = `${wallId}.skirtingCap.${side < 0 ? "west" : "east"}`;
             skirtCap.userData.isArchitecturalShell = true;
@@ -294,7 +296,7 @@ export function createGroundShellWallsAndFloors(
     yBottom: number,
     yTop: number,
     interiorSide: 'north' | 'south' | 'east' | 'west',
-    wallOptions?: { readonly skipSkirting?: boolean }
+    wallOptions?: { readonly skipSkirting?: boolean; readonly skirtingMaterial?: THREE.Material }
   ): void => {
     const w = maxX - minX;
     const d = maxZ - minZ;
@@ -378,7 +380,8 @@ export function createGroundShellWallsAndFloors(
       const skirtGeo = isAlongX
         ? new THREE.BoxGeometry(w, baseH, skirtT)
         : shearGeometryAlongZ(new THREE.BoxGeometry(skirtT, baseH, d), slopeXPerZ);
-      const skirtMesh = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
+      const effExtSkirtMat = wallOptions?.skirtingMaterial ?? antiqueOakSkirtingMat;
+      const skirtMesh = new THREE.Mesh(skirtGeo, effExtSkirtMat);
       skirtMesh.name = `${wallId}.skirting`;
       const sx =
         interiorSide === 'east'
@@ -402,7 +405,7 @@ export function createGroundShellWallsAndFloors(
       const capGeo = isAlongX
         ? createProfiledSkirtingCapGeometry(w, true, capInwardSign)
         : shearGeometryAlongZ(createProfiledSkirtingCapGeometry(d, false, capInwardSign), slopeXPerZ);
-      const skirtCap = new THREE.Mesh(capGeo, antiqueOakSkirtingMat);
+      const skirtCap = new THREE.Mesh(capGeo, effExtSkirtMat);
       skirtCap.name = `${wallId}.skirtingCap`;
       const capSx =
         interiorSide === 'east'

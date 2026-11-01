@@ -9,6 +9,49 @@ import {
 import type { SceneBuilderContext } from '../../../engine/viewer/scene-types.ts';
 
 /**
+ * Parameterized East Wing Upper Landing / Family Bathroom (Room 17) vaulted skeiling & collar envelope.
+ * Centralizes eaves, collar, and ceiling slab clearances so walls, linings, joinery, and roof.ts meet
+ * with 0.000mm air gap and update atomically from Revit survey numbers.
+ */
+export const EAST_WING_BATHROOM_VAULT = {
+  northWallZ: -2.5,
+  southWallZ: 2.4,
+  northPitchBaseZ: -2.52,
+  southPitchBaseZ: 2.42,
+  northEavesY: 3.33,
+  southEavesY: 3.765,
+  northPitchDeg: 49.0,
+  southPitchDeg: 50.0,
+  collarCeilingY: 4.65,
+  collarNorthZ: -1.35254,
+  collarSouthZ: 1.6574,
+  ceilingClearance: 0.005,
+  ceilingSlabThickness: 0.03,
+  wallTopEmbed: 0.014,
+} as const;
+
+export function getEastWingCeilingHeightAtZ(z: number): number {
+  const {
+    northWallZ,
+    southWallZ,
+    northEavesY,
+    southEavesY,
+    collarCeilingY,
+    collarNorthZ,
+    collarSouthZ,
+  } = EAST_WING_BATHROOM_VAULT;
+  if (z <= collarNorthZ) {
+    const t = (z - northWallZ) / (collarNorthZ - northWallZ);
+    return northEavesY + t * (collarCeilingY - northEavesY);
+  }
+  if (z >= collarSouthZ) {
+    const t = (southWallZ - z) / (southWallZ - collarSouthZ);
+    return southEavesY + t * (collarCeilingY - southEavesY);
+  }
+  return collarCeilingY;
+}
+
+/**
  * First-floor level constants and shared architectural materials.
  *
  * Extracted verbatim from `buildMainHouseFirstFloorAndRoof` (first-floor-rooms.ts). Statement order and
@@ -150,14 +193,44 @@ export function createFirstFloorMaterials(
     name: 'masterBathroomLimestoneFlagstone',
     map: limestoneFlagstoneMaps.colorMap,
     normalMap: limestoneFlagstoneMaps.normalMap,
-    normalScale: new THREE.Vector2(0.45, 0.45),
+    normalScale: new THREE.Vector2(0.36, 0.36),
     roughnessMap: limestoneFlagstoneMaps.roughnessMap,
     color: 0xffffff,
-    roughness: 0.58,
+    roughness: 0.54,
+    metalness: 0.02,
+  });
+
+  // Farrow & Ball School House White (No. 291) Modern Emulsion — soft, chalky warm stone-white (#e6e1d5)
+  const schoolHouseWhiteMat = new THREE.MeshStandardMaterial({
+    name: 'farrowAndBallSchoolHouseWhite291',
+    color: 0xe6e1d5,
+    roughness: 0.84,
+    metalness: 0.01,
+  });
+
+  // Farrow & Ball Wimborne White (No. 239) Modern Eggshell — warm creamy-white satin bathroom joinery (#f7f4ec)
+  const wimborneWhiteJoineryMat = new THREE.MeshStandardMaterial({
+    name: 'farrowAndBallWimborneWhite239',
+    bumpMap: naturalOakJoineryTextures.bumpMap,
+    bumpScale: 0.0007,
+    color: 0xf7f4ec,
+    roughness: 0.34,
+    metalness: 0.02,
+  });
+
+  // Farrow & Ball Wimborne White (No. 239) Modern Eggshell — vertical T&G cottage matchboarding & dado/skirting (#f7f4ec)
+  const wimborneWhitePanellingMat = new THREE.MeshStandardMaterial({
+    name: 'farrowAndBallWimborneWhite239Panelling',
+    color: 0xf7f4ec,
+    vertexColors: true,
+    roughness: 0.34,
     metalness: 0.02,
   });
 
   return {
+    schoolHouseWhiteMat,
+    wimborneWhiteJoineryMat,
+    wimborneWhitePanellingMat,
     antiqueOakSkirtingMat,
     bathroomTileMat,
     masterLimestoneFloorMat,

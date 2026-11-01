@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { getLivingCopperPatinaMaps } from '../../engine/textures/timber-and-metal-textures.ts';
 import type {
   BathroomMetalMaterialPalette,
   BrasswareFinishCode,
@@ -513,34 +512,62 @@ export function getAcrymiteWhiteMaterial(): THREE.MeshPhysicalMaterial {
   return acrymiteWhiteCache;
 }
 
+let burnishedCopperColorMapCache: THREE.DataTexture | null = null;
+
+function getBurnishedCopperColorMap(): THREE.DataTexture {
+  if (burnishedCopperColorMapCache) return burnishedCopperColorMapCache;
+  const w = 256;
+  const h = 256;
+  const colorData = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    const v = y / h;
+    for (let x = 0; x < w; x++) {
+      const u = x / w;
+      const cloud = seamlessFbm2D(u, v, 3, 3, 2111);
+      const sweep = seamlessNoise2D(u, v, 5, 18, 4099);
+      // Barely-there warm tonal depth (±3%) so specular copper mirror sheen stays crisp and glossy
+      const warmShift = (cloud - 0.5) * 14 + (sweep - 0.5) * 5;
+      const idx = (y * w + x) * 4;
+      colorData[idx] = clampByte(250 + warmShift * 0.85);
+      colorData[idx + 1] = clampByte(247 + warmShift * 0.95);
+      colorData[idx + 2] = clampByte(244 + warmShift * 1.05);
+      colorData[idx + 3] = 255;
+    }
+  }
+  burnishedCopperColorMapCache = configureDataTexture(
+    colorData,
+    w,
+    h,
+    'bathroom.burnishedCopper.color',
+    true,
+    2,
+    1
+  );
+  return burnishedCopperColorMapCache;
+}
+
 let copperMaterialsCache: BurnishedCopperMaterialPalette | null = null;
-/** Burnished / polished copper exterior hull & deeper patinated copper plinth for BC Designs Boat Bath. */
+/** High-lustre burnished mirror-copper exterior hull & warm polished copper plinth for BC Designs Boat Bath. */
 export function getBurnishedCopperMaterials(): BurnishedCopperMaterialPalette {
   if (copperMaterialsCache) return copperMaterialsCache;
-  const patina = getLivingCopperPatinaMaps();
+  const colorModMap = getBurnishedCopperColorMap();
   const shell = new THREE.MeshPhysicalMaterial({
     name: 'bathroom.copperBurnishedShell',
-    color: 0xc26e41,
-    map: patina.shellColorModMap,
-    roughnessMap: patina.shellRoughnessMap,
-    normalMap: patina.normalMap,
-    normalScale: new THREE.Vector2(0.11, 0.11),
-    metalness: 0.89,
-    roughness: 1.0, // Driven directly by shellRoughnessMap in [0.24 .. 0.38]
-    clearcoat: 0.16,
-    clearcoatRoughness: 0.24,
+    color: 0xb96539,
+    map: colorModMap,
+    metalness: 0.90,
+    roughness: 0.13,
+    clearcoat: 0.42,
+    clearcoatRoughness: 0.08,
   });
   const plinth = new THREE.MeshPhysicalMaterial({
     name: 'bathroom.copperPatinatedPlinth',
-    color: 0xb8663b,
-    map: patina.plinthColorModMap,
-    roughnessMap: patina.plinthRoughnessMap,
-    normalMap: patina.normalMap,
-    normalScale: new THREE.Vector2(0.12, 0.12),
-    metalness: 0.87,
-    roughness: 1.0, // Driven directly by plinthRoughnessMap in [0.245 .. 0.385]
-    clearcoat: 0.14,
-    clearcoatRoughness: 0.26,
+    color: 0xa4562e,
+    map: colorModMap,
+    metalness: 0.90,
+    roughness: 0.13,
+    clearcoat: 0.42,
+    clearcoatRoughness: 0.08,
   });
   copperMaterialsCache = { shell, plinth };
   return copperMaterialsCache;
@@ -1021,7 +1048,7 @@ export function getBathroomTextileMaterials(): {
   bathroomTextilesCache = {
     ivoryWaffleRobe: new THREE.MeshStandardMaterial({
       name: 'bathroom.waffleRobe.warmIvory',
-      color: 0xf1ece0,
+      color: 0xe2d7c5,
       bumpMap: waffleBump,
       bumpScale: 0.0028,
       roughness: 0.89,
@@ -1030,7 +1057,7 @@ export function getBathroomTextileMaterials(): {
     }),
     oatmealWaffleRobe: new THREE.MeshStandardMaterial({
       name: 'bathroom.waffleRobe.naturalOatmeal',
-      color: 0xdcd2c0,
+      color: 0xd2c4ae,
       bumpMap: waffleBump,
       bumpScale: 0.0028,
       roughness: 0.90,

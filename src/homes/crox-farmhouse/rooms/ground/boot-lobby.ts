@@ -36,6 +36,7 @@ export function buildBootLobby(
     | 'engineeredOakFloorMat'
     | 'oakMat'
     | 'skirtingMat'
+    | 'wimborneWhiteJoineryMat'
     | 'tagCutawayWall'
     | 'wallH'
     | 'warmRoomPlasterMat'

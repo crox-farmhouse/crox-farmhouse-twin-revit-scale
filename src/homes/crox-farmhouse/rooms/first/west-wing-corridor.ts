@@ -67,7 +67,7 @@ function tagHighLodDetail(mesh: THREE.Mesh): void {
  */
 export function buildWestWingCorridor(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'wimborneWhiteJoineryMat' | 'windowGlassMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addShakerWardrobeDoor' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
 ): void {
   const { firstFloorMeshGroup: scene, interactions } = ctx;
@@ -87,6 +87,7 @@ export function buildWestWingCorridor(
     wallCapMat,
     wardrobeMat,
     warmRoomPlasterMat,
+    wimborneWhiteJoineryMat,
   } = kit;
 
   const landingFloorTopY = 2.16;
@@ -481,7 +482,7 @@ export function buildWestWingCorridor(
   ] as const) {
     const skirtGeo = buildMitredWallSkirtingGeometry(path, showerFloorY);
     skirtGeo.computeBoundingSphere();
-    const skirtMesh = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
+    const skirtMesh = new THREE.Mesh(skirtGeo, wimborneWhiteJoineryMat);
     skirtMesh.name = skirtName;
     skirtMesh.userData.isArchitecturalShell = true;
     skirtMesh.castShadow = true;

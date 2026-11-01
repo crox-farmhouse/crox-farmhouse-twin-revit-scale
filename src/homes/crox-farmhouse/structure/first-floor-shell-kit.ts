@@ -507,6 +507,8 @@ export function createFirstFloorShellKit(
       readonly trimFaceOffset?: number;
       readonly skipUnderApron?: boolean;
       readonly skipArchitrave?: boolean;
+      readonly seamMinusX?: boolean;
+      readonly seamPlusX?: boolean;
       readonly windowFamily?: 'tripleTopHungCentre' | 'tripleHorzBars' | 'singleCasement' | 'doubleCasement';
     }
   ): void => {
@@ -524,6 +526,7 @@ export function createFirstFloorShellKit(
     if (winLeft > minX + 0.02) {
       addUpperExteriorBrickWall(minX, winLeft, minZ, maxZ, baseWallY, topWallY, interiorSide, {
         skipSkirting: true,
+        seamMinusX: options?.seamMinusX,
         seamPlusX: true,
         forceTopCap: forceCap,
       });
@@ -532,6 +535,7 @@ export function createFirstFloorShellKit(
       addUpperExteriorBrickWall(winRight, maxX, minZ, maxZ, baseWallY, topWallY, interiorSide, {
         skipSkirting: true,
         seamMinusX: true,
+        seamPlusX: options?.seamPlusX,
         forceTopCap: forceCap,
       });
     }
