@@ -184,9 +184,10 @@ export function createGroundFloorMaterials(
   });
 
   const windowFrameMat = new THREE.MeshStandardMaterial({
-    color: 0xf2eee4,
-    roughness: 0.42,
-    metalness: 0.05,
+    name: 'architecturalWhiteWindowFrame',
+    color: 0xf7f5f0,
+    roughness: 0.34,
+    metalness: 0.02,
   });
 
   const windowGlassMat = new THREE.MeshStandardMaterial({

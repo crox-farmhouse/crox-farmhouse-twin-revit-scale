@@ -190,8 +190,8 @@ export function buildFirstFloorCeilingsAndRoof(
   // 2) Main Bedroom (`X = -9.56m..-4.52m`): low eaves `3.69m` North / `3.76m` South pitching up to `5.065m` collar (`2.555m` clear above `+2.51m` FFL!).
   {
     const mainBedWestWallX = -9.68;
-    const mainBedInnerWestX = -9.556;
-    const eastWallX = -4.658;
+    const mainBedInnerWestX = -9.565;
+    const eastWallX = -4.64;
     const landingEavesY = 3.86;
     const collarCeilingY = 4.65;
     const collarNorthZ = -1.15;

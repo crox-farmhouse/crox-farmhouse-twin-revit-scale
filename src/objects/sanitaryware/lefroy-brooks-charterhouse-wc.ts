@@ -322,7 +322,7 @@ export function buildLefroyBrooksCharterhouseWc(
   // Rear ceramic deck platform supporting close-coupled cistern or flush-pipe horn
   const rearDeckDepth = Math.max(0.11, bowlCenterZ - bowlInnerHalfL - panRearZ + 0.025);
   const rearDeck = new THREE.Mesh(
-    createCisternTierGeometry(panHalfW * 1.82, rearDeckDepth, 0.042, collection, 0.003),
+    createCisternTierGeometry(panHalfW * (isBtwVortex ? 1.50 : 1.82), rearDeckDepth, 0.042, collection, 0.003),
     chinaMat
   );
   rearDeck.name = `${p}.toiletPan.rearDeck`;
@@ -429,7 +429,7 @@ export function buildLefroyBrooksCharterhouseWc(
       finish: opts.finish,
       style: opts.leverStyle ?? 'armstrong',
     });
-    wallLever.position.set(opts.concealedLeverXM ?? 0.135, opts.concealedLeverYM ?? 0.86, 0);
+    wallLever.position.set(opts.concealedLeverXM ?? 0.135, opts.concealedLeverYM ?? 0.86, panRearZ);
     group.add(wallLever);
 
     return finalizeSanitaryGroup(group, 'sanitary');

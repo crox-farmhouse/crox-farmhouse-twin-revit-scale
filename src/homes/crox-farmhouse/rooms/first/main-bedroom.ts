@@ -122,7 +122,7 @@ export function buildMainBedroom(
       3.48,
       'south',
       2,
-      { skipSkirting: true, minSillY: 2.74, windowFamily: 'doubleCasement' }
+      { skipSkirting: true, minSillY: 2.74, wallTopY: northEavesY + 0.002, windowFamily: 'doubleCasement' }
     );
     ensureNamedAddedChildren(scene, idx, 'mainBedroom.northExteriorWall');
   }
@@ -145,6 +145,7 @@ export function buildMainBedroom(
       {
         skipSkirting: true,
         minSillY: 2.92,
+        wallTopY: southEavesY + 0.002,
         skipUnderApron: true,
         windowFamily: 'tripleTopHungCentre',
       }

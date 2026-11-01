@@ -3,13 +3,19 @@ import type { BathroomWallFacing } from './bathroom-spec-types.ts';
 export type * from './bathroom-spec-types.ts';
 
 export {
+  finalizeSanitaryGroup,
   getAcrymiteWhiteMaterial,
   getBathroomBrassMaterials,
+  getBathroomTextileMaterials,
   getBurnishedCopperMaterials,
+  getDarkOakVeneerMaterials,
+  getHonedCarraraMarbleMaterial,
   getMirostoneQuartzMaterial,
   getPaintedShakerCabinetMaterials,
   getVitreousChinaMaterial,
   getWcSeatMaterial,
+  getZelligeCreamWallTileMaterial,
+  prepGeo,
 } from './bathroom-materials.ts';
 
 export {

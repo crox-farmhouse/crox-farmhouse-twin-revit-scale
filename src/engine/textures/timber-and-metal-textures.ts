@@ -535,3 +535,296 @@ export function createNaturalOakJoineryTextures(): {
     return { colorMap, bumpMap };
   });
 }
+
+
+export interface LivingCopperPatinaMaps {
+  readonly shellColorModMap: THREE.DataTexture;
+  readonly plinthColorModMap: THREE.DataTexture;
+  readonly shellRoughnessMap: THREE.DataTexture;
+  readonly plinthRoughnessMap: THREE.DataTexture;
+  readonly normalMap: THREE.DataTexture;
+}
+
+let livingCopperPatinaCache: LivingCopperPatinaMaps | null = null;
+
+function hashPeriodic2D(ix: number, iy: number, periodX: number, periodY: number, seed: number): number {
+  const wx = ((ix % periodX) + periodX) % periodX;
+  const wy = ((iy % periodY) + periodY) % periodY;
+  let h = (wx * 374761393 + wy * 668265263 + seed * 1442695041) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h = h ^ (h >>> 16);
+  return (h >>> 0) / 4294967295;
+}
+
+function quinticSmooth(t: number): number {
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+/** Quintic C2-smooth 2D value noise, strictly periodic in X (`periodX`) and Y (`periodY`). */
+function periodicSmoothNoise2D(
+  u: number,
+  v: number,
+  freqX: number,
+  freqY: number,
+  seed: number
+): number {
+  const x = u * freqX;
+  const y = v * freqY;
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const fx = quinticSmooth(x - x0);
+  const fy = quinticSmooth(y - y0);
+
+  const n00 = hashPeriodic2D(x0, y0, freqX, freqY, seed);
+  const n10 = hashPeriodic2D(x0 + 1, y0, freqX, freqY, seed);
+  const n01 = hashPeriodic2D(x0, y0 + 1, freqX, freqY, seed);
+  const n11 = hashPeriodic2D(x0 + 1, y0 + 1, freqX, freqY, seed);
+
+  const nx0 = n00 + (n10 - n00) * fx;
+  const nx1 = n01 + (n11 - n01) * fx;
+  return nx0 + (nx1 - nx0) * fy;
+}
+
+function buildPatinaDataTexture(
+  data: Uint8Array<ArrayBuffer>,
+  width: number,
+  height: number,
+  name: string,
+  srgb: boolean
+): THREE.DataTexture {
+  const tex = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
+  tex.name = name;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.repeat.set(1, 1);
+  tex.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  tex.generateMipmaps = true;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/**
+ * Light, organic hand-rubbed living-copper / warm antique-bronze patina maps
+ * (`512x256` RGBA `DataTexture`s, strictly 1-periodic across `u in [0, 1)` for zero
+ * wraparound seam on closed bateau bath rings, and isotropic in 3D metres across the
+ * ~3.90m perimeter x ~0.42m hull / ~0.21m moulded plinth).
+ *
+ * Strictly warm honey-copper -> waxed bronze/umber mottling (zero green verdigris,
+ * zero harsh high-frequency blotches) paired with `0.24..0.38` roughness variation
+ * and a subtle artisan hand-planished tangent-space normal map.
+ */
+export function getLivingCopperPatinaMaps(): LivingCopperPatinaMaps {
+  if (livingCopperPatinaCache) return livingCopperPatinaCache;
+
+  const w = 512;
+  const h = 256;
+  const shellColor = new Uint8Array(w * h * 4);
+  const plinthColor = new Uint8Array(w * h * 4);
+  const shellRough = new Uint8Array(w * h * 4);
+  const plinthRough = new Uint8Array(w * h * 4);
+  const normalData = new Uint8Array(w * h * 4);
+  const heightField = new Float32Array(w * h);
+
+  // Sample organic isotropic cloud field at (u in [0,1), vMetric in [0, 0.25])
+  const sampleCloudAndPlanish = (
+    u: number,
+    vMetric: number
+  ): { readonly cloud: number; readonly waxSweep: number; readonly planish: number } => {
+    const dwU =
+      (periodicSmoothNoise2D(u, vMetric, 5, 8, 1709) - 0.5) * 0.042 +
+      (periodicSmoothNoise2D(u, vMetric, 9, 16, 2311) - 0.5) * 0.018;
+    const dwV =
+      (periodicSmoothNoise2D(u, vMetric, 5, 8, 2903) - 0.5) * 0.016 +
+      (periodicSmoothNoise2D(u, vMetric, 9, 16, 3517) - 0.5) * 0.008;
+
+    const uw = ((u + dwU) % 1 + 1) % 1;
+    const vw = ((vMetric + dwV) % 1 + 1) % 1;
+
+    // Broad ~45-75cm soft living-copper clouds + medium ~22-35cm hand-rubbed warmth
+    const cBroad = periodicSmoothNoise2D(uw, vw, 6, 8, 4127);
+    const cMed = periodicSmoothNoise2D(uw, vw, 11, 16, 4813);
+    const cSoft = periodicSmoothNoise2D(uw, vw, 19, 28, 5407);
+    const cloud = 0.54 * cBroad + 0.31 * cMed + 0.15 * cSoft;
+
+    // Gentle longitudinal beeswax polishing-cloth sweep
+    const waxSweep =
+      0.65 * periodicSmoothNoise2D(u, vMetric, 4, 36, 6101) +
+      0.35 * periodicSmoothNoise2D(u, vMetric, 8, 64, 6733);
+
+    // Subtle wide hand-planished sheet-metal undulation for specular breakup
+    const planish =
+      0.62 * periodicSmoothNoise2D(uw, vw, 14, 20, 7309) +
+      0.38 * periodicSmoothNoise2D(u, vMetric, 26, 38, 7919);
+
+    return { cloud, waxSweep, planish };
+  };
+
+  const clampB = (n: number): number => (n < 0 ? 0 : n > 255 ? 255 : Math.round(n));
+  const gauss = (v: number, center: number, sigma: number): number => {
+    const d = (v - center) / sigma;
+    return Math.exp(-d * d);
+  };
+
+  for (let y = 0; y < h; y++) {
+    const v = y / (h - 1); // 0 at bottom of mesh, 1 at top of mesh
+
+    // Continuous world-proportional vertical coordinate so clouds flow seamlessly across waistY
+    const vMetricShell = 0.062 + v * 0.118; // ~0.42m upper hull height
+    const vMetricPlinth = v * 0.062; // ~0.21m moulded plinth height
+
+    // Architectural patina shading along upper hull v in [0, 1]:
+    // - Subtle waxed bronze depth tucked right above waist collar joint (v = 0..0.09)
+    // - Gentle warm hand-buffed lift across mid-upper body (v = 0.48..0.82)
+    // - Delicate shadow tucked right beneath overhanging white rolled rim (v = 0.93..1.0)
+    const shellWaistCrease = gauss(v, 0.0, 0.075) * 0.42;
+    const shellRimUnder = gauss(v, 1.0, 0.055) * 0.22;
+    const shellHandBuff = gauss(v, 0.62, 0.26) * 0.18;
+
+    // Architectural patina shading along 3-part moulded plinth v in [0, 1]:
+    // - Floor pad & lower ogee base cove (v ~ 0.0..0.08 & v ~ 0.26) get gentle antique-bronze depth
+    // - Proud bullnose foot crown (v ~ 0.15) & cambered waist collar (v ~ 0.89) get warm hand-rubbed lift
+    // - Stepped-in collar throat (v ~ 0.76) & top waist rebate (v ~ 0.99) get subtle waxed patina
+    const plinthCovePatina =
+      gauss(v, 0.02, 0.055) * 0.34 +
+      gauss(v, 0.265, 0.062) * 0.38 +
+      gauss(v, 0.76, 0.045) * 0.36 +
+      gauss(v, 0.99, 0.035) * 0.38;
+    const plinthCrownBuff =
+      gauss(v, 0.155, 0.044) * 0.24 +
+      gauss(v, 0.885, 0.054) * 0.26;
+
+    for (let x = 0; x < w; x++) {
+      const u = x / w; // strictly in [0, 1) -> x=0 and x=w wrap with 0 discontinuity
+
+      const sSample = sampleCloudAndPlanish(u, vMetricShell);
+      const pSample = sampleCloudAndPlanish(u, vMetricPlinth);
+
+      // Normalize 3-octave FBM (~[0.37..0.63]) via smooth tanh into [-1, +1] so soft
+      // low-frequency cloudy mottling reads clearly yet organically without harsh edges
+      const sCloudNorm = Math.tanh(
+        ((sSample.cloud - 0.5) * 4.4 + (sSample.waxSweep - 0.5) * 1.15)
+      );
+      const pCloudNorm = Math.tanh(
+        ((pSample.cloud - 0.5) * 4.4 + (pSample.waxSweep - 0.5) * 1.15)
+      );
+
+      // Net patina factor in approx [-1.1 .. +1.0]:
+      // + values -> warm honey-copper hand-rubbed highlight
+      // - values -> light antique-bronze / warm umber patina (strictly warm, zero green!)
+      const sTone = sCloudNorm * 0.68 + shellHandBuff - shellWaistCrease - shellRimUnder;
+      const pTone = pCloudNorm * 0.68 + plinthCrownBuff - plinthCovePatina;
+
+      const sDeep = Math.max(0, -sTone);
+      const pDeep = Math.max(0, -pTone);
+
+      // Light living-copper color modulation:
+      // Peak highlight (+0.85) -> rgb(255, 245, 236) (warm burnished honey-copper)
+      // Mid tone (0.0)         -> rgb(219, 203, 190) (warm waxed copper-bronze)
+      // Deeper cloud (-0.85)   -> rgb(171, 146, 130) (soft antique bronze / warm umber)
+      const sR = clampB(219 + sTone * 46);
+      const sG = clampB(203 + sTone * 52 - sDeep * 11);
+      const sB = clampB(190 + sTone * 56 - sDeep * 15);
+
+      const pR = clampB(213 + pTone * 46);
+      const pG = clampB(196 + pTone * 52 - pDeep * 11);
+      const pB = clampB(183 + pTone * 56 - pDeep * 15);
+
+      // Roughness in [0.24 .. 0.38] (bytes 61 .. 97 when material.roughness = 1.0):
+      // brighter honey-rubbed areas are smoother (~0.24-0.26), deeper patina clouds/coves are ~0.35-0.38
+      const sRoughVal = Math.max(
+        0.24,
+        Math.min(0.38, 0.306 - sTone * 0.068 + (0.5 - sSample.planish) * 0.032)
+      );
+      const pRoughVal = Math.max(
+        0.245,
+        Math.min(0.385, 0.318 - pTone * 0.068 + (0.5 - pSample.planish) * 0.032)
+      );
+      const sRoughByte = clampB(sRoughVal * 255);
+      const pRoughByte = clampB(pRoughVal * 255);
+
+      const idx = (y * w + x) * 4;
+      shellColor[idx] = sR;
+      shellColor[idx + 1] = sG;
+      shellColor[idx + 2] = sB;
+      shellColor[idx + 3] = 255;
+
+      plinthColor[idx] = pR;
+      plinthColor[idx + 1] = pG;
+      plinthColor[idx + 2] = pB;
+      plinthColor[idx + 3] = 255;
+
+      shellRough[idx] = sRoughByte;
+      shellRough[idx + 1] = sRoughByte;
+      shellRough[idx + 2] = sRoughByte;
+      shellRough[idx + 3] = 255;
+
+      plinthRough[idx] = pRoughByte;
+      plinthRough[idx + 1] = pRoughByte;
+      plinthRough[idx + 2] = pRoughByte;
+      plinthRough[idx + 3] = 255;
+
+      heightField[y * w + x] =
+        sSample.planish * 0.62 + sSample.cloud * 0.26 + sSample.waxSweep * 0.12;
+    }
+  }
+
+  // Derive seamless periodic tangent-space normal map (periodic in X, clamped in Y)
+  const strength = 1.35;
+  for (let y = 0; y < h; y++) {
+    const ym = Math.max(0, y - 1);
+    const yp = Math.min(h - 1, y + 1);
+    for (let x = 0; x < w; x++) {
+      const xm = (x - 1 + w) % w;
+      const xp = (x + 1) % w;
+      // Scale dX by ~1/6 relative to dY to compensate for perimeter:height aspect ratio (~3.9m vs ~0.42m)
+      const dX = (heightField[y * w + xp]! - heightField[y * w + xm]!) * strength * 1.4;
+      const dY = (heightField[yp * w + x]! - heightField[ym * w + x]!) * strength * 0.35;
+      const nx = -dX;
+      const ny = -dY;
+      const nz = 1.0;
+      const invLen = 1.0 / Math.hypot(nx, ny, nz);
+
+      const idx = (y * w + x) * 4;
+      normalData[idx] = clampB((nx * invLen * 0.5 + 0.5) * 255);
+      normalData[idx + 1] = clampB((ny * invLen * 0.5 + 0.5) * 255);
+      normalData[idx + 2] = clampB((nz * invLen * 0.5 + 0.5) * 255);
+      normalData[idx + 3] = 255;
+    }
+  }
+
+  livingCopperPatinaCache = {
+    shellColorModMap: buildPatinaDataTexture(
+      shellColor,
+      w,
+      h,
+      'bathroom.livingCopper.shellColor',
+      true
+    ),
+    plinthColorModMap: buildPatinaDataTexture(
+      plinthColor,
+      w,
+      h,
+      'bathroom.livingCopper.plinthColor',
+      true
+    ),
+    shellRoughnessMap: buildPatinaDataTexture(
+      shellRough,
+      w,
+      h,
+      'bathroom.livingCopper.shellRoughness',
+      false
+    ),
+    plinthRoughnessMap: buildPatinaDataTexture(
+      plinthRough,
+      w,
+      h,
+      'bathroom.livingCopper.plinthRoughness',
+      false
+    ),
+    normalMap: buildPatinaDataTexture(normalData, w, h, 'bathroom.livingCopper.normal', false),
+  };
+  return livingCopperPatinaCache;
+}

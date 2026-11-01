@@ -89,11 +89,11 @@ Zone GAs: scene 1/6/4 · night 1/6/5 · full/off 1/6/6 · dim 1/6/7 · scene sta
 | --- | --- | --- | --- | --- |
 | 1.1.10 | Kitchen entrance 2-gang | Kitchen — hall door (west) | 1: Kitchen · 2: Sitting area | (-4.16, 1.28, 3.76) |
 | 1.1.30 | Kitchen AGA wall | Kitchen — left of AGA (north wall) | 1: Kitchen | (-2.63, 1.22, -0.56) |
-| 1.1.14 | Bifold pier 2-gang | Kitchen — south bifold pier | 1: Kitchen · 2: Courtyard | (1.16, 1.28, 4.47) |
+| 1.1.14 | Bifold pier 2-gang | Kitchen — south bifold pier | 1: Kitchen · 2: Courtyard | (0.96, 1.28, 4.44) |
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
-| 1.1.12 | Kitchen PIR & lux | 1/4/1 | (0.77, 2.98, 3.07) | 60s |
+| 1.1.12 | Kitchen PIR & lux | 1/4/1 | (0.77, 2.52, 3.07) | 60s |
 
 ### Kitchen sitting area (`sitting`)
 
@@ -143,7 +143,7 @@ Zone GAs: scene 1/6/12 · night 1/6/13 · full/off 1/6/14 · dim 1/6/15 · scene
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
-| 1.1.13 | Utility PIR | 1/4/3 | (3.85, 2.98, 1.36) | 60s |
+| 1.1.13 | Utility PIR | 1/4/3 | (3.85, 2.52, 1.36) | 60s |
 
 ### Dining room (`familyRoom`)
 
@@ -182,7 +182,7 @@ Zone GAs: scene 1/6/20 · night 1/6/21 · full/off 1/6/22 · dim 1/6/23 · scene
 | --- | --- | --- | --- | --- | --- |
 | Boot Lobby (`bootLobbyPendant`) | wall | 1.1.20 / 11 | 1/2/11 | yes | L1 E2 P1 — bootLobby.northWallLight.shade; bootLobby.northWallLight.bulb; PointLight |
 | Wine Cellar LEDs (`wineCellarLeds`) | shelf | 1.1.20 / 23 | 1/2/17 | switched | L1 E2 P1 — bootLobby.wineCellar.ledStrip.upper ×6; bootLobby.wineCellar.ledStrip.vertical ×4; bootLobby.wineCellar.ledStrip.lower ×2; bootLobby.wineCellar.ledStrip.northCounter |
-| Cloakroom WC (`cloakroomWcLights`) | wall | 1.1.20 / 24 | 1/2/18 | switched | L1 E5 P0 — bootLobby.downstairsWc.mirrorLedStrip ×4; bootLobby.downstairsWc.mirrorLedHalo ×4; bootLobby.downstairsWc.wallSconce.shade ×2; bootLobby.downstairsWc.wallSconce.bulb ×2 |
+| Cloakroom WC (`cloakroomWcLights`) | wall | 1.1.20 / 24 | 1/2/18 | switched | L1 E5 P0 — bootLobby.downstairsWc.wallSconce.shade ×2; bootLobby.downstairsWc.wallSconce.bulb ×2; bootLobby.downstairsWc.mirrorLedStrip.top; bootLobby.downstairsWc.mirrorLedStrip.bottom |
 
 | # | Scene | Levels |
 | ---: | --- | --- |
@@ -222,7 +222,7 @@ Zone GAs: scene 1/6/24 · night 1/6/25 · full/off 1/6/26 · dim 1/6/27 · scene
 | Switch PA | Plate | Location | Gangs | World position |
 | --- | --- | --- | --- | --- |
 | 1.1.17 | Stair foot 2-gang | Staircase hall — east wall by boot-lobby door (stair foot) | 1: Hall · 2: Landing | (-12.87, 0.88, 1.55) |
-| 1.2.12 | Stair head 2-gang | Landing — top of stairs | 1: Landing · 2: Hall | (-12.87, 3.23, 1.52) |
+| 1.2.12 | Stair head 2-gang | Landing — top of stairs | 1: Landing · 2: Hall | (-12.87, 3.20, 1.52) |
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
@@ -238,7 +238,7 @@ Zone GAs: scene 1/6/28 · night 1/6/29 · full/off 1/6/30 · dim 1/6/31 · scene
 | Wall Lights (`livingRoomWallLights`) | wall | 1.1.28 / 10 | 1/2/31 | yes | L0 E2 P0 — livingRoom.wallLight.left.lens.up; livingRoom.wallLight.left.lens.down; livingRoom.wallLight.right.lens.up; livingRoom.wallLight.right.lens.down |
 | Picture Lights (`frontRoomPendant`) | picture | 1.1.20 / 13 | 1/2/13 | yes | L1 E1 P3 — livingRoom.eastWallLight.bulb ×3; livingRoom.eastWallPictureLightWash |
 | Alcove LEDs (`livingRoomShelfLeds`) | shelf | 1.1.28 / 5 | 1/2/27 | yes | L0 E1 P2 — livingRoom.alcove.left.ledStrip ×3; livingRoom.alcove.right.ledStrip ×3 |
-| TV Bias Light (`livingRoomTvBacklight`) | strip | 1.1.28 / 6 | 1/2/28 | yes | L0 E1 P0 — livingRoom.lg83GalleryOled.biasLight |
+| TV Bias Light (`livingRoomTvBacklight`) | strip | 1.1.28 / 6 | 1/2/28 | yes | L0 E1 P0 — livingRoom.projectorScreen.biasLight |
 
 | # | Scene | Levels |
 | ---: | --- | --- |
@@ -274,7 +274,7 @@ Zone GAs: scene 1/6/32 · night 1/6/33 · full/off 1/6/34 · dim 1/6/35 · scene
 
 | Switch PA | Plate | Location | Gangs | World position |
 | --- | --- | --- | --- | --- |
-| 1.1.19 | Entrance hall | Front entrance hall — south wall by front door | 1: Entrance hall | (-21.55, 0.58, 3.55) |
+| 1.1.19 | Entrance hall | Front entrance hall — south wall by front door | 1: Entrance hall | (-21.55, 0.65, 3.55) |
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
@@ -327,7 +327,7 @@ Zone GAs: scene 1/6/40 · night 1/6/41 · full/off 1/6/42 · dim 1/6/43 · scene
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
-| 1.1.24 | Plant room PIR (wall) | 1/4/30 | (-17.50, 1.27, 9.92) | 60s |
+| 1.1.24 | Plant room PIR (wall) | 1/4/30 | (-17.50, 1.18, 9.92) | 60s |
 
 ### Main bedroom (`mainBedroom`)
 
@@ -346,11 +346,11 @@ Zone GAs: scene 2/6/4 · night 2/6/5 · full/off 2/6/6 · dim 2/6/7 · scene sta
 
 | Switch PA | Plate | Location | Gangs | World position |
 | --- | --- | --- | --- | --- |
-| 1.2.10 | Main bedroom | Main bedroom — doorway | 1: Main bedroom | (-9.41, 3.49, 1.98) |
+| 1.2.10 | Main bedroom | Main bedroom — doorway | 1: Main bedroom | (-9.41, 3.66, 1.98) |
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
-| 1.2.60 | Main bedroom PIR | 2/4/21 | (-6.90, 4.68, 3.01) | 60s |
+| 1.2.60 | Main bedroom PIR | 2/4/21 | (-6.90, 5.07, 2.16) | 60s |
 
 ### Family bathroom (`familyBathroom`)
 
@@ -369,11 +369,11 @@ Zone GAs: scene 2/6/8 · night 2/6/9 · full/off 2/6/10 · dim 2/6/11 · scene s
 
 | Switch PA | Plate | Location | Gangs | World position |
 | --- | --- | --- | --- | --- |
-| 1.2.11 | Family bathroom | Family bathroom — doorway | 1: Bathroom | (-11.55, 3.23, 1.67) |
+| 1.2.11 | Family bathroom pull cord | Family bathroom — ceiling pull cord by doorway | 1: Bathroom | (-11.58, 0.00, 1.59) |
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
-| 1.2.61 | Family bathroom PIR | 2/4/22 | (-11.07, 4.52, 1.47) | 60s |
+| 1.2.61 | Family bathroom PIR | 2/4/22 | (-11.07, 4.65, 1.47) | 60s |
 
 ### Landing (`upperLanding`)
 
@@ -394,11 +394,11 @@ Zone GAs: scene 2/6/12 · night 2/6/13 · full/off 2/6/14 · dim 2/6/15 · scene
 | Switch PA | Plate | Location | Gangs | World position |
 | --- | --- | --- | --- | --- |
 | 1.1.17 | Stair foot 2-gang | Staircase hall — east wall by boot-lobby door (stair foot) | 1: Hall · 2: Landing | (-12.87, 0.88, 1.55) |
-| 1.2.12 | Stair head 2-gang | Landing — top of stairs | 1: Landing · 2: Hall | (-12.87, 3.23, 1.52) |
+| 1.2.12 | Stair head 2-gang | Landing — top of stairs | 1: Landing · 2: Hall | (-12.87, 3.20, 1.52) |
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
-| 1.2.62 | Landing PIR | 2/4/23 | (-15.80, 4.52, 1.12) | 60s |
+| 1.2.62 | Landing PIR | 2/4/23 | (-15.80, 4.65, 1.12) | 60s |
 
 ### Bedroom 2 (`bedroom2`)
 
@@ -417,11 +417,11 @@ Zone GAs: scene 2/6/16 · night 2/6/17 · full/off 2/6/18 · dim 2/6/19 · scene
 
 | Switch PA | Plate | Location | Gangs | World position |
 | --- | --- | --- | --- | --- |
-| 1.2.13 | Bedroom 2 | Bedroom 2 — doorway | 1: Bedroom 2 | (-19.00, 3.23, 1.15) |
+| 1.2.13 | Bedroom 2 | Bedroom 2 — doorway | 1: Bedroom 2 | (-19.00, 3.20, 1.12) |
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
-| 1.2.63 | Bedroom 2 PIR | 2/4/24 | (-19.25, 5.02, 0.65) | 60s |
+| 1.2.63 | Bedroom 2 PIR | 2/4/24 | (-19.25, 4.73, 0.65) | 60s |
 
 ### Bedroom 3 (`bedroom3`)
 
@@ -440,11 +440,11 @@ Zone GAs: scene 2/6/20 · night 2/6/21 · full/off 2/6/22 · dim 2/6/23 · scene
 
 | Switch PA | Plate | Location | Gangs | World position |
 | --- | --- | --- | --- | --- |
-| 1.2.14 | Bedroom 3 | Bedroom 3 — doorway | 1: Bedroom 3 | (-18.48, 3.23, 6.82) |
+| 1.2.14 | Bedroom 3 | Bedroom 3 — doorway | 1: Bedroom 3 | (-18.29, 3.23, 6.72) |
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
-| 1.2.64 | Bedroom 3 PIR | 2/4/25 | (-19.80, 5.02, 5.72) | 60s |
+| 1.2.64 | Bedroom 3 PIR | 2/4/25 | (-19.63, 5.05, 5.72) | 60s |
 
 ### Bedroom 4 (`bedroom4`)
 
@@ -463,11 +463,11 @@ Zone GAs: scene 2/6/24 · night 2/6/25 · full/off 2/6/26 · dim 2/6/27 · scene
 
 | Switch PA | Plate | Location | Gangs | World position |
 | --- | --- | --- | --- | --- |
-| 1.2.15 | Bedroom 4 | Bedroom 4 — doorway | 1: Bedroom 4 | (-18.35, 3.23, 8.39) |
+| 1.2.15 | Bedroom 4 | Bedroom 4 — doorway | 1: Bedroom 4 | (-18.32, 3.20, 8.39) |
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
-| 1.2.65 | Bedroom 4 PIR | 2/4/26 | (-19.20, 5.02, 10.53) | 60s |
+| 1.2.65 | Bedroom 4 PIR | 2/4/26 | (-19.20, 5.05, 10.53) | 60s |
 
 ### Courtyard (`courtyard`)
 
@@ -490,7 +490,7 @@ Zone GAs: scene 5/6/4 · night 5/6/5 · full/off 5/6/6 · dim 5/6/7 · scene sta
 
 | Switch PA | Plate | Location | Gangs | World position |
 | --- | --- | --- | --- | --- |
-| 1.1.14 | Bifold pier 2-gang | Kitchen — south bifold pier | 1: Kitchen · 2: Courtyard | (1.16, 1.28, 4.47) |
+| 1.1.14 | Bifold pier 2-gang | Kitchen — south bifold pier | 1: Kitchen · 2: Courtyard | (0.96, 1.28, 4.44) |
 | 2.1.62 | Office patio doors 2-gang | Office — east patio doors | 1: Office · 2: Garden | (9.05, 0.61, 14.22) |
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
@@ -612,7 +612,7 @@ Zone GAs: scene 3/6/16 · night 3/6/17 · full/off 3/6/18 · dim 3/6/19 · scene
 | --- | --- | --- | --- | --- |
 | 2.1.50 | Store to barn portal 2-gang | Store corridor — east end by barn portal | 1: Store · 2: Barn | (-7.64, 0.71, 15.90) |
 | 2.1.51 | Barn west entry 2-gang | Barn — west portal from store corridor | 1: Barn · 2: Mezzanine | (-7.02, 0.71, 14.97) |
-| 2.1.52 | Barn courtyard door 2-gang | Barn — north courtyard door | 1: Barn · 2: Mezzanine | (-5.47, 0.71, 14.83) |
+| 2.1.52 | Barn courtyard door 2-gang | Barn — north courtyard door | 1: Barn · 2: Mezzanine | (-4.85, 0.71, 14.78) |
 | 2.1.53 | Golf sim console | Barn — golf sim & viewing bar steps | 1: Barn | (-4.05, 0.71, 19.86) |
 | 2.1.54 | Sunken lounge steps | Barn — sunken pool lounge steps (north) | 1: Barn | (-3.40, 0.38, 14.65) |
 | 2.1.55 | Spiral stair foot 2-gang | Barn — spiral stair base | 1: Barn · 2: Mezzanine | (-1.16, 0.38, 19.61) |
@@ -648,7 +648,7 @@ Zone GAs: scene 3/6/20 · night 3/6/21 · full/off 3/6/22 · dim 3/6/23 · scene
 | Switch PA | Plate | Location | Gangs | World position |
 | --- | --- | --- | --- | --- |
 | 2.1.51 | Barn west entry 2-gang | Barn — west portal from store corridor | 1: Barn · 2: Mezzanine | (-7.02, 0.71, 14.97) |
-| 2.1.52 | Barn courtyard door 2-gang | Barn — north courtyard door | 1: Barn · 2: Mezzanine | (-5.47, 0.71, 14.83) |
+| 2.1.52 | Barn courtyard door 2-gang | Barn — north courtyard door | 1: Barn · 2: Mezzanine | (-4.85, 0.71, 14.78) |
 | 2.1.55 | Spiral stair foot 2-gang | Barn — spiral stair base | 1: Barn · 2: Mezzanine | (-1.16, 0.38, 19.61) |
 | 2.1.57 | Mezzanine stair head 2-gang | Mezzanine — stair landing & suite steps | 1: Mezzanine · 2: Barn | (0.65, 2.59, 16.34) |
 | 2.1.58 | Mezzanine sofa wall 2-gang | Mezzanine — south wall by sofa | 1: Mezzanine · 2: Barn | (-1.43, 2.59, 19.63) |
@@ -680,13 +680,13 @@ Zone GAs: scene 3/6/24 · night 3/6/25 · full/off 3/6/26 · dim 3/6/27 · scene
 | --- | --- | --- | --- | --- |
 | 2.1.56 | Barn to office door | Barn — by glass door to office | 1: Barn · 2: Office | (0.71, 0.38, 17.04) |
 | 2.1.59 | Office west door | Office — west door from barn | 1: Office · 2: Barn | (0.94, 0.61, 17.02) |
-| 2.1.60 | Office courtyard door | Office — north courtyard door | 1: Office | (2.38, 0.61, 14.16) |
+| 2.1.60 | Office courtyard door | Office — north courtyard door | 1: Office | (2.58, 0.61, 14.14) |
 | 2.1.61 | Office cloakroom door | Office — by cloakroom WC door | 1: Office | (2.32, 0.61, 17.81) |
 | 2.1.62 | Office patio doors 2-gang | Office — east patio doors | 1: Office · 2: Garden | (9.05, 0.61, 14.22) |
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
-| 2.1.85 | Office PIR | 3/4/26 | (5.07, 1.96, 16.49) | 60s |
+| 2.1.85 | Office PIR | 3/4/26 | (5.07, 2.35, 16.49) | 60s |
 
 ### Guest suite (`outbuildingStableSuite`)
 
@@ -708,15 +708,15 @@ Zone GAs: scene 3/6/28 · night 3/6/29 · full/off 3/6/30 · dim 3/6/31 · scene
 
 | Switch PA | Plate | Location | Gangs | World position |
 | --- | --- | --- | --- | --- |
-| 2.1.63 | Guest suite entry | Guest suite — entry portal from mezzanine | 1: Guest suite | (1.15, 3.13, 17.34) |
-| 2.1.64 | Ensuite door | Guest suite — ensuite door | 1: Guest suite | (3.26, 3.13, 17.16) |
-| 2.1.65 | Bedside west | Guest suite — bedside (west) | 1: Guest suite | (4.14, 2.80, 19.15) |
-| 2.1.66 | Bedside east | Guest suite — bedside (east) | 1: Guest suite | (6.47, 2.80, 18.95) |
-| 2.1.67 | Balcony doors | Guest suite — balcony doors | 1: Guest suite | (6.22, 3.13, 14.02) |
+| 2.1.63 | Guest suite entry | Guest suite — entry portal from mezzanine | 1: Guest suite | (1.15, 3.52, 17.34) |
+| 2.1.64 | Ensuite door | Guest suite — ensuite door | 1: Guest suite | (3.26, 3.52, 17.16) |
+| 2.1.65 | Bedside west | Guest suite — bedside (west) | 1: Guest suite | (4.14, 3.19, 19.15) |
+| 2.1.66 | Bedside east | Guest suite — bedside (east) | 1: Guest suite | (6.47, 3.19, 18.95) |
+| 2.1.67 | Balcony doors | Guest suite — balcony doors | 1: Guest suite | (6.22, 3.52, 14.02) |
 
 | Detector PA | Name | Presence GA | Mount (world) | Hold |
 | --- | --- | --- | --- | --- |
-| 2.1.86 | Guest suite PIR | 3/4/27 | (3.75, 4.67, 16.61) | 60s |
+| 2.1.86 | Guest suite PIR | 3/4/27 | (3.75, 5.06, 16.61) | 60s |
 
 ## Walkthrough presence
 

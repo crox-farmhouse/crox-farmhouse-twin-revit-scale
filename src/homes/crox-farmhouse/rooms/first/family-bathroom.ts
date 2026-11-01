@@ -40,7 +40,7 @@ function ensureNamedAddedChildren(parent: THREE.Object3D, startIdx: number, pref
  */
 export function buildFamilyBathroom(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'floorTopY' | 'masterLimestoneFloorMat' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowGlassMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBrickWallAlongXWithWindow' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
@@ -50,8 +50,8 @@ export function buildFamilyBathroom(
     addUpperInteractiveDoor,
     addUpperInteriorWall,
     antiqueOakSkirtingMat,
-    bathroomTileMat,
     brassMat,
+    masterLimestoneFloorMat,
     ceramicWhiteMat,
     doorH,
     floorTopY,
@@ -69,11 +69,11 @@ export function buildFamilyBathroom(
   // - East Bathroom zone (`X = -10.695m..-9.68m, Z = -2.64m..+0.05m`, terminating inside the `Z = -0.01m` vanity/bulkhead wall)
   // - Upper South Passage & Drinks Cabinet recess (`oakFloorMat`, `Z = +0.975m..+2.54m` plus `X = -10.695m..-9.56m, Z = +0.05m..+0.975m`)
   let childIdx = scene.children.length;
-  addFirstFloorSlab(-12.93, -10.695, -2.64, 0.975, bathroomTileMat);
+  addFirstFloorSlab(-12.93, -10.695, -2.64, 0.975, masterLimestoneFloorMat);
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.westFloorSlab');
 
   childIdx = scene.children.length;
-  addFirstFloorSlab(-10.695, -9.68, -2.64, 0.05, bathroomTileMat);
+  addFirstFloorSlab(-10.695, -9.68, -2.64, 0.05, masterLimestoneFloorMat);
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.eastFloorSlab');
 
   childIdx = scene.children.length;
@@ -105,12 +105,12 @@ export function buildFamilyBathroom(
     -2.78,
     -2.5,
     -11.35,
-    1.10,
-    2.88,
-    3.78,
+    1.1,
+    2.32,
+    3.24,
     'south',
     2,
-    { skipSkirting: true, windowFamily: 'doubleCasement' }
+    { skipSkirting: true, minSillY: 2.3, skipUnderApron: true, windowFamily: 'doubleCasement' }
   );
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.northExteriorWall');
 
@@ -165,7 +165,7 @@ export function buildFamilyBathroom(
     [
       'familyBathroom.perimeterMitredSkirting',
       [
-        [-12.81, -0.3],
+        [-12.81, -0.654],
         [-12.81, -2.5],
         [-9.8, -2.5],
         [-9.8, -0.01],
@@ -177,7 +177,7 @@ export function buildFamilyBathroom(
       'familyBathroom.southPierSkirting',
       [
         [-11.672, 0.9],
-        [-11.96, 0.9],
+        [-11.906, 0.9],
       ] as const,
     ],
     [

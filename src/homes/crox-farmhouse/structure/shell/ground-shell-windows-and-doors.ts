@@ -131,21 +131,21 @@ export function createGroundShellWindowsAndDoors(
     const interiorRevealMat =
       winCenterX < -17.55 && cz < 1.98 ? farrowAndBallPantalonMat : warmRoomPlasterMat;
     const frameDepth = 0.11;
-    const intRevealStartZ = cz + intSignZ * (frameDepth * 0.5 + 0.004);
-    const intRevealEndZ = cz + intSignZ * (wallDepthZ * 0.5 - 0.004);
+    const intRevealStartZ = cz + intSignZ * (frameDepth * 0.5 - 0.012);
+    const intRevealEndZ = cz + intSignZ * (wallDepthZ * 0.5);
     const intRevealDepthZ = Math.max(0.024, Math.abs(intRevealEndZ - intRevealStartZ));
     const intRevealCenterZ = (intRevealStartZ + intRevealEndZ) * 0.5;
-    const revealJambBotY = effSillY + 0.032;
-    const revealJambTopY = effHeadY - 0.020;
+    const revealJambBotY = effSillY + 0.022;
+    const revealJambTopY = effHeadY - 0.002;
     const revealJambH = Math.max(0.08, revealJambTopY - revealJambBotY);
     for (const sideX of [-1, 1] as const) {
       const revealJamb = new THREE.Mesh(
-        new THREE.BoxGeometry(0.012, revealJambH, intRevealDepthZ),
+        new THREE.BoxGeometry(0.014, revealJambH, intRevealDepthZ),
         interiorRevealMat
       );
       revealJamb.name = `${winId}.revealJamb.${sideX < 0 ? "left" : "right"}`;
       revealJamb.position.set(
-        winCenterX + sideX * (winWidth * 0.5 - 0.010),
+        winCenterX + sideX * (winWidth * 0.5 - 0.005),
         (revealJambBotY + revealJambTopY) * 0.5,
         intRevealCenterZ
       );
@@ -153,11 +153,11 @@ export function createGroundShellWindowsAndDoors(
       winGroup.add(revealJamb);
     }
     const revealHead = new THREE.Mesh(
-      new THREE.BoxGeometry(winWidth - 0.008, 0.012, intRevealDepthZ),
+      new THREE.BoxGeometry(winWidth, 0.014, intRevealDepthZ),
       interiorRevealMat
     );
     revealHead.name = `${winId}.revealHead`;
-    revealHead.position.set(winCenterX, effHeadY - 0.010, intRevealCenterZ);
+    revealHead.position.set(winCenterX, effHeadY - 0.005, intRevealCenterZ);
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
@@ -170,7 +170,7 @@ export function createGroundShellWindowsAndDoors(
       interiorWallFaceCoord: cz + intSignZ * (wallDepthZ * 0.5),
       inwardSign: intSignZ as 1 | -1,
       revealDepth: wallDepthZ * 0.52,
-      material: antiqueOakSkirtingMat,
+      material: windowFrameMat,
       namePrefix: winId,
       trimFaceOffset: wallOptions?.trimFaceOffset,
       skipUnderApron: wallOptions?.skipUnderApron,
@@ -410,18 +410,18 @@ export function createGroundShellWindowsAndDoors(
           ? farrowAndBallCordMat
           : warmRoomPlasterMat;
     const frameDepth = 0.11;
-    const intRevealOffsetX = ((frameDepth * 0.5 + 0.004) + (wallDepthX * 0.5 - 0.004)) * 0.5;
-    const intRevealDepthX = Math.max(0.024, wallDepthX * 0.5 - frameDepth * 0.5 - 0.008);
-    const revealJambBotY = effSillY + 0.032;
-    const revealJambTopY = effHeadY - 0.020;
+    const intRevealOffsetX = ((frameDepth * 0.5 - 0.012) + wallDepthX * 0.5) * 0.5;
+    const intRevealDepthX = Math.max(0.024, wallDepthX * 0.5 - (frameDepth * 0.5 - 0.012));
+    const revealJambBotY = effSillY + 0.022;
+    const revealJambTopY = effHeadY - 0.002;
     const revealJambH = Math.max(0.08, revealJambTopY - revealJambBotY);
     for (const sideZ of [-1, 1] as const) {
-      const jambZ = winCenterZ + sideZ * (winWidth * 0.5 - 0.010);
+      const jambZ = winCenterZ + sideZ * (winWidth * 0.5 - 0.005);
       const jambCx = isAngledEastCourtyardWall
         ? getEastCourtyardWallCenterX(jambZ)
         : rawCx;
       const revealJamb = new THREE.Mesh(
-        new THREE.BoxGeometry(intRevealDepthX, revealJambH, 0.012),
+        new THREE.BoxGeometry(intRevealDepthX, revealJambH, 0.014),
         interiorRevealMat
       );
       revealJamb.name = `${winId}.revealJamb.${sideZ < 0 ? "north" : "south"}`;
@@ -436,13 +436,13 @@ export function createGroundShellWindowsAndDoors(
     const intRevealCenterX = cx + intSignX * intRevealOffsetX;
     const revealHead = new THREE.Mesh(
       shearGeometryAlongZ(
-        new THREE.BoxGeometry(intRevealDepthX, 0.012, winWidth - 0.008),
+        new THREE.BoxGeometry(intRevealDepthX, 0.014, winWidth),
         slopeXPerZ
       ),
       interiorRevealMat
     );
     revealHead.name = `${winId}.revealHead`;
-    revealHead.position.set(intRevealCenterX, effHeadY - 0.010, winCenterZ);
+    revealHead.position.set(intRevealCenterX, effHeadY - 0.005, winCenterZ);
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
@@ -455,7 +455,7 @@ export function createGroundShellWindowsAndDoors(
       interiorWallFaceCoord: cx + intSignX * (wallDepthX * 0.5),
       inwardSign: intSignX as 1 | -1,
       revealDepth: wallDepthX * 0.52,
-      material: antiqueOakSkirtingMat,
+      material: windowFrameMat,
       namePrefix: winId,
       slopeXPerZ,
       trimFaceOffset: trimOptions?.trimFaceOffset,
@@ -1746,7 +1746,7 @@ export function createGroundShellWindowsAndDoors(
       0.036,
       sillY + 0.004,
       sillY + 0.028,
-      antiqueOakSkirtingMat,
+      windowFrameMat,
       true,
       true,
       [0, 1]
@@ -1758,7 +1758,7 @@ export function createGroundShellWindowsAndDoors(
       0.036,
       sillY + 0.004,
       sillY + 0.028,
-      antiqueOakSkirtingMat,
+      windowFrameMat,
       true,
       true,
       [4, 5]
@@ -1770,7 +1770,7 @@ export function createGroundShellWindowsAndDoors(
       0.019,
       sillY - 0.044,
       sillY,
-      antiqueOakSkirtingMat,
+      windowFrameMat,
       true,
       true
     );
@@ -1795,7 +1795,7 @@ export function createGroundShellWindowsAndDoors(
         ['southLeg', southArchGeo],
       ] as const;
       for (const [partTag, partGeo] of bayArchParts) {
-        const partMesh = new THREE.Mesh(partGeo, antiqueOakSkirtingMat);
+        const partMesh = new THREE.Mesh(partGeo, windowFrameMat);
         partMesh.name = `${bayPrefix}.oakArchitrave.${partTag}`;
         partMesh.castShadow = true;
         partMesh.receiveShadow = true;

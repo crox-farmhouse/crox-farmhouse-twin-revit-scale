@@ -789,3 +789,154 @@ export function createHerringboneTerracottaQuarryTileTextures(): {
     return { colorMap, bumpMap, normalMap, roughnessMap };
   });
 }
+
+/**
+ * Staggered rectangular tumbled/honed pale warm limestone flagstone PBR texture set
+ * (`~600 × 400mm` staggered courses, warm pale cream-buff `#e5dfd2`..`#dad2c2`, soft lime grout
+ * `#f0ece2`, subtle fossil/mineral grain) for the Master Bathroom (`familyBathroom`, Room 17).
+ */
+export function createTumbledLimestoneFlagstoneTextures(): {
+  readonly colorMap: THREE.CanvasTexture;
+  readonly bumpMap: THREE.CanvasTexture;
+  readonly normalMap: THREE.CanvasTexture;
+  readonly roughnessMap: THREE.CanvasTexture;
+} {
+  return getOrCreateCachedTexture('tumbled-limestone-flagstone-pbr', () => {
+    const size = 512;
+    const [colorCanvas, bumpCanvas] = getOrCreateCachedCanvasPair(
+      'tumbled-limestone-flagstone',
+      size,
+      size,
+      (cCtx, bCtx) => {
+        const clampByte = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
+
+        // Soft warm off-white/cream lime grout base (#efebe1)
+        cCtx.fillStyle = '#f3efe6';
+        cCtx.fillRect(0, 0, size, size);
+
+        // Recessed mortar joint depth in bump map
+        bCtx.fillStyle = 'rgb(48, 48, 48)';
+        bCtx.fillRect(0, 0, size, size);
+
+        // 4 staggered horizontal courses across 2.0m tile repeat (~400-500mm course heights, ~600-850mm flagstone lengths)
+        const courses: ReadonlyArray<{
+          readonly y: number;
+          readonly h: number;
+          readonly xSplits: readonly number[];
+        }> = [
+          { y: 0, h: 128, xSplits: [0, 186, 356, 512] },
+          { y: 128, h: 128, xSplits: [0, 104, 294, 444, 512] },
+          { y: 256, h: 128, xSplits: [0, 204, 378, 512] },
+          { y: 384, h: 128, xSplits: [0, 138, 322, 512] },
+        ];
+
+        // Warm tumbled/honed oatmeal-buff limestone palette matching Slide 3 bottom-left swatch (#dbd2c0 .. #cbbda6)
+        const palette: ReadonlyArray<readonly [number, number, number]> = [
+          [219, 210, 192], // #dbd2c0 warm tumbled cream-buff limestone
+          [211, 201, 182], // #d3c9b6 honed oatmeal-buff limestone
+          [203, 189, 166], // #cbbda6 warm aged buff flagstone
+          [216, 207, 190], // #d8cfbe pale Cotswold-buff limestone
+          [207, 196, 177], // #cfc4b1 soft warm parchment stone
+        ];
+
+        const groutHalf = 3.0;
+        let slabIdx = 0;
+
+        for (let r = 0; r < courses.length; r++) {
+          const course = courses[r]!;
+          for (let c = 0; c < course.xSplits.length - 1; c++) {
+            const x0 = course.xSplits[c]!;
+            const x1 = course.xSplits[c + 1]!;
+            // Wrap seam-straddling slabs on course 2 cleanly if narrow
+            const sx = x0 + groutHalf;
+            const sy = course.y + groutHalf;
+            const sw = x1 - x0 - groutHalf * 2;
+            const sh = course.h - groutHalf * 2;
+            if (sw <= 4 || sh <= 4) continue;
+
+            const base = palette[slabIdx % palette.length]!;
+            const toneShift = ((slabIdx * 11 + r * 7) % 7) - 3;
+            const br = clampByte(base[0] + toneShift);
+            const bg = clampByte(base[1] + toneShift);
+            const bb = clampByte(base[2] + toneShift);
+
+            cCtx.fillStyle = `rgb(${br}, ${bg}, ${bb})`;
+            cCtx.beginPath();
+            cCtx.roundRect(sx, sy, sw, sh, 2.5);
+            cCtx.fill();
+
+            // Raised honed slab surface with gently tumbled pillowed edge in bump map
+            bCtx.fillStyle = 'rgb(168, 168, 168)';
+            bCtx.beginPath();
+            bCtx.roundRect(sx, sy, sw, sh, 2.5);
+            bCtx.fill();
+
+            bCtx.fillStyle = 'rgb(208, 208, 208)';
+            bCtx.beginPath();
+            bCtx.roundRect(sx + 3, sy + 3, Math.max(2, sw - 6), Math.max(2, sh - 6), 2);
+            bCtx.fill();
+
+            // Subtle sedimentary clouding & warm mineral mottling inside each limestone flagstone
+            for (let py = sy + 4; py < sy + sh - 8; py += 12) {
+              for (let px = sx + 4; px < sx + sw - 10; px += 16) {
+                const n = (((px * 23 + py * 37 + slabIdx * 13) % 11) - 5);
+                cCtx.fillStyle = `rgba(${clampByte(br + n)}, ${clampByte(bg + n)}, ${clampByte(bb + n - 1)}, 0.30)`;
+                cCtx.fillRect(px, py, 15, 11);
+
+                const bn = clampByte(208 + n * 2);
+                bCtx.fillStyle = `rgba(${bn}, ${bn}, ${bn}, 0.35)`;
+                bCtx.fillRect(px, py, 15, 11);
+              }
+            }
+
+            // Delicate calcite / shell fossil flecks characteristic of English & Bourgogne tumbled limestone
+            for (let f = 0; f < 18; f++) {
+              const fx = sx + 6 + ((f * 47 + slabIdx * 29) % Math.max(4, Math.floor(sw - 12)));
+              const fy = sy + 6 + ((f * 61 + slabIdx * 19) % Math.max(4, Math.floor(sh - 12)));
+              cCtx.fillStyle =
+                f % 3 === 0 ? 'rgba(244, 240, 232, 0.34)' : 'rgba(192, 183, 168, 0.24)';
+              cCtx.fillRect(fx, fy, f % 4 === 0 ? 4 : 2.2, 1.8);
+            }
+
+            // Soft tumbled limestone edge highlight
+            cCtx.strokeStyle = 'rgba(247, 244, 236, 0.42)';
+            cCtx.lineWidth = 1.2;
+            cCtx.strokeRect(sx + 1, sy + 1, sw - 2, sh - 2);
+
+            slabIdx++;
+          }
+        }
+      }
+    );
+
+    const colorMap = new THREE.CanvasTexture(colorCanvas);
+    colorMap.wrapS = THREE.RepeatWrapping;
+    colorMap.wrapT = THREE.RepeatWrapping;
+    colorMap.repeat.set(1.25, 1.25);
+    colorMap.colorSpace = THREE.SRGBColorSpace;
+    colorMap.anisotropy = 8;
+
+    const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+    bumpMap.wrapS = THREE.RepeatWrapping;
+    bumpMap.wrapT = THREE.RepeatWrapping;
+    bumpMap.repeat.set(1.25, 1.25);
+    bumpMap.anisotropy = 8;
+
+    const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+      'tumbled-limestone-flagstone',
+      bumpCanvas,
+      {
+        normalStrength: 1.85,
+        mortarThreshold: 0.35,
+        mortarRoughness: 0.92,
+        surfaceRoughnessMin: 0.48,
+        surfaceRoughnessMax: 0.68,
+        microGrainRoughness: 0.03,
+      }
+    );
+    normalMap.repeat.set(1.25, 1.25);
+    roughnessMap.repeat.set(1.25, 1.25);
+
+    return { colorMap, bumpMap, normalMap, roughnessMap };
+  });
+}

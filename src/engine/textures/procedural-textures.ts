@@ -33,6 +33,7 @@ export {
   createHerringboneTerracottaQuarryTileTextures,
   createMarbleBacksplashTexture,
   createStoneTileTexture,
+  createTumbledLimestoneFlagstoneTextures,
 } from './stone-and-tile-textures.ts';
 
 export {

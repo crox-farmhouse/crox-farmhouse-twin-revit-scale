@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buildRoomCeilingPendant, buildRoomCorstonToggleSwitch } from '../ground/kitchen-knx-lighting.ts';
-import type { CutawayWallDescriptor } from '../../../../core/types/scene.ts';
+import type { CutawayWallDescriptor, InteractiveUserData } from '../../../../core/types/scene.ts';
+import { getBathroomBrassMaterials, getVitreousChinaMaterial } from '../../../../objects/sanitaryware/index.ts';
 import type { SceneBuilderContext } from '../../../../engine/viewer/scene-types.ts';
 import type { createFirstFloorMaterials } from '../../structure/first-floor-materials.ts';
 import type { createFirstFloorShellKit } from '../../structure/first-floor-shell-kit.ts';
@@ -66,16 +67,113 @@ export function buildFirstFloorPendantsAndSwitches(
     addPointLight: false,
     parentGroup: ewScene,
   });
-  buildRoomCorstonToggleSwitch(eastWingCtx, {
-    circuitId: 'familyBathroomPendant',
-    switchPa: '1.2.11',
-    location: 'Principal Bathroom — South Wall (by Door)',
-    x: -11.72,
-    y: floorTopY + 1.15,
-    z: 0.9,
-    facing: 'north',
-    parentGroup: ewScene,
-  });
+  // Issue #7: Polished Brass & White Porcelain Ceiling Pull-Cord Switch (PA 1.2.11)
+  // Mounted on the Y = 4.65m ceiling at (-11.76, 4.65, 0.82) just clear of firstFloor.interiorWall.4 (Z = 0.90m),
+  // dropping a fine braided silk cord down to a weighted Polished Brass & porcelain acorn pull at Y = 3.17..3.25m!
+  {
+    const brBrass = getBathroomBrassMaterials('BR');
+    const chinaMat = getVitreousChinaMaterial();
+    const cordSilkMat = new THREE.MeshStandardMaterial({
+      color: 0xf3ede0,
+      roughness: 0.82,
+      metalness: 0.0,
+    });
+    const pullLedMat = new THREE.MeshStandardMaterial({
+      color: 0xffb84d,
+      emissive: new THREE.Color(0xff9d2e),
+      emissiveIntensity: 3.0,
+    });
+    eastWingCtx.registerSwitchLedMaterial?.('familyBathroomPendant', pullLedMat);
+
+    const pullX = -11.76;
+    const pullZ = 0.82;
+    const acornCenterY = 3.2; // Exact Annotation #7 height (ewLocal = [-11.770, 3.197, 0.900])!
+    const roseDropBottomY = ewCollarCeilingY - 0.034;
+    const cordTopY = roseDropBottomY;
+    const cordBotY = acornCenterY + 0.044;
+    const cordLen = cordTopY - cordBotY;
+
+    const pullGroup = new THREE.Group();
+    pullGroup.name = 'familyBathroom.pullCordSwitch';
+    pullGroup.position.set(pullX, 0, pullZ);
+    pullGroup.userData = {
+      zone: 'familyBathroom',
+      knxPushButtonPa: '1.2.11',
+      switchLocation: 'Family bathroom — ceiling pull cord by doorway',
+    };
+
+    const ceilingRoseGeo = new THREE.CylinderGeometry(0.038, 0.042, 0.014, 24);
+    ceilingRoseGeo.computeBoundingSphere();
+    const ceilingRose = new THREE.Mesh(ceilingRoseGeo, brBrass.primary);
+    ceilingRose.name = 'familyBathroom.pullCordSwitch.ceilingRose';
+    ceilingRose.position.set(0, ewCollarCeilingY - 0.007, 0);
+    pullGroup.add(ceilingRose);
+
+    const switchBellGeo = new THREE.CylinderGeometry(0.022, 0.014, 0.022, 20);
+    switchBellGeo.computeBoundingSphere();
+    const switchBell = new THREE.Mesh(switchBellGeo, brBrass.primary);
+    switchBell.name = 'familyBathroom.pullCordSwitch.switchBell';
+    switchBell.position.set(0, ewCollarCeilingY - 0.024, 0);
+    pullGroup.add(switchBell);
+
+    const statusRingGeo = new THREE.TorusGeometry(0.024, 0.002, 8, 20);
+    statusRingGeo.computeBoundingSphere();
+    const statusRing = new THREE.Mesh(statusRingGeo, pullLedMat);
+    statusRing.name = 'familyBathroom.pullCordSwitch.statusLed';
+    statusRing.userData.lodTier = 'high';
+    statusRing.userData.lodMaxDistance = 12;
+    statusRing.rotation.x = Math.PI * 0.5;
+    statusRing.position.set(0, ewCollarCeilingY - 0.015, 0);
+    pullGroup.add(statusRing);
+
+    const cordGeo = new THREE.CylinderGeometry(0.0022, 0.0022, cordLen, 10);
+    cordGeo.computeBoundingSphere();
+    const cordMesh = new THREE.Mesh(cordGeo, cordSilkMat);
+    cordMesh.name = 'familyBathroom.pullCordSwitch.braidedCord';
+    cordMesh.position.set(0, (cordTopY + cordBotY) * 0.5, 0);
+    pullGroup.add(cordMesh);
+
+    // Weighted Turned Polished Brass & Glazed White Porcelain Acorn Pull (clickable KNX switch target!)
+    const baseData: InteractiveUserData = {
+      isKNXSwitch: true,
+      switchPa: '1.2.11',
+      switchGang: 1,
+      zoneSceneSwitchZoneId: 'familyBathroom',
+      switchLocation: 'Family bathroom — ceiling pull cord by doorway · G1 Bathroom',
+      circuitId: 'familyBathroomPendant',
+    };
+
+    const brassCapGeo = new THREE.CylinderGeometry(0.006, 0.015, 0.022, 20);
+    brassCapGeo.computeBoundingSphere();
+    const brassCap = new THREE.Mesh(brassCapGeo, brBrass.primary);
+    brassCap.name = 'familyBathroom.pullCordSwitch.g1.upperCap';
+    brassCap.position.set(0, acornCenterY + 0.033, 0);
+    Object.assign(brassCap.userData, { ...baseData, switchDirection: 'up' });
+    eastWingCtx.interactiveMeshes.push(brassCap);
+    pullGroup.add(brassCap);
+
+    const porcelainBodyGeo = new THREE.CylinderGeometry(0.0155, 0.0125, 0.042, 22);
+    porcelainBodyGeo.computeBoundingSphere();
+    const porcelainBody = new THREE.Mesh(porcelainBodyGeo, chinaMat);
+    porcelainBody.name = 'familyBathroom.pullCordSwitch.g1.porcelainGrip';
+    porcelainBody.position.set(0, acornCenterY + 0.001, 0);
+    porcelainBody.castShadow = true;
+    Object.assign(porcelainBody.userData, { ...baseData, switchDirection: 'up' });
+    eastWingCtx.interactiveMeshes.push(porcelainBody);
+    pullGroup.add(porcelainBody);
+
+    const brassFinialGeo = new THREE.SphereGeometry(0.0125, 18, 14);
+    brassFinialGeo.computeBoundingSphere();
+    const brassFinial = new THREE.Mesh(brassFinialGeo, brBrass.primary);
+    brassFinial.name = 'familyBathroom.pullCordSwitch.g1.lowerFinial';
+    brassFinial.scale.set(1, 1.15, 1);
+    brassFinial.position.set(0, acornCenterY - 0.024, 0);
+    Object.assign(brassFinial.userData, { ...baseData, switchDirection: 'down' });
+    eastWingCtx.interactiveMeshes.push(brassFinial);
+    pullGroup.add(brassFinial);
+
+    ewScene.add(pullGroup);
+  }
 
   // 3. Main Staircase Landing (Circuit: upperLandingPendant, Switch PA: 1.2.12)
   buildRoomCeilingPendant(eastWingCtx, {

@@ -1757,23 +1757,46 @@ export function createOutbuildingShellContext(
       winGroup.rotation.y = Math.PI / 2;
     }
 
-    // Weathered stone sill & upper brick/stone lintel header projecting proud of both wall faces
+    // Local +Z sign of exterior vs interior after optional +90deg rotationY when alongV=true:
+    // - !alongV: local +Z is world +v ('south'), local -Z is world -v ('north')
+    // - alongV (rotY = +PI/2): local +Z maps to world +u ('east'), local -Z maps to world -u ('west')
+    const extLocalZSign = alongV
+      ? uCenter < 1.0
+        ? -1
+        : 1
+      : vCenter < 1.0
+        ? -1
+        : 1;
+    const intLocalZSign = -extLocalZSign;
+
+    // Exterior weathered stone sill & lintel on the outer masonry face + crisp white interior windowsill board
+    const sillDepth = wallT * 0.54 + 0.042;
     const sill = new THREE.Mesh(
-      new THREE.BoxGeometry(width - 0.004, 0.056, wallT + 0.08),
+      new THREE.BoxGeometry(width - 0.004, 0.056, sillDepth),
       stoneSillMat
     );
     sill.name = `${winId}.sill`;
-    sill.position.set(0, -height * 0.5 - 0.033, 0);
+    sill.position.set(0, -height * 0.5 - 0.033, extLocalZSign * (wallT * 0.23 + 0.02));
     sill.castShadow = true;
     sill.receiveShadow = true;
     winGroup.add(sill);
 
+    const intWindowBoard = new THREE.Mesh(
+      new THREE.BoxGeometry(width + 0.072, 0.028, wallT * 0.54 + 0.036),
+      windowFrameMat
+    );
+    intWindowBoard.name = `${winId}.windowBoard`;
+    intWindowBoard.position.set(0, -height * 0.5 - 0.012, intLocalZSign * (wallT * 0.23 + 0.018));
+    intWindowBoard.castShadow = true;
+    intWindowBoard.receiveShadow = true;
+    winGroup.add(intWindowBoard);
+
     const lintel = new THREE.Mesh(
-      new THREE.BoxGeometry(width - 0.004, 0.058, wallT + 0.04),
+      new THREE.BoxGeometry(width - 0.004, 0.058, wallT * 0.56 + 0.022),
       stoneSillMat
     );
     lintel.name = `${winId}.lintel`;
-    lintel.position.set(0, height * 0.5 + 0.034, 0);
+    lintel.position.set(0, height * 0.5 + 0.034, extLocalZSign * (wallT * 0.22 + 0.01));
     winGroup.add(lintel);
 
     // Outer white-painted timber reveal box frame lining the full wall thickness

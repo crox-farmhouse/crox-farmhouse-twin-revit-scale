@@ -407,7 +407,7 @@ export class CutawayController {
         ? view.orthoZoom <= 0.62
         : perspDist >= (isTopDownPlan ? 32.0 : 28.5));
 
-    const maxEyeY = this.floorViewMode === 'first' ? 4.05 : 1.85;
+    const maxEyeY = this.floorViewMode === 'first' ? 4.65 : 1.85;
     const cameraInsideHouse =
       isWalkthrough ||
       (!view.isOrthographic &&

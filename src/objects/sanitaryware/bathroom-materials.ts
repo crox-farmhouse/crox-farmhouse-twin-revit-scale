@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getLivingCopperPatinaMaps } from '../../engine/textures/timber-and-metal-textures.ts';
 import type {
   BathroomMetalMaterialPalette,
   BrasswareFinishCode,
@@ -188,68 +189,6 @@ function getDiamondKnurlBumpMap(): THREE.DataTexture {
 
   knurlBumpMapCache = configureDataTexture(data, w, h, 'bathroom.diamondKnurl.bump', false, 2, 1);
   return knurlBumpMapCache;
-}
-
-let copperMapsCache: {
-  readonly colorModMap: THREE.DataTexture;
-  readonly roughnessMap: THREE.DataTexture;
-  readonly bumpMap: THREE.DataTexture;
-} | null = null;
-
-function getBurnishedCopperMaps(): {
-  readonly colorModMap: THREE.DataTexture;
-  readonly roughnessMap: THREE.DataTexture;
-  readonly bumpMap: THREE.DataTexture;
-} {
-  if (copperMapsCache) return copperMapsCache;
-  const w = 256;
-  const h = 256;
-  const colorData = new Uint8Array(w * h * 4);
-  const roughData = new Uint8Array(w * h * 4);
-  const bumpData = new Uint8Array(w * h * 4);
-
-  for (let y = 0; y < h; y++) {
-    const v = y / h;
-    for (let x = 0; x < w; x++) {
-      const u = x / w;
-      const cloud = seamlessFbm2D(u, v, 4, 4, 2111);
-      // Subtle artisan hand-planished / burnished cellular sheen
-      const planish = seamlessFbm2D(u, v, 16, 2, 3307);
-      const polishSweep = seamlessNoise2D(u, v, 6, 24, 4099);
-
-      // Subtle warm near-white modulation so material.color (0xb96539) stays rich bright copper
-      const warmShift = (cloud - 0.5) * 24 + (planish - 0.5) * 10;
-      const r = clampByte(247 + warmShift * 0.9);
-      const g = clampByte(243 + warmShift * 1.05 - (1 - polishSweep) * 6);
-      const b = clampByte(239 + warmShift * 1.15 - (1 - polishSweep) * 9);
-
-      const roughByte = clampByte(216 + (1 - cloud) * 26 + (planish - 0.5) * 18);
-      const bumpByte = clampByte(128 + (planish - 0.5) * 44 + (cloud - 0.5) * 18);
-
-      const idx = (y * w + x) * 4;
-      colorData[idx] = r;
-      colorData[idx + 1] = g;
-      colorData[idx + 2] = b;
-      colorData[idx + 3] = 255;
-
-      roughData[idx] = roughByte;
-      roughData[idx + 1] = roughByte;
-      roughData[idx + 2] = roughByte;
-      roughData[idx + 3] = 255;
-
-      bumpData[idx] = bumpByte;
-      bumpData[idx + 1] = bumpByte;
-      bumpData[idx + 2] = bumpByte;
-      bumpData[idx + 3] = 255;
-    }
-  }
-
-  copperMapsCache = {
-    colorModMap: configureDataTexture(colorData, w, h, 'bathroom.burnishedCopper.color', true, 2, 1),
-    roughnessMap: configureDataTexture(roughData, w, h, 'bathroom.burnishedCopper.roughness', false, 2, 1),
-    bumpMap: configureDataTexture(bumpData, w, h, 'bathroom.burnishedCopper.bump', false, 2, 1),
-  };
-  return copperMapsCache;
 }
 
 let mirostoneMapsCache: {
@@ -578,29 +517,30 @@ let copperMaterialsCache: BurnishedCopperMaterialPalette | null = null;
 /** Burnished / polished copper exterior hull & deeper patinated copper plinth for BC Designs Boat Bath. */
 export function getBurnishedCopperMaterials(): BurnishedCopperMaterialPalette {
   if (copperMaterialsCache) return copperMaterialsCache;
-  const maps = getBurnishedCopperMaps();
+  const patina = getLivingCopperPatinaMaps();
   const shell = new THREE.MeshPhysicalMaterial({
     name: 'bathroom.copperBurnishedShell',
-    color: 0xb96539,
-    map: maps.colorModMap,
-    roughnessMap: maps.roughnessMap,
-    bumpMap: maps.bumpMap,
-    bumpScale: 0.0008,
-    metalness: 0.92,
-    roughness: 0.19,
-    clearcoat: 0.22,
-    clearcoatRoughness: 0.12,
+    color: 0xc26e41,
+    map: patina.shellColorModMap,
+    roughnessMap: patina.shellRoughnessMap,
+    normalMap: patina.normalMap,
+    normalScale: new THREE.Vector2(0.11, 0.11),
+    metalness: 0.89,
+    roughness: 1.0, // Driven directly by shellRoughnessMap in [0.24 .. 0.38]
+    clearcoat: 0.16,
+    clearcoatRoughness: 0.24,
   });
   const plinth = new THREE.MeshPhysicalMaterial({
     name: 'bathroom.copperPatinatedPlinth',
-    color: 0x8e4826,
-    roughnessMap: maps.roughnessMap,
-    bumpMap: maps.bumpMap,
-    bumpScale: 0.001,
-    metalness: 0.85,
-    roughness: 0.30,
-    clearcoat: 0.12,
-    clearcoatRoughness: 0.22,
+    color: 0xb8663b,
+    map: patina.plinthColorModMap,
+    roughnessMap: patina.plinthRoughnessMap,
+    normalMap: patina.normalMap,
+    normalScale: new THREE.Vector2(0.12, 0.12),
+    metalness: 0.87,
+    roughness: 1.0, // Driven directly by plinthRoughnessMap in [0.245 .. 0.385]
+    clearcoat: 0.14,
+    clearcoatRoughness: 0.26,
   });
   copperMaterialsCache = { shell, plinth };
   return copperMaterialsCache;
@@ -792,4 +732,321 @@ export function finalizeSanitaryGroup(
     }
   });
   return root;
+}
+
+// ---------------------------------------------------------------------------
+// Bespoke Master Bathroom Dark Oak Veneer, Carrara Marble & Waffle Textiles
+// ---------------------------------------------------------------------------
+
+export interface DarkOakVeneerMaterialPalette {
+  readonly veneer: THREE.MeshPhysicalMaterial;
+  readonly panelField: THREE.MeshPhysicalMaterial;
+  readonly shadowReveal: THREE.MeshStandardMaterial;
+}
+
+let darkOakVeneerCache: DarkOakVeneerMaterialPalette | null = null;
+
+/**
+ * Rich smoked dark-stained European oak veneer PBR palette (matching Emily's Slide 3 vanity):
+ * deep umber-espresso heartwood (#3e2c1e .. #523b29) with warm bronze-brown cathedral grain,
+ * open-pore bump relief, and hand-rubbed satin lacquer sheen (~0.46 roughness).
+ */
+export function getDarkOakVeneerMaterials(): DarkOakVeneerMaterialPalette {
+  if (darkOakVeneerCache) return darkOakVeneerCache;
+
+  const w = 256;
+  const h = 256;
+  const colorData = new Uint8Array(w * h * 4);
+  const bumpData = new Uint8Array(w * h * 4);
+  const roughData = new Uint8Array(w * h * 4);
+
+  for (let y = 0; y < h; y++) {
+    const v = y / h;
+    for (let x = 0; x < w; x++) {
+      const u = x / w;
+      const cathedral = seamlessFbm2D(u, v, 3, 4, 14107);
+      const fiber = seamlessNoise2D(u, v, 10, 96, 14221);
+      const medullary = seamlessNoise2D(u, v, 32, 12, 14347);
+      const ringWave = Math.sin((u * 9.5 + cathedral * 2.8 + v * 0.45) * Math.PI * 2) * 0.5 + 0.5;
+      const pore = Math.pow(ringWave, 2.2);
+
+      // Deep smoked espresso oak (#3d2b1d) with warm umber cathedral highlights (#634730)
+      const grainLift = (pore - 0.42) * 30 + (fiber - 0.5) * 18 + (medullary - 0.5) * 8;
+      const idx = (y * w + x) * 4;
+      colorData[idx] = clampByte(72 + grainLift * 1.05);
+      colorData[idx + 1] = clampByte(51 + grainLift * 0.78);
+      colorData[idx + 2] = clampByte(35 + grainLift * 0.54);
+      colorData[idx + 3] = 255;
+
+      const bByte = clampByte(132 + (fiber - 0.5) * 58 - pore * 28);
+      bumpData[idx] = bByte;
+      bumpData[idx + 1] = bByte;
+      bumpData[idx + 2] = bByte;
+      bumpData[idx + 3] = 255;
+
+      const rByte = clampByte(216 + pore * 28 + (1 - fiber) * 12);
+      roughData[idx] = rByte;
+      roughData[idx + 1] = rByte;
+      roughData[idx + 2] = rByte;
+      roughData[idx + 3] = 255;
+    }
+  }
+
+  const colorMap = configureDataTexture(colorData, w, h, 'bathroom.darkOakVeneer.color', true, 1.5, 1.5);
+  const bumpMap = configureDataTexture(bumpData, w, h, 'bathroom.darkOakVeneer.bump', false, 1.5, 1.5);
+  const roughnessMap = configureDataTexture(roughData, w, h, 'bathroom.darkOakVeneer.roughness', false, 1.5, 1.5);
+
+  const veneer = new THREE.MeshPhysicalMaterial({
+    name: 'bathroom.darkOakVeneer',
+    color: 0xffffff,
+    map: colorMap,
+    bumpMap,
+    bumpScale: 0.0014,
+    roughnessMap,
+    roughness: 0.47,
+    metalness: 0.0,
+    clearcoat: 0.14,
+    clearcoatRoughness: 0.38,
+  });
+
+  const panelField = new THREE.MeshPhysicalMaterial({
+    name: 'bathroom.darkOakVeneer.panelField',
+    color: 0xf4ece4,
+    map: colorMap,
+    bumpMap,
+    bumpScale: 0.0016,
+    roughnessMap,
+    roughness: 0.50,
+    metalness: 0.0,
+    clearcoat: 0.12,
+    clearcoatRoughness: 0.42,
+  });
+
+  const shadowReveal = new THREE.MeshStandardMaterial({
+    name: 'bathroom.darkOakVeneer.shadowReveal',
+    color: 0x22170f,
+    roughness: 0.68,
+    metalness: 0.0,
+  });
+
+  darkOakVeneerCache = { veneer, panelField, shadowReveal };
+  return darkOakVeneerCache;
+}
+
+let honedCarraraCache: THREE.MeshPhysicalMaterial | null = null;
+
+/**
+ * Honed Italian Bianco Carrara marble countertop & shaped heritage splashback upstand
+ * (cool-warm alabaster white ground with feathery soft grey mineral veins).
+ */
+export function getHonedCarraraMarbleMaterial(): THREE.MeshPhysicalMaterial {
+  if (honedCarraraCache) return honedCarraraCache;
+
+  const w = 256;
+  const h = 256;
+  const colorData = new Uint8Array(w * h * 4);
+  const roughData = new Uint8Array(w * h * 4);
+
+  for (let y = 0; y < h; y++) {
+    const v = y / h;
+    for (let x = 0; x < w; x++) {
+      const u = x / w;
+      const wx = seamlessFbm2D(u, v, 3, 4, 15101) - 0.5;
+      const wy = seamlessFbm2D(u, v, 3, 4, 15217) - 0.5;
+      const p1 = ((u + wx * 0.28) * 2.0 + (v + wy * 0.28) * 1.0) * Math.PI * 2;
+      const p2 = ((u + wx * 0.22) * 3.0 - (v + wy * 0.22) * 2.0 + 0.41) * Math.PI * 2;
+      const veinPrimary = Math.pow(Math.max(0, 1 - Math.abs(Math.sin(p1 * 0.5 + wx * 2.4))), 11);
+      const veinFine = Math.pow(Math.max(0, 1 - Math.abs(Math.sin(p2 * 0.5 + wy * 3.0))), 20) * 0.72;
+      const cloud = seamlessFbm2D(u, v, 5, 3, 15331);
+      const wVein = Math.min(1, veinPrimary * 0.82 + veinFine + Math.max(0, cloud - 0.58) * 0.35);
+
+      const baseR = 243 + (cloud - 0.5) * 8;
+      const baseG = 242 + (cloud - 0.5) * 8;
+      const baseB = 239 + (cloud - 0.5) * 8;
+
+      const idx = (y * w + x) * 4;
+      colorData[idx] = clampByte(baseR * (1 - wVein) + 162 * wVein);
+      colorData[idx + 1] = clampByte(baseG * (1 - wVein) + 165 * wVein);
+      colorData[idx + 2] = clampByte(baseB * (1 - wVein) + 170 * wVein);
+      colorData[idx + 3] = 255;
+
+      const rByte = clampByte(224 + wVein * 24);
+      roughData[idx] = rByte;
+      roughData[idx + 1] = rByte;
+      roughData[idx + 2] = rByte;
+      roughData[idx + 3] = 255;
+    }
+  }
+
+  honedCarraraCache = new THREE.MeshPhysicalMaterial({
+    name: 'bathroom.honedCarraraMarble',
+    color: 0xffffff,
+    map: configureDataTexture(colorData, w, h, 'bathroom.honedCarrara.color', true, 1.4, 1.0),
+    roughnessMap: configureDataTexture(roughData, w, h, 'bathroom.honedCarrara.roughness', false, 1.4, 1.0),
+    roughness: 0.24,
+    metalness: 0.0,
+    clearcoat: 0.28,
+    clearcoatRoughness: 0.18,
+  });
+  return honedCarraraCache;
+}
+
+let zelligeShowerTileCache: THREE.MeshPhysicalMaterial | null = null;
+
+/**
+ * Artisan glazed warm-cream vertical zellige ceramic wall tile material for the enlarged
+ * Master Bathroom walk-in shower (matching Slide 3 middle-left swatch).
+ */
+export function getZelligeCreamWallTileMaterial(): THREE.MeshPhysicalMaterial {
+  if (zelligeShowerTileCache) return zelligeShowerTileCache;
+
+  const w = 256;
+  const h = 256;
+  const colorData = new Uint8Array(w * h * 4);
+  const bumpData = new Uint8Array(w * h * 4);
+  const cols = 8; // ~75mm narrow vertical tile pitch
+  const rows = 4; // ~150mm vertical tile height
+
+  for (let y = 0; y < h; y++) {
+    const v = y / h;
+    const ry = v * rows;
+    const rowIdx = Math.floor(ry);
+    const fy = ry - rowIdx;
+    for (let x = 0; x < w; x++) {
+      const u = x / w;
+      const cx = u * cols;
+      const colIdx = Math.floor(cx);
+      const fx = cx - colIdx;
+
+      const groutX = Math.min(fx, 1 - fx) * (w / cols);
+      const groutY = Math.min(fy, 1 - fy) * (h / rows);
+      const groutMask = smoothstep(Math.min(1, Math.min(groutX, groutY) / 2.1));
+
+      const tileTone = hash2DPeriodic(colIdx, rowIdx, cols, rows, 16111) - 0.5;
+      const handRipple = seamlessFbm2D(u, v, 16, 3, 16223) - 0.5;
+
+      const tileR = 235 + tileTone * 11 + handRipple * 7;
+      const tileG = 230 + tileTone * 10 + handRipple * 7;
+      const tileB = 219 + tileTone * 10 + handRipple * 6;
+
+      const idx = (y * w + x) * 4;
+      colorData[idx] = clampByte(208 * (1 - groutMask) + tileR * groutMask);
+      colorData[idx + 1] = clampByte(203 * (1 - groutMask) + tileG * groutMask);
+      colorData[idx + 2] = clampByte(193 * (1 - groutMask) + tileB * groutMask);
+      colorData[idx + 3] = 255;
+
+      const pillow = Math.sin(fx * Math.PI) * Math.sin(fy * Math.PI);
+      const bByte = clampByte(64 * (1 - groutMask) + (142 + pillow * 36 + handRipple * 32) * groutMask);
+      bumpData[idx] = bByte;
+      bumpData[idx + 1] = bByte;
+      bumpData[idx + 2] = bByte;
+      bumpData[idx + 3] = 255;
+    }
+  }
+
+  zelligeShowerTileCache = new THREE.MeshPhysicalMaterial({
+    name: 'bathroom.zelligeCreamWallTile',
+    color: 0xffffff,
+    map: configureDataTexture(colorData, w, h, 'bathroom.zelligeCream.color', true, 2.2, 3.2),
+    bumpMap: configureDataTexture(bumpData, w, h, 'bathroom.zelligeCream.bump', false, 2.2, 3.2),
+    bumpScale: 0.0018,
+    roughness: 0.19,
+    metalness: 0.0,
+    clearcoat: 0.68,
+    clearcoatRoughness: 0.14,
+  });
+  return zelligeShowerTileCache;
+}
+
+let bathroomTextilesCache: {
+  readonly ivoryWaffleRobe: THREE.MeshStandardMaterial;
+  readonly oatmealWaffleRobe: THREE.MeshStandardMaterial;
+  readonly stripedRailTowel: THREE.MeshStandardMaterial;
+} | null = null;
+
+/**
+ * Tactile honeycomb waffle-weave cotton-linen bathrobe materials & woven ticking-stripe
+ * bath towel material (matching Slide 3 right-hand towel rail & #12 hanging robes).
+ */
+export function getBathroomTextileMaterials(): {
+  readonly ivoryWaffleRobe: THREE.MeshStandardMaterial;
+  readonly oatmealWaffleRobe: THREE.MeshStandardMaterial;
+  readonly stripedRailTowel: THREE.MeshStandardMaterial;
+} {
+  if (bathroomTextilesCache) return bathroomTextilesCache;
+
+  const w = 128;
+  const h = 128;
+  const waffleBumpData = new Uint8Array(w * h * 4);
+  const stripeColorData = new Uint8Array(w * h * 4);
+
+  for (let y = 0; y < h; y++) {
+    const v = y / h;
+    // Horizontal woven taupe-grey stripes on warm ivory cotton (matching Slide 3 towel rail photo)
+    const stripeCycle = (v * 18) % 1;
+    const isStripe = stripeCycle > 0.30 && stripeCycle < 0.56 ? 1 : 0;
+    const slub = seamlessNoise2D(0.5, v, 4, 64, 17107) - 0.5;
+    for (let x = 0; x < w; x++) {
+      const u = x / w;
+      const cellX = Math.abs(((u * 32) % 1) - 0.5) * 2;
+      const cellY = Math.abs(((v * 32) % 1) - 0.5) * 2;
+      const waffle = Math.max(cellX, cellY);
+      const yarn = seamlessNoise2D(u, v, 64, 64, 17209) - 0.5;
+      const bByte = clampByte(92 + waffle * 124 + yarn * 26);
+
+      const idx = (y * w + x) * 4;
+      waffleBumpData[idx] = bByte;
+      waffleBumpData[idx + 1] = bByte;
+      waffleBumpData[idx + 2] = bByte;
+      waffleBumpData[idx + 3] = 255;
+
+      const creamR = 242 + yarn * 8 + slub * 6;
+      const creamG = 238 + yarn * 8 + slub * 6;
+      const creamB = 229 + yarn * 8 + slub * 6;
+      const stripeR = 160 + yarn * 10;
+      const stripeG = 156 + yarn * 10;
+      const stripeB = 149 + yarn * 10;
+      // Leave crisp solid cream borders near top/bottom hem
+      const inBand = v > 0.08 && v < 0.92 ? isStripe : 0;
+      stripeColorData[idx] = clampByte(creamR * (1 - inBand) + stripeR * inBand);
+      stripeColorData[idx + 1] = clampByte(creamG * (1 - inBand) + stripeG * inBand);
+      stripeColorData[idx + 2] = clampByte(creamB * (1 - inBand) + stripeB * inBand);
+      stripeColorData[idx + 3] = 255;
+    }
+  }
+
+  const waffleBump = configureDataTexture(waffleBumpData, w, h, 'bathroom.waffleLinen.bump', false, 4, 6);
+  const stripeMap = configureDataTexture(stripeColorData, w, h, 'bathroom.stripedTowel.color', true, 1, 2);
+
+  bathroomTextilesCache = {
+    ivoryWaffleRobe: new THREE.MeshStandardMaterial({
+      name: 'bathroom.waffleRobe.warmIvory',
+      color: 0xf1ece0,
+      bumpMap: waffleBump,
+      bumpScale: 0.0028,
+      roughness: 0.89,
+      metalness: 0.0,
+      side: THREE.DoubleSide,
+    }),
+    oatmealWaffleRobe: new THREE.MeshStandardMaterial({
+      name: 'bathroom.waffleRobe.naturalOatmeal',
+      color: 0xdcd2c0,
+      bumpMap: waffleBump,
+      bumpScale: 0.0028,
+      roughness: 0.90,
+      metalness: 0.0,
+      side: THREE.DoubleSide,
+    }),
+    stripedRailTowel: new THREE.MeshStandardMaterial({
+      name: 'bathroom.stripedCottonTowel',
+      color: 0xffffff,
+      map: stripeMap,
+      bumpMap: waffleBump,
+      bumpScale: 0.0018,
+      roughness: 0.87,
+      metalness: 0.0,
+      side: THREE.DoubleSide,
+    }),
+  };
+  return bathroomTextilesCache;
 }

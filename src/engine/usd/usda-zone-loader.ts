@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getLivingCopperPatinaMaps } from '../textures/timber-and-metal-textures.ts';
 
 export type UsdaSceneLayerTarget =
   | 'ground'
@@ -135,7 +136,31 @@ function buildProceduralTextureFromUsdSpec(
       ctx.fillRect(0, y, 256, h);
     }
     ctx.globalAlpha = 1;
-  } else if (kind === 'slate_tile' || kind === 'natural_stone' || kind === 'cobblestone') {
+  } else if (kind === 'natural_stone') {
+    // Staggered rectangular tumbled limestone flagstones with soft mortar joints & subtle mottling
+    const rowH = 64;
+    const colW = 96;
+    for (let r = 0; r < 4; r++) {
+      const y = r * rowH;
+      const shift = (r % 2) * 48;
+      for (let c = -1; c <= 3; c++) {
+        const x = c * colW + shift;
+        ctx.fillStyle = (r + c) % 2 === 0 ? primaryCss : secondaryCss;
+        ctx.globalAlpha = (r + c) % 2 === 0 ? 1.0 : 0.35;
+        ctx.fillRect(x + 2, y + 2, colW - 4, rowH - 4);
+      }
+    }
+    ctx.globalAlpha = 1.0;
+    ctx.strokeStyle = 'rgba(242, 238, 229, 0.85)';
+    ctx.lineWidth = 3;
+    for (let r = 0; r < 4; r++) {
+      const y = r * rowH;
+      const shift = (r % 2) * 48;
+      for (let c = -1; c <= 3; c++) {
+        ctx.strokeRect(c * colW + shift, y, colW, rowH);
+      }
+    }
+  } else if (kind === 'slate_tile' || kind === 'cobblestone') {
     ctx.strokeStyle = secondaryCss;
     ctx.lineWidth = 3;
     const grid = kind === 'cobblestone' ? 32 : 64;
@@ -254,6 +279,22 @@ export function parseUsdaMaterialLibrary(
         roughness: spec.roughness,
         metalness: spec.metallic,
       });
+    }
+
+    if (
+      spec.name.includes('copperBurnishedShell') ||
+      spec.name.includes('copperPatinatedPlinth')
+    ) {
+      const patina = getLivingCopperPatinaMaps();
+      const isPlinth = spec.name.includes('copperPatinatedPlinth');
+      mat.color.setHex(isPlinth ? 0xb8663b : 0xc26e41);
+      mat.map = isPlinth ? patina.plinthColorModMap : patina.shellColorModMap;
+      mat.roughnessMap = isPlinth ? patina.plinthRoughnessMap : patina.shellRoughnessMap;
+      mat.normalMap = patina.normalMap;
+      mat.normalScale = new THREE.Vector2(isPlinth ? 0.12 : 0.11, isPlinth ? 0.12 : 0.11);
+      mat.roughness = 1.0;
+      mat.metalness = isPlinth ? 0.87 : 0.89;
+      mat.needsUpdate = true;
     }
 
     mat.userData = {

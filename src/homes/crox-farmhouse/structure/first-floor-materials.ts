@@ -3,6 +3,7 @@ import {
   createCourtyardStoneTexture,
   createImperialBrickTextures,
   createNaturalOakJoineryTextures,
+  createTumbledLimestoneFlagstoneTextures,
   createWovenWoolCarpetTextures,
 } from '../../../engine/textures/procedural-textures.ts';
 import type { SceneBuilderContext } from '../../../engine/viewer/scene-types.ts';
@@ -87,9 +88,10 @@ export function createFirstFloorMaterials(
   });
 
   const windowFrameMat = new THREE.MeshStandardMaterial({
-    color: 0xf2eee4,
-    roughness: 0.42,
-    metalness: 0.05,
+    name: 'architecturalWhiteWindowFrame',
+    color: 0xf7f5f0,
+    roughness: 0.34,
+    metalness: 0.02,
   });
 
   const windowGlassMat = new THREE.MeshStandardMaterial({
@@ -134,6 +136,7 @@ export function createFirstFloorMaterials(
   const bathStoneTex = createCourtyardStoneTexture();
   bathStoneTex.repeat.set(3.5, 3.5);
   const bathroomTileMat = new THREE.MeshStandardMaterial({
+    name: 'bathroomStoneTile',
     map: bathStoneTex,
     bumpMap: bathStoneTex,
     bumpScale: 0.003,
@@ -142,9 +145,22 @@ export function createFirstFloorMaterials(
     metalness: 0.05,
   });
 
+  const limestoneFlagstoneMaps = createTumbledLimestoneFlagstoneTextures();
+  const masterLimestoneFloorMat = new THREE.MeshStandardMaterial({
+    name: 'masterBathroomLimestoneFlagstone',
+    map: limestoneFlagstoneMaps.colorMap,
+    normalMap: limestoneFlagstoneMaps.normalMap,
+    normalScale: new THREE.Vector2(0.45, 0.45),
+    roughnessMap: limestoneFlagstoneMaps.roughnessMap,
+    color: 0xffffff,
+    roughness: 0.58,
+    metalness: 0.02,
+  });
+
   return {
     antiqueOakSkirtingMat,
     bathroomTileMat,
+    masterLimestoneFloorMat,
     brassMat,
     ceramicWhiteMat,
     exteriorBrickMat,

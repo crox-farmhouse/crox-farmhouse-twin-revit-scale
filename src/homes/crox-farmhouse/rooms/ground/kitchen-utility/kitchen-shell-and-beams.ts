@@ -532,15 +532,6 @@ export function buildFullHeightEastWindow(
   winGroup.name = 'kitchen.eastWindow.group';
   winGroup.position.set(x, 0, centerZ);
 
-  const naturalOakTex = createNaturalOakJoineryTextures();
-  const oakFrameMat = new THREE.MeshStandardMaterial({
-    map: naturalOakTex.colorMap,
-    bumpMap: naturalOakTex.bumpMap,
-    bumpScale: 0.0035,
-    color: 0xdcc8ae,
-    roughness: 0.62,
-    metalness: 0.02,
-  });
   const whiteSashMat = new THREE.MeshStandardMaterial({
     color: 0xf4f1ea,
     roughness: 0.34,
@@ -558,10 +549,10 @@ export function buildFullHeightEastWindow(
   const winW = 1.18;
   const winH = 2.09;
 
-  // Floor sill and top head frame (sized for 0.28m exterior brick wall)
+  // Floor sill and top head frame in crisp painted architectural white
   const sill = new THREE.Mesh(
     prepGeo(new THREE.BoxGeometry(0.32, 0.045, winW + 0.06)),
-    oakFrameMat
+    whiteSashMat
   );
   sill.name = 'kitchen.eastWindow.sill';
   sill.position.set(0, 0.0225, 0);
@@ -569,7 +560,7 @@ export function buildFullHeightEastWindow(
 
   const head = new THREE.Mesh(
     prepGeo(new THREE.BoxGeometry(0.29, 0.06, winW + 0.04)),
-    oakFrameMat
+    whiteSashMat
   );
   head.name = 'kitchen.eastWindow.headFrame';
   head.position.set(0, winH - 0.03, 0);
@@ -578,7 +569,7 @@ export function buildFullHeightEastWindow(
   // Outer jambs (single full-height glazed unit, no intermediate vertical mullions)
   const postPositions = [-winW / 2 + 0.0275, winW / 2 - 0.0275] as const;
   for (let i = 0; i < postPositions.length; i++) {
-    const post = new THREE.Mesh(sharedEastWinPostGeo, oakFrameMat);
+    const post = new THREE.Mesh(sharedEastWinPostGeo, whiteSashMat);
     post.name = `kitchen.eastWindow.mullionPost_${i}`;
     post.position.set(0, 0.049 + 1.977 * 0.5, postPositions[i]);
     post.castShadow = true;
@@ -635,15 +626,6 @@ function buildHighLevelEastCasementWindow(
   const winH = 0.91;
   winGroup.position.set(x, sillY, centerZ);
 
-  const naturalOakTex = createNaturalOakJoineryTextures();
-  const oakTrimMat = new THREE.MeshStandardMaterial({
-    map: naturalOakTex.colorMap,
-    bumpMap: naturalOakTex.bumpMap,
-    bumpScale: 0.0035,
-    color: 0xdcc8ae,
-    roughness: 0.62,
-    metalness: 0.02,
-  });
   const stoneSillMat = new THREE.MeshStandardMaterial({
     color: 0xc8c0b0,
     roughness: 0.78,
@@ -678,7 +660,7 @@ function buildHighLevelEastCasementWindow(
 
   const intBoard = new THREE.Mesh(
     prepGeo(new THREE.BoxGeometry(0.165, 0.032, winW + 0.08)),
-    oakTrimMat
+    whiteFrameMat
   );
   intBoard.name = 'kitchen.eastHighWindow.oakBoard';
   intBoard.position.set(-0.125, 0.016, 0);

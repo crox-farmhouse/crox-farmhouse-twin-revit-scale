@@ -32,7 +32,7 @@ Individual address,Name,Role,Building,Floor,Zone,Description
 1.1.67,Sitting room PIR,pirLuxSensor,mainHouse,ground,sittingRoom,"Ceiling presence detector, presence GA 1/4/29, hold 60s"
 1.1.68,Courtyard external PIR,pirLuxSensor,courtyardGrounds,exterior,courtyard,"Ceiling presence detector, presence GA 5/4/21, hold 60s"
 1.2.10,Corston 1-gang toggle — Main bedroom,wallSwitch,mainHouse,first,mainBedroom,Main bedroom — doorway; gangs: 1=Main bedroom
-1.2.11,Corston 1-gang toggle — Family bathroom,wallSwitch,mainHouse,first,familyBathroom,Family bathroom — doorway; gangs: 1=Bathroom
+1.2.11,Corston 1-gang toggle — Family bathroom pull cord,wallSwitch,mainHouse,first,familyBathroom,Family bathroom — ceiling pull cord by doorway; gangs: 1=Bathroom
 1.2.12,Corston 2-gang toggle — Stair head 2-gang,wallSwitch,mainHouse,first,upperLanding,"Landing — top of stairs; gangs: 1=Landing, 2=Hall"
 1.2.13,Corston 1-gang toggle — Bedroom 2,wallSwitch,mainHouse,first,bedroom2,Bedroom 2 — doorway; gangs: 1=Bedroom 2
 1.2.14,Corston 1-gang toggle — Bedroom 3,wallSwitch,mainHouse,first,bedroom3,Bedroom 3 — doorway; gangs: 1=Bedroom 3

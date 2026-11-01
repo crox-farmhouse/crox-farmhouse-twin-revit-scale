@@ -60,7 +60,7 @@ export const CROX_PUSH_BUTTONS: readonly KnxPushButtonDevice[] = [
   button('1.1.23', 'Plant room', 'study', 'Plant Room — partition wall', gangs(['study', 'Plant room'])),
   // ---- Main house first floor (line 1.2) ----
   button('1.2.10', 'Main bedroom', 'mainBedroom', 'Main bedroom — doorway', gangs(['mainBedroom', 'Main bedroom'])),
-  button('1.2.11', 'Family bathroom', 'familyBathroom', 'Family bathroom — doorway', gangs(['familyBathroom', 'Bathroom'])),
+  button('1.2.11', 'Family bathroom pull cord', 'familyBathroom', 'Family bathroom — ceiling pull cord by doorway', gangs(['familyBathroom', 'Bathroom'])),
   button('1.2.12', 'Stair head 2-gang', 'upperLanding', 'Landing — top of stairs', gangs(['upperLanding', 'Landing'], ['hall', 'Hall'])),
   button('1.2.13', 'Bedroom 2', 'bedroom2', 'Bedroom 2 — doorway', gangs(['bedroom2', 'Bedroom 2'])),
   button('1.2.14', 'Bedroom 3', 'bedroom3', 'Bedroom 3 — doorway', gangs(['bedroom3', 'Bedroom 3'])),

@@ -337,6 +337,8 @@ export function classifyProceduralPattern(
   }
 
   if (
+    hint.includes('limestone') ||
+    hint.includes('flagstone') ||
     hint.includes('stone') ||
     hint.includes('marble') ||
     hint.includes('granite') ||

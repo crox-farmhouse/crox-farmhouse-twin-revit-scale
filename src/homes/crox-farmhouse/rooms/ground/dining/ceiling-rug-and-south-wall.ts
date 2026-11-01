@@ -772,7 +772,7 @@ export function buildDiningCeilingRugAndSouthWall(
       interiorWallFaceCoord: 2.35,
       inwardSign: -1,
       revealDepth: 0.145,
-      material: antiqueOakSkirtingMat,
+      material: windowFrameMat,
       namePrefix: 'familyRoom.southWall.window',
     });
 

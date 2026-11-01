@@ -507,21 +507,21 @@ export function buildDownstairsWcAndCloakroom(
   wastePipeBoxingGroup.add(vertStackBoxing);
 
   const horizSoilBoxing = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.172, 0.352, 0.842)),
+    createSharedGeo(new THREE.BoxGeometry(0.184, 0.858, 0.842)),
     wcDarkWallMat
   );
   horizSoilBoxing.name = 'bootLobby.downstairsWc.wastePipeBoxing.horizontalDuct';
-  horizSoilBoxing.position.set(-12.706, lowerFloorY + 0.184, -2.061);
+  horizSoilBoxing.position.set(-12.7, lowerFloorY + 0.437, -2.061);
   horizSoilBoxing.castShadow = true;
   horizSoilBoxing.receiveShadow = true;
   wastePipeBoxingGroup.add(horizSoilBoxing);
 
   const horizBoxingCapShelf = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(0.186, 0.022, 0.846)),
+    createSharedGeo(new THREE.BoxGeometry(0.198, 0.022, 0.848)),
     oliveJoineryMat
   );
   horizBoxingCapShelf.name = 'bootLobby.downstairsWc.wastePipeBoxing.capShelf';
-  horizBoxingCapShelf.position.set(-12.699, lowerFloorY + 0.371, -2.061);
+  horizBoxingCapShelf.position.set(-12.693, lowerFloorY + 0.877, -2.061);
   horizBoxingCapShelf.castShadow = true;
   horizBoxingCapShelf.receiveShadow = true;
   wastePipeBoxingGroup.add(horizBoxingCapShelf);
@@ -557,7 +557,7 @@ export function buildDownstairsWcAndCloakroom(
     variant: 'backToWallVortex',
     collection: 'acantoVortex',
     lowBoxingDepthM: 0.195,
-    concealedLeverYM: 0.86,
+    concealedLeverYM: 0.74,
     concealedLeverXM: 0.135,
     leverStyle: 'armstrong',
   });

@@ -799,14 +799,12 @@ export function buildWestWingCorridor(
     mirrorSurface.position.set(-21.58, mirrorCenterY, 3.717);
     sanitaryGroup.add(mirrorSurface);
 
-    // 3. GSI Classic Swirlflush® 1950s Vortex WC (`871411` BTW) + Perrin & Rowe `6772PF` Extended Concealed Cistern Lever
+    // 3. GSI Classic Swirlflush® Close-Coupled WC (`871211` pan + `878111` stepped ceramic cistern) + Perrin & Rowe `6771PF` Lever
     const swirlflushWc = buildLefroyBrooksCharterhouseWc({
       namePrefix: 'showerRoom.sanitaryware.gsiSwirlflushWc',
       finish: 'PF',
-      variant: 'backToWallVortex',
+      variant: 'closeCoupled',
       collection: 'gsiClassicSwirlflush',
-      concealedLeverYM: 0.86,
-      concealedLeverXM: 0.135,
       leverStyle: 'langbourn',
     });
     swirlflushWc.position.set(-20.62, showerFloorY, 3.745);

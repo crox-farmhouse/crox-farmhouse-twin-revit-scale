@@ -1,10 +1,15 @@
 import * as THREE from 'three';
 import {
+  buildArmstrongDeck3HoleBasinMixer,
   buildArmstrongPaperHolder,
   buildArmstrongRobeHook,
   buildLefroyBrooksCharterhouseWc,
-  buildLefroyBrooksLissaDoonWashstand,
   getBathroomBrassMaterials,
+  getBathroomTextileMaterials,
+  getDarkOakVeneerMaterials,
+  getHonedCarraraMarbleMaterial,
+  getVitreousChinaMaterial,
+  prepGeo,
   wallFacingToRotY,
 } from '../../../../../objects/sanitaryware/index.ts';
 
@@ -776,12 +781,126 @@ export function buildFamilyBathroomDrinksCabinet(
 }
 
 /**
+ * Sculpted soft-draped honeycomb waffle-linen bathrobe hanging naturally from a brass robe hook (#12).
+ * Origin `(0, 0, 0)` sits at the wall face directly behind the hook prong (`y = 0` at hook height),
+ * projecting `+X` into the room.
+ */
+function buildHangingWaffleBathrobe(
+  namePrefix: string,
+  robeMat: THREE.Material,
+  collarTrimMat: THREE.Material
+): THREE.Group {
+  const group = new THREE.Group();
+  group.name = namePrefix;
+
+  // Neck hanging loop resting over the brass robe hook
+  const loopGeo = prepGeo(new THREE.TorusGeometry(0.022, 0.0055, 8, 18, Math.PI * 1.15));
+  const loop = new THREE.Mesh(loopGeo, collarTrimMat);
+  loop.name = `${namePrefix}.hangingLoop`;
+  loop.rotation.y = Math.PI * 0.5;
+  loop.position.set(0.036, 0.004, 0);
+  group.add(loop);
+
+  // Tapered pleated main robe drape (Y = -0.02 .. -1.08m) built from 5 vertical fabric fold lobes
+  const robeLen = 1.06;
+  const foldOffsets: readonly [string, number, number, number, number][] = [
+    ['centerFold', 0.052, 0, 0.034, 0.048],
+    ['northInnerFold', 0.048, -0.042, 0.028, 0.041],
+    ['southInnerFold', 0.048, 0.042, 0.028, 0.041],
+    ['northOuterFold', 0.04, -0.082, 0.024, 0.035],
+    ['southOuterFold', 0.04, 0.082, 0.024, 0.035],
+  ];
+  for (const [fName, fx, fz, topR, botR] of foldOffsets) {
+    const lobeGeo = prepGeo(new THREE.CylinderGeometry(topR, botR, robeLen, 14, 4));
+    lobeGeo.scale(0.68, 1, 1);
+    const lobe = new THREE.Mesh(lobeGeo, robeMat);
+    lobe.name = `${namePrefix}.${fName}`;
+    lobe.position.set(fx, -0.02 - robeLen * 0.5, fz * 1.12);
+    lobe.rotation.x = fz * 0.36;
+    lobe.castShadow = true;
+    lobe.receiveShadow = true;
+    group.add(lobe);
+  }
+
+  // Rolled shawl collar lapels framing the upper chest
+  const lapelGeo = prepGeo(new THREE.CapsuleGeometry(0.019, 0.24, 6, 12));
+  for (const [lName, side] of [
+    ['northLapel', -1],
+    ['southLapel', 1],
+  ] as const) {
+    const lapel = new THREE.Mesh(lapelGeo, collarTrimMat);
+    lapel.name = `${namePrefix}.${lName}`;
+    lapel.position.set(0.072, -0.17, side * 0.034);
+    lapel.rotation.x = side * 0.16;
+    lapel.rotation.z = 0.06;
+    lapel.castShadow = true;
+    group.add(lapel);
+  }
+
+  // Relaxed hanging sleeves with rolled cuffs on each side
+  const sleeveGeo = prepGeo(new THREE.CylinderGeometry(0.026, 0.036, 0.5, 14));
+  const cuffGeo = prepGeo(new THREE.CylinderGeometry(0.039, 0.038, 0.042, 14));
+  for (const [sName, side] of [
+    ['northSleeve', -1],
+    ['southSleeve', 1],
+  ] as const) {
+    const sleeve = new THREE.Mesh(sleeveGeo, robeMat);
+    sleeve.name = `${namePrefix}.${sName}`;
+    sleeve.position.set(0.056, -0.35, side * 0.115);
+    sleeve.rotation.x = side * 0.09;
+    sleeve.castShadow = true;
+    sleeve.receiveShadow = true;
+    group.add(sleeve);
+
+    const cuff = new THREE.Mesh(cuffGeo, collarTrimMat);
+    cuff.name = `${namePrefix}.${sName}Cuff`;
+    cuff.position.set(0.056, -0.585, side * 0.136);
+    cuff.rotation.x = side * 0.09;
+    group.add(cuff);
+  }
+
+  // Waist tie belt & hanging sash tails
+  const beltBand = new THREE.Mesh(
+    prepGeo(new THREE.CylinderGeometry(0.052, 0.054, 0.038, 16)),
+    collarTrimMat
+  );
+  beltBand.scale.set(0.66, 1, 1.85);
+  beltBand.name = `${namePrefix}.waistBelt`;
+  beltBand.position.set(0.052, -0.48, 0);
+  group.add(beltBand);
+
+  const knot = new THREE.Mesh(prepGeo(new THREE.SphereGeometry(0.022, 12, 10)), collarTrimMat);
+  knot.name = `${namePrefix}.beltKnot`;
+  knot.position.set(0.082, -0.485, 0.012);
+  group.add(knot);
+
+  const tailGeo = prepGeo(new THREE.BoxGeometry(0.012, 0.28, 0.032));
+  for (const [tIdx, tz, rotX] of [
+    [1, -0.012, -0.08],
+    [2, 0.028, 0.11],
+  ] as const) {
+    const tail = new THREE.Mesh(tailGeo, collarTrimMat);
+    tail.name = `${namePrefix}.beltTail_${tIdx}`;
+    tail.position.set(0.084, -0.62, tz);
+    tail.rotation.x = rotX;
+    group.add(tail);
+  }
+
+  return group;
+}
+
+/**
  * Builds the Principal / Master Bathroom (`familyBathroom`, Room 17):
- * - Open-legged Polished Brass (`BR`) console washstand w/ 3TH heritage ceramic basin, Perrin & Rowe
- *   `3705BR` Traditional 3-hole deck basin mixer (porcelain levers & pop-up waste) & exposed `6303BR` bottle trap
- * - Balineum `Mercer` Unlacquered Brass `H24BHB95345` wall mirror
- * - `GSI Classic Swirlflush®` (`871411`) heritage vortex WC + P&R `6797BR` Traditional Brass/Porcelain concealed lever + Walnut timber seat w/ Brass hinges
- * - `1x 6960BR` Traditional Pivot Toilet Roll Holder + `2x 6921BR` Traditional Robe Hooks
+ * - Bespoke Dark-Stained European Oak Veneer In-Frame Vanity Unit (`#4`) matching Emily's Slide 3 center photo:
+ *   molded bracket plinth, top false-drawer fascia + twin fielded lower doors w/ Polished Brass knobs,
+ *   25mm Honed Bianco Carrara Marble countertop & shaped heritage upstand, glazed-white ceramic undermount
+ *   basin bowl, and Perrin & Rowe `Traditional` `3705BR` 3-hole Polished Brass deck mixer
+ * - Full-Height Built-In Dark Oak Shelving & Bevelled Mirror Joinery (`#4 & #8`) rising from the
+ *   `y = 3.01m` countertop right up to the `y = 4.65m` flat collar ceiling
+ * - `GSI Classic Close-Coupled Swirlflush®` (`871211` pan + `878111` stepped ceramic cistern + `6796BR`
+ *   Polished Brass & porcelain paddle lever + Walnut seat) (`#14`)
+ * - `1x 6960BR` Traditional Pivot Toilet Roll Holder + `2x 6921BR` Robe Hooks with two sculpted
+ *   honeycomb waffle-linen bathrobes on the West wall `firstFloor.interiorWall.6` (`#12`)
  */
 export function buildFamilyBathroomVanityAndToilet(
   scene: THREE.Group,
@@ -789,89 +908,658 @@ export function buildFamilyBathroomVanityAndToilet(
 ): void {
   const { floorTopY } = kit;
   const brBrass = getBathroomBrassMaterials('BR');
+  const darkOak = getDarkOakVeneerMaterials();
+  const carraraMat = getHonedCarraraMarbleMaterial();
+  const chinaMat = getVitreousChinaMaterial();
+  const textiles = getBathroomTextileMaterials();
 
-  // 1. Open-Legged Solid Polished Brass (`BR`) Console Washstand + 3TH Heritage Ceramic Basin (`760mm W x 510mm D x 850mm H`)
-  //    Centered in the 970mm SE Bulkhead alcove (`X = -10.285m, Z = -0.01m`, facing North `-Z`)
-  //    Includes Perrin & Rowe `3705BR` Traditional 3-Hole Deck Mixer w/ Porcelain Levers & Pop-Up Waste + exposed `6303BR` Bottle Trap!
-  const masterWashstand = buildLefroyBrooksLissaDoonWashstand({
-    namePrefix: 'familyBathroom.brassConsoleWashstand',
-    finish: 'BR',
-    widthM: 0.76,
-    depthM: 0.51,
-    rimHeightM: 0.85,
-    tapHoles: 3,
-    includeDeckMixer: true,
-    mixerStyle: 'traditional',
-    mountVariant: 'consoleLegs',
-  });
-  masterWashstand.position.set(-10.285, floorTopY, -0.01);
-  masterWashstand.rotation.y = wallFacingToRotY('north');
-  scene.add(masterWashstand);
+  const collarCeilingY = 4.65;
+  const alcoveCx = -10.285; // 970mm SE alcove: X = -10.77m .. -9.80m
+  const alcoveRearZ = -0.01;
 
-  // 2. Balineum Mercer Unlacquered Brass (`H24BHB95345`) Wall Mirror above washstand
-  const mirrorGroup = new THREE.Group();
-  mirrorGroup.name = 'familyBathroom.vanityMirror';
+  // =========================================================================
+  // 1. BESPOKE DARK OAK VENEER IN-FRAME VANITY UNIT (#4 — Slide 3 Center Photo)
+  // =========================================================================
+  {
+    const vanityGroup = new THREE.Group();
+    vanityGroup.name = 'familyBathroom.darkOakVanityUnit';
+    vanityGroup.userData.tradeCategory = 'sanitary';
 
-  const mirrorGlassMat = new THREE.MeshStandardMaterial({
-    color: 0xdce6eb,
-    roughness: 0.1,
-    metalness: 0.22,
-  });
-  const mirrorCenterY = floorTopY + 1.52;
+    const cabW = 0.92; // 920mm freestanding-in-alcove cabinet + 25mm scribed shadow fillers
+    const cabD = 0.515; // Z = -0.01 .. -0.525m
+    const cabH = 0.825; // cabinet body top at floorTopY + 0.825m, + 25mm Carrara top = 0.850m (3.01m!)
+    const plinthH = 0.082;
+    const topSlabH = 0.025;
+    const counterTopY = floorTopY + cabH + topSlabH; // exact 3.010m!
+    const cabCenterZ = alcoveRearZ - cabD * 0.5;
+    const cabFrontZ = alcoveRearZ - cabD; // -0.525m
 
-  const mirrorFrameGeo = new THREE.BoxGeometry(0.68, 0.78, 0.026);
-  mirrorFrameGeo.computeBoundingSphere();
-  const mirrorFrame = new THREE.Mesh(mirrorFrameGeo, brBrass.primary);
-  mirrorFrame.name = 'familyBathroom.mirrorFrame';
-  mirrorFrame.position.set(-10.285, mirrorCenterY, -0.025);
-  mirrorFrame.castShadow = true;
-  mirrorGroup.add(mirrorFrame);
+    // Scribed dark-oak alcove filler strips closing cleanly to X = -10.77m and X = -9.80m
+    const scribeGeo = prepGeo(new THREE.BoxGeometry(0.025, cabH, cabD - 0.03));
+    for (const [sName, sx] of [
+      ['westScribe', alcoveCx - 0.4725],
+      ['eastScribe', alcoveCx + 0.4725],
+    ] as const) {
+      const scribe = new THREE.Mesh(scribeGeo, darkOak.shadowReveal);
+      scribe.name = `familyBathroom.darkOakVanityUnit.${sName}`;
+      scribe.position.set(sx, floorTopY + cabH * 0.5, cabCenterZ + 0.012);
+      vanityGroup.add(scribe);
+    }
 
-  const mirrorSurfaceGeo = new THREE.BoxGeometry(0.62, 0.72, 0.008);
-  mirrorSurfaceGeo.computeBoundingSphere();
-  const mirrorSurface = new THREE.Mesh(mirrorSurfaceGeo, mirrorGlassMat);
-  mirrorSurface.name = 'familyBathroom.mirror';
-  mirrorSurface.position.set(-10.285, mirrorCenterY, -0.036);
-  mirrorGroup.add(mirrorSurface);
+    // Molded bracket base plinth with recessed center kick (Slide 3 center photo silhouette!)
+    const plinthFootW = 0.145;
+    const frontFootGeo = prepGeo(new THREE.BoxGeometry(plinthFootW, plinthH, 0.042));
+    for (const [fName, fx] of [
+      ['westBracketFoot', alcoveCx - cabW * 0.5 + plinthFootW * 0.5 - 0.008],
+      ['eastBracketFoot', alcoveCx + cabW * 0.5 - plinthFootW * 0.5 + 0.008],
+    ] as const) {
+      const foot = new THREE.Mesh(frontFootGeo, darkOak.veneer);
+      foot.name = `familyBathroom.darkOakVanityUnit.${fName}`;
+      foot.position.set(fx, floorTopY + plinthH * 0.5, cabFrontZ + 0.012);
+      foot.castShadow = true;
+      foot.receiveShadow = true;
+      vanityGroup.add(foot);
+    }
+    const plinthBridge = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(cabW - plinthFootW * 1.6, 0.034, 0.038)),
+      darkOak.veneer
+    );
+    plinthBridge.name = 'familyBathroom.darkOakVanityUnit.plinthValance';
+    plinthBridge.position.set(alcoveCx, floorTopY + plinthH - 0.017, cabFrontZ + 0.014);
+    vanityGroup.add(plinthBridge);
 
-  scene.add(mirrorGroup);
+    const plinthRecess = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(cabW - 0.02, plinthH, cabD - 0.04)),
+      darkOak.shadowReveal
+    );
+    plinthRecess.name = 'familyBathroom.darkOakVanityUnit.plinthCore';
+    plinthRecess.position.set(alcoveCx, floorTopY + plinthH * 0.5, cabCenterZ + 0.018);
+    vanityGroup.add(plinthRecess);
 
-  // 3. GSI Classic Swirlflush® (`871411` BTW) Heritage Vortex WC + P&R `6797BR` Traditional Brass Concealed Lever + Walnut Timber Seat w/ Brass Hinges
+    const baseMolding = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(cabW + 0.018, 0.018, cabD + 0.012)),
+      darkOak.veneer
+    );
+    baseMolding.name = 'familyBathroom.darkOakVanityUnit.baseOgeeMolding';
+    baseMolding.position.set(alcoveCx, floorTopY + plinthH + 0.009, cabCenterZ - 0.004);
+    baseMolding.castShadow = true;
+    vanityGroup.add(baseMolding);
+
+    // Hollow dark-oak veneer carcass (gable cheeks + back + floor shelf — open top for undermount ceramic basin!)
+    const bodyBotY = floorTopY + plinthH + 0.016;
+    const bodyH = cabH - plinthH - 0.016;
+    const gableT = 0.022;
+    const gableGeo = prepGeo(new THREE.BoxGeometry(gableT, bodyH, cabD - 0.016));
+    for (const [gName, gx] of [
+      ['westGable', alcoveCx - cabW * 0.5 + gableT * 0.5],
+      ['eastGable', alcoveCx + cabW * 0.5 - gableT * 0.5],
+    ] as const) {
+      const gable = new THREE.Mesh(gableGeo, darkOak.veneer);
+      gable.name = `familyBathroom.darkOakVanityUnit.${gName}`;
+      gable.position.set(gx, bodyBotY + bodyH * 0.5, cabCenterZ + 0.008);
+      gable.castShadow = true;
+      gable.receiveShadow = true;
+      vanityGroup.add(gable);
+    }
+    const carcassBack = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(cabW - gableT * 2, bodyH, 0.018)),
+      darkOak.veneer
+    );
+    carcassBack.name = 'familyBathroom.darkOakVanityUnit.carcassBack';
+    carcassBack.position.set(alcoveCx, bodyBotY + bodyH * 0.5, alcoveRearZ - 0.015);
+    vanityGroup.add(carcassBack);
+
+    const carcassFloor = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(cabW - gableT * 2, 0.022, cabD - 0.036)),
+      darkOak.veneer
+    );
+    carcassFloor.name = 'familyBathroom.darkOakVanityUnit.carcassFloor';
+    carcassFloor.position.set(alcoveCx, bodyBotY + 0.011, cabCenterZ + 0.008);
+    vanityGroup.add(carcassFloor);
+
+    // Front in-frame face frame stiles & rails on cabFrontZ
+    const stileW = 0.052;
+    const frontFaceZ = cabFrontZ + 0.008;
+    const outerStileGeo = prepGeo(new THREE.BoxGeometry(stileW, bodyH, 0.018));
+    for (const [stName, sx] of [
+      ['westStile', alcoveCx - cabW * 0.5 + stileW * 0.5],
+      ['eastStile', alcoveCx + cabW * 0.5 - stileW * 0.5],
+    ] as const) {
+      const st = new THREE.Mesh(outerStileGeo, darkOak.veneer);
+      st.name = `familyBathroom.darkOakVanityUnit.${stName}`;
+      st.position.set(sx, bodyBotY + bodyH * 0.5, frontFaceZ);
+      st.castShadow = true;
+      vanityGroup.add(st);
+    }
+
+    const innerSpanW = cabW - stileW * 2;
+    const railH = 0.044;
+    const topRailY = floorTopY + cabH - railH * 0.5;
+    const drawerOpeningH = 0.148;
+    const midRailY = floorTopY + cabH - railH - drawerOpeningH - railH * 0.5;
+    const botRailY = bodyBotY + railH * 0.5;
+
+    const horizRailGeo = prepGeo(new THREE.BoxGeometry(innerSpanW, railH, 0.018));
+    for (const [rName, ry] of [
+      ['topRail', topRailY],
+      ['midRail', midRailY],
+      ['bottomRail', botRailY],
+    ] as const) {
+      const rail = new THREE.Mesh(horizRailGeo, darkOak.veneer);
+      rail.name = `familyBathroom.darkOakVanityUnit.${rName}`;
+      rail.position.set(alcoveCx, ry, frontFaceZ);
+      rail.castShadow = true;
+      vanityGroup.add(rail);
+    }
+
+    // Recessed shadow gap plate behind drawer & twin doors so beaded joints read crisply
+    const shadowBack = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(innerSpanW, bodyH - railH * 2, 0.008)),
+      darkOak.shadowReveal
+    );
+    shadowBack.name = 'familyBathroom.darkOakVanityUnit.inFrameShadowReveal';
+    shadowBack.position.set(alcoveCx, bodyBotY + bodyH * 0.5, frontFaceZ + 0.005);
+    vanityGroup.add(shadowBack);
+
+    // Top wide in-frame false-drawer fascia + recessed fielded panel + central Polished Brass knob
+    const drawerY = floorTopY + cabH - railH - drawerOpeningH * 0.5;
+    const drawerBorder = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(innerSpanW - 0.008, drawerOpeningH - 0.006, 0.014)),
+      darkOak.veneer
+    );
+    drawerBorder.name = 'familyBathroom.darkOakVanityUnit.topDrawerFascia';
+    drawerBorder.position.set(alcoveCx, drawerY, frontFaceZ - 0.002);
+    drawerBorder.castShadow = true;
+    vanityGroup.add(drawerBorder);
+
+    const drawerField = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(innerSpanW - 0.078, drawerOpeningH - 0.062, 0.008)),
+      darkOak.panelField
+    );
+    drawerField.name = 'familyBathroom.darkOakVanityUnit.topDrawerPanel';
+    drawerField.position.set(alcoveCx, drawerY, frontFaceZ - 0.007);
+    vanityGroup.add(drawerField);
+
+    // Twin lower in-frame Shaker/fielded doors + paired central Polished Brass round knobs
+    const doorTopEdge = midRailY - railH * 0.5 - 0.004;
+    const doorBotEdge = botRailY + railH * 0.5 + 0.004;
+    const doorH = doorTopEdge - doorBotEdge;
+    const doorCenterY = (doorTopEdge + doorBotEdge) * 0.5;
+    const singleDoorW = (innerSpanW - 0.012) * 0.5;
+    const doorStileW = 0.056;
+
+    const knobRoseGeo = prepGeo(new THREE.CylinderGeometry(0.011, 0.013, 0.006, 16));
+    const knobStemGeo = prepGeo(new THREE.CylinderGeometry(0.005, 0.006, 0.014, 14));
+    const knobBallGeo = prepGeo(new THREE.SphereGeometry(0.0135, 16, 12));
+
+    const addBrassCabinetKnob = (kName: string, kx: number, ky: number): void => {
+      const rose = new THREE.Mesh(knobRoseGeo, brBrass.primary);
+      rose.name = `${kName}.rose`;
+      rose.userData.lodTier = 'high';
+      rose.userData.lodMaxDistance = 12;
+      rose.rotation.x = Math.PI * 0.5;
+      rose.position.set(kx, ky, frontFaceZ - 0.011);
+      vanityGroup.add(rose);
+
+      const stem = new THREE.Mesh(knobStemGeo, brBrass.primary);
+      stem.name = `${kName}.stem`;
+      stem.userData.lodTier = 'high';
+      stem.userData.lodMaxDistance = 12;
+      stem.rotation.x = Math.PI * 0.5;
+      stem.position.set(kx, ky, frontFaceZ - 0.019);
+      vanityGroup.add(stem);
+
+      const ball = new THREE.Mesh(knobBallGeo, brBrass.primary);
+      ball.name = `${kName}.knob`;
+      ball.userData.lodTier = 'high';
+      ball.userData.lodMaxDistance = 12;
+      ball.scale.set(1, 1, 0.78);
+      ball.position.set(kx, ky, frontFaceZ - 0.029);
+      vanityGroup.add(ball);
+    };
+
+    addBrassCabinetKnob('familyBathroom.darkOakVanityUnit.drawerKnob', alcoveCx, drawerY);
+
+    for (const [dName, sideSign] of [
+      ['westDoor', -1],
+      ['eastDoor', 1],
+    ] as const) {
+      const dx = alcoveCx + sideSign * (singleDoorW * 0.5 + 0.002);
+      const dStileGeo = prepGeo(new THREE.BoxGeometry(doorStileW, doorH, 0.015));
+      for (const [sSub, sxOff] of [
+        ['leftStile', -singleDoorW * 0.5 + doorStileW * 0.5],
+        ['rightStile', singleDoorW * 0.5 - doorStileW * 0.5],
+      ] as const) {
+        const ds = new THREE.Mesh(dStileGeo, darkOak.veneer);
+        ds.name = `familyBathroom.darkOakVanityUnit.${dName}.${sSub}`;
+        ds.position.set(dx + sxOff, doorCenterY, frontFaceZ - 0.002);
+        ds.castShadow = true;
+        vanityGroup.add(ds);
+      }
+
+      const dRailGeo = prepGeo(
+        new THREE.BoxGeometry(singleDoorW - doorStileW * 2, doorStileW, 0.015)
+      );
+      for (const [rSub, syOff] of [
+        ['topRail', doorH * 0.5 - doorStileW * 0.5],
+        ['bottomRail', -doorH * 0.5 + doorStileW * 0.5],
+      ] as const) {
+        const dr = new THREE.Mesh(dRailGeo, darkOak.veneer);
+        dr.name = `familyBathroom.darkOakVanityUnit.${dName}.${rSub}`;
+        dr.position.set(dx, doorCenterY + syOff, frontFaceZ - 0.002);
+        dr.castShadow = true;
+        vanityGroup.add(dr);
+      }
+
+      const dPanel = new THREE.Mesh(
+        prepGeo(
+          new THREE.BoxGeometry(
+            singleDoorW - doorStileW * 2 + 0.008,
+            doorH - doorStileW * 2 + 0.008,
+            0.009
+          )
+        ),
+        darkOak.panelField
+      );
+      dPanel.name = `familyBathroom.darkOakVanityUnit.${dName}.fieldedPanel`;
+      dPanel.position.set(dx, doorCenterY, frontFaceZ + 0.001);
+      vanityGroup.add(dPanel);
+
+      addBrassCabinetKnob(
+        `familyBathroom.darkOakVanityUnit.${dName}Knob`,
+        alcoveCx + sideSign * 0.036,
+        doorCenterY + 0.045
+      );
+    }
+
+    // 25mm Honed Bianco Carrara Marble Countertop with true oval undermount basin cutout!
+    const topW = 0.966; // spans wall-to-wall across the 970mm alcove
+    const topD = 0.538; // overhangs cabinet front cleanly by 13mm
+    const bowlHalfW = 0.225; // 450mm x 310mm oval undermount opening
+    const bowlHalfD = 0.155;
+    const bowlLocalCenterZ = 0.032; // shifted slightly forward to leave generous rear 3-hole tap deck
+
+    const slabShape = new THREE.Shape();
+    slabShape.moveTo(-topW * 0.5, -topD * 0.5);
+    slabShape.lineTo(topW * 0.5, -topD * 0.5);
+    slabShape.lineTo(topW * 0.5, topD * 0.5);
+    slabShape.lineTo(-topW * 0.5, topD * 0.5);
+    slabShape.closePath();
+
+    const holePath = new THREE.Path();
+    const holeSegs = 40;
+    for (let i = 0; i <= holeSegs; i++) {
+      const ang = (i / holeSegs) * Math.PI * 2;
+      const hx = Math.cos(ang) * bowlHalfW;
+      const hy = bowlLocalCenterZ + Math.sin(ang) * bowlHalfD;
+      if (i === 0) holePath.moveTo(hx, hy);
+      else holePath.lineTo(hx, hy);
+    }
+    slabShape.holes.push(holePath);
+
+    const marbleTopGeo = prepGeo(
+      new THREE.ExtrudeGeometry(slabShape, {
+        depth: topSlabH,
+        bevelEnabled: true,
+        bevelThickness: 0.002,
+        bevelSize: 0.002,
+        bevelSegments: 2,
+        curveSegments: 32,
+      })
+    );
+    marbleTopGeo.rotateX(-Math.PI * 0.5);
+    const marbleTop = new THREE.Mesh(marbleTopGeo, carraraMat);
+    marbleTop.name = 'familyBathroom.darkOakVanityUnit.carraraCountertop';
+    marbleTop.position.set(alcoveCx, floorTopY + cabH, alcoveRearZ - topD * 0.5);
+    marbleTop.castShadow = true;
+    marbleTop.receiveShadow = true;
+    vanityGroup.add(marbleTop);
+
+    // Shaped Honed Carrara Marble Heritage Splashback Upstand (matching Slide 3 scooped ends!)
+    const upstandW = 0.57;
+    const upstandH = 0.095;
+    const upShape = new THREE.Shape();
+    upShape.moveTo(-upstandW * 0.5, 0);
+    upShape.lineTo(upstandW * 0.5, 0);
+    upShape.lineTo(upstandW * 0.5, upstandH * 0.52);
+    upShape.quadraticCurveTo(upstandW * 0.5 - 0.055, upstandH * 0.54, upstandW * 0.5 - 0.068, upstandH);
+    upShape.lineTo(-upstandW * 0.5 + 0.068, upstandH);
+    upShape.quadraticCurveTo(-upstandW * 0.5 + 0.055, upstandH * 0.54, -upstandW * 0.5, upstandH * 0.52);
+    upShape.closePath();
+
+    const upstandGeo = prepGeo(
+      new THREE.ExtrudeGeometry(upShape, {
+        depth: 0.02,
+        bevelEnabled: true,
+        bevelThickness: 0.0015,
+        bevelSize: 0.0015,
+        bevelSegments: 2,
+      })
+    );
+    const marbleUpstand = new THREE.Mesh(upstandGeo, carraraMat);
+    marbleUpstand.name = 'familyBathroom.darkOakVanityUnit.carraraUpstand';
+    marbleUpstand.position.set(alcoveCx, counterTopY, alcoveRearZ - 0.036);
+    marbleUpstand.castShadow = true;
+    vanityGroup.add(marbleUpstand);
+
+    // Glazed-White Vitreous China Undermount Basin Bowl + Polished Brass Clicker Waste
+    const bowlWorldZ = alcoveRearZ - topD * 0.5 - bowlLocalCenterZ; // -0.311m
+    const bowlDepth = 0.165;
+    const bowlSides = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(1, 0.72, bowlDepth, 36, 1, true)),
+      chinaMat
+    );
+    bowlSides.scale.set(bowlHalfW + 0.006, 1, bowlHalfD + 0.006);
+    bowlSides.material = chinaMat.clone();
+    bowlSides.material.side = THREE.DoubleSide;
+    bowlSides.name = 'familyBathroom.darkOakVanityUnit.undermountBasinWalls';
+    bowlSides.position.set(alcoveCx, counterTopY - topSlabH - bowlDepth * 0.5 + 0.004, bowlWorldZ);
+    bowlSides.receiveShadow = true;
+    vanityGroup.add(bowlSides);
+
+    const bowlFloor = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(1, 1, 0.012, 36)),
+      chinaMat
+    );
+    bowlFloor.scale.set((bowlHalfW + 0.006) * 0.73, 1, (bowlHalfD + 0.006) * 0.73);
+    bowlFloor.name = 'familyBathroom.darkOakVanityUnit.undermountBasinBase';
+    bowlFloor.position.set(alcoveCx, counterTopY - topSlabH - bowlDepth + 0.004, bowlWorldZ);
+    bowlFloor.receiveShadow = true;
+    vanityGroup.add(bowlFloor);
+
+    const basinWaste = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.031, 0.031, 0.005, 24)),
+      brBrass.primary
+    );
+    basinWaste.name = 'familyBathroom.darkOakVanityUnit.brassClickerWaste';
+    basinWaste.userData.lodTier = 'high';
+    basinWaste.userData.lodMaxDistance = 12;
+    basinWaste.position.set(alcoveCx, counterTopY - topSlabH - bowlDepth + 0.012, bowlWorldZ);
+    vanityGroup.add(basinWaste);
+
+    // Perrin & Rowe Traditional 3705BR 3-Hole Deck Basin Mixer w/ White Porcelain Levers
+    const deckMixer = buildArmstrongDeck3HoleBasinMixer({
+      namePrefix: 'familyBathroom.darkOakVanityUnit.basinMixer3705BR',
+      finish: 'BR',
+      style: 'traditional',
+      valveSpreadM: 0.2,
+    });
+    deckMixer.position.set(alcoveCx, counterTopY, alcoveRearZ - 0.102);
+    deckMixer.rotation.y = wallFacingToRotY('north');
+    vanityGroup.add(deckMixer);
+
+    scene.add(vanityGroup);
+
+    // =========================================================================
+    // 2. FULL-HEIGHT BUILT-IN DARK OAK SHELVING & BEVELLED MIRROR BEHIND/ABOVE (#4 & #8)
+    //    Spans Y = 3.010m (countertop) right up to Y = 4.650m (collarCeilingY)!
+    // =========================================================================
+    const upperJoinery = new THREE.Group();
+    upperJoinery.name = 'familyBathroom.vanityFullHeightJoinery';
+    upperJoinery.userData.tradeCategory = 'sanitary';
+
+    const joineryW = 0.966; // X = -10.768 .. -9.802m
+    const joineryH = collarCeilingY - counterTopY; // 1.640m full-height to ceiling!
+    const sideColW = 0.192; // flanking left & right open apothecary shelving columns
+    const sideColD = 0.155; // Z = -0.01 .. -0.165m (clear of central basin & 3-hole mixer!)
+    const mirrorBayW = joineryW - sideColW * 2; // 0.582m generous central mirror bay
+    const mirrorSoffitY = 4.08; // upper full-width shelving spans 4.08m .. 4.65m
+
+    // Full-height dark-oak panelled backer against Z = -0.01m
+    const rearBacker = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(joineryW, joineryH, 0.016)),
+      darkOak.panelField
+    );
+    rearBacker.name = 'familyBathroom.vanityFullHeightJoinery.rearBacker';
+    rearBacker.position.set(alcoveCx, counterTopY + joineryH * 0.5, alcoveRearZ - 0.008);
+    rearBacker.receiveShadow = true;
+    upperJoinery.add(rearBacker);
+
+    // 4 full-height vertical dark-oak dividers (outer cheeks + inner mirror-bay cheeks)
+    const cheekThickness = 0.022;
+    const fullVertGeo = prepGeo(new THREE.BoxGeometry(cheekThickness, joineryH - 0.048, sideColD));
+    for (const [vName, vx] of [
+      ['westOuterCheek', alcoveCx - joineryW * 0.5 + cheekThickness * 0.5],
+      ['westMirrorDivider', alcoveCx - mirrorBayW * 0.5 - cheekThickness * 0.5],
+      ['eastMirrorDivider', alcoveCx + mirrorBayW * 0.5 + cheekThickness * 0.5],
+      ['eastOuterCheek', alcoveCx + joineryW * 0.5 - cheekThickness * 0.5],
+    ] as const) {
+      const vDiv = new THREE.Mesh(fullVertGeo, darkOak.veneer);
+      vDiv.name = `familyBathroom.vanityFullHeightJoinery.${vName}`;
+      vDiv.position.set(vx, counterTopY + (joineryH - 0.048) * 0.5, alcoveRearZ - sideColD * 0.5);
+      vDiv.castShadow = true;
+      vDiv.receiveShadow = true;
+      upperJoinery.add(vDiv);
+    }
+
+    // Central Bevelled Mirror (Y = 3.105m .. 4.08m) w/ Polished Brass inner sight-edge beading
+    const mirrorBotY = counterTopY + upstandH; // 3.105m right atop the shaped Carrara upstand
+    const mirrorH = mirrorSoffitY - mirrorBotY; // 0.975m tall!
+    const mirrorCy = (mirrorBotY + mirrorSoffitY) * 0.5;
+
+    const brassMirrorBead = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(mirrorBayW - 0.012, mirrorH - 0.012, 0.014)),
+      brBrass.primary
+    );
+    brassMirrorBead.name = 'familyBathroom.mirrorFrame';
+    brassMirrorBead.position.set(alcoveCx, mirrorCy, alcoveRearZ - 0.023);
+    upperJoinery.add(brassMirrorBead);
+
+    const mirrorGlassMat = new THREE.MeshPhysicalMaterial({
+      color: 0xe6eef2,
+      roughness: 0.04,
+      metalness: 0.88,
+      clearcoat: 0.9,
+      clearcoatRoughness: 0.04,
+    });
+    const mirrorPane = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(mirrorBayW - 0.032, mirrorH - 0.032, 0.008)),
+      mirrorGlassMat
+    );
+    mirrorPane.name = 'familyBathroom.mirror';
+    mirrorPane.position.set(alcoveCx, mirrorCy, alcoveRearZ - 0.031);
+    upperJoinery.add(mirrorPane);
+
+    // Flanking Left & Right Open Dark-Oak Apothecary Shelves (Y = 3.38, 3.73, 4.08, 4.35m)
+    const sideBayInnerW = sideColW - cheekThickness * 2 + 0.004;
+    const sideShelfGeo = prepGeo(new THREE.BoxGeometry(sideBayInnerW, 0.02, sideColD - 0.008));
+    const galleryBarGeo = prepGeo(new THREE.CylinderGeometry(0.0032, 0.0032, sideBayInnerW, 10));
+
+    const amberJarMat = new THREE.MeshPhysicalMaterial({
+      color: 0x6b3815,
+      roughness: 0.14,
+      clearcoat: 0.72,
+    });
+    const stonewareMat = new THREE.MeshStandardMaterial({
+      color: 0xe7e1d4,
+      roughness: 0.62,
+      metalness: 0.02,
+    });
+
+    for (const [sideTag, bayCx] of [
+      ['west', alcoveCx - mirrorBayW * 0.5 - sideColW * 0.5],
+      ['east', alcoveCx + mirrorBayW * 0.5 + sideColW * 0.5],
+    ] as const) {
+      for (const [sIdx, sy] of [3.38, 3.73, 4.08, 4.35].entries()) {
+        const shelf = new THREE.Mesh(sideShelfGeo, darkOak.veneer);
+        shelf.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}Shelf_${sIdx + 1}`;
+        shelf.position.set(bayCx, sy, alcoveRearZ - sideColD * 0.5);
+        shelf.castShadow = true;
+        shelf.receiveShadow = true;
+        upperJoinery.add(shelf);
+
+        // Delicate Polished Brass apothecary gallery retain rail
+        const rail = new THREE.Mesh(galleryBarGeo, brBrass.primary);
+        rail.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}ShelfRail_${sIdx + 1}`;
+        rail.userData.lodTier = 'high';
+        rail.userData.lodMaxDistance = 12;
+        rail.rotation.z = Math.PI * 0.5;
+        rail.position.set(bayCx, sy + 0.024, alcoveRearZ - sideColD + 0.018);
+        upperJoinery.add(rail);
+
+        const topY = sy + 0.01;
+        if (sIdx === 0) {
+          // Amber apothecary glass dispenser + stoneware pot
+          const bottle = new THREE.Mesh(
+            prepGeo(new THREE.CylinderGeometry(0.024, 0.024, 0.13, 14)),
+            amberJarMat
+          );
+          bottle.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}Bottle`;
+          bottle.userData.lodTier = 'high';
+          bottle.userData.lodMaxDistance = 12;
+          bottle.position.set(bayCx - 0.026, topY + 0.065, alcoveRearZ - 0.09);
+          upperJoinery.add(bottle);
+
+          const jar = new THREE.Mesh(
+            prepGeo(new THREE.CylinderGeometry(0.026, 0.024, 0.078, 14)),
+            stonewareMat
+          );
+          jar.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}Jar`;
+          jar.userData.lodTier = 'high';
+          jar.userData.lodMaxDistance = 12;
+          jar.position.set(bayCx + 0.032, topY + 0.039, alcoveRearZ - 0.095);
+          upperJoinery.add(jar);
+        } else if (sIdx === 1) {
+          // Rolled waffle hand towels
+          const rollGeo = prepGeo(new THREE.CylinderGeometry(0.028, 0.028, 0.11, 14));
+          for (const [rIdx, rxOff] of [-0.028, 0.028].entries()) {
+            const roll = new THREE.Mesh(
+              rollGeo,
+              rIdx === 0 ? textiles.ivoryWaffleRobe : textiles.oatmealWaffleRobe
+            );
+            roll.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}TowelRoll_${rIdx + 1}`;
+            roll.userData.lodTier = 'high';
+            roll.userData.lodMaxDistance = 12;
+            roll.rotation.x = Math.PI * 0.5;
+            roll.position.set(bayCx + rxOff, topY + 0.028, alcoveRearZ - 0.088);
+            upperJoinery.add(roll);
+          }
+        }
+      }
+    }
+
+    // Overhead Full-Width Mirror Soffit Shelf (Y = 4.08m) + Upper Open Shelf (Y = 4.35m) + Crown Cornice at Y = 4.65m!
+    const centerShelfGeo = prepGeo(new THREE.BoxGeometry(mirrorBayW + 0.004, 0.024, sideColD + 0.015));
+    for (const [cIdx, cy] of [mirrorSoffitY, 4.35].entries()) {
+      const cShelf = new THREE.Mesh(centerShelfGeo, darkOak.veneer);
+      cShelf.name = `familyBathroom.vanityFullHeightJoinery.centerOverheadShelf_${cIdx + 1}`;
+      cShelf.position.set(alcoveCx, cy, alcoveRearZ - (sideColD + 0.015) * 0.5);
+      cShelf.castShadow = true;
+      cShelf.receiveShadow = true;
+      upperJoinery.add(cShelf);
+    }
+
+    // Subtle warm architectural LED wash strip recessed beneath the Y = 4.08m mirror soffit
+    const warmWashMat = new THREE.MeshStandardMaterial({
+      color: 0xfff3d8,
+      emissive: 0xffd088,
+      emissiveIntensity: 0.75,
+      roughness: 0.25,
+    });
+    const mirrorLedStrip = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(mirrorBayW - 0.06, 0.005, 0.014)),
+      warmWashMat
+    );
+    mirrorLedStrip.name = 'familyBathroom.vanityFullHeightJoinery.mirrorSoffitLight';
+    mirrorLedStrip.userData.lodTier = 'high';
+    mirrorLedStrip.userData.lodMaxDistance = 12;
+    mirrorLedStrip.position.set(alcoveCx, mirrorSoffitY - 0.014, alcoveRearZ - 0.11);
+    upperJoinery.add(mirrorLedStrip);
+
+    // Folded waffle bath sheets & seagrass basket on the overhead center shelves
+    const foldedStackGeo = prepGeo(new THREE.BoxGeometry(0.22, 0.042, 0.125));
+    for (const [stIdx, mat] of [textiles.oatmealWaffleRobe, textiles.ivoryWaffleRobe].entries()) {
+      const stack = new THREE.Mesh(foldedStackGeo, mat);
+      stack.name = `familyBathroom.vanityFullHeightJoinery.foldedBathSheet_${stIdx + 1}`;
+      stack.position.set(alcoveCx - 0.13, mirrorSoffitY + 0.033 + stIdx * 0.043, alcoveRearZ - 0.09);
+      stack.castShadow = true;
+      upperJoinery.add(stack);
+    }
+    const basketMat = new THREE.MeshStandardMaterial({
+      color: 0xb9996d,
+      roughness: 0.84,
+      metalness: 0.0,
+    });
+    const wovenBasket = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(0.21, 0.135, 0.13)),
+      basketMat
+    );
+    wovenBasket.name = 'familyBathroom.vanityFullHeightJoinery.wovenStorageBasket';
+    wovenBasket.position.set(alcoveCx + 0.135, mirrorSoffitY + 0.08, alcoveRearZ - 0.09);
+    wovenBasket.castShadow = true;
+    upperJoinery.add(wovenBasket);
+
+    // Molded Dark Oak Crown Cornice meeting the Y = 4.65m ceiling flush (0mm gap!)
+    const corniceFrieze = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(joineryW, 0.048, sideColD + 0.016)),
+      darkOak.veneer
+    );
+    corniceFrieze.name = 'familyBathroom.vanityFullHeightJoinery.crownFrieze';
+    corniceFrieze.position.set(alcoveCx, collarCeilingY - 0.024, alcoveRearZ - (sideColD + 0.016) * 0.5);
+    corniceFrieze.castShadow = true;
+    upperJoinery.add(corniceFrieze);
+
+    const corniceCrown = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(joineryW + 0.004, 0.022, sideColD + 0.036)),
+      darkOak.veneer
+    );
+    corniceCrown.name = 'familyBathroom.vanityFullHeightJoinery.crownCornice';
+    corniceCrown.position.set(alcoveCx, collarCeilingY - 0.011, alcoveRearZ - (sideColD + 0.036) * 0.5);
+    corniceCrown.castShadow = true;
+    upperJoinery.add(corniceCrown);
+
+    scene.add(upperJoinery);
+  }
+
+  // =========================================================================
+  // 3. GSI CLASSIC CLOSE-COUPLED SWIRLFLUSH® WC + STEPPED CERAMIC CISTERN (#14)
+  //    871211 Pan + 878111 Stepped Cistern + P&R 6796BR Brass/Porcelain Lever + Walnut Seat
+  // =========================================================================
   const heritageVortexWc = buildLefroyBrooksCharterhouseWc({
     namePrefix: 'familyBathroom.gsiSwirlflushWc',
     finish: 'BR',
-    variant: 'backToWallVortex',
+    variant: 'closeCoupled',
     collection: 'gsiClassicSwirlflush',
     seatFinish: 'walnut',
-    concealedLeverYM: 0.86,
-    concealedLeverXM: 0.135,
     leverStyle: 'traditional',
   });
   heritageVortexWc.position.set(-10.18, floorTopY, -2.5);
   heritageVortexWc.rotation.y = wallFacingToRotY('south');
   scene.add(heritageVortexWc);
 
-  // 4. Perrin & Rowe Traditional `BR` Accessories (`1x 6960BR` Pivot Paper Holder + `2x 6921BR` Robe Hooks)
+  // =========================================================================
+  // 4. P&R 6960BR TOILET ROLL HOLDER + 2x 6921BR ROBE HOOKS & HANGING ROBES ON WEST WALL (#12)
+  // =========================================================================
   const paperHolder = buildArmstrongPaperHolder({
     namePrefix: 'familyBathroom.paperHolder',
     finish: 'BR',
     style: 'traditional',
   });
-  paperHolder.position.set(-9.8, floorTopY + 0.66, -2.05);
+  paperHolder.position.set(-9.8, floorTopY + 0.66, -2.02);
   paperHolder.rotation.y = wallFacingToRotY('west');
   scene.add(paperHolder);
 
-  for (const [hookSuffix, hookZ] of [
-    ['north', 0.25],
-    ['south', 0.55],
+  // Relocated onto East face of `firstFloor.interiorWall.6` (`X = -12.81m`, North of enlarged shower!)
+  for (const [hookSuffix, hookZ, robeMat, trimMat] of [
+    ['north', -1.24, textiles.ivoryWaffleRobe, textiles.oatmealWaffleRobe],
+    ['south', -0.92, textiles.oatmealWaffleRobe, textiles.ivoryWaffleRobe],
   ] as const) {
+    const hookY = floorTopY + 1.52; // 3.68m — right on Annotation #12's Y = 3.655m!
     const robeHook = buildArmstrongRobeHook({
       namePrefix: `familyBathroom.robeHook.${hookSuffix}`,
       finish: 'BR',
       style: 'traditional',
     });
-    robeHook.position.set(-10.77, floorTopY + 1.68, hookZ);
-    robeHook.rotation.y = wallFacingToRotY('west');
+    robeHook.position.set(-12.81, hookY, hookZ);
+    robeHook.rotation.y = wallFacingToRotY('east');
     scene.add(robeHook);
+
+    const hangingRobe = buildHangingWaffleBathrobe(
+      `familyBathroom.hangingRobe.${hookSuffix}`,
+      robeMat,
+      trimMat
+    );
+    hangingRobe.position.set(-12.81, hookY, hookZ);
+    scene.add(hangingRobe);
   }
 }

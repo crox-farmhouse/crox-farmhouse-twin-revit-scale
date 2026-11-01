@@ -390,6 +390,11 @@ export function createFirstFloorShellKit(
       readonly skirtingMax?: number;
       readonly floorY?: number;
       readonly skipCap?: boolean;
+      readonly forceTopCap?: boolean;
+      readonly seamPlusX?: boolean;
+      readonly seamMinusX?: boolean;
+      readonly seamPlusZ?: boolean;
+      readonly seamMinusZ?: boolean;
     }
   ): void => {
     const w = maxX - minX;
@@ -435,16 +440,18 @@ export function createFirstFloorShellKit(
     shearGeometryAlongZ(geo, slopeXPerZ);
 
     const includeTopCap =
-      !options?.skipCap && Math.abs(yTop - upperWallTopY) < 0.05;
+      !options?.skipCap && (Boolean(options?.forceTopCap) || Math.abs(yTop - upperWallTopY) < 0.05);
     const materials: THREE.Material[] = [
-      interiorSide === 'east' ? warmRoomPlasterMat : exteriorBrickMat,
-      interiorSide === 'west' || (interiorSide === 'north' && Math.abs(minX - -16.92) < 0.05)
+      interiorSide === 'east' || options?.seamPlusX ? warmRoomPlasterMat : exteriorBrickMat,
+      interiorSide === 'west' ||
+      options?.seamMinusX ||
+      (interiorSide === 'north' && Math.abs(minX - -16.92) < 0.05)
         ? warmRoomPlasterMat
         : exteriorBrickMat,
-      includeTopCap ? wallCapMat : exteriorBrickMat,
+      !options?.skipCap && options?.forceTopCap ? warmRoomPlasterMat : includeTopCap ? wallCapMat : exteriorBrickMat,
       exteriorBrickMat,
-      interiorSide === 'south' ? warmRoomPlasterMat : exteriorBrickMat,
-      interiorSide === 'north' ? warmRoomPlasterMat : exteriorBrickMat,
+      interiorSide === 'south' || options?.seamPlusZ ? warmRoomPlasterMat : exteriorBrickMat,
+      interiorSide === 'north' || options?.seamMinusZ ? warmRoomPlasterMat : exteriorBrickMat,
     ];
 
     const wallId = `firstFloor.exteriorBrickWall.${++ffExtWallSeq}`;
@@ -496,6 +503,7 @@ export function createFirstFloorShellKit(
       readonly floorY?: number;
       readonly minSillY?: number;
       readonly maxHeadY?: number;
+      readonly wallTopY?: number;
       readonly trimFaceOffset?: number;
       readonly skipUnderApron?: boolean;
       readonly skipArchitrave?: boolean;
@@ -507,18 +515,39 @@ export function createFirstFloorShellKit(
       (panes === 1 ? 'singleCasement' : panes === 3 ? 'tripleTopHungCentre' : 'doubleCasement');
     const effSillY = Math.max(sillY, options?.minSillY ?? 2.86);
     const effHeadY = Math.min(headY, options?.maxHeadY ?? 3.88);
+    const topWallY = options?.wallTopY ?? upperWallTopY;
     const winLeft = winCenterX - winWidth / 2;
     const winRight = winCenterX + winWidth / 2;
 
     const baseWallY = 2.06;
+    const forceCap = topWallY < upperWallTopY - 0.03;
     if (winLeft > minX + 0.02) {
-      addUpperExteriorBrickWall(minX, winLeft, minZ, maxZ, baseWallY, upperWallTopY, interiorSide, { skipSkirting: true });
+      addUpperExteriorBrickWall(minX, winLeft, minZ, maxZ, baseWallY, topWallY, interiorSide, {
+        skipSkirting: true,
+        seamPlusX: true,
+        forceTopCap: forceCap,
+      });
     }
     if (winRight < maxX - 0.02) {
-      addUpperExteriorBrickWall(winRight, maxX, minZ, maxZ, baseWallY, upperWallTopY, interiorSide, { skipSkirting: true });
+      addUpperExteriorBrickWall(winRight, maxX, minZ, maxZ, baseWallY, topWallY, interiorSide, {
+        skipSkirting: true,
+        seamMinusX: true,
+        forceTopCap: forceCap,
+      });
     }
-    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, baseWallY, effSillY, interiorSide, { skipSkirting: true });
-    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, effHeadY, upperWallTopY, interiorSide, { skipSkirting: true });
+    addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, baseWallY, effSillY, interiorSide, {
+      skipSkirting: true,
+      seamMinusX: true,
+      seamPlusX: true,
+    });
+    if (topWallY > effHeadY + 0.008) {
+      addUpperExteriorBrickWall(winLeft, winRight, minZ, maxZ, effHeadY, topWallY, interiorSide, {
+        skipSkirting: true,
+        seamMinusX: true,
+        seamPlusX: true,
+        forceTopCap: forceCap,
+      });
+    }
 
     const cz = (minZ + maxZ) / 2;
     const descriptor: CutawayWallDescriptor = {
@@ -558,15 +587,15 @@ export function createFirstFloorShellKit(
     );
     winGroup.add(sillMesh);
 
-    // Interior plastered window reveal linings (jambs + head soffit) and painted timber window board
+    // Interior plastered window reveal linings (jambs + head soffit, flush with brick reveal) and crisp white window trim
     const frameDepth = 0.11;
     const fullRevealDepthZ = Math.max(0.14, Math.abs(intFaceZ - frameZ));
-    const intRevealStartZ = frameZ + intSignZ * (frameDepth * 0.5 + 0.004);
-    const intRevealEndZ = intFaceZ - intSignZ * 0.004;
+    const intRevealStartZ = frameZ + intSignZ * (frameDepth * 0.5);
+    const intRevealEndZ = intFaceZ;
     const intRevealDepthZ = Math.max(0.024, Math.abs(intRevealEndZ - intRevealStartZ));
     const intRevealCenterZ = (intRevealStartZ + intRevealEndZ) * 0.5;
-    const revealJambBotY = effSillY + 0.032;
-    const revealJambTopY = effHeadY - 0.020;
+    const revealJambBotY = effSillY + 0.024;
+    const revealJambTopY = effHeadY - 0.002;
     const revealJambH = Math.max(0.08, revealJambTopY - revealJambBotY);
     for (const sideX of [-1, 1] as const) {
       const revealJamb = new THREE.Mesh(
@@ -575,7 +604,7 @@ export function createFirstFloorShellKit(
       );
       revealJamb.name = `${winId}.revealJamb.${sideX < 0 ? "left" : "right"}`;
       revealJamb.position.set(
-        winCenterX + sideX * (winWidth * 0.5 - 0.010),
+        winCenterX + sideX * (winWidth * 0.5 - 0.006),
         (revealJambBotY + revealJambTopY) * 0.5,
         intRevealCenterZ
       );
@@ -583,11 +612,11 @@ export function createFirstFloorShellKit(
       winGroup.add(revealJamb);
     }
     const revealHead = new THREE.Mesh(
-      new THREE.BoxGeometry(winWidth - 0.008, 0.012, intRevealDepthZ),
+      new THREE.BoxGeometry(winWidth, 0.012, intRevealDepthZ),
       warmRoomPlasterMat
     );
     revealHead.name = `${winId}.revealHead`;
-    revealHead.position.set(winCenterX, effHeadY - 0.010, intRevealCenterZ);
+    revealHead.position.set(winCenterX, effHeadY - 0.006, intRevealCenterZ);
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
@@ -600,7 +629,7 @@ export function createFirstFloorShellKit(
       interiorWallFaceCoord: intFaceZ,
       inwardSign: intSignZ as 1 | -1,
       revealDepth: fullRevealDepthZ,
-      material: antiqueOakSkirtingMat,
+      material: windowFrameMat,
       namePrefix: winId,
       trimFaceOffset: options?.trimFaceOffset,
       skipUnderApron: options?.skipUnderApron,
@@ -831,16 +860,16 @@ export function createFirstFloorShellKit(
     );
     winGroup.add(sillMesh);
 
-    // Interior plastered window reveal linings (jambs + head soffit) and painted timber window board
+    // Interior plastered window reveal linings (jambs + head soffit, flush with brick reveal) and crisp white window trim
     const frameDepth = 0.11;
-    const intRevealOffsetX = ((frameDepth * 0.5 + 0.004) + (wallDepthX * 0.5 - 0.004)) * 0.5;
-    const intRevealDepthX = Math.max(0.024, wallDepthX * 0.5 - frameDepth * 0.5 - 0.008);
+    const intRevealOffsetX = ((frameDepth * 0.5) + (wallDepthX * 0.5)) * 0.5;
+    const intRevealDepthX = Math.max(0.024, wallDepthX * 0.5 - frameDepth * 0.5);
     const intRevealCenterX = cx + intSignX * intRevealOffsetX;
-    const revealJambBotY = effSillY + 0.032;
-    const revealJambTopY = effHeadY - 0.020;
+    const revealJambBotY = effSillY + 0.024;
+    const revealJambTopY = effHeadY - 0.002;
     const revealJambH = Math.max(0.08, revealJambTopY - revealJambBotY);
     for (const sideZ of [-1, 1] as const) {
-      const jambZ = winCenterZ + sideZ * (winWidth * 0.5 - 0.010);
+      const jambZ = winCenterZ + sideZ * (winWidth * 0.5 - 0.006);
       const jambCx = isAngledEastCourtyardWall
         ? getEastCourtyardWallCenterX(jambZ)
         : rawCx;
@@ -859,13 +888,13 @@ export function createFirstFloorShellKit(
     }
     const revealHead = new THREE.Mesh(
       shearGeometryAlongZ(
-        new THREE.BoxGeometry(intRevealDepthX, 0.012, winWidth - 0.008),
+        new THREE.BoxGeometry(intRevealDepthX, 0.012, winWidth),
         slopeXPerZ
       ),
       warmRoomPlasterMat
     );
     revealHead.name = `${winId}.revealHead`;
-    revealHead.position.set(intRevealCenterX, effHeadY - 0.010, winCenterZ);
+    revealHead.position.set(intRevealCenterX, effHeadY - 0.006, winCenterZ);
     revealHead.receiveShadow = true;
     winGroup.add(revealHead);
 
@@ -878,7 +907,7 @@ export function createFirstFloorShellKit(
       interiorWallFaceCoord: cx + intSignX * (wallDepthX * 0.5),
       inwardSign: intSignX as 1 | -1,
       revealDepth: wallDepthX * 0.52,
-      material: antiqueOakSkirtingMat,
+      material: windowFrameMat,
       namePrefix: winId,
       slopeXPerZ,
       trimFaceOffset: options?.trimFaceOffset,

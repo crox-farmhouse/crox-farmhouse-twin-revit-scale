@@ -9,27 +9,32 @@ import {
 import type { BcDesignsCopperBoatBathOptions } from './bathroom-spec-types.ts';
 
 /**
- * BC Designs Copper / Gloss-White `Acrymite` Double-Ended Roll-Top Boat Bath
- * (`lengthM = 1.580`, `widthM = 0.735`, `endHeightM = 0.715`, `centerHeightM = 0.605`, 0 tap holes)
- * paired with the `WAS050G` brass click-clack waste & exposed external overflow standpipe.
+ * Double-Ended Moulded-Plinth Roll-Top Bateau Bath
+ * (Gloss-White `Acrymite` / `Iso-Enamel` interior & overhanging bullnose rolled rim
+ * over a warm burnished copper/bronze tapered body & tall 3-part moulded plinth,
+ * paired with a `WAS050G` `Polished Brass (BR)` dome clicker waste & internal
+ * circular perforated overflow rose).
  *
  * Local coordinate convention:
  * - `(0, 0, 0)` at plan centre on finished floor (`y = 0`)
  * - Bath length along `X` (`-lengthM/2 .. +lengthM/2`), width along `Z` (`-widthM/2 .. +widthM/2`)
  */
 
-const SUPERELLIPSE_EXP = 2.32; // fuller shoulders than a pure ellipse, authentic boat-bath plan
-
 function signedPow(val: number, exp: number): number {
   return val < 0 ? -Math.pow(-val, exp) : Math.pow(val, exp);
 }
 
-/** Unit superellipse point `(cx, cz) ∈ [-1, 1]^2` for angle `theta ∈ [0, 2π]`. */
+/**
+ * Unit rounded-stadium bateau plan `(cx, cz) ∈ [-1, 1]^2` for `theta ∈ [0, 2π]`.
+ *
+ * Uses asymmetric exponents (`pX = 0.54`, `pZ = 0.98`) so the long front/back walls
+ * have a gentle cottage bateau bow while the two ends trace true smooth semicircles
+ * (`R_end ≈ 0.90 * bMax`) without boxy superellipse corner shoulders.
+ */
 function boatPlanUnit(theta: number): { readonly cx: number; readonly cz: number } {
-  const p = 2 / SUPERELLIPSE_EXP;
   return {
-    cx: signedPow(Math.cos(theta), p),
-    cz: signedPow(Math.sin(theta), p),
+    cx: signedPow(Math.cos(theta), 0.54),
+    cz: signedPow(Math.sin(theta), 0.98),
   };
 }
 
@@ -71,10 +76,28 @@ function buildRingLoftGeometry(rings: readonly RingSpec[], radialSegs: number): 
   const uvs = new Float32Array(vertCount * 2);
   const indices: number[] = [];
 
+  // Compute true normalized perimeter arc-length uArc in [0, 1] so living-copper patina
+  // clouds have 100% uniform texel scale around both long walls & semicircular ends, with
+  // exact u=0 / u=1 periodic continuity at the theta=0 seam.
+  const unitPts: Array<{ readonly cx: number; readonly cz: number }> = [];
+  const cumArc = new Float64Array(radialSegs + 1);
   for (let i = 0; i <= radialSegs; i++) {
-    const u = i / radialSegs;
-    const theta = u * Math.PI * 2;
-    const { cx, cz } = boatPlanUnit(theta);
+    const theta = (i / radialSegs) * Math.PI * 2;
+    const pt = boatPlanUnit(theta);
+    unitPts.push(pt);
+    if (i > 0) {
+      const prev = unitPts[i - 1]!;
+      // Reference 1.70m x 0.74m half-axes ratio (0.85 : 0.37) for physical perimeter arc-length
+      const dx = (pt.cx - prev.cx) * 0.85;
+      const dz = (pt.cz - prev.cz) * 0.37;
+      cumArc[i] = cumArc[i - 1]! + Math.hypot(dx, dz);
+    }
+  }
+  const totalArc = cumArc[radialSegs]! || 1;
+
+  for (let i = 0; i <= radialSegs; i++) {
+    const { cx, cz } = unitPts[i]!;
+    const uArc = i === radialSegs ? 1.0 : cumArc[i]! / totalArc;
 
     for (let s = 0; s < rings.length; s++) {
       const ring = rings[s]!;
@@ -83,7 +106,7 @@ function buildRingLoftGeometry(rings: readonly RingSpec[], radialSegs: number): 
       positions[idx * 3 + 1] = ring.yAt(cx);
       positions[idx * 3 + 2] = ring.b * cz;
 
-      uvs[idx * 2] = u * 2;
+      uvs[idx * 2] = uArc;
       uvs[idx * 2 + 1] = ring.vUv;
     }
   }
@@ -106,16 +129,57 @@ function buildRingLoftGeometry(rings: readonly RingSpec[], radialSegs: number): 
   return prepGeo(geo);
 }
 
+/**
+ * Builds the circular perforated overflow faceplate with 6 perimeter holes around a
+ * recessed central fixing screw aperture.
+ */
+function buildPerforatedOverflowPlateGeometry(): THREE.BufferGeometry {
+  const outerR = 0.029;
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, outerR, 0, Math.PI * 2, false);
+
+  const centerHole = new THREE.Path();
+  centerHole.absarc(0, 0, 0.0040, 0, Math.PI * 2, true);
+  shape.holes.push(centerHole);
+
+  const ringHoleCount = 6;
+  const ringR = 0.0150;
+  const holeR = 0.0038;
+  for (let i = 0; i < ringHoleCount; i++) {
+    const ang = (i / ringHoleCount) * Math.PI * 2 + Math.PI / 6;
+    const h = new THREE.Path();
+    h.absarc(Math.cos(ang) * ringR, Math.sin(ang) * ringR, holeR, 0, Math.PI * 2, true);
+    shape.holes.push(h);
+  }
+
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth: 0.0024,
+    bevelEnabled: true,
+    bevelThickness: 0.0008,
+    bevelSize: 0.0008,
+    bevelSegments: 3,
+    curveSegments: 32,
+  });
+  geo.rotateX(-Math.PI * 0.5);
+  return prepGeo(geo);
+}
+
 export function buildBcDesignsCopperBoatBath(
   opts: BcDesignsCopperBoatBathOptions
 ): THREE.Group {
   const p = opts.namePrefix;
-  const lengthM = opts.lengthM ?? 1.580;
-  const widthM = opts.widthM ?? 0.735;
-  const endHeightM = opts.endHeightM ?? 0.715;
-  const centerHeightM = opts.centerHeightM ?? 0.605;
+  const lengthM = opts.lengthM ?? 1.700;
+  const widthM = opts.widthM ?? 0.740;
+  const rawCenterHeightM = opts.centerHeightM ?? 0.640;
+  const rawEndHeightM = opts.endHeightM ?? 0.676;
+  const rawRise = Math.max(0, rawEndHeightM - rawCenterHeightM);
+  // Gentle, serene cottage roll-top bateau sweep (~36mm soft rise toward the two rounded ends,
+  // nearly level across the middle ~60%). If legacy steep saddle heights (e.g. 605..715mm) are
+  // passed, preserve the true ~640mm mid-body soaking stature (matching BC Designs BAC070 CAD).
+  const sheerRise = Math.min(0.036, rawRise);
+  const centerRimY =
+    rawRise > 0.055 ? rawCenterHeightM + (rawRise - sheerRise) * 0.47 : rawCenterHeightM;
   const brassFinish = opts.brassFinish ?? 'BR';
-  const overflowEnd = opts.overflowEnd ?? 'west';
 
   const copperMats = getBurnishedCopperMaterials();
   const acrymiteMat = getAcrymiteWhiteMaterial();
@@ -126,29 +190,142 @@ export function buildBcDesignsCopperBoatBath(
 
   const aMax = lengthM * 0.5;
   const bMax = widthM * 0.5;
-  const sheerRise = endHeightM - centerHeightM;
+
+  // Continuous, kink-free gentle bateau curve: nearly level across the central ~60% (u^2.6)
+  // and rounding smoothly to horizontal right at the semicircular ends (df/du = 0 at u = 1)
+  // so neither side elevation has an S-bump nor end elevation has a pointed gable arch.
   const yRimAt = (cx: number): number => {
-    const u2 = cx * cx;
-    return centerHeightM + sheerRise * (0.86 * u2 + 0.14 * u2 * u2);
+    const u = Math.min(1, Math.abs(cx));
+    const uPow = Math.pow(u, 2.55);
+    const smoothEnd = uPow * (1.85 - 0.85 * uPow);
+    return centerRimY + sheerRise * smoothEnd;
   };
 
-  const radialSegs = 80;
-  const plinthTopY = 0.105;
-  const floorWellY = 0.135;
+  const radialSegs = 104;
 
-  // --- 1. Integral Moulded Patinated Copper Plinth Skirt (y = 0 .. 0.105m) ---
-  const aPlinth = aMax * 0.765;
-  const bPlinth = bMax * 0.815;
+  const scaleX = lengthM / 1.700;
+  const scaleZ = widthM / 0.740;
+
+  // 1) Overhanging gloss-white bullnose rolled rim (~52mm end overhang, ~46mm side overhang, 47mm vertical bullnose)
+  const rimOverhangA = 0.052 * scaleX;
+  const rimOverhangB = 0.046 * scaleZ;
+  const rimBullHalfH = 0.0235; // 47mm thick exterior white bullnose rolled rim
+
+  const aBodyTop = aMax - rimOverhangA; // 0.798m on 1.70m bath
+  const bBodyTop = bMax - rimOverhangB; // 0.324m on 0.74m bath
+
+  // 2) Tailored cottage frustum rake (~15.5° inward rake at rounded ends -> 1336mm waist matching UK 1342mm CAD,
+  //    ~8.0° inward rake along front/back walls -> 536mm waist width)
+  const waistY = centerRimY * 0.332; // ~0.212m (~33% of center height — tall signature cottage moulded plinth)
+  const endBodyRake = 0.130 * scaleX;
+  const sideBodyRake = 0.056 * scaleZ;
+
+  const aWaist = aBodyTop - endBodyRake; // 0.668m (1336mm waist length)
+  const bWaist = bBodyTop - sideBodyRake; // 0.268m (536mm waist width)
+
+  // --- 1. Tall 3-Part Architectural Moulded Plinth / Skirt (y = 0 .. waistY) ---
+  // Matches Emily's Slide 3 burnished-bronze plinth silhouette:
+  // - Upper cambered collar moulding (top 44mm of plinth): steps crisply +16mm/+14mm proud at waistY,
+  //   cants gently down to +11mm/+10mm, then steps inward into a natural shadow throat (+4mm/+3.5mm)
+  // - Tall smooth inward-canted plinth skirt band (118mm tall): tapers from +4mm/+3.5mm down to -8mm/-6mm
+  // - Flared stepped ogee cove & rounded bullnose base foot (bottom 48mm): flares +24mm/+21mm proud of lower skirt
+  const collarTopA = 0.016 * scaleX;
+  const collarTopB = 0.014 * scaleZ;
+  const collarBotA = 0.011 * scaleX;
+  const collarBotB = 0.0095 * scaleZ;
+
+  const aSkirtTop = aWaist + 0.0035 * scaleX;
+  const bSkirtTop = bWaist + 0.0030 * scaleZ;
+  const aSkirtBot = aWaist - 0.0095 * scaleX;
+  const bSkirtBot = bWaist - 0.0075 * scaleZ;
+
+  const footFlareA = 0.024 * scaleX;
+  const footFlareB = 0.021 * scaleZ;
+
+  const collarBotY = waistY - 0.044; // ~0.168m
+  const skirtTopY = collarBotY - 0.006; // ~0.162m
+  const skirtBotY = 0.048;
+
   const plinthRings: RingSpec[] = [
-    { a: 0, b: 0, yAt: () => 0, vUv: 0.0 },
-    { a: aPlinth - 0.008, b: bPlinth - 0.008, yAt: () => 0, vUv: 0.15 },
-    { a: aPlinth, b: bPlinth, yAt: () => 0.006, vUv: 0.22 },
-    { a: aPlinth, b: bPlinth, yAt: () => 0.078, vUv: 0.72 },
-    // Stepped ogee moulding bead at top of plinth skirt
-    { a: aPlinth + 0.010, b: bPlinth + 0.008, yAt: () => 0.090, vUv: 0.84 },
-    { a: aPlinth + 0.010, b: bPlinth + 0.008, yAt: () => 0.100, vUv: 0.92 },
-    { a: aPlinth - 0.006, b: bPlinth - 0.006, yAt: () => plinthTopY + 0.004, vUv: 1.0 },
+    // Closed floor pad & dark recessed floor-contact shadow pad
+    { a: 0, b: 0, yAt: () => 0.0, vUv: 0.0 },
+    { a: aSkirtBot + footFlareA - 0.016, b: bSkirtBot + footFlareB - 0.016, yAt: () => 0.0, vUv: 0.05 },
+    { a: aSkirtBot + footFlareA - 0.013, b: bSkirtBot + footFlareB - 0.013, yAt: () => 0.0025, vUv: 0.07 },
+    // Substantial rounded bullnose base foot (y = 0.003 .. 0.026m)
+    { a: aSkirtBot + footFlareA * 0.78, b: bSkirtBot + footFlareB * 0.78, yAt: () => 0.005, vUv: 0.10 },
+    { a: aSkirtBot + footFlareA * 0.96, b: bSkirtBot + footFlareB * 0.96, yAt: () => 0.010, vUv: 0.13 },
+    { a: aSkirtBot + footFlareA, b: bSkirtBot + footFlareB, yAt: () => 0.016, vUv: 0.16 },
+    { a: aSkirtBot + footFlareA * 0.92, b: bSkirtBot + footFlareB * 0.92, yAt: () => 0.023, vUv: 0.19 },
+    // Smooth concave ogee / cove transition into skirt base fillet (y = 0.026 .. 0.048m)
+    { a: aSkirtBot + footFlareA * 0.65, b: bSkirtBot + footFlareB * 0.65, yAt: () => 0.030, vUv: 0.23 },
+    { a: aSkirtBot + footFlareA * 0.34, b: bSkirtBot + footFlareB * 0.34, yAt: () => 0.037, vUv: 0.27 },
+    { a: aSkirtBot + footFlareA * 0.10, b: bSkirtBot + footFlareB * 0.10, yAt: () => 0.043, vUv: 0.31 },
+    { a: aSkirtBot, b: bSkirtBot, yAt: () => skirtBotY - 0.001, vUv: 0.33 },
+    { a: aSkirtBot, b: bSkirtBot, yAt: () => skirtBotY + 0.001, vUv: 0.34 },
+    // Tall smooth slightly inward-canted plinth skirt band (y = 0.049 .. 0.162m, ~114mm tall)
+    {
+      a: aSkirtBot + (aSkirtTop - aSkirtBot) * 0.34,
+      b: bSkirtBot + (bSkirtTop - bSkirtBot) * 0.34,
+      yAt: () => skirtBotY + (skirtTopY - skirtBotY) * 0.34,
+      vUv: 0.48,
+    },
+    {
+      a: aSkirtBot + (aSkirtTop - aSkirtBot) * 0.68,
+      b: bSkirtBot + (bSkirtTop - bSkirtBot) * 0.68,
+      yAt: () => skirtBotY + (skirtTopY - skirtBotY) * 0.68,
+      vUv: 0.62,
+    },
+    { a: aSkirtTop, b: bSkirtTop, yAt: () => skirtTopY - 0.001, vUv: 0.74 },
+    // Natural stepped-in shadow throat where upper collar overhangs the skirt band (~7.5mm overhang!)
+    { a: aSkirtTop, b: bSkirtTop, yAt: () => skirtTopY + 0.0008, vUv: 0.75 },
+    {
+      a: aWaist + collarBotA * 0.62,
+      b: bWaist + collarBotB * 0.62,
+      yAt: () => collarBotY - 0.0025,
+      vUv: 0.77,
+    },
+    {
+      a: aWaist + collarBotA,
+      b: bWaist + collarBotB,
+      yAt: () => collarBotY + 0.001,
+      vUv: 0.79,
+    },
+    // Substantial 44mm-tall softly cambered & upward-flaring waist collar moulding
+    {
+      a: aWaist + collarBotA + (collarTopA - collarBotA) * 0.38 + 0.0012,
+      b: bWaist + collarBotB + (collarTopB - collarBotB) * 0.38 + 0.0010,
+      yAt: () => collarBotY + (waistY - collarBotY) * 0.34,
+      vUv: 0.85,
+    },
+    {
+      a: aWaist + collarBotA + (collarTopA - collarBotA) * 0.76 + 0.0015,
+      b: bWaist + collarBotB + (collarTopB - collarBotB) * 0.76 + 0.0012,
+      yAt: () => collarBotY + (waistY - collarBotY) * 0.68,
+      vUv: 0.91,
+    },
+    {
+      a: aWaist + collarTopA,
+      b: bWaist + collarTopB,
+      yAt: () => waistY - 0.0055,
+      vUv: 0.94,
+    },
+    // Crisp rounded upper collar shoulder & horizontal step-in ledge into waist shadow rebate
+    {
+      a: aWaist + collarTopA * 0.88,
+      b: bWaist + collarTopB * 0.88,
+      yAt: () => waistY - 0.0020,
+      vUv: 0.96,
+    },
+    {
+      a: aWaist + collarTopA * 0.45,
+      b: bWaist + collarTopB * 0.45,
+      yAt: () => waistY - 0.0004,
+      vUv: 0.98,
+    },
+    { a: aWaist - 0.006, b: bWaist - 0.006, yAt: () => waistY, vUv: 0.99 },
+    { a: aWaist - 0.010, b: bWaist - 0.010, yAt: () => waistY + 0.003, vUv: 1.0 },
   ];
+
   const plinthMesh = new THREE.Mesh(
     buildRingLoftGeometry(plinthRings, radialSegs),
     copperMats.plinth
@@ -156,35 +333,45 @@ export function buildBcDesignsCopperBoatBath(
   plinthMesh.name = `${p}.copperPlinth`;
   group.add(plinthMesh);
 
-  // --- 2. Outer Burnished Copper Boat Hull Shell (y = 0.102m .. under-lip of roll rim) ---
-  const hullSteps = 14;
-  const hullRings: RingSpec[] = [];
-  const aHullBase = aPlinth - 0.002;
-  const bHullBase = bPlinth - 0.002;
-  const aHullNeck = aMax - 0.008;
-  const bHullNeck = bMax - 0.008;
+  // Subtle recessed dark shadow seam tucked right inside the waist rebate joint
+  const seamRings: RingSpec[] = [
+    { a: aWaist - 0.003, b: bWaist - 0.003, yAt: () => waistY - 0.0003, vUv: 0 },
+    { a: aWaist + 0.0012, b: bWaist + 0.0012, yAt: () => waistY + 0.0010, vUv: 0.5 },
+    { a: aWaist - 0.0025, b: bWaist - 0.0025, yAt: () => waistY + 0.0026, vUv: 1 },
+  ];
+  const waistSeamMesh = new THREE.Mesh(
+    buildRingLoftGeometry(seamRings, radialSegs),
+    brassMats.darkShadow
+  );
+  waistSeamMesh.name = `${p}.waistShadowSeam`;
+  group.add(waistSeamMesh);
 
-  for (let k = 0; k <= hullSteps; k++) {
-    const t = k / hullSteps; // 0 = base chine (0.102m), 1 = neck just under rolled rim
-    // Graceful convex S-flare toward sweeping boat prow & beam
-    const easeR = 1 - Math.pow(1 - t, 1.65);
-    const a = aHullBase + (aHullNeck - aHullBase) * easeR;
-    const b = bHullBase + (bHullNeck - bHullBase) * easeR;
+  // --- 2. Inward-Tapering Burnished Copper/Bronze Body (y = waistY .. underside of white rolled rim) ---
+  const hullSteps = 12;
+  const hullRings: RingSpec[] = [
+    { a: aWaist - 0.005, b: bWaist - 0.005, yAt: () => waistY - 0.0005, vUv: 0.0 },
+    { a: aWaist, b: bWaist, yAt: () => waistY + 0.0022, vUv: 0.02 },
+  ];
+
+  for (let k = 1; k <= hullSteps; k++) {
+    const t = k / hullSteps;
+    const rFrac = 0.96 * t + 0.04 * (t * t * (3 - 2 * t));
+    const a = aWaist + (aBodyTop - aWaist) * rFrac;
+    const b = bWaist + (bBodyTop - bWaist) * rFrac;
     hullRings.push({
       a,
       b,
       yAt: (cx) => {
-        const topNeckY = yRimAt(cx) - 0.022;
-        return 0.102 + (topNeckY - 0.102) * t;
+        const topNeckY = yRimAt(cx) - rimBullHalfH * 2 + 0.003;
+        return waistY + 0.0022 + (topNeckY - (waistY + 0.0022)) * t;
       },
-      vUv: t * 0.92,
+      vUv: 0.02 + t * 0.94,
     });
   }
-  // Outer lower quarter of rolled bead meeting white Acrymite rim cleanly without Z-fighting
   hullRings.push({
-    a: aMax - 0.0015,
-    b: bMax - 0.0015,
-    yAt: (cx) => yRimAt(cx) - 0.0145,
+    a: aBodyTop - 0.005,
+    b: bBodyTop - 0.005,
+    yAt: (cx) => yRimAt(cx) - rimBullHalfH * 2 + 0.008,
     vUv: 1.0,
   });
 
@@ -195,57 +382,95 @@ export function buildBcDesignsCopperBoatBath(
   copperShellMesh.name = `${p}.copperOuterShell`;
   group.add(copperShellMesh);
 
-  // --- 3. Inner Gloss-White `Acrymite` Bowl & Continuous 0-Tap-Hole Rolled Rim ---
-  const rimWidth = 0.034; // 34mm rolled rim lip
-  const rimHalf = rimWidth * 0.5;
-  const rimDrop = 0.014;
-  const aInnerTop = aMax - rimWidth;
-  const bInnerTop = bMax - rimWidth;
-  const aInnerFloor = aMax * 0.535; // generous reclining boat backrests at ±X
-  const bInnerFloor = bMax * 0.685;
+  // --- 3. Gloss-White Overhanging Bullnose Roll-Top Rim & Double-Ended Interior Bowl ---
+  const rimTotalWidthA = 0.074 * scaleX;
+  const rimTotalWidthB = 0.066 * scaleZ;
+  const innerLipDrop = 0.018;
+  const floorWellY = 0.168;
 
-  const innerRings: RingSpec[] = [];
+  const aInnerTop = aMax - rimTotalWidthA;
+  const bInnerTop = bMax - rimTotalWidthB;
+  const aInnerFloor = aInnerTop - 0.220 * scaleX;
+  const bInnerFloor = bInnerTop - 0.078 * scaleZ;
 
-  // Rolled rim profile: outer equator (aMax, bMax) -> crest (yRimAt) -> inner lip (aInnerTop, bInnerTop)
-  const rollSegs = 8;
-  for (let k = 0; k <= rollSegs; k++) {
-    const phi = (k / rollSegs) * Math.PI; // 0 = outer lip edge, π/2 = exact rim crest, π = inner lip
-    const cosP = Math.cos(phi); // +1 .. -1
-    const sinP = Math.sin(phi); // 0 -> +1 -> 0
-    const rOffset = rimHalf * (1 - cosP); // 0 -> rimHalf -> rimWidth
+  const innerRings: RingSpec[] = [
+    // Underside soffit tucking cleanly from copper body neck outward to bottom of bullnose drip lip
+    {
+      a: aBodyTop - 0.004,
+      b: bBodyTop - 0.004,
+      yAt: (cx) => yRimAt(cx) - rimBullHalfH * 2 + 0.005,
+      vUv: 0.0,
+    },
+    {
+      a: aBodyTop + 0.001,
+      b: bBodyTop + 0.001,
+      yAt: (cx) => yRimAt(cx) - rimBullHalfH * 2 + 0.0025,
+      vUv: 0.02,
+    },
+    {
+      a: aMax - rimBullHalfH * 1.10,
+      b: bMax - rimBullHalfH * 1.10,
+      yAt: (cx) => yRimAt(cx) - rimBullHalfH * 2 + 0.0008,
+      vUv: 0.05,
+    },
+  ];
+
+  // Plump semicircular exterior bullnose roll: bottom lip (-π/2) -> outer equator (0) -> upper roll crest (+π/2)
+  const outerBullSegs = 12;
+  for (let k = 0; k <= outerBullSegs; k++) {
+    const phi = -Math.PI * 0.5 + (k / outerBullSegs) * Math.PI;
+    const rOut = rimBullHalfH * (1 - Math.cos(phi));
+    const yOff = -rimBullHalfH * (1 - Math.sin(phi));
     innerRings.push({
-      a: aMax - rOffset,
-      b: bMax - rOffset,
-      yAt: (cx) => yRimAt(cx) - rimDrop * (1 - sinP),
-      vUv: (k / rollSegs) * 0.18,
+      a: aMax - rOut,
+      b: bMax - rOut,
+      yAt: (cx) => yRimAt(cx) + yOff,
+      vUv: 0.06 + (k / outerBullSegs) * 0.14,
     });
   }
 
-  // Sloped interior backrest & side walls descending to coved floor well (strictly >=28mm inside outer copper hull)
-  const bowlSteps = 14;
+  // Gently crowned top rim deck curving smoothly over inner lip into interior bowl
+  const innerLipSegs = 6;
+  for (let k = 1; k <= innerLipSegs; k++) {
+    const s = k / innerLipSegs;
+    const phi = s * Math.PI * 0.5;
+    const easeR = Math.sin(phi);
+    const drop = innerLipDrop * (1 - Math.cos(phi));
+    innerRings.push({
+      a: aMax - rimBullHalfH - (rimTotalWidthA - rimBullHalfH) * easeR,
+      b: bMax - rimBullHalfH - (rimTotalWidthB - rimBullHalfH) * easeR,
+      yAt: (cx) => yRimAt(cx) - drop,
+      vUv: 0.20 + s * 0.08,
+    });
+  }
+
+  // Ergonomic sloped interior backrests & side walls descending via smooth cove to floor well
+  const bowlSteps = 16;
+  const wallExpR = 1.24;
+  const wallExpY = 1.48;
   for (let k = 1; k <= bowlSteps; k++) {
-    const t = k / bowlSteps; // 0 = inner rim lip, 1 = floor cove tangent
-    // Smooth ergonomic lumbar/backrest curve + bottom cove radius
-    const wallRFrac = Math.pow(1 - t, 1.22);
-    const yDropFrac = 1 - Math.pow(1 - t, 1.45);
+    const t = k / bowlSteps;
+    const wallRFrac = Math.pow(1 - t, wallExpR);
+    const yDropFrac = 1 - Math.pow(1 - t, wallExpY);
     const a = aInnerFloor + (aInnerTop - aInnerFloor) * wallRFrac;
     const b = bInnerFloor + (bInnerTop - bInnerFloor) * wallRFrac;
     innerRings.push({
       a,
       b,
       yAt: (cx) => {
-        const startY = yRimAt(cx) - rimDrop;
+        const startY = yRimAt(cx) - innerLipDrop;
         return startY + (floorWellY - startY) * yDropFrac;
       },
-      vUv: 0.18 + t * 0.62,
+      vUv: 0.28 + t * 0.54,
     });
   }
 
-  // Flat standing/sitting floor well closing cleanly to central waste aperture
+  // Flat bathing floor well closing into central recessed WAS050G waste sump
   innerRings.push(
     { a: aInnerFloor * 0.55, b: bInnerFloor * 0.55, yAt: () => floorWellY - 0.0015, vUv: 0.90 },
-    { a: 0.025, b: 0.025, yAt: () => floorWellY - 0.003, vUv: 0.98 },
-    { a: 0, b: 0, yAt: () => floorWellY - 0.003, vUv: 1.0 }
+    { a: 0.038, b: 0.038, yAt: () => floorWellY - 0.0025, vUv: 0.95 },
+    { a: 0.034, b: 0.034, yAt: () => floorWellY - 0.0050, vUv: 0.98 },
+    { a: 0, b: 0, yAt: () => floorWellY - 0.0050, vUv: 1.0 }
   );
 
   const innerBowlMesh = new THREE.Mesh(
@@ -255,172 +480,94 @@ export function buildBcDesignsCopperBoatBath(
   innerBowlMesh.name = `${p}.acrymiteInnerBowl`;
   group.add(innerBowlMesh);
 
-  // --- 4. WAS050G Brass Click-Clack Waste & External Vertical Overflow Standpipe ---
+  // --- 4. WAS050G Polished Brass Center Dome Clicker Waste & Internal Circular Perforated Overflow Rose ---
   const wasteGroup = new THREE.Group();
   wasteGroup.name = `${p}.wasteAndOverflow`;
   group.add(wasteGroup);
 
-  // Central Ø70mm brass waste flange + dark drainage slot + Ø50mm raised click-clack dome plug
   const wasteFlange = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.035, 0.035, 0.0035, 32)),
+    prepGeo(new THREE.CylinderGeometry(0.035, 0.034, 0.0035, 36)),
     brassMats.primary
   );
   wasteFlange.name = `${p}.wasteAndOverflow.wasteFlange`;
-  wasteFlange.position.set(0, floorWellY - 0.001, 0);
+  wasteFlange.position.set(0, floorWellY - 0.0032, 0);
   wasteGroup.add(wasteFlange);
 
   const wasteGap = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.0285, 0.0285, 0.004, 28)),
+    prepGeo(new THREE.CylinderGeometry(0.0285, 0.0285, 0.004, 32)),
     brassMats.darkShadow
   );
   wasteGap.name = `${p}.wasteAndOverflow.wasteDrainSlot`;
-  wasteGap.position.set(0, floorWellY, 0);
+  wasteGap.position.set(0, floorWellY - 0.0020, 0);
   wasteGroup.add(wasteGap);
 
   const clickPlugPts = [
     new THREE.Vector2(0, 0),
-    new THREE.Vector2(0.025, 0),
-    new THREE.Vector2(0.025, 0.004),
-    new THREE.Vector2(0.018, 0.0075),
-    new THREE.Vector2(0, 0.009),
+    new THREE.Vector2(0.026, 0),
+    new THREE.Vector2(0.026, 0.0032),
+    new THREE.Vector2(0.022, 0.0062),
+    new THREE.Vector2(0.013, 0.0084),
+    new THREE.Vector2(0, 0.0092),
   ];
   const wastePlug = new THREE.Mesh(
-    prepGeo(new THREE.LatheGeometry(clickPlugPts, 32)),
+    prepGeo(new THREE.LatheGeometry(clickPlugPts, 36)),
     brassMats.primary
   );
   wastePlug.name = `${p}.wasteAndOverflow.clickClackPlug`;
-  wastePlug.position.set(0, floorWellY + 0.0015, 0);
+  wastePlug.position.set(0, floorWellY - 0.0005, 0);
   wasteGroup.add(wastePlug);
 
-  // Overflow at upper end wall (`overflowEnd`: `'west'` = -X, `'east'` = +X)
-  const signX = overflowEnd === 'east' ? 1 : -1;
-  const endRimY = endHeightM;
-  const overflowY = Math.min(endRimY - 0.145, centerHeightM - 0.045);
+  // Internal circular perforated overflow rose centered on the back (-Z / North) inner bowl wall
+  // just below the white rolled rim (x = 0, cz = -1), aligned under the floorstanding bath mixer.
+  const overflowY = centerRimY - 0.105;
+  const startCenterY = centerRimY - innerLipDrop;
+  const yDropTarget = (overflowY - startCenterY) / (floorWellY - startCenterY);
+  const oneMinusT = Math.pow(Math.max(0.02, 1 - yDropTarget), 1 / wallExpY);
+  const wallRFracOv = Math.pow(oneMinusT, wallExpR);
+  const zInnerAbs = bInnerFloor + (bInnerTop - bInnerFloor) * wallRFracOv;
 
-  // Compute exact interior white backrest X & slope angle at y = overflowY (z = 0, cx = signX)
-  const startEndY = endRimY - rimDrop;
-  const yDropTarget = (overflowY - startEndY) / (floorWellY - startEndY); // in (0, 1)
-  const oneMinusT = Math.pow(Math.max(0.02, 1 - yDropTarget), 1 / 1.45);
-  const wallRFracOv = Math.pow(oneMinusT, 1.22);
-  const xInnerAbs = aInnerFloor + (aInnerTop - aInnerFloor) * wallRFracOv;
-  // Local slope dx/dy along backrest so overflow rose sits flush against interior slope
-  const dyDt = -(floorWellY - startEndY) * 1.45 * Math.pow(oneMinusT, 0.45);
-  const daDt = -(aInnerTop - aInnerFloor) * 1.22 * Math.pow(oneMinusT, 0.22);
-  const backrestTiltZ = Math.atan2(Math.abs(daDt), Math.abs(dyDt));
+  const dyDt = -(floorWellY - startCenterY) * wallExpY * Math.pow(oneMinusT, wallExpY - 1);
+  const dbDt = -(bInnerTop - bInnerFloor) * wallExpR * Math.pow(oneMinusT, wallExpR - 1);
+  const sideWallTiltX = Math.atan2(Math.abs(dbDt), Math.abs(dyDt));
 
   const internalOverflowGroup = new THREE.Group();
   internalOverflowGroup.name = `${p}.wasteAndOverflow.internalOverflowRose`;
-  internalOverflowGroup.position.set(signX * (xInnerAbs - 0.002), overflowY, 0);
-  // Rotate local +Y to point inward into tub normal: (-signX * cos, +sin, 0)
-  internalOverflowGroup.rotation.z = signX * (Math.PI * 0.5 - backrestTiltZ);
+  internalOverflowGroup.position.set(0, overflowY, -(zInnerAbs - 0.0006));
+  internalOverflowGroup.rotation.x = Math.PI * 0.5 - sideWallTiltX;
   wasteGroup.add(internalOverflowGroup);
 
-  const ovOuterRing = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.031, 0.031, 0.005, 28)),
-    brassMats.knurled
-  );
-  ovOuterRing.name = `${p}.wasteAndOverflow.internalOverflowRose.knurledBezel`;
-  ovOuterRing.position.y = 0.0025;
-  internalOverflowGroup.add(ovOuterRing);
-
   const ovSlotShadow = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.025, 0.025, 0.0055, 24)),
+    prepGeo(new THREE.CylinderGeometry(0.0235, 0.0235, 0.0022, 32)),
     brassMats.darkShadow
   );
   ovSlotShadow.name = `${p}.wasteAndOverflow.internalOverflowRose.slotShadow`;
-  ovSlotShadow.position.y = 0.0026;
+  ovSlotShadow.position.y = 0.0004;
   internalOverflowGroup.add(ovSlotShadow);
 
-  const ovFaceCap = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.021, 0.022, 0.006, 26)),
+  const ovOuterRing = new THREE.Mesh(
+    prepGeo(new THREE.TorusGeometry(0.0295, 0.0016, 12, 36)),
     brassMats.primary
   );
-  ovFaceCap.name = `${p}.wasteAndOverflow.internalOverflowRose.cap`;
-  ovFaceCap.position.y = 0.005;
-  internalOverflowGroup.add(ovFaceCap);
+  ovOuterRing.name = `${p}.wasteAndOverflow.internalOverflowRose.bezelRing`;
+  ovOuterRing.rotation.x = Math.PI * 0.5;
+  ovOuterRing.position.y = 0.0015;
+  internalOverflowGroup.add(ovOuterRing);
 
-  // Compute outer copper hull X at y = overflowY so external standpipe sits cleanly outside hull
-  const topNeckEndY = endRimY - 0.022;
-  const tHullOv = Math.max(0, Math.min(1, (overflowY - 0.102) / (topNeckEndY - 0.102)));
-  const xOuterAbs =
-    aHullBase + (aHullNeck - aHullBase) * (1 - Math.pow(1 - tHullOv, 1.65));
-  // Standpipe axis tucked neatly under overhanging boat prow (outside copper hull, within ±aMax!)
-  const pipeXAbs = Math.min(aMax - 0.030, Math.max(xOuterAbs + 0.034, aMax - 0.034));
-  const pipeX = signX * pipeXAbs;
-
-  // Horizontal through-hull banjo union & knurled compression nut at y = overflowY
-  const unionLen = Math.max(0.024, pipeXAbs - xOuterAbs + 0.016);
-  const hullUnion = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.015, 0.015, unionLen, 22)),
+  const ovPerforatedPlate = new THREE.Mesh(
+    buildPerforatedOverflowPlateGeometry(),
     brassMats.primary
   );
-  hullUnion.name = `${p}.wasteAndOverflow.hullOverflowUnion`;
-  hullUnion.rotation.z = Math.PI * 0.5;
-  hullUnion.position.set(signX * (pipeXAbs - unionLen * 0.5), overflowY, 0);
-  wasteGroup.add(hullUnion);
+  ovPerforatedPlate.name = `${p}.wasteAndOverflow.internalOverflowRose.perforatedPlate`;
+  ovPerforatedPlate.position.y = 0.0008;
+  internalOverflowGroup.add(ovPerforatedPlate);
 
-  const hullKnurlNut = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.021, 0.021, 0.012, 24)),
+  const ovCenterScrew = new THREE.Mesh(
+    prepGeo(new THREE.CylinderGeometry(0.0023, 0.0023, 0.0018, 18)),
     brassMats.knurled
   );
-  hullKnurlNut.name = `${p}.wasteAndOverflow.hullKnurledNut`;
-  hullKnurlNut.rotation.z = Math.PI * 0.5;
-  hullKnurlNut.position.set(signX * (xOuterAbs + 0.008), overflowY, 0);
-  wasteGroup.add(hullKnurlNut);
-
-  const teeJoint = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.021, 0.021, 0.038, 24)),
-    brassMats.primary
-  );
-  teeJoint.name = `${p}.wasteAndOverflow.standpipeTee`;
-  teeJoint.position.set(pipeX, overflowY, 0);
-  wasteGroup.add(teeJoint);
-
-  const teeTopCap = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.022, 0.022, 0.008, 24)),
-    brassMats.knurled
-  );
-  teeTopCap.name = `${p}.wasteAndOverflow.standpipeTopCap`;
-  teeTopCap.position.set(pipeX, overflowY + 0.022, 0);
-  wasteGroup.add(teeTopCap);
-
-  // Exposed Ø35mm (r = 0.0175m) vertical brass overflow standpipe descending to floor trap shroud
-  const standpipeMesh = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.0175, 0.0175, overflowY, 24)),
-    brassMats.primary
-  );
-  standpipeMesh.name = `${p}.wasteAndOverflow.externalOverflowPipe`;
-  standpipeMesh.position.set(pipeX, overflowY * 0.5, 0);
-  wasteGroup.add(standpipeMesh);
-
-  // Floor trap collar shroud at (pipeX, 0, 0) (kept <= aMax so overall X envelope is exact lengthM)
-  const trapCollarR = Math.min(0.030, aMax - pipeXAbs);
-  const floorTrapShroud = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.022, trapCollarR, 0.022, 26)),
-    brassMats.primary
-  );
-  floorTrapShroud.name = `${p}.wasteAndOverflow.floorTrapCollar`;
-  floorTrapShroud.position.set(pipeX, 0.011, 0);
-  wasteGroup.add(floorTrapShroud);
-
-  const floorTrapNut = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.023, 0.023, 0.012, 24)),
-    brassMats.knurled
-  );
-  floorTrapNut.name = `${p}.wasteAndOverflow.floorTrapKnurledNut`;
-  floorTrapNut.position.set(pipeX, 0.028, 0);
-  wasteGroup.add(floorTrapNut);
-
-  // Horizontal lower return tail passing into plinth base toward waste trap
-  const lowerTailLen = Math.max(0.04, pipeXAbs - aPlinth + 0.03);
-  const lowerReturnPipe = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.016, 0.016, lowerTailLen, 20)),
-    brassMats.primary
-  );
-  lowerReturnPipe.name = `${p}.wasteAndOverflow.trapReturnPipe`;
-  lowerReturnPipe.rotation.z = Math.PI * 0.5;
-  lowerReturnPipe.position.set(signX * (pipeXAbs - lowerTailLen * 0.5), 0.048, 0);
-  wasteGroup.add(lowerReturnPipe);
+  ovCenterScrew.name = `${p}.wasteAndOverflow.internalOverflowRose.centerFixing`;
+  ovCenterScrew.position.y = 0.0012;
+  internalOverflowGroup.add(ovCenterScrew);
 
   return finalizeSanitaryGroup(group, 'sanitary');
 }
