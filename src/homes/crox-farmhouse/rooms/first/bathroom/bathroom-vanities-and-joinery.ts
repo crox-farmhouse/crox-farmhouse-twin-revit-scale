@@ -59,16 +59,18 @@ const HERITAGE_BREAKFRONT_SPEC = {
   upstandCenterH: 0.155, // Y = 3.040..3.195m
   basinWidthZ: 0.52, // Cutout 520 × 360mm (outer ceramic bowl 540 × 380mm)
   basinDepthX: 0.36,
-  mirrorWidthZ: 0.65, // Z = -0.375..+0.275m
+  mirrorWidthZ: 0.78, // Z = -0.440..+0.340m (780mm W, aligning cleanly just outside 670mm central bay & S-curve shoulders)
   mirrorBotOffsetY: 1.13, // Y = 3.290m
-  mirrorHeight: 0.79, // Y = 3.290..4.080m
-  mirrorTopRadius: 0.118,
+  mirrorHeight: 0.78, // Y = 3.290..4.070m (780 × 780mm rounded-shoulder mirror matching ref1.jpg)
+  mirrorTopRadius: 0.13, // Generous R130mm rounded top shoulders proportional to 780mm width
   mirrorFrameWidth: 0.048,
-  boiserieWidthZ: 0.305, // Plumb-centered over North (-0.5825m) & South (+0.4825m) drawer wings
+  boiserieWidthZ: 0.276, // 276mm outer frame width -> exact 68mm tailored wall margin to 780mm mirror & plumb outer vanity ends!
+  boiserieNorthCenterZ: -0.646, // Spans Z = -0.784..-0.508m (68mm North of mNorthZ = -0.440m)
+  boiserieSouthCenterZ: 0.546, // Spans Z = +0.408..+0.684m (68mm South of mSouthZ = +0.340m)
   boiserieBotOffsetY: 1.08, // Y = 3.240m
-  boiserieHeight: 0.9, // Y = 3.240..4.140m
+  boiserieHeight: 0.9, // Y = 3.240..4.140m (900mm outer frame height)
   sconceBackplateOffsetY: 1.58, // Y = 3.740m
-  bathMatLengthZ: 1.4, // John Lewis Micro-Fresh Extra Large Deep Pile Bath Mat (`140 × 70 cm`, Code 60029308)
+  bathMatLengthZ: 1.4, // John Lewis Micro-Fresh Extra Large Deep Pile Bath Mat, Dove Grey (`140 × 70 cm`, Code 60029302)
   bathMatWidthX: 0.7, // X = -12.220..-11.520m (35mm East of X = -12.255m central bay carcass)
   bathMatWestEdgeX: -12.22,
   bathMatNorthZ: -0.78, // Z = -0.780..+0.620m (clears door-54's R = 720mm swing & 10mm undercut!)
@@ -1657,16 +1659,15 @@ function buildHeritageMirrorBoiserieAndSconces(
 
   const {
     smoothWallFaceX,
-    northZ,
-    southZ,
     centerZ,
-    wingWidthZ,
     mirrorWidthZ,
     mirrorBotOffsetY,
     mirrorHeight,
     mirrorTopRadius,
     mirrorFrameWidth,
     boiserieWidthZ,
+    boiserieNorthCenterZ,
+    boiserieSouthCenterZ,
     boiserieBotOffsetY,
     boiserieHeight,
     sconceBackplateOffsetY,
@@ -1679,10 +1680,10 @@ function buildHeritageMirrorBoiserieAndSconces(
   mirrorGroup.name = 'familyBathroom.heritageReededMirror';
 
   const mBotY = floorTopY + mirrorBotOffsetY; // 3.290m
-  const mTopY = mBotY + mirrorHeight; // 4.080m
-  const mSouthZ = centerZ + mirrorWidthZ * 0.5; // +0.275m
-  const mNorthZ = centerZ - mirrorWidthZ * 0.5; // -0.375m
-  const R = mirrorTopRadius; // 0.118m
+  const mTopY = mBotY + mirrorHeight; // 4.070m
+  const mSouthZ = centerZ + mirrorWidthZ * 0.5; // +0.340m
+  const mNorthZ = centerZ - mirrorWidthZ * 0.5; // -0.440m
+  const R = mirrorTopRadius; // 0.130m
   const fw = mirrorFrameWidth; // 0.048m
 
   // 5-reed stepped fluted moulding cross-section `(u, x)`:
@@ -1871,15 +1872,15 @@ function buildHeritageMirrorBoiserieAndSconces(
 
   // =========================================================================
   // 2. TWIN PAINTED BOISERIE WALL PANELS & PLEATED SAGE-CELADON SCONCES
-  //    Plumb-centered over the North (`Z = -0.5825m`) & South (`Z = +0.4825m`) drawer wings!
+  //    276mm × 900mm frames centered at Z = -0.646m & +0.546m (exact 68mm margin to 780mm mirror!)
   // =========================================================================
-  const northWingCz = northZ + wingWidthZ * 0.5; // -0.5825m
-  const southWingCz = southZ - wingWidthZ * 0.5; // +0.4825m
+  const northWingCz = boiserieNorthCenterZ; // -0.646m (spans -0.784..-0.508m)
+  const southWingCz = boiserieSouthCenterZ; // +0.546m (spans +0.408..+0.684m)
   const bBotY = floorTopY + boiserieBotOffsetY; // 3.240m
   const bMidY = bBotY + boiserieHeight * 0.5; // 3.690m
   const boiserieGeo = buildMitredInnerBeadFrameGeometry(
-    boiserieWidthZ + 0.03,
-    boiserieHeight + 0.04,
+    boiserieWidthZ,
+    boiserieHeight,
     0.034,
     0.019
   );
@@ -1915,14 +1916,14 @@ function buildHeritageMirrorBoiserieAndSconces(
   const sconceY = floorTopY + sconceBackplateOffsetY; // 3.740m
 
   const boiserieShadowGeo = buildMitredInnerBeadFrameGeometry(
-    boiserieWidthZ + 0.036,
-    boiserieHeight + 0.046,
+    boiserieWidthZ + 0.006,
+    boiserieHeight + 0.006,
     0.04,
     0.003
   );
   const boiserieShadowMat = new THREE.MeshStandardMaterial({
     name: 'heritage.wimborneBoiserieShadowLine',
-    color: 0xdad3c5,
+    color: 0xd3cbbd,
     roughness: 0.85,
     metalness: 0.0,
   });
@@ -2036,18 +2037,16 @@ function buildHeritageMirrorBoiserieAndSconces(
  */
 
 /**
- * Builds the John Lewis `Micro-Fresh Extra Large Deep Pile Bath Mat` in `Linen` (`p4852123`,
- * Product Code `60029308`, `140 × 70 cm`, 100% cotton `~20mm` cut-tuft pile, square `90°` corners,
- * and signature `11cm`-inset sculpted/recessed rectangular border groove), laid at
- * `X = -12.22.. -11.52m, Z = -0.78..+0.62m` so `door-54` clears its SE corner cleanly!
+ * Builds the John Lewis `Micro-Fresh Extra Large Deep Pile Bath Mat` in `Dove Grey` (`p4852123`,
+ * Product Code `60029302` / SKU `238474741`, `140 × 70 cm`, 100% cotton `~20mm` cut-tuft pile,
+ * square `90°` corners, signature `11cm`-inset `#646B63` sculpted rectangular border groove, and
+ * soft perimeter grounding contact shadow), laid at `X = -12.22..-11.52m, Z = -0.78..+0.62m`
+ * so `door-54` clears its SE corner cleanly!
  */
-function buildDeepPileLinenBathMat(
+function buildDeepPileDoveGreyBathMat(
   floorTopY: number,
   mats: HeritageVanityMaterialSuite
 ): THREE.Group {
-  const matGroup = new THREE.Group();
-  matGroup.name = 'familyBathroom.deepPileLinenBathMat';
-
   const {
     bathMatLengthZ,
     bathMatWidthX,
@@ -2063,10 +2062,27 @@ function buildDeepPileLinenBathMat(
   const halfZ = bathMatLengthZ * 0.5; // 0.700m
   const cornerR = 0.008; // Crisp square 90° textile corners (8mm stitched cloth radius)
 
+  const matGroup = new THREE.Group();
+  matGroup.name = 'familyBathroom.deepPileBathMat';
+  matGroup.userData.zone = 'familyBathroom';
+  matGroup.position.set(matCenterX, floorTopY, matCenterZ);
+
+  // Soft perimeter floor contact shadow under the 20mm cotton mat edge (+32mm feather margin per side)
+  const shadowMargin = 0.036;
+  const shadowGeo = prepGeo(
+    new THREE.PlaneGeometry(bathMatWidthX + shadowMargin * 2, bathMatLengthZ + shadowMargin * 2)
+  );
+  shadowGeo.rotateX(-Math.PI * 0.5);
+  const contactShadowMesh = new THREE.Mesh(shadowGeo, mats.bathMatContactShadow);
+  contactShadowMesh.name = 'familyBathroom.deepPileBathMat.contactShadow';
+  contactShadowMesh.position.set(0, 0.0006, 0);
+  contactShadowMesh.renderOrder = 1;
+  matGroup.add(contactShadowMesh);
+
   // High-resolution `112 × 56` sculpted pile grid (~12.5mm spacing) capturing:
-  // - Softly cushioned square-cornered cotton edge (0..18mm from edge, zero hard plastic box),
+  // - Softly cushioned square-cornered cotton edge (0..22mm from edge, tucked with grounding self-shadow),
   // - Plush 11cm outer cut-tuft frame band,
-  // - John Lewis signature 11cm-inset sculpted/recessed rectangular border groove (width ~24mm),
+  // - John Lewis signature 11cm-inset sculpted/recessed rectangular border groove (`#646B63`),
   // - Plush 20mm central cut-tuft field,
   // - Subtle pile compression below 8.5mm at the outermost SE corner triangle so `door-54`'s 10mm
   //   leaf undercut clears with >1.5mm vertical margin even mid-swing!
@@ -2103,35 +2119,35 @@ function buildDeepPileLinenBathMat(
       const dzEdge = halfZ - Math.abs(lz);
       const dRectEdge = Math.max(0, Math.min(dxEdge, dzEdge));
 
-      // Base cushioned square-cornered pile envelope
+      // Base cushioned square-cornered pile envelope with tucked edge contact occlusion
       let y: number;
       let ao = 1.0;
       if (dRectEdge <= 0.0005) {
         y = 0.0008;
-        ao = 0.88;
+        ao = 0.70;
       } else if (dRectEdge < 0.022) {
         const t = dRectEdge / 0.022;
         const ease = Math.sin(t * Math.PI * 0.5);
-        y = 0.0008 + (bathMatThickness * 0.94 - 0.0008) * Math.pow(ease, 0.72);
-        ao = 0.9 + 0.1 * ease;
+        y = 0.0008 + (bathMatThickness * 0.95 - 0.0008) * Math.pow(ease, 0.7);
+        ao = 0.73 + 0.27 * ease;
       } else {
         y = bathMatThickness;
       }
 
-      // Signature 11cm-inset sculpted/recessed rectangular border groove (`dRectEdge = 0.11m`, width `26mm`)
-      const grooveHalfW = 0.013;
+      // Signature 11cm-inset sculpted/recessed rectangular border groove (`dRectEdge = 0.11m`, width `28mm`)
+      const grooveHalfW = 0.014;
       const distFromGroove = Math.abs(dRectEdge - bathMatBorderInset);
       if (distFromGroove < grooveHalfW) {
         const g = 0.5 + 0.5 * Math.cos((distFromGroove / grooveHalfW) * Math.PI);
-        y -= 0.0115 * g; // Recessed ~11.5mm sculpted channel!
-        ao -= 0.22 * g; // Crisp warm `#B8A994` taupe-stone shadow nestled in the 11cm inset channel!
+        y -= 0.0125 * g; // Recessed ~12.5mm sculpted channel!
+        ao -= 0.33 * g; // Deep `#646B63` sculpted cotton groove shadow!
       }
 
       // Organic 100% cotton cut-tuft micro-undulation across the pile
       if (dRectEdge > 0.008) {
         const tuftWave =
-          0.0011 * Math.sin(lz * 62 + Math.cos(lx * 47) * 1.3) +
-          0.0009 * Math.cos(lx * 68 - Math.sin(lz * 43) * 1.2);
+          0.0013 * Math.sin(lz * 64 + Math.cos(lx * 49) * 1.35) +
+          0.0011 * Math.cos(lx * 70 - Math.sin(lz * 45) * 1.25);
         y += tuftWave * Math.min(1, dRectEdge / 0.024);
       }
 
@@ -2147,9 +2163,9 @@ function buildDeepPileLinenBathMat(
         lx,
         Math.max(0.0008, y),
         lz,
-        (lz + halfZ) * 1.45,
-        (lx + halfX) * 1.45,
-        ao,
+        (lz + halfZ) * 1.5,
+        (lx + halfX) * 1.5,
+        Math.max(0.54, ao),
       ]);
     }
   }
@@ -2161,7 +2177,7 @@ function buildDeepPileLinenBathMat(
   const pushVert = (v: [number, number, number, number, number, number]): void => {
     positions.push(v[0], v[1], v[2]);
     uvs.push(v[3], v[4]);
-    colors.push(v[5], v[5] * 0.99, v[5] * 0.97);
+    colors.push(v[5], v[5], v[5] * 0.995);
   };
 
   for (let iz = 0; iz < segZ; iz++) {
@@ -2188,20 +2204,20 @@ function buildDeepPileLinenBathMat(
   pileGeo.computeBoundingBox();
   pileGeo.computeBoundingSphere();
 
-  const pileMesh = new THREE.Mesh(pileGeo, mats.deepPileLinenBathMat);
-  pileMesh.name = 'familyBathroom.deepPileLinenBathMat.tuftedPile';
-  pileMesh.position.set(matCenterX, floorTopY, matCenterZ);
+  const pileMesh = new THREE.Mesh(pileGeo, mats.deepPileBathMat);
+  pileMesh.name = 'familyBathroom.deepPileBathMat.tuftedPile';
   pileMesh.castShadow = true;
   pileMesh.receiveShadow = true;
   matGroup.add(pileMesh);
 
   // Thin bound 100% cotton perimeter tape (`4mm` tall tucked under the cushioned outer skirt)
   const backingMesh = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(bathMatWidthX - 0.006, 0.0035, bathMatLengthZ - 0.006)),
-    mats.deepPileLinenHem
+    prepGeo(new THREE.BoxGeometry(bathMatWidthX - 0.006, 0.0038, bathMatLengthZ - 0.006)),
+    mats.deepPileBathMatHem
   );
-  backingMesh.name = 'familyBathroom.deepPileLinenBathMat.cottonBacking';
-  backingMesh.position.set(matCenterX, floorTopY + 0.0018, matCenterZ);
+  backingMesh.name = 'familyBathroom.deepPileBathMat.cottonBacking';
+  backingMesh.position.set(0, 0.0019, 0);
+  backingMesh.castShadow = true;
   backingMesh.receiveShadow = true;
   matGroup.add(backingMesh);
 
@@ -2326,7 +2342,7 @@ export function buildFamilyBathroomVanityAndToilet(
 
   scene.add(buildHeritageBreakfrontVanity(floorTopY, heritageMats, brBrass, chinaMat));
   scene.add(buildHeritageMirrorBoiserieAndSconces(floorTopY, heritageMats, brBrass));
-  scene.add(buildDeepPileLinenBathMat(floorTopY, heritageMats));
+  scene.add(buildDeepPileDoveGreyBathMat(floorTopY, heritageMats));
 
   // NE Stepped-Cistern WC with straight-grained fumed English oak seat (Issue #3)
   const heritageVortexWc = buildLefroyBrooksCharterhouseWc({

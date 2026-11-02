@@ -17,8 +17,9 @@ export interface HeritageVanityMaterialSuite {
   readonly pleatedSageShade: THREE.MeshStandardMaterial;
   readonly warmCandleBulb: THREE.MeshStandardMaterial;
   readonly boiserieMoulding: THREE.MeshStandardMaterial;
-  readonly deepPileLinenBathMat: THREE.MeshPhysicalMaterial;
-  readonly deepPileLinenHem: THREE.MeshPhysicalMaterial;
+  readonly deepPileBathMat: THREE.MeshPhysicalMaterial;
+  readonly deepPileBathMatHem: THREE.MeshPhysicalMaterial;
+  readonly bathMatContactShadow: THREE.MeshBasicMaterial;
 }
 
 let cachedSuite: HeritageVanityMaterialSuite | null = null;
@@ -107,8 +108,9 @@ function makeDataTexture(
 }
 
 /**
- * Generates smoked / fumed dark charcoal-brown European oak textures (`#3d3128` – `#493b31`,
- * zero orange/red cast, with crisp open-pore silver-taupe vessel ticks matching `ref2.jpg`).
+ * Generates weathered smoked medium-dark brown-taupe European oak textures (`~#58493e` – `#69584a`
+ * midtones, `#463930` deep earlywood pores & moulding crevices, and `#7b6a5c` silvery-taupe
+ * cathedral grain & open-pore highlights, zero orange/red tint — matching `ref1.jpg` & `ref3.jpg`).
  * When `vertical = true`, wood fibers run along `v` (`+Y` in Three.js BoxGeometry vertical faces).
  */
 function buildSmokedOakMaps(vertical: boolean): {
@@ -136,19 +138,21 @@ function buildSmokedOakMaps(vertical: boolean): {
         0.5;
       const fineFiber = periodicNoise2D(across, along, 180, 36, 31193);
       const vesselNoise = periodicNoise2D(across, along, 240, 44, 31337);
-      const silverPore = Math.pow(Math.max(0, vesselNoise - 0.58) / 0.42, 1.65);
-      const darkVessel = Math.pow(Math.max(0, 0.38 - vesselNoise) / 0.38, 1.75);
-      const rayFleck = Math.pow(periodicNoise2D(across, along, 96, 16, 31721), 3.6);
+      const silverPore = Math.pow(Math.max(0, vesselNoise - 0.54) / 0.46, 1.55);
+      const darkVessel = Math.pow(Math.max(0, 0.39 - vesselNoise) / 0.39, 1.7);
+      const rayFleck = Math.pow(periodicNoise2D(across, along, 96, 16, 31721), 3.4);
 
-      // Deep fumed charcoal-espresso European oak (cool taupe-charcoal undertone, zero warm orange!)
-      const baseR = 54 + (cathedral - 0.5) * 11 + (fineFiber - 0.5) * 11;
-      const baseG = 45 + (cathedral - 0.5) * 9.5 + (fineFiber - 0.5) * 9.6;
-      const baseB = 38 + (cathedral - 0.5) * 8.2 + (fineFiber - 0.5) * 8.4;
+      // Warm weathered smoked medium-dark brown-taupe oak: calibrated for Room 17's warm 2700K
+      // lighting + ACESFilmic tone mapping so rendered cabinetry lands ~17% lighter than espresso
+      // right at `#645447`–`#705e50` (deep crevices `#463930`, silvery-taupe grain `#7b6a5c`, zero orange cast):
+      const baseR = 76 + (cathedral - 0.5) * 14 + (fineFiber - 0.5) * 12;
+      const baseG = 66 + (cathedral - 0.5) * 12.5 + (fineFiber - 0.5) * 10.8;
+      const baseB = 58 + (cathedral - 0.5) * 11.5 + (fineFiber - 0.5) * 9.8;
 
-      // Crisp open-pore silver-ash grain ticks (`ref2.jpg` macro!) + deep charcoal earlywood pores
-      const r = baseR + silverPore * 34 + rayFleck * 12 - darkVessel * 20;
-      const g = baseG + silverPore * 31 + rayFleck * 11 - darkVessel * 17;
-      const b = baseB + silverPore * 27 + rayFleck * 10 - darkVessel * 15;
+      // Crisp open-pore silvery-taupe grain highlights (#7b6a5c) + #463930 deep earlywood pores
+      const r = baseR + silverPore * 29 + rayFleck * 13 - darkVessel * 22;
+      const g = baseG + silverPore * 27 + rayFleck * 12 - darkVessel * 20;
+      const b = baseB + silverPore * 25 + rayFleck * 11 - darkVessel * 18;
 
       const idx = (py * w + px) * 4;
       colorData[idx] = clampByte(r);
@@ -156,7 +160,7 @@ function buildSmokedOakMaps(vertical: boolean): {
       colorData[idx + 2] = clampByte(b);
       colorData[idx + 3] = 255;
 
-      const bump = clampByte(136 + (fineFiber - 0.5) * 36 - darkVessel * 62 - silverPore * 34);
+      const bump = clampByte(138 + (fineFiber - 0.5) * 40 - darkVessel * 66 - silverPore * 36);
       bumpData[idx] = bump;
       bumpData[idx + 1] = bump;
       bumpData[idx + 2] = bump;
@@ -343,14 +347,16 @@ function buildPleatedSageShadeMaterial(): THREE.MeshStandardMaterial {
 
 
 /**
- * Procedural `512×512` high-pile chenille / looped-tuft `Linen` bath mat material
- * (`John Lewis Micro-Fresh Extra Large Deep Pile Bath Mat, Linen, p4852123`, matching the plush
- * oatmeal-linen rug in the foreground of `heritage_vanity_ref1.jpg`: `#cbbeb0` / `#bfb1a1` base
- * with `#d8cdc0` warm sand tuft crowns & `#9e9081` deep-pile micro-shadows, `roughness: 0.94`).
+ * Procedural `512×512` high-pile 100% cotton cut-tuft `Dove Grey` bath mat material
+ * (`John Lewis Micro-Fresh Extra Large Deep Pile Bath Mat, Dove Grey, Code 60029302 / SKU 238474741, p4852123`,
+ * earthy mid-tone pebble / sage-taupe `#8C948B`–`#90988D`: `#868E85`–`#8F978D` midtone in texture space,
+ * `#6B736A` deep cut-pile tuft shadows, `#A3ABA1` soft cotton tuft tips, `roughness: 0.96`, plus a soft
+ * feathered perimeter floor contact shadow under the `20mm` cotton edge).
  */
-function buildDeepPileLinenBathMatMaterials(): {
+function buildDeepPileDoveGreyBathMatMaterials(): {
   pile: THREE.MeshPhysicalMaterial;
   hem: THREE.MeshPhysicalMaterial;
+  contactShadow: THREE.MeshBasicMaterial;
 } {
   const size = 512;
   const heightField = new Float32Array(size * size);
@@ -359,8 +365,8 @@ function buildDeepPileLinenBathMatMaterials(): {
   const roughData = new Uint8Array(size * size * 4);
   const normalData = new Uint8Array(size * size * 4);
 
-  const cellsX = 72;
-  const cellsY = 72;
+  const cellsX = 76;
+  const cellsY = 76;
 
   for (let py = 0; py < size; py++) {
     const v = py / size;
@@ -379,8 +385,8 @@ function buildDeepPileLinenBathMatMaterials(): {
         const iy = ((cy0 + dy) % cellsY + cellsY) % cellsY;
         for (let dx = -1; dx <= 1; dx++) {
           const ix = ((cx0 + dx) % cellsX + cellsX) % cellsX;
-          const jx = (hash2D(ix, iy, 61001) - 0.5) * 0.82;
-          const jy = (hash2D(ix, iy, 61213) - 0.5) * 0.82;
+          const jx = (hash2D(ix, iy, 61001) - 0.5) * 0.84;
+          const jy = (hash2D(ix, iy, 61213) - 0.5) * 0.84;
           const rx = cx0 + dx + 0.5 + jx - cxFloat;
           const ry = cy0 + dy + 0.5 + jy - cyFloat;
           const d2 = rx * rx + ry * ry;
@@ -396,23 +402,24 @@ function buildDeepPileLinenBathMatMaterials(): {
 
       const d = Math.sqrt(bestD2);
       const edgeGap = Math.max(0, Math.sqrt(secondD2) - d);
-      const crown = Math.max(0, 1 - Math.pow(Math.min(1, d / 0.64), 1.65));
-      const crevice = 1 - Math.min(1, edgeGap / 0.26);
-      const cottonFiber = periodicNoise2D(u, v, 224, 224, 61909) - 0.5;
+      const crown = Math.max(0, 1 - Math.pow(Math.min(1, d / 0.62), 1.55));
+      const crevice = 1 - Math.min(1, edgeGap / 0.28);
+      const cottonFiber = periodicNoise2D(u, v, 240, 240, 61909) - 0.5;
       const napDrift = periodicFbm2D(u, v, 6, 6, 3, 62233) - 0.5;
 
       const hVal = Math.max(
         0,
-        Math.min(1, crown * 0.78 - crevice * 0.22 + cottonFiber * 0.16 + napDrift * 0.14 + 0.18)
+        Math.min(1, crown * 0.82 - crevice * 0.28 + cottonFiber * 0.17 + napDrift * 0.15 + 0.16)
       );
       heightField[py * size + px] = hVal;
 
-      // Exact sampled John Lewis `Linen` swatch:
-      // Shadow `#C4B7A3` (196, 183, 163) -> Mean `#D7CDBD`/`#DBD1C1` (217, 207, 191) -> Tip `#EFE3D0` (239, 227, 208)
-      const tuftVar = (bestTone - 0.5) * 9 + napDrift * 8 + cottonFiber * 6;
-      const r = 182 + hVal * 57 + tuftVar;
-      const g = 169 + hVal * 58 + tuftVar * 0.95;
-      const b = 150 + hVal * 58 + tuftVar * 0.9;
+      // Sampled Official John Lewis `Dove Grey` (Code 60029302 / p4852123) swatch:
+      // Calibrated for Room 17's warm illumination + ACESFilmic so rendered pile lands right at
+      // `#8C948B`–`#90988D` earthy pebble / sage-taupe (`L* ≈ 61`) with `#6B736A` tuft shadows & `#A3ABA1` tips:
+      const tuftVar = (bestTone - 0.5) * 12 + napDrift * 9 + cottonFiber * 7;
+      const r = 82 + hVal * 53 + tuftVar;
+      const g = 88 + hVal * 54 + tuftVar;
+      const b = 86 + hVal * 53 + tuftVar * 0.97;
 
       const idx = (py * size + px) * 4;
       colorData[idx] = clampByte(r);
@@ -426,7 +433,7 @@ function buildDeepPileLinenBathMatMaterials(): {
       bumpData[idx + 2] = bump;
       bumpData[idx + 3] = 255;
 
-      const rough = clampByte(248 - hVal * 16);
+      const rough = clampByte(253 - hVal * 12);
       roughData[idx] = rough;
       roughData[idx + 1] = rough;
       roughData[idx + 2] = rough;
@@ -434,7 +441,7 @@ function buildDeepPileLinenBathMatMaterials(): {
     }
   }
 
-  const strength = 3.1;
+  const strength = 4.2;
   for (let py = 0; py < size; py++) {
     const pyPrev = (py - 1 + size) % size;
     const pyNext = (py + 1) % size;
@@ -459,40 +466,40 @@ function buildDeepPileLinenBathMatMaterials(): {
     colorData,
     size,
     size,
-    'heritage.johnLewisDeepPileLinen.color',
+    'heritage.johnLewisDeepPileDoveGrey.color',
     true,
-    2.6,
-    2.6
+    2.8,
+    2.8
   );
   const pileNormal = makeDataTexture(
     normalData,
     size,
     size,
-    'heritage.johnLewisDeepPileLinen.normal',
+    'heritage.johnLewisDeepPileDoveGrey.normal',
     false,
-    2.6,
-    2.6
+    2.8,
+    2.8
   );
   const pileBump = makeDataTexture(
     bumpData,
     size,
     size,
-    'heritage.johnLewisDeepPileLinen.bump',
+    'heritage.johnLewisDeepPileDoveGrey.bump',
     false,
-    2.6,
-    2.6
+    2.8,
+    2.8
   );
   const pileRough = makeDataTexture(
     roughData,
     size,
     size,
-    'heritage.johnLewisDeepPileLinen.roughness',
+    'heritage.johnLewisDeepPileDoveGrey.roughness',
     false,
-    2.6,
-    2.6
+    2.8,
+    2.8
   );
 
-  // Woven 100% cotton bound edge tape in matching Linen (#D2C6B5)
+  // Woven 100% cotton bound edge tape in matching Dove Grey (#7B837A)
   const hemW = 128;
   const hemData = new Uint8Array(hemW * hemW * 4);
   for (let py = 0; py < hemW; py++) {
@@ -504,39 +511,96 @@ function buildDeepPileLinenBathMatMaterials(): {
         (Math.sin(v * 48 * Math.PI * 2) * 0.5 + 0.5) * 0.5;
       const slub = periodicNoise2D(u, v, 32, 32, 62911) - 0.5;
       const idx = (py * hemW + px) * 4;
-      hemData[idx] = clampByte(210 + (weave - 0.5) * 12 + slub * 8);
-      hemData[idx + 1] = clampByte(198 + (weave - 0.5) * 11 + slub * 8);
-      hemData[idx + 2] = clampByte(181 + (weave - 0.5) * 10 + slub * 7);
+      hemData[idx] = clampByte(96 + (weave - 0.5) * 11 + slub * 8);
+      hemData[idx + 1] = clampByte(102 + (weave - 0.5) * 11 + slub * 8);
+      hemData[idx + 2] = clampByte(100 + (weave - 0.5) * 10 + slub * 7);
       hemData[idx + 3] = 255;
     }
   }
 
+  // Soft perimeter grounding floor contact shadow for the 140 × 70cm mat (+32mm feather margin per side)
+  const shW = 192;
+  const shH = 384;
+  const shData = new Uint8Array(shW * shH * 4);
+  const matHalfX = 0.35;
+  const matHalfZ = 0.7;
+  const shadowMargin = 0.036;
+  const planeSpanX = (matHalfX + shadowMargin) * 2; // 0.772m
+  const planeSpanZ = (matHalfZ + shadowMargin) * 2; // 1.472m
+  const cornerR = 0.008;
+
+  for (let py = 0; py < shH; py++) {
+    const lz = ((py + 0.5) / shH - 0.5) * planeSpanZ;
+    for (let px = 0; px < shW; px++) {
+      const lx = ((px + 0.5) / shW - 0.5) * planeSpanX;
+      const qx = Math.abs(lx) - (matHalfX - cornerR);
+      const qz = Math.abs(lz) - (matHalfZ - cornerR);
+      const outDist =
+        Math.hypot(Math.max(qx, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qz), 0) - cornerR;
+
+      let alpha = 0;
+      if (outDist <= 0) {
+        alpha = 0.52;
+      } else if (outDist < shadowMargin) {
+        const t = 1 - outDist / shadowMargin;
+        alpha = 0.42 * Math.pow(smoothstep(t), 1.55);
+      }
+
+      const idx = (py * shW + px) * 4;
+      // Warm limestone-umbra shadow tint (#35312B) so contact shadow grounds the 20mm cotton edge cleanly
+      shData[idx] = 53;
+      shData[idx + 1] = 49;
+      shData[idx + 2] = 43;
+      shData[idx + 3] = clampByte(alpha * 255);
+    }
+  }
+
+  const shadowTex = new THREE.DataTexture(shData, shW, shH, THREE.RGBAFormat);
+  shadowTex.name = 'heritage.johnLewisDeepPileDoveGrey.contactShadow';
+  shadowTex.colorSpace = THREE.SRGBColorSpace;
+  shadowTex.wrapS = THREE.ClampToEdgeWrapping;
+  shadowTex.wrapT = THREE.ClampToEdgeWrapping;
+  shadowTex.magFilter = THREE.LinearFilter;
+  shadowTex.minFilter = THREE.LinearFilter;
+  shadowTex.needsUpdate = true;
+
   return {
     pile: new THREE.MeshPhysicalMaterial({
-      name: 'heritage.johnLewisDeepPileLinen',
+      name: 'heritage.johnLewisDeepPileDoveGrey',
       color: 0xffffff,
       vertexColors: true,
       map: pileColor,
       normalMap: pileNormal,
-      normalScale: new THREE.Vector2(1.25, 1.25),
+      normalScale: new THREE.Vector2(1.55, 1.55),
       bumpMap: pileBump,
-      bumpScale: 0.0065,
+      bumpScale: 0.0085,
       roughnessMap: pileRough,
-      roughness: 0.94,
+      roughness: 0.96,
       metalness: 0.0,
-      sheen: 0.42,
-      sheenRoughness: 0.9,
-      sheenColor: new THREE.Color(0xefe3d0),
+      envMapIntensity: 0.45,
+      sheen: 0.14,
+      sheenRoughness: 0.96,
+      sheenColor: new THREE.Color(0x9aa199),
     }),
     hem: new THREE.MeshPhysicalMaterial({
-      name: 'heritage.johnLewisDeepPileLinenHem',
+      name: 'heritage.johnLewisDeepPileDoveGreyHem',
       color: 0xffffff,
-      map: makeDataTexture(hemData, hemW, hemW, 'heritage.johnLewisDeepPileHem.color', true, 8, 8),
-      roughness: 0.92,
+      map: makeDataTexture(hemData, hemW, hemW, 'heritage.johnLewisDeepPileDoveGreyHem.color', true, 8, 8),
+      roughness: 0.95,
       metalness: 0.0,
-      sheen: 0.34,
-      sheenRoughness: 0.9,
-      sheenColor: new THREE.Color(0xeae0cf),
+      sheen: 0.18,
+      sheenRoughness: 0.95,
+      sheenColor: new THREE.Color(0x9aa298),
+    }),
+    contactShadow: new THREE.MeshBasicMaterial({
+      name: 'heritage.johnLewisDeepPileDoveGreyContactShadow',
+      color: 0xffffff,
+      map: shadowTex,
+      transparent: true,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -2,
     }),
   };
 }
@@ -552,12 +616,13 @@ export function getHeritageVanityMaterialSuite(): HeritageVanityMaterialSuite {
     color: 0xffffff,
     map: vertOak.colorMap,
     bumpMap: vertOak.bumpMap,
-    bumpScale: 0.0017,
+    bumpScale: 0.0024,
     roughnessMap: vertOak.roughnessMap,
-    roughness: 0.44,
+    roughness: 0.56,
     metalness: 0.0,
-    clearcoat: 0.14,
-    clearcoatRoughness: 0.36,
+    envMapIntensity: 0.55,
+    clearcoat: 0.05,
+    clearcoatRoughness: 0.56,
   });
 
   const horizontalGrain = new THREE.MeshPhysicalMaterial({
@@ -565,30 +630,32 @@ export function getHeritageVanityMaterialSuite(): HeritageVanityMaterialSuite {
     color: 0xffffff,
     map: horizOak.colorMap,
     bumpMap: horizOak.bumpMap,
-    bumpScale: 0.0017,
+    bumpScale: 0.0024,
     roughnessMap: horizOak.roughnessMap,
-    roughness: 0.44,
+    roughness: 0.56,
     metalness: 0.0,
-    clearcoat: 0.14,
-    clearcoatRoughness: 0.36,
+    envMapIntensity: 0.55,
+    clearcoat: 0.05,
+    clearcoatRoughness: 0.56,
   });
 
   const panelField = new THREE.MeshPhysicalMaterial({
     name: 'heritage.smokedDarkOak.panelField',
-    color: 0xf8f5f2,
+    color: 0xf5f3f1,
     map: vertOak.colorMap,
     bumpMap: vertOak.bumpMap,
-    bumpScale: 0.0019,
+    bumpScale: 0.0026,
     roughnessMap: vertOak.roughnessMap,
-    roughness: 0.46,
+    roughness: 0.58,
     metalness: 0.0,
-    clearcoat: 0.12,
-    clearcoatRoughness: 0.38,
+    envMapIntensity: 0.52,
+    clearcoat: 0.04,
+    clearcoatRoughness: 0.58,
   });
 
   const shadowReveal = new THREE.MeshStandardMaterial({
     name: 'heritage.smokedDarkOak.shadowReveal',
-    color: 0x1d1713,
+    color: 0x2c231d,
     roughness: 0.76,
     metalness: 0.0,
   });
@@ -644,10 +711,11 @@ export function getHeritageVanityMaterialSuite(): HeritageVanityMaterialSuite {
       metalness: 0.02,
     }),
     ...(() => {
-      const bathMatMats = buildDeepPileLinenBathMatMaterials();
+      const bathMatMats = buildDeepPileDoveGreyBathMatMaterials();
       return {
-        deepPileLinenBathMat: bathMatMats.pile,
-        deepPileLinenHem: bathMatMats.hem,
+        deepPileBathMat: bathMatMats.pile,
+        deepPileBathMatHem: bathMatMats.hem,
+        bathMatContactShadow: bathMatMats.contactShadow,
       };
     })(),
   };
