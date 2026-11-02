@@ -40,6 +40,7 @@ export function buildBootLobby(
     | 'tagCutawayWall'
     | 'wallH'
     | 'warmRoomPlasterMat'
+    | 'windowFrameMat'
   > &
     Pick<
       ReturnType<typeof createGroundFloorShellKit>,

@@ -34,6 +34,7 @@ export type BootRoomBenchAndLockersKit = Pick<
   | 'tagCutawayWall'
   | 'wallH'
   | 'warmRoomPlasterMat'
+  | 'windowFrameMat'
 > &
   Pick<
     ReturnType<typeof createGroundFloorShellKit>,
@@ -71,6 +72,7 @@ export function buildBootRoomBenchAndLockers(
     tagCutawayWall,
     wallH,
     warmRoomPlasterMat,
+    windowFrameMat,
   } = kit;
 
   const wcDrenchedMatteMat = new THREE.MeshStandardMaterial({
@@ -138,8 +140,8 @@ export function buildBootRoomBenchAndLockers(
       trimFaceOffset: 0.018,
       windowFamily: 'singleCasement',
       skirtingMaterial: wcDrenchedEggshellMat,
-      interiorTrimMaterial: wcDrenchedEggshellMat,
-      interiorRevealMaterial: wcDrenchedMatteMat,
+      interiorTrimMaterial: windowFrameMat,
+      interiorRevealMaterial: windowFrameMat,
     }
   );
 

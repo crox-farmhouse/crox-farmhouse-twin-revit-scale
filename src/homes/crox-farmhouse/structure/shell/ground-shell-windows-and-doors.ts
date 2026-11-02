@@ -136,7 +136,13 @@ export function createGroundShellWindowsAndDoors(
       (winCenterX < -17.55 && cz < 1.98 ? farrowAndBallPantalonMat : warmRoomPlasterMat);
     const frameDepth = 0.11;
     const intRevealStartZ = cz + intSignZ * (frameDepth * 0.5 - 0.012);
-    const intRevealEndZ = cz + intSignZ * (wallDepthZ * 0.5);
+    const intRevealEndZ =
+      cz +
+      intSignZ *
+        (wallDepthZ * 0.5 +
+          (wallOptions?.interiorRevealMaterial && wallOptions?.trimFaceOffset
+            ? wallOptions.trimFaceOffset + 0.004
+            : 0));
     const intRevealDepthZ = Math.max(0.024, Math.abs(intRevealEndZ - intRevealStartZ));
     const intRevealCenterZ = (intRevealStartZ + intRevealEndZ) * 0.5;
     const revealJambBotY = effSillY + 0.022;
