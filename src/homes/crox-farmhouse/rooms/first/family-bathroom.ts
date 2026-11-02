@@ -298,6 +298,7 @@ export function buildFamilyBathroom(
   buildFamilyBathroomPanellingAndLinings(scene, {
     floorTopY,
     schoolHouseWhiteMat,
+    wimborneWhiteJoineryMat,
     wimborneWhitePanellingMat,
     tagUpperCutawayWall,
   });
