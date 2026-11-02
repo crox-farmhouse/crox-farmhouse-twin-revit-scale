@@ -414,20 +414,20 @@ export function buildUpperLanding(
 
   scene.add(landingRailGroup);
 
-  // Issue #1: Solid North Exterior Brick Wall of Main Stair Landing (Z = -2.78m..-2.50m, X = -17.55m..-12.81m — NO window!)
+  // Solid North Exterior Brick Wall of Main Stair Landing (Z = -2.78m..-2.50m, X = -17.55m..-13.05m — trimmed at -13.05m cross-wall!)
   const northCutawayDescriptor = {
     axis: 'z' as const,
     coord: -2.64,
     minSpan: -17.55,
-    maxSpan: -12.81,
+    maxSpan: -13.05,
     floor: 'first' as const,
   };
   {
-    const northW = -12.81 - -17.55; // 4.74m
+    const northW = -13.05 - -17.55; // 4.50m
     const northBottomY = floorBaseY + 0.004;
-    const northTopY = upperWallTopY - 0.016;
+    const northTopY = interiorEavesY - 0.016; // 3.844m (flush with 3.86m Upper Landing North skeiling!)
     const northH = northTopY - northBottomY;
-    const northCx = (-17.55 + -12.81) / 2; // -15.18m
+    const northCx = (-17.55 + -13.05) / 2; // -15.30m
     const northCy = (northBottomY + northTopY) / 2;
     const northCz = -2.64;
 
@@ -435,12 +435,12 @@ export function buildUpperLanding(
     applyWorldSpaceBrickUVs(northBrickGeo, northCx, northCy, northCz);
     northBrickGeo.computeBoundingSphere();
     const northWallMats: THREE.Material[] = [
-      warmRoomPlasterMat, // +X buried internal junction at X = -12.81m (zero brick leak into Room 17 NW corner!)
+      warmRoomPlasterMat,
       exteriorBrickMat,
       exteriorBrickMat,
       warmRoomPlasterMat,
-      warmRoomPlasterMat, // +Z interior upper face (lower half has exposed brick panel below the middle beam)
-      exteriorBrickMat,   // -Z exterior North facade
+      warmRoomPlasterMat,
+      exteriorBrickMat,
     ];
     const northBrickWall = new THREE.Mesh(northBrickGeo, northWallMats);
     northBrickWall.name = 'upperLanding.northSolidBrickWall';
@@ -454,9 +454,23 @@ export function buildUpperLanding(
     northWallCapGeo.computeBoundingSphere();
     const northWallCap = new THREE.Mesh(northWallCapGeo, wallCapMat);
     northWallCap.name = 'upperLanding.northSolidBrickWall.cap';
-    northWallCap.position.set(northCx, upperWallTopY - 0.008, northCz);
+    northWallCap.position.set(northCx, interiorEavesY - 0.008, northCz);
     tagUpperCutawayWall(northWallCap, northCutawayDescriptor);
     scene.add(northWallCap);
+
+    // Outer-leaf exterior brick eaves spandrels in ceilingMeshGroup so exterior roof mode stays 100% seamless while ceilingCutaway stays razor-clean!
+    for (const [spName, x0, x1, y0, y1] of [
+      ['upperLanding.northUpperEaveSpandrel', -17.55, -13.05, interiorEavesY - 0.01, 4.09],
+      ['upperLanding.northCottageEaveSpandrel', -13.05, -12.81, 3.32, 4.09],
+    ] as const) {
+      const spGeo = new THREE.BoxGeometry(x1 - x0, y1 - y0, 0.13);
+      applyWorldSpaceBrickUVs(spGeo, (x0 + x1) * 0.5, (y0 + y1) * 0.5, -2.715);
+      spGeo.computeBoundingSphere();
+      const spMesh = new THREE.Mesh(spGeo, exteriorBrickMat);
+      spMesh.name = spName;
+      spMesh.position.set((x0 + x1) * 0.5, (y0 + y1) * 0.5, -2.715);
+      ctx.ceilingMeshGroup.add(spMesh);
+    }
 
     // Issue #2: Exposed Red-Brick Interior Lower North Wall Panel sitting cleanly above the continuous oak stringer/skirting
     // (X = -17.46m..-13.05m, Y = floorTopY + 0.148m..floorTopY + 1.05m, Z = -2.496m — zero overlap or Z-fighting with stringer!)
@@ -509,14 +523,14 @@ export function buildUpperLanding(
     scene.add(northWallMidBeamMoulding);
 
     // Upper Natural Oak Eaves Wall-Plate Beam along the top of the North wall (Y = interiorEavesY - 0.06m = 3.80m)
-    const northWallTopPlateBeamGeo = new THREE.BoxGeometry(lowerBrickW, 0.12, 0.044);
+    const northWallTopPlateBeamGeo = new THREE.BoxGeometry(lowerBrickW - 0.016, 0.12, 0.044);
     northWallTopPlateBeamGeo.computeBoundingSphere();
     const northWallTopPlateBeam = new THREE.Mesh(
       northWallTopPlateBeamGeo,
       darkTimberBeamMat
     );
     northWallTopPlateBeam.name = 'upperLanding.northWallTopPlateBeam';
-    northWallTopPlateBeam.position.set(lowerBrickCx, interiorEavesY - 0.06, -2.468);
+    northWallTopPlateBeam.position.set(lowerBrickCx - 0.008, interiorEavesY - 0.06, -2.468);
     northWallTopPlateBeam.castShadow = true;
     northWallTopPlateBeam.receiveShadow = true;
     tagUpperCutawayWall(northWallTopPlateBeam, northCutawayDescriptor);

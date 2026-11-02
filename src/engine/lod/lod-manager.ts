@@ -396,6 +396,7 @@ export class RoomLodController {
       if (found) return;
       const u = node.userData;
       if (
+        typeof u?.interactableId === 'string' ||
         u?.isArchitecturalShell ||
         u?.isCutawayWall ||
         u?.isKNXSwitch ||

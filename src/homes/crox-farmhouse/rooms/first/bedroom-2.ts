@@ -381,6 +381,12 @@ export function buildBedroom2(
   // Includes:
   //   1. En-suite connecting door `Door 1683671` (`0.90m x 1.73m`, low cottage solid oak door under front roof slope)
   //   2. Bedroom 2 South Chimney Breast (`uCenter = 1.69m, width = 1.20m`), leaving clear wall East of the chimney breast!
+  const ensuiteShowerSideWhiteMat = new THREE.MeshStandardMaterial({
+    name: 'showerRoom.wimborneWhiteDoorWoodwork',
+    color: 0xf7f4ec,
+    roughness: 0.34,
+    metalness: 0.02,
+  });
   const southWallStartIdx = scene.children.length;
   const bed2SouthWallFrame = buildAngledWallSegment(scene, interactions, {
     start: [-22.19, 1.905],
@@ -409,7 +415,9 @@ export function buildBedroom2(
         lowerFloorY: floorTopY,
         upperFloorY: showerRoomFloorY,
         architraveMaterial: antiqueOakSkirtingMat,
+        frontArchitraveMaterial: ensuiteShowerSideWhiteMat,
         doorLeafMaterial: timberDoorMat,
+        frontDoorLeafMaterial: ensuiteShowerSideWhiteMat,
         hardwareMaterial: brassMat,
         hingeSide: 'left',
         openAngle: -Math.PI * 0.42,

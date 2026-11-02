@@ -32,6 +32,10 @@ export interface WallPortalOpening {
   readonly stepMaterial?: THREE.Material;
   /** Architrave / casing material. */
   readonly architraveMaterial: THREE.Material;
+  /** Optional +normal (`front`) architrave & reveal override material. */
+  readonly frontArchitraveMaterial?: THREE.Material;
+  /** Optional -normal (`back`) architrave & reveal override material. */
+  readonly backArchitraveMaterial?: THREE.Material;
   /** Whether to emit 3-sided reveal lining + architraves (defaults to `true`). */
   readonly includeArchitrave?: boolean;
   /** Optional cast-iron/brass pull handle mounted inside the right or left reveal of a cased opening. */
@@ -39,6 +43,10 @@ export interface WallPortalOpening {
   readonly hardwareMaterial?: THREE.Material;
   /** Door leaf properties (when `kind === 'hinged-door'`). */
   readonly doorLeafMaterial?: THREE.Material;
+  /** Optional +normal (`front`) door leaf face override material. */
+  readonly frontDoorLeafMaterial?: THREE.Material;
+  /** Optional -normal (`back`) door leaf face override material. */
+  readonly backDoorLeafMaterial?: THREE.Material;
   /** Which jamb the door is hinged on when looking toward `+normal` (`left` = `-u`, `right` = `+u`). */
   readonly hingeSide?: 'left' | 'right';
   /**
@@ -640,6 +648,8 @@ export function buildAngledWallSegment(
         backFloorY: config.backFloorY,
         headY: headBottomY,
         material: op.architraveMaterial,
+        frontArchitraveMaterial: op.frontArchitraveMaterial,
+        backArchitraveMaterial: op.backArchitraveMaterial,
         frontFaceOffset: config.frontFaceMaterial ? 0.014 : 0,
         backFaceOffset: config.backFaceMaterial ? 0.014 : 0,
         namePrefix: `${op.id ?? 'portal'}.architrave`,
@@ -792,29 +802,47 @@ export function buildAngledWallSegment(
       const muntinW = 0.088;
       const lockRailY = -leafH * 0.07;
 
+      const frontLeafMat = op.frontDoorLeafMaterial ?? op.doorLeafMaterial;
+      const backLeafMat = op.backDoorLeafMaterial ?? op.doorLeafMaterial;
+      const addAngledLeafBox = (
+        baseName: string,
+        w: number,
+        h: number,
+        d: number,
+        px: number,
+        py: number,
+        castShad = true
+      ): void => {
+        if (frontLeafMat === backLeafMat) {
+          const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frontLeafMat);
+          m.name = baseName;
+          m.position.set(px, py, 0);
+          m.castShadow = castShad;
+          m.receiveShadow = true;
+          doorObj.add(m);
+          return;
+        }
+        const halfD = d * 0.5;
+        for (const [zSign, mat, suffix] of [
+          [1, frontLeafMat, '.front'],
+          [-1, backLeafMat, '.back'],
+        ] as const) {
+          const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, halfD), mat);
+          m.name = `${baseName}${suffix}`;
+          m.position.set(px, py, zSign * halfD * 0.5);
+          m.castShadow = castShad;
+          m.receiveShadow = true;
+          doorObj.add(m);
+        }
+      };
+
       // Central recessed core slab (tucked inside outer stiles & rails so outer edges never Z-fight)
       const coreW = Math.max(0.08, leafW - stileW);
       const coreH = Math.max(0.12, leafH - (topRailH + bottomRailH) * 0.5);
-      const leafCore = new THREE.Mesh(
-        new THREE.BoxGeometry(coreW, coreH, 0.028),
-        op.doorLeafMaterial
-      );
-      if (!leafCore.name) leafCore.name = 'architecture.primitive.leafCore';
-      leafCore.position.set(0, (bottomRailH - topRailH) * 0.25, 0);
-      leafCore.castShadow = true;
-      leafCore.receiveShadow = true;
-      doorObj.add(leafCore);
+      addAngledLeafBox('architecture.primitive.leafCore', coreW, coreH, 0.028, 0, (bottomRailH - topRailH) * 0.25);
 
       for (const side of [-1, 1] as const) {
-        const stile = new THREE.Mesh(
-          new THREE.BoxGeometry(stileW, leafH, 0.046),
-          op.doorLeafMaterial
-        );
-        if (!stile.name) stile.name = 'architecture.primitive.stile';
-        stile.position.set(side * (leafW / 2 - stileW / 2), 0, 0);
-        stile.castShadow = true;
-        stile.receiveShadow = true;
-        doorObj.add(stile);
+        addAngledLeafBox('architecture.primitive.stile', stileW, leafH, 0.046, side * (leafW / 2 - stileW / 2), 0);
       }
 
       const innerW = Math.max(0.1, leafW - stileW * 2 + 0.004);
@@ -823,15 +851,7 @@ export function buildAngledWallSegment(
         [lockRailY, lockRailH],
         [-leafH / 2 + bottomRailH / 2, bottomRailH]
       ] as const) {
-        const rail = new THREE.Mesh(
-          new THREE.BoxGeometry(innerW, railH, 0.046),
-          op.doorLeafMaterial
-        );
-        if (!rail.name) rail.name = 'architecture.primitive.rail';
-        rail.position.set(0, railY, 0);
-        rail.castShadow = true;
-        rail.receiveShadow = true;
-        doorObj.add(rail);
+        addAngledLeafBox('architecture.primitive.rail', innerW, railH, 0.046, 0, railY);
       }
 
       const upperPanelTop = leafH / 2 - topRailH;
@@ -845,26 +865,22 @@ export function buildAngledWallSegment(
       ] as const) {
         const pH = Math.max(0.12, pTop - pBot);
         const pMidY = (pBot + pTop) / 2;
-        const muntin = new THREE.Mesh(
-          new THREE.BoxGeometry(muntinW, pH + 0.004, 0.046),
-          op.doorLeafMaterial
-        );
-        if (!muntin.name) muntin.name = 'architecture.primitive.muntin';
-        muntin.position.set(0, pMidY, 0);
-        doorObj.add(muntin);
+        addAngledLeafBox('architecture.primitive.muntin', muntinW, pH + 0.004, 0.046, 0, pMidY, false);
 
         // Raised bevelled fielding panel inside each of the 4 panels
         const panelClearW = (innerW - muntinW) / 2;
         const raisedW = Math.max(0.06, panelClearW - 0.036);
         const raisedH = Math.max(0.08, pH - 0.042);
         for (const col of [-1, 1] as const) {
-          const raisedPanel = new THREE.Mesh(
-            new THREE.BoxGeometry(raisedW, raisedH, 0.038),
-            op.doorLeafMaterial
+          addAngledLeafBox(
+            'architecture.primitive.raisedPanel',
+            raisedW,
+            raisedH,
+            0.038,
+            col * (muntinW / 2 + panelClearW / 2),
+            pMidY,
+            false
           );
-          if (!raisedPanel.name) raisedPanel.name = 'architecture.primitive.raisedPanel';
-          raisedPanel.position.set(col * (muntinW / 2 + panelClearW / 2), pMidY, 0);
-          doorObj.add(raisedPanel);
         }
       }
 

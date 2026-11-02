@@ -5,6 +5,12 @@ import {
   buildMitredWallSkirtingGeometry,
   buildPolygonalFloorSlab,
 } from '../../../../engine/geometry/index.ts';
+import {
+  PARISIAN_MANOIR_REPEAT_SPAN_M,
+  createFelliniOlivaSquareTileTextures,
+  createParisianManoirCabochonTextures,
+  createParisianManoirUpstandTextures,
+} from '../../../../engine/textures/stone-and-tile-textures.ts';
 import { transformEastWingTuple } from '../../structure/ground-floor-materials.ts';
 import {
   buildArmstrongConcealedShowerSet,
@@ -62,12 +68,363 @@ function tagHighLodDetail(mesh: THREE.Mesh): void {
   mesh.userData.lodMaxDistance = 12;
 }
 
+const SHOWER_UPSTAND_SPEC = {
+  heightM: 0.1,
+  thicknessM: 0.012,
+  chamferM: 0.0035,
+  northWallStart: [-22.19, 1.905] as const,
+  northWallEnd: [-18.92, 2.34] as const,
+  northWallHalfThicknessM: 0.14,
+  ensuiteDoorEastArchitraveU: 1.07,
+  eastInnerX: -18.995,
+  westInnerX: -22.19,
+  corridorDoorNorthArchitraveZ: 2.6,
+  corridorDoorSouthArchitraveZ: 3.65,
+  southDryWallInnerZ: 3.745,
+} as const;
+
+const SHOWER_WETROOM_SPEC = {
+  minX: -20.16,
+  maxX: -18.285,
+  archRightX: -19.3,
+  collarRidgeX: -18.92,
+  eastOuterWallX: -18.21,
+  northTileBaseZ: 3.887,
+  northInnerZ: 3.895,
+  southInnerZ: 4.605,
+  wallTileThicknessM: 0.008,
+  eastTileThicknessM: 0.004,
+} as const;
+
+interface ShowerRoomTileMaterials {
+  readonly floorMat: THREE.MeshStandardMaterial;
+  readonly upstandMat: THREE.MeshStandardMaterial;
+  readonly wetroomWallMat: THREE.MeshStandardMaterial;
+}
+
+function createShowerRoomTileMaterials(): ShowerRoomTileMaterials {
+  const parisianFloorTex = createParisianManoirCabochonTextures();
+  const floorMat = new THREE.MeshStandardMaterial({
+    map: parisianFloorTex.colorMap,
+    normalMap: parisianFloorTex.normalMap,
+    normalScale: new THREE.Vector2(0.55, 0.55),
+    roughnessMap: parisianFloorTex.roughnessMap,
+    roughness: 1.0,
+    metalness: 0.02,
+  });
+
+  const parisianUpstandTex = createParisianManoirUpstandTextures();
+  const upstandMat = new THREE.MeshStandardMaterial({
+    map: parisianUpstandTex.colorMap,
+    normalMap: parisianUpstandTex.normalMap,
+    normalScale: new THREE.Vector2(0.5, 0.5),
+    roughnessMap: parisianUpstandTex.roughnessMap,
+    roughness: 1.0,
+    metalness: 0.02,
+  });
+
+  const felliniOlivaTex = createFelliniOlivaSquareTileTextures();
+  const wetroomWallMat = new THREE.MeshStandardMaterial({
+    map: felliniOlivaTex.colorMap,
+    normalMap: felliniOlivaTex.normalMap,
+    normalScale: new THREE.Vector2(0.72, 0.72),
+    roughnessMap: felliniOlivaTex.roughnessMap,
+    roughness: 1.0,
+    metalness: 0.04,
+  });
+
+  return { floorMat, upstandMat, wetroomWallMat };
+}
+
+/**
+ * Sweeps a `100mm`-high (`0.10m`), `12mm`-thick (`0.012m`) chamfered-top marble tiled upstand
+ * along a clockwise room-perimeter polyline `path` (`(-dz, dx)` points into `showerRoom`),
+ * with 45° mitred corners and world-calibrated `1.218m` (`3 × 406mm`) horizontal UVs.
+ */
+function buildChamferedMarbleUpstandGeometry(
+  path: ReadonlyArray<readonly [number, number]>,
+  floorY: number
+): THREE.BufferGeometry {
+  const { heightM, thicknessM, chamferM } = SHOWER_UPSTAND_SPEC;
+  const ring: ReadonlyArray<readonly [number, number, number]> = [
+    [0, 0, 0],
+    [0, thicknessM, 0],
+    [heightM - chamferM, thicknessM, (heightM - chamferM) / heightM],
+    [heightM, thicknessM - chamferM, 1],
+    [heightM, 0, 1],
+  ];
+
+  const segs: Array<{ p0: THREE.Vector2; t: THREE.Vector2; n: THREE.Vector2; len: number; cumU: number }> = [];
+  let runningLen = 0;
+  for (let i = 0; i + 1 < path.length; i++) {
+    const [x0, z0] = path[i]!;
+    const [x1, z1] = path[i + 1]!;
+    const dx = x1 - x0;
+    const dz = z1 - z0;
+    const len = Math.hypot(dx, dz) || 1e-6;
+    const tx = dx / len;
+    const tz = dz / len;
+    segs.push({
+      p0: new THREE.Vector2(x0, z0),
+      t: new THREE.Vector2(tx, tz),
+      n: new THREE.Vector2(-tz, tx),
+      len,
+      cumU: runningLen,
+    });
+    runningLen += len;
+  }
+
+  const positions: number[] = [];
+  const uvs: number[] = [];
+
+  const emitVertex = (
+    seg: { p0: THREE.Vector2; t: THREE.Vector2; n: THREE.Vector2; len: number; cumU: number },
+    sEnd: 0 | 1,
+    d: number,
+    h: number,
+    vCoord: number,
+    startK: number,
+    endK: number
+  ): void => {
+    const along = sEnd === 0 ? h * startK : seg.len + h * endK;
+    const wx = seg.p0.x + seg.t.x * along + seg.n.x * h;
+    const wz = seg.p0.y + seg.t.y * along + seg.n.y * h;
+    positions.push(wx, floorY + d, wz);
+    uvs.push((seg.cumU + along) / PARISIAN_MANOIR_REPEAT_SPAN_M, vCoord);
+  };
+
+  segs.forEach((seg, idx) => {
+    const prev = idx > 0 ? segs[idx - 1] : undefined;
+    const next = idx + 1 < segs.length ? segs[idx + 1] : undefined;
+    const startK = prev ? -seg.n.dot(prev.t) / (1 + seg.t.dot(prev.t)) : 0;
+    const endK = next ? -seg.n.dot(next.t) / (1 + seg.t.dot(next.t)) : 0;
+
+    for (let e = 0; e < ring.length; e++) {
+      const [d0, h0, v0] = ring[e]!;
+      const [d1, h1, v1] = ring[(e + 1) % ring.length]!;
+      emitVertex(seg, 0, d0, h0, v0, startK, endK);
+      emitVertex(seg, 1, d0, h0, v0, startK, endK);
+      emitVertex(seg, 1, d1, h1, v1, startK, endK);
+
+      emitVertex(seg, 0, d0, h0, v0, startK, endK);
+      emitVertex(seg, 1, d1, h1, v1, startK, endK);
+      emitVertex(seg, 0, d1, h1, v1, startK, endK);
+    }
+
+    if (!prev) {
+      for (let c = 1; c + 1 < ring.length; c++) {
+        const [d0, h0, v0] = ring[0]!;
+        const [d1, h1, v1] = ring[c + 1]!;
+        const [d2, h2, v2] = ring[c]!;
+        emitVertex(seg, 0, d0, h0, v0, startK, endK);
+        emitVertex(seg, 0, d1, h1, v1, startK, endK);
+        emitVertex(seg, 0, d2, h2, v2, startK, endK);
+      }
+    }
+    if (!next) {
+      for (let c = 1; c + 1 < ring.length; c++) {
+        const [d0, h0, v0] = ring[0]!;
+        const [d1, h1, v1] = ring[c]!;
+        const [d2, h2, v2] = ring[c + 1]!;
+        emitVertex(seg, 1, d0, h0, v0, startK, endK);
+        emitVertex(seg, 1, d1, h1, v1, startK, endK);
+        emitVertex(seg, 1, d2, h2, v2, startK, endK);
+      }
+    }
+  });
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+/**
+ * Builds the continuous `100mm`-high chamfered `Parisian Manoir` marble tiled upstand around all
+ * dry perimeter walls of `showerRoom` and across the front step-up riser of the arched shower tray.
+ */
+function buildShowerRoomMarbleUpstands(
+  scene: THREE.Group,
+  showerFloorY: number,
+  upstandMat: THREE.Material
+): void {
+  const [nwX0, nwZ0] = SHOWER_UPSTAND_SPEC.northWallStart;
+  const [nwX1, nwZ1] = SHOWER_UPSTAND_SPEC.northWallEnd;
+  const nwDx = nwX1 - nwX0;
+  const nwDz = nwZ1 - nwZ0;
+  const nwLen = Math.hypot(nwDx, nwDz);
+  const nwTx = nwDx / nwLen;
+  const nwTz = nwDz / nwLen;
+  const nwNx = -nwTz;
+  const nwNz = nwTx;
+  const halfT = SHOWER_UPSTAND_SPEC.northWallHalfThicknessM;
+
+  const northInnerPoint = (u: number): readonly [number, number] => [
+    nwX0 + nwTx * u + nwNx * halfT,
+    nwZ0 + nwTz * u + nwNz * halfT,
+  ];
+  const uNorthEastCorner = (SHOWER_UPSTAND_SPEC.eastInnerX - (nwX0 + nwNx * halfT)) / nwTx;
+  const uNorthWestCorner = (SHOWER_UPSTAND_SPEC.westInnerX - (nwX0 + nwNx * halfT)) / nwTx;
+  const [, zNorthWestCorner] = northInnerPoint(uNorthWestCorner);
+
+  const runs: ReadonlyArray<readonly [string, ReadonlyArray<readonly [number, number]>]> = [
+    [
+      'showerRoom.tiledUpstand.northAndEast',
+      [
+        northInnerPoint(SHOWER_UPSTAND_SPEC.ensuiteDoorEastArchitraveU),
+        northInnerPoint(uNorthEastCorner),
+        [SHOWER_UPSTAND_SPEC.eastInnerX, SHOWER_UPSTAND_SPEC.corridorDoorNorthArchitraveZ],
+      ],
+    ],
+    [
+      'showerRoom.tiledUpstand.southTrayAndWest',
+      [
+        [SHOWER_UPSTAND_SPEC.eastInnerX, SHOWER_UPSTAND_SPEC.corridorDoorSouthArchitraveZ],
+        [SHOWER_UPSTAND_SPEC.eastInnerX, SHOWER_UPSTAND_SPEC.southDryWallInnerZ],
+        [SHOWER_UPSTAND_SPEC.westInnerX, SHOWER_UPSTAND_SPEC.southDryWallInnerZ],
+        [SHOWER_UPSTAND_SPEC.westInnerX, zNorthWestCorner],
+      ],
+    ],
+  ];
+
+  for (const [upstandName, path] of runs) {
+    const upstandGeo = buildChamferedMarbleUpstandGeometry(path, showerFloorY);
+    const upstandMesh = new THREE.Mesh(upstandGeo, upstandMat);
+    upstandMesh.name = upstandName;
+    upstandMesh.userData.isArchitecturalShell = true;
+    upstandMesh.castShadow = true;
+    upstandMesh.receiveShadow = true;
+    scene.add(upstandMesh);
+  }
+}
+
+/**
+ * Normalizes UVs of an extruded wall tile geometry to exact `1.00m × 1.00m` world-space meters
+ * anchored to `yDatum` so `125 × 125mm` (`8 × 8` per meter) `Fellini Oliva` grout joints align
+ * seamlessly across all corners of the wetroom enclosure.
+ */
+function applyWorldMeterTileUvs(
+  geo: THREE.BufferGeometry,
+  uAxis: 'x' | 'z',
+  uOrigin: number,
+  uSign: 1 | -1,
+  yDatum: number
+): THREE.BufferGeometry {
+  const pos = geo.getAttribute('position');
+  const uv = geo.getAttribute('uv');
+  if (pos && uv) {
+    for (let i = 0; i < pos.count; i++) {
+      const horiz = uAxis === 'x' ? pos.getX(i) : pos.getZ(i);
+      const u = (horiz - uOrigin) * uSign;
+      const v = pos.getY(i) - yDatum;
+      uv.setXY(i, u, v);
+    }
+    uv.needsUpdate = true;
+  }
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+/**
+ * Lines the interior walls and arched spandrel of the walk-in shower enclosure with `8mm`
+ * Claybrook Studio `Fellini Oliva` glossy hand-glazed square ceramic wall tiles.
+ */
+function buildShowerWetroomFelliniTiling(
+  showerGroup: THREE.Group,
+  archSpandrelShape: THREE.Shape,
+  dims: {
+    readonly archCenterX: number;
+    readonly tileBaseY: number;
+    readonly trayTopY: number;
+    readonly showerCollarY: number;
+    readonly corridorCeilingY: number;
+  },
+  wetroomWallMat: THREE.Material
+): void {
+  const { archCenterX, tileBaseY, trayTopY, showerCollarY, corridorCeilingY } = dims;
+  const {
+    minX,
+    maxX,
+    archRightX,
+    collarRidgeX,
+    eastOuterWallX,
+    northTileBaseZ,
+    northInnerZ,
+    southInnerZ,
+    wallTileThicknessM,
+    eastTileThicknessM,
+  } = SHOWER_WETROOM_SPEC;
+
+  const stallEastCeilY =
+    showerCollarY -
+    ((maxX - collarRidgeX) / (eastOuterWallX - collarRidgeX)) * (showerCollarY - corridorCeilingY);
+  const stallDepthZ = southInnerZ - northInnerZ;
+  const stallMidZ = northInnerZ + stallDepthZ * 0.5;
+
+  const buildVaultedWallTileGeo = (leftX: number, zTranslate: number): THREE.ExtrudeGeometry => {
+    const shape = new THREE.Shape();
+    shape.moveTo(leftX, tileBaseY);
+    shape.lineTo(maxX, tileBaseY);
+    shape.lineTo(maxX, stallEastCeilY);
+    shape.lineTo(collarRidgeX, showerCollarY);
+    shape.lineTo(leftX, showerCollarY);
+    shape.closePath();
+    const geo = new THREE.ExtrudeGeometry(shape, {
+      depth: wallTileThicknessM,
+      bevelEnabled: false,
+    });
+    geo.translate(0, 0, zTranslate);
+    applyWorldMeterTileUvs(geo, 'x', minX, 1, trayTopY);
+    return geo;
+  };
+
+  const addShellTileMesh = (name: string, geo: THREE.BufferGeometry): void => {
+    const mesh = new THREE.Mesh(geo, wetroomWallMat);
+    mesh.name = name;
+    mesh.userData.isArchitecturalShell = true;
+    mesh.receiveShadow = true;
+    showerGroup.add(mesh);
+  };
+
+  addShellTileMesh(
+    'showerRoom.wetroomTiling.southWall',
+    buildVaultedWallTileGeo(minX, southInnerZ)
+  );
+  addShellTileMesh(
+    'showerRoom.wetroomTiling.northWall',
+    buildVaultedWallTileGeo(archRightX, northTileBaseZ)
+  );
+
+  const archInnerTileGeo = new THREE.ExtrudeGeometry(archSpandrelShape, {
+    depth: wallTileThicknessM,
+    bevelEnabled: false,
+    curveSegments: 64,
+  });
+  archInnerTileGeo.translate(archCenterX, 0, northTileBaseZ);
+  applyWorldMeterTileUvs(archInnerTileGeo, 'x', minX, 1, trayTopY);
+  addShellTileMesh('showerRoom.wetroomTiling.archInnerSpandrel', archInnerTileGeo);
+
+  const westTileH = showerCollarY - tileBaseY;
+  const westTileGeo = new THREE.BoxGeometry(wallTileThicknessM, westTileH, stallDepthZ);
+  westTileGeo.translate(minX - wallTileThicknessM * 0.5, tileBaseY + westTileH * 0.5, stallMidZ);
+  applyWorldMeterTileUvs(westTileGeo, 'z', northInnerZ, 1, trayTopY);
+  addShellTileMesh('showerRoom.wetroomTiling.westWall', westTileGeo);
+
+  const eastTileH = stallEastCeilY - tileBaseY;
+  const eastTileGeo = new THREE.BoxGeometry(eastTileThicknessM, eastTileH, stallDepthZ);
+  eastTileGeo.translate(maxX - eastTileThicknessM * 0.5, tileBaseY + eastTileH * 0.5, stallMidZ);
+  applyWorldMeterTileUvs(eastTileGeo, 'z', southInnerZ, -1, trayTopY);
+  addShellTileMesh('showerRoom.wetroomTiling.eastWall', eastTileGeo);
+}
+
 /**
  * West wing upper corridor, trapezoidal upstairs shower room and walk-in cupboard.
  */
 export function buildWestWingCorridor(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'bathroomTileMat' | 'brassMat' | 'ceramicWhiteMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'wimborneWhiteJoineryMat' | 'windowGlassMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'ceramicWhiteMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addShakerWardrobeDoor' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'doorH'>
 ): void {
   const { firstFloorMeshGroup: scene, interactions } = ctx;
@@ -76,7 +433,6 @@ export function buildWestWingCorridor(
     addUpperBrickWallAlongZWithWindow,
     addUpperExteriorBrickWall,
     antiqueOakSkirtingMat,
-    bathroomTileMat,
     brassMat,
     ceramicWhiteMat,
     floorBaseY,
@@ -87,7 +443,6 @@ export function buildWestWingCorridor(
     wallCapMat,
     wardrobeMat,
     warmRoomPlasterMat,
-    wimborneWhiteJoineryMat,
   } = kit;
 
   const landingFloorTopY = 2.16;
@@ -205,7 +560,13 @@ export function buildWestWingCorridor(
     scene.add(stepGroup);
   }
 
-  // Trapezoidal Shower Room polygonal tiled floor (`Y = 2.075m`, dry floor `4.35 m²` + `+100mm` step-up shower stall `1.69 m²`)
+  const {
+    floorMat: parisianManoirFloorMat,
+    upstandMat: parisianManoirUpstandMat,
+    wetroomWallMat: felliniOlivaWallMat,
+  } = createShowerRoomTileMaterials();
+
+  // Trapezoidal Shower Room polygonal tiled floor (`Y = 2.075m`, Parisian Manoir Cabochon tumbled marble octagons & charcoal cabochons)
   const showerRoomFloorSlab = buildPolygonalFloorSlab(
     scene,
     [
@@ -220,7 +581,7 @@ export function buildWestWingCorridor(
     ],
     showerFloorY,
     showerFloorY - floorBaseY,
-    bathroomTileMat,
+    parisianManoirFloorMat,
     0.5
   );
   showerRoomFloorSlab.name = 'showerRoom.floorSlab';
@@ -381,6 +742,12 @@ export function buildWestWingCorridor(
   //     Contains BOTH `bedroom2Door` (`Door 1683309`: `0.76m x 1.865m` at `Z = 1.695m`)
   //     and `showerRoomDoor` (`Door 1683296`: `0.90m x 2.01m` at `Z = 3.125m`)!
   {
+    const showerDoorWimborneWhiteMat = new THREE.MeshStandardMaterial({
+      name: 'showerRoom.wimborneWhiteDoorWoodwork',
+      color: 0xf7f4ec,
+      roughness: 0.34,
+      metalness: 0.02,
+    });
     const idx = scene.children.length;
     buildAngledWallSegment(scene, interactions, {
       start: [-18.92, 0.975],
@@ -420,7 +787,9 @@ export function buildWestWingCorridor(
           lowerFloorY: showerFloorY,
           upperFloorY: floorTopY,
           architraveMaterial: antiqueOakSkirtingMat,
+          frontArchitraveMaterial: showerDoorWimborneWhiteMat,
           doorLeafMaterial: timberDoorMat,
+          frontDoorLeafMaterial: showerDoorWimborneWhiteMat,
           hardwareMaterial: brassMat,
           hingeSide: 'left',
           openAngle: -Math.PI * 0.42,
@@ -453,42 +822,7 @@ export function buildWestWingCorridor(
     scene.add(showerEastUpperGable);
   }
 
-  // Continuous 45°-mitred skirtings inside the dry Shower Room (`Y = 2.075m`)
-  for (const [skirtName, path] of [
-    [
-      'showerRoom.northEastMitredSkirting',
-      [
-        [-21.11, 2.05],
-        [-18.995, 2.33],
-        [-18.995, 2.6],
-      ] as const,
-    ],
-    [
-      'showerRoom.westAndSouthMitredSkirting',
-      [
-        [-22.19, 2.045],
-        [-22.19, 3.745],
-        [-20.16, 3.745],
-      ] as const,
-    ],
-    [
-      'showerRoom.southEastPierSkirting',
-      [
-        [-19.3, 3.745],
-        [-18.995, 3.745],
-        [-18.995, 3.65],
-      ] as const,
-    ],
-  ] as const) {
-    const skirtGeo = buildMitredWallSkirtingGeometry(path, showerFloorY);
-    skirtGeo.computeBoundingSphere();
-    const skirtMesh = new THREE.Mesh(skirtGeo, wimborneWhiteJoineryMat);
-    skirtMesh.name = skirtName;
-    skirtMesh.userData.isArchitecturalShell = true;
-    skirtMesh.castShadow = true;
-    skirtMesh.receiveShadow = true;
-    scene.add(skirtMesh);
-  }
+  buildShowerRoomMarbleUpstands(scene, showerFloorY, parisianManoirUpstandMat);
 
   // 2. Straight Z = +3.82m Partition Wall (calibrated to surveyed Room 20 clear depth 1.48-1.54m):
   //    2a. West section behind Vanity Basin & WC (`Z = +3.82m, X = -22.19m..-20.16m`)
@@ -522,7 +856,7 @@ export function buildWestWingCorridor(
     seWallShape.lineTo(-19.3, showerCollarY);
     seWallShape.closePath();
     const seWallGeo = new THREE.ExtrudeGeometry(seWallShape, {
-      depth: 0.15,
+      depth: 0.142,
       bevelEnabled: false,
     });
     seWallGeo.translate(0, 0, 3.82 - 0.075);
@@ -590,7 +924,7 @@ export function buildWestWingCorridor(
     const showerGroup = new THREE.Group();
     showerGroup.name = 'showerRoom.stepUpArchShower';
 
-    // 1. Plastered Archway Header (`showerRoom.showerArch`) over the `X = -20.16m..-19.30m` (`width = 0.86m`) entrance at `Z = +3.82m`
+    // Plastered archway header (`showerRoom.showerArch`) over the `X = -20.16m..-19.30m` (`0.86m`) entrance at `Z = +3.82m`
     //    Rising seamlessly up to the 4.815m vaulted collar ceiling!
     const archLeftX = -20.16;
     const archRightX = -19.3;
@@ -598,7 +932,7 @@ export function buildWestWingCorridor(
     const archSpan = archRightX - archLeftX; // 0.86m
     const archRadius = archSpan / 2; // 0.43m
     const archSpringY = showerFloorY + 1.54; // 3.615m springing line -> 4.045m crown (1.97m clear!)
-    const archWallD = 0.15;
+    const archWallD = 0.142; // Z = 3.745m..3.887m; 8mm Fellini Oliva inner spandrel completes 3.887m..3.895m!
 
     const archSpandrelShape = new THREE.Shape();
     archSpandrelShape.moveTo(-archRadius, archSpringY);
@@ -612,7 +946,7 @@ export function buildWestWingCorridor(
       bevelEnabled: false,
       curveSegments: 64,
     });
-    archSpandrelGeo.translate(archCenterX, 0, 3.82 - archWallD / 2);
+    archSpandrelGeo.translate(archCenterX, 0, 3.745);
     {
       const posAttr = archSpandrelGeo.getAttribute('position');
       const normAttr = archSpandrelGeo.getAttribute('normal');
@@ -641,10 +975,11 @@ export function buildWestWingCorridor(
     archSpandrelMesh.receiveShadow = true;
     showerGroup.add(archSpandrelMesh);
 
-    // 2. Step-Up Tiled Shower Plinth (`0.10m` surveyed rise, `Y = 2.075m..2.175m`) & Ceramic Step-Up Shower Tray (`1.875m x 0.706m` clear inside stall)
+    // Step-up shower plinth (`0.10m` surveyed rise, `Y = 2.075m..2.175m`, fronted continuously by
+    //    `showerRoom.tiledUpstand.southTrayAndWest` at `Z = 3.733m..3.745m`) & Ceramic Shower Tray
     const plinthH = 0.1;
     const trayW = 1.875; // X = -20.16m..-18.285m
-    const trayD = 0.706; // Z = +3.899m..+4.605m (4mm South of southEastPartitionWall at Z = 3.895m)
+    const trayD = 0.706; // Z = +3.899m..+4.605m
     const trayCenterX = -19.2225;
     const trayCenterZ = 4.252;
 
@@ -652,7 +987,7 @@ export function buildWestWingCorridor(
     showerStepPlinthGeo.computeBoundingSphere();
     const showerStepPlinth = new THREE.Mesh(
       showerStepPlinthGeo,
-      bathroomTileMat
+      parisianManoirUpstandMat
     );
     showerStepPlinth.name = 'showerRoom.showerStepPlinth';
     showerStepPlinth.position.set(trayCenterX, showerFloorY + plinthH / 2, trayCenterZ);
@@ -660,27 +995,26 @@ export function buildWestWingCorridor(
     showerStepPlinth.receiveShadow = true;
     showerGroup.add(showerStepPlinth);
 
-    const archStepRiserGeo = new THREE.BoxGeometry(archSpan, plinthH, 0.08);
+    const archStepRiserGeo = new THREE.BoxGeometry(archSpan, plinthH, 0.154);
     archStepRiserGeo.computeBoundingSphere();
-    const archStepRiser = new THREE.Mesh(archStepRiserGeo, bathroomTileMat);
+    const archStepRiser = new THREE.Mesh(archStepRiserGeo, parisianManoirUpstandMat);
     archStepRiser.name = 'showerRoom.showerStepArchRiser';
-    archStepRiser.position.set(archCenterX, showerFloorY + plinthH / 2, 3.78);
+    archStepRiser.position.set(archCenterX, showerFloorY + plinthH / 2, 3.822);
     archStepRiser.castShadow = true;
     archStepRiser.receiveShadow = true;
     showerGroup.add(archStepRiser);
 
-    // Ceramic step-up threshold lip across the arch opening (`X = -20.16m..-19.30m, Z = 3.82m`)
-    const stepNosingGeo = new THREE.BoxGeometry(archSpan, 0.028, 0.165);
+    // Raised white stone-resin shower tray & threshold sitting cleanly on the 2.175m step-up plinth
+    const trayBaseY = showerFloorY + plinthH;
+    const stepNosingGeo = new THREE.BoxGeometry(archSpan, 0.042, 0.156);
     stepNosingGeo.computeBoundingSphere();
     const stepNosing = new THREE.Mesh(stepNosingGeo, ceramicWhiteMat);
     stepNosing.name = 'showerRoom.showerStepThreshold';
-    stepNosing.position.set(archCenterX, showerFloorY + plinthH + 0.014, 3.82);
+    stepNosing.position.set(archCenterX, trayBaseY + 0.021, 3.823);
     stepNosing.castShadow = true;
     stepNosing.receiveShadow = true;
     showerGroup.add(stepNosing);
 
-    // Raised white stone-resin shower tray with perimeter upstands & recessed standing well
-    const trayBaseY = showerFloorY + plinthH;
     const srShowerTrayGeo = new THREE.BoxGeometry(trayW, 0.042, trayD);
     srShowerTrayGeo.computeBoundingSphere();
     const srShowerTray = new THREE.Mesh(srShowerTrayGeo, ceramicWhiteMat);
@@ -704,9 +1038,22 @@ export function buildWestWingCorridor(
     trayRecessedWell.position.set(trayCenterX, trayBaseY + 0.045, trayCenterZ);
     showerGroup.add(trayRecessedWell);
 
-
     const pfBrass = getBathroomBrassMaterials('PF');
-    const trayTopY = trayBaseY + 0.048; // 2.223m finished shower tray standing plane
+    const trayTopY = trayBaseY + 0.048;
+    const tileBaseY = trayBaseY + 0.04;
+
+    buildShowerWetroomFelliniTiling(
+      showerGroup,
+      archSpandrelShape,
+      {
+        archCenterX,
+        tileBaseY,
+        trayTopY,
+        showerCollarY,
+        corridorCeilingY,
+      },
+      felliniOlivaWallMat
+    );
 
     // Schlüter KERDI-LINE 60cm (KLH50G2E60 + KLA19EB60) Brushed Stainless Linear Wetroom Grate
     const showerDrainGrateGeo = new THREE.BoxGeometry(0.068, 0.004, 0.6);
@@ -727,20 +1074,20 @@ export function buildWestWingCorridor(
     showerGroup.add(nicheFrame);
 
     const nicheBackGeo = new THREE.BoxGeometry(0.30, 0.40, 0.012);
-    nicheBackGeo.computeBoundingSphere();
-    const nicheBack = new THREE.Mesh(nicheBackGeo, bathroomTileMat);
+    nicheBackGeo.translate(-19.18, trayTopY + 1.18, 4.592);
+    applyWorldMeterTileUvs(nicheBackGeo, 'x', SHOWER_WETROOM_SPEC.minX, 1, trayTopY);
+    const nicheBack = new THREE.Mesh(nicheBackGeo, felliniOlivaWallMat);
     nicheBack.name = 'showerRoom.kerdiBoardShowerNiche.tiledBack';
-    nicheBack.position.set(-19.18, trayTopY + 1.18, 4.592);
     showerGroup.add(nicheBack);
 
-    // Perrin & Rowe Langbourn `LSS3PF` Concealed 8" Thermostatic Shower Set on East wall (`X = -18.285m`)
+    // Perrin & Rowe Langbourn `LSS3PF` Concealed 8" Thermostatic Shower Set on East wall (`X = -18.289m` on Fellini Oliva tile face)
     const thermostaticShowerSet = buildArmstrongConcealedShowerSet({
       namePrefix: 'showerRoom.thermostaticShowerSet',
       finish: 'PF',
       style: 'langbourn',
       slideRailOffsetXM: -0.24,
     });
-    thermostaticShowerSet.position.set(-18.285, trayTopY, trayCenterZ);
+    thermostaticShowerSet.position.set(-18.289, trayTopY, trayCenterZ);
     thermostaticShowerSet.rotation.y = wallFacingToRotY('west');
     showerGroup.add(thermostaticShowerSet);
 
@@ -806,9 +1153,10 @@ export function buildWestWingCorridor(
       finish: 'PF',
       variant: 'closeCoupled',
       collection: 'gsiClassicSwirlflush',
+      seatFinish: 'glossWhite',
       leverStyle: 'langbourn',
     });
-    swirlflushWc.position.set(-20.62, showerFloorY, 3.745);
+    swirlflushWc.position.set(-20.62, showerFloorY, 3.733);
     swirlflushWc.rotation.y = wallFacingToRotY('north');
     sanitaryGroup.add(swirlflushWc);
 
@@ -1091,7 +1439,7 @@ export function buildWestWingCorridor(
     scene.add(northAlcoveGable);
 
     const alcoveSideUpperWallGeo = new THREE.BoxGeometry(
-      0.15,
+      0.142,
       bed3CollarY - bed3AlcoveFloorY,
       4.68 - 3.895
     );
@@ -1103,7 +1451,7 @@ export function buildWestWingCorridor(
     alcoveSideUpperWall.name = 'bedroom3.alcoveSideUpperGable';
     alcoveSideUpperWall.userData.isArchitecturalShell = true;
     alcoveSideUpperWall.position.set(
-      -20.235,
+      -20.239,
       (bed3AlcoveFloorY + bed3CollarY) / 2,
       (3.895 + 4.68) / 2
     );
@@ -1119,10 +1467,10 @@ export function buildWestWingCorridor(
     showerSouthGableShape.lineTo(-20.31, bed3CollarY);
     showerSouthGableShape.closePath();
     const showerSouthGableGeo = new THREE.ExtrudeGeometry(showerSouthGableShape, {
-      depth: 0.15,
+      depth: 0.142,
       bevelEnabled: false,
     });
-    showerSouthGableGeo.translate(0, 0, 4.68 - 0.075);
+    showerSouthGableGeo.translate(0, 0, 4.613);
     showerSouthGableGeo.computeBoundingSphere();
     const showerSouthGable = new THREE.Mesh(showerSouthGableGeo, warmRoomPlasterMat);
     showerSouthGable.name = 'bedroom3.showerSouthUpperGable';

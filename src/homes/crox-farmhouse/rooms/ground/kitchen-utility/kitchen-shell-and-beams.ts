@@ -733,7 +733,7 @@ function buildHighLevelEastCasementWindow(
 export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   const {
     scene,
-    ceilingMeshGroup,
+    groundFloorCeilingGroup,
     ceilingCutaway,
     cutawayWallGroups,
     interactions,
@@ -1433,7 +1433,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   westKitchenSoffit.name = 'kitchen.ceiling.plasterSlab';
   westKitchenSoffit.position.set(-1.395, 2.57, -0.255);
   westKitchenSoffit.receiveShadow = true;
-  ceilingMeshGroup.add(westKitchenSoffit);
+  groundFloorCeilingGroup.add(westKitchenSoffit);
 
   const utilitySoffit = new THREE.Mesh(
     prepGeo(new THREE.BoxGeometry(3.15, 0.06, 1.725)),
@@ -1442,7 +1442,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   utilitySoffit.name = 'utility.ceiling.plasterSlab';
   utilitySoffit.position.set(3.425, 2.57, -1.6375);
   utilitySoffit.receiveShadow = true;
-  ceilingMeshGroup.add(utilitySoffit);
+  groundFloorCeilingGroup.add(utilitySoffit);
 
   const sittingHighCeiling = new THREE.Mesh(
     prepGeo(new THREE.BoxGeometry(3.39, 0.08, 2.765)),
@@ -1451,7 +1451,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   sittingHighCeiling.name = 'kitchen.sitting.ceilingSlab';
   sittingHighCeiling.position.set(3.545, 3.04, 0.6075);
   sittingHighCeiling.receiveShadow = true;
-  ceilingMeshGroup.add(sittingHighCeiling);
+  groundFloorCeilingGroup.add(sittingHighCeiling);
 
   const sittingBulkheadFascia = new THREE.Mesh(
     prepGeo(new THREE.BoxGeometry(0.08, 0.5, 2.765)),
@@ -1461,11 +1461,11 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   sittingBulkheadFascia.position.set(1.85, 2.79, 0.6075);
   sittingBulkheadFascia.castShadow = true;
   sittingBulkheadFascia.receiveShadow = true;
-  ceilingMeshGroup.add(sittingBulkheadFascia);
+  groundFloorCeilingGroup.add(sittingBulkheadFascia);
 
   // =========================================================================
   // WELSH SLATE PITCHED ROOF, TIMBER SOFFITS, PAINTED FASCIA BOARDS,
-  // CAST-IRON HALF-ROUND GUTTERS & RAINWATER DOWNPIPES (inside ceilingMeshGroup)
+  // CAST-IRON HALF-ROUND GUTTERS & RAINWATER DOWNPIPES (inside groundFloorCeilingGroup)
   // =========================================================================
   const wallWestX = -4.64;
   const wallEastX = 5.28;
@@ -1567,7 +1567,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
     mesh.name = name;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    ceilingMeshGroup.add(mesh);
+    groundFloorCeilingGroup.add(mesh);
     return mesh;
   };
 
@@ -1678,7 +1678,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
     );
     fasciaFace.castShadow = true;
     fasciaFace.receiveShadow = true;
-    ceilingMeshGroup.add(fasciaFace);
+    groundFloorCeilingGroup.add(fasciaFace);
   }
 
   // 4. Pitched North & South Welsh Slate Roof Slopes
@@ -1701,7 +1701,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   southSlateSlope.rotation.x = pitchAngle;
   southSlateSlope.castShadow = true;
   southSlateSlope.receiveShadow = true;
-  ceilingMeshGroup.add(southSlateSlope);
+  groundFloorCeilingGroup.add(southSlateSlope);
 
   const northSlateSlope = new THREE.Mesh(slateSlopeGeo, welshSlateMat);
   northSlateSlope.name = 'kitchen.roof.northSlateSlope';
@@ -1709,7 +1709,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   northSlateSlope.rotation.x = -pitchAngle;
   northSlateSlope.castShadow = true;
   northSlateSlope.receiveShadow = true;
-  ceilingMeshGroup.add(northSlateSlope);
+  groundFloorCeilingGroup.add(northSlateSlope);
 
   const ridgeCap = new THREE.Mesh(
     prepGeo(
@@ -1721,7 +1721,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
   ridgeCap.rotation.z = Math.PI / 2;
   ridgeCap.position.set(roofMidX, ridgeDeckY + 0.008, roofCenterZ);
   ridgeCap.castShadow = true;
-  ceilingMeshGroup.add(ridgeCap);
+  groundFloorCeilingGroup.add(ridgeCap);
 
   const ridgeCollarGeo = prepGeo(
     new THREE.CylinderGeometry(0.064, 0.064, 0.02, 14, 1, false, 0, Math.PI)
@@ -1733,7 +1733,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
     ridgeCollar.rotation.z = Math.PI / 2;
     ridgeCollar.position.set(rx, ridgeDeckY + 0.01, roofCenterZ);
     tagHighLod(ridgeCollar);
-    ceilingMeshGroup.add(ridgeCollar);
+    groundFloorCeilingGroup.add(ridgeCollar);
   }
 
   // 5. Cast-Iron Half-Round Rainwater Gutters + Fascia Support Brackets
@@ -1773,7 +1773,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
     gutterTrough.rotation.z = Math.PI / 2;
     gutterTrough.position.set(roofMidX, gutterY, gutterZ);
     gutterTrough.castShadow = true;
-    ceilingMeshGroup.add(gutterTrough);
+    groundFloorCeilingGroup.add(gutterTrough);
 
     for (const [lipSide, lipTag] of [
       [-1, 'innerLip'],
@@ -1784,7 +1784,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
       lip.rotation.z = Math.PI / 2;
       lip.position.set(roofMidX, gutterY, gutterZ + lipSide * gutterRadius);
       tagHighLod(lip);
-      ceilingMeshGroup.add(lip);
+      groundFloorCeilingGroup.add(lip);
     }
 
     for (const [endX, endTag] of [
@@ -1796,7 +1796,7 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
       stopEnd.rotation.y = Math.PI / 2;
       stopEnd.position.set(endX, gutterY, gutterZ);
       tagHighLod(stopEnd);
-      ceilingMeshGroup.add(stopEnd);
+      groundFloorCeilingGroup.add(stopEnd);
     }
 
     let bIdx = 0;
@@ -1807,13 +1807,13 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
       bracketStrap.rotation.x = Math.PI;
       bracketStrap.position.set(bx, gutterY, gutterZ);
       tagHighLod(bracketStrap);
-      ceilingMeshGroup.add(bracketStrap);
+      groundFloorCeilingGroup.add(bracketStrap);
 
       const fasciaClip = new THREE.Mesh(gutterFasciaClipGeo, gutterCastIronMat);
       fasciaClip.name = `kitchen.roof.${gutterSide}.fasciaClip_${bIdx}`;
       fasciaClip.position.set(bx, gutterY - 0.02, gutterZ - normalSign * (gutterRadius + 0.006));
       tagHighLod(fasciaClip);
-      ceilingMeshGroup.add(fasciaClip);
+      groundFloorCeilingGroup.add(fasciaClip);
       bIdx++;
     }
   }
@@ -1912,11 +1912,11 @@ export function buildKitchenShellAndBeams(ctx: SceneBuilderContext): void {
     tagHighLod(gulleyGrate);
     dpGroup.add(gulleyGrate);
 
-    ceilingMeshGroup.add(dpGroup);
+    groundFloorCeilingGroup.add(dpGroup);
   };
 
   addCastIronDownpipe('kitchen.roof.southEastDownpipe', 5.14, gutterSouthZ, wallSouthZ, 1);
   addCastIronDownpipe('kitchen.roof.northWestDownpipe', -4.52, gutterNorthZ, wallNorthZ, -1);
 
-  ceilingMeshGroup.visible = !ceilingCutaway;
+  groundFloorCeilingGroup.visible = !ceilingCutaway;
 }

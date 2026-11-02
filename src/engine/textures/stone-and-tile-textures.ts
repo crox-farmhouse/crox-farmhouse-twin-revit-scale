@@ -960,3 +960,610 @@ export function createTumbledLimestoneFlagstoneTextures(): {
     return { colorMap, bumpMap, normalMap, roughnessMap };
   });
 }
+
+/** Nominal face pitch (`406mm`) of a `Parisian Manoir Cabochon` tumbled marble octagon tile. */
+export const PARISIAN_MANOIR_TILE_PITCH_M = 0.406;
+/** Number of octagon courses across one procedural texture tile (`3 × 0.406m = 1.218m`). */
+export const PARISIAN_MANOIR_GRID_CELLS = 3;
+/** World-space repeat span (`1.218m`) covered by one `Parisian Manoir` procedural texture repeat. */
+export const PARISIAN_MANOIR_REPEAT_SPAN_M =
+  PARISIAN_MANOIR_GRID_CELLS * PARISIAN_MANOIR_TILE_PITCH_M;
+
+const PARISIAN_MANOIR_CABOCHON_CUT_M = 0.052;
+const PARISIAN_MANOIR_GROUT_COLOR = '#f2eee5';
+const PARISIAN_MANOIR_GROUT_HALF_PX = 1.26;
+
+const PARISIAN_MANOIR_OCTAGON_PALETTE: ReadonlyArray<readonly [number, number, number]> = [
+  [214, 209, 200],
+  [206, 202, 194],
+  [219, 213, 203],
+  [202, 198, 191],
+  [212, 206, 195],
+];
+
+const PARISIAN_MANOIR_CABOCHON_PALETTE: ReadonlyArray<readonly [number, number, number]> = [
+  [86, 84, 81],
+  [75, 74, 71],
+  [95, 93, 89],
+  [81, 79, 76],
+];
+
+/** Nominal face pitch (`125mm`) of a Claybrook Studio `Fellini Oliva` square ceramic wall tile. */
+export const FELLINI_OLIVA_TILE_PITCH_M = 0.125;
+const FELLINI_OLIVA_GRID_CELLS = 8;
+const FELLINI_OLIVA_GROUT_COLOR = '#d8d7c5';
+const FELLINI_OLIVA_GROUT_SHADOW = '#c5bbaf';
+const FELLINI_OLIVA_GROUT_HALF_PX = 1.54;
+
+/**
+ * Sampled directly from Claybrook Studio `Fellini Oliva Gloss Square` studio swatches
+ * (`HSL Hue = 115°-150°, S = 5%-10%`, pale misty celadon / dusty eucalyptus-sage over white clay):
+ * - ~25% lightest misty white-clay / celadon (`#CFD9D1`, `#C5CEC4`, `#BDC6BB`)
+ * - ~55% core mid dusty sage / smoky eucalyptus (`#B2BEB7`, `#A9B2AA`, `#A1ABA2`, `#9FA9A1`)
+ * - ~20% deeper smoky slate-olive (`#96A197`, `#939E98`)
+ */
+const FELLINI_OLIVA_V4_PALETTE: ReadonlyArray<readonly [number, number, number]> = [
+  [207, 217, 209], // #CFD9D1 (lightest misty celadon)
+  [178, 190, 183], // #B2BEB7 (mid dusty sage)
+  [169, 178, 170], // #A9B2AA (mid smoky eucalyptus)
+  [150, 161, 151], // #96A197 (deeper smoky slate-olive)
+  [197, 206, 196], // #C5CEC4 (light white-clay celadon)
+  [161, 171, 162], // #A1ABA2 (core eucalyptus-sage)
+  [159, 169, 161], // #9FA9A1 (core smoky sage)
+  [189, 198, 187], // #BDC6BB (light misty sage)
+  [178, 190, 183], // #B2BEB7 (mid dusty sage)
+  [147, 158, 152], // #939E98 (deeper slate-olive)
+  [169, 178, 170], // #A9B2AA (mid smoky eucalyptus)
+  [207, 217, 209], // #CFD9D1 (lightest misty celadon)
+  [161, 171, 162], // #A1ABA2 (core eucalyptus-sage)
+  [150, 161, 151], // #96A197 (deeper smoky slate-olive)
+  [159, 169, 161], // #9FA9A1 (core smoky sage)
+  [197, 206, 196], // #C5CEC4 (light white-clay celadon)
+  [178, 190, 183], // #B2BEB7 (mid dusty sage)
+  [169, 178, 170], // #A9B2AA (mid smoky eucalyptus)
+  [147, 158, 152], // #939E98 (deeper slate-olive)
+  [161, 171, 162], // #A1ABA2 (core eucalyptus-sage)
+];
+
+function clampColorByte(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function traceParisianOctagonPath(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  cellPx: number,
+  cutPx: number,
+  inset: number
+): void {
+  const half = cellPx * 0.5 - inset;
+  const diagCut = cutPx + inset * 0.4142;
+  const xL = cx - half;
+  const xR = cx + half;
+  const yT = cy - half;
+  const yB = cy + half;
+  ctx.beginPath();
+  ctx.moveTo(xL + diagCut, yT);
+  ctx.lineTo(xR - diagCut, yT);
+  ctx.lineTo(xR, yT + diagCut);
+  ctx.lineTo(xR, yB - diagCut);
+  ctx.lineTo(xR - diagCut, yB);
+  ctx.lineTo(xL + diagCut, yB);
+  ctx.lineTo(xL, yB - diagCut);
+  ctx.lineTo(xL, yT + diagCut);
+  ctx.closePath();
+}
+
+function traceParisianCabochonPath(
+  ctx: CanvasRenderingContext2D,
+  vx: number,
+  vy: number,
+  cutPx: number,
+  inset: number
+): void {
+  const radius = Math.max(4, cutPx - inset * Math.SQRT2);
+  ctx.beginPath();
+  ctx.moveTo(vx, vy - radius);
+  ctx.lineTo(vx + radius, vy);
+  ctx.lineTo(vx, vy + radius);
+  ctx.lineTo(vx - radius, vy);
+  ctx.closePath();
+}
+
+function paintParisianOctagonTile(
+  cCtx: CanvasRenderingContext2D,
+  bCtx: CanvasRenderingContext2D,
+  row: number,
+  col: number,
+  cellPx: number,
+  cutPx: number
+): void {
+  const seed = row * 7 + col * 13 + 5;
+  const cx = (col + 0.5) * cellPx;
+  const cy = (row + 0.5) * cellPx;
+  const base =
+    PARISIAN_MANOIR_OCTAGON_PALETTE[(row * 3 + col * 2) % PARISIAN_MANOIR_OCTAGON_PALETTE.length]!;
+  const shift = ((seed * 11) % 5) - 2;
+  const br = clampColorByte(base[0] + shift);
+  const bg = clampColorByte(base[1] + shift);
+  const bb = clampColorByte(base[2] + shift);
+
+  bCtx.fillStyle = 'rgb(186, 186, 186)';
+  traceParisianOctagonPath(bCtx, cx, cy, cellPx, cutPx, PARISIAN_MANOIR_GROUT_HALF_PX);
+  bCtx.fill();
+
+  bCtx.fillStyle = 'rgb(206, 206, 206)';
+  traceParisianOctagonPath(bCtx, cx, cy, cellPx, cutPx, PARISIAN_MANOIR_GROUT_HALF_PX + 2.4);
+  bCtx.fill();
+
+  cCtx.save();
+  bCtx.save();
+  traceParisianOctagonPath(cCtx, cx, cy, cellPx, cutPx, PARISIAN_MANOIR_GROUT_HALF_PX);
+  cCtx.fillStyle = `rgb(${br}, ${bg}, ${bb})`;
+  cCtx.fill();
+  cCtx.clip();
+
+  traceParisianOctagonPath(bCtx, cx, cy, cellPx, cutPx, PARISIAN_MANOIR_GROUT_HALF_PX + 1.5);
+  bCtx.clip();
+
+  const x0 = cx - cellPx * 0.5;
+  const y0 = cy - cellPx * 0.5;
+
+  for (let py = y0 + 8; py < y0 + cellPx - 12; py += 22) {
+    for (let px = x0 + 8; px < x0 + cellPx - 12; px += 24) {
+      const h = ((Math.round(px) * 19 + Math.round(py) * 31 + seed * 17) % 13) - 6;
+      const warmPatch = (Math.round(px + py) + seed * 7) % 5 === 0;
+      const mr = clampColorByte(br + h + (warmPatch ? 2 : -3));
+      const mg = clampColorByte(bg + h + (warmPatch ? 0 : -2));
+      const mb = clampColorByte(bb + h + (warmPatch ? -4 : 0));
+      cCtx.fillStyle = `rgba(${mr}, ${mg}, ${mb}, 0.25)`;
+      cCtx.fillRect(px, py, 26, 22);
+
+      const bh = clampColorByte(206 + h * 1.1);
+      bCtx.fillStyle = `rgba(${bh}, ${bh}, ${bh}, 0.24)`;
+      bCtx.fillRect(px, py, 26, 22);
+    }
+  }
+
+  for (let v = 0; v < 4; v++) {
+    const isWarmVein = v === 2 || v === 3;
+    cCtx.strokeStyle = isWarmVein
+      ? 'rgba(176, 154, 118, 0.34)'
+      : 'rgba(122, 125, 130, 0.36)';
+    cCtx.lineWidth = v === 0 ? 2.5 : 1.5;
+    const startOff = ((v * 83 + seed * 29) % Math.floor(cellPx * 0.8)) - cellPx * 0.4;
+    cCtx.beginPath();
+    cCtx.moveTo(x0 + 6, cy + startOff * 0.65);
+    cCtx.bezierCurveTo(
+      cx - cellPx * 0.16,
+      cy + startOff * 0.2 - 26,
+      cx + cellPx * 0.18,
+      cy - startOff * 0.25 + 22,
+      x0 + cellPx - 6,
+      cy - startOff * 0.55
+    );
+    cCtx.stroke();
+  }
+
+  for (let f = 0; f < 22; f++) {
+    const fx = x0 + 14 + ((f * 67 + seed * 43) % Math.floor(cellPx - 28));
+    const fy = y0 + 14 + ((f * 89 + seed * 37) % Math.floor(cellPx - 28));
+    cCtx.fillStyle =
+      f % 3 === 0 ? 'rgba(248, 246, 241, 0.36)' : 'rgba(176, 174, 168, 0.22)';
+    cCtx.fillRect(fx, fy, f % 4 === 0 ? 4.5 : 2.6, 2.0);
+  }
+
+  cCtx.restore();
+  bCtx.restore();
+
+  cCtx.strokeStyle = 'rgba(174, 168, 158, 0.58)';
+  cCtx.lineWidth = 1.5;
+  traceParisianOctagonPath(cCtx, cx, cy, cellPx, cutPx, PARISIAN_MANOIR_GROUT_HALF_PX + 0.7);
+  cCtx.stroke();
+}
+
+function paintParisianCabochonInsert(
+  cCtx: CanvasRenderingContext2D,
+  bCtx: CanvasRenderingContext2D,
+  ix: number,
+  iy: number,
+  cellPx: number,
+  cutPx: number
+): void {
+  const modX = ix % PARISIAN_MANOIR_GRID_CELLS;
+  const modY = iy % PARISIAN_MANOIR_GRID_CELLS;
+  const seed = modY * 11 + modX * 19 + 3;
+  const vx = ix * cellPx;
+  const vy = iy * cellPx;
+  const base =
+    PARISIAN_MANOIR_CABOCHON_PALETTE[(modY * 2 + modX) % PARISIAN_MANOIR_CABOCHON_PALETTE.length]!;
+
+  bCtx.fillStyle = 'rgb(184, 184, 184)';
+  traceParisianCabochonPath(bCtx, vx, vy, cutPx, PARISIAN_MANOIR_GROUT_HALF_PX);
+  bCtx.fill();
+
+  bCtx.fillStyle = 'rgb(204, 204, 204)';
+  traceParisianCabochonPath(bCtx, vx, vy, cutPx, PARISIAN_MANOIR_GROUT_HALF_PX + 2.0);
+  bCtx.fill();
+
+  cCtx.save();
+  traceParisianCabochonPath(cCtx, vx, vy, cutPx, PARISIAN_MANOIR_GROUT_HALF_PX);
+  cCtx.fillStyle = `rgb(${base[0]}, ${base[1]}, ${base[2]})`;
+  cCtx.fill();
+  cCtx.clip();
+
+  for (let s = 0; s < 38; s++) {
+    const ox = (((s * 37 + seed * 13) % 76) - 38) * (cutPx / 42);
+    const oy = (((s * 53 + seed * 29) % 76) - 38) * (cutPx / 42);
+    cCtx.fillStyle =
+      s % 3 !== 0 ? 'rgba(186, 183, 177, 0.32)' : 'rgba(54, 52, 50, 0.36)';
+    cCtx.fillRect(vx + ox, vy + oy, s % 4 === 0 ? 4.2 : 2.4, 2.2);
+  }
+
+  cCtx.strokeStyle = 'rgba(206, 203, 196, 0.34)';
+  cCtx.lineWidth = 1.1;
+  cCtx.beginPath();
+  cCtx.moveTo(vx - cutPx * 0.65, vy - cutPx * 0.18);
+  cCtx.quadraticCurveTo(vx, vy + cutPx * 0.14, vx + cutPx * 0.62, vy - cutPx * 0.08);
+  cCtx.stroke();
+  cCtx.restore();
+
+  cCtx.strokeStyle = 'rgba(172, 169, 162, 0.40)';
+  cCtx.lineWidth = 1.0;
+  traceParisianCabochonPath(cCtx, vx, vy, cutPx, PARISIAN_MANOIR_GROUT_HALF_PX + 0.5);
+  cCtx.stroke();
+}
+
+/**
+ * Quorn Stone / MyStoneFloor `Parisian Manoir Cabochon` tumbled marble floor tile PBR texture set
+ * (SKU `601200`: `406 × 406 × 10mm` warm chalky cream/ecru & dove-veined tumbled marble octagons
+ * with contrasting aged-noir tumbled marble diamond cabochon inserts and `3mm` *White Wash* grout).
+ *
+ * One `1024 × 1024` tile spans a `3 × 3` module (`1.218m × 1.218m` in world space; paired with
+ * `uvScale = 0.5` (`2.00m` per UV unit) and `.repeat.set(1.642, 1.642)` so each octagon renders at
+ * exact `0.406m` (`40.6cm`) pitch and each cabochon insert at `~71 × 71mm`).
+ */
+export function createParisianManoirCabochonTextures(): {
+  readonly colorMap: THREE.CanvasTexture;
+  readonly bumpMap: THREE.CanvasTexture;
+  readonly normalMap: THREE.CanvasTexture;
+  readonly roughnessMap: THREE.CanvasTexture;
+} {
+  return getOrCreateCachedTexture('parisian-manoir-cabochon-pbr', () => {
+    const size = 1024;
+    const cellPx = size / PARISIAN_MANOIR_GRID_CELLS;
+    const cutPx = (PARISIAN_MANOIR_CABOCHON_CUT_M / PARISIAN_MANOIR_TILE_PITCH_M) * cellPx;
+    const repeatScale = 2.0 / PARISIAN_MANOIR_REPEAT_SPAN_M;
+
+    const [colorCanvas, bumpCanvas] = getOrCreateCachedCanvasPair(
+      'parisian-manoir-cabochon',
+      size,
+      size,
+      (cCtx, bCtx) => {
+        cCtx.fillStyle = PARISIAN_MANOIR_GROUT_COLOR;
+        cCtx.fillRect(0, 0, size, size);
+
+        bCtx.fillStyle = 'rgb(122, 122, 122)';
+        bCtx.fillRect(0, 0, size, size);
+
+        for (let row = 0; row < PARISIAN_MANOIR_GRID_CELLS; row++) {
+          for (let col = 0; col < PARISIAN_MANOIR_GRID_CELLS; col++) {
+            paintParisianOctagonTile(cCtx, bCtx, row, col, cellPx, cutPx);
+          }
+        }
+
+        for (let iy = 0; iy <= PARISIAN_MANOIR_GRID_CELLS; iy++) {
+          for (let ix = 0; ix <= PARISIAN_MANOIR_GRID_CELLS; ix++) {
+            paintParisianCabochonInsert(cCtx, bCtx, ix, iy, cellPx, cutPx);
+          }
+        }
+      }
+    );
+
+    const colorMap = new THREE.CanvasTexture(colorCanvas);
+    colorMap.wrapS = THREE.RepeatWrapping;
+    colorMap.wrapT = THREE.RepeatWrapping;
+    colorMap.repeat.set(repeatScale, repeatScale);
+    colorMap.colorSpace = THREE.SRGBColorSpace;
+    colorMap.anisotropy = 16;
+
+    const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+    bumpMap.wrapS = THREE.RepeatWrapping;
+    bumpMap.wrapT = THREE.RepeatWrapping;
+    bumpMap.repeat.set(repeatScale, repeatScale);
+    bumpMap.anisotropy = 16;
+
+    const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+      'parisian-manoir-cabochon',
+      bumpCanvas,
+      {
+        normalStrength: 1.35,
+        mortarThreshold: 0.62,
+        mortarRoughness: 0.78,
+        surfaceRoughnessMin: 0.35,
+        surfaceRoughnessMax: 0.52,
+        microGrainRoughness: 0.024,
+      }
+    );
+    normalMap.repeat.set(repeatScale, repeatScale);
+    normalMap.anisotropy = 16;
+    roughnessMap.repeat.set(repeatScale, repeatScale);
+    roughnessMap.anisotropy = 16;
+
+    return { colorMap, bumpMap, normalMap, roughnessMap };
+  });
+}
+
+/**
+ * Matching `Parisian Manoir` pale tumbled marble upstand/skirting PBR texture set
+ * (`406 × 100 × 12mm` chamfered-top marble upstand tiles cut from the pale tumbled marble field
+ * stone with `3mm` *White Wash* vertical grout joints every `0.406m` across `1.218m` world U).
+ */
+export function createParisianManoirUpstandTextures(): {
+  readonly colorMap: THREE.CanvasTexture;
+  readonly bumpMap: THREE.CanvasTexture;
+  readonly normalMap: THREE.CanvasTexture;
+  readonly roughnessMap: THREE.CanvasTexture;
+} {
+  return getOrCreateCachedTexture('parisian-manoir-upstand-pbr', () => {
+    const width = 1024;
+    const height = 256;
+    const cellW = width / PARISIAN_MANOIR_GRID_CELLS;
+
+    const [colorCanvas, bumpCanvas] = getOrCreateCachedCanvasPair(
+      'parisian-manoir-upstand',
+      width,
+      height,
+      (cCtx, bCtx) => {
+        cCtx.fillStyle = PARISIAN_MANOIR_GROUT_COLOR;
+        cCtx.fillRect(0, 0, width, height);
+
+        bCtx.fillStyle = 'rgb(122, 122, 122)';
+        bCtx.fillRect(0, 0, width, height);
+
+        for (let c = 0; c < PARISIAN_MANOIR_GRID_CELLS; c++) {
+          const sx = c * cellW + PARISIAN_MANOIR_GROUT_HALF_PX;
+          const sw = cellW - PARISIAN_MANOIR_GROUT_HALF_PX * 2;
+          const base = PARISIAN_MANOIR_OCTAGON_PALETTE[c % PARISIAN_MANOIR_OCTAGON_PALETTE.length]!;
+
+          bCtx.fillStyle = 'rgb(188, 188, 188)';
+          bCtx.fillRect(sx, 0, sw, height);
+          bCtx.fillStyle = 'rgb(206, 206, 206)';
+          bCtx.fillRect(sx + 2, 3, sw - 4, height - 6);
+
+          cCtx.fillStyle = `rgb(${base[0]}, ${base[1]}, ${base[2]})`;
+          cCtx.fillRect(sx, 0, sw, height);
+
+          for (let py = 6; py < height - 10; py += 20) {
+            for (let px = sx + 6; px < sx + sw - 14; px += 24) {
+              const h = ((Math.round(px) * 17 + py * 29 + c * 13) % 11) - 5;
+              cCtx.fillStyle = `rgba(${clampColorByte(base[0] + h)}, ${clampColorByte(base[1] + h)}, ${clampColorByte(base[2] + h)}, 0.25)`;
+              cCtx.fillRect(px, py, 22, 18);
+            }
+          }
+
+          cCtx.strokeStyle = 'rgba(128, 130, 134, 0.30)';
+          cCtx.lineWidth = 1.8;
+          cCtx.beginPath();
+          cCtx.moveTo(sx + 8, height * (0.28 + c * 0.14));
+          cCtx.bezierCurveTo(
+            sx + sw * 0.35,
+            height * 0.62,
+            sx + sw * 0.68,
+            height * 0.24,
+            sx + sw - 8,
+            height * 0.54
+          );
+          cCtx.stroke();
+        }
+      }
+    );
+
+    const colorMap = new THREE.CanvasTexture(colorCanvas);
+    colorMap.wrapS = THREE.RepeatWrapping;
+    colorMap.wrapT = THREE.ClampToEdgeWrapping;
+    colorMap.colorSpace = THREE.SRGBColorSpace;
+    colorMap.anisotropy = 16;
+
+    const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+    bumpMap.wrapS = THREE.RepeatWrapping;
+    bumpMap.wrapT = THREE.ClampToEdgeWrapping;
+    bumpMap.anisotropy = 16;
+
+    const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+      'parisian-manoir-upstand',
+      bumpCanvas,
+      {
+        normalStrength: 1.25,
+        wrapS: true,
+        wrapT: false,
+        mortarThreshold: 0.62,
+        mortarRoughness: 0.78,
+        surfaceRoughnessMin: 0.35,
+        surfaceRoughnessMax: 0.50,
+        microGrainRoughness: 0.02,
+      }
+    );
+    normalMap.anisotropy = 16;
+    roughnessMap.anisotropy = 16;
+
+    return { colorMap, bumpMap, normalMap, roughnessMap };
+  });
+}
+
+function paintFelliniOlivaGlazedTile(
+  cCtx: CanvasRenderingContext2D,
+  bCtx: CanvasRenderingContext2D,
+  row: number,
+  col: number,
+  cellPx: number
+): void {
+  const hash = ((row * 41 + col * 67 + ((row * 13) ^ (col * 29)) * 19 + 7) >>> 0);
+  const base = FELLINI_OLIVA_V4_PALETTE[hash % FELLINI_OLIVA_V4_PALETTE.length]!;
+  const drift = ((hash * 17) % 9) - 4;
+  // Preserve cool mineral celadon/eucalyptus balance (Blue >= Red, never yellow-green R >> B)
+  const br = clampColorByte(base[0] + drift);
+  const bg = clampColorByte(base[1] + drift);
+  const bb = clampColorByte(Math.max(br, base[2] + drift));
+
+  const jitterW = (((hash >> 3) % 3) - 1) * 0.3;
+  const tx = col * cellPx + FELLINI_OLIVA_GROUT_HALF_PX - jitterW * 0.5;
+  const ty = row * cellPx + FELLINI_OLIVA_GROUT_HALF_PX - jitterW * 0.5;
+  const tw = cellPx - FELLINI_OLIVA_GROUT_HALF_PX * 2 + jitterW;
+  const th = cellPx - FELLINI_OLIVA_GROUT_HALF_PX * 2 + jitterW;
+
+  // Shaded Dawn mortar joint recess (#C5BBAF) hugging the pressed tile edge
+  cCtx.strokeStyle = FELLINI_OLIVA_GROUT_SHADOW;
+  cCtx.lineWidth = 1.4;
+  cCtx.beginPath();
+  cCtx.roundRect(tx - 0.6, ty - 0.6, tw + 1.2, th + 1.2, 2.8);
+  cCtx.stroke();
+
+  bCtx.fillStyle = 'rgb(174, 174, 174)';
+  bCtx.beginPath();
+  bCtx.roundRect(tx, ty, tw, th, 2.5);
+  bCtx.fill();
+
+  bCtx.fillStyle = 'rgb(202, 202, 202)';
+  bCtx.beginPath();
+  bCtx.roundRect(tx + 2.2, ty + 2.2, tw - 4.4, th - 4.4, 1.8);
+  bCtx.fill();
+
+  cCtx.save();
+  bCtx.save();
+  cCtx.beginPath();
+  cCtx.roundRect(tx, ty, tw, th, 2.5);
+  cCtx.fillStyle = `rgb(${br}, ${bg}, ${bb})`;
+  cCtx.fill();
+  cCtx.clip();
+
+  bCtx.beginPath();
+  bCtx.roundRect(tx + 1.8, ty + 1.8, tw - 3.6, th - 3.6, 1.8);
+  bCtx.clip();
+
+  if (typeof cCtx.createRadialGradient === 'function') {
+    const cx = tx + tw * (0.46 + ((hash % 5) - 2) * 0.04);
+    const cy = ty + th * (0.46 + (((hash >> 2) % 5) - 2) * 0.04);
+    const poolGrad = cCtx.createRadialGradient(
+      cx,
+      cy,
+      tw * 0.08,
+      tx + tw * 0.5,
+      ty + th * 0.5,
+      tw * 0.72
+    );
+    // Subtle translucent white-clay crown lift at center + concave edge glaze pooling (#858F8A-#8C9792)
+    poolGrad.addColorStop(
+      0,
+      `rgba(${clampColorByte(br + 12)}, ${clampColorByte(bg + 11)}, ${clampColorByte(bb + 12)}, 0.34)`
+    );
+    poolGrad.addColorStop(0.62, `rgba(${br}, ${bg}, ${bb}, 0.06)`);
+    poolGrad.addColorStop(
+      1,
+      (hash & 1) === 0 ? 'rgba(133, 143, 138, 0.34)' : 'rgba(140, 151, 146, 0.34)'
+    );
+    cCtx.fillStyle = poolGrad;
+    cCtx.fillRect(tx, ty, tw, th);
+  }
+
+  const phaseX = (hash % 11) * 0.57;
+  const phaseY = ((hash >> 4) % 11) * 0.63;
+  const step = 12;
+  for (let py = ty; py < ty + th; py += step) {
+    const ny = (py - ty) / th;
+    const edgeDomeY = Math.sin(ny * Math.PI);
+    for (let px = tx; px < tx + tw; px += step) {
+      const nx = (px - tx) / tw;
+      const edgeDomeX = Math.sin(nx * Math.PI);
+      const wave =
+        Math.sin(nx * Math.PI * 2.3 + phaseX) * 0.52 +
+        Math.cos(ny * Math.PI * 2.2 + phaseY) * 0.52 +
+        Math.sin((nx + ny) * Math.PI * 3.1 + phaseX * 0.7) * 0.36;
+      const hByte = clampColorByte(198 + edgeDomeX * edgeDomeY * 16 + wave * 12);
+      bCtx.fillStyle = `rgb(${hByte}, ${hByte}, ${hByte})`;
+      bCtx.fillRect(px, py, step + 0.5, step + 0.5);
+
+      const gShift = Math.round(wave * 5);
+      cCtx.fillStyle = `rgba(${clampColorByte(br + gShift)}, ${clampColorByte(bg + gShift)}, ${clampColorByte(bb + gShift)}, 0.16)`;
+      cCtx.fillRect(px, py, step + 0.5, step + 0.5);
+    }
+  }
+
+  cCtx.restore();
+  bCtx.restore();
+
+  // Thin 2-4px white-clay bisque lip (#B8BEB4) around pressed ceramic tile perimeter
+  cCtx.strokeStyle = 'rgba(184, 190, 180, 0.42)';
+  cCtx.lineWidth = 2.4;
+  cCtx.beginPath();
+  cCtx.roundRect(tx + 1.4, ty + 1.4, tw - 2.8, th - 2.8, 2.0);
+  cCtx.stroke();
+}
+
+/**
+ * Claybrook Studio `Fellini Oliva` Gloss Square (SKU `W-FEL-OLI-125125SQ`: `125 × 125 × 8mm`)
+ * hand-glazed Moroccan-zellige-style ceramic wall tile PBR texture set (`1024 × 1024` over a
+ * `1.00m × 1.00m` world repeat = exact `8 × 8` grid of `0.125m` (`12.5cm`) square tiles with
+ * `V4 Extreme` tonal variation across pale celadon/sage-olive, warm moss-olive, smoky grey-green,
+ * and deeper herbal olive, undulating high-gloss surface normal, `roughness ~0.14–0.20`, and
+ * `3mm` soft putty/warm off-white *Dawn* grout).
+ */
+export function createFelliniOlivaSquareTileTextures(): {
+  readonly colorMap: THREE.CanvasTexture;
+  readonly bumpMap: THREE.CanvasTexture;
+  readonly normalMap: THREE.CanvasTexture;
+  readonly roughnessMap: THREE.CanvasTexture;
+} {
+  return getOrCreateCachedTexture('claybrook-fellini-oliva-square-pbr', () => {
+    const size = 1024;
+    const cellPx = size / FELLINI_OLIVA_GRID_CELLS;
+
+    const [colorCanvas, bumpCanvas] = getOrCreateCachedCanvasPair(
+      'claybrook-fellini-oliva-square',
+      size,
+      size,
+      (cCtx, bCtx) => {
+        cCtx.fillStyle = FELLINI_OLIVA_GROUT_COLOR;
+        cCtx.fillRect(0, 0, size, size);
+
+        bCtx.fillStyle = 'rgb(110, 110, 110)';
+        bCtx.fillRect(0, 0, size, size);
+
+        for (let row = 0; row < FELLINI_OLIVA_GRID_CELLS; row++) {
+          for (let col = 0; col < FELLINI_OLIVA_GRID_CELLS; col++) {
+            paintFelliniOlivaGlazedTile(cCtx, bCtx, row, col, cellPx);
+          }
+        }
+      }
+    );
+
+    const colorMap = new THREE.CanvasTexture(colorCanvas);
+    colorMap.wrapS = THREE.RepeatWrapping;
+    colorMap.wrapT = THREE.RepeatWrapping;
+    colorMap.colorSpace = THREE.SRGBColorSpace;
+    colorMap.anisotropy = 16;
+
+    const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+    bumpMap.wrapS = THREE.RepeatWrapping;
+    bumpMap.wrapT = THREE.RepeatWrapping;
+    bumpMap.anisotropy = 16;
+
+    const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+      'claybrook-fellini-oliva-square',
+      bumpCanvas,
+      {
+        normalStrength: 1.75,
+        mortarThreshold: 0.55,
+        mortarRoughness: 0.84,
+        surfaceRoughnessMin: 0.08,
+        surfaceRoughnessMax: 0.12,
+        microGrainRoughness: 0.012,
+      }
+    );
+    normalMap.anisotropy = 16;
+    roughnessMap.anisotropy = 16;
+
+    return { colorMap, bumpMap, normalMap, roughnessMap };
+  });
+}

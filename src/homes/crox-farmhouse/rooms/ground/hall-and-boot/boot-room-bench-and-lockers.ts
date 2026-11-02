@@ -71,8 +71,20 @@ export function buildBootRoomBenchAndLockers(
     tagCutawayWall,
     wallH,
     warmRoomPlasterMat,
-    wimborneWhiteJoineryMat,
   } = kit;
+
+  const wcDrenchedMatteMat = new THREE.MeshStandardMaterial({
+    name: 'downstairsWc.drenchedWallCeilingMatte',
+    color: 0x253338,
+    roughness: 0.6,
+    metalness: 0.03,
+  });
+  const wcDrenchedEggshellMat = new THREE.MeshStandardMaterial({
+    name: 'downstairsWc.drenchedWoodworkEggshell',
+    color: 0x253338,
+    roughness: 0.36,
+    metalness: 0.03,
+  });
 
   // =========================================================================
   // 2. MIDDLE BOOT LOBBY, STORE (2.25m x 1.48m) & CLOAKROOM WC
@@ -122,7 +134,13 @@ export function buildBootRoomBenchAndLockers(
     1.6,
     'south',
     1,
-    { trimFaceOffset: 0.018, windowFamily: 'singleCasement', skirtingMaterial: wimborneWhiteJoineryMat }
+    {
+      trimFaceOffset: 0.018,
+      windowFamily: 'singleCasement',
+      skirtingMaterial: wcDrenchedEggshellMat,
+      interiorTrimMaterial: wcDrenchedEggshellMat,
+      interiorRevealMaterial: wcDrenchedMatteMat,
+    }
   );
 
   // Face-fixed linen Roman blind over the Downstairs Cloakroom WC North window (X = -12.14m, Win 1736291 = 0.39x0.74m)
@@ -147,10 +165,7 @@ export function buildBootRoomBenchAndLockers(
   // Partition wall between West Store/Cupboard (X = -12.81m..-11.39m) and East Cloakroom WC (X = -11.39m..-9.80m):
   // 0.15m thick centered at X = -11.39m, Z = -2.50m..-0.10m (directly aligned with the center pier & sconce between the two equal-sized doors!)
   addInteriorWall(-11.39, lowerWallMidY, -1.3, 0.15, lowerWallH, 2.4, warmRoomPlasterMat, {
-    skirtingSides: [-1],
-    skirtingMin: -2.5,
-    skirtingMax: -0.258,
-    skirtingMaterial: wimborneWhiteJoineryMat,
+    skipSkirting: true,
   });
 
   // North Wall of Boot Lobby / South Wall of Downstairs WC & Wine Cellar (0.15m thick at Z = -0.175m, X = -9.80m..-12.81m):
@@ -392,7 +407,11 @@ export function buildBootRoomBenchAndLockers(
     0.15,
     -12.12,
     0.84,
-    0
+    0,
+    {
+      backLeafMaterial: wcDrenchedEggshellMat,
+      backArchitraveMaterial: wcDrenchedEggshellMat,
+    }
   );
 
   // Right Door (Issue #3, #14 & #15): Full-height Solid Oak Framed Glass Door to the Wine Cellar
@@ -957,14 +976,34 @@ export function buildBootRoomBenchAndLockers(
     roughness: 0.88,
     metalness: 0.01,
   });
-  const bootLobbyCeilingBacking = new THREE.Mesh(
-    createSharedGeo(new THREE.BoxGeometry(3.54, 0.032, 5.18)),
+  // Split ceiling backing cleanly around Downstairs WC (X = -13.08..-11.45m, Z = -2.665..-0.175m)
+  // so the Downstairs WC ceiling is 100% colour-drenched #253338 with 0.0mm coplanar Z-fighting!
+  const bootLobbySouthWestCeiling = new THREE.Mesh(
+    createSharedGeo(new THREE.BoxGeometry(1.63, 0.032, 2.69)),
     bootLobbyCeilingWhiteMat
   );
-  bootLobbyCeilingBacking.name = 'bootLobby.ceilingBacking';
-  bootLobbyCeilingBacking.position.set(-11.31, wallH, -0.075);
-  bootLobbyCeilingBacking.receiveShadow = true;
-  groundFloorCeilingGroup.add(bootLobbyCeilingBacking);
+  bootLobbySouthWestCeiling.name = 'bootLobby.ceilingBacking';
+  bootLobbySouthWestCeiling.position.set(-12.265, wallH, 1.17);
+  bootLobbySouthWestCeiling.receiveShadow = true;
+  groundFloorCeilingGroup.add(bootLobbySouthWestCeiling);
+
+  const bootLobbyEastAndWineCeiling = new THREE.Mesh(
+    createSharedGeo(new THREE.BoxGeometry(1.91, 0.032, 5.18)),
+    bootLobbyCeilingWhiteMat
+  );
+  bootLobbyEastAndWineCeiling.name = 'bootLobby.wineCellarAndEastCeilingBacking';
+  bootLobbyEastAndWineCeiling.position.set(-10.495, wallH, -0.075);
+  bootLobbyEastAndWineCeiling.receiveShadow = true;
+  groundFloorCeilingGroup.add(bootLobbyEastAndWineCeiling);
+
+  const downstairsWcDrenchedCeiling = new THREE.Mesh(
+    createSharedGeo(new THREE.BoxGeometry(1.63, 0.032, 2.49)),
+    wcDrenchedMatteMat
+  );
+  downstairsWcDrenchedCeiling.name = 'bootLobby.downstairsWc.ceilingBacking';
+  downstairsWcDrenchedCeiling.position.set(-12.265, wallH, -1.42);
+  downstairsWcDrenchedCeiling.receiveShadow = true;
+  groundFloorCeilingGroup.add(downstairsWcDrenchedCeiling);
 
   // Exposed Natural Oak North-South Ceiling Joists in the Boot Lobby & WC:
   // Spans the shorter 2.50m North-South distance between the Z = -0.175m load-bearing partition wall and

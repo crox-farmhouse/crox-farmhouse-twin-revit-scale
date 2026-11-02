@@ -13,7 +13,7 @@ import type {
  * snapshot/USD tooling.
  */
 
-export type WcSeatFinish = 'glossWhite' | 'antiqueOak' | 'walnut';
+export type WcSeatFinish = 'glossWhite' | 'antiqueOak' | 'walnut' | 'darkOak';
 
 export interface BurnishedCopperMaterialPalette {
   readonly shell: THREE.MeshPhysicalMaterial;
@@ -606,6 +606,20 @@ export function getWcSeatMaterial(seatFinish: WcSeatFinish): THREE.MeshPhysicalM
       roughness: 0.11,
       clearcoat: 0.82,
       clearcoatRoughness: 0.08,
+    });
+  } else if (seatFinish === 'darkOak') {
+    const darkOak = getDarkOakVeneerMaterials();
+    mat = new THREE.MeshPhysicalMaterial({
+      name: 'bathroom.wcSeat.darkOak',
+      color: 0xffffff,
+      map: darkOak.veneer.map,
+      bumpMap: darkOak.veneer.bumpMap,
+      bumpScale: 0.001,
+      roughnessMap: darkOak.veneer.roughnessMap,
+      metalness: 0.0,
+      roughness: 0.3,
+      clearcoat: 0.44,
+      clearcoatRoughness: 0.16,
     });
   } else {
     const maps = getWoodSeatMaps(seatFinish);

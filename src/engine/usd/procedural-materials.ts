@@ -57,6 +57,50 @@ function colorDistance(a: Vec3Tuple, b: Vec3Tuple): number {
  * so procedural materials retain their exact authored color palettes without baking PNGs.
  */
 function extractCanvasPalette(image: unknown): Vec3Tuple[] {
+  if (
+    image &&
+    typeof image === 'object' &&
+    'data' in image &&
+    (image as { readonly data?: unknown }).data instanceof Uint8Array
+  ) {
+    const raw = (image as { readonly data: Uint8Array }).data;
+    const pixelCount = Math.floor(raw.length / 4);
+    if (pixelCount > 0) {
+      const stride = Math.max(1, Math.floor(pixelCount / 256));
+      let rSum = 0;
+      let gSum = 0;
+      let bSum = 0;
+      let rLow = 0;
+      let gLow = 0;
+      let bLow = 0;
+      let nAll = 0;
+      let nLow = 0;
+      for (let p = 0; p < pixelCount; p += stride) {
+        const idx = p * 4;
+        const r = raw[idx]! / 255;
+        const g = raw[idx + 1]! / 255;
+        const b = raw[idx + 2]! / 255;
+        rSum += r;
+        gSum += g;
+        bSum += b;
+        nAll++;
+        if ((p / stride) % 3 === 0) {
+          rLow += r * 0.82;
+          gLow += g * 0.8;
+          bLow += b * 0.78;
+          nLow++;
+        }
+      }
+      if (nAll > 0) {
+        const primary: Vec3Tuple = [round4(rSum / nAll), round4(gSum / nAll), round4(bSum / nAll)];
+        const secondary: Vec3Tuple =
+          nLow > 0
+            ? [round4(rLow / nLow), round4(gLow / nLow), round4(bLow / nLow)]
+            : [round4(primary[0] * 0.82), round4(primary[1] * 0.8), round4(primary[2] * 0.78)];
+        return [primary, secondary];
+      }
+    }
+  }
   if (!image || typeof image !== 'object' || !('log' in image)) return [];
   const log = (image as { readonly log?: readonly string[] }).log;
   if (!Array.isArray(log)) return [];

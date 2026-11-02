@@ -75,6 +75,8 @@ export function createGroundShellWindowsAndDoors(
       readonly trimFaceOffset?: number;
       readonly skipUnderApron?: boolean;
       readonly skipArchitrave?: boolean;
+      readonly interiorRevealMaterial?: THREE.Material;
+      readonly interiorTrimMaterial?: THREE.Material;
       readonly windowFamily?: 'tripleTopHungCentre' | 'tripleHorzBars' | 'singleCasement' | 'doubleCasement';
     }
   ): void => {
@@ -130,7 +132,8 @@ export function createGroundShellWindowsAndDoors(
 
     // Interior plastered window reveal linings (jambs + head soffit) and painted timber window board
     const interiorRevealMat =
-      winCenterX < -17.55 && cz < 1.98 ? farrowAndBallPantalonMat : warmRoomPlasterMat;
+      wallOptions?.interiorRevealMaterial ??
+      (winCenterX < -17.55 && cz < 1.98 ? farrowAndBallPantalonMat : warmRoomPlasterMat);
     const frameDepth = 0.11;
     const intRevealStartZ = cz + intSignZ * (frameDepth * 0.5 - 0.012);
     const intRevealEndZ = cz + intSignZ * (wallDepthZ * 0.5);
@@ -171,7 +174,7 @@ export function createGroundShellWindowsAndDoors(
       interiorWallFaceCoord: cz + intSignZ * (wallDepthZ * 0.5),
       inwardSign: intSignZ as 1 | -1,
       revealDepth: wallDepthZ * 0.52,
-      material: windowFrameMat,
+      material: wallOptions?.interiorTrimMaterial ?? windowFrameMat,
       namePrefix: winId,
       trimFaceOffset: wallOptions?.trimFaceOffset,
       skipUnderApron: wallOptions?.skipUnderApron,
@@ -661,11 +664,19 @@ export function createGroundShellWindowsAndDoors(
     wallThickness: number,
     doorCenter: number,
     doorWidth: number,
-    openAngle: number
+    openAngle: number,
+    doorOptions?: {
+      readonly frontLeafMaterial?: THREE.Material;
+      readonly backLeafMaterial?: THREE.Material;
+      readonly frontArchitraveMaterial?: THREE.Material;
+      readonly backArchitraveMaterial?: THREE.Material;
+    }
   ): void => {
     const doorX = axis === 'z' ? wallCoord : doorCenter;
     const doorZ = axis === 'z' ? doorCenter : wallCoord;
     const baseFloorY = getInteriorFloorY(doorX, doorZ);
+    const frontLeafMat = doorOptions?.frontLeafMaterial ?? timberDoorMat;
+    const backLeafMat = doorOptions?.backLeafMaterial ?? timberDoorMat;
     const frameGroup = new THREE.Group();
     addCasedArchitravePortal(frameGroup, {
       axis,
@@ -677,6 +688,8 @@ export function createGroundShellWindowsAndDoors(
       backFloorY: baseFloorY,
       headY: baseFloorY + doorH,
       material: antiqueOakSkirtingMat,
+      frontArchitraveMaterial: doorOptions?.frontArchitraveMaterial,
+      backArchitraveMaterial: doorOptions?.backArchitraveMaterial,
       namePrefix: `interiorDoor.${_id}`,
     });
     scene.add(frameGroup);
@@ -809,27 +822,51 @@ export function createGroundShellWindowsAndDoors(
       doorObj.name = `${doorId}.leafGroup`;
       doorObj.position.set(doorCenter, baseFloorY + doorH / 2, wallCoord);
 
+      const addXLeafBox = (
+        baseName: string,
+        w: number,
+        h: number,
+        d: number,
+        px: number,
+        py: number,
+        castShad = true
+      ): void => {
+        if (frontLeafMat === backLeafMat) {
+          const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frontLeafMat);
+          m.name = baseName;
+          m.position.set(px, py, 0);
+          m.castShadow = castShad;
+          m.receiveShadow = true;
+          doorObj.add(m);
+          return;
+        }
+        const halfD = d * 0.5;
+        for (const [zSign, mat, suffix] of [
+          [1, frontLeafMat, ''],
+          [-1, backLeafMat, '.back'],
+        ] as const) {
+          const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, halfD), mat);
+          m.name = `${baseName}${suffix}`;
+          m.position.set(px, py, zSign * halfD * 0.5);
+          m.castShadow = castShad;
+          m.receiveShadow = true;
+          doorObj.add(m);
+        }
+      };
+
       // Recessed panel core slab
-      const leafCore = new THREE.Mesh(
-        new THREE.BoxGeometry(innerW, coreH, 0.028),
-        timberDoorMat
-      );
-      leafCore.name = `${doorId}.leafCore`;
-      leafCore.position.set(0, coreOffsetY, 0);
-      leafCore.castShadow = true;
-      leafCore.receiveShadow = true;
-      doorObj.add(leafCore);
+      addXLeafBox(`${doorId}.leafCore`, innerW, coreH, 0.028, 0, coreOffsetY);
 
       // Left & right outer stiles
       for (const side of [-1, 1] as const) {
-        const stile = new THREE.Mesh(
-          new THREE.BoxGeometry(stileW, leafH, 0.046),
-          timberDoorMat
+        addXLeafBox(
+          `${doorId}.stile.${side < 0 ? "left" : "right"}`,
+          stileW,
+          leafH,
+          0.046,
+          side * (leafW / 2 - stileW / 2),
+          0
         );
-        stile.name = `${doorId}.stile.${side < 0 ? "left" : "right"}`;
-        stile.position.set(side * (leafW / 2 - stileW / 2), 0, 0);
-        stile.castShadow = true;
-        doorObj.add(stile);
       }
 
       // Top rail, lock rail & bottom rail
@@ -838,14 +875,14 @@ export function createGroundShellWindowsAndDoors(
         [lockRailY, lockRailH],
         [-leafH / 2 + bottomRailH / 2, bottomRailH],
       ] as const) {
-        const rail = new THREE.Mesh(
-          new THREE.BoxGeometry(innerW, railH, 0.046),
-          timberDoorMat
+        addXLeafBox(
+          `${doorId}.rail.${railY > 0 ? "top" : railY < -leafH * 0.25 ? "bottom" : "lock"}`,
+          innerW,
+          railH,
+          0.046,
+          0,
+          railY
         );
-        rail.name = `${doorId}.rail.${railY > 0 ? "top" : railY < -leafH * 0.25 ? "bottom" : "lock"}`;
-        rail.position.set(0, railY, 0);
-        rail.castShadow = true;
-        doorObj.add(rail);
       }
 
       // Central muntins & 4 raised bevelled panels
@@ -855,25 +892,21 @@ export function createGroundShellWindowsAndDoors(
       ] as const) {
         const pH = Math.max(0.12, pTop - pBot);
         const pMidY = (pBot + pTop) / 2;
-        const muntin = new THREE.Mesh(
-          new THREE.BoxGeometry(muntinW, pH, 0.046),
-          timberDoorMat
-        );
-        muntin.name = `${doorId}.muntin.${pMidY > 0 ? "upper" : "lower"}`;
-        muntin.position.set(0, pMidY, 0);
-        doorObj.add(muntin);
+        addXLeafBox(`${doorId}.muntin.${pMidY > 0 ? "upper" : "lower"}`, muntinW, pH, 0.046, 0, pMidY, false);
 
         const panelClearW = (innerW - muntinW) / 2;
         const raisedW = Math.max(0.06, panelClearW - 0.036);
         const raisedH = Math.max(0.08, pH - 0.042);
         for (const col of [-1, 1] as const) {
-          const raisedPanel = new THREE.Mesh(
-            new THREE.BoxGeometry(raisedW, raisedH, 0.038),
-            timberDoorMat
+          addXLeafBox(
+            `${doorId}.raisedPanel.${pMidY > 0 ? "upper" : "lower"}.${col < 0 ? "left" : "right"}`,
+            raisedW,
+            raisedH,
+            0.038,
+            col * (muntinW / 2 + panelClearW / 2),
+            pMidY,
+            false
           );
-          raisedPanel.name = `${doorId}.raisedPanel.${pMidY > 0 ? "upper" : "lower"}.${col < 0 ? "left" : "right"}`;
-          raisedPanel.position.set(col * (muntinW / 2 + panelClearW / 2), pMidY, 0);
-          doorObj.add(raisedPanel);
         }
       }
 

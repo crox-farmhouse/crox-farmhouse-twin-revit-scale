@@ -161,7 +161,7 @@ export interface LefroyBrooksCharterhouseWcOptions {
   /** Optional rear low soil-boxing height above floor (`0.382` in Room 7 so cistern mounts cleanly above it). */
   readonly lowBoxingHeightM?: number;
   /** Seat finish (`LB 7241`, default `'glossWhite'`). */
-  readonly seatFinish?: 'glossWhite' | 'antiqueOak' | 'walnut';
+  readonly seatFinish?: 'glossWhite' | 'antiqueOak' | 'walnut' | 'darkOak';
 }
 
 export interface LefroyBrooksLaChapellePedestalBasinOptions {

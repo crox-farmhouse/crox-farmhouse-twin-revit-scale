@@ -678,7 +678,7 @@ export function buildMainBedroom(
     // Step 1 (Lower step in Upper South Passage: X = -9.98m..-9.74m, top at Y = 2.335m)
     const lowerRiserGeo = new THREE.BoxGeometry(0.24, riserH, stepSpanZ);
     lowerRiserGeo.computeBoundingSphere();
-    const lowerRiser = new THREE.Mesh(lowerRiserGeo, antiqueOakSkirtingMat);
+    const lowerRiser = new THREE.Mesh(lowerRiserGeo, oakFloorMat);
     lowerRiser.name = 'mainBedroom.thresholdStep.lowerRiser';
     lowerRiser.position.set(-9.86, passageFloorTopY + riserH * 0.5, 1.48);
     lowerRiser.castShadow = true;
@@ -697,7 +697,7 @@ export function buildMainBedroom(
     // Step 2 (Upper threshold step inside cased reveal: X = -9.74m..-9.684m, top at Y = 2.510m)
     const stepRiserGeo = new THREE.BoxGeometry(0.056, riserH, stepSpanZ);
     stepRiserGeo.computeBoundingSphere();
-    const stepRiser = new THREE.Mesh(stepRiserGeo, antiqueOakSkirtingMat);
+    const stepRiser = new THREE.Mesh(stepRiserGeo, oakFloorMat);
     stepRiser.name = 'mainBedroom.thresholdStep.riser';
     stepRiser.position.set(-9.712, midStepTopY + riserH * 0.5, 1.48);
     stepRiser.castShadow = true;
@@ -726,7 +726,7 @@ export function buildMainBedroom(
     bullnoseGeo.rotateX(Math.PI / 2);
     bullnoseGeo.computeBoundingSphere();
 
-    const lowerBullnose = new THREE.Mesh(bullnoseGeo, antiqueOakSkirtingMat);
+    const lowerBullnose = new THREE.Mesh(bullnoseGeo, oakFloorMat);
     lowerBullnose.name = 'mainBedroom.thresholdStep.lowerBullnose';
     lowerBullnose.userData.lodTier = 'high';
     lowerBullnose.userData.lodMaxDistance = 12;
@@ -735,7 +735,7 @@ export function buildMainBedroom(
     lowerBullnose.receiveShadow = true;
     stepGroup.add(lowerBullnose);
 
-    const stepBullnose = new THREE.Mesh(bullnoseGeo, antiqueOakSkirtingMat);
+    const stepBullnose = new THREE.Mesh(bullnoseGeo, oakFloorMat);
     stepBullnose.name = 'mainBedroom.thresholdStep.bullnose';
     stepBullnose.userData.lodTier = 'high';
     stepBullnose.userData.lodMaxDistance = 12;

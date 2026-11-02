@@ -1103,6 +1103,11 @@ export function createFirstFloorShellKit(
       readonly doorH?: number;
       readonly architraveWidth?: number;
       readonly jambInset?: number;
+      readonly hingeSide?: 'west' | 'east';
+      readonly frontLeafMaterial?: THREE.Material;
+      readonly backLeafMaterial?: THREE.Material;
+      readonly frontArchitraveMaterial?: THREE.Material;
+      readonly backArchitraveMaterial?: THREE.Material;
     }
   ): void => {
     const effDoorH = options?.doorH ?? doorH;
@@ -1118,32 +1123,62 @@ export function createFirstFloorShellKit(
     const muntinW = 0.085;
     const lockRailY = -0.1;
 
+    const hingeEast = axis === 'x' && options?.hingeSide === 'east';
+    const frontLeafMat = options?.frontLeafMaterial ?? timberDoorMat;
+    const backLeafMat = options?.backLeafMaterial ?? timberDoorMat;
+    const addLeafBox = (
+      doorObj: THREE.Group,
+      alongZ: boolean,
+      baseName: string,
+      spanU: number,
+      spanY: number,
+      thickN: number,
+      posU: number,
+      posY: number,
+      castShad = true
+    ): void => {
+      if (frontLeafMat === backLeafMat) {
+        const m = new THREE.Mesh(
+          new THREE.BoxGeometry(alongZ ? thickN : spanU, spanY, alongZ ? spanU : thickN),
+          frontLeafMat
+        );
+        m.name = baseName;
+        m.position.set(alongZ ? 0 : posU, posY, alongZ ? posU : 0);
+        m.castShadow = castShad;
+        m.receiveShadow = true;
+        doorObj.add(m);
+        return;
+      }
+      const halfN = thickN * 0.5;
+      for (const [nSign, mat, suffix] of [
+        [1, frontLeafMat, '.front'],
+        [-1, backLeafMat, '.back'],
+      ] as const) {
+        const m = new THREE.Mesh(
+          new THREE.BoxGeometry(alongZ ? halfN : spanU, spanY, alongZ ? spanU : halfN),
+          mat
+        );
+        m.name = `${baseName}${suffix}`;
+        m.position.set(
+          alongZ ? nSign * halfN * 0.5 : posU,
+          posY,
+          alongZ ? posU : nSign * halfN * 0.5
+        );
+        m.castShadow = castShad;
+        m.receiveShadow = true;
+        doorObj.add(m);
+      }
+    };
+
     const populateFourPanelLeaf = (doorObj: THREE.Group, alongZ: boolean): void => {
       const innerSpanW = Math.max(0.1, leafW - stileW * 2);
       const coreH = Math.max(0.2, leafH - topRailH - botRailH);
       const coreOffsetY = (botRailH - topRailH) * 0.5;
-      const recessW = alongZ ? 0.028 : innerSpanW;
-      const recessD = alongZ ? innerSpanW : 0.028;
-      const recessCore = new THREE.Mesh(
-        new THREE.BoxGeometry(recessW, coreH, recessD),
-        timberDoorMat
-      );
-      recessCore.name = 'interiorDoor.recessCore';
-      recessCore.position.set(0, coreOffsetY, 0);
-      recessCore.castShadow = true;
-      recessCore.receiveShadow = true;
-      doorObj.add(recessCore);
+      addLeafBox(doorObj, alongZ, 'interiorDoor.recessCore', innerSpanW, coreH, 0.028, 0, coreOffsetY);
 
       for (const sSign of [-1, 1] as const) {
         const offset = sSign * (leafW * 0.5 - stileW * 0.5);
-        const stile = new THREE.Mesh(
-          new THREE.BoxGeometry(alongZ ? 0.044 : stileW, leafH, alongZ ? stileW : 0.044),
-          timberDoorMat
-        );
-        stile.name = 'interiorDoor.stile';
-        stile.position.set(alongZ ? 0 : offset, 0, alongZ ? offset : 0);
-        stile.castShadow = true;
-        doorObj.add(stile);
+        addLeafBox(doorObj, alongZ, 'interiorDoor.stile', stileW, leafH, 0.044, offset, 0);
       }
 
       for (const [ry, rh] of [
@@ -1151,14 +1186,7 @@ export function createFirstFloorShellKit(
         [lockRailY, lockRailH],
         [-leafH * 0.5 + botRailH * 0.5, botRailH],
       ] as const) {
-        const rail = new THREE.Mesh(
-          new THREE.BoxGeometry(alongZ ? 0.044 : innerSpanW, rh, alongZ ? innerSpanW : 0.044),
-          timberDoorMat
-        );
-        rail.name = 'interiorDoor.rail';
-        rail.position.set(0, ry, 0);
-        rail.castShadow = true;
-        doorObj.add(rail);
+        addLeafBox(doorObj, alongZ, 'interiorDoor.rail', innerSpanW, rh, 0.044, 0, ry);
       }
 
       const upperPanelTop = leafH * 0.5 - topRailH;
@@ -1175,14 +1203,7 @@ export function createFirstFloorShellKit(
         [upperPanelCY, upperPanelH],
         [lowerPanelCY, lowerPanelH],
       ] as const) {
-        const muntin = new THREE.Mesh(
-          new THREE.BoxGeometry(alongZ ? 0.044 : muntinW, mh, alongZ ? muntinW : 0.044),
-          timberDoorMat
-        );
-        muntin.name = 'interiorDoor.muntin';
-        muntin.position.set(0, my, 0);
-        muntin.castShadow = true;
-        doorObj.add(muntin);
+        addLeafBox(doorObj, alongZ, 'interiorDoor.muntin', muntinW, mh, 0.044, 0, my);
       }
 
       const singlePanelBayW = Math.max(0.1, (innerSpanW - muntinW) * 0.5);
@@ -1193,17 +1214,15 @@ export function createFirstFloorShellKit(
           [upperPanelCY, Math.max(0.12, upperPanelH - 0.036)],
           [lowerPanelCY, Math.max(0.12, lowerPanelH - 0.036)],
         ] as const) {
-          const panel = new THREE.Mesh(
-            new THREE.BoxGeometry(alongZ ? 0.038 : raisedPanelW, ph, alongZ ? raisedPanelW : 0.038),
-            timberDoorMat
-          );
-          panel.name = 'interiorDoor.raisedPanel';
-          panel.position.set(alongZ ? 0 : pOffset, py, alongZ ? pOffset : 0);
-          doorObj.add(panel);
+          addLeafBox(doorObj, alongZ, 'interiorDoor.raisedPanel', raisedPanelW, ph, 0.038, pOffset, py, false);
         }
       }
 
-      const latchOffset = alongZ ? -leafW / 2 + 0.055 : leafW / 2 - 0.055;
+      const latchOffset = alongZ
+        ? -leafW / 2 + 0.055
+        : hingeEast
+          ? -leafW / 2 + 0.055
+          : leafW / 2 - 0.055;
       for (const faceSign of [-1, 1] as const) {
         const knob = new THREE.Mesh(
           new THREE.SphereGeometry(0.02, 10, 10),
@@ -1230,6 +1249,8 @@ export function createFirstFloorShellKit(
       backFloorY: effBackFloorY,
       headY: effDoorFloorY + effDoorH,
       material: antiqueOakSkirtingMat,
+      frontArchitraveMaterial: options?.frontArchitraveMaterial,
+      backArchitraveMaterial: options?.backArchitraveMaterial,
       architraveWidth: options?.architraveWidth,
       jambInset: options?.jambInset,
       namePrefix: 'firstFloorDoor',
@@ -1258,7 +1279,7 @@ export function createFirstFloorShellKit(
       interactions.registerHingedDoor(
         scene,
         doorObj,
-        new THREE.Vector3(-leafW / 2, 0, 0),
+        new THREE.Vector3(hingeEast ? leafW / 2 : -leafW / 2, 0, 0),
         'y',
         openAngle,
         0

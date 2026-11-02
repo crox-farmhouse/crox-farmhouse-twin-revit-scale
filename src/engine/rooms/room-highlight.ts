@@ -1,16 +1,15 @@
 import * as THREE from 'three';
 import type { RoomBoundingBox } from '../../core/types/topology.ts';
 
-const FILL_COLOR = 0x6fb7ff;
-const FILL_OPACITY = 0.12;
-const OUTLINE_OPACITY = 0.75;
-/** Lift above the walking floor so the tint never z-fights the floor finish (m). */
+const OUTLINE_COLOR = 0x6fb7ff;
+const OUTLINE_OPACITY = 0.65;
+/** Lift above the walking floor so the perimeter outline never z-fights the floor finish (m). */
 const FLOOR_LIFT_M = 0.03;
 
 /**
- * Subtle floor tint + outline marking a room's footprint (navigator hover /
- * selection). Created lazily on first use so it never appears in the static
- * scene graph (snapshots, batching, trade classification).
+ * Subtle perimeter outline marking a room's footprint during navigator pointer hover.
+ * Uses a thin line loop without any translucent floor fill plane so floors never
+ * acquire a blue tint sheet. Created lazily on first use so it stays out of static snapshots.
  */
 export class RoomHighlight {
   private readonly scene: THREE.Scene;
@@ -20,7 +19,7 @@ export class RoomHighlight {
     this.scene = scene;
   }
 
-  /** Shows the highlight over `bounds` at `floorY`; `null` hides it. */
+  /** Shows the perimeter outline over `bounds` at `floorY`; `null` hides it. */
   public show(bounds: RoomBoundingBox | null, floorY = 0): void {
     if (!bounds) {
       if (this.group) this.group.visible = false;
@@ -36,7 +35,6 @@ export class RoomHighlight {
     );
     group.scale.set(width, 1, depth);
     group.visible = true;
-    // The viewer freezes static matrices, so update this subtree explicitly.
     group.updateMatrix();
     group.updateMatrixWorld(true);
   }
@@ -52,16 +50,6 @@ export class RoomHighlight {
     group.userData.isAnnotationGroup = true;
     group.renderOrder = 10;
 
-    const fill = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({
-        color: FILL_COLOR,
-        transparent: true,
-        opacity: FILL_OPACITY,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      })
-    );
     const corners = [
       new THREE.Vector3(-0.5, 0, -0.5),
       new THREE.Vector3(0.5, 0, -0.5),
@@ -71,27 +59,24 @@ export class RoomHighlight {
     const outline = new THREE.LineLoop(
       new THREE.BufferGeometry().setFromPoints(corners),
       new THREE.LineBasicMaterial({
-        color: FILL_COLOR,
+        color: OUTLINE_COLOR,
         transparent: true,
         opacity: OUTLINE_OPACITY,
         depthWrite: false,
       })
     );
-    for (const child of [fill, outline]) {
-      child.castShadow = false;
-      child.receiveShadow = false;
-      child.userData.isAnnotationGroup = true;
-      // Never pickable: clicks pass through to the room geometry below.
-      child.raycast = () => undefined;
-      child.renderOrder = 10;
-      group.add(child);
-    }
+    outline.castShadow = false;
+    outline.receiveShadow = false;
+    outline.userData.isAnnotationGroup = true;
+    outline.raycast = () => undefined;
+    outline.renderOrder = 10;
+    outline.updateMatrix();
+    outline.matrixAutoUpdate = false;
+    group.add(outline);
+
     group.matrixAutoUpdate = false;
-    for (const child of group.children) {
-      child.updateMatrix();
-      child.matrixAutoUpdate = false;
-    }
     this.scene.add(group);
+    this.group = group;
     return group;
   }
 }

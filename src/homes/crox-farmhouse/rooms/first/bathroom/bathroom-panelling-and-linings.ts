@@ -1,4 +1,122 @@
 import * as THREE from 'three';
+import { getZelligeCreamWallTileMaterial } from '../../../../../objects/sanitaryware/index.ts';
+import {
+  EAST_WING_BATHROOM_VAULT,
+  getEastWingCeilingHeightAtZ,
+} from '../../../structure/first-floor-materials.ts';
+import type { createFirstFloorShellKit } from '../../../structure/first-floor-shell-kit.ts';
+
+export interface FamilyBathroomPanellingKit {
+  readonly floorTopY: number;
+  readonly schoolHouseWhiteMat: THREE.Material;
+  readonly wimborneWhitePanellingMat: THREE.Material;
+  readonly tagUpperCutawayWall: ReturnType<typeof createFirstFloorShellKit>['tagUpperCutawayWall'];
+}
+
+interface ProfilePoint2D {
+  readonly d: number;
+  readonly y: number;
+  readonly ao?: number;
+}
+
+interface BoardBandSpec {
+  readonly uMin: number;
+  readonly uMax: number;
+  readonly yBands: readonly (readonly [number, number])[];
+}
+
+const NORTH_EXTERIOR_CUTAWAY = {
+  axis: 'z' as const,
+  coord: -2.64,
+  minSpan: -13.05,
+  maxSpan: -9.56,
+  floor: 'first' as const,
+};
+
+/**
+ * Shared boxed-dado projection dimensions for the Master Bathroom (`familyBathroom`)
+ * so sanitaryware, alcove joinery, and trim align with zero air gaps or clipping.
+ */
+export const ROOM17_BOXED_DADO = {
+  /** Boxed T&G matchboard front face projection (`68mm` proud of structural plaster plane). */
+  panelFaceD: 0.068,
+  /** V-groove root projection (`63mm`, giving crisp `5mm`-deep `45°` V-grooves). */
+  panelRootD: 0.063,
+  /** Moulded bullnose dado shelf ledge projection (`82mm` total depth). */
+  dadoShelfD: 0.082,
+  /** Moulded bathroom skirting plinth projection (`80mm` total depth). */
+  skirtingD: 0.08,
+} as const;
+
+const ROOM17_SHELL_PLANES = {
+  westWallX: -12.81,
+  eastWallX: -9.8,
+  bulkheadWestX: -10.77,
+  northWallZ: -2.5,
+  southWallZ: 0.9,
+  bulkheadNorthZ: -0.01,
+  showerNorthZ: -0.65,
+  showerEastX: -11.91,
+  zelligeDepth: 0.009,
+  plasterLiningDepth: 0.0075,
+  zelligeUvScale: [0.66, 0.5] as const,
+  /** South front of base vanity carcass (`Z = -0.495m`) where lower East panelling & skirting butt flush. */
+  vanityBaseFrontZ: -0.495,
+  /** North front of full-height `84mm` dark-oak `eastOuterCheek` (`Z = -0.220m`) where East dado rail butts flush. */
+  vanityUpperCheekFrontZ: -0.22,
+  /** Countertop top elevation offset above `floorTopY` (`0.850m` -> `Y = 3.010m`). */
+  vanityCounterHeight: 0.85,
+  /** North face of `door-54` East oak architrave (`Z = +0.882m`) where bulkhead dado & panelling butt flush. */
+  doorArchitraveButtZ: 0.882,
+  doorWestArchitraveX: -11.685,
+  doorEastArchitraveX: -10.855,
+  doorHeadArchitraveOffsetY: 1.866 + 0.068,
+} as const;
+
+const WEST_SHOWER_NICHE_OPENING = {
+  northZ: -0.5,
+  southZ: -0.06,
+  bottomY: 3.36,
+  topY: 3.72,
+} as const;
+
+const SOUTH_SHOWER_NICHE_OPENING = {
+  westX: -12.61,
+  eastX: -12.15,
+  bottomY: 2.9,
+  topY: 3.68,
+} as const;
+
+const DADO_SHELF_PROFILE: readonly ProfilePoint2D[] = [
+  { d: 0.0, y: 0.006, ao: 0.88 },
+  { d: 0.068, y: 0.006, ao: 0.85 },
+  { d: 0.068, y: 0.0, ao: 0.85 },
+  { d: 0.073, y: 0.0, ao: 0.9 },
+  { d: 0.0775, y: 0.004, ao: 0.95 },
+  { d: 0.081, y: 0.009, ao: 0.99 },
+  { d: 0.082, y: 0.014, ao: 1.0 },
+  { d: 0.082, y: 0.021, ao: 1.0 },
+  { d: 0.08, y: 0.025, ao: 0.99 },
+  { d: 0.0755, y: 0.0274, ao: 0.97 },
+  { d: 0.009, y: 0.028, ao: 0.95 },
+  { d: 0.0, y: 0.028, ao: 0.94 },
+];
+
+const BOXED_SKIRTING_PROFILE: readonly ProfilePoint2D[] = [
+  { d: 0.0, y: 0.002, ao: 0.92 },
+  { d: 0.08, y: 0.002, ao: 0.94 },
+  { d: 0.08, y: 0.114, ao: 1.0 },
+  { d: 0.078, y: 0.12, ao: 0.97 },
+  { d: 0.074, y: 0.1255, ao: 0.9 },
+  { d: 0.074, y: 0.1305, ao: 0.9 },
+  { d: 0.0765, y: 0.1365, ao: 1.0 },
+  { d: 0.0745, y: 0.1425, ao: 0.98 },
+  { d: 0.07, y: 0.146, ao: 0.93 },
+  { d: 0.068, y: 0.146, ao: 0.9 },
+  { d: 0.068, y: 0.136, ao: 0.9 },
+  { d: 0.0, y: 0.136, ao: 0.9 },
+];
+
 function computeWallPathMitrePoints(
   pts: readonly (readonly [number, number])[],
   offsetD: number
@@ -36,44 +154,18 @@ function computeWallPathMitrePoints(
   }
   return out;
 }
-import {
-  EAST_WING_BATHROOM_VAULT,
-  getEastWingCeilingHeightAtZ,
-} from '../../../structure/first-floor-materials.ts';
-import type { createFirstFloorShellKit } from '../../../structure/first-floor-shell-kit.ts';
 
-export interface FamilyBathroomPanellingKit {
-  readonly floorTopY: number;
-  readonly schoolHouseWhiteMat: THREE.Material;
-  readonly wimborneWhitePanellingMat: THREE.Material;
-  readonly tagUpperCutawayWall: ReturnType<typeof createFirstFloorShellKit>['tagUpperCutawayWall'];
-}
-
-interface ProfilePoint2D {
-  readonly d: number;
-  readonly y: number;
-  readonly ao?: number;
-}
-
-const NORTH_EXTERIOR_CUTAWAY = {
-  axis: 'z' as const,
-  coord: -2.64,
-  minSpan: -12.81,
-  maxSpan: -9.56,
-  floor: 'first' as const,
-};
-
-/**
- * Builds a watertight, proper-handed (`det = +1`) polygonal wall lining slab along `(x0, z0) -> (x1, z1)`
- * with room-inward normal `n = (-tz, tx)` and thickness `depth` (`0 .. depth`).
- */
 function buildPolygonalWallLiningGeometry(
   x0: number,
   z0: number,
   x1: number,
   z1: number,
   polygonUY: readonly (readonly [number, number])[],
-  depth: number
+  depth: number,
+  options?: {
+    readonly holes?: readonly (readonly (readonly [number, number])[])[];
+    readonly uvScale?: readonly [number, number];
+  }
 ): THREE.BufferGeometry {
   const dx = x1 - x0;
   const dz = z1 - z0;
@@ -90,14 +182,24 @@ function buildPolygonalWallLiningGeometry(
   }
   shape.closePath();
 
-  const rawGeo = new THREE.ExtrudeGeometry(shape, {
-    depth,
-    bevelEnabled: false,
-  });
+  if (options?.holes) {
+    for (const hPts of options.holes) {
+      const holePath = new THREE.Path();
+      holePath.moveTo(hPts[0]![0], hPts[0]![1]);
+      for (let i = 1; i < hPts.length; i++) {
+        holePath.lineTo(hPts[i]![0], hPts[i]![1]);
+      }
+      holePath.closePath();
+      shape.holes.push(holePath);
+    }
+  }
+
+  const rawGeo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
   const geo = rawGeo.index ? rawGeo.toNonIndexed() : rawGeo;
   const pos = geo.getAttribute('position') as THREE.BufferAttribute;
   const norm = geo.getAttribute('normal') as THREE.BufferAttribute;
   const uv = geo.getAttribute('uv') as THREE.BufferAttribute;
+  const [uvScaleU, uvScaleV] = options?.uvScale ?? [0.5, 0.5];
 
   for (let i = 0; i < pos.count; i++) {
     const u = pos.getX(i);
@@ -110,7 +212,7 @@ function buildPolygonalWallLiningGeometry(
     const nd = norm.getZ(i);
     norm.setXYZ(i, nu * tx + nd * nx, nv, nu * tz + nd * nz);
 
-    uv.setXY(i, u * 0.5, v * 0.5);
+    uv.setXY(i, u * uvScaleU, v * uvScaleV);
   }
   pos.needsUpdate = true;
   norm.needsUpdate = true;
@@ -120,11 +222,6 @@ function buildPolygonalWallLiningGeometry(
   return geo;
 }
 
-/**
- * Sweeps a closed 2D moulding cross-section `(d, y)` (ordered bottom -> front -> top -> back)
- * along a 2D wall polyline `(x, z)` with exact 45°-mitred internal/external corners and optional
- * start/end corner mitres (`startMitreSign` / `endMitreSign`: `+1` or `-1` for split 45° corners, `0` for square cap).
- */
 function buildSweptMitredMouldingGeometry(
   wallPoints: readonly (readonly [number, number])[],
   profile: readonly ProfilePoint2D[],
@@ -143,7 +240,6 @@ function buildSweptMitredMouldingGeometry(
     () => []
   );
 
-  // First & last tangent vectors for optional split-corner 45° mitres
   const dx0 = wallPoints[1]![0] - wallPoints[0]![0];
   const dz0 = wallPoints[1]![1] - wallPoints[0]![1];
   const len0 = Math.hypot(dx0, dz0);
@@ -222,8 +318,10 @@ function buildSweptMitredMouldingGeometry(
     }
   }
 
-  // End caps when square-butted (`mitreSign === 0`)
-  const capRing = (ring: readonly { x: number; y: number; z: number; ao: number }[], flip: boolean): void => {
+  const capRing = (
+    ring: readonly { x: number; y: number; z: number; ao: number }[],
+    flip: boolean
+  ): void => {
     const anchor = ring[0]!;
     for (let k = 1; k < ring.length - 1; k++) {
       const b = ring[k]!;
@@ -235,12 +333,8 @@ function buildSweptMitredMouldingGeometry(
       }
     }
   };
-  if (startMitreSign === 0) {
-    capRing(rings[0]!, true);
-  }
-  if (endMitreSign === 0) {
-    capRing(rings[numVerts - 1]!, false);
-  }
+  if (startMitreSign === 0) capRing(rings[0]!, true);
+  if (endMitreSign === 0) capRing(rings[numVerts - 1]!, false);
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -252,17 +346,6 @@ function buildSweptMitredMouldingGeometry(
   return geo;
 }
 
-interface BoardBandSpec {
-  readonly uMin: number;
-  readonly uMax: number;
-  readonly yBands: readonly (readonly [number, number])[];
-}
-
-/**
- * Builds genuine 3D vertical V-groove tongue-and-groove (`T&G`) cottage matchboarding along
- * `(x0, z0) -> (x1, z1)` (`~106mm` board pitch, `13.8mm` board thickness, `4.6mm`-deep `45°` V-grooves),
- * with exact 45° internal/external corner mitres and clean cutout bands around windows/countertops.
- */
 function buildVerticalVGroovePanellingGeometry(
   x0: number,
   z0: number,
@@ -283,13 +366,12 @@ function buildVerticalVGroovePanellingGeometry(
   const nx = -tz;
   const nz = tx;
 
-  const faceD = 0.0138;
-  const rootD = 0.0092;
-  const chamferW = 0.0038;
+  const faceD = ROOM17_BOXED_DADO.panelFaceD;
+  const rootD = ROOM17_BOXED_DADO.panelRootD;
+  const chamferW = 0.0042;
   const startMitreSign = options?.startMitreSign ?? 0;
   const endMitreSign = options?.endMitreSign ?? 0;
 
-  // Build piecewise-linear front depth profile `(u, d)` across `[0, totalLen]`
   const rawSteps: { u0: number; d0: number; u1: number; d1: number }[] = [];
   const boardW = totalLen / numBoards;
   for (let b = 0; b < numBoards; b++) {
@@ -324,12 +406,8 @@ function buildVerticalVGroovePanellingGeometry(
   };
 
   const uAtEndpoint = (u: number, d: number): number => {
-    if (u <= 1e-6 && startMitreSign !== 0) {
-      return u + startMitreSign * d;
-    }
-    if (u >= totalLen - 1e-6 && endMitreSign !== 0) {
-      return u + endMitreSign * d;
-    }
+    if (u <= 1e-6 && startMitreSign !== 0) return u + startMitreSign * d;
+    if (u >= totalLen - 1e-6 && endMitreSign !== 0) return u + endMitreSign * d;
     return u;
   };
 
@@ -361,9 +439,7 @@ function buildVerticalVGroovePanellingGeometry(
       p11[0], p11[1], p11[2],
       p01[0], p01[1], p01[2]
     );
-    for (let k = 0; k < 6; k++) {
-      normals.push(fnx, fny, fnz);
-    }
+    for (let k = 0; k < 6; k++) normals.push(fnx, fny, fnz);
     pushAo(ao0);
     pushAo(ao1);
     pushAo(ao1);
@@ -394,7 +470,6 @@ function buildVerticalVGroovePanellingGeometry(
         const du = segU1 - segU0;
         const dd = d1 - d0;
         const hyp = Math.hypot(du, dd);
-        // Outward normal in (t, n) plane for segment (du, dd) is (-dd, du) / hyp
         const localUt = -dd / hyp;
         const localUn = du / hyp;
         const fnx = localUt * tx + localUn * nx;
@@ -406,7 +481,6 @@ function buildVerticalVGroovePanellingGeometry(
         const p01 = toWorld(segU0, yTop, d0);
         pushQuad(p00, p10, p11, p01, fnx, 0, fnz, segU0, yBot, segU1, yTop, aoAtDepth(d0), aoAtDepth(d1));
 
-        // Top & bottom horizontal thickness caps (`d = 0 -> d0/d1`) so cutouts & tops are 100% solid
         const b00 = toWorld(segU0, yBot, 0);
         const b10 = toWorld(segU1, yBot, 0);
         const b11 = toWorld(segU1, yTop, 0);
@@ -415,7 +489,6 @@ function buildVerticalVGroovePanellingGeometry(
         pushQuad(b00, b10, p10, p00, 0, -1, 0, segU0, 0, segU1, faceD);
       }
 
-      // Square vertical side return caps at band edges when not mitred
       if (band.uMin > 1e-5 || startMitreSign === 0) {
         const dLeft = band.uMin <= 1e-5 ? rootD : faceD;
         const f0 = toWorld(band.uMin, yBot, dLeft);
@@ -446,12 +519,13 @@ function buildVerticalVGroovePanellingGeometry(
 }
 
 /**
- * Builds Room 17 (`familyBathroom`)'s Farrow & Ball architectural scheme:
- *  - Seamless `School House White` (No. 291, `#e6e1d5`) upper wall linings meeting the vaulted
- *    skeilings & collar ceiling with 0.000mm air gap and zero horizontal/pier seams.
- *  - Half-height (`1.22m` above FFL) `Wimborne White` (No. 239, `#f7f4ec`) real 3D vertical V-groove
- *    tongue-and-groove cottage panelling, 45°-mitred moulded dado cap rail, and 45°-mitred painted
- *    bathroom skirting around all dry walls.
+ * Builds the Master Bathroom (`familyBathroom`) wall linings, wet-zone Zellige tiling, and boxed dado joinery:
+ * - Floor-to-ceiling handmade cream vertical Zellige tiling across the entire West wall (`Z = -2.50m..+0.90m`)
+ *   and South wall (`X = -12.81m..-10.77m`), with clean apertures for both recessed shower niches.
+ * - `School House White` (No. 291) matte upper plaster linings on the North, East, and Bulkhead walls.
+ * - `68mm` boxed-out `Wimborne White` (No. 239) V-groove matchboard dado panelling, `82mm` bullnose dado shelf,
+ *   and `80mm` rebated skirting on the North, East, and Bulkhead walls, all terminating squarely (`0mm` gap)
+ *   into either full-height Zellige tile, solid dark-oak alcove joinery cheeks, or oak doorway architraves.
  */
 export function buildFamilyBathroomPanellingAndLinings(
   scene: THREE.Group,
@@ -461,20 +535,22 @@ export function buildFamilyBathroomPanellingAndLinings(
     floorTopY,
     schoolHouseWhiteMat,
     wimborneWhitePanellingMat,
-      tagUpperCutawayWall,
+    tagUpperCutawayWall,
   } = kit;
 
+  const zelligeTileMat = getZelligeCreamWallTileMaterial();
   const { collarCeilingY, collarNorthZ, wallTopEmbed } = EAST_WING_BATHROOM_VAULT;
   const collarEmbedTopY = collarCeilingY + wallTopEmbed;
   const northEavesEmbedTopY = getEastWingCeilingHeightAtZ(-2.502) + wallTopEmbed;
-  const southWallEmbedTopY = getEastWingCeilingHeightAtZ(0.9) + wallTopEmbed;
+  const southWallEmbedTopY = getEastWingCeilingHeightAtZ(ROOM17_SHELL_PLANES.southWallZ) + wallTopEmbed;
 
-  const liningDepth = 0.0075;
-  const panelBotY = floorTopY + 0.138; // 2.298m (tucked cleanly inside rebated skirting cap)
-  const dadoBaseY = floorTopY + 1.152; // 3.312m .. 3.3385m (3mm above Win 1763678's 3.309m architrave, kissing the 3.33m 49° North cottage eaves!)
-  const panelTopY = dadoBaseY + 0.006; // 3.318m (tucked cleanly inside rebated dado cap rail)
-  const liningBotY = dadoBaseY + 0.006; // 3.318m (tucked behind dado rail)
-  const showerTileTopY = floorTopY + 2.042; // 4.202m (top of Zellige shower tiling)
+  const panelBotY = floorTopY + 0.138;
+  const dadoBaseY = floorTopY + 1.152;
+  const panelTopY = dadoBaseY + 0.006;
+  const liningBotY = dadoBaseY + 0.006;
+  const counterTopY = floorTopY + ROOM17_SHELL_PLANES.vanityCounterHeight;
+  const showerRimTopY = floorTopY + 0.042;
+  const doorArchitraveTopY = floorTopY + ROOM17_SHELL_PLANES.doorHeadArchitraveOffsetY;
 
   const addShellMesh = (
     name: string,
@@ -487,51 +563,98 @@ export function buildFamilyBathroomPanellingAndLinings(
     mesh.userData.isArchitecturalShell = true;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    if (northCutaway) {
-      tagUpperCutawayWall(mesh, NORTH_EXTERIOR_CUTAWAY);
-    }
+    if (northCutaway) tagUpperCutawayWall(mesh, NORTH_EXTERIOR_CUTAWAY);
     scene.add(mesh);
     return mesh;
   };
 
-  // =========================================================================
-  // 1. SEAMLESS FARROW & BALL `SCHOOL HOUSE WHITE` (No. 291) UPPER WALL LININGS
-  // =========================================================================
-  // 1A. West Wall (`X = -12.81m`, `Z = +0.90m -> -2.502m`, spanning above-shower & North skeiling)
+  // Floor-to-ceiling vertical Zellige tiling across the entire West wall (Z = +0.90m -> -2.502m)
+  const westSouthZ = ROOM17_SHELL_PLANES.southWallZ;
+  const westNorthZ = -2.502;
   addShellMesh(
     'familyBathroom.westWallUpperLining',
     buildPolygonalWallLiningGeometry(
-      -12.81,
-      0.9,
-      -12.81,
-      -2.502,
+      ROOM17_SHELL_PLANES.westWallX,
+      westSouthZ,
+      ROOM17_SHELL_PLANES.westWallX,
+      westNorthZ,
       [
-        [0, showerTileTopY],
-        [0.9 - -0.652, showerTileTopY],
-        [0.9 - -0.652, liningBotY],
-        [0.9 - -2.502, liningBotY],
-        [0.9 - -2.502, northEavesEmbedTopY],
-        [0.9 - collarNorthZ, collarEmbedTopY],
+        [0, showerRimTopY],
+        [westSouthZ - ROOM17_SHELL_PLANES.showerNorthZ, showerRimTopY],
+        [westSouthZ - ROOM17_SHELL_PLANES.showerNorthZ, floorTopY],
+        [westSouthZ - westNorthZ, floorTopY],
+        [westSouthZ - westNorthZ, northEavesEmbedTopY],
+        [westSouthZ - collarNorthZ, collarEmbedTopY],
         [0, southWallEmbedTopY],
       ],
-      liningDepth
+      ROOM17_SHELL_PLANES.zelligeDepth,
+      {
+        holes: [
+          [
+            [westSouthZ - WEST_SHOWER_NICHE_OPENING.southZ, WEST_SHOWER_NICHE_OPENING.bottomY],
+            [westSouthZ - WEST_SHOWER_NICHE_OPENING.northZ, WEST_SHOWER_NICHE_OPENING.bottomY],
+            [westSouthZ - WEST_SHOWER_NICHE_OPENING.northZ, WEST_SHOWER_NICHE_OPENING.topY],
+            [westSouthZ - WEST_SHOWER_NICHE_OPENING.southZ, WEST_SHOWER_NICHE_OPENING.topY],
+          ],
+        ],
+        uvScale: ROOM17_SHELL_PLANES.zelligeUvScale,
+      }
     ),
-    schoolHouseWhiteMat
+    zelligeTileMat
   );
 
-  // 1B. North Exterior Wall (`Z = -2.50m`, `X = -12.812m -> -9.798m`, tucked behind 3.312..3.3385m dado rail into 49° North skeiling)
+  // Full-height South wall vertical Zellige tiling framing Door 1685658 and the 2-tier shower niche
+  const southEastX = ROOM17_SHELL_PLANES.bulkheadWestX;
+  const southWestX = -12.812;
+  addShellMesh(
+    'familyBathroom.southWallUpperLining',
+    buildPolygonalWallLiningGeometry(
+      southEastX,
+      ROOM17_SHELL_PLANES.southWallZ,
+      southWestX,
+      ROOM17_SHELL_PLANES.southWallZ,
+      [
+        [0, liningBotY],
+        [southEastX - ROOM17_SHELL_PLANES.doorEastArchitraveX, liningBotY],
+        [southEastX - ROOM17_SHELL_PLANES.doorEastArchitraveX, doorArchitraveTopY],
+        [southEastX - ROOM17_SHELL_PLANES.doorWestArchitraveX, doorArchitraveTopY],
+        [southEastX - ROOM17_SHELL_PLANES.doorWestArchitraveX, floorTopY],
+        [southEastX - (ROOM17_SHELL_PLANES.showerEastX + 0.002), floorTopY],
+        [southEastX - (ROOM17_SHELL_PLANES.showerEastX + 0.002), showerRimTopY],
+        [southEastX - southWestX, showerRimTopY],
+        [southEastX - southWestX, southWallEmbedTopY],
+        [0, southWallEmbedTopY],
+      ],
+      ROOM17_SHELL_PLANES.zelligeDepth,
+      {
+        holes: [
+          [
+            [southEastX - SOUTH_SHOWER_NICHE_OPENING.eastX, SOUTH_SHOWER_NICHE_OPENING.bottomY],
+            [southEastX - SOUTH_SHOWER_NICHE_OPENING.westX, SOUTH_SHOWER_NICHE_OPENING.bottomY],
+            [southEastX - SOUTH_SHOWER_NICHE_OPENING.westX, SOUTH_SHOWER_NICHE_OPENING.topY],
+            [southEastX - SOUTH_SHOWER_NICHE_OPENING.eastX, SOUTH_SHOWER_NICHE_OPENING.topY],
+          ],
+        ],
+        uvScale: ROOM17_SHELL_PLANES.zelligeUvScale,
+      }
+    ),
+    zelligeTileMat
+  );
+
+  // Dry-zone School House White upper plaster linings above the 3.34m dado shelf (North, East & Bulkhead)
+  const westZelligeFaceX = ROOM17_SHELL_PLANES.westWallX + ROOM17_SHELL_PLANES.zelligeDepth;
   addShellMesh(
     'familyBathroom.northWallUpperLining',
     buildPolygonalWallLiningGeometry(
-      -12.812,
-      -2.5,
+      westZelligeFaceX,
+      ROOM17_SHELL_PLANES.northWallZ,
       -9.798,
-      -2.5,
+      ROOM17_SHELL_PLANES.northWallZ,
       [
         [0, liningBotY],
-        [3.014, liningBotY],
-        [3.014, getEastWingCeilingHeightAtZ(-2.5) + wallTopEmbed],
-        [0, getEastWingCeilingHeightAtZ(-2.5) + wallTopEmbed],
+        [-9.798 - westZelligeFaceX, liningBotY],
+        [-9.798 - westZelligeFaceX, getEastWingCeilingHeightAtZ(ROOM17_SHELL_PLANES.northWallZ) + wallTopEmbed],
+        [0, getEastWingCeilingHeightAtZ(ROOM17_SHELL_PLANES.northWallZ) + wallTopEmbed],
       ],
       0.006
     ),
@@ -539,357 +662,202 @@ export function buildFamilyBathroomPanellingAndLinings(
     true
   );
 
-  // 1C. East Cross-Wall (`X = -9.80m`, `Z = -2.502m -> -0.164m`, stopping behind dark-oak joinery)
   addShellMesh(
     'familyBathroom.eastWallUpperLining',
     buildPolygonalWallLiningGeometry(
-      -9.8,
-      -2.502,
-      -9.8,
-      -0.164,
+      ROOM17_SHELL_PLANES.eastWallX,
+      westNorthZ,
+      ROOM17_SHELL_PLANES.eastWallX,
+      ROOM17_SHELL_PLANES.vanityUpperCheekFrontZ,
       [
         [0, liningBotY],
-        [-0.164 - -2.502, liningBotY],
-        [-0.164 - -2.502, collarEmbedTopY],
-        [collarNorthZ - -2.502, collarEmbedTopY],
+        [ROOM17_SHELL_PLANES.vanityUpperCheekFrontZ - westNorthZ, liningBotY],
+        [ROOM17_SHELL_PLANES.vanityUpperCheekFrontZ - westNorthZ, collarEmbedTopY],
+        [collarNorthZ - westNorthZ, collarEmbedTopY],
         [0, northEavesEmbedTopY],
       ],
-      liningDepth
+      ROOM17_SHELL_PLANES.plasterLiningDepth
     ),
     schoolHouseWhiteMat
   );
 
-  // 1D. Bulkhead West Wall & Corner Return (`X = -10.77m`, `Z = -0.01m -> +0.90m`)
   addShellMesh(
     'familyBathroom.bulkheadWestUpperLining',
     buildPolygonalWallLiningGeometry(
-      -10.77,
-      -0.01,
-      -10.77,
-      0.9,
+      ROOM17_SHELL_PLANES.bulkheadWestX,
+      ROOM17_SHELL_PLANES.bulkheadNorthZ,
+      ROOM17_SHELL_PLANES.bulkheadWestX,
+      ROOM17_SHELL_PLANES.southWallZ,
       [
         [0, liningBotY],
-        [0.91, liningBotY],
-        [0.91, collarEmbedTopY],
+        [ROOM17_SHELL_PLANES.southWallZ - ROOM17_SHELL_PLANES.bulkheadNorthZ, liningBotY],
+        [ROOM17_SHELL_PLANES.southWallZ - ROOM17_SHELL_PLANES.bulkheadNorthZ, collarEmbedTopY],
         [0, collarEmbedTopY],
       ],
-      liningDepth
-    ),
-    schoolHouseWhiteMat
-  );
-  addShellMesh(
-    'familyBathroom.bulkheadReturnUpperLining',
-    buildPolygonalWallLiningGeometry(
-      -10.745,
-      -0.01,
-      -10.7775,
-      -0.01,
-      [
-        [0, liningBotY],
-        [0.0325, liningBotY],
-        [0.0325, collarEmbedTopY],
-        [0, collarEmbedTopY],
-      ],
-      liningDepth
+      ROOM17_SHELL_PLANES.plasterLiningDepth
     ),
     schoolHouseWhiteMat
   );
 
-  // 1E. South Partition & Door Transom (`Z = +0.90m`, `X = -10.77m -> -12.812m`)
-  addShellMesh(
-    'familyBathroom.southWallUpperLining',
-    buildPolygonalWallLiningGeometry(
-      -10.77,
-      0.9,
-      -12.812,
-      0.9,
-      [
-        [0, floorTopY + 2.025],
-        [-10.77 - -11.666, floorTopY + 2.025],
-        [-10.77 - -11.666, liningBotY],
-        [-10.77 - -11.908, liningBotY],
-        [-10.77 - -11.908, showerTileTopY],
-        [-10.77 - -12.812, showerTileTopY],
-        [-10.77 - -12.812, southWallEmbedTopY],
-        [0, southWallEmbedTopY],
-      ],
-      liningDepth
-    ),
-    schoolHouseWhiteMat
-  );
-
-  // =========================================================================
-  // 2. FARROW & BALL `WIMBORNE WHITE` (No. 239) 3D VERTICAL V-GROOVE T&G PANELLING
-  // =========================================================================
-  // 2A. West Dry Wall (`X = -12.81m`, north of shower trim `Z = -0.654m .. -2.500m`)
-  addShellMesh(
-    'familyBathroom.westPanelling',
-    buildVerticalVGroovePanellingGeometry(
-      -12.81,
-      -0.654,
-      -12.81,
-      -2.5,
-      17,
-      [{ uMin: 0, uMax: 1.846, yBands: [[panelBotY, panelTopY]] }],
-      { startMitreSign: 0, endMitreSign: -1 }
-    ),
-    wimborneWhitePanellingMat
-  );
-
-  // 2B. North Exterior Wall (`Z = -2.50m`, `X = -12.81m .. -9.80m`, framing neatly around Win 1763678's 75mm white window architrave)
-  const winLeftU = -11.969 - -12.81; // 0.841m (outer edge of left 75mm architrave)
-  const winRightU = -10.731 - -12.81; // 2.079m (outer edge of right 75mm architrave)
+  // Boxed 68mm Wimborne White V-groove matchboard dado panelling (North, East & Bulkhead walls)
+  const northStartX = westZelligeFaceX;
+  const northSpan = ROOM17_SHELL_PLANES.eastWallX - northStartX;
+  const winLeftU = -11.969 - northStartX;
+  const winRightU = -10.731 - northStartX;
   addShellMesh(
     'familyBathroom.northPanelling',
     buildVerticalVGroovePanellingGeometry(
-      -12.81,
-      -2.5,
-      -9.8,
-      -2.5,
+      northStartX,
+      ROOM17_SHELL_PLANES.northWallZ,
+      ROOM17_SHELL_PLANES.eastWallX,
+      ROOM17_SHELL_PLANES.northWallZ,
       28,
       [
         { uMin: 0, uMax: winLeftU, yBands: [[panelBotY, panelTopY]] },
-        {
-          uMin: winLeftU,
-          uMax: winRightU,
-          yBands: [[panelBotY, 2.325]],
-        },
-        { uMin: winRightU, uMax: 3.01, yBands: [[panelBotY, panelTopY]] },
+        { uMin: winLeftU, uMax: winRightU, yBands: [[panelBotY, 2.322]] },
+        { uMin: winRightU, uMax: northSpan, yBands: [[panelBotY, panelTopY]] },
       ],
-      { startMitreSign: 1, endMitreSign: -1 }
+      { startMitreSign: 0, endMitreSign: -1 }
     ),
     wimborneWhitePanellingMat,
     true
   );
 
-  // 2C. East Cross-Wall (`X = -9.80m`, `Z = -2.50m .. -0.165m`, stepping cleanly over 3.01m Carrara vanity top)
-  const vanityFrontU = -0.525 - -2.5; // 1.975m
-  const joineryFrontU = -0.165 - -2.5; // 2.324m
+  // Boxed Wimborne White cottage window sill capping the North panelling beneath Win 1763678
+  const northSillGeo = new THREE.BoxGeometry(1.296, 0.024, ROOM17_BOXED_DADO.dadoShelfD + 0.012);
+  northSillGeo.computeBoundingSphere();
+  addShellMesh(
+    'familyBathroom.northWindowBoxedSill',
+    northSillGeo,
+    wimborneWhitePanellingMat,
+    true
+  ).position.set(
+    -11.35,
+    2.33,
+    ROOM17_SHELL_PLANES.northWallZ + (ROOM17_BOXED_DADO.dadoShelfD - 0.012) * 0.5
+  );
+
+  // East panelling runs flush into the base vanity carcass below 3.01m and continues above the Carrara
+  // countertop to butt 0.0mm squarely into the solid 84mm dark-oak `eastOuterCheek` at Z = -0.22m.
+  const eastTotalSpan = ROOM17_SHELL_PLANES.vanityUpperCheekFrontZ - ROOM17_SHELL_PLANES.northWallZ;
+  const eastVanityFrontU = ROOM17_SHELL_PLANES.vanityBaseFrontZ - ROOM17_SHELL_PLANES.northWallZ;
   addShellMesh(
     'familyBathroom.eastPanelling',
     buildVerticalVGroovePanellingGeometry(
-      -9.8,
-      -2.5,
-      -9.8,
-      -0.165,
+      ROOM17_SHELL_PLANES.eastWallX,
+      ROOM17_SHELL_PLANES.northWallZ,
+      ROOM17_SHELL_PLANES.eastWallX,
+      ROOM17_SHELL_PLANES.vanityUpperCheekFrontZ,
       22,
       [
-        { uMin: 0, uMax: vanityFrontU, yBands: [[panelBotY, panelTopY]] },
-        { uMin: vanityFrontU, uMax: joineryFrontU, yBands: [[floorTopY + 0.85, panelTopY]] },
+        { uMin: 0, uMax: eastVanityFrontU, yBands: [[panelBotY, panelTopY]] },
+        { uMin: eastVanityFrontU, uMax: eastTotalSpan, yBands: [[counterTopY, panelTopY]] },
       ],
       { startMitreSign: 1, endMitreSign: 0 }
     ),
     wimborneWhitePanellingMat
   );
 
-  // 2D. Bulkhead West Wall & Corner Return (`(-10.745, -0.01) -> (-10.77, -0.01) -> (-10.77, +0.878)`)
-  addShellMesh(
-    'familyBathroom.bulkheadReturnPanelling',
-    buildVerticalVGroovePanellingGeometry(
-      -10.745,
-      -0.01,
-      -10.77,
-      -0.01,
-      1,
-      [{ uMin: 0, uMax: 0.025, yBands: [[panelBotY, panelTopY]] }],
-      { startMitreSign: 0, endMitreSign: 1 }
-    ),
-    wimborneWhitePanellingMat
-  );
+  // Bulkhead West panelling butts squarely into the solid 84mm dark-oak `westOuterCheek` (North) and Door 1685658 architrave (South)
+  const bulkheadSpan = ROOM17_SHELL_PLANES.doorArchitraveButtZ - ROOM17_SHELL_PLANES.bulkheadNorthZ;
   addShellMesh(
     'familyBathroom.bulkheadWestPanelling',
     buildVerticalVGroovePanellingGeometry(
-      -10.77,
-      -0.01,
-      -10.77,
-      0.878,
+      ROOM17_SHELL_PLANES.bulkheadWestX,
+      ROOM17_SHELL_PLANES.bulkheadNorthZ,
+      ROOM17_SHELL_PLANES.bulkheadWestX,
+      ROOM17_SHELL_PLANES.doorArchitraveButtZ,
       8,
-      [{ uMin: 0, uMax: 0.888, yBands: [[panelBotY, panelTopY]] }],
-      { startMitreSign: -1, endMitreSign: 0 }
-    ),
-    wimborneWhitePanellingMat
-  );
-
-  // 2E. South Dry Pier (`Z = +0.90m`, `X = -11.672m -> -11.906m`)
-  addShellMesh(
-    'familyBathroom.southPierPanelling',
-    buildVerticalVGroovePanellingGeometry(
-      -11.672,
-      0.9,
-      -11.906,
-      0.9,
-      2,
-      [{ uMin: 0, uMax: 0.234, yBands: [[panelBotY, panelTopY]] }],
+      [{ uMin: 0, uMax: bulkheadSpan, yBands: [[panelBotY, panelTopY]] }],
       { startMitreSign: 0, endMitreSign: 0 }
     ),
     wimborneWhitePanellingMat
   );
 
-  // =========================================================================
-  // 3. MOULDED COTTAGE DADO CAP RAIL & REBATED PAINTED SKIRTING (`WIMBORNE WHITE`)
-  // =========================================================================
-  // Classic cottage ovolo/astragal dado cap rail (`26.5mm` tall, `24.2mm` projection = +10.4mm proud of T&G)
-  const dadoCapProfile: readonly ProfilePoint2D[] = [
-    { d: 0.0, y: 0.006, ao: 0.88 },
-    { d: 0.0138, y: 0.006, ao: 0.86 },
-    { d: 0.0138, y: 0.0, ao: 0.86 },
-    { d: 0.0178, y: 0.0, ao: 0.90 },
-    { d: 0.0205, y: 0.0035, ao: 0.95 },
-    { d: 0.0232, y: 0.008, ao: 0.99 },
-    { d: 0.0242, y: 0.013, ao: 1.0 },
-    { d: 0.0242, y: 0.0195, ao: 1.0 },
-    { d: 0.0224, y: 0.0235, ao: 0.99 },
-    { d: 0.0185, y: 0.0256, ao: 0.96 },
-    { d: 0.0075, y: 0.0265, ao: 0.93 },
-    { d: 0.0, y: 0.0265, ao: 0.93 },
-  ];
-
-  // Classic 146mm torus/ogee bathroom skirting (`24.0mm` plinth projection = +10.2mm proud of 13.8mm T&G)
-  const bathroomSkirtingProfile: readonly ProfilePoint2D[] = [
-    { d: 0.0, y: 0.002, ao: 0.92 },
-    { d: 0.024, y: 0.002, ao: 0.94 },
-    { d: 0.024, y: 0.114, ao: 1.0 },
-    { d: 0.0222, y: 0.12, ao: 0.97 },
-    { d: 0.0188, y: 0.1255, ao: 0.90 },
-    { d: 0.0188, y: 0.1305, ao: 0.90 },
-    { d: 0.0212, y: 0.1365, ao: 1.0 },
-    { d: 0.0195, y: 0.1425, ao: 0.98 },
-    { d: 0.0155, y: 0.146, ao: 0.93 },
-    { d: 0.0138, y: 0.146, ao: 0.90 },
-    { d: 0.0138, y: 0.136, ao: 0.90 },
-    { d: 0.0, y: 0.136, ao: 0.90 },
-  ];
-
-  // Split North exterior wall segments cleanly at the 45° NW & NE mitres so cutaway mode hides North trim cleanly
-  addShellMesh(
-    'familyBathroom.westDadoRail',
-    buildSweptMitredMouldingGeometry(
-      [
-        [-12.81, -0.654],
-        [-12.81, -2.5],
-      ],
-      dadoCapProfile,
-      dadoBaseY,
-      { startMitreSign: 0, endMitreSign: -1 }
-    ),
-    wimborneWhitePanellingMat
-  );
+  // 82mm bullnose dado shelf ledges & 80mm boxed skirtings — every endpoint either 45° internal-mitres
+  // or butts 0.0mm squarely into full-height Zellige tile, solid 84mm dark-oak cheeks, or oak doorway casing.
   addShellMesh(
     'familyBathroom.northDadoRail',
     buildSweptMitredMouldingGeometry(
       [
-        [-12.81, -2.5],
-        [-9.8, -2.5],
+        [northStartX, ROOM17_SHELL_PLANES.northWallZ],
+        [ROOM17_SHELL_PLANES.eastWallX, ROOM17_SHELL_PLANES.northWallZ],
       ],
-      dadoCapProfile,
+      DADO_SHELF_PROFILE,
       dadoBaseY,
-      { startMitreSign: 1, endMitreSign: -1 }
+      { startMitreSign: 0, endMitreSign: -1 }
     ),
     wimborneWhitePanellingMat,
     true
   );
+
   addShellMesh(
     'familyBathroom.eastDadoRail',
     buildSweptMitredMouldingGeometry(
       [
-        [-9.8, -2.5],
-        [-9.8, -0.165],
+        [ROOM17_SHELL_PLANES.eastWallX, ROOM17_SHELL_PLANES.northWallZ],
+        [ROOM17_SHELL_PLANES.eastWallX, ROOM17_SHELL_PLANES.vanityUpperCheekFrontZ],
       ],
-      dadoCapProfile,
+      DADO_SHELF_PROFILE,
       dadoBaseY,
       { startMitreSign: 1, endMitreSign: 0 }
     ),
     wimborneWhitePanellingMat
   );
+
   addShellMesh(
     'familyBathroom.bulkheadDadoRail',
     buildSweptMitredMouldingGeometry(
       [
-        [-10.745, -0.01],
-        [-10.77, -0.01],
-        [-10.77, 0.878],
+        [ROOM17_SHELL_PLANES.bulkheadWestX, ROOM17_SHELL_PLANES.bulkheadNorthZ],
+        [ROOM17_SHELL_PLANES.bulkheadWestX, ROOM17_SHELL_PLANES.doorArchitraveButtZ],
       ],
-      dadoCapProfile,
-      dadoBaseY
-    ),
-    wimborneWhitePanellingMat
-  );
-  addShellMesh(
-    'familyBathroom.southPierDadoRail',
-    buildSweptMitredMouldingGeometry(
-      [
-        [-11.672, 0.9],
-        [-11.906, 0.9],
-      ],
-      dadoCapProfile,
-      dadoBaseY
+      DADO_SHELF_PROFILE,
+      dadoBaseY,
+      { startMitreSign: 0, endMitreSign: 0 }
     ),
     wimborneWhitePanellingMat
   );
 
-  // Painted Wimborne White Bathroom Skirtings (replacing raw oak skirting inside Room 17)
-  addShellMesh(
-    'familyBathroom.perimeterMitredSkirting',
-    buildSweptMitredMouldingGeometry(
-      [
-        [-12.81, -0.654],
-        [-12.81, -2.5],
-      ],
-      bathroomSkirtingProfile,
-      floorTopY,
-      { startMitreSign: 0, endMitreSign: -1 }
-    ),
-    wimborneWhitePanellingMat
-  );
   addShellMesh(
     'familyBathroom.northSkirting',
     buildSweptMitredMouldingGeometry(
       [
-        [-12.81, -2.5],
-        [-9.8, -2.5],
+        [northStartX, ROOM17_SHELL_PLANES.northWallZ],
+        [ROOM17_SHELL_PLANES.eastWallX, ROOM17_SHELL_PLANES.northWallZ],
       ],
-      bathroomSkirtingProfile,
+      BOXED_SKIRTING_PROFILE,
       floorTopY,
-      { startMitreSign: 1, endMitreSign: -1 }
+      { startMitreSign: 0, endMitreSign: -1 }
     ),
     wimborneWhitePanellingMat,
     true
   );
+
   addShellMesh(
     'familyBathroom.eastSkirting',
     buildSweptMitredMouldingGeometry(
       [
-        [-9.8, -2.5],
-        [-9.8, -0.525],
+        [ROOM17_SHELL_PLANES.eastWallX, ROOM17_SHELL_PLANES.northWallZ],
+        [ROOM17_SHELL_PLANES.eastWallX, ROOM17_SHELL_PLANES.vanityBaseFrontZ],
       ],
-      bathroomSkirtingProfile,
+      BOXED_SKIRTING_PROFILE,
       floorTopY,
       { startMitreSign: 1, endMitreSign: 0 }
     ),
     wimborneWhitePanellingMat
   );
+
   addShellMesh(
     'familyBathroom.bulkheadSkirting',
     buildSweptMitredMouldingGeometry(
       [
-        [-10.745, -0.01],
-        [-10.77, -0.01],
-        [-10.77, 0.878],
+        [ROOM17_SHELL_PLANES.bulkheadWestX, ROOM17_SHELL_PLANES.bulkheadNorthZ],
+        [ROOM17_SHELL_PLANES.bulkheadWestX, ROOM17_SHELL_PLANES.doorArchitraveButtZ],
       ],
-      bathroomSkirtingProfile,
-      floorTopY
-    ),
-    wimborneWhitePanellingMat
-  );
-  addShellMesh(
-    'familyBathroom.southPierSkirting',
-    buildSweptMitredMouldingGeometry(
-      [
-        [-11.672, 0.9],
-        [-11.906, 0.9],
-      ],
-      bathroomSkirtingProfile,
-      floorTopY
+      BOXED_SKIRTING_PROFILE,
+      floorTopY,
+      { startMitreSign: 0, endMitreSign: 0 }
     ),
     wimborneWhitePanellingMat
   );

@@ -104,7 +104,7 @@ export function buildFamilyBathroom(
   // Calibrated to measurements.rvt Win 1763678 (1.10m x 0.92m, doubleCasement directly below 3.33m 49° cottage eaves)
   childIdx = scene.children.length;
   addUpperBrickWallAlongXWithWindow(
-    -12.81,
+    -13.05,
     -9.56,
     -2.78,
     -2.5,
@@ -172,7 +172,7 @@ export function buildFamilyBathroom(
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.bulkheadNorthWall');
 
   childIdx = scene.children.length;
-  addUpperInteriorWall(-10.21, 3.85, collarWallTopY, 0.705, 0.82, 0.69, warmRoomPlasterMat, {
+  addUpperInteriorWall(-10.21, upperWallTopY, collarWallTopY, 0.705, 0.82, 0.69, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
@@ -233,23 +233,75 @@ export function buildFamilyBathroom(
   });
 
   // Partition wall between Family Bathroom and Upper South Passage (0.15m thick, Z = +0.90m..+1.05m, X = -10.77m..-12.81m)
-  // With bathroom entrance doorway at X = -11.18m (`width = 0.82m`, `X = -11.59m..-10.77m`)
+  // Calibrated to measurements.rvt Door 1685658 (`X = -11.18m`, `width = 0.82m`, `doorH = 1.866m`, East-jamb hinged)
+  // with a genuine 92mm-deep recessed shower niche pocket (`X = -12.61..-12.15m, Y = 2.90..3.68m, Z = 0.90..0.992m`) on the Bathroom side.
+  const bathDoorH = 1.866;
+  {
+    childIdx = scene.children.length;
+    const southFrontShape = new THREE.Shape();
+    southFrontShape.moveTo(-12.81, floorTopY);
+    southFrontShape.lineTo(-11.68, floorTopY);
+    southFrontShape.lineTo(-11.68, collarWallTopY);
+    southFrontShape.lineTo(-12.81, collarWallTopY);
+    southFrontShape.closePath();
+
+    const southNicheHole = new THREE.Path();
+    southNicheHole.moveTo(-12.61, 2.9);
+    southNicheHole.lineTo(-12.15, 2.9);
+    southNicheHole.lineTo(-12.15, 3.68);
+    southNicheHole.lineTo(-12.61, 3.68);
+    southNicheHole.closePath();
+    southFrontShape.holes.push(southNicheHole);
+
+    const southFrontGeo = new THREE.ExtrudeGeometry(southFrontShape, {
+      depth: 0.092,
+      bevelEnabled: false,
+    });
+    southFrontGeo.translate(0, 0, 0.9);
+    southFrontGeo.computeBoundingSphere();
+    const southFrontMesh = new THREE.Mesh(southFrontGeo, warmRoomPlasterMat);
+    southFrontMesh.name = 'familyBathroom.southPartitionWall';
+    southFrontMesh.userData.isArchitecturalShell = true;
+    southFrontMesh.castShadow = true;
+    southFrontMesh.receiveShadow = true;
+    scene.add(southFrontMesh);
+
+    // Solid 58mm passage-side backing (`Z = 0.992..1.05m`) keeping the Upper South Passage wall continuous
+    addUpperInteriorWall(-12.245, floorTopY, collarWallTopY, 1.021, 1.13, 0.058, warmRoomPlasterMat, {
+      skipSkirting: true,
+      skipCap: true,
+    });
+    ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.southPartitionWall');
+  }
+
   childIdx = scene.children.length;
-  addUpperInteriorWall(-12.2, floorTopY, collarWallTopY, 0.975, 1.22, 0.15, warmRoomPlasterMat, {
+  // 90mm East jamb pier (`X = -10.86..-10.77m`) receiving the 82mm bulkhead dado rail & oak door architrave
+  addUpperInteriorWall(-10.815, floorTopY, collarWallTopY, 0.975, 0.09, 0.15, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
-  ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.southPartitionWall');
+  ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.southEastJambPier');
 
   childIdx = scene.children.length;
-  addUpperInteriorWall(-11.18, floorTopY + doorH, collarWallTopY, 0.975, 0.82, 0.15, warmRoomPlasterMat, {
+  addUpperInteriorWall(-11.27, floorTopY + bathDoorH, collarWallTopY, 0.975, 0.82, 0.15, warmRoomPlasterMat, {
     skipSkirting: true,
     skipCap: true,
   });
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.southDoorTransomWall');
 
+  const bathDoorInsideWhiteMat = new THREE.MeshStandardMaterial({
+    name: 'familyBathroom.wimborneWhiteDoorWoodwork',
+    color: 0xf7f4ec,
+    roughness: 0.34,
+    metalness: 0.02,
+  });
   childIdx = scene.children.length;
-  addUpperInteractiveDoor('x', 0.975, 0.15, -11.18, 0.82, -Math.PI * 0.48);
+  addUpperInteractiveDoor('x', 0.975, 0.15, -11.27, 0.82, -Math.PI * 0.4, {
+    doorH: bathDoorH,
+    hingeSide: 'east',
+    backLeafMaterial: bathDoorInsideWhiteMat,
+    backArchitraveMaterial: bathDoorInsideWhiteMat,
+  });
   ensureNamedAddedChildren(scene, childIdx, 'familyBathroom.door');
 
   // =========================================================================
@@ -337,7 +389,7 @@ export function buildFamilyBathroom(
   // - East half (`X = -12.932..-12.81m`) meets Room 17's 49.0° North skeiling (3.33m) & Passage's 50.0° South skeiling (3.765m) with zero roof protrusion!
   {
     const landingGableShape = new THREE.Shape();
-    landingGableShape.moveTo(-2.53, interiorEavesY - 0.008);
+    landingGableShape.moveTo(-2.52, interiorEavesY - 0.008);
     landingGableShape.lineTo(1.1, interiorEavesY - 0.008);
     landingGableShape.lineTo(1.1, 4.172);
     landingGableShape.lineTo(2.0, 4.172);
@@ -345,8 +397,8 @@ export function buildFamilyBathroom(
     landingGableShape.lineTo(2.42, southEavesY - 0.008);
     landingGableShape.lineTo(2.42, 3.86 + EAST_WING_BATHROOM_VAULT.wallTopEmbed);
     landingGableShape.lineTo(1.35, collarWallTopY);
-    landingGableShape.lineTo(-1.15, collarWallTopY);
-    landingGableShape.lineTo(-2.53, 3.86 + EAST_WING_BATHROOM_VAULT.wallTopEmbed);
+    landingGableShape.lineTo(EAST_WING_BATHROOM_VAULT.collarNorthZ, collarWallTopY);
+    landingGableShape.lineTo(-2.52, interiorEavesY + EAST_WING_BATHROOM_VAULT.wallTopEmbed);
     landingGableShape.closePath();
     const landingGableGeo = new THREE.ExtrudeGeometry(landingGableShape, {
       depth: 0.122,
@@ -362,6 +414,24 @@ export function buildFamilyBathroom(
     landingGableMesh.receiveShadow = true;
     scene.add(landingGableMesh);
 
+    // Upper Landing North vault spandrel wedge placed in ceilingMeshGroup so non-cutaway Landing vault stays 100% closed while Room 17's 49° cutaway slope is razor-clean!
+    const landingVaultWedge = new THREE.Shape();
+    landingVaultWedge.moveTo(-2.53, interiorEavesY);
+    landingVaultWedge.lineTo(EAST_WING_BATHROOM_VAULT.collarNorthZ, collarWallTopY);
+    landingVaultWedge.lineTo(-1.15, collarWallTopY);
+    landingVaultWedge.lineTo(-2.53, 3.86 + EAST_WING_BATHROOM_VAULT.wallTopEmbed);
+    landingVaultWedge.closePath();
+    const landingWedgeGeo = new THREE.ExtrudeGeometry(landingVaultWedge, {
+      depth: 0.122,
+      bevelEnabled: false,
+    });
+    landingWedgeGeo.rotateY(-Math.PI / 2);
+    landingWedgeGeo.translate(-12.928, 0, 0);
+    landingWedgeGeo.computeBoundingSphere();
+    const landingWedgeMesh = new THREE.Mesh(landingWedgeGeo, warmRoomPlasterMat);
+    landingWedgeMesh.name = 'upperLanding.eastWallUpperGable.vaultSpandrel';
+    ctx.ceilingMeshGroup.add(landingWedgeMesh);
+
     const bathGableShape = new THREE.Shape();
     bathGableShape.moveTo(-2.52, interiorEavesY - 0.008);
     bathGableShape.lineTo(1.1, interiorEavesY - 0.008);
@@ -374,6 +444,16 @@ export function buildFamilyBathroom(
     bathGableShape.lineTo(EAST_WING_BATHROOM_VAULT.collarNorthZ, collarWallTopY);
     bathGableShape.lineTo(-2.52, interiorEavesY + EAST_WING_BATHROOM_VAULT.wallTopEmbed);
     bathGableShape.closePath();
+
+    // Recessed companion West shower niche pocket (`Z = -0.50..-0.06m, Y = 3.36..3.72m`)
+    const westNicheHole = new THREE.Path();
+    westNicheHole.moveTo(-0.5, 3.36);
+    westNicheHole.lineTo(-0.06, 3.36);
+    westNicheHole.lineTo(-0.06, 3.72);
+    westNicheHole.lineTo(-0.5, 3.72);
+    westNicheHole.closePath();
+    bathGableShape.holes.push(westNicheHole);
+
     const crossGableGeo = new THREE.ExtrudeGeometry(bathGableShape, {
       depth: 0.122,
       bevelEnabled: false,

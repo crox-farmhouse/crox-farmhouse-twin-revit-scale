@@ -466,6 +466,10 @@ export interface CasedArchitravePortalOptions {
   backFaceOffset?: number;
   /** Vertical clearance at the bottom of the reveal jambs above `minFloorY` (defaults to `0.004`). */
   bottomClearance?: number;
+  /** Optional material override for the +normal (`front`) architrave & front half of reveal. */
+  frontArchitraveMaterial?: THREE.Material;
+  /** Optional material override for the -normal (`back`) architrave & back half of reveal. */
+  backArchitraveMaterial?: THREE.Material;
   /** Optional base name prefix for the generated meshes. */
   namePrefix?: string;
 }
@@ -499,6 +503,10 @@ export function addCasedArchitravePortal(
   const frontWallN = halfWall + (options.frontFaceOffset ?? 0);
   const backWallN = -halfWall - (options.backFaceOffset ?? 0);
 
+  const frontMat = options.frontArchitraveMaterial ?? options.material;
+  const backMat = options.backArchitraveMaterial ?? options.material;
+  const splitReveal = frontMat !== backMat;
+
   if (hasRevealLining) {
     const liningDepth = Math.max(0.02, frontWallN - backWallN - 0.008);
     const liningCenterN = (frontWallN + backWallN) * 0.5;
@@ -507,64 +515,73 @@ export function addCasedArchitravePortal(
     const jambH = Math.max(0.05, jambTopY - jambBotY);
     const jambY = jambBotY + jambH / 2;
 
-    for (const side of [-1, 1] as const) {
-      const uJamb = side < 0 ? uLeft - liningT / 2 : uRight + liningT / 2;
-      const revealJamb = new THREE.Mesh(
+    const revealSlices: ReadonlyArray<readonly [number, number, THREE.Material, string]> = splitReveal
+      ? [
+          [liningDepth * 0.5, liningCenterN + liningDepth * 0.25, frontMat, '.front'],
+          [liningDepth * 0.5, liningCenterN - liningDepth * 0.25, backMat, '.back'],
+        ]
+      : [[liningDepth, liningCenterN, frontMat, '']];
+
+    for (const [sliceDepth, sliceCenterN, sliceMat, sliceSuffix] of revealSlices) {
+      for (const side of [-1, 1] as const) {
+        const uJamb = side < 0 ? uLeft - liningT / 2 : uRight + liningT / 2;
+        const revealJamb = new THREE.Mesh(
+          options.axis === 'x'
+            ? new THREE.BoxGeometry(liningT, jambH, sliceDepth)
+            : new THREE.BoxGeometry(sliceDepth, jambH, liningT),
+          sliceMat
+        );
+        revealJamb.name = `${prefix}.revealJamb${sliceSuffix}`;
+        if (options.axis === 'x') {
+          revealJamb.position.set(uJamb, jambY, options.wallCoord + sliceCenterN);
+        } else {
+          revealJamb.position.set(
+            options.wallCoord + sliceCenterN + slope * (uJamb - options.openingCenter),
+            jambY,
+            uJamb
+          );
+        }
+        revealJamb.castShadow = true;
+        revealJamb.receiveShadow = true;
+        revealJamb.userData.isArchitecturalShell = true;
+        parent.add(revealJamb);
+      }
+
+      const headSpan = Math.max(0.05, uRight - uLeft + liningT * 2);
+      const headGeo =
         options.axis === 'x'
-          ? new THREE.BoxGeometry(liningT, jambH, liningDepth)
-          : new THREE.BoxGeometry(liningDepth, jambH, liningT),
-        options.material
-      );
-      revealJamb.name = `${prefix}.revealJamb`;
+          ? new THREE.BoxGeometry(headSpan, liningT, sliceDepth)
+          : new THREE.BoxGeometry(sliceDepth, liningT, headSpan);
+      if (options.axis === 'z' && Math.abs(slope) > 1e-6) {
+        const pos = headGeo.attributes.position;
+        if (pos) {
+          for (let i = 0; i < pos.count; i++) {
+            pos.setX(i, pos.getX(i) + slope * pos.getZ(i));
+          }
+          pos.needsUpdate = true;
+          headGeo.computeVertexNormals();
+        }
+      }
+      const revealHead = new THREE.Mesh(headGeo, sliceMat);
+      revealHead.name = `${prefix}.revealHead${sliceSuffix}`;
       if (options.axis === 'x') {
-        revealJamb.position.set(uJamb, jambY, options.wallCoord + liningCenterN);
+        revealHead.position.set(
+          options.openingCenter,
+          innerHeadY + liningT / 2,
+          options.wallCoord + sliceCenterN
+        );
       } else {
-        revealJamb.position.set(
-          options.wallCoord + liningCenterN + slope * (uJamb - options.openingCenter),
-          jambY,
-          uJamb
+        revealHead.position.set(
+          options.wallCoord + sliceCenterN,
+          innerHeadY + liningT / 2,
+          options.openingCenter
         );
       }
-      revealJamb.castShadow = true;
-      revealJamb.receiveShadow = true;
-      revealJamb.userData.isArchitecturalShell = true;
-      parent.add(revealJamb);
+      revealHead.castShadow = true;
+      revealHead.receiveShadow = true;
+      revealHead.userData.isArchitecturalShell = true;
+      parent.add(revealHead);
     }
-
-    const headSpan = Math.max(0.05, uRight - uLeft + liningT * 2);
-    const headGeo =
-      options.axis === 'x'
-        ? new THREE.BoxGeometry(headSpan, liningT, liningDepth)
-        : new THREE.BoxGeometry(liningDepth, liningT, headSpan);
-    if (options.axis === 'z' && Math.abs(slope) > 1e-6) {
-      const pos = headGeo.attributes.position;
-      if (pos) {
-        for (let i = 0; i < pos.count; i++) {
-          pos.setX(i, pos.getX(i) + slope * pos.getZ(i));
-        }
-        pos.needsUpdate = true;
-        headGeo.computeVertexNormals();
-      }
-    }
-    const revealHead = new THREE.Mesh(headGeo, options.material);
-    revealHead.name = `${prefix}.revealHead`;
-    if (options.axis === 'x') {
-      revealHead.position.set(
-        options.openingCenter,
-        innerHeadY + liningT / 2,
-        options.wallCoord + liningCenterN
-      );
-    } else {
-      revealHead.position.set(
-        options.wallCoord + liningCenterN,
-        innerHeadY + liningT / 2,
-        options.openingCenter
-      );
-    }
-    revealHead.castShadow = true;
-    revealHead.receiveShadow = true;
-    revealHead.userData.isArchitecturalShell = true;
-    parent.add(revealHead);
   }
 
   const profile = createArchitraveProfile(width);
@@ -595,7 +612,7 @@ export function addCasedArchitravePortal(
             ),
       4
     );
-    const frontArchitrave = new THREE.Mesh(frontGeo, options.material);
+    const frontArchitrave = new THREE.Mesh(frontGeo, frontMat);
     frontArchitrave.name = `${prefix}.frontArchitrave`;
     frontArchitrave.castShadow = true;
     frontArchitrave.receiveShadow = true;
@@ -627,7 +644,7 @@ export function addCasedArchitravePortal(
             ),
       4
     );
-    const backArchitrave = new THREE.Mesh(backGeo, options.material);
+    const backArchitrave = new THREE.Mesh(backGeo, backMat);
     backArchitrave.name = `${prefix}.backArchitrave`;
     backArchitrave.castShadow = true;
     backArchitrave.receiveShadow = true;

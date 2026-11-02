@@ -96,11 +96,12 @@ export function RoomNavigator(): JSX.Element {
                           class={`shell-nav-room${isCurrent ? ' is-current' : ''}`}
                           aria-current={isCurrent ? 'location' : undefined}
                           title={`Go to ${room.label}`}
-                          onClick={() => ctl.selectRoom(room.zoneId)}
+                          onClick={() => {
+                            ctl.highlightRoom(null);
+                            ctl.selectRoom(room.zoneId);
+                          }}
                           onPointerEnter={() => ctl.highlightRoom(room.zoneId)}
                           onPointerLeave={() => ctl.highlightRoom(null)}
-                          onFocus={() => ctl.highlightRoom(room.zoneId)}
-                          onBlur={() => ctl.highlightRoom(null)}
                         >
                           <span class="shell-nav-room-label">{room.label}</span>
                           {lightsOn > 0 && (
