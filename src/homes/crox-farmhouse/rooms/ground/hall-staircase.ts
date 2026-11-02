@@ -1294,16 +1294,30 @@ export function buildHallStaircase(
   {
     const boardTopOffset = 0.095;
     const skirtBoardH = 0.122;
+    const northWallZ = -2.5;
     const northTurnX = -16.84;
+    const plinthCenterX = -15.38; // Directly beneath 115mm upperLanding.northWallPost.lower.2 & aligned with hangingNewelPost
+    const plinthWidth = 0.122; // 122mm wide: x_ew = -15.441 .. -15.319m (3.5mm prouder per cheek than 115mm oak wall post)
+    const plinthWestX = plinthCenterX - plinthWidth / 2; // -15.441m
+    const plinthEastX = plinthCenterX + plinthWidth / 2; // -15.319m
+    const plinthHeight = 0.184; // 184mm tall (Y = 2.160 .. 2.344m, 38mm taller than 146mm stringer & landing skirting)
+    const plinthDepth = 0.052; // 52mm deep (z_ew = -2.500 .. -2.448m, 4mm prouder than oak wall post & 30mm prouder than 22mm skirting)
     const landingNorthEndX = -13.05;
 
+    const upstairsWimborneWhiteMat = new THREE.MeshStandardMaterial({
+      color: 0xf7f4ec, // Farrow & Ball Wimborne White No. 239 satinwood matching upstairs joinery
+      roughness: 0.34,
+      metalness: 0.02,
+    });
+
+    // West Raked Stair Stringer (x_ew = -17.43 .. -15.425m): Natural oak housing cleanly into West cheek of plinth block
     const northStrShape = new THREE.Shape();
     northStrShape.moveTo(-17.43, quarterLandingY - 0.02);
     northStrShape.lineTo(-17.43, quarterLandingY + boardTopOffset);
     northStrShape.lineTo(northTurnX, quarterLandingY + boardTopOffset);
     northStrShape.lineTo(upperBalustradeEndX, topStepY + boardTopOffset);
-    northStrShape.lineTo(landingNorthEndX, topStepY + boardTopOffset);
-    northStrShape.lineTo(landingNorthEndX, topStepY);
+    northStrShape.lineTo(plinthWestX, topStepY + boardTopOffset);
+    northStrShape.lineTo(plinthWestX, topStepY);
     northStrShape.lineTo(upperEndX, topStepY);
     northStrShape.lineTo(upperEndX, topStepY - 0.04);
     northStrShape.lineTo(-16.64, quarterLandingY - 0.04);
@@ -1313,7 +1327,7 @@ export function buildHallStaircase(
       depth: 0.022,
       bevelEnabled: false,
     });
-    northStrGeo.translate(0, 0, -2.5);
+    northStrGeo.translate(0, 0, northWallZ);
     createSharedGeo(northStrGeo);
     const northWallStringer = new THREE.Mesh(northStrGeo, antiqueOakSkirtingMat);
     northWallStringer.name = 'hall.stairs.northWallStringer.board';
@@ -1321,8 +1335,6 @@ export function buildHallStaircase(
     northWallStringer.receiveShadow = true;
     stairGroup.add(northWallStringer);
 
-    // Stepped ogee/torus oak skirting cap swept along the North Quarter-Landing, Upper-Flight Stringer, and First Floor Landing top edge,
-    // mitred where the landing run turns up the second flight and where it levels out across the First Floor landing.
     const northCapGeo = createSharedGeo(
       buildSweptMouldingGeometry(
         createSkirtingCapProfile(),
@@ -1330,9 +1342,9 @@ export function buildHallStaircase(
           [-17.43, quarterLandingY + skirtBoardH],
           [northTurnX, quarterLandingY + skirtBoardH],
           [upperBalustradeEndX, topStepY + skirtBoardH],
-          [landingNorthEndX, topStepY + skirtBoardH],
+          [plinthWestX, topStepY + skirtBoardH],
         ],
-        (a, y, d) => new THREE.Vector3(a, y, -2.5 + d)
+        (a, y, d) => new THREE.Vector3(a, y, northWallZ + d)
       )
     );
     const northWallStringerCap = new THREE.Mesh(northCapGeo, antiqueOakSkirtingMat);
@@ -1340,6 +1352,119 @@ export function buildHallStaircase(
     northWallStringerCap.castShadow = true;
     northWallStringerCap.receiveShadow = true;
     stairGroup.add(northWallStringerCap);
+
+    // Moulded Stringer-to-Skirting Transition Plinth Block (centered at x_ew = -15.38m, 90x176x32mm, Wimborne White)
+    const plinthGroup = new THREE.Group();
+    plinthGroup.name = 'hall.stairs.northWallStringer.plinthBlock';
+    plinthGroup.userData.isArchitecturalShell = true;
+
+    const plinthBodyH = plinthHeight - 0.022; // 154mm main plinth block shaft (Y = 2.160 .. 2.314m)
+    const plinthBodyD = plinthDepth - 0.004; // 28mm recessed behind 4mm fielded perimeter stile frame
+    const plinthBody = new THREE.Mesh(
+      createSharedGeo(new THREE.BoxGeometry(plinthWidth, plinthBodyH, plinthBodyD)),
+      upstairsWimborneWhiteMat
+    );
+    plinthBody.name = 'hall.stairs.northWallStringer.plinthBlock.body';
+    plinthBody.position.set(plinthCenterX, topStepY + plinthBodyH / 2, northWallZ + plinthBodyD / 2);
+    plinthBody.castShadow = true;
+    plinthBody.receiveShadow = true;
+    plinthGroup.add(plinthBody);
+
+    const stileW = 0.018;
+    const railH = 0.020;
+    const rebateD = 0.004;
+    for (const [sTag, sx] of [
+      ['west', plinthWestX + stileW / 2],
+      ['east', plinthEastX - stileW / 2],
+    ] as const) {
+      const stile = new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(stileW, plinthBodyH, rebateD)),
+        upstairsWimborneWhiteMat
+      );
+      stile.name = `hall.stairs.northWallStringer.plinthBlock.stile.${sTag}`;
+      stile.position.set(sx, topStepY + plinthBodyH / 2, northWallZ + plinthBodyD + rebateD / 2);
+      stile.castShadow = true;
+      stile.receiveShadow = true;
+      plinthGroup.add(stile);
+    }
+    for (const [rTag, ry] of [
+      ['bottom', topStepY + railH / 2],
+      ['top', topStepY + plinthBodyH - railH / 2],
+    ] as const) {
+      const rail = new THREE.Mesh(
+        createSharedGeo(new THREE.BoxGeometry(plinthWidth - stileW * 2, railH, rebateD)),
+        upstairsWimborneWhiteMat
+      );
+      rail.name = `hall.stairs.northWallStringer.plinthBlock.rail.${rTag}`;
+      rail.position.set(plinthCenterX, ry, northWallZ + plinthBodyD + rebateD / 2);
+      rail.castShadow = true;
+      rail.receiveShadow = true;
+      plinthGroup.add(rail);
+    }
+
+    const lowerCapStep = new THREE.Mesh(
+      createSharedGeo(new THREE.BoxGeometry(plinthWidth + 0.006, 0.012, plinthDepth + 0.003)),
+      upstairsWimborneWhiteMat
+    );
+    lowerCapStep.name = 'hall.stairs.northWallStringer.plinthBlock.capLower';
+    lowerCapStep.position.set(
+      plinthCenterX,
+      topStepY + plinthBodyH + 0.006,
+      northWallZ + (plinthDepth + 0.003) / 2
+    );
+    lowerCapStep.castShadow = true;
+    lowerCapStep.receiveShadow = true;
+    plinthGroup.add(lowerCapStep);
+
+    const upperCapChamfer = new THREE.Mesh(
+      createSharedGeo(new THREE.BoxGeometry(plinthWidth, 0.010, plinthDepth - 0.003)),
+      upstairsWimborneWhiteMat
+    );
+    upperCapChamfer.name = 'hall.stairs.northWallStringer.plinthBlock.capUpper';
+    upperCapChamfer.position.set(
+      plinthCenterX,
+      topStepY + plinthHeight - 0.005,
+      northWallZ + (plinthDepth - 0.003) / 2
+    );
+    upperCapChamfer.castShadow = true;
+    upperCapChamfer.receiveShadow = true;
+    plinthGroup.add(upperCapChamfer);
+
+    stairGroup.add(plinthGroup);
+
+    // East Horizontal First Floor Landing Skirting (x_ew = -15.335 .. -13.05m): Crisp Wimborne White
+    const landingSkirtLen = landingNorthEndX - plinthEastX;
+    const landingSkirtingBoard = new THREE.Mesh(
+      createSharedGeo(new THREE.BoxGeometry(landingSkirtLen, skirtBoardH, 0.022)),
+      upstairsWimborneWhiteMat
+    );
+    landingSkirtingBoard.name = 'hall.stairs.northWallStringer.landingSkirtingBoard';
+    landingSkirtingBoard.userData.isArchitecturalShell = true;
+    landingSkirtingBoard.position.set(
+      (plinthEastX + landingNorthEndX) / 2,
+      topStepY + skirtBoardH / 2,
+      northWallZ + 0.011
+    );
+    landingSkirtingBoard.castShadow = true;
+    landingSkirtingBoard.receiveShadow = true;
+    stairGroup.add(landingSkirtingBoard);
+
+    const landingCapGeo = createSharedGeo(
+      buildSweptMouldingGeometry(
+        createSkirtingCapProfile(),
+        [
+          [plinthEastX, topStepY + skirtBoardH],
+          [landingNorthEndX, topStepY + skirtBoardH],
+        ],
+        (a, y, d) => new THREE.Vector3(a, y, northWallZ + d)
+      )
+    );
+    const landingSkirtingCap = new THREE.Mesh(landingCapGeo, upstairsWimborneWhiteMat);
+    landingSkirtingCap.name = 'hall.stairs.northWallStringer.landingSkirtingCap';
+    landingSkirtingCap.userData.isArchitecturalShell = true;
+    landingSkirtingCap.castShadow = true;
+    landingSkirtingCap.receiveShadow = true;
+    stairGroup.add(landingSkirtingCap);
 
     // Step lights continue up the stairs: one on the Quarter Landing and one above each Upper Flight tread,
     // set into the North stringer board face (Z = -2.478m) and facing South (+Z) across the treads.

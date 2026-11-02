@@ -16,11 +16,10 @@ import type { createFirstFloorMaterials } from './first-floor-materials.ts';
  */
 export function createFirstFloorShellKit(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'plasterMat' | 'skirtingMat' | 'stoneSillMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowFrameMat' | 'windowGlassMat'>
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'plasterMat' | 'skirtingMat' | 'stoneSillMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'wimborneWhiteJoineryMat' | 'windowFrameMat' | 'windowGlassMat'>
 ) {
   const { firstFloorMeshGroup: scene, interactions } = ctx;
   const {
-    antiqueOakSkirtingMat,
     brassMat,
     exteriorBrickMat,
     floorBaseY,
@@ -28,11 +27,11 @@ export function createFirstFloorShellKit(
     oakFloorMat,
     plasterMat,
     stoneSillMat,
-    timberDoorMat,
     upperWallTopY,
     wallCapMat,
     wardrobeMat,
     warmRoomPlasterMat,
+    wimborneWhiteJoineryMat,
     windowFrameMat,
     windowGlassMat,
   } = kit;
@@ -199,7 +198,7 @@ export function createFirstFloorShellKit(
             const capZ = z + side * (d / 2 + wallGap + 0.008);
             const skirt = new THREE.Mesh(
               new THREE.BoxGeometry(sW, baseH, skirtT),
-              antiqueOakSkirtingMat
+              wimborneWhiteJoineryMat
             );
             skirt.name = `${wallId}.skirting.${side < 0 ? "north" : "south"}`;
             skirt.userData.isArchitecturalShell = true;
@@ -210,7 +209,7 @@ export function createFirstFloorShellKit(
 
             const skirtCap = new THREE.Mesh(
               createProfiledSkirtingCapGeometry(sW, true, side),
-              antiqueOakSkirtingMat
+              wimborneWhiteJoineryMat
             );
             skirtCap.name = `${wallId}.skirtingCap.${side < 0 ? "north" : "south"}`;
             skirtCap.userData.isArchitecturalShell = true;
@@ -231,7 +230,7 @@ export function createFirstFloorShellKit(
             const capX = x + side * (w / 2 + wallGap + 0.008);
             const skirt = new THREE.Mesh(
               new THREE.BoxGeometry(skirtT, baseH, sD),
-              antiqueOakSkirtingMat
+              wimborneWhiteJoineryMat
             );
             skirt.name = `${wallId}.skirting.${side < 0 ? "west" : "east"}`;
             skirt.userData.isArchitecturalShell = true;
@@ -242,7 +241,7 @@ export function createFirstFloorShellKit(
 
             const skirtCap = new THREE.Mesh(
               createProfiledSkirtingCapGeometry(sD, false, side),
-              antiqueOakSkirtingMat
+              wimborneWhiteJoineryMat
             );
             skirtCap.name = `${wallId}.skirtingCap.${side < 0 ? "west" : "east"}`;
             skirtCap.userData.isArchitecturalShell = true;
@@ -325,7 +324,7 @@ export function createFirstFloorShellKit(
       ? new THREE.BoxGeometry(sSpan, baseH, skirtT)
       : shearGeometryAlongZ(new THREE.BoxGeometry(skirtT, baseH, sSpan), slopeXPerZ);
     const skirtId = `firstFloor.exteriorSkirting.${++ffExtSkirtSeq}`;
-    const skirt = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
+    const skirt = new THREE.Mesh(skirtGeo, wimborneWhiteJoineryMat);
     skirt.name = skirtId;
     const sx =
       interiorSide === 'east'
@@ -350,7 +349,7 @@ export function createFirstFloorShellKit(
     const capGeo = isAlongX
       ? createProfiledSkirtingCapGeometry(sSpan, true, capInwardSign)
       : shearGeometryAlongZ(createProfiledSkirtingCapGeometry(sSpan, false, capInwardSign), slopeXPerZ);
-    const skirtCap = new THREE.Mesh(capGeo, antiqueOakSkirtingMat);
+    const skirtCap = new THREE.Mesh(capGeo, wimborneWhiteJoineryMat);
     skirtCap.name = `${skirtId}.cap`;
     const capSx =
       interiorSide === 'east'
@@ -604,7 +603,7 @@ export function createFirstFloorShellKit(
     for (const sideX of [-1, 1] as const) {
       const revealJamb = new THREE.Mesh(
         new THREE.BoxGeometry(0.012, revealJambH, intRevealDepthZ),
-        warmRoomPlasterMat
+        windowFrameMat
       );
       revealJamb.name = `${winId}.revealJamb.${sideX < 0 ? "left" : "right"}`;
       revealJamb.position.set(
@@ -617,7 +616,7 @@ export function createFirstFloorShellKit(
     }
     const revealHead = new THREE.Mesh(
       new THREE.BoxGeometry(winWidth, 0.012, intRevealDepthZ),
-      warmRoomPlasterMat
+      windowFrameMat
     );
     revealHead.name = `${winId}.revealHead`;
     revealHead.position.set(winCenterX, effHeadY - 0.006, intRevealCenterZ);
@@ -879,7 +878,7 @@ export function createFirstFloorShellKit(
         : rawCx;
       const revealJamb = new THREE.Mesh(
         new THREE.BoxGeometry(intRevealDepthX, revealJambH, 0.012),
-        warmRoomPlasterMat
+        windowFrameMat
       );
       revealJamb.name = `${winId}.revealJamb.${sideZ < 0 ? "north" : "south"}`;
       revealJamb.position.set(
@@ -895,7 +894,7 @@ export function createFirstFloorShellKit(
         new THREE.BoxGeometry(intRevealDepthX, 0.012, winWidth),
         slopeXPerZ
       ),
-      warmRoomPlasterMat
+      windowFrameMat
     );
     revealHead.name = `${winId}.revealHead`;
     revealHead.position.set(intRevealCenterX, effHeadY - 0.006, winCenterZ);
@@ -1124,8 +1123,8 @@ export function createFirstFloorShellKit(
     const lockRailY = -0.1;
 
     const hingeEast = axis === 'x' && options?.hingeSide === 'east';
-    const frontLeafMat = options?.frontLeafMaterial ?? timberDoorMat;
-    const backLeafMat = options?.backLeafMaterial ?? timberDoorMat;
+    const frontLeafMat = options?.frontLeafMaterial ?? wimborneWhiteJoineryMat;
+    const backLeafMat = options?.backLeafMaterial ?? wimborneWhiteJoineryMat;
     const addLeafBox = (
       doorObj: THREE.Group,
       alongZ: boolean,
@@ -1248,7 +1247,7 @@ export function createFirstFloorShellKit(
       frontFloorY: effFrontFloorY,
       backFloorY: effBackFloorY,
       headY: effDoorFloorY + effDoorH,
-      material: antiqueOakSkirtingMat,
+      material: wimborneWhiteJoineryMat,
       frontArchitraveMaterial: options?.frontArchitraveMaterial,
       backArchitraveMaterial: options?.backArchitraveMaterial,
       architraveWidth: options?.architraveWidth,

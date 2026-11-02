@@ -445,39 +445,22 @@ export function buildStableUpperBedroomFurniture(
   corniceMesh.castShadow = true;
   wardGroup.add(corniceMesh);
 
-  // 3. Colour-Drenched Setting-Plaster Plinth Skirting along the front (`u = wardFrontU + 0.013`) & South end (`v = wardV1 + 0.013`)
-  //    per Batch 2 Issue #1 ("Color drenched same as wall baseboards in here")!
-  const frontSkirt = new THREE.Mesh(
-    new THREE.BoxGeometry(0.018, 0.115, corniceSpanV),
-    warmRoomPlasterMat
+  // 3. Flush Painted Shaker Base Plinth below the wardrobe doors (zero protruding skirting across wardrobe doors or South cheek)
+  const plinthH = 0.148;
+  const plinthFrontProjection = 0.032; // Flush with Shaker door stiles (wardFrontU + 0.032m)
+  const basePlinth = new THREE.Mesh(
+    new THREE.BoxGeometry(plinthFrontProjection, plinthH, corniceSpanV),
+    shakerWardrobeMat
   );
-  frontSkirt.name = 'outbuildings.firstFloor.stableBedroom.wardrobes.frontSkirt';
-  frontSkirt.position.set(wardFrontU + 0.013, stableUpperFloorY + 0.0615, (wardV0 + wardV1) * 0.5);
-  wardGroup.add(frontSkirt);
-
-  const frontSkirtCap = new THREE.Mesh(
-    createProfiledSkirtingCapGeometry(corniceSpanV, false, 1),
-    warmRoomPlasterMat
+  basePlinth.name = 'outbuildings.firstFloor.stableBedroom.wardrobes.basePlinth';
+  basePlinth.position.set(
+    wardFrontU + plinthFrontProjection * 0.5,
+    stableUpperFloorY + 0.002 + plinthH * 0.5,
+    (wardV0 + wardV1) * 0.5
   );
-  frontSkirtCap.name = 'outbuildings.firstFloor.stableBedroom.wardrobes.frontSkirtCap';
-  frontSkirtCap.position.set(wardFrontU + 0.0115, stableUpperFloorY + 0.135, (wardV0 + wardV1) * 0.5);
-  wardGroup.add(frontSkirtCap);
-
-  const southEndSkirt = new THREE.Mesh(
-    new THREE.BoxGeometry(wardD - 0.005, 0.115, 0.018),
-    warmRoomPlasterMat
-  );
-  southEndSkirt.name = 'outbuildings.firstFloor.stableBedroom.wardrobes.southEndSkirt';
-  southEndSkirt.position.set(wardU0 + 0.005 + (wardD - 0.005) * 0.5, stableUpperFloorY + 0.0615, wardV1 + 0.013);
-  wardGroup.add(southEndSkirt);
-
-  const southEndSkirtCap = new THREE.Mesh(
-    createProfiledSkirtingCapGeometry(wardD - 0.005, true, 1),
-    warmRoomPlasterMat
-  );
-  southEndSkirtCap.name = 'outbuildings.firstFloor.stableBedroom.wardrobes.southEndSkirtCap';
-  southEndSkirtCap.position.set(wardU0 + 0.005 + (wardD - 0.005) * 0.5, stableUpperFloorY + 0.135, wardV1 + 0.0115);
-  wardGroup.add(southEndSkirtCap);
+  basePlinth.castShadow = true;
+  basePlinth.receiveShadow = true;
+  wardGroup.add(basePlinth);
 
   // 4. 4 Raked Ceiling-Height 2-Panel Shaker Wardrobe Doors (`outbuildings.firstFloor.stableBedroom.wardrobe.door_1..4`)
   const doorBaseH = 0.152;
@@ -1021,7 +1004,7 @@ export function buildStableUpperBedroomFurniture(
   };
 
   // 1. North Bedroom Wall (`v = 0.28m`, from East side of Shaker wardrobes `u = 23.84m` to East wall `u = 28.77m` internal corner)
-  addColorDrenchedBaseboardRun(23.84, 0.28, uRoomEast, 0.28, 0, 1, 'butt', 'internal');
+  addColorDrenchedBaseboardRun(wardFrontU + 0.032, 0.28, uRoomEast, 0.28, 0, 1, 'butt', 'internal');
   // 2. East Bedroom Wall North & South piers (`u = 28.77m`, `v = 0.28..2.215m` and `v = 3.495..5.43m` right up to the French balcony door jambs — Issue #3!)
   addColorDrenchedBaseboardRun(uRoomEast, 0.28, uRoomEast, 2.215, -1, 0, 'internal', 'butt');
   addColorDrenchedBaseboardRun(uRoomEast, 3.495, uRoomEast, 5.43, -1, 0, 'butt', 'internal');

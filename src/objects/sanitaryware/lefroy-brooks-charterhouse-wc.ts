@@ -235,10 +235,32 @@ function createContouredToiletSeatGeometry(
     curveSegments: 24,
   });
   geo.rotateX(-Math.PI * 0.5);
+  geo.computeVertexNormals();
   geo.computeBoundingBox();
   if (geo.boundingBox) {
     geo.translate(0, -geo.boundingBox.min.y, 0);
   }
+
+  // Normalize ExtrudeGeometry meter-space UVs into tight front-to-back timber grain coordinates
+  // so straight-grained smoked English oak runs cleanly along the seat without walnut-like stretching.
+  const posAttr = geo.getAttribute('position');
+  const normAttr = geo.getAttribute('normal');
+  const uvAttr = geo.getAttribute('uv');
+  if (posAttr && normAttr && uvAttr) {
+    const grainScaleU = 3.8; // across width (X)
+    const grainScaleV = 3.4; // along length (Z, front-to-back grain direction)
+    for (let i = 0; i < posAttr.count; i++) {
+      const px = posAttr.getX(i);
+      const py = posAttr.getY(i);
+      const pz = posAttr.getZ(i);
+      const ny = Math.abs(normAttr.getY(i));
+      const u = ny > 0.45 ? px * grainScaleU + 0.5 : (px + py * 1.4) * grainScaleU + 0.5;
+      const v = (pz - centerZ) * grainScaleV + 0.5;
+      uvAttr.setXY(i, u, v);
+    }
+    uvAttr.needsUpdate = true;
+  }
+
   return prepGeo(geo);
 }
 

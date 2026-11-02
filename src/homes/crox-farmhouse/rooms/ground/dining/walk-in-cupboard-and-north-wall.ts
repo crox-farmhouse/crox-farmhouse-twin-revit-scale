@@ -98,7 +98,8 @@ export function buildWalkInCupboardAndNorthWall(
     1.04,
     1.84,
     'south',
-    1
+    1,
+    { skipSkirting: true }
   );
   addBrickWallAlongXWithWindow(
     -7.82,

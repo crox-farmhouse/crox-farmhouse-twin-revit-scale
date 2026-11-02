@@ -88,7 +88,7 @@ const ROOM_17_LABEL = 'Room 17 — Master / Principal Bathroom (Country-House He
  * (all enclosed Vanity Hall cabinets, Mirostone tops & RUB-W bowls removed):
  * - Room 7 (`bootLobby.downstairsWc`): Perrin & Rowe `Armstrong` in `SB` Satin Brass (`3681SB`, `6800SB`, `6303SB`, `6221SB`, `6235SB`, `6258SB`), wall-mounted 0TH period ceramic cloakroom basin on Satin Brass brackets, Geberit `Acanto TurboFlush` vortex WC + `Duofix Sigma 12cm` + P&R `6772SB` extended concealed cistern lever, Balineum `Mercer` mirror
  * - Room 20 (`showerRoom`): Perrin & Rowe `Langbourn` in `PF` Pewter (`3955PF`, `6303PF`, `LSS3PF`, `6421PF`, `6447PF`), Lefroy Brooks `Lissa Doon` `LB 7503` (62cm 3TH) + `LB 4970BN` Brushed Silver Nickel stand, `GSI Classic Swirlflush®` (`871411`) vortex WC + P&R `6772PF` concealed lever, Schlüter `KERDI-SHOWER-LTS` + 60cm `KERDI-LINE` + `KERDI-BOARD-SN` niche, Vogue `Regency Tall` `LG013WM` & Balineum `Mercer` Matte Nickel mirror
- * - Room 17 (`familyBathroom`): BC Designs `BAC040` (1700mm) Copper Boat Bath + `WAS050G` + `WAS080G`, Perrin & Rowe `Traditional` in `BR` Unlacquered Polished Brass (`3520/1BR` floorstanding bath-shower mixer w/ legs & cradle, `TSS2BR8` concealed 8" shower set, `3705BR` 3-hole deck basin mixer + `6303BR` bottle trap on open Polished Brass washstand + 3TH heritage ceramic basin, `2× 6921BR` hooks, `6960BR` pivot paper holder), Matki `EauZone Plus` `EWP850-LB` Living Brass screen + `Continental 30` tray, `GSI Classic Swirlflush®` (`871411`) + P&R `6797BR` Traditional lever + Dark Oak seat, Vogue `Baroque` `LG014-BR` & Balineum `Mercer` Unlacquered Brass mirror
+ * - Room 17 (`familyBathroom`, Option 1): BC Designs `BAC040` (1700mm) Copper Boat Bath + `WAS050G` + `WAS080G`, Perrin & Rowe `Traditional` in `BR` Unlacquered Polished Brass (`3520/1BR` floorstanding bath-shower mixer, `TSS2BR8` concealed West-stud thermostatic mixer + ceiling-dropped 200mm deluge rose, `3705BR` 3-hole deck basin mixer on 1600×550mm West-wall smoked dark English oak 6-drawer vanity + full-height apothecary cupboards & lit bevelled mirror, `2× 6921BR` bulkhead robe hooks, `6960BR` East-wall paper holder), Matki `EauZone Plus` Living Brass hinged-door SE alcove enclosure (`970×1160mm`) + warm 2700K LED-lit recessed stud niches, `GSI Classic Swirlflush®` + P&R `6797BR` lever + fumed Dark Oak seat, and Vogue `Regency` `LG013-BR` East-wall towel rail
  */
 export const MAIN_HOUSE_BATHROOM_PROCUREMENT: readonly BathroomProcurementLineItem[] = [
   // =========================================================================
@@ -588,7 +588,7 @@ export const MAIN_HOUSE_BATHROOM_PROCUREMENT: readonly BathroomProcurementLineIt
       'Concealed Traditional 8" thermostatic shower set with porcelain lever, 8" deluge rose, slide rail & handshower in Unlacquered Polished Brass — UK box includes 1st-fix concealed valve body',
     finishCode: 'BR',
     quantity: 1,
-    dimensionsMm: '400mm arm, Ø200mm 8" rose, traditional slide rail',
+    dimensionsMm: '360mm ceiling drop arm, Ø200mm 8" deluge rose, West-stud concealed mixer & slide rail',
     ukRoughInIncludedInBox: true,
     leadTimeNote: '8–12wk BR finish lead time; request Day-1 advance 1st-fix valve dispatch from Rainham',
     rrpIncVatGbp: 4083,
@@ -638,16 +638,16 @@ export const MAIN_HOUSE_BATHROOM_PROCUREMENT: readonly BathroomProcurementLineIt
     roomLabel: ROOM_17_LABEL,
     category: 'sanitaryware',
     brand: 'Bespoke Architectural Joinery + Kohler / Villeroy & Boch',
-    collection: 'Smoked Dark Oak Veneer In-Frame Vanity + Honed Carrara + Undermount Bowl',
-    sku: 'BESPOKE-DOV-920 + CARRARA-25 + CERAMIC-UM',
+    collection: 'Option 1 West-Wall Smoked Dark English Oak 6-Drawer Vanity + Honed Carrara + Oval Undermount Bowl',
+    sku: 'BESPOKE-DOV-1600 + CARRARA-30 + CERAMIC-OVAL-UM',
     alternateSku: 'Parker Howley / Catchpole & Rye Bespoke Dark Oak Vanity (zero Vanity Hall)',
     description:
-      'Tailored in-frame smoked dark European oak veneer 2-door + top-frieze vanity unit with bracket plinth, Polished Brass knobs, 25mm Honed Bianco Carrara marble countertop & shaped upstand, and glazed white ceramic undermount basin',
+      'West-wall in-frame smoked dark English oak vanity unit with flush plinth, central 550mm 2-door sink cupboard, two flanking 525mm 3-drawer wash-bag banks (6 drawers total) with Polished Brass cup pulls & knobs, 30mm Honed Bianco Carrara marble countertop (1,050mm clear counter wings) + 75mm upstands, and 550×400mm glazed white ceramic oval undermount basin',
     finishCode: 'Dark Oak / BR',
     quantity: 1,
-    dimensionsMm: 'W920 (970mm scribed alcove) × D538 × H850mm',
-    rrpIncVatGbp: 2650,
-    tradeIncVatGbp: 2120,
+    dimensionsMm: 'W1600 × D550 (560mm top) × H870mm',
+    rrpIncVatGbp: 3850,
+    tradeIncVatGbp: 3080,
     sceneNodePrefix: 'familyBathroom.darkOakVanityUnit',
   },
   {
@@ -659,7 +659,7 @@ export const MAIN_HOUSE_BATHROOM_PROCUREMENT: readonly BathroomProcurementLineIt
     brand: 'Perrin & Rowe',
     collection: 'Traditional',
     sku: '6921BR',
-    description: 'Traditional wall-mounted robe hooks in Unlacquered Polished Brass (paired on West wall North of walk-in shower for hanging bathrobes)',
+    description: 'Traditional wall-mounted robe hooks in Unlacquered Polished Brass (paired on Shaker patress rail on outside West face of SE shower bulkhead for hanging waffle bathrobes)',
     finishCode: 'BR',
     quantity: 2,
     dimensionsMm: 'Ø54mm rose × D48mm (each)',
@@ -676,7 +676,7 @@ export const MAIN_HOUSE_BATHROOM_PROCUREMENT: readonly BathroomProcurementLineIt
     brand: 'Perrin & Rowe',
     collection: 'Traditional',
     sku: '6960BR',
-    description: 'Traditional twin-post pivot toilet roll holder in Unlacquered Polished Brass',
+    description: 'Traditional twin-post pivot toilet roll holder in Unlacquered Polished Brass mounted on East boxed T&G panelling (Y = 2.80m, Z = -1.55m) forward of NE WC',
     finishCode: 'BR',
     quantity: 1,
     dimensionsMm: 'W190 × H98 × D75mm',
@@ -691,16 +691,16 @@ export const MAIN_HOUSE_BATHROOM_PROCUREMENT: readonly BathroomProcurementLineIt
     roomLabel: ROOM_17_LABEL,
     category: 'enclosureAndWetroom',
     brand: 'Matki',
-    collection: 'EauZone Plus + Continental 40 White Tray',
-    sku: 'EWP950-LB + CL1590 + LPW90 + KERDI-BOARD-SN',
-    alternateSku: 'Kaldewei Superplan 1500×900 Alpine White Enamelled Tray',
+    collection: 'EauZone Plus Hinged Alcove Door + Low-Profile White Stone-Resin Tray',
+    sku: 'EWPA1000-LB + LPW90 + 2× KERDI-BOARD-SN-LED2700K',
+    alternateSku: 'Kaldewei Superplan Alpine White Bespoke Alcove Tray',
     description:
-      'Enlarged SW walk-in shower with crisp gloss-white raised Matki Continental 40 stone-resin shower tray (1550 × 900 × 42mm) & LPW90 Polished Brass fast-flow waste, EauZone Plus 2000mm H 10mm glass panel in Unlacquered Living Brass (EWP950-LB), cream zellige wet-wall tiling & KERDI-BOARD-SN recessed niche',
+      'Reclaimed SE walk-in alcove shower (970 × 1,160mm under full 2.49m flat ceiling, framed in 120mm acoustic Rockwool stud walls so East bedroom headboard brick wall stays un-chased) with low-profile white stone-resin tray & LPW90 Polished Brass waste, Matki EauZone Plus Living Brass framed inline screen & hinged glass pivot door, full-height vertical white Zellige tiling on all 3 interior walls, and 2× warm 2700K IP67 LED-lit recessed stud niches (South 2-tier + West soap niche)',
     finishCode: 'BR',
     quantity: 1,
-    dimensionsMm: '950 × 2000mm 10mm glass, 1550 × 900 × 42mm gloss-white tray',
-    rrpIncVatGbp: 2240,
-    tradeIncVatGbp: 1850,
+    dimensionsMm: '970 × 1160 × 38mm white tray, 952 × 2052mm 10mm hinged glass door + inline panel',
+    rrpIncVatGbp: 2680,
+    tradeIncVatGbp: 2210,
     sceneNodePrefix: 'familyBathroom.showerEnclosure',
   },
   {
@@ -729,10 +729,10 @@ export const MAIN_HOUSE_BATHROOM_PROCUREMENT: readonly BathroomProcurementLineIt
     category: 'sanitaryware',
     brand: 'GSI Ceramica',
     collection: 'Classic Swirlflush® Heritage',
-    sku: '871211 + 878111 + Walnut Seat (BR Hinges)',
+    sku: '871211 + 878111 + Fumed Dark Oak Seat (BR Hinges)',
     alternateSku: 'Burlington Regal Close-Coupled P2 + T21 w/ Walnut Seat & BR Hinges',
     description:
-      'GSI Classic Swirlflush® heritage vortex close-coupled WC pan with stepped vitreous-china cistern & Walnut timber soft-close seat with Unlacquered Brass hinges',
+      'GSI Classic Swirlflush® heritage vortex close-coupled WC pan with stepped vitreous-china cistern & straight-grained fumed Dark English Oak soft-close seat with Unlacquered Brass hinges',
     finishCode: 'BR',
     quantity: 1,
     dimensionsMm: 'W360 × D550 × H410mm',
@@ -768,7 +768,7 @@ export const MAIN_HOUSE_BATHROOM_PROCUREMENT: readonly BathroomProcurementLineIt
     collection: 'Regency Wall-Mounted',
     sku: 'LG013-BR + EE006 + VL003',
     description:
-      'Vogue UK Regency ball-jointed wall-mounted ladder heated towel rail in Unlacquered Polished Brass mounted on West face of SE bulkhead wall with EE006 dual-fuel element & VL003 Brass crosshead valves',
+      'Vogue UK Regency ball-jointed wall-mounted ladder heated towel rail in Unlacquered Polished Brass mounted on East upper wall outside SE shower door with EE006 dual-fuel element & VL003 Brass crosshead valves',
     finishCode: 'BR',
     quantity: 1,
     dimensionsMm: 'W500 × H920 × D125mm',
@@ -783,15 +783,15 @@ export const MAIN_HOUSE_BATHROOM_PROCUREMENT: readonly BathroomProcurementLineIt
     roomLabel: ROOM_17_LABEL,
     category: 'heatingAndMirrors',
     brand: 'Bespoke Architectural Joinery',
-    collection: 'Full-Height Smoked Dark Oak Shelving & Brass-Beaded Bevelled Mirror',
-    sku: 'BESPOKE-DOV-MIRROR-SHELVING',
+    collection: 'Countertop-to-Ceiling Smoked Dark Oak Apothecary Cupboards & Lit Bevelled Mirror',
+    sku: 'BESPOKE-DOV-1600-APOTHECARY-MIRROR',
     description:
-      'Full-height built-in smoked dark oak apothecary & linen shelving unit rising to the 4.65m collar ceiling with central Unlacquered Brass-beaded bevelled demister mirror and concealed warm soffit light',
+      'Countertop-to-ceiling built-in smoked dark English oak upper joinery rising to the 4.65m flat collar ceiling w/ moulded cornice: twin 400×300mm closed panelled apothecary cupboards w/ BR knobs flanking an 800mm central Unlacquered Brass-beaded bevelled mirror w/ warm 2700K LED soffit wash & twin IP44 Polished Brass opal-glass sconces',
     finishCode: 'Dark Oak / BR',
     quantity: 1,
-    dimensionsMm: 'W966 × H1640 × D175mm (countertop 3.01m to ceiling 4.65m)',
-    rrpIncVatGbp: 1850,
-    tradeIncVatGbp: 1480,
+    dimensionsMm: 'W1600 × H1620 × D300mm (countertop 3.03m to ceiling 4.65m)',
+    rrpIncVatGbp: 2650,
+    tradeIncVatGbp: 2120,
     sceneNodePrefix: 'familyBathroom.vanityFullHeightJoinery',
   },
 ];

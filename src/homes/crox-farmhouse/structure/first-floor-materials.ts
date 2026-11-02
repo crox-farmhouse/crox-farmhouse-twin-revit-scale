@@ -3,6 +3,8 @@ import {
   createCourtyardStoneTexture,
   createImperialBrickTextures,
   createNaturalOakJoineryTextures,
+  createParisianManoirUpstandTextures,
+  createSandbergMimiSandstoneWallpaperMaterial,
   createTumbledLimestoneFlagstoneTextures,
   createWovenWoolCarpetTextures,
 } from '../../../engine/textures/procedural-textures.ts';
@@ -227,7 +229,23 @@ export function createFirstFloorMaterials(
     metalness: 0.02,
   });
 
+  const mimiSandstoneWallpaperMat = createSandbergMimiSandstoneWallpaperMaterial();
+
+  const parisianManoirUpstandMaps = createParisianManoirUpstandTextures();
+  const parisianManoirUpstandMat = new THREE.MeshStandardMaterial({
+    name: 'parisianManoirCreamMarbleSaddle',
+    map: parisianManoirUpstandMaps.colorMap,
+    normalMap: parisianManoirUpstandMaps.normalMap,
+    normalScale: new THREE.Vector2(0.42, 0.42),
+    roughnessMap: parisianManoirUpstandMaps.roughnessMap,
+    color: 0xf7f5ef,
+    roughness: 0.38,
+    metalness: 0.03,
+  });
+
   return {
+    mimiSandstoneWallpaperMat,
+    parisianManoirUpstandMat,
     schoolHouseWhiteMat,
     wimborneWhiteJoineryMat,
     wimborneWhitePanellingMat,

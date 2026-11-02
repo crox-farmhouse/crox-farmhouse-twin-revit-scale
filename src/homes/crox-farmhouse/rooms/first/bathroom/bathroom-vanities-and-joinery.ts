@@ -13,6 +13,7 @@ import {
   prepGeo,
   wallFacingToRotY,
 } from '../../../../../objects/sanitaryware/index.ts';
+import { ROOM17_BOXED_DADO, ROOM17_OPTION1_PLANES } from './bathroom-panelling-and-linings.ts';
 
 export interface FamilyBathroomDrinksCabinetKit {
   brassMat: THREE.Material;
@@ -28,9 +29,43 @@ export interface FamilyBathroomVanityAndToiletKit {
   floorTopY: number;
 }
 
+const WEST_VANITY_SPEC = {
+  wallX: ROOM17_OPTION1_PLANES.westWallX, // -12.81m
+  northZ: ROOM17_OPTION1_PLANES.vanityNorthZ, // -0.70m
+  southZ: ROOM17_OPTION1_PLANES.southWallZ, // +0.90m (1,600mm W)
+  baseDepthX: 0.55, // X = -12.81 .. -12.26m
+  counterDepthX: 0.56, // X = -12.81 .. -12.25m (10mm front overhang)
+  baseHeight: 0.84, // Y = 2.160 .. 3.000m
+  counterThick: 0.03, // Y = 3.000 .. 3.030m
+  upstandHeight: 0.075, // Y = 3.030 .. 3.105m
+  plinthHeight: 0.1, // Flush Shaker base plinth (0mm skirting overlap!)
+  centerSinkBayW: 0.55, // Z = -0.175 .. +0.375m (centered at Z = +0.10m)
+  drawerBankW: 0.525, // 2 × 525mm = 1,050mm clear counter wings & 6 wash-bag drawers
+  upperDepthX: 0.3, // X = -12.81 .. -12.51m
+  upperCupboardW: 0.4, // 2 × 400mm closed panelled cupboards flanking 800mm mirror
+} as const;
+
+const WC_AND_ACCESSORY_SPEC = {
+  wcX: -10.18,
+  wcBackZ: ROOM17_OPTION1_PLANES.northWallZ + ROOM17_BOXED_DADO.dadoShelfD, // -2.418m proud of 82mm North dado
+  /** Issue #4: Toilet roll holder on `eastPanelling` at Y = 2.80m, Z = -1.55m! */
+  paperHolderX: ROOM17_OPTION1_PLANES.eastWallX - ROOM17_BOXED_DADO.panelFaceD, // -9.868m
+  paperHolderY: 2.8,
+  paperHolderZ: -1.55,
+  /** 2× 6921BR brass robe hooks + waffle robes on SE bulkhead outside West face (clear of door-54 swing). */
+  robeHookPatressFaceX: ROOM17_OPTION1_PLANES.bulkheadOuterWestX - ROOM17_BOXED_DADO.panelFaceD, // -10.958m
+  robeHookY: 3.82,
+  robeLength: 1.06,
+  hooks: [
+    ['north', -0.46],
+    ['south', -0.14],
+  ] as const,
+} as const;
+
 /**
- * Builds the bespoke recessed oak Hotel Drinks & Refreshment Cabinet in the Upper South Passage alcove
- * (`X = -10.62m..-9.80m, Z = +0.36m..+1.05m`).
+ * Builds the slimline `450mm`-deep recessed oak Hotel Drinks & Refreshment Cabinet in the
+ * Upper South Passage alcove (`X = -10.62..-9.80m, Z = +0.602..+1.048m`), with `0mm` protrusion
+ * into the passage (`Z <= +1.05m`) and `0mm` Z-fighting against `bulkheadUpperSoffit` (`Y = 4.160m`).
  */
 export function buildFamilyBathroomDrinksCabinet(
   scene: THREE.Group,
@@ -41,29 +76,22 @@ export function buildFamilyBathroomDrinksCabinet(
   const drinksGroup = new THREE.Group();
   drinksGroup.name = 'familyBathroom.drinksCabinet';
 
-  const cx = -10.21; // Clear alcove X = -10.62m .. -9.80m (width = 0.82m)
+  const cx = -10.21; // X = -10.62 .. -9.80m (width = 0.82m)
   const cabW = 0.82;
-  const cabH = upperWallTopY - floorTopY; // 2.00m
+  const cabH = upperWallTopY - floorTopY; // 2.00m (2.160 .. 4.160m)
+  const zBack = 0.602; // 2mm South of 0.600m dividing stud
+  const zFront = 1.048; // 2mm North of 1.050m passage plane (0mm protrusion!)
+  const cabD = zFront - zBack; // 0.446m
+  const cz = (zBack + zFront) * 0.5; // 0.825m
 
-  // Materials for the bespoke drinks station
   const darkAnthraciteMat = new THREE.MeshStandardMaterial({
     color: 0x1e2022,
     roughness: 0.35,
     metalness: 0.65,
   });
-  const brushedChromeMat = new THREE.MeshStandardMaterial({
-    color: 0xd8dce0,
-    roughness: 0.22,
-    metalness: 0.88,
-  });
   const oakCabinetMat = new THREE.MeshStandardMaterial({
     color: 0xa17b55,
     roughness: 0.46,
-    metalness: 0.04,
-  });
-  const oakCountertopMat = new THREE.MeshStandardMaterial({
-    color: 0x8f6b47,
-    roughness: 0.42,
     metalness: 0.04,
   });
   const beechShelfMat = new THREE.MeshStandardMaterial({
@@ -71,6 +99,7 @@ export function buildFamilyBathroomDrinksCabinet(
     roughness: 0.55,
     metalness: 0.05,
   });
+  const carraraMat = getHonedCarraraMarbleMaterial();
   const sanPellegrinoGlassMat = new THREE.MeshStandardMaterial({
     color: 0x1d5e3a,
     roughness: 0.12,
@@ -80,24 +109,12 @@ export function buildFamilyBathroomDrinksCabinet(
     color: 0xbfe0f0,
     roughness: 0.4,
   });
-  const sanPellegrinoStarMat = new THREE.MeshStandardMaterial({
-    color: 0xc82828,
-    roughness: 0.4,
-  });
   const fijiBottleMat = new THREE.MeshStandardMaterial({
     color: 0xd0eefc,
     roughness: 0.1,
     metalness: 0.05,
     transparent: true,
     opacity: 0.85,
-  });
-  const fijiLabelMat = new THREE.MeshStandardMaterial({
-    color: 0x1b4d8e,
-    roughness: 0.35,
-  });
-  const fijiHibiscusMat = new THREE.MeshStandardMaterial({
-    color: 0xe05286,
-    roughness: 0.4,
   });
   const champagneGlassMat = new THREE.MeshStandardMaterial({
     color: 0x182c1b,
@@ -110,673 +127,354 @@ export function buildFamilyBathroomDrinksCabinet(
     metalness: 0.82,
   });
   const dashCanMats = [
-    new THREE.MeshStandardMaterial({ color: 0xe86c8d, roughness: 0.28, metalness: 0.45 }), // Raspberry
-    new THREE.MeshStandardMaterial({ color: 0xf2a663, roughness: 0.28, metalness: 0.45 }), // Peach
-    new THREE.MeshStandardMaterial({ color: 0x7bc496, roughness: 0.28, metalness: 0.45 }), // Cucumber
-    new THREE.MeshStandardMaterial({ color: 0xf2d65b, roughness: 0.28, metalness: 0.45 }), // Lemon
+    new THREE.MeshStandardMaterial({ color: 0xe86c8d, roughness: 0.28, metalness: 0.45 }),
+    new THREE.MeshStandardMaterial({ color: 0xf2a663, roughness: 0.28, metalness: 0.45 }),
+    new THREE.MeshStandardMaterial({ color: 0x7bc496, roughness: 0.28, metalness: 0.45 }),
+    new THREE.MeshStandardMaterial({ color: 0xf2d65b, roughness: 0.28, metalness: 0.45 }),
   ];
   const warmLedMat = new THREE.MeshStandardMaterial({
     color: 0xfff1d0,
     emissive: 0xffd28a,
-    emissiveIntensity: 0.65,
+    emissiveIntensity: 0.75,
     roughness: 0.2,
   });
 
-  // Recessed oak joinery back & side cheeks (`Z = 0.362m..1.048m`, inset 2mm clear of surrounding plaster)
-  const headerH = 0.09;
-  const lowerCheekH = cabH - headerH;
-  const backPanelGeo = new THREE.BoxGeometry(cabW - 0.004, cabH - 0.002, 0.04);
-  backPanelGeo.computeBoundingSphere();
-  const backPanel = new THREE.Mesh(backPanelGeo, oakCabinetMat);
+  // 1. Oak carcass back, side cheeks, base plinth & top cornice header (Y <= upperWallTopY - 0.002m!)
+  const headerH = 0.088;
+  const lowerCheekH = cabH - headerH - 0.002;
+  const backThick = 0.022;
+
+  const backPanel = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(cabW - 0.004, cabH - 0.004, backThick)),
+    oakCabinetMat
+  );
   backPanel.name = 'familyBathroom.drinksCabinet.backPanel';
-  backPanel.position.set(cx, floorTopY + (cabH - 0.002) / 2, 0.382);
+  backPanel.position.set(cx, floorTopY + (cabH - 0.004) * 0.5, zBack + backThick * 0.5);
   drinksGroup.add(backPanel);
 
-  const cheekGeo = new THREE.BoxGeometry(0.028, lowerCheekH, 0.676);
-  cheekGeo.computeBoundingSphere();
+  const cheekDepth = cabD - backThick;
+  const cheekGeo = prepGeo(new THREE.BoxGeometry(0.026, lowerCheekH, cheekDepth));
   for (const sideSign of [-1, 1] as const) {
     const cheek = new THREE.Mesh(cheekGeo, oakCabinetMat);
     cheek.name = `familyBathroom.drinksCabinet.cheek.${sideSign < 0 ? 'west' : 'east'}`;
-    cheek.position.set(cx + sideSign * (cabW / 2 - 0.016), floorTopY + lowerCheekH / 2, 0.71);
+    cheek.position.set(
+      cx + sideSign * (cabW * 0.5 - 0.015),
+      floorTopY + lowerCheekH * 0.5,
+      zBack + backThick + cheekDepth * 0.5
+    );
     drinksGroup.add(cheek);
   }
 
-  // Top cornice header & base plinth in matching solid oak (inset 2mm clear of bulkheadUpperSoffit & passage wall)
-  const topHeaderGeo = new THREE.BoxGeometry(cabW - 0.004, headerH - 0.002, 0.686);
-  topHeaderGeo.computeBoundingSphere();
-  const topHeader = new THREE.Mesh(topHeaderGeo, oakCabinetMat);
+  const topHeader = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(cabW - 0.004, headerH, cabD - 0.002)),
+    oakCabinetMat
+  );
   topHeader.name = 'familyBathroom.drinksCabinet.topHeader';
-  topHeader.position.set(cx, upperWallTopY - headerH / 2 - 0.001, 0.705);
+  topHeader.position.set(cx, upperWallTopY - 0.002 - headerH * 0.5, cz);
   drinksGroup.add(topHeader);
 
-  const basePlinthGeo = new THREE.BoxGeometry(cabW - 0.056, 0.08, 0.63);
-  basePlinthGeo.computeBoundingSphere();
-  const basePlinth = new THREE.Mesh(basePlinthGeo, oakCabinetMat);
+  const basePlinth = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(cabW - 0.056, 0.08, cheekDepth - 0.024)),
+    oakCabinetMat
+  );
   basePlinth.name = 'familyBathroom.drinksCabinet.basePlinth';
-  basePlinth.position.set(cx, floorTopY + 0.04, 0.715);
+  basePlinth.position.set(cx, floorTopY + 0.04, zBack + backThick + (cheekDepth - 0.024) * 0.5);
   drinksGroup.add(basePlinth);
 
-  // Under-counter glazed wine & beverage cooler (`Y = floorTopY + 0.08m .. floorTopY + 0.87m`)
+  // 2. Slimline 385mm-deep under-counter hotel beverage cooler (`Z = 0.635..1.020m`)
   const coolerGroup = new THREE.Group();
   coolerGroup.name = 'familyBathroom.drinksCabinet.wineCooler';
-  const coolerW = 0.76;
+  const coolerW = 0.758;
   const coolerH = 0.79;
   const coolerY0 = floorTopY + 0.08;
+  const coolerBackZ = zBack + backThick + 0.01; // 0.634m
+  const coolerFrontZ = 1.02;
+  const coolerD = coolerFrontZ - coolerBackZ; // 0.386m
+  const coolerMidZ = (coolerBackZ + coolerFrontZ) * 0.5;
 
-  // Outer insulated cooler shell (top, bottom, left, right, back)
-  const coolerBackGeo = new THREE.BoxGeometry(coolerW, coolerH, 0.03);
-  coolerBackGeo.computeBoundingSphere();
-  const coolerBack = new THREE.Mesh(coolerBackGeo, darkAnthraciteMat);
+  const coolerBack = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(coolerW, coolerH, 0.022)),
+    darkAnthraciteMat
+  );
   coolerBack.name = 'familyBathroom.drinksCabinet.wineCooler.back';
-  coolerBack.position.set(cx, coolerY0 + coolerH / 2, 0.42);
+  coolerBack.position.set(cx, coolerY0 + coolerH * 0.5, coolerBackZ + 0.011);
   coolerGroup.add(coolerBack);
 
-  const coolerTopGeo = new THREE.BoxGeometry(coolerW, 0.035, 0.56);
-  coolerTopGeo.computeBoundingSphere();
-  const coolerTop = new THREE.Mesh(coolerTopGeo, darkAnthraciteMat);
-  coolerTop.name = 'familyBathroom.drinksCabinet.wineCooler.top';
-  coolerTop.position.set(cx, coolerY0 + coolerH - 0.0175, 0.70);
-  coolerGroup.add(coolerTop);
-
-  const coolerBottomGeo = new THREE.BoxGeometry(coolerW, 0.045, 0.56);
-  coolerBottomGeo.computeBoundingSphere();
-  const coolerBottom = new THREE.Mesh(coolerBottomGeo, darkAnthraciteMat);
-  coolerBottom.name = 'familyBathroom.drinksCabinet.wineCooler.bottom';
-  coolerBottom.position.set(cx, coolerY0 + 0.0225, 0.70);
-  coolerGroup.add(coolerBottom);
-
-  const coolerSideGeo = new THREE.BoxGeometry(0.035, coolerH, 0.56);
-  coolerSideGeo.computeBoundingSphere();
-  for (const s of [-1, 1] as const) {
-    const coolerSide = new THREE.Mesh(coolerSideGeo, darkAnthraciteMat);
-    coolerSide.name = `familyBathroom.drinksCabinet.wineCooler.side.${s < 0 ? 'west' : 'east'}`;
-    coolerSide.position.set(cx + s * (coolerW / 2 - 0.0175), coolerY0 + coolerH / 2, 0.70);
-    coolerGroup.add(coolerSide);
+  for (const [partTag, py] of [
+    ['top', coolerY0 + coolerH - 0.016],
+    ['bottom', coolerY0 + 0.016],
+  ] as const) {
+    const slab = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(coolerW, 0.032, coolerD - 0.02)),
+      darkAnthraciteMat
+    );
+    slab.name = `familyBathroom.drinksCabinet.wineCooler.${partTag}`;
+    slab.position.set(cx, py, coolerMidZ);
+    coolerGroup.add(slab);
   }
 
-  // Internal warm LED light strip at top of wine cooler
-  const coolerLedGeo = new THREE.BoxGeometry(coolerW - 0.1, 0.008, 0.02);
-  coolerLedGeo.computeBoundingSphere();
-  const coolerLed = new THREE.Mesh(coolerLedGeo, warmLedMat);
+  const coolerSideGeo = prepGeo(new THREE.BoxGeometry(0.03, coolerH - 0.064, coolerD - 0.02));
+  for (const s of [-1, 1] as const) {
+    const side = new THREE.Mesh(coolerSideGeo, darkAnthraciteMat);
+    side.name = `familyBathroom.drinksCabinet.wineCooler.side.${s < 0 ? 'west' : 'east'}`;
+    side.position.set(cx + s * (coolerW * 0.5 - 0.015), coolerY0 + coolerH * 0.5, coolerMidZ);
+    coolerGroup.add(side);
+  }
+
+  const coolerLed = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(coolerW - 0.08, 0.006, 0.014)),
+    warmLedMat
+  );
   coolerLed.name = 'familyBathroom.drinksCabinet.wineCooler.ledStrip';
-  coolerLed.userData.lodTier = 'high';
-  coolerLed.userData.lodMaxDistance = 12;
-  coolerLed.position.set(cx, coolerY0 + coolerH - 0.04, 0.92);
+  coolerLed.position.set(cx, coolerY0 + coolerH - 0.035, coolerFrontZ - 0.055);
   coolerGroup.add(coolerLed);
 
-  // 3 Beechwood pull-out shelves inside the wine cooler
-  const shelfYOffsets = [0.06, 0.29, 0.54];
-  const coolerShelfGeo = new THREE.BoxGeometry(coolerW - 0.08, 0.016, 0.46);
-  coolerShelfGeo.computeBoundingSphere();
-  for (const [shelfIdx, sy] of shelfYOffsets.entries()) {
-    const shelf = new THREE.Mesh(coolerShelfGeo, beechShelfMat);
-    shelf.name = `familyBathroom.drinksCabinet.wineCooler.shelf_${shelfIdx + 1}`;
-    shelf.position.set(cx, coolerY0 + sy, 0.70);
+  const shelfYs = [coolerY0 + 0.24, coolerY0 + 0.49] as const;
+  const shelfGeo = prepGeo(new THREE.BoxGeometry(coolerW - 0.064, 0.014, coolerD - 0.075));
+  for (const [idx, sy] of shelfYs.entries()) {
+    const shelf = new THREE.Mesh(shelfGeo, beechShelfMat);
+    shelf.name = `familyBathroom.drinksCabinet.wineCooler.shelf_${idx + 1}`;
+    shelf.position.set(cx, sy, coolerMidZ - 0.01);
     coolerGroup.add(shelf);
   }
 
-  // --- Shelf 1 (Bottom, Y = coolerY0 + 0.068): Chilled Champagne Bottles ---
-  const champY = coolerY0 + 0.068 + 0.044;
-  const champBodyGeo = new THREE.CylinderGeometry(0.042, 0.042, 0.19, 14);
-  champBodyGeo.computeBoundingSphere();
-  const champNeckGeo = new THREE.CylinderGeometry(0.016, 0.040, 0.11, 14);
-  champNeckGeo.computeBoundingSphere();
-  const champFoilGeo = new THREE.CylinderGeometry(0.015, 0.022, 0.065, 14);
-  champFoilGeo.computeBoundingSphere();
-  const champLabelGeo = new THREE.BoxGeometry(0.055, 0.012, 0.075);
-  champLabelGeo.computeBoundingSphere();
-
-  for (let i = 0; i < 5; i++) {
-    const bx = cx - 0.24 + i * 0.12;
-    const bottleGroup = new THREE.Group();
-    bottleGroup.name = `familyBathroom.drinksCabinet.champagne_${i + 1}`;
-    bottleGroup.userData.lodTier = 'high';
-    bottleGroup.userData.lodMaxDistance = 12;
-
-    const body = new THREE.Mesh(champBodyGeo, champagneGlassMat);
+  // Chilled champagne, San Pellegrino, Fiji water & Dash cans sized cleanly for 385mm slimline cooler
+  for (let i = 0; i < 3; i++) {
+    const bx = cx - 0.22 + i * 0.11;
+    const by = coolerY0 + 0.032;
+    const body = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.036, 0.038, 0.14, 14)),
+      champagneGlassMat
+    );
     body.name = `familyBathroom.drinksCabinet.champagne_${i + 1}.body`;
-    body.rotation.x = Math.PI / 2;
-    body.position.set(bx, champY, 0.65);
-    bottleGroup.add(body);
+    body.position.set(bx, by + 0.07, coolerMidZ);
+    coolerGroup.add(body);
 
-    const neck = new THREE.Mesh(champNeckGeo, champagneGlassMat);
-    neck.name = `familyBathroom.drinksCabinet.champagne_${i + 1}.neck`;
-    neck.rotation.x = Math.PI / 2;
-    neck.position.set(bx, champY, 0.80);
-    bottleGroup.add(neck);
-
-    const foil = new THREE.Mesh(champFoilGeo, champagneFoilMat);
+    const foil = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.013, 0.022, 0.055, 12)),
+      champagneFoilMat
+    );
     foil.name = `familyBathroom.drinksCabinet.champagne_${i + 1}.foil`;
-    foil.rotation.x = Math.PI / 2;
-    foil.position.set(bx, champY, 0.86);
-    bottleGroup.add(foil);
-
-    const label = new THREE.Mesh(champLabelGeo, ceramicWhiteMat);
-    label.name = `familyBathroom.drinksCabinet.champagne_${i + 1}.label`;
-    label.position.set(bx, champY + 0.038, 0.67);
-    bottleGroup.add(label);
-    coolerGroup.add(bottleGroup);
+    foil.position.set(bx, by + 0.165, coolerMidZ);
+    coolerGroup.add(foil);
   }
 
-  // --- Shelf 2 (Middle, Y = coolerY0 + 0.298): San Pellegrino (left) & Fiji Water (right) ---
-  const midBottleY = coolerY0 + 0.298;
-  const spBodyGeo = new THREE.CylinderGeometry(0.033, 0.034, 0.13, 14);
-  spBodyGeo.computeBoundingSphere();
-  const spNeckGeo = new THREE.CylinderGeometry(0.013, 0.032, 0.065, 14);
-  spNeckGeo.computeBoundingSphere();
-  const spLabelGeo = new THREE.CylinderGeometry(0.0345, 0.0345, 0.048, 14);
-  spLabelGeo.computeBoundingSphere();
-  const spStarGeo = new THREE.BoxGeometry(0.018, 0.018, 0.006);
-  spStarGeo.computeBoundingSphere();
+  for (let i = 0; i < 3; i++) {
+    const bx = cx + 0.08 + i * 0.095;
+    const by = shelfYs[0]! + 0.008;
+    const sp = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.028, 0.03, 0.165, 14)),
+      sanPellegrinoGlassMat
+    );
+    sp.name = `familyBathroom.drinksCabinet.sanPellegrino_${i + 1}.body`;
+    sp.position.set(bx, by + 0.0825, coolerMidZ + 0.02);
+    coolerGroup.add(sp);
 
-  // 4 San Pellegrino green glass bottles on the left
-  for (let i = 0; i < 4; i++) {
-    const col = i % 2;
-    const row = Math.floor(i / 2);
-    const bx = cx - 0.24 + col * 0.10;
-    const bz = 0.84 - row * 0.14;
-    const spGroup = new THREE.Group();
-    spGroup.name = `familyBathroom.drinksCabinet.sanPellegrino_${i + 1}`;
-    spGroup.userData.lodTier = 'high';
-    spGroup.userData.lodMaxDistance = 12;
-
-    const spBody = new THREE.Mesh(spBodyGeo, sanPellegrinoGlassMat);
-    spBody.name = `familyBathroom.drinksCabinet.sanPellegrino_${i + 1}.body`;
-    spBody.position.set(bx, midBottleY + 0.065, bz);
-    spGroup.add(spBody);
-
-    const spNeck = new THREE.Mesh(spNeckGeo, sanPellegrinoGlassMat);
-    spNeck.name = `familyBathroom.drinksCabinet.sanPellegrino_${i + 1}.neck`;
-    spNeck.position.set(bx, midBottleY + 0.162, bz);
-    spGroup.add(spNeck);
-
-    const spLabel = new THREE.Mesh(spLabelGeo, sanPellegrinoLabelMat);
-    spLabel.name = `familyBathroom.drinksCabinet.sanPellegrino_${i + 1}.label`;
-    spLabel.position.set(bx, midBottleY + 0.068, bz);
-    spGroup.add(spLabel);
-
-    const spStar = new THREE.Mesh(spStarGeo, sanPellegrinoStarMat);
-    spStar.name = `familyBathroom.drinksCabinet.sanPellegrino_${i + 1}.star`;
-    spStar.position.set(bx, midBottleY + 0.068, bz + 0.033);
-    spGroup.add(spStar);
-
-    coolerGroup.add(spGroup);
+    const lbl = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.0305, 0.0305, 0.048, 14)),
+      sanPellegrinoLabelMat
+    );
+    lbl.name = `familyBathroom.drinksCabinet.sanPellegrino_${i + 1}.label`;
+    lbl.position.set(bx, by + 0.075, coolerMidZ + 0.02);
+    coolerGroup.add(lbl);
   }
 
-  // 4 Square Fiji Water bottles on the right
-  const fijiBodyGeo = new THREE.BoxGeometry(0.064, 0.155, 0.064);
-  fijiBodyGeo.computeBoundingSphere();
-  const fijiShoulderGeo = new THREE.CylinderGeometry(0.015, 0.038, 0.038, 4);
-  fijiShoulderGeo.computeBoundingSphere();
-  const fijiCapGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.016, 12);
-  fijiCapGeo.computeBoundingSphere();
-  const fijiFrontLabelGeo = new THREE.BoxGeometry(0.054, 0.075, 0.004);
-  fijiFrontLabelGeo.computeBoundingSphere();
-  const hibiscusGeo = new THREE.BoxGeometry(0.022, 0.022, 0.005);
-  hibiscusGeo.computeBoundingSphere();
-
-  for (let i = 0; i < 4; i++) {
-    const col = i % 2;
-    const row = Math.floor(i / 2);
-    const bx = cx + 0.12 + col * 0.10;
-    const bz = 0.84 - row * 0.14;
-    const fijiGroup = new THREE.Group();
-    fijiGroup.name = `familyBathroom.drinksCabinet.fijiWater_${i + 1}`;
-    fijiGroup.userData.lodTier = 'high';
-    fijiGroup.userData.lodMaxDistance = 12;
-
-    const fijiBody = new THREE.Mesh(fijiBodyGeo, fijiBottleMat);
-    fijiBody.name = `familyBathroom.drinksCabinet.fijiWater_${i + 1}.body`;
-    fijiBody.position.set(bx, midBottleY + 0.078, bz);
-    fijiGroup.add(fijiBody);
-
-    const fijiShoulder = new THREE.Mesh(fijiShoulderGeo, fijiBottleMat);
-    fijiShoulder.name = `familyBathroom.drinksCabinet.fijiWater_${i + 1}.shoulder`;
-    fijiShoulder.rotation.y = Math.PI / 4;
-    fijiShoulder.position.set(bx, midBottleY + 0.174, bz);
-    fijiGroup.add(fijiShoulder);
-
-    const fijiCap = new THREE.Mesh(fijiCapGeo, fijiLabelMat);
-    fijiCap.name = `familyBathroom.drinksCabinet.fijiWater_${i + 1}.cap`;
-    fijiCap.position.set(bx, midBottleY + 0.20, bz);
-    fijiGroup.add(fijiCap);
-
-    const fijiFrontLabel = new THREE.Mesh(fijiFrontLabelGeo, fijiLabelMat);
-    fijiFrontLabel.name = `familyBathroom.drinksCabinet.fijiWater_${i + 1}.label`;
-    fijiFrontLabel.position.set(bx, midBottleY + 0.078, bz + 0.037);
-    fijiGroup.add(fijiFrontLabel);
-
-    const hibiscus = new THREE.Mesh(hibiscusGeo, fijiHibiscusMat);
-    hibiscus.name = `familyBathroom.drinksCabinet.fijiWater_${i + 1}.hibiscus`;
-    hibiscus.position.set(bx + 0.01, midBottleY + 0.062, bz + 0.0445);
-    fijiGroup.add(hibiscus);
-
-    coolerGroup.add(fijiGroup);
+  for (let i = 0; i < 2; i++) {
+    const bx = cx - 0.24 + i * 0.09;
+    const by = shelfYs[0]! + 0.008;
+    const fiji = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(0.058, 0.165, 0.058)),
+      fijiBottleMat
+    );
+    fiji.name = `familyBathroom.drinksCabinet.fijiWater_${i + 1}.body`;
+    fiji.position.set(bx, by + 0.0825, coolerMidZ + 0.02);
+    coolerGroup.add(fiji);
   }
 
-  // --- Shelf 3 (Top, Y = coolerY0 + 0.548): Cans of DASH Sparkling Water ---
-  const topCanY = coolerY0 + 0.548;
-  const canBodyGeo = new THREE.CylinderGeometry(0.030, 0.030, 0.112, 14);
-  canBodyGeo.computeBoundingSphere();
-  const canTopGeo = new THREE.CylinderGeometry(0.028, 0.030, 0.006, 14);
-  canTopGeo.computeBoundingSphere();
-
-  for (let row = 0; row < 2; row++) {
-    for (let col = 0; col < 6; col++) {
-      const canIdx = row * 6 + col + 1;
-      const canX = cx - 0.25 + col * 0.10;
-      const canZ = 0.85 - row * 0.11;
-      const canMat = dashCanMats[(col + row) % dashCanMats.length];
-      const canGroup = new THREE.Group();
-      canGroup.name = `familyBathroom.drinksCabinet.dashCan_${canIdx}`;
-      canGroup.userData.lodTier = 'high';
-      canGroup.userData.lodMaxDistance = 12;
-
-      const canBody = new THREE.Mesh(canBodyGeo, canMat);
-      canBody.name = `familyBathroom.drinksCabinet.dashCan_${canIdx}.body`;
-      canBody.position.set(canX, topCanY + 0.056, canZ);
-      canGroup.add(canBody);
-
-      const canTop = new THREE.Mesh(canTopGeo, brushedChromeMat);
-      canTop.name = `familyBathroom.drinksCabinet.dashCan_${canIdx}.top`;
-      canTop.position.set(canX, topCanY + 0.115, canZ);
-      canGroup.add(canTop);
-
-      coolerGroup.add(canGroup);
-    }
+  for (let c = 0; c < 4; c++) {
+    const bx = cx - 0.22 + c * 0.145;
+    const by = shelfYs[1]! + 0.008;
+    const can = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.028, 0.028, 0.115, 14)),
+      dashCanMats[c % dashCanMats.length]!
+    );
+    can.name = `familyBathroom.drinksCabinet.dashCan_${c + 1}.body`;
+    can.position.set(bx, by + 0.0575, coolerMidZ + 0.03);
+    coolerGroup.add(can);
   }
 
-  // Glazed Cooler Door Frame & Low-Iron Glass Pane (`Z = 0.99m`)
-  const doorFrameThick = 0.022;
-  const doorFrameTopGeo = new THREE.BoxGeometry(coolerW - 0.02, 0.036, doorFrameThick);
-  doorFrameTopGeo.computeBoundingSphere();
-  const doorFrameTop = new THREE.Mesh(doorFrameTopGeo, brushedChromeMat);
-  doorFrameTop.name = 'familyBathroom.drinksCabinet.wineCooler.doorFrameTop';
-  doorFrameTop.position.set(cx, coolerY0 + coolerH - 0.022, 0.99);
-  coolerGroup.add(doorFrameTop);
-
-  const doorFrameBotGeo = new THREE.BoxGeometry(coolerW - 0.02, 0.042, doorFrameThick);
-  doorFrameBotGeo.computeBoundingSphere();
-  const doorFrameBot = new THREE.Mesh(doorFrameBotGeo, brushedChromeMat);
-  doorFrameBot.name = 'familyBathroom.drinksCabinet.wineCooler.doorFrameBottom';
-  doorFrameBot.position.set(cx, coolerY0 + 0.025, 0.99);
-  coolerGroup.add(doorFrameBot);
-
-  const doorStileGeo = new THREE.BoxGeometry(0.036, coolerH - 0.05, doorFrameThick);
-  doorStileGeo.computeBoundingSphere();
+  // Glazed cooler door (`Z = 1.018m`)
+  const doorFrameZ = coolerFrontZ - 0.008;
+  for (const [tag, dy] of [
+    ['doorFrameTop', coolerY0 + coolerH - 0.02],
+    ['doorFrameBottom', coolerY0 + 0.02],
+  ] as const) {
+    const rail = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(coolerW, 0.04, 0.018)),
+      darkAnthraciteMat
+    );
+    rail.name = `familyBathroom.drinksCabinet.wineCooler.${tag}`;
+    rail.position.set(cx, dy, doorFrameZ);
+    coolerGroup.add(rail);
+  }
   for (const s of [-1, 1] as const) {
-    const stile = new THREE.Mesh(doorStileGeo, brushedChromeMat);
+    const stile = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(0.04, coolerH - 0.08, 0.018)),
+      darkAnthraciteMat
+    );
     stile.name = `familyBathroom.drinksCabinet.wineCooler.doorStile.${s < 0 ? 'west' : 'east'}`;
-    stile.position.set(cx + s * (coolerW / 2 - 0.028), coolerY0 + coolerH / 2, 0.99);
+    stile.position.set(cx + s * (coolerW * 0.5 - 0.02), coolerY0 + coolerH * 0.5, doorFrameZ);
     coolerGroup.add(stile);
   }
-
-  const coolerGlassGeo = new THREE.BoxGeometry(coolerW - 0.09, coolerH - 0.08, 0.008);
-  coolerGlassGeo.computeBoundingSphere();
-  const coolerGlass = new THREE.Mesh(coolerGlassGeo, windowGlassMat);
+  const coolerGlass = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(coolerW - 0.08, coolerH - 0.08, 0.006)),
+    windowGlassMat
+  );
   coolerGlass.name = 'familyBathroom.drinksCabinet.wineCooler.doorGlass';
-  coolerGlass.position.set(cx, coolerY0 + coolerH / 2, 0.99);
+  coolerGlass.position.set(cx, coolerY0 + coolerH * 0.5, doorFrameZ);
   coolerGroup.add(coolerGlass);
 
-  // Vertical brass cooler door handle on the left stile
-  const coolerHandleGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.42, 10);
-  coolerHandleGeo.computeBoundingSphere();
-  const coolerHandle = new THREE.Mesh(coolerHandleGeo, brassMat);
+  const coolerHandle = new THREE.Mesh(
+    prepGeo(new THREE.CylinderGeometry(0.007, 0.007, 0.42, 12)),
+    brassMat
+  );
   coolerHandle.name = 'familyBathroom.drinksCabinet.wineCooler.doorHandle';
-  coolerHandle.userData.lodTier = 'high';
-  coolerHandle.userData.lodMaxDistance = 12;
-  coolerHandle.position.set(cx - coolerW / 2 + 0.03, coolerY0 + coolerH / 2 + 0.04, 1.02);
+  coolerHandle.position.set(cx - coolerW * 0.5 + 0.05, coolerY0 + coolerH * 0.55, doorFrameZ + 0.022);
   coolerGroup.add(coolerHandle);
 
   drinksGroup.add(coolerGroup);
 
-  // Solid oiled oak countertop & splashback upstand
-  const counterY = floorTopY + 0.888;
-  const marbleCounterGeo = new THREE.BoxGeometry(cabW - 0.056, 0.035, 0.65);
-  marbleCounterGeo.computeBoundingSphere();
-  const marbleCounter = new THREE.Mesh(marbleCounterGeo, oakCountertopMat);
+  // 3. Countertop (`Y = 3.030..3.058m`, `Z = 0.624..1.044m`), compact Nespresso machine & lit upper shelves
+  const counterY = floorTopY + 0.87;
+  const counterD = zFront - 0.004 - (zBack + backThick);
+  const counterMidZ = zBack + backThick + counterD * 0.5;
+  const marbleCounter = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(cabW - 0.056, 0.028, counterD)),
+    carraraMat
+  );
   marbleCounter.name = 'familyBathroom.drinksCabinet.marbleCountertop';
-  marbleCounter.position.set(cx, counterY, 0.725);
+  marbleCounter.position.set(cx, counterY + 0.014, counterMidZ);
   marbleCounter.castShadow = true;
   marbleCounter.receiveShadow = true;
   drinksGroup.add(marbleCounter);
 
-  const marbleSplashGeo = new THREE.BoxGeometry(cabW - 0.056, 0.48, 0.018);
-  marbleSplashGeo.computeBoundingSphere();
-  const marbleSplash = new THREE.Mesh(marbleSplashGeo, oakCabinetMat);
+  const counterTopY = counterY + 0.028;
+  const marbleSplash = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(cabW - 0.056, 0.065, 0.014)),
+    carraraMat
+  );
   marbleSplash.name = 'familyBathroom.drinksCabinet.backsplash';
-  marbleSplash.position.set(cx, counterY + 0.25, 0.41);
+  marbleSplash.position.set(cx, counterTopY + 0.0325, zBack + backThick + 0.007);
   drinksGroup.add(marbleSplash);
 
-  // Compact espresso & pod coffee machine (`familyBathroom.drinksCabinet.coffeeMachine`)
+  // Compact Nespresso machine (`240mm` deep so plenty of front workspace on 420mm counter!)
   const coffeeGroup = new THREE.Group();
   coffeeGroup.name = 'familyBathroom.drinksCabinet.coffeeMachine';
-  coffeeGroup.userData.lodTier = 'high';
-  coffeeGroup.userData.lodMaxDistance = 12;
-  const cmX = cx - 0.16;
-  const cmY = counterY + 0.0175;
-  const cmZ = 0.70;
-
-  // Capsule drawer base under coffee machine
-  const podDrawerGeo = new THREE.BoxGeometry(0.22, 0.045, 0.30);
-  podDrawerGeo.computeBoundingSphere();
-  const podDrawer = new THREE.Mesh(podDrawerGeo, darkAnthraciteMat);
-  podDrawer.name = 'familyBathroom.drinksCabinet.coffeeMachine.podDrawer';
-  podDrawer.position.set(cmX, cmY + 0.0225, cmZ);
-  coffeeGroup.add(podDrawer);
-
-  const podDrawerHandleGeo = new THREE.BoxGeometry(0.10, 0.008, 0.014);
-  podDrawerHandleGeo.computeBoundingSphere();
-  const podDrawerHandle = new THREE.Mesh(podDrawerHandleGeo, brassMat);
-  podDrawerHandle.name = 'familyBathroom.drinksCabinet.coffeeMachine.podDrawerHandle';
-  podDrawerHandle.position.set(cmX, cmY + 0.0225, cmZ + 0.155);
-  coffeeGroup.add(podDrawerHandle);
-
-  // Main coffee machine tower & brushed chrome faceplate
-  const cmBodyGeo = new THREE.BoxGeometry(0.18, 0.25, 0.24);
-  cmBodyGeo.computeBoundingSphere();
-  const cmBody = new THREE.Mesh(cmBodyGeo, darkAnthraciteMat);
+  const cmX = cx - 0.19;
+  const cmZ = zBack + backThick + 0.16;
+  const cmBody = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.13, 0.23, 0.24)),
+    darkAnthraciteMat
+  );
   cmBody.name = 'familyBathroom.drinksCabinet.coffeeMachine.body';
-  cmBody.position.set(cmX, cmY + 0.045 + 0.125, cmZ - 0.02);
+  cmBody.position.set(cmX, counterTopY + 0.115, cmZ);
+  cmBody.castShadow = true;
   coffeeGroup.add(cmBody);
 
-  const cmFaceGeo = new THREE.BoxGeometry(0.165, 0.23, 0.018);
-  cmFaceGeo.computeBoundingSphere();
-  const cmFace = new THREE.Mesh(cmFaceGeo, brushedChromeMat);
-  cmFace.name = 'familyBathroom.drinksCabinet.coffeeMachine.faceplate';
-  cmFace.position.set(cmX, cmY + 0.045 + 0.125, cmZ + 0.105);
-  coffeeGroup.add(cmFace);
-
-  // Brew head, brass extraction lever, and drip tray with espresso cup
-  const brewHeadGeo = new THREE.CylinderGeometry(0.032, 0.028, 0.075, 16);
-  brewHeadGeo.computeBoundingSphere();
-  const brewHead = new THREE.Mesh(brewHeadGeo, brushedChromeMat);
+  const brewHead = new THREE.Mesh(
+    prepGeo(new THREE.CylinderGeometry(0.028, 0.024, 0.055, 14)),
+    brassMat
+  );
   brewHead.name = 'familyBathroom.drinksCabinet.coffeeMachine.brewHead';
-  brewHead.position.set(cmX, cmY + 0.21, cmZ + 0.135);
+  brewHead.position.set(cmX, counterTopY + 0.17, cmZ + 0.125);
   coffeeGroup.add(brewHead);
 
-  const brewLeverGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.09, 10);
-  brewLeverGeo.computeBoundingSphere();
-  const brewLever = new THREE.Mesh(brewLeverGeo, brassMat);
-  brewLever.name = 'familyBathroom.drinksCabinet.coffeeMachine.brewLever';
-  brewLever.rotation.x = Math.PI / 3;
-  brewLever.position.set(cmX, cmY + 0.26, cmZ + 0.145);
-  coffeeGroup.add(brewLever);
-
-  const dripTrayGeo = new THREE.BoxGeometry(0.15, 0.028, 0.09);
-  dripTrayGeo.computeBoundingSphere();
-  const dripTray = new THREE.Mesh(dripTrayGeo, brushedChromeMat);
+  const dripTray = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.11, 0.018, 0.075)),
+    darkAnthraciteMat
+  );
   dripTray.name = 'familyBathroom.drinksCabinet.coffeeMachine.dripTray';
-  dripTray.position.set(cmX, cmY + 0.059, cmZ + 0.135);
+  dripTray.position.set(cmX, counterTopY + 0.009, cmZ + 0.14);
   coffeeGroup.add(dripTray);
 
-  const cupOnTrayGeo = new THREE.CylinderGeometry(0.024, 0.019, 0.048, 14);
-  cupOnTrayGeo.computeBoundingSphere();
-  const cupOnTray = new THREE.Mesh(cupOnTrayGeo, ceramicWhiteMat);
-  cupOnTray.name = 'familyBathroom.drinksCabinet.coffeeMachine.espressoCup';
-  cupOnTray.position.set(cmX, cmY + 0.097, cmZ + 0.135);
-  coffeeGroup.add(cupOnTray);
-
-  // Rear water tank
-  const waterTankGeo = new THREE.BoxGeometry(0.15, 0.22, 0.07);
-  waterTankGeo.computeBoundingSphere();
-  const waterTank = new THREE.Mesh(waterTankGeo, fijiBottleMat);
-  waterTank.name = 'familyBathroom.drinksCabinet.coffeeMachine.waterTank';
-  waterTank.position.set(cmX, cmY + 0.155, cmZ - 0.165);
-  coffeeGroup.add(waterTank);
-
+  const espressoCup = new THREE.Mesh(
+    prepGeo(new THREE.CylinderGeometry(0.026, 0.02, 0.048, 14)),
+    ceramicWhiteMat
+  );
+  espressoCup.name = 'familyBathroom.drinksCabinet.coffeeMachine.espressoCup';
+  espressoCup.position.set(cmX, counterTopY + 0.042, cmZ + 0.14);
+  coffeeGroup.add(espressoCup);
   drinksGroup.add(coffeeGroup);
 
-  // Brushed brass hospitality tray with porcelain espresso cups
-  const trayX = cx + 0.17;
-  const trayZ = 0.73;
-  const trayBaseGeo = new THREE.BoxGeometry(0.30, 0.012, 0.24);
-  trayBaseGeo.computeBoundingSphere();
-  const trayBase = new THREE.Mesh(trayBaseGeo, brassMat);
-  trayBase.name = 'familyBathroom.drinksCabinet.hospitalityTray';
-  trayBase.userData.lodTier = 'high';
-  trayBase.userData.lodMaxDistance = 12;
-  trayBase.position.set(trayX, cmY + 0.006, trayZ);
-  drinksGroup.add(trayBase);
+  // Hospitality tray with 2 porcelain cups & saucers
+  const trayX = cx + 0.16;
+  const trayZ = zBack + backThick + 0.2;
+  const hospTray = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.28, 0.014, 0.2)),
+    oakCabinetMat
+  );
+  hospTray.name = 'familyBathroom.drinksCabinet.hospitalityTray';
+  hospTray.position.set(trayX, counterTopY + 0.007, trayZ);
+  drinksGroup.add(hospTray);
 
-  const traySaucerGeo = new THREE.CylinderGeometry(0.042, 0.035, 0.008, 16);
-  traySaucerGeo.computeBoundingSphere();
-  const trayCupGeo = new THREE.CylinderGeometry(0.026, 0.021, 0.052, 16);
-  trayCupGeo.computeBoundingSphere();
   for (let i = 0; i < 2; i++) {
-    const saucer = new THREE.Mesh(traySaucerGeo, ceramicWhiteMat);
+    const cxCup = trayX - 0.065 + i * 0.13;
+    const saucer = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.052, 0.04, 0.008, 16)),
+      ceramicWhiteMat
+    );
     saucer.name = `familyBathroom.drinksCabinet.hospitalityTray.saucer_${i + 1}`;
-    saucer.userData.lodTier = 'high';
-    saucer.userData.lodMaxDistance = 12;
-    saucer.position.set(trayX - 0.06 + i * 0.12, cmY + 0.016, trayZ + 0.05);
+    saucer.position.set(cxCup, counterTopY + 0.018, trayZ);
     drinksGroup.add(saucer);
 
-    const cup = new THREE.Mesh(trayCupGeo, ceramicWhiteMat);
+    const cup = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.032, 0.025, 0.054, 16)),
+      ceramicWhiteMat
+    );
     cup.name = `familyBathroom.drinksCabinet.hospitalityTray.cup_${i + 1}`;
-    cup.userData.lodTier = 'high';
-    cup.userData.lodMaxDistance = 12;
-    cup.position.set(trayX - 0.06 + i * 0.12, cmY + 0.044, trayZ + 0.05);
+    cup.position.set(cxCup, counterTopY + 0.048, trayZ);
     drinksGroup.add(cup);
   }
 
-  // Open upper oak display shelves with brass gallery rails:
-  //    - Shelf 1 (`sIdx === 0`, `Y = floorTopY + 1.44m`): Ceramic coffee cups & saucers with handles/spoons + tea selection box & heritage tea caddies
-  //    - Top Shelf (`sIdx === 1`, `Y = floorTopY + 1.74m`): Crystal water tumblers & stemmed champagne/wine glasses
-  const teaBoxWoodMat = new THREE.MeshStandardMaterial({
-    color: 0x5c3a21,
-    roughness: 0.38,
-    metalness: 0.04,
-  });
-  const teaCaddyMat = new THREE.MeshStandardMaterial({
-    color: 0x1e352f,
-    roughness: 0.3,
-    metalness: 0.25,
-  });
-  const teaSachetMats = [
-    new THREE.MeshStandardMaterial({ color: 0xb8332a, roughness: 0.45 }), // English Breakfast
-    new THREE.MeshStandardMaterial({ color: 0x2b4c7e, roughness: 0.45 }), // Earl Grey
-    new THREE.MeshStandardMaterial({ color: 0x3b7a57, roughness: 0.45 }), // Sencha Green
-    new THREE.MeshStandardMaterial({ color: 0xd9a441, roughness: 0.45 }), // Chamomile Honey
-  ];
+  // 2 warm-LED-lit oak & brass-gallery upper glassware shelves (`Z = 0.624..0.904m` = 280mm D)
+  const upperShelfD = 0.28;
+  const upperShelfMidZ = zBack + backThick + upperShelfD * 0.5;
+  for (const [sIdx, sy] of [counterTopY + 0.38, counterTopY + 0.72].entries()) {
+    const uShelf = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(cabW - 0.056, 0.022, upperShelfD)),
+      oakCabinetMat
+    );
+    uShelf.name = `familyBathroom.drinksCabinet.upperShelf_${sIdx + 1}`;
+    uShelf.position.set(cx, sy, upperShelfMidZ);
+    uShelf.castShadow = true;
+    drinksGroup.add(uShelf);
 
-  const upperShelfGeo = new THREE.BoxGeometry(cabW - 0.056, 0.024, 0.34);
-  upperShelfGeo.computeBoundingSphere();
-  const galleryRailGeo = new THREE.CylinderGeometry(0.004, 0.004, cabW - 0.08, 10);
-  galleryRailGeo.computeBoundingSphere();
-  const ledUnderGeo = new THREE.BoxGeometry(cabW - 0.12, 0.005, 0.016);
-  ledUnderGeo.computeBoundingSphere();
-
-  const saucerRimGeo = new THREE.CylinderGeometry(0.048, 0.036, 0.009, 18);
-  saucerRimGeo.computeBoundingSphere();
-  const cupBodyGeo = new THREE.CylinderGeometry(0.03, 0.023, 0.056, 18);
-  cupBodyGeo.computeBoundingSphere();
-  const cupHandleGeo = new THREE.TorusGeometry(0.014, 0.0038, 8, 16, Math.PI);
-  cupHandleGeo.computeBoundingSphere();
-  const spoonGeo = new THREE.BoxGeometry(0.056, 0.0025, 0.008);
-  spoonGeo.computeBoundingSphere();
-
-  const sachetGeo = new THREE.BoxGeometry(0.024, 0.028, 0.006);
-  sachetGeo.computeBoundingSphere();
-
-  const caddyBodyGeo = new THREE.CylinderGeometry(0.031, 0.031, 0.088, 16);
-  caddyBodyGeo.computeBoundingSphere();
-  const caddyLabelGeo = new THREE.BoxGeometry(0.036, 0.036, 0.004);
-  caddyLabelGeo.computeBoundingSphere();
-  const caddyLidGeo = new THREE.CylinderGeometry(0.032, 0.032, 0.016, 16);
-  caddyLidGeo.computeBoundingSphere();
-  const caddyFinialGeo = new THREE.CylinderGeometry(0.008, 0.01, 0.01, 12);
-  caddyFinialGeo.computeBoundingSphere();
-
-  const tumblerGeo = new THREE.CylinderGeometry(0.032, 0.027, 0.095, 14);
-  tumblerGeo.computeBoundingSphere();
-  const wineBaseGeo = new THREE.CylinderGeometry(0.028, 0.03, 0.005, 14);
-  wineBaseGeo.computeBoundingSphere();
-  const wineStemGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.085, 10);
-  wineStemGeo.computeBoundingSphere();
-  const wineBowlGeo = new THREE.CylinderGeometry(0.026, 0.014, 0.105, 14);
-  wineBowlGeo.computeBoundingSphere();
-
-  for (const [sIdx, shelfY] of [floorTopY + 1.44, floorTopY + 1.74].entries()) {
-    const upperShelf = new THREE.Mesh(upperShelfGeo, oakCountertopMat);
-    upperShelf.name = `familyBathroom.drinksCabinet.upperShelf_${sIdx + 1}`;
-    upperShelf.position.set(cx, shelfY, 0.56);
-    drinksGroup.add(upperShelf);
-
-    const galleryRail = new THREE.Mesh(galleryRailGeo, brassMat);
+    const galleryRail = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.004, 0.004, cabW - 0.064, 12)),
+      brassMat
+    );
     galleryRail.name = `familyBathroom.drinksCabinet.upperShelf_${sIdx + 1}.galleryRail`;
-    galleryRail.userData.lodTier = 'high';
-    galleryRail.userData.lodMaxDistance = 12;
-    galleryRail.rotation.z = Math.PI / 2;
-    galleryRail.position.set(cx, shelfY + 0.028, 0.71);
+    galleryRail.rotation.z = Math.PI * 0.5;
+    galleryRail.position.set(cx, sy + 0.026, zBack + backThick + upperShelfD - 0.014);
     drinksGroup.add(galleryRail);
 
-    const ledUnder = new THREE.Mesh(ledUnderGeo, warmLedMat);
+    const ledUnder = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(cabW - 0.09, 0.005, 0.012)),
+      warmLedMat
+    );
     ledUnder.name = `familyBathroom.drinksCabinet.upperShelf_${sIdx + 1}.ledStrip`;
-    ledUnder.userData.lodTier = 'high';
-    ledUnder.userData.lodMaxDistance = 12;
-    ledUnder.position.set(cx, shelfY - 0.014, 0.68);
+    ledUnder.position.set(cx, sy - 0.013, zBack + backThick + upperShelfD - 0.04);
     drinksGroup.add(ledUnder);
 
-    const shelfTopY = shelfY + 0.012;
-    if (sIdx === 0) {
-      // Shelf 1: 4 porcelain coffee cups & saucers with handles and brass teaspoons on the left
-      for (let c = 0; c < 4; c++) {
-        const col = c % 2;
-        const row = Math.floor(c / 2);
-        const cupX = cx - 0.25 + col * 0.12;
-        const cupZ = 0.62 - row * 0.11;
-        const cupSetGroup = new THREE.Group();
-        cupSetGroup.name = `familyBathroom.drinksCabinet.coffeeCup_${c + 1}`;
-        cupSetGroup.userData.lodTier = 'high';
-        cupSetGroup.userData.lodMaxDistance = 12;
-
-        const saucerRim = new THREE.Mesh(saucerRimGeo, ceramicWhiteMat);
-        saucerRim.name = `familyBathroom.drinksCabinet.coffeeCup_${c + 1}.saucer`;
-        saucerRim.position.set(cupX, shelfTopY + 0.0045, cupZ);
-        cupSetGroup.add(saucerRim);
-
-        const cupBody = new THREE.Mesh(cupBodyGeo, ceramicWhiteMat);
-        cupBody.name = `familyBathroom.drinksCabinet.coffeeCup_${c + 1}.cup`;
-        cupBody.position.set(cupX, shelfTopY + 0.036, cupZ);
-        cupSetGroup.add(cupBody);
-
-        const cupHandle = new THREE.Mesh(cupHandleGeo, ceramicWhiteMat);
-        cupHandle.name = `familyBathroom.drinksCabinet.coffeeCup_${c + 1}.handle`;
-        cupHandle.rotation.z = -Math.PI / 2;
-        cupHandle.position.set(cupX + 0.028, shelfTopY + 0.038, cupZ);
-        cupSetGroup.add(cupHandle);
-
-        const spoon = new THREE.Mesh(spoonGeo, brassMat);
-        spoon.name = `familyBathroom.drinksCabinet.coffeeCup_${c + 1}.spoon`;
-        spoon.rotation.y = 0.25;
-        spoon.position.set(cupX + 0.006, shelfTopY + 0.01, cupZ + 0.028);
-        cupSetGroup.add(spoon);
-
-        drinksGroup.add(cupSetGroup);
-      }
-
-      // Right side of Shelf 1: Compartmented Walnut & Brass Tea Selection Box + 2 Heritage Loose-Leaf Tea Caddies
-      const teaBoxGroup = new THREE.Group();
-      teaBoxGroup.name = 'familyBathroom.drinksCabinet.teaBox';
-      teaBoxGroup.userData.lodTier = 'high';
-      teaBoxGroup.userData.lodMaxDistance = 12;
-      const boxX = cx + 0.06;
-      const boxZ = 0.58;
-      const boxOuterGeo = new THREE.BoxGeometry(0.15, 0.038, 0.13);
-      boxOuterGeo.computeBoundingSphere();
-      const boxOuter = new THREE.Mesh(boxOuterGeo, teaBoxWoodMat);
-      boxOuter.name = 'familyBathroom.drinksCabinet.teaBox.case';
-      boxOuter.position.set(boxX, shelfTopY + 0.019, boxZ);
-      teaBoxGroup.add(boxOuter);
-
-      const boxBrassClaspGeo = new THREE.BoxGeometry(0.024, 0.012, 0.004);
-      boxBrassClaspGeo.computeBoundingSphere();
-      const boxBrassClasp = new THREE.Mesh(boxBrassClaspGeo, brassMat);
-      boxBrassClasp.name = 'familyBathroom.drinksCabinet.teaBox.clasp';
-      boxBrassClasp.position.set(boxX, shelfTopY + 0.026, boxZ + 0.066);
-      teaBoxGroup.add(boxBrassClasp);
-
-      for (let s = 0; s < 4; s++) {
-        const sx = boxX - 0.048 + s * 0.032;
-        for (let r = 0; r < 3; r++) {
-          const sachet = new THREE.Mesh(
-            sachetGeo,
-            teaSachetMats[s % teaSachetMats.length]
-          );
-          sachet.name = `familyBathroom.drinksCabinet.teaBox.sachet_${s * 3 + r + 1}`;
-          sachet.rotation.x = -0.22;
-          sachet.position.set(sx, shelfTopY + 0.042, boxZ - 0.032 + r * 0.032);
-          teaBoxGroup.add(sachet);
-        }
-      }
-      drinksGroup.add(teaBoxGroup);
-
-      // Two cylindrical heritage tea caddies with stepped brass lids at the right end of Shelf 1
-      for (let t = 0; t < 2; t++) {
-        const caddyX = cx + 0.21 + t * 0.075;
-        const caddyZ = 0.57 - t * 0.02;
-        const caddyGroup = new THREE.Group();
-        caddyGroup.name = `familyBathroom.drinksCabinet.teaCaddy_${t + 1}`;
-        caddyGroup.userData.lodTier = 'high';
-        caddyGroup.userData.lodMaxDistance = 12;
-
-        const caddyBody = new THREE.Mesh(caddyBodyGeo, teaCaddyMat);
-        caddyBody.name = `familyBathroom.drinksCabinet.teaCaddy_${t + 1}.body`;
-        caddyBody.position.set(caddyX, shelfTopY + 0.044, caddyZ);
-        caddyGroup.add(caddyBody);
-
-        const caddyLabel = new THREE.Mesh(caddyLabelGeo, champagneFoilMat);
-        caddyLabel.name = `familyBathroom.drinksCabinet.teaCaddy_${t + 1}.label`;
-        caddyLabel.position.set(caddyX, shelfTopY + 0.046, caddyZ + 0.03);
-        caddyGroup.add(caddyLabel);
-
-        const caddyLid = new THREE.Mesh(caddyLidGeo, brassMat);
-        caddyLid.name = `familyBathroom.drinksCabinet.teaCaddy_${t + 1}.lid`;
-        caddyLid.position.set(caddyX, shelfTopY + 0.096, caddyZ);
-        caddyGroup.add(caddyLid);
-
-        const caddyFinial = new THREE.Mesh(caddyFinialGeo, brassMat);
-        caddyFinial.name = `familyBathroom.drinksCabinet.teaCaddy_${t + 1}.finial`;
-        caddyFinial.position.set(caddyX, shelfTopY + 0.109, caddyZ);
-        caddyGroup.add(caddyFinial);
-
-        drinksGroup.add(caddyGroup);
-      }
-    } else {
-      // Top Shelf: 3 cut-crystal water tumblers on the left + 3 stemmed crystal champagne/wine glasses on the right
-      for (let g = 0; g < 3; g++) {
-        const tumblerX = cx - 0.25 + g * 0.095;
-        const tumbler = new THREE.Mesh(tumblerGeo, windowGlassMat);
-        tumbler.name = `familyBathroom.drinksCabinet.tumbler_${g + 1}`;
-        tumbler.userData.lodTier = 'high';
-        tumbler.userData.lodMaxDistance = 12;
-        tumbler.position.set(tumblerX, shelfTopY + 0.0475, 0.57);
-        drinksGroup.add(tumbler);
-      }
-      for (let g = 0; g < 3; g++) {
-        const gx = cx + 0.06 + g * 0.095;
-        const glassGroup = new THREE.Group();
-        glassGroup.name = `familyBathroom.drinksCabinet.wineGlass_${g + 1}`;
-        glassGroup.userData.lodTier = 'high';
-        glassGroup.userData.lodMaxDistance = 12;
-
-        const base = new THREE.Mesh(wineBaseGeo, windowGlassMat);
-        base.name = `familyBathroom.drinksCabinet.wineGlass_${g + 1}.base`;
-        base.position.set(gx, shelfTopY + 0.0025, 0.57);
-        glassGroup.add(base);
-
-        const stem = new THREE.Mesh(wineStemGeo, windowGlassMat);
-        stem.name = `familyBathroom.drinksCabinet.wineGlass_${g + 1}.stem`;
-        stem.position.set(gx, shelfTopY + 0.045, 0.57);
-        glassGroup.add(stem);
-
-        const bowl = new THREE.Mesh(wineBowlGeo, windowGlassMat);
-        bowl.name = `familyBathroom.drinksCabinet.wineGlass_${g + 1}.bowl`;
-        bowl.position.set(gx, shelfTopY + 0.138, 0.57);
-        glassGroup.add(bowl);
-
-        drinksGroup.add(glassGroup);
-      }
+    for (let g = 0; g < 4; g++) {
+      const gx = cx - 0.24 + g * 0.16;
+      const tumbler = new THREE.Mesh(
+        prepGeo(new THREE.CylinderGeometry(0.032, 0.028, sIdx === 0 ? 0.092 : 0.135, 14)),
+        windowGlassMat
+      );
+      tumbler.name = `familyBathroom.drinksCabinet.shelf_${sIdx + 1}.glass_${g + 1}`;
+      tumbler.position.set(gx, sy + 0.011 + (sIdx === 0 ? 0.046 : 0.0675), upperShelfMidZ + 0.02);
+      drinksGroup.add(tumbler);
     }
   }
 
@@ -784,53 +482,750 @@ export function buildFamilyBathroomDrinksCabinet(
 }
 
 /**
- * Dimensions for the full-width SE alcove vanity and full-height dark-oak shelving joinery.
- * The `84mm`-wide outer cheeks cover the full `82mm` boxed dado rail projection on both sides
- * so the East dado rail and Bulkhead dado rail terminate squarely into solid dark oak.
+ * Builds an in-frame Shaker dark-oak panel (4 surround stiles/rails + recessed center panel)
+ * on the `+X` face of a West-wall cabinet.
  */
-const SE_ALCOVE_JOINERY_SPEC = {
-  westX: -10.854,
-  eastX: -9.8,
-  width: 1.054,
-  centerX: -10.327,
-  rearZ: -0.01,
-  baseCarcassDepth: 0.485,
-  countertopDepth: 0.498,
-  carcassHeight: 0.825,
-  countertopThickness: 0.025,
-  plinthHeight: 0.082,
-  upperDepth: 0.21,
-  outerCheekWidth: 0.084,
-  innerDividerWidth: 0.024,
-  sideBayInnerWidth: 0.145,
-  mirrorSoffitY: 4.08,
-  shelfElevationsY: [3.38, 3.73, 4.08, 4.35] as const,
-} as const;
+function addEastFacingShakerFront(
+  parent: THREE.Group,
+  namePrefix: string,
+  frontFaceX: number,
+  centerY: number,
+  centerZ: number,
+  height: number,
+  widthZ: number,
+  darkOak: ReturnType<typeof getDarkOakVeneerMaterials>
+): void {
+  const frameT = 0.018;
+  const panelT = 0.01;
+  const stileW = Math.min(0.056, widthZ * 0.16);
+  const railH = Math.min(0.056, height * 0.22);
+  const innerW = Math.max(0.04, widthZ - stileW * 2);
+  const innerH = Math.max(0.04, height - railH * 2);
 
-const WEST_ROBE_HOOK_SPEC = {
-  wallX: -12.81,
-  zelligeThickness: 0.009,
-  hookY: 3.84,
-  robeLength: 0.96,
-  robeStandOffX: 0.038,
-  robeTiltRad: 0.018,
-  hooks: [
-    ['north', -1.58],
-    ['south', -1.3],
-  ] as const,
-} as const;
+  const panel = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(panelT, innerH + 0.008, innerW + 0.008)),
+    darkOak.panelField
+  );
+  panel.name = `${namePrefix}.panel`;
+  panel.position.set(frontFaceX - frameT + panelT * 0.5, centerY, centerZ);
+  panel.castShadow = true;
+  panel.receiveShadow = true;
+  parent.add(panel);
 
-const WC_AND_ACCESSORY_SPEC = {
-  wcX: -10.18,
-  wcBackZ: -2.5 + 0.068,
-  paperHolderX: -9.8 - 0.068,
-  paperHolderHeightOffset: 0.68,
-  paperHolderZ: -1.96,
-} as const;
+  for (const [tag, zOff] of [
+    ['northStile', -(widthZ * 0.5 - stileW * 0.5)],
+    ['southStile', widthZ * 0.5 - stileW * 0.5],
+  ] as const) {
+    const stile = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(frameT, height, stileW)),
+      darkOak.veneer
+    );
+    stile.name = `${namePrefix}.${tag}`;
+    stile.position.set(frontFaceX - frameT * 0.5, centerY, centerZ + zOff);
+    stile.castShadow = true;
+    stile.receiveShadow = true;
+    parent.add(stile);
+  }
+
+  for (const [tag, yOff] of [
+    ['topRail', height * 0.5 - railH * 0.5],
+    ['bottomRail', -(height * 0.5 - railH * 0.5)],
+  ] as const) {
+    const rail = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(frameT, railH, innerW)),
+      darkOak.veneer
+    );
+    rail.name = `${namePrefix}.${tag}`;
+    rail.position.set(frontFaceX - frameT * 0.5, centerY + yOff, centerZ);
+    rail.castShadow = true;
+    rail.receiveShadow = true;
+    parent.add(rail);
+  }
+}
+
+function addBrassCupPull(
+  parent: THREE.Group,
+  namePrefix: string,
+  frontFaceX: number,
+  y: number,
+  z: number,
+  brBrass: ReturnType<typeof getBathroomBrassMaterials>
+): void {
+  const backplate = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.004, 0.032, 0.096)),
+    brBrass.primary
+  );
+  backplate.name = `${namePrefix}.backplate`;
+  backplate.position.set(frontFaceX + 0.002, y, z);
+  parent.add(backplate);
+
+  const hood = new THREE.Mesh(
+    prepGeo(
+      new THREE.CylinderGeometry(0.015, 0.015, 0.078, 16, 1, false, 0, Math.PI)
+    ),
+    brBrass.primary
+  );
+  hood.name = `${namePrefix}.cupHood`;
+  hood.rotation.x = Math.PI * 0.5;
+  hood.position.set(frontFaceX + 0.004, y - 0.002, z);
+  hood.castShadow = true;
+  parent.add(hood);
+}
+
+function addBrassTurnedKnob(
+  parent: THREE.Group,
+  namePrefix: string,
+  frontFaceX: number,
+  y: number,
+  z: number,
+  brBrass: ReturnType<typeof getBathroomBrassMaterials>
+): void {
+  const rose = new THREE.Mesh(
+    prepGeo(new THREE.CylinderGeometry(0.015, 0.016, 0.004, 16)),
+    brBrass.primary
+  );
+  rose.name = `${namePrefix}.rose`;
+  rose.rotation.z = Math.PI * 0.5;
+  rose.position.set(frontFaceX + 0.002, y, z);
+  parent.add(rose);
+
+  const stem = new THREE.Mesh(
+    prepGeo(new THREE.CylinderGeometry(0.006, 0.008, 0.014, 14)),
+    brBrass.primary
+  );
+  stem.name = `${namePrefix}.stem`;
+  stem.rotation.z = Math.PI * 0.5;
+  stem.position.set(frontFaceX + 0.01, y, z);
+  parent.add(stem);
+
+  const ball = new THREE.Mesh(
+    prepGeo(new THREE.SphereGeometry(0.014, 16, 12)),
+    brBrass.primary
+  );
+  ball.name = `${namePrefix}.knob`;
+  ball.scale.set(0.76, 1, 1);
+  ball.position.set(frontFaceX + 0.022, y, z);
+  ball.castShadow = true;
+  parent.add(ball);
+}
+
+/**
+ * Builds the Option 1 West-Wall `1,600 × 550mm` "Max Counter & Drawers" Single-Basin Smoked Dark-Oak Vanity
+ * (`X = -12.81..-12.26m, Z = -0.70..+0.90m`, facing East — Fixes Issue #1):
+ * - Flush dark-oak base plinth (`0mm` skirting overlap)
+ * - Central `550mm` 2-door under-sink cupboard + two flanking `525mm` 3-drawer wash-bag banks (`6` drawers total)
+ * - `1,600 × 560 × 30mm` Honed Bianco Carrara marble countertop (`1,050mm` clear counter wings) + `75mm` splashback
+ * - Central `550 × 400mm` white vitreous-china oval undermount basin + Perrin & Rowe `3705BR` 3-hole brass mixer.
+ */
+function buildWestWallDarkOakBaseVanity(
+  floorTopY: number,
+  darkOak: ReturnType<typeof getDarkOakVeneerMaterials>,
+  brBrass: ReturnType<typeof getBathroomBrassMaterials>,
+  carraraMat: THREE.Material,
+  chinaMat: THREE.Material,
+  textiles: ReturnType<typeof getBathroomTextileMaterials>
+): {
+  readonly vanityGroup: THREE.Group;
+  readonly counterTopY: number;
+} {
+  const vanityGroup = new THREE.Group();
+  vanityGroup.name = 'familyBathroom.darkOakVanityUnit';
+
+  const {
+    wallX,
+    northZ,
+    southZ,
+    baseDepthX,
+    counterDepthX,
+    baseHeight,
+    counterThick,
+    upstandHeight,
+    plinthHeight,
+    centerSinkBayW,
+    drawerBankW,
+  } = WEST_VANITY_SPEC;
+
+  const vanityW = southZ - northZ; // 1.60m
+  const vanityCz = (northZ + southZ) * 0.5; // +0.10m
+  const baseFrontX = wallX + baseDepthX; // -12.26m
+  const baseCx = wallX + baseDepthX * 0.5;
+  const counterBotY = floorTopY + baseHeight; // 3.000m
+  const counterTopY = counterBotY + counterThick; // 3.030m
+
+  // 1. Flush dark-oak Shaker base plinth (`Y = 2.160..2.260m`, front face flush at X = -12.26m!)
+  const plinth = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(baseDepthX, plinthHeight, vanityW)),
+    darkOak.veneer
+  );
+  plinth.name = 'familyBathroom.darkOakVanityUnit.flushBasePlinth';
+  plinth.position.set(baseCx, floorTopY + plinthHeight * 0.5, vanityCz);
+  plinth.castShadow = true;
+  plinth.receiveShadow = true;
+  vanityGroup.add(plinth);
+
+  // 2. Main smoked dark-oak carcass (`Y = 2.260..3.000m`) + solid outer North & South cheeks
+  //    (receiving West & South-West boxed panelling & skirtings 0.0mm squarely!)
+  const bodyH = baseHeight - plinthHeight; // 0.74m
+  const bodyMidY = floorTopY + plinthHeight + bodyH * 0.5;
+  const carcass = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(baseDepthX - 0.018, bodyH, vanityW - 0.004)),
+    darkOak.veneer
+  );
+  carcass.name = 'familyBathroom.darkOakVanityUnit.carcass';
+  carcass.position.set(wallX + (baseDepthX - 0.018) * 0.5, bodyMidY, vanityCz);
+  carcass.castShadow = true;
+  carcass.receiveShadow = true;
+  vanityGroup.add(carcass);
+
+  const cheekT = 0.028;
+  for (const [tag, cz] of [
+    ['northOuterCheek', northZ + cheekT * 0.5],
+    ['southOuterCheek', southZ - cheekT * 0.5],
+  ] as const) {
+    const cheek = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(baseDepthX, baseHeight, cheekT)),
+      darkOak.veneer
+    );
+    cheek.name = `familyBathroom.darkOakVanityUnit.${tag}`;
+    cheek.position.set(baseCx, floorTopY + baseHeight * 0.5, cz);
+    cheek.castShadow = true;
+    cheek.receiveShadow = true;
+    vanityGroup.add(cheek);
+  }
+
+  // Face-frame outer & intermediate vertical stiles + top & bottom rails along `baseFrontX = -12.26m`
+  const frameDepthX = 0.02;
+  const frameStileW = 0.036;
+  const frameRailH = 0.036;
+  const sinkNorthDivZ = vanityCz - centerSinkBayW * 0.5; // -0.175m
+  const sinkSouthDivZ = vanityCz + centerSinkBayW * 0.5; // +0.375m
+
+  for (const [sTag, sz] of [
+    ['northFrameStile', northZ + frameStileW * 0.5],
+    ['sinkNorthDividerStile', sinkNorthDivZ],
+    ['sinkSouthDividerStile', sinkSouthDivZ],
+    ['southFrameStile', southZ - frameStileW * 0.5],
+  ] as const) {
+    const st = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(frameDepthX, bodyH, frameStileW)),
+      darkOak.veneer
+    );
+    st.name = `familyBathroom.darkOakVanityUnit.${sTag}`;
+    st.position.set(baseFrontX - frameDepthX * 0.5, bodyMidY, sz);
+    st.castShadow = true;
+    vanityGroup.add(st);
+  }
+
+  for (const [rTag, ry] of [
+    ['topFrameRail', counterBotY - frameRailH * 0.5],
+    ['bottomFrameRail', floorTopY + plinthHeight + frameRailH * 0.5],
+  ] as const) {
+    const rl = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(frameDepthX, frameRailH, vanityW)),
+      darkOak.veneer
+    );
+    rl.name = `familyBathroom.darkOakVanityUnit.${rTag}`;
+    rl.position.set(baseFrontX - frameDepthX * 0.5, ry, vanityCz);
+    rl.castShadow = true;
+    vanityGroup.add(rl);
+  }
+
+  // 3. Central 550mm 2-door under-sink cupboard (`Z = -0.175..+0.375m`)
+  const clearInnerY0 = floorTopY + plinthHeight + frameRailH;
+  const clearInnerY1 = counterBotY - frameRailH;
+  const clearInnerH = clearInnerY1 - clearInnerY0; // 0.668m
+  const sinkClearW = centerSinkBayW - frameStileW; // 0.514m
+  const singleSinkDoorW = (sinkClearW - 0.01) * 0.5;
+  const sinkDoorH = clearInnerH - 0.008;
+  const sinkDoorCy = (clearInnerY0 + clearInnerY1) * 0.5;
+
+  for (const [dIdx, zSign] of ([-1, 1] as const).entries()) {
+    const doorCz = vanityCz + zSign * (singleSinkDoorW * 0.5 + 0.0025);
+    const dPrefix = `familyBathroom.darkOakVanityUnit.sinkDoor_${dIdx + 1}`;
+    addEastFacingShakerFront(
+      vanityGroup,
+      dPrefix,
+      baseFrontX - 0.002,
+      sinkDoorCy,
+      doorCz,
+      sinkDoorH,
+      singleSinkDoorW,
+      darkOak
+    );
+    addBrassTurnedKnob(
+      vanityGroup,
+      `${dPrefix}.knob`,
+      baseFrontX - 0.002,
+      sinkDoorCy + sinkDoorH * 0.28,
+      vanityCz + zSign * 0.036,
+      brBrass
+    );
+  }
+
+  // 4. Two flanking 525mm banks of 3 deep full-extension wash-bag drawers (6 drawers total!)
+  const drawerRailH = 0.022;
+  const totalDrawerH = clearInnerH - drawerRailH * 2;
+  const topDrawerH = totalDrawerH * 0.28;
+  const midDrawerH = totalDrawerH * 0.35;
+  const botDrawerH = totalDrawerH * 0.37;
+  const drawerSpecs = [
+    ['bottomWashBagDrawer', clearInnerY0 + botDrawerH * 0.5, botDrawerH - 0.006],
+    [
+      'middleWashBagDrawer',
+      clearInnerY0 + botDrawerH + drawerRailH + midDrawerH * 0.5,
+      midDrawerH - 0.006,
+    ],
+    ['topVanityDrawer', clearInnerY1 - topDrawerH * 0.5, topDrawerH - 0.006],
+  ] as const;
+
+  for (const [bankTag, bankZ0, bankZ1] of [
+    ['northBank', northZ + frameStileW, sinkNorthDivZ - frameStileW * 0.5],
+    ['southBank', sinkSouthDivZ + frameStileW * 0.5, southZ - frameStileW],
+  ] as const) {
+    const bankCz = (bankZ0 + bankZ1) * 0.5;
+    const bankClearW = bankZ1 - bankZ0;
+
+    for (const [rIdx, divY] of [
+      clearInnerY0 + botDrawerH + drawerRailH * 0.5,
+      clearInnerY0 + botDrawerH + drawerRailH + midDrawerH + drawerRailH * 0.5,
+    ].entries()) {
+      const divRail = new THREE.Mesh(
+        prepGeo(new THREE.BoxGeometry(frameDepthX, drawerRailH, bankClearW)),
+        darkOak.veneer
+      );
+      divRail.name = `familyBathroom.darkOakVanityUnit.${bankTag}.dividerRail_${rIdx + 1}`;
+      divRail.position.set(baseFrontX - frameDepthX * 0.5, divY, bankCz);
+      vanityGroup.add(divRail);
+    }
+
+    for (const [drTag, drCy, drH] of drawerSpecs) {
+      const drPrefix = `familyBathroom.darkOakVanityUnit.${bankTag}.${drTag}`;
+      addEastFacingShakerFront(
+        vanityGroup,
+        drPrefix,
+        baseFrontX - 0.002,
+        drCy,
+        bankCz,
+        drH,
+        bankClearW - 0.006,
+        darkOak
+      );
+      addBrassCupPull(
+        vanityGroup,
+        `${drPrefix}.cupPull`,
+        baseFrontX - 0.002,
+        drCy + 0.006,
+        bankCz,
+        brBrass
+      );
+    }
+  }
+
+  // 5. Honed Bianco Carrara Marble Countertop (`1,600 × 560 × 30mm`) with oval basin cutout + 75mm upstands
+  //    In Shape coordinates (x, y) before rotateX(-PI/2): local x = world X, local y = -world Z!
+  const basinWAlongZ = 0.52;
+  const basinDAlongX = 0.37;
+  const basinCenterX = wallX + 0.3; // -12.51m (26cm from front lip, leaving 21cm rear tap deck)
+  const basinCenterZ = vanityCz; // +0.10m
+
+  const slabShape = new THREE.Shape();
+  slabShape.moveTo(wallX, -southZ);
+  slabShape.lineTo(wallX + counterDepthX, -southZ);
+  slabShape.lineTo(wallX + counterDepthX, -northZ);
+  slabShape.lineTo(wallX, -northZ);
+  slabShape.closePath();
+
+  const basinHole = new THREE.Path();
+  basinHole.absellipse(
+    basinCenterX,
+    -basinCenterZ,
+    basinDAlongX * 0.5,
+    basinWAlongZ * 0.5,
+    0,
+    Math.PI * 2,
+    false,
+    0
+  );
+  slabShape.holes.push(basinHole);
+
+  const slabGeo = prepGeo(
+    new THREE.ExtrudeGeometry(slabShape, {
+      depth: counterThick,
+      bevelEnabled: true,
+      bevelThickness: 0.003,
+      bevelSize: 0.002,
+      bevelSegments: 2,
+      curveSegments: 32,
+    })
+  );
+  slabGeo.rotateX(-Math.PI * 0.5);
+  const marbleSlab = new THREE.Mesh(slabGeo, carraraMat);
+  marbleSlab.name = 'familyBathroom.darkOakVanityUnit.carraraCountertop';
+  marbleSlab.position.set(0, counterBotY, 0);
+  marbleSlab.castShadow = true;
+  marbleSlab.receiveShadow = true;
+  vanityGroup.add(marbleSlab);
+
+  // Rear & South 75mm Carrara splashbacks (`Y = 3.030..3.105m`)
+  const rearUpstand = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.02, upstandHeight, vanityW)),
+    carraraMat
+  );
+  rearUpstand.name = 'familyBathroom.darkOakVanityUnit.carraraRearUpstand';
+  rearUpstand.position.set(wallX + 0.01, counterTopY + upstandHeight * 0.5, vanityCz);
+  rearUpstand.castShadow = true;
+  vanityGroup.add(rearUpstand);
+
+  const southUpstand = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(counterDepthX - 0.02, upstandHeight, 0.02)),
+    carraraMat
+  );
+  southUpstand.name = 'familyBathroom.darkOakVanityUnit.carraraSouthUpstand';
+  southUpstand.position.set(
+    wallX + 0.02 + (counterDepthX - 0.02) * 0.5,
+    counterTopY + upstandHeight * 0.5,
+    southZ - 0.01
+  );
+  southUpstand.castShadow = true;
+  vanityGroup.add(southUpstand);
+
+  // 6. Central 550 × 400mm glazed white vitreous-china oval undermount basin + P&R 3705BR 3-hole brass mixer
+  const bowlDepth = 0.175;
+  const bowlOuter = new THREE.Mesh(
+    prepGeo(
+      new THREE.CylinderGeometry(
+        basinDAlongX * 0.52,
+        basinDAlongX * 0.36,
+        bowlDepth,
+        32,
+        1,
+        true
+      )
+    ),
+    chinaMat
+  );
+  bowlOuter.scale.set(1, 1, basinWAlongZ / basinDAlongX);
+  bowlOuter.name = 'familyBathroom.darkOakVanityUnit.undermountBasin.walls';
+  bowlOuter.position.set(basinCenterX, counterBotY - bowlDepth * 0.5 + 0.004, basinCenterZ);
+  vanityGroup.add(bowlOuter);
+
+  const bowlFloor = new THREE.Mesh(
+    prepGeo(new THREE.CylinderGeometry(basinDAlongX * 0.37, basinDAlongX * 0.35, 0.016, 32)),
+    chinaMat
+  );
+  bowlFloor.scale.set(1, 1, basinWAlongZ / basinDAlongX);
+  bowlFloor.name = 'familyBathroom.darkOakVanityUnit.undermountBasin.floor';
+  bowlFloor.position.set(basinCenterX, counterBotY - bowlDepth + 0.008, basinCenterZ);
+  bowlFloor.receiveShadow = true;
+  vanityGroup.add(bowlFloor);
+
+  const basinWaste = new THREE.Mesh(
+    prepGeo(new THREE.CylinderGeometry(0.032, 0.03, 0.006, 20)),
+    brBrass.primary
+  );
+  basinWaste.name = 'familyBathroom.darkOakVanityUnit.undermountBasin.brassWaste';
+  basinWaste.position.set(basinCenterX, counterBotY - bowlDepth + 0.018, basinCenterZ);
+  vanityGroup.add(basinWaste);
+
+  const basinMixer = buildArmstrongDeck3HoleBasinMixer({
+    namePrefix: 'familyBathroom.darkOakVanityUnit.basinMixer3705BR',
+    finish: 'BR',
+    style: 'traditional',
+    valveSpreadM: 0.2,
+  });
+  basinMixer.position.set(wallX + 0.095, counterTopY, basinCenterZ);
+  basinMixer.rotation.y = wallFacingToRotY('east');
+  vanityGroup.add(basinMixer);
+
+  // Subtle styling on the generous 525mm North/South marble counter wings (`drawerBankW = 0.525m` each)
+  const northWingCz = northZ + drawerBankW * 0.5;
+  const southWingCz = southZ - drawerBankW * 0.5;
+  const soapDispenser = new THREE.Mesh(
+    prepGeo(new THREE.CylinderGeometry(0.034, 0.038, 0.13, 18)),
+    chinaMat
+  );
+  soapDispenser.name = 'familyBathroom.darkOakVanityUnit.countertopSoapDispenser';
+  soapDispenser.position.set(wallX + 0.19, counterTopY + 0.065, northWingCz + 0.08);
+  soapDispenser.castShadow = true;
+  vanityGroup.add(soapDispenser);
+
+  const soapPump = new THREE.Mesh(
+    prepGeo(new THREE.CylinderGeometry(0.01, 0.012, 0.032, 14)),
+    brBrass.primary
+  );
+  soapPump.name = 'familyBathroom.darkOakVanityUnit.countertopSoapDispenser.pump';
+  soapPump.position.set(wallX + 0.19, counterTopY + 0.146, northWingCz + 0.08);
+  vanityGroup.add(soapPump);
+
+  const handTowel = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.22, 0.028, 0.15)),
+    textiles.ivoryWaffleRobe
+  );
+  handTowel.name = 'familyBathroom.darkOakVanityUnit.foldedHandTowel';
+  handTowel.position.set(wallX + 0.28, counterTopY + 0.014, southWingCz - 0.04);
+  handTowel.castShadow = true;
+  vanityGroup.add(handTowel);
+
+  return { vanityGroup, counterTopY };
+}
+
+/**
+ * Builds the Option 1 Countertop-to-Ceiling Smoked Dark-Oak Upper Apothecary Joinery (`Y = 3.030..4.650m`):
+ * - Two `400mm W × 300mm D` closed panelled dark-oak apothecary cupboards (`North Z = -0.70..-0.30m`
+ *   and `South Z = +0.50..+0.90m`) with Polished Brass (`BR`) knobs
+ * - Central `800mm`-wide (`Z = -0.30..+0.50m`) bevelled silver mirror with Unlacquered Brass bead,
+ *   warm `2700K` LED soffit wash, and twin warm IP44 Polished Brass & opal-glass sconces!
+ */
+function buildWestWallUpperApothecaryJoinery(
+  counterTopY: number,
+  collarCeilingY: number,
+  darkOak: ReturnType<typeof getDarkOakVeneerMaterials>,
+  brBrass: ReturnType<typeof getBathroomBrassMaterials>
+): THREE.Group {
+  const upperJoinery = new THREE.Group();
+  upperJoinery.name = 'familyBathroom.vanityFullHeightJoinery';
+
+  const { wallX, northZ, southZ, upstandHeight, upperDepthX, upperCupboardW } = WEST_VANITY_SPEC;
+  const joineryW = southZ - northZ; // 1.60m
+  const joineryCz = (northZ + southZ) * 0.5; // +0.10m
+  const upperFrontX = wallX + upperDepthX; // -12.51m
+  const upperCx = wallX + upperDepthX * 0.5;
+  const corniceTotalH = 0.072;
+  const bodyTopY = collarCeilingY - corniceTotalH; // 4.578m
+  const bodyH = bodyTopY - counterTopY;
+  const bodyMidY = counterTopY + bodyH * 0.5;
+
+  // 1. Two 400mm W × 300mm D closed panelled dark-oak apothecary cupboards (North & South)
+  for (const [sideTag, z0, z1, knobTowardMirrorSign] of [
+    ['northCupboard', northZ, northZ + upperCupboardW, 1],
+    ['southCupboard', southZ - upperCupboardW, southZ, -1],
+  ] as const) {
+    const cupW = z1 - z0; // 0.40m
+    const cupCz = (z0 + z1) * 0.5;
+
+    const cupCarcass = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(upperDepthX - 0.018, bodyH, cupW)),
+      darkOak.veneer
+    );
+    cupCarcass.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}.carcass`;
+    cupCarcass.position.set(wallX + (upperDepthX - 0.018) * 0.5, bodyMidY, cupCz);
+    cupCarcass.castShadow = true;
+    cupCarcass.receiveShadow = true;
+    upperJoinery.add(cupCarcass);
+
+    // Solid outer cheek (at Z = -0.70m and Z = +0.90m) so West & South-West dado rails butt 0.0mm flush!
+    const outerCheekZ = sideTag === 'northCupboard' ? z0 + 0.014 : z1 - 0.014;
+    const outerCheek = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(upperDepthX, bodyH + corniceTotalH, 0.028)),
+      darkOak.veneer
+    );
+    outerCheek.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}.outerCheek`;
+    outerCheek.position.set(upperCx, counterTopY + (bodyH + corniceTotalH) * 0.5, outerCheekZ);
+    outerCheek.castShadow = true;
+    outerCheek.receiveShadow = true;
+    upperJoinery.add(outerCheek);
+
+    // Inner pilaster stile facing the 800mm central mirror bay
+    const innerCheekZ = sideTag === 'northCupboard' ? z1 - 0.014 : z0 + 0.014;
+    const innerCheek = new THREE.Mesh(
+      prepGeo(new THREE.BoxGeometry(upperDepthX, bodyH, 0.028)),
+      darkOak.veneer
+    );
+    innerCheek.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}.innerCheek`;
+    innerCheek.position.set(upperCx, bodyMidY, innerCheekZ);
+    innerCheek.castShadow = true;
+    upperJoinery.add(innerCheek);
+
+    // Closed panelled dark-oak Shaker cupboard door (`H = bodyH - 0.048m`) with Polished Brass knob
+    const doorBotY = counterTopY + 0.024;
+    const doorTopY = bodyTopY - 0.024;
+    const doorH = doorTopY - doorBotY;
+    const doorCy = (doorBotY + doorTopY) * 0.5;
+    const doorW = cupW - 0.056;
+    const doorPrefix = `familyBathroom.vanityFullHeightJoinery.${sideTag}.panelledDoor`;
+    addEastFacingShakerFront(
+      upperJoinery,
+      doorPrefix,
+      upperFrontX - 0.002,
+      doorCy,
+      cupCz,
+      doorH,
+      doorW,
+      darkOak
+    );
+    addBrassTurnedKnob(
+      upperJoinery,
+      `${doorPrefix}.knob`,
+      upperFrontX - 0.002,
+      counterTopY + 0.34,
+      cupCz + knobTowardMirrorSign * (doorW * 0.5 - 0.036),
+      brBrass
+    );
+  }
+
+  // 2. Central 800mm Bevelled Mirror Bay (`Z = -0.30..+0.50m`) + dark-oak soffit canopy + warm IP44 brass sconces
+  const mirrorNorthZ = northZ + upperCupboardW; // -0.30m
+  const mirrorSouthZ = southZ - upperCupboardW; // +0.50m
+  const mirrorBayW = mirrorSouthZ - mirrorNorthZ; // 0.80m
+  const mirrorBayCz = (mirrorNorthZ + mirrorSouthZ) * 0.5; // +0.10m
+
+  const mirrorBackPanel = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.022, bodyH - upstandHeight, mirrorBayW)),
+    darkOak.veneer
+  );
+  mirrorBackPanel.name = 'familyBathroom.vanityFullHeightJoinery.mirrorBackPanel';
+  mirrorBackPanel.position.set(
+    wallX + 0.011,
+    counterTopY + upstandHeight + (bodyH - upstandHeight) * 0.5,
+    mirrorBayCz
+  );
+  upperJoinery.add(mirrorBackPanel);
+
+  // Overhead canopy soffit bridging the two 300mm cupboards above the mirror (`Y = 4.42..4.578m`)
+  const soffitBotY = bodyTopY - 0.14;
+  const soffitBox = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(upperDepthX, bodyTopY - soffitBotY, mirrorBayW)),
+    darkOak.veneer
+  );
+  soffitBox.name = 'familyBathroom.vanityFullHeightJoinery.mirrorCanopySoffit';
+  soffitBox.position.set(upperCx, (soffitBotY + bodyTopY) * 0.5, mirrorBayCz);
+  soffitBox.castShadow = true;
+  upperJoinery.add(soffitBox);
+
+  // Brass-beaded bevelled silver mirror (`620mm W × 1,160mm H`, centered between twin IP44 brass sconces!)
+  const mirrorW = 0.6;
+  const mirrorBotY = counterTopY + upstandHeight + 0.055; // 3.160m
+  const mirrorTopY = soffitBotY - 0.055; // 4.368m
+  const mirrorH = mirrorTopY - mirrorBotY;
+  const mirrorCy = (mirrorBotY + mirrorTopY) * 0.5;
+  const mirrorX = wallX + 0.032;
+
+  const brassFrame = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.012, mirrorH + 0.02, mirrorW + 0.02)),
+    brBrass.primary
+  );
+  brassFrame.name = 'familyBathroom.vanityFullHeightJoinery.mirrorBrassBeadFrame';
+  brassFrame.position.set(mirrorX, mirrorCy, mirrorBayCz);
+  upperJoinery.add(brassFrame);
+
+  const silverMirrorMat = new THREE.MeshPhysicalMaterial({
+    name: 'familyBathroom.bevelledMirrorSilver',
+    color: 0xf4f6f8,
+    metalness: 0.96,
+    roughness: 0.04,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.03,
+  });
+  const mirrorGlass = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.008, mirrorH, mirrorW)),
+    silverMirrorMat
+  );
+  mirrorGlass.name = 'familyBathroom.vanityFullHeightJoinery.bevelledMirror';
+  mirrorGlass.position.set(mirrorX + 0.004, mirrorCy, mirrorBayCz);
+  upperJoinery.add(mirrorGlass);
+
+  // Concealed warm 2700K LED soffit downlight strip over the mirror
+  const warmGlowMat = new THREE.MeshStandardMaterial({
+    color: 0xffebd0,
+    emissive: new THREE.Color(0xffc978),
+    emissiveIntensity: 1.8,
+    roughness: 0.2,
+  });
+  const soffitLed = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(0.016, 0.005, mirrorBayW - 0.08)),
+    warmGlowMat
+  );
+  soffitLed.name = 'familyBathroom.vanityFullHeightJoinery.mirrorSoffitLight';
+  soffitLed.position.set(wallX + upperDepthX * 0.62, soffitBotY - 0.002, mirrorBayCz);
+  upperJoinery.add(soffitLed);
+
+  // Twin warm IP44 Polished Brass & frosted opal-glass wall sconces mounted on the mirror bay side stiles!
+  const opalShadeMat = new THREE.MeshStandardMaterial({
+    color: 0xfff5e4,
+    emissive: new THREE.Color(0xffcf87),
+    emissiveIntensity: 1.35,
+    roughness: 0.32,
+    metalness: 0.0,
+  });
+  for (const [scTag, scZ] of [
+    ['northSconce', mirrorNorthZ + 0.052],
+    ['southSconce', mirrorSouthZ - 0.052],
+  ] as const) {
+    const sconceY = 3.82;
+    const sconceGroup = new THREE.Group();
+    sconceGroup.name = `familyBathroom.vanityFullHeightJoinery.${scTag}`;
+    sconceGroup.position.set(wallX + 0.022, sconceY, scZ);
+
+    const wallRose = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.032, 0.034, 0.012, 20)),
+      brBrass.primary
+    );
+    wallRose.name = `familyBathroom.vanityFullHeightJoinery.${scTag}.rose`;
+    wallRose.rotation.z = Math.PI * 0.5;
+    wallRose.position.set(0.006, 0, 0);
+    sconceGroup.add(wallRose);
+
+    const arm = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.007, 0.007, 0.075, 14)),
+      brBrass.primary
+    );
+    arm.name = `familyBathroom.vanityFullHeightJoinery.${scTag}.arm`;
+    arm.rotation.z = Math.PI * 0.5;
+    arm.position.set(0.044, 0, 0);
+    sconceGroup.add(arm);
+
+    const holderCup = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.022, 0.014, 0.024, 18)),
+      brBrass.primary
+    );
+    holderCup.name = `familyBathroom.vanityFullHeightJoinery.${scTag}.gallery`;
+    holderCup.position.set(0.08, 0.006, 0);
+    sconceGroup.add(holderCup);
+
+    const opalShade = new THREE.Mesh(
+      prepGeo(new THREE.CylinderGeometry(0.026, 0.036, 0.145, 20)),
+      opalShadeMat
+    );
+    opalShade.name = `familyBathroom.vanityFullHeightJoinery.${scTag}.opalShade`;
+    opalShade.position.set(0.08, 0.088, 0);
+    sconceGroup.add(opalShade);
+
+    upperJoinery.add(sconceGroup);
+  }
+
+  // 3. Full-width stepped dark-oak frieze & moulded crown cornice (`Y = 4.578..4.650m`)
+  const corniceFrieze = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(upperDepthX + 0.014, 0.048, joineryW)),
+    darkOak.veneer
+  );
+  corniceFrieze.name = 'familyBathroom.vanityFullHeightJoinery.crownFrieze';
+  corniceFrieze.position.set(
+    wallX + (upperDepthX + 0.014) * 0.5,
+    collarCeilingY - 0.048,
+    joineryCz
+  );
+  corniceFrieze.castShadow = true;
+  upperJoinery.add(corniceFrieze);
+
+  const corniceCrown = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(upperDepthX + 0.032, 0.024, joineryW + 0.016)),
+    darkOak.veneer
+  );
+  corniceCrown.name = 'familyBathroom.vanityFullHeightJoinery.crownCornice';
+  corniceCrown.position.set(
+    wallX + (upperDepthX + 0.032) * 0.5,
+    collarCeilingY - 0.012,
+    joineryCz
+  );
+  corniceCrown.castShadow = true;
+  upperJoinery.add(corniceCrown);
+
+  return upperJoinery;
+}
 
 /**
  * Sculpted soft-draped honeycomb waffle-linen bathrobe hanging naturally from a brass robe hook.
- * Origin `(0, 0, 0)` sits behind the hook prong (`y = 0` at hook height), projecting `+X` into the room.
+ * Local `+X` points outward from the wall hook; rotate `Y = Math.PI` when mounted on a West-facing wall.
  */
 function buildHangingWaffleBathrobe(
   namePrefix: string,
@@ -847,7 +1242,7 @@ function buildHangingWaffleBathrobe(
   loop.position.set(-0.016, 0.006, 0);
   group.add(loop);
 
-  const robeLen = WEST_ROBE_HOOK_SPEC.robeLength;
+  const robeLen = WC_AND_ACCESSORY_SPEC.robeLength;
   const foldOffsets: readonly [string, number, number, number, number][] = [
     ['centerFold', 0.048, 0, 0.034, 0.048],
     ['northInnerFold', 0.044, -0.042, 0.028, 0.041],
@@ -931,635 +1326,11 @@ function buildHangingWaffleBathrobe(
   return group;
 }
 
-function buildDarkOakBaseVanity(
-  floorTopY: number,
-  darkOak: ReturnType<typeof getDarkOakVeneerMaterials>,
-  brBrass: ReturnType<typeof getBathroomBrassMaterials>,
-  carraraMat: THREE.Material,
-  chinaMat: THREE.Material
-): { vanityGroup: THREE.Group; counterTopY: number; upstandHeight: number } {
-  const vanityGroup = new THREE.Group();
-  vanityGroup.name = 'familyBathroom.darkOakVanityUnit';
-  vanityGroup.userData.tradeCategory = 'sanitary';
-
-  const {
-    centerX: alcoveCx,
-    rearZ: alcoveRearZ,
-    width: cabW,
-    baseCarcassDepth: cabD,
-    countertopDepth: topD,
-    carcassHeight: cabH,
-    countertopThickness: topSlabH,
-    plinthHeight: plinthH,
-  } = SE_ALCOVE_JOINERY_SPEC;
-
-  const counterTopY = floorTopY + cabH + topSlabH;
-  const cabCenterZ = alcoveRearZ - cabD * 0.5;
-  const cabFrontZ = alcoveRearZ - cabD;
-
-  // Molded bracket base plinth with recessed center kick and finished West return foot
-  const plinthFootW = 0.148;
-  const frontFootGeo = prepGeo(new THREE.BoxGeometry(plinthFootW, plinthH, 0.042));
-  for (const [fName, fx] of [
-    ['westBracketFoot', alcoveCx - cabW * 0.5 + plinthFootW * 0.5],
-    ['eastBracketFoot', alcoveCx + cabW * 0.5 - plinthFootW * 0.5],
-  ] as const) {
-    const foot = new THREE.Mesh(frontFootGeo, darkOak.veneer);
-    foot.name = `familyBathroom.darkOakVanityUnit.${fName}`;
-    foot.position.set(fx, floorTopY + plinthH * 0.5, cabFrontZ + 0.012);
-    foot.castShadow = true;
-    foot.receiveShadow = true;
-    vanityGroup.add(foot);
-  }
-
-  const westSideFoot = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(0.036, plinthH, cabD - 0.012)),
-    darkOak.veneer
-  );
-  westSideFoot.name = 'familyBathroom.darkOakVanityUnit.westSidePlinth';
-  westSideFoot.position.set(alcoveCx - cabW * 0.5 + 0.018, floorTopY + plinthH * 0.5, cabCenterZ + 0.004);
-  westSideFoot.castShadow = true;
-  vanityGroup.add(westSideFoot);
-
-  const plinthBridge = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(cabW - plinthFootW * 1.6, 0.034, 0.038)),
-    darkOak.veneer
-  );
-  plinthBridge.name = 'familyBathroom.darkOakVanityUnit.plinthValance';
-  plinthBridge.position.set(alcoveCx, floorTopY + plinthH - 0.017, cabFrontZ + 0.014);
-  vanityGroup.add(plinthBridge);
-
-  const plinthRecess = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(cabW - 0.02, plinthH, cabD - 0.036)),
-    darkOak.shadowReveal
-  );
-  plinthRecess.name = 'familyBathroom.darkOakVanityUnit.plinthCore';
-  plinthRecess.position.set(alcoveCx, floorTopY + plinthH * 0.5, cabCenterZ + 0.016);
-  vanityGroup.add(plinthRecess);
-
-  const baseMolding = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(cabW + 0.008, 0.018, cabD + 0.008)),
-    darkOak.veneer
-  );
-  baseMolding.name = 'familyBathroom.darkOakVanityUnit.baseOgeeMolding';
-  baseMolding.position.set(alcoveCx - 0.002, floorTopY + plinthH + 0.009, cabCenterZ - 0.002);
-  baseMolding.castShadow = true;
-  vanityGroup.add(baseMolding);
-
-  const bodyBotY = floorTopY + plinthH + 0.016;
-  const bodyH = cabH - plinthH - 0.016;
-  const gableT = 0.024;
-  const gableGeo = prepGeo(new THREE.BoxGeometry(gableT, bodyH, cabD - 0.006));
-  for (const [gName, gx] of [
-    ['westGable', alcoveCx - cabW * 0.5 + gableT * 0.5],
-    ['eastGable', alcoveCx + cabW * 0.5 - gableT * 0.5],
-  ] as const) {
-    const gable = new THREE.Mesh(gableGeo, darkOak.veneer);
-    gable.name = `familyBathroom.darkOakVanityUnit.${gName}`;
-    gable.position.set(gx, bodyBotY + bodyH * 0.5, cabCenterZ + 0.003);
-    gable.castShadow = true;
-    gable.receiveShadow = true;
-    vanityGroup.add(gable);
-  }
-
-  const westEndField = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(0.006, bodyH - 0.11, cabD - 0.12)),
-    darkOak.panelField
-  );
-  westEndField.name = 'familyBathroom.darkOakVanityUnit.westEndFieldPanel';
-  westEndField.position.set(alcoveCx - cabW * 0.5 - 0.002, bodyBotY + bodyH * 0.5, cabCenterZ + 0.006);
-  vanityGroup.add(westEndField);
-
-  const carcassBack = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(cabW - gableT * 2, bodyH, 0.018)),
-    darkOak.veneer
-  );
-  carcassBack.name = 'familyBathroom.darkOakVanityUnit.carcassBack';
-  carcassBack.position.set(alcoveCx, bodyBotY + bodyH * 0.5, alcoveRearZ - 0.009);
-  vanityGroup.add(carcassBack);
-
-  const carcassFloor = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(cabW - gableT * 2, 0.022, cabD - 0.032)),
-    darkOak.veneer
-  );
-  carcassFloor.name = 'familyBathroom.darkOakVanityUnit.carcassFloor';
-  carcassFloor.position.set(alcoveCx, bodyBotY + 0.011, cabCenterZ + 0.006);
-  vanityGroup.add(carcassFloor);
-
-  // Outer stiles match the 84mm upper joinery cheeks so vertical sightlines align floor-to-ceiling
-  const stileW = SE_ALCOVE_JOINERY_SPEC.outerCheekWidth;
-  const frontFaceZ = cabFrontZ + 0.008;
-  const outerStileGeo = prepGeo(new THREE.BoxGeometry(stileW, bodyH, 0.018));
-  for (const [stName, sx] of [
-    ['westStile', alcoveCx - cabW * 0.5 + stileW * 0.5],
-    ['eastStile', alcoveCx + cabW * 0.5 - stileW * 0.5],
-  ] as const) {
-    const st = new THREE.Mesh(outerStileGeo, darkOak.veneer);
-    st.name = `familyBathroom.darkOakVanityUnit.${stName}`;
-    st.position.set(sx, bodyBotY + bodyH * 0.5, frontFaceZ);
-    st.castShadow = true;
-    vanityGroup.add(st);
-  }
-
-  const innerSpanW = cabW - stileW * 2;
-  const railH = 0.044;
-  const topRailY = floorTopY + cabH - railH * 0.5;
-  const drawerOpeningH = 0.148;
-  const midRailY = floorTopY + cabH - railH - drawerOpeningH - railH * 0.5;
-  const botRailY = bodyBotY + railH * 0.5;
-
-  const horizRailGeo = prepGeo(new THREE.BoxGeometry(innerSpanW, railH, 0.018));
-  for (const [rName, ry] of [
-    ['topRail', topRailY],
-    ['midRail', midRailY],
-    ['bottomRail', botRailY],
-  ] as const) {
-    const rail = new THREE.Mesh(horizRailGeo, darkOak.veneer);
-    rail.name = `familyBathroom.darkOakVanityUnit.${rName}`;
-    rail.position.set(alcoveCx, ry, frontFaceZ);
-    rail.castShadow = true;
-    vanityGroup.add(rail);
-  }
-
-  const shadowBack = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(innerSpanW, bodyH - railH * 2, 0.008)),
-    darkOak.shadowReveal
-  );
-  shadowBack.name = 'familyBathroom.darkOakVanityUnit.inFrameShadowReveal';
-  shadowBack.position.set(alcoveCx, bodyBotY + bodyH * 0.5, frontFaceZ + 0.005);
-  vanityGroup.add(shadowBack);
-
-  const drawerY = floorTopY + cabH - railH - drawerOpeningH * 0.5;
-  const drawerBorder = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(innerSpanW - 0.008, drawerOpeningH - 0.006, 0.014)),
-    darkOak.veneer
-  );
-  drawerBorder.name = 'familyBathroom.darkOakVanityUnit.topDrawerFascia';
-  drawerBorder.position.set(alcoveCx, drawerY, frontFaceZ - 0.002);
-  drawerBorder.castShadow = true;
-  vanityGroup.add(drawerBorder);
-
-  const drawerField = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(innerSpanW - 0.078, drawerOpeningH - 0.062, 0.008)),
-    darkOak.panelField
-  );
-  drawerField.name = 'familyBathroom.darkOakVanityUnit.topDrawerPanel';
-  drawerField.position.set(alcoveCx, drawerY, frontFaceZ - 0.007);
-  vanityGroup.add(drawerField);
-
-  const doorTopEdge = midRailY - railH * 0.5 - 0.004;
-  const doorBotEdge = botRailY + railH * 0.5 + 0.004;
-  const doorH = doorTopEdge - doorBotEdge;
-  const doorCenterY = (doorTopEdge + doorBotEdge) * 0.5;
-  const singleDoorW = (innerSpanW - 0.012) * 0.5;
-  const doorStileW = 0.054;
-
-  const knobRoseGeo = prepGeo(new THREE.CylinderGeometry(0.011, 0.013, 0.006, 16));
-  const knobStemGeo = prepGeo(new THREE.CylinderGeometry(0.005, 0.006, 0.014, 14));
-  const knobBallGeo = prepGeo(new THREE.SphereGeometry(0.0135, 16, 12));
-
-  const addBrassCabinetKnob = (kName: string, kx: number, ky: number): void => {
-    const rose = new THREE.Mesh(knobRoseGeo, brBrass.primary);
-    rose.name = `${kName}.rose`;
-    rose.userData.lodTier = 'high';
-    rose.userData.lodMaxDistance = 12;
-    rose.rotation.x = Math.PI * 0.5;
-    rose.position.set(kx, ky, frontFaceZ - 0.011);
-    vanityGroup.add(rose);
-
-    const stem = new THREE.Mesh(knobStemGeo, brBrass.primary);
-    stem.name = `${kName}.stem`;
-    stem.userData.lodTier = 'high';
-    stem.userData.lodMaxDistance = 12;
-    stem.rotation.x = Math.PI * 0.5;
-    stem.position.set(kx, ky, frontFaceZ - 0.019);
-    vanityGroup.add(stem);
-
-    const ball = new THREE.Mesh(knobBallGeo, brBrass.primary);
-    ball.name = `${kName}.knob`;
-    ball.userData.lodTier = 'high';
-    ball.userData.lodMaxDistance = 12;
-    ball.scale.set(1, 1, 0.78);
-    ball.position.set(kx, ky, frontFaceZ - 0.029);
-    vanityGroup.add(ball);
-  };
-
-  addBrassCabinetKnob('familyBathroom.darkOakVanityUnit.drawerKnob', alcoveCx, drawerY);
-
-  for (const [dName, sideSign] of [
-    ['westDoor', -1],
-    ['eastDoor', 1],
-  ] as const) {
-    const dx = alcoveCx + sideSign * (singleDoorW * 0.5 + 0.002);
-    const dStileGeo = prepGeo(new THREE.BoxGeometry(doorStileW, doorH, 0.015));
-    for (const [sSub, sxOff] of [
-      ['leftStile', -singleDoorW * 0.5 + doorStileW * 0.5],
-      ['rightStile', singleDoorW * 0.5 - doorStileW * 0.5],
-    ] as const) {
-      const ds = new THREE.Mesh(dStileGeo, darkOak.veneer);
-      ds.name = `familyBathroom.darkOakVanityUnit.${dName}.${sSub}`;
-      ds.position.set(dx + sxOff, doorCenterY, frontFaceZ - 0.002);
-      ds.castShadow = true;
-      vanityGroup.add(ds);
-    }
-
-    const dRailGeo = prepGeo(
-      new THREE.BoxGeometry(singleDoorW - doorStileW * 2, doorStileW, 0.015)
-    );
-    for (const [rSub, syOff] of [
-      ['topRail', doorH * 0.5 - doorStileW * 0.5],
-      ['bottomRail', -doorH * 0.5 + doorStileW * 0.5],
-    ] as const) {
-      const dr = new THREE.Mesh(dRailGeo, darkOak.veneer);
-      dr.name = `familyBathroom.darkOakVanityUnit.${dName}.${rSub}`;
-      dr.position.set(dx, doorCenterY + syOff, frontFaceZ - 0.002);
-      dr.castShadow = true;
-      vanityGroup.add(dr);
-    }
-
-    const dPanel = new THREE.Mesh(
-      prepGeo(
-        new THREE.BoxGeometry(
-          singleDoorW - doorStileW * 2 + 0.008,
-          doorH - doorStileW * 2 + 0.008,
-          0.009
-        )
-      ),
-      darkOak.panelField
-    );
-    dPanel.name = `familyBathroom.darkOakVanityUnit.${dName}.fieldedPanel`;
-    dPanel.position.set(dx, doorCenterY, frontFaceZ + 0.001);
-    vanityGroup.add(dPanel);
-
-    addBrassCabinetKnob(
-      `familyBathroom.darkOakVanityUnit.${dName}Knob`,
-      alcoveCx + sideSign * 0.036,
-      doorCenterY + 0.045
-    );
-  }
-
-  // 25mm Honed Bianco Carrara Marble Countertop spanning full alcove width (`X = -10.854..-9.80m`)
-  const bowlHalfW = 0.21;
-  const bowlHalfD = 0.148;
-  const bowlLocalCenterZ = 0.034;
-
-  const slabShape = new THREE.Shape();
-  slabShape.moveTo(-cabW * 0.5, -topD * 0.5);
-  slabShape.lineTo(cabW * 0.5, -topD * 0.5);
-  slabShape.lineTo(cabW * 0.5, topD * 0.5);
-  slabShape.lineTo(-cabW * 0.5, topD * 0.5);
-  slabShape.closePath();
-
-  const holePath = new THREE.Path();
-  const holeSegs = 40;
-  for (let i = 0; i <= holeSegs; i++) {
-    const ang = (i / holeSegs) * Math.PI * 2;
-    const hx = Math.cos(ang) * bowlHalfW;
-    const hy = bowlLocalCenterZ + Math.sin(ang) * bowlHalfD;
-    if (i === 0) holePath.moveTo(hx, hy);
-    else holePath.lineTo(hx, hy);
-  }
-  slabShape.holes.push(holePath);
-
-  const marbleTopGeo = prepGeo(
-    new THREE.ExtrudeGeometry(slabShape, {
-      depth: topSlabH,
-      bevelEnabled: true,
-      bevelThickness: 0.002,
-      bevelSize: 0.002,
-      bevelSegments: 2,
-      curveSegments: 32,
-    })
-  );
-  marbleTopGeo.rotateX(-Math.PI * 0.5);
-  const marbleTop = new THREE.Mesh(marbleTopGeo, carraraMat);
-  marbleTop.name = 'familyBathroom.darkOakVanityUnit.carraraCountertop';
-  marbleTop.position.set(alcoveCx, floorTopY + cabH, alcoveRearZ - topD * 0.5);
-  marbleTop.castShadow = true;
-  marbleTop.receiveShadow = true;
-  vanityGroup.add(marbleTop);
-
-  // Shaped Honed Carrara Marble splashback upstand in the central mirror bay
-  const outerCheekW = SE_ALCOVE_JOINERY_SPEC.outerCheekWidth;
-  const innerBayW = SE_ALCOVE_JOINERY_SPEC.sideBayInnerWidth;
-  const innerDivW = SE_ALCOVE_JOINERY_SPEC.innerDividerWidth;
-  const mirrorBayW = cabW - (outerCheekW + innerBayW + innerDivW) * 2;
-  const upstandW = mirrorBayW - 0.008;
-  const upstandH = 0.095;
-  const upShape = new THREE.Shape();
-  upShape.moveTo(-upstandW * 0.5, 0);
-  upShape.lineTo(upstandW * 0.5, 0);
-  upShape.lineTo(upstandW * 0.5, upstandH * 0.52);
-  upShape.quadraticCurveTo(upstandW * 0.5 - 0.05, upstandH * 0.54, upstandW * 0.5 - 0.062, upstandH);
-  upShape.lineTo(-upstandW * 0.5 + 0.062, upstandH);
-  upShape.quadraticCurveTo(-upstandW * 0.5 + 0.05, upstandH * 0.54, -upstandW * 0.5, upstandH * 0.52);
-  upShape.closePath();
-
-  const upstandGeo = prepGeo(
-    new THREE.ExtrudeGeometry(upShape, {
-      depth: 0.02,
-      bevelEnabled: true,
-      bevelThickness: 0.0015,
-      bevelSize: 0.0015,
-      bevelSegments: 2,
-    })
-  );
-  const marbleUpstand = new THREE.Mesh(upstandGeo, carraraMat);
-  marbleUpstand.name = 'familyBathroom.darkOakVanityUnit.carraraUpstand';
-  marbleUpstand.position.set(alcoveCx, counterTopY, alcoveRearZ - 0.036);
-  marbleUpstand.castShadow = true;
-  vanityGroup.add(marbleUpstand);
-
-  const bowlWorldZ = alcoveRearZ - topD * 0.5 - bowlLocalCenterZ;
-  const bowlDepth = 0.165;
-  const bowlSides = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(1, 0.72, bowlDepth, 36, 1, true)),
-    chinaMat
-  );
-  bowlSides.scale.set(bowlHalfW + 0.006, 1, bowlHalfD + 0.006);
-  bowlSides.material = chinaMat.clone();
-  bowlSides.material.side = THREE.DoubleSide;
-  bowlSides.name = 'familyBathroom.darkOakVanityUnit.undermountBasinWalls';
-  bowlSides.position.set(alcoveCx, counterTopY - topSlabH - bowlDepth * 0.5 + 0.004, bowlWorldZ);
-  bowlSides.receiveShadow = true;
-  vanityGroup.add(bowlSides);
-
-  const bowlFloor = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(1, 1, 0.012, 36)),
-    chinaMat
-  );
-  bowlFloor.scale.set((bowlHalfW + 0.006) * 0.73, 1, (bowlHalfD + 0.006) * 0.73);
-  bowlFloor.name = 'familyBathroom.darkOakVanityUnit.undermountBasinBase';
-  bowlFloor.position.set(alcoveCx, counterTopY - topSlabH - bowlDepth + 0.004, bowlWorldZ);
-  bowlFloor.receiveShadow = true;
-  vanityGroup.add(bowlFloor);
-
-  const basinWaste = new THREE.Mesh(
-    prepGeo(new THREE.CylinderGeometry(0.031, 0.031, 0.005, 24)),
-    brBrass.primary
-  );
-  basinWaste.name = 'familyBathroom.darkOakVanityUnit.brassClickerWaste';
-  basinWaste.userData.lodTier = 'high';
-  basinWaste.userData.lodMaxDistance = 12;
-  basinWaste.position.set(alcoveCx, counterTopY - topSlabH - bowlDepth + 0.012, bowlWorldZ);
-  vanityGroup.add(basinWaste);
-
-  const deckMixer = buildArmstrongDeck3HoleBasinMixer({
-    namePrefix: 'familyBathroom.darkOakVanityUnit.basinMixer3705BR',
-    finish: 'BR',
-    style: 'traditional',
-    valveSpreadM: 0.19,
-  });
-  deckMixer.position.set(alcoveCx, counterTopY, alcoveRearZ - 0.095);
-  deckMixer.rotation.y = wallFacingToRotY('north');
-  vanityGroup.add(deckMixer);
-
-  return { vanityGroup, counterTopY, upstandHeight: upstandH };
-}
-
-function buildFullHeightAlcoveJoinery(
-  counterTopY: number,
-  upstandHeight: number,
-  collarCeilingY: number,
-  darkOak: ReturnType<typeof getDarkOakVeneerMaterials>,
-  brBrass: ReturnType<typeof getBathroomBrassMaterials>,
-  textiles: ReturnType<typeof getBathroomTextileMaterials>
-): THREE.Group {
-  const upperJoinery = new THREE.Group();
-  upperJoinery.name = 'familyBathroom.vanityFullHeightJoinery';
-  upperJoinery.userData.tradeCategory = 'sanitary';
-
-  const {
-    centerX: alcoveCx,
-    rearZ: alcoveRearZ,
-    width: joineryW,
-    upperDepth: sideColD,
-    outerCheekWidth: outerCheekW,
-    innerDividerWidth: innerDivW,
-    sideBayInnerWidth: sideBayInnerW,
-    mirrorSoffitY,
-    shelfElevationsY,
-  } = SE_ALCOVE_JOINERY_SPEC;
-
-  const joineryH = collarCeilingY - counterTopY;
-  const mirrorBayW = joineryW - (outerCheekW + sideBayInnerW + innerDivW) * 2;
-  const uprightH = joineryH - 0.048;
-  const uprightCenterY = counterTopY + uprightH * 0.5;
-  const uprightCenterZ = alcoveRearZ - sideColD * 0.5;
-
-  const rearBacker = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(joineryW, joineryH, 0.016)),
-    darkOak.panelField
-  );
-  rearBacker.name = 'familyBathroom.vanityFullHeightJoinery.rearBacker';
-  rearBacker.position.set(alcoveCx, counterTopY + joineryH * 0.5, alcoveRearZ - 0.008);
-  rearBacker.receiveShadow = true;
-  upperJoinery.add(rearBacker);
-
-  // Solid 84mm-wide outer cheeks receive both the East wall and Bulkhead 82mm dado rails squarely
-  const outerCheekGeo = prepGeo(new THREE.BoxGeometry(outerCheekW, uprightH, sideColD));
-  for (const [cName, cx] of [
-    ['westOuterCheek', alcoveCx - joineryW * 0.5 + outerCheekW * 0.5],
-    ['eastOuterCheek', alcoveCx + joineryW * 0.5 - outerCheekW * 0.5],
-  ] as const) {
-    const cheek = new THREE.Mesh(outerCheekGeo, darkOak.veneer);
-    cheek.name = `familyBathroom.vanityFullHeightJoinery.${cName}`;
-    cheek.position.set(cx, uprightCenterY, uprightCenterZ);
-    cheek.castShadow = true;
-    cheek.receiveShadow = true;
-    upperJoinery.add(cheek);
-  }
-
-  const innerDividerGeo = prepGeo(new THREE.BoxGeometry(innerDivW, uprightH, sideColD));
-  for (const [dName, dx] of [
-    ['westMirrorDivider', alcoveCx - mirrorBayW * 0.5 - innerDivW * 0.5],
-    ['eastMirrorDivider', alcoveCx + mirrorBayW * 0.5 + innerDivW * 0.5],
-  ] as const) {
-    const div = new THREE.Mesh(innerDividerGeo, darkOak.veneer);
-    div.name = `familyBathroom.vanityFullHeightJoinery.${dName}`;
-    div.position.set(dx, uprightCenterY, uprightCenterZ);
-    div.castShadow = true;
-    div.receiveShadow = true;
-    upperJoinery.add(div);
-  }
-
-  const mirrorBotY = counterTopY + upstandHeight;
-  const mirrorH = mirrorSoffitY - mirrorBotY;
-  const mirrorCy = (mirrorBotY + mirrorSoffitY) * 0.5;
-
-  const brassMirrorBead = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(mirrorBayW - 0.012, mirrorH - 0.012, 0.014)),
-    brBrass.primary
-  );
-  brassMirrorBead.name = 'familyBathroom.mirrorFrame';
-  brassMirrorBead.position.set(alcoveCx, mirrorCy, alcoveRearZ - 0.023);
-  upperJoinery.add(brassMirrorBead);
-
-  const mirrorGlassMat = new THREE.MeshPhysicalMaterial({
-    color: 0xe6eef2,
-    roughness: 0.04,
-    metalness: 0.88,
-    clearcoat: 0.9,
-    clearcoatRoughness: 0.04,
-  });
-  const mirrorPane = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(mirrorBayW - 0.032, mirrorH - 0.032, 0.008)),
-    mirrorGlassMat
-  );
-  mirrorPane.name = 'familyBathroom.mirror';
-  mirrorPane.position.set(alcoveCx, mirrorCy, alcoveRearZ - 0.031);
-  upperJoinery.add(mirrorPane);
-
-  const shelfD = sideColD - 0.016;
-  const sideShelfGeo = prepGeo(new THREE.BoxGeometry(sideBayInnerW + 0.004, 0.02, shelfD));
-  const galleryBarGeo = prepGeo(new THREE.CylinderGeometry(0.0032, 0.0032, sideBayInnerW, 10));
-
-  const amberJarMat = new THREE.MeshPhysicalMaterial({
-    color: 0x6b3815,
-    roughness: 0.14,
-    clearcoat: 0.72,
-  });
-  const stonewareMat = new THREE.MeshStandardMaterial({
-    color: 0xe7e1d4,
-    roughness: 0.62,
-    metalness: 0.02,
-  });
-
-  const bayOffsetFromCenter = mirrorBayW * 0.5 + innerDivW + sideBayInnerW * 0.5;
-  for (const [sideTag, bayCx] of [
-    ['west', alcoveCx - bayOffsetFromCenter],
-    ['east', alcoveCx + bayOffsetFromCenter],
-  ] as const) {
-    for (const [sIdx, sy] of shelfElevationsY.entries()) {
-      const shelf = new THREE.Mesh(sideShelfGeo, darkOak.veneer);
-      shelf.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}Shelf_${sIdx + 1}`;
-      shelf.position.set(bayCx, sy, alcoveRearZ - shelfD * 0.5);
-      shelf.castShadow = true;
-      shelf.receiveShadow = true;
-      upperJoinery.add(shelf);
-
-      const rail = new THREE.Mesh(galleryBarGeo, brBrass.primary);
-      rail.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}ShelfRail_${sIdx + 1}`;
-      rail.userData.lodTier = 'high';
-      rail.userData.lodMaxDistance = 12;
-      rail.rotation.z = Math.PI * 0.5;
-      rail.position.set(bayCx, sy + 0.024, alcoveRearZ - shelfD + 0.016);
-      upperJoinery.add(rail);
-
-      const topY = sy + 0.01;
-      if (sIdx === 0) {
-        const bottle = new THREE.Mesh(
-          prepGeo(new THREE.CylinderGeometry(0.023, 0.023, 0.13, 14)),
-          amberJarMat
-        );
-        bottle.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}Bottle`;
-        bottle.userData.lodTier = 'high';
-        bottle.userData.lodMaxDistance = 12;
-        bottle.position.set(bayCx - 0.024, topY + 0.065, alcoveRearZ - 0.105);
-        upperJoinery.add(bottle);
-
-        const jar = new THREE.Mesh(
-          prepGeo(new THREE.CylinderGeometry(0.024, 0.022, 0.078, 14)),
-          stonewareMat
-        );
-        jar.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}Jar`;
-        jar.userData.lodTier = 'high';
-        jar.userData.lodMaxDistance = 12;
-        jar.position.set(bayCx + 0.028, topY + 0.039, alcoveRearZ - 0.11);
-        upperJoinery.add(jar);
-      } else if (sIdx === 1) {
-        const rollGeo = prepGeo(new THREE.CylinderGeometry(0.026, 0.026, 0.11, 14));
-        for (const [rIdx, rxOff] of [-0.025, 0.025].entries()) {
-          const roll = new THREE.Mesh(
-            rollGeo,
-            rIdx === 0 ? textiles.ivoryWaffleRobe : textiles.oatmealWaffleRobe
-          );
-          roll.name = `familyBathroom.vanityFullHeightJoinery.${sideTag}TowelRoll_${rIdx + 1}`;
-          roll.userData.lodTier = 'high';
-          roll.userData.lodMaxDistance = 12;
-          roll.rotation.x = Math.PI * 0.5;
-          roll.position.set(bayCx + rxOff, topY + 0.026, alcoveRearZ - 0.108);
-          upperJoinery.add(roll);
-        }
-      }
-    }
-  }
-
-  const centerShelfD = sideColD - 0.006;
-  const centerShelfGeo = prepGeo(new THREE.BoxGeometry(mirrorBayW + 0.004, 0.024, centerShelfD));
-  for (const [cIdx, cy] of [mirrorSoffitY, 4.35].entries()) {
-    const cShelf = new THREE.Mesh(centerShelfGeo, darkOak.veneer);
-    cShelf.name = `familyBathroom.vanityFullHeightJoinery.centerOverheadShelf_${cIdx + 1}`;
-    cShelf.position.set(alcoveCx, cy, alcoveRearZ - centerShelfD * 0.5);
-    cShelf.castShadow = true;
-    cShelf.receiveShadow = true;
-    upperJoinery.add(cShelf);
-  }
-
-  const warmWashMat = new THREE.MeshStandardMaterial({
-    color: 0xfff3d8,
-    emissive: 0xffd088,
-    emissiveIntensity: 0.75,
-    roughness: 0.25,
-  });
-  const mirrorLedStrip = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(mirrorBayW - 0.06, 0.005, 0.014)),
-    warmWashMat
-  );
-  mirrorLedStrip.name = 'familyBathroom.vanityFullHeightJoinery.mirrorSoffitLight';
-  mirrorLedStrip.userData.lodTier = 'high';
-  mirrorLedStrip.userData.lodMaxDistance = 12;
-  mirrorLedStrip.position.set(alcoveCx, mirrorSoffitY - 0.014, alcoveRearZ - 0.125);
-  upperJoinery.add(mirrorLedStrip);
-
-  const foldedStackGeo = prepGeo(new THREE.BoxGeometry(0.2, 0.042, 0.13));
-  for (const [stIdx, mat] of [textiles.oatmealWaffleRobe, textiles.ivoryWaffleRobe].entries()) {
-    const stack = new THREE.Mesh(foldedStackGeo, mat);
-    stack.name = `familyBathroom.vanityFullHeightJoinery.foldedBathSheet_${stIdx + 1}`;
-    stack.position.set(alcoveCx - 0.13, mirrorSoffitY + 0.033 + stIdx * 0.043, alcoveRearZ - 0.108);
-    stack.castShadow = true;
-    upperJoinery.add(stack);
-  }
-
-  const basketMat = new THREE.MeshStandardMaterial({
-    color: 0xb9996d,
-    roughness: 0.84,
-    metalness: 0.0,
-  });
-  const wovenBasket = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(0.195, 0.135, 0.135)),
-    basketMat
-  );
-  wovenBasket.name = 'familyBathroom.vanityFullHeightJoinery.wovenStorageBasket';
-  wovenBasket.position.set(alcoveCx + 0.135, mirrorSoffitY + 0.08, alcoveRearZ - 0.108);
-  wovenBasket.castShadow = true;
-  upperJoinery.add(wovenBasket);
-
-  const corniceFrieze = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(joineryW, 0.048, sideColD + 0.012)),
-    darkOak.veneer
-  );
-  corniceFrieze.name = 'familyBathroom.vanityFullHeightJoinery.crownFrieze';
-  corniceFrieze.position.set(alcoveCx, collarCeilingY - 0.024, alcoveRearZ - (sideColD + 0.012) * 0.5);
-  corniceFrieze.castShadow = true;
-  upperJoinery.add(corniceFrieze);
-
-  const corniceCrown = new THREE.Mesh(
-    prepGeo(new THREE.BoxGeometry(joineryW + 0.004, 0.022, sideColD + 0.028)),
-    darkOak.veneer
-  );
-  corniceCrown.name = 'familyBathroom.vanityFullHeightJoinery.crownCornice';
-  corniceCrown.position.set(alcoveCx, collarCeilingY - 0.011, alcoveRearZ - (sideColD + 0.028) * 0.5);
-  corniceCrown.castShadow = true;
-  upperJoinery.add(corniceCrown);
-
-  return upperJoinery;
-}
-
 /**
- * Builds the Master Bathroom (`familyBathroom`) bespoke dark-oak SE alcove vanity, full-height
- * apothecary shelving & bevelled mirror joinery, GSI Classic Swirlflush® WC, paper holder, and
- * wall-mounted Polished Brass robe hooks with hanging waffle-linen bathrobes on the tiled West wall.
+ * Builds Room 17 (`familyBathroom`, Option 1) West-wall `1,600 × 550mm` dark-oak single-basin vanity,
+ * countertop-to-ceiling apothecary cupboards & bevelled mirror joinery, NE stepped-cistern WC with
+ * straight-grained dark-oak seat (`#3`), East-wall toilet roll holder (`#4`), and `2×` brass robe hooks
+ * with hanging waffle bathrobes on the outside West cheek of the SE shower bulkhead.
  */
 export function buildFamilyBathroomVanityAndToilet(
   scene: THREE.Group,
@@ -1575,25 +1346,25 @@ export function buildFamilyBathroomVanityAndToilet(
   const collarCeilingY =
     EAST_WING_BATHROOM_VAULT.collarCeilingY + EAST_WING_BATHROOM_VAULT.ceilingClearance + 0.001;
 
-  const { vanityGroup, counterTopY, upstandHeight } = buildDarkOakBaseVanity(
+  const { vanityGroup, counterTopY } = buildWestWallDarkOakBaseVanity(
     floorTopY,
     darkOak,
     brBrass,
     carraraMat,
-    chinaMat
+    chinaMat,
+    textiles
   );
   scene.add(vanityGroup);
 
-  const upperJoinery = buildFullHeightAlcoveJoinery(
+  const upperJoinery = buildWestWallUpperApothecaryJoinery(
     counterTopY,
-    upstandHeight,
     collarCeilingY,
     darkOak,
-    brBrass,
-    textiles
+    brBrass
   );
   scene.add(upperJoinery);
 
+  // NE Stepped-Cistern WC with straight-grained fumed English oak seat (Issue #3)
   const heritageVortexWc = buildLefroyBrooksCharterhouseWc({
     namePrefix: 'familyBathroom.gsiSwirlflushWc',
     finish: 'BR',
@@ -1606,6 +1377,7 @@ export function buildFamilyBathroomVanityAndToilet(
   heritageVortexWc.rotation.y = wallFacingToRotY('south');
   scene.add(heritageVortexWc);
 
+  // Issue #4: Perrin & Rowe brass toilet roll holder mounted on `eastPanelling` at Y = 2.80m, Z = -1.55m!
   const paperHolder = buildArmstrongPaperHolder({
     namePrefix: 'familyBathroom.paperHolder',
     finish: 'BR',
@@ -1613,14 +1385,37 @@ export function buildFamilyBathroomVanityAndToilet(
   });
   paperHolder.position.set(
     WC_AND_ACCESSORY_SPEC.paperHolderX,
-    floorTopY + WC_AND_ACCESSORY_SPEC.paperHolderHeightOffset,
+    WC_AND_ACCESSORY_SPEC.paperHolderY,
     WC_AND_ACCESSORY_SPEC.paperHolderZ
   );
   paperHolder.rotation.y = wallFacingToRotY('west');
   scene.add(paperHolder);
 
-  const robeWallFaceX = WEST_ROBE_HOOK_SPEC.wallX + WEST_ROBE_HOOK_SPEC.zelligeThickness;
-  for (const [hookSuffix, hookZ] of WEST_ROBE_HOOK_SPEC.hooks) {
+  // Crisp Wimborne White bevelled Shaker patress rail (`68mm` projection matching boxed dado below)
+  // on the outside West face of the SE shower bulkhead (`Z = -0.60..-0.00m`, clear of door-54 swing!)
+  const patressMat = new THREE.MeshStandardMaterial({
+    name: 'familyBathroom.wimborneWhiteHookPatress',
+    color: 0xf7f4ec,
+    roughness: 0.34,
+    metalness: 0.02,
+  });
+  const patressDepthX =
+    ROOM17_OPTION1_PLANES.bulkheadOuterWestX - WC_AND_ACCESSORY_SPEC.robeHookPatressFaceX;
+  const patressBoard = new THREE.Mesh(
+    prepGeo(new THREE.BoxGeometry(patressDepthX, 0.092, 0.58)),
+    patressMat
+  );
+  patressBoard.name = 'familyBathroom.bulkheadRobeHookPatress';
+  patressBoard.position.set(
+    WC_AND_ACCESSORY_SPEC.robeHookPatressFaceX + patressDepthX * 0.5,
+    WC_AND_ACCESSORY_SPEC.robeHookY,
+    -0.3
+  );
+  patressBoard.castShadow = true;
+  patressBoard.receiveShadow = true;
+  scene.add(patressBoard);
+
+  for (const [hookSuffix, hookZ] of WC_AND_ACCESSORY_SPEC.hooks) {
     const isNorth = hookSuffix === 'north';
     const robeMat = isNorth ? textiles.ivoryWaffleRobe : textiles.oatmealWaffleRobe;
     const trimMat = isNorth ? textiles.oatmealWaffleRobe : textiles.ivoryWaffleRobe;
@@ -1630,8 +1425,12 @@ export function buildFamilyBathroomVanityAndToilet(
       finish: 'BR',
       style: 'traditional',
     });
-    robeHook.position.set(robeWallFaceX, WEST_ROBE_HOOK_SPEC.hookY, hookZ);
-    robeHook.rotation.y = wallFacingToRotY('east');
+    robeHook.position.set(
+      WC_AND_ACCESSORY_SPEC.robeHookPatressFaceX,
+      WC_AND_ACCESSORY_SPEC.robeHookY,
+      hookZ
+    );
+    robeHook.rotation.y = wallFacingToRotY('west');
     scene.add(robeHook);
 
     const hangingRobe = buildHangingWaffleBathrobe(
@@ -1640,11 +1439,12 @@ export function buildFamilyBathroomVanityAndToilet(
       trimMat
     );
     hangingRobe.position.set(
-      WEST_ROBE_HOOK_SPEC.wallX + WEST_ROBE_HOOK_SPEC.robeStandOffX,
-      WEST_ROBE_HOOK_SPEC.hookY,
+      WC_AND_ACCESSORY_SPEC.robeHookPatressFaceX - 0.022,
+      WC_AND_ACCESSORY_SPEC.robeHookY,
       hookZ
     );
-    hangingRobe.rotation.z = WEST_ROBE_HOOK_SPEC.robeTiltRad;
+    hangingRobe.rotation.y = Math.PI;
+    hangingRobe.rotation.z = -0.035;
     scene.add(hangingRobe);
   }
 }

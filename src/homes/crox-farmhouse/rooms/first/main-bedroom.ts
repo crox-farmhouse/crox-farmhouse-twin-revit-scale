@@ -53,9 +53,105 @@ function ensureNamedAddedChildren(
  * Extracted verbatim from `buildMainHouseFirstFloorAndRoof` (first-floor-rooms.ts). Statement order and
  * geometry are unchanged; shared locals flow in via `kit` and out via the return value.
  */
+/**
+ * Sculpted square or lumbar feather scatter cushion with pinched pillow corners
+ * and a continuous 3D perimeter welt/piping cord (replaces ellipsoid/egg spheres).
+ */
+function buildTailoredPipedCushion(
+  namePrefix: string,
+  width: number,
+  height: number,
+  depth: number,
+  bodyMat: THREE.Material,
+  pipingMat: THREE.Material
+): THREE.Group {
+  const group = new THREE.Group();
+  group.name = namePrefix;
+
+  const segX = 16;
+  const segY = 16;
+  const segZ = 8;
+  const bodyGeo = new THREE.BoxGeometry(width, height, depth, segX, segY, segZ);
+  const pos = bodyGeo.getAttribute('position');
+  const halfW = width * 0.5;
+  const halfH = height * 0.5;
+  const halfD = depth * 0.5;
+
+  for (let i = 0; i < pos.count; i++) {
+    const x0 = pos.getX(i);
+    const y0 = pos.getY(i);
+    const z0 = pos.getZ(i);
+    const nx = x0 / halfW; // -1..1
+    const ny = y0 / halfH; // -1..1
+    const nz = z0 / halfD; // -1..1
+    const ax = Math.abs(nx);
+    const ay = Math.abs(ny);
+
+    // Subtle inward waist bow along straight edges + classic tailored pillow corner ear pinch
+    const edgeWaistX = 1 - 0.035 * (1 - ny * ny);
+    const edgeWaistY = 1 - 0.035 * (1 - nx * nx);
+    const cornerDiag = Math.pow(ax * ay, 1.6);
+    const zRound = Math.sqrt(Math.max(0.08, 1 - 0.58 * nz * nz));
+    const xyInset = 0.92 + 0.08 * zRound + cornerDiag * 0.035;
+
+    const px = x0 * edgeWaistX * xyInset;
+    const py = y0 * edgeWaistY * xyInset;
+
+    // Plump feather-filled center crown tapering cleanly to the perimeter piping seam
+    const domeX = Math.cos(nx * Math.PI * 0.47);
+    const domeY = Math.cos(ny * Math.PI * 0.47);
+    const centerLoft = Math.pow(Math.max(0, domeX * domeY), 0.72);
+    const seamTaper = 0.22 + 0.96 * centerLoft;
+    const pz = Math.sign(nz) * Math.pow(Math.abs(nz), 0.78) * halfD * seamTaper;
+
+    pos.setXYZ(i, px, py, pz);
+  }
+  pos.needsUpdate = true;
+  bodyGeo.computeVertexNormals();
+  bodyGeo.computeBoundingSphere();
+
+  const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+  bodyMesh.name = `${namePrefix}.body`;
+  bodyMesh.castShadow = true;
+  bodyMesh.receiveShadow = true;
+  group.add(bodyMesh);
+
+  // Continuous 3D perimeter piping cord following the pinched-square cushion seam
+  const loopPts: THREE.Vector3[] = [];
+  const loopSteps = 64;
+  const cornerR = Math.min(width, height) * 0.085;
+  const straightHalfW = Math.max(0.02, halfW * 0.93 - cornerR);
+  const straightHalfH = Math.max(0.02, halfH * 0.93 - cornerR);
+  for (let s = 0; s < loopSteps; s++) {
+    const theta = (s / loopSteps) * Math.PI * 2;
+    const cx = Math.cos(theta);
+    const sy = Math.sin(theta);
+    // Superellipse (p = 5) gives crisp square/rectangular pillow silhouette with soft corners
+    const pow = 0.36;
+    const sx = Math.sign(cx) * Math.pow(Math.abs(cx), pow) * (straightHalfW + cornerR);
+    const sy2 = Math.sign(sy) * Math.pow(Math.abs(sy), pow) * (straightHalfH + cornerR);
+    const nx = sx / halfW;
+    const ny = sy2 / halfH;
+    const waistX = 1 - 0.03 * (1 - ny * ny);
+    const waistY = 1 - 0.03 * (1 - nx * nx);
+    loopPts.push(new THREE.Vector3(sx * waistX, sy2 * waistY, 0));
+  }
+  const pipingCurve = new THREE.CatmullRomCurve3(loopPts, true);
+  const pipingGeo = new THREE.TubeGeometry(pipingCurve, 56, 0.0045, 7, true);
+  pipingGeo.computeBoundingSphere();
+  const pipingMesh = new THREE.Mesh(pipingGeo, pipingMat);
+  pipingMesh.name = `${namePrefix}.piping`;
+  pipingMesh.userData.lodTier = 'high';
+  pipingMesh.userData.lodMaxDistance = 14;
+  pipingMesh.castShadow = true;
+  group.add(pipingMesh);
+
+  return group;
+}
+
 export function buildMainBedroom(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'wimborneWhiteJoineryMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBrickWallAlongXWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteractiveDoor' | 'addUpperInteriorWall' | 'applyWorldSpaceBrickUVs' | 'tagUpperCutawayWall'>
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
@@ -76,6 +172,7 @@ export function buildMainBedroom(
     upperWallTopY,
     wardrobeMat,
     warmRoomPlasterMat,
+    wimborneWhiteJoineryMat,
   } = kit;
   // =========================================================================
   // 1. MAIN BEDROOM (5.00m x 4.55m / 16'5" x 14'11")
@@ -282,14 +379,28 @@ export function buildMainBedroom(
     {
       const lowerFillerH = aboveSeatDoorBaseY - fullDoorBaseY - 0.008;
       const lowerFillerW = 1.96 - 1.779;
-      const lowerFillerGeo = new THREE.BoxGeometry(0.024, lowerFillerH, lowerFillerW);
+      const lowerFillerGeo = new THREE.BoxGeometry(0.026, lowerFillerH, lowerFillerW);
       lowerFillerGeo.computeBoundingSphere();
       const lowerFiller = new THREE.Mesh(lowerFillerGeo, wardrobeMat);
       lowerFiller.name = 'mainBedroom.eastWardrobe.seatJunctionFascia';
-      lowerFiller.position.set(-5.272, fullDoorBaseY + lowerFillerH * 0.5, (1.779 + 1.96) * 0.5);
+      lowerFiller.position.set(-5.273, fullDoorBaseY + lowerFillerH * 0.5, (1.779 + 1.96) * 0.5);
       lowerFiller.castShadow = true;
       lowerFiller.receiveShadow = true;
       eastWardGroup.add(lowerFiller);
+    }
+
+    // Issue #7: Flush 146mm Shaker base plinth across Z = -2.50m..+1.96m (front face at X = -5.286m flush with Shaker doors; room skirting stops cleanly against its North end!)
+    {
+      const plinthH = fullDoorBaseY - floorTopY - 0.004; // 0.146m matching room skirting height
+      const plinthSpanZ = 1.96 - -2.5;
+      const plinthGeo = new THREE.BoxGeometry(0.028, plinthH, plinthSpanZ);
+      plinthGeo.computeBoundingSphere();
+      const basePlinth = new THREE.Mesh(plinthGeo, wardrobeMat);
+      basePlinth.name = 'mainBedroom.eastWardrobes.basePlinth';
+      basePlinth.position.set(-5.272, floorTopY + plinthH * 0.5, (-2.5 + 1.96) * 0.5);
+      basePlinth.castShadow = true;
+      basePlinth.receiveShadow = true;
+      eastWardGroup.add(basePlinth);
     }
 
     scene.add(eastWardGroup);
@@ -473,8 +584,8 @@ export function buildMainBedroom(
     lidGeo.rotateY(Math.PI / 2); // Maps +x shape projection to -Z (North into room) and z depth to +X
     lidGeo.computeVertexNormals();
     lidGeo.computeBoundingSphere();
-    const seatBoard = new THREE.Mesh(lidGeo, antiqueOakSkirtingMat);
-    seatBoard.name = 'mainBedroom.windowSeatJoinery.oakBenchTop';
+    const seatBoard = new THREE.Mesh(lidGeo, wardrobeMat);
+    seatBoard.name = 'mainBedroom.windowSeatJoinery.paintedBenchTop';
     seatBoard.position.set((lidMinX + seatMaxX) * 0.5, lidBotY, wallInnerZ);
     seatBoard.castShadow = true;
     seatBoard.receiveShadow = true;
@@ -573,24 +684,76 @@ export function buildMainBedroom(
       cushionGroup.add(weltMesh);
     }
 
-    // 4 plump scatter cushions flanking the 1.46m South Courtyard window (`X = -8.14m..-6.68m`) so the oak sill & architrave remain 100% clear!
-    const scatterGeo = new THREE.SphereGeometry(0.19, 16, 14);
-    scatterGeo.scale(1.05, 0.92, 0.42);
-    scatterGeo.computeBoundingSphere();
+    // Issue #5: 4 tailored piped square (45x45x14cm) & lumbar (48x34x13cm) scatter cushions
+    // flanking the South Courtyard window (X = -8.14m..-6.68m) — zero SphereGeometry eggs!
+    const squabTopY = lidTopY + squabH;
     const scatterSpecs = [
-      ['westOuter', -9.18, 2.24, 0.22, -0.18, sageScatterMat],
-      ['westInner', -8.52, 2.26, 0.08, -0.24, warmHerringboneScatterMat],
-      ['eastInner', -6.30, 2.26, -0.08, -0.24, warmHerringboneScatterMat],
-      ['eastOuter', -5.64, 2.24, -0.22, -0.18, sageScatterMat],
+      {
+        tag: 'westOuter',
+        w: 0.45,
+        h: 0.45,
+        d: 0.14,
+        x: -9.18,
+        z: 2.23,
+        rotX: 0.26,
+        rotY: 0.34,
+        rotZ: -0.05,
+        bodyMat: sageScatterMat,
+        pipingMat: linenPipingMat,
+      },
+      {
+        tag: 'westInner',
+        w: 0.48,
+        h: 0.34,
+        d: 0.13,
+        x: -8.62,
+        z: 2.20,
+        rotX: 0.30,
+        rotY: 0.14,
+        rotZ: -0.03,
+        bodyMat: warmHerringboneScatterMat,
+        pipingMat: sageScatterMat,
+      },
+      {
+        tag: 'eastInner',
+        w: 0.48,
+        h: 0.34,
+        d: 0.13,
+        x: -6.20,
+        z: 2.20,
+        rotX: 0.30,
+        rotY: -0.14,
+        rotZ: 0.03,
+        bodyMat: warmHerringboneScatterMat,
+        pipingMat: sageScatterMat,
+      },
+      {
+        tag: 'eastOuter',
+        w: 0.45,
+        h: 0.45,
+        d: 0.14,
+        x: -5.64,
+        z: 2.23,
+        rotX: 0.26,
+        rotY: -0.34,
+        rotZ: 0.05,
+        bodyMat: sageScatterMat,
+        pipingMat: linenPipingMat,
+      },
     ] as const;
-    for (const [scTag, scX, scZ, rotY, rotX, scMat] of scatterSpecs) {
-      const scMesh = new THREE.Mesh(scatterGeo, scMat);
-      scMesh.name = `mainBedroom.windowSeatCushions.scatter.${scTag}`;
-      scMesh.position.set(scX, lidTopY + squabH + 0.145, scZ);
-      scMesh.rotation.set(rotX, rotY, 0);
-      scMesh.castShadow = true;
-      scMesh.receiveShadow = true;
-      cushionGroup.add(scMesh);
+    for (const sc of scatterSpecs) {
+      const pillow = buildTailoredPipedCushion(
+        `mainBedroom.windowSeatCushions.scatter.${sc.tag}`,
+        sc.w,
+        sc.h,
+        sc.d,
+        sc.bodyMat,
+        sc.pipingMat
+      );
+      const centerLiftY = sc.h * 0.5 * Math.cos(sc.rotX) - 0.012;
+      pillow.position.set(sc.x, squabTopY + centerLiftY, sc.z);
+      pillow.rotation.set(sc.rotX, sc.rotY, sc.rotZ);
+      cushionGroup.add(pillow);
     }
 
     scene.add(cushionGroup);
@@ -624,22 +787,21 @@ export function buildMainBedroom(
     ensureNamedAddedChildren(scene, idx2, 'mainBedroom.westCrossWall.doorLintel');
   }
 
-  // Continuous 45°-mitred 146mm Solid European Oak skirting around the Main Bedroom perimeter
-  // (from North door architrave `Z = 1.005m` -> NW corner -> NE wardrobe corner -> SE window-seat junction `Z = 1.96m`)
+  // Issues #7 & #12: Continuous 45°-mitred 146mm Wimborne White skirting around the Main Bedroom perimeter,
+  // stopping cleanly at X = -5.286m against the flush Shaker base plinth of eastWardrobes!
   {
     const mainBedPerimeterSkirtGeo = buildMitredWallSkirtingGeometry(
       [
         [-9.56, 1.005],
         [-9.56, -2.5],
-        [-5.26, -2.5],
-        [-5.26, 1.96],
+        [-5.286, -2.5],
       ],
       floorTopY
     );
     mainBedPerimeterSkirtGeo.computeBoundingSphere();
     const mainBedPerimeterSkirt = new THREE.Mesh(
       mainBedPerimeterSkirtGeo,
-      antiqueOakSkirtingMat
+      wimborneWhiteJoineryMat
     );
     mainBedPerimeterSkirt.name = 'mainBedroom.perimeterMitredSkirting';
     mainBedPerimeterSkirt.userData.isArchitecturalShell = true;
@@ -656,7 +818,18 @@ export function buildMainBedroom(
       doorH: mainBedDoorH,
       architraveWidth: 0.065,
       jambInset: 0.01,
+      frontLeafMaterial: wimborneWhiteJoineryMat,
+      backLeafMaterial: wimborneWhiteJoineryMat,
+      frontArchitraveMaterial: wimborneWhiteJoineryMat,
+      backArchitraveMaterial: wimborneWhiteJoineryMat,
     });
+    for (let i = idx; i < scene.children.length; i++) {
+      scene.children[i]!.traverse((node) => {
+        if (node instanceof THREE.Mesh && node.material === antiqueOakSkirtingMat) {
+          node.material = wimborneWhiteJoineryMat;
+        }
+      });
+    }
     ensureNamedAddedChildren(scene, idx, 'mainBedroom.entranceDoor');
   }
 

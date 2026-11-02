@@ -1567,3 +1567,455 @@ export function createFelliniOlivaSquareTileTextures(): {
     return { colorMap, bumpMap, normalMap, roughnessMap };
   });
 }
+
+// ---------------------------------------------------------------------------
+// Sandberg Wallpaper — Mimi Sandstone (SKU: S10267, Kolonin Collection)
+// 13.25cm × 13.30cm straight-match alternating checkerboard botanical print
+// (rendered as a 2 × 2 = 0.265m × 0.266m seamless 1024 × 1024 PBR repeat)
+// ---------------------------------------------------------------------------
+
+export const SANDBERG_MIMI_SANDSTONE_REPEAT_U = 0.265;
+export const SANDBERG_MIMI_SANDSTONE_REPEAT_V = 0.266;
+
+const MIMI_PAPER_GROUND = '#f1eee7';
+
+function paintMimiCordateLeaf(
+  cCtx: CanvasRenderingContext2D,
+  bCtx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  angle: number,
+  fillHex: string,
+  veinHex: string
+): void {
+  cCtx.save();
+  cCtx.translate(cx, cy);
+  cCtx.rotate(angle);
+
+  // Subtle Scandinavian surface-print ivory registration halo along upper-left edge
+  cCtx.fillStyle = '#faf8f2';
+  cCtx.beginPath();
+  cCtx.ellipse(-1.6, -1.2, rx * 0.98, ry * 0.94, 0, 0, Math.PI * 2);
+  cCtx.fill();
+
+  // Cordate / scalloped wild-violet leaf silhouette
+  cCtx.fillStyle = fillHex;
+  cCtx.beginPath();
+  cCtx.moveTo(0, ry * 0.72);
+  cCtx.bezierCurveTo(-rx * 0.55, ry * 1.05, -rx * 1.08, ry * 0.45, -rx * 0.98, -ry * 0.12);
+  cCtx.bezierCurveTo(-rx * 0.92, -ry * 0.68, -rx * 0.42, -ry * 1.02, 0, -ry * 0.98);
+  cCtx.bezierCurveTo(rx * 0.42, -ry * 1.02, rx * 0.92, -ry * 0.68, rx * 0.98, -ry * 0.12);
+  cCtx.bezierCurveTo(rx * 1.08, ry * 0.45, rx * 0.55, ry * 1.05, 0, ry * 0.72);
+  cCtx.closePath();
+  cCtx.fill();
+
+  // Soft scalloped lobe accents & midrib vein
+  cCtx.strokeStyle = veinHex;
+  cCtx.lineWidth = 1.35;
+  cCtx.lineCap = 'round';
+  cCtx.beginPath();
+  cCtx.moveTo(0, ry * 0.68);
+  cCtx.quadraticCurveTo(rx * 0.05, 0, 0, -ry * 0.76);
+  cCtx.stroke();
+
+  for (const [vy0, vx1, vy1] of [
+    [ry * 0.28, -rx * 0.56, -ry * 0.02],
+    [ry * 0.24, rx * 0.56, -ry * 0.04],
+    [-ry * 0.14, -rx * 0.46, -ry * 0.44],
+    [-ry * 0.16, rx * 0.46, -ry * 0.46],
+  ] as const) {
+    cCtx.lineWidth = 0.95;
+    cCtx.beginPath();
+    cCtx.moveTo(0, vy0);
+    cCtx.quadraticCurveTo(vx1 * 0.55, (vy0 + vy1) * 0.5, vx1, vy1);
+    cCtx.stroke();
+  }
+  cCtx.restore();
+
+  bCtx.save();
+  bCtx.translate(cx, cy);
+  bCtx.rotate(angle);
+  bCtx.fillStyle = 'rgb(154, 154, 154)';
+  bCtx.beginPath();
+  bCtx.ellipse(0, 0, rx * 0.92, ry * 0.9, 0, 0, Math.PI * 2);
+  bCtx.fill();
+  bCtx.restore();
+}
+
+function paintMimiVioletPetal(
+  cCtx: CanvasRenderingContext2D,
+  bCtx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  angle: number,
+  fillHex: string,
+  shadeHex: string,
+  haloShiftX: number,
+  haloShiftY: number
+): void {
+  cCtx.save();
+  cCtx.translate(cx, cy);
+  cCtx.rotate(angle);
+
+  // Crisp warm-ivory block-print registration rim (#faf8f2)
+  cCtx.fillStyle = '#faf8f2';
+  cCtx.beginPath();
+  cCtx.ellipse(haloShiftX, haloShiftY, rx * 1.02, ry * 1.02, 0, 0, Math.PI * 2);
+  cCtx.fill();
+
+  // Main dusty periwinkle-lavender petal body
+  cCtx.fillStyle = fillHex;
+  cCtx.beginPath();
+  cCtx.moveTo(0, ry * 0.92);
+  cCtx.bezierCurveTo(-rx * 0.95, ry * 0.55, -rx * 1.08, -ry * 0.45, -rx * 0.42, -ry * 0.94);
+  cCtx.bezierCurveTo(-rx * 0.12, -ry * 1.06, rx * 0.12, -ry * 1.06, rx * 0.42, -ry * 0.94);
+  cCtx.bezierCurveTo(rx * 1.08, -ry * 0.45, rx * 0.95, ry * 0.55, 0, ry * 0.92);
+  cCtx.closePath();
+  cCtx.fill();
+
+  // Soft chalky inner-petal wash toward throat
+  cCtx.fillStyle = shadeHex;
+  cCtx.globalAlpha = 0.55;
+  cCtx.beginPath();
+  cCtx.ellipse(0, ry * 0.28, rx * 0.58, ry * 0.52, 0, 0, Math.PI * 2);
+  cCtx.fill();
+  cCtx.globalAlpha = 1.0;
+
+  cCtx.restore();
+
+  bCtx.save();
+  bCtx.translate(cx, cy);
+  bCtx.rotate(angle);
+  bCtx.fillStyle = 'rgb(156, 156, 156)';
+  bCtx.beginPath();
+  bCtx.ellipse(0, 0, rx * 0.9, ry * 0.9, 0, 0, Math.PI * 2);
+  bCtx.fill();
+  bCtx.restore();
+}
+
+function paintMimiWildVioletSprig(
+  cCtx: CanvasRenderingContext2D,
+  bCtx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  mirrorX: 1 | -1,
+  variant: number
+): void {
+  const jitterRot = ((variant % 3) - 1) * 0.018 * mirrorX;
+
+  cCtx.save();
+  cCtx.translate(cx, cy);
+  cCtx.rotate(jitterRot);
+  cCtx.scale(mirrorX, 1);
+
+  bCtx.save();
+  bCtx.translate(cx, cy);
+  bCtx.rotate(jitterRot);
+  bCtx.scale(mirrorX, 1);
+
+  // Subtle cream print registration under stems
+  cCtx.strokeStyle = '#faf8f2';
+  cCtx.lineWidth = 3.6;
+  cCtx.lineCap = 'round';
+  cCtx.beginPath();
+  cCtx.moveTo(-9.5, 70);
+  cCtx.bezierCurveTo(-11, 44, -6, 16, 4, -36);
+  cCtx.stroke();
+
+  // Slender curved sage-olive flower pedicel & twin leaf petioles (~148px total sprig height = ~3.83cm)
+  cCtx.strokeStyle = '#a8ab9a';
+  cCtx.lineWidth = 2.35;
+  cCtx.lineCap = 'round';
+  cCtx.beginPath();
+  cCtx.moveTo(-8, 71);
+  cCtx.bezierCurveTo(-10, 44, -5, 14, 5, -37);
+  cCtx.stroke();
+
+  cCtx.strokeStyle = '#aeb1a0';
+  cCtx.lineWidth = 2.05;
+  cCtx.beginPath();
+  cCtx.moveTo(4, 65);
+  cCtx.bezierCurveTo(0, 46, -6, 26, -18, 9);
+  cCtx.stroke();
+
+  cCtx.beginPath();
+  cCtx.moveTo(-5, 36);
+  cCtx.bezierCurveTo(2, 28, 10, 22, 18, 22);
+  cCtx.stroke();
+
+  bCtx.strokeStyle = 'rgb(152, 152, 152)';
+  bCtx.lineWidth = 2.4;
+  bCtx.lineCap = 'round';
+  bCtx.beginPath();
+  bCtx.moveTo(-8, 71);
+  bCtx.bezierCurveTo(-10, 44, -5, 14, 5, -37);
+  bCtx.stroke();
+
+  // Two lobed/cordate sage-olive Viola leaves (#b3b6a5 / #aeb1a0) flanking the stem
+  paintMimiCordateLeaf(cCtx, bCtx, -21, 7, 15.5, 13.5, -0.58, '#b3b6a5', '#9da18f');
+  paintMimiCordateLeaf(cCtx, bCtx, 18, 23, 19.5, 16.5, 0.46, '#b5b8a7', '#9ea290');
+
+  // Slender arched upper pedicel & dainty half-open nodding violet bud above main flower
+  cCtx.strokeStyle = '#aeb1a0';
+  cCtx.lineWidth = 1.75;
+  cCtx.beginPath();
+  cCtx.moveTo(-4, 4);
+  cCtx.bezierCurveTo(-12, -26, -11, -54, -2, -64);
+  cCtx.stroke();
+
+  cCtx.fillStyle = '#faf8f2';
+  cCtx.beginPath();
+  cCtx.ellipse(0, -64, 9.2, 6.8, 0.22, 0, Math.PI * 2);
+  cCtx.fill();
+
+  cCtx.fillStyle = '#a9abbb';
+  cCtx.beginPath();
+  cCtx.ellipse(2, -66, 6.8, 4.0, -0.32, 0, Math.PI * 2);
+  cCtx.fill();
+
+  cCtx.fillStyle = '#9fa1b2';
+  cCtx.beginPath();
+  cCtx.ellipse(3, -62, 6.0, 3.6, 0.26, 0, Math.PI * 2);
+  cCtx.fill();
+
+  cCtx.fillStyle = '#a8ab9a';
+  cCtx.beginPath();
+  cCtx.ellipse(-4, -63, 4.2, 2.3, -0.45, 0, Math.PI * 2);
+  cCtx.fill();
+
+  // Tiny sage calyx sepal behind nodding violet blossom
+  cCtx.fillStyle = '#a8ab9a';
+  cCtx.beginPath();
+  cCtx.ellipse(-2, -35, 4.5, 2.6, -0.4, 0, Math.PI * 2);
+  cCtx.fill();
+
+  // 5-petalled dusty periwinkle-lavender wild-violet flower (#a4a6b8 / #a9acbc / #9ea0b0)
+  const fx = 3;
+  const fy = -42;
+  // Two rounded upper banner petals
+  paintMimiVioletPetal(cCtx, bCtx, fx - 7.5, fy - 14.5, 11.5, 14.5, -0.30, '#a6a8ba', '#9ca0b0', -1.4, -1.3);
+  paintMimiVioletPetal(cCtx, bCtx, fx + 8.5, fy - 14.0, 12.0, 14.8, 0.26, '#a9acbc', '#9ea0b0', 1.2, -1.4);
+  // Two spreading lateral wing petals with soft blush-mauve inner wash
+  paintMimiVioletPetal(cCtx, bCtx, fx - 14.5, fy + 1.5, 13.5, 9.8, -1.18, '#a4a6b8', '#dad3d5', -1.5, 0.4);
+  paintMimiVioletPetal(cCtx, bCtx, fx + 15.0, fy + 2.0, 13.8, 10.0, 1.15, '#a7a9bb', '#dad3d5', 1.5, 0.4);
+  // Lower rounded lip petal
+  paintMimiVioletPetal(cCtx, bCtx, fx + 0.5, fy + 14.0, 11.2, 12.5, 3.10, '#a9acbc', '#989bad', -0.8, 1.4);
+
+  // Crisp ivory-white (#faf8f2) radiating throat streaks & warm honey-ochre (#e7e0d5) eye
+  cCtx.strokeStyle = '#faf8f2';
+  cCtx.lineCap = 'round';
+  for (const [dx, dy, lw] of [
+    [-7.5, -2.5, 1.7],
+    [8.0, -2.0, 1.7],
+    [-4.5, 5.5, 1.6],
+    [0.5, 7.5, 1.9],
+    [5.2, 5.2, 1.6],
+  ] as const) {
+    cCtx.lineWidth = lw;
+    cCtx.beginPath();
+    cCtx.moveTo(fx, fy + 1.0);
+    cCtx.lineTo(fx + dx, fy + dy);
+    cCtx.stroke();
+  }
+
+  // Soft blush-ivory central throat beard & warm honey throat dot
+  cCtx.fillStyle = '#faf8f2';
+  cCtx.beginPath();
+  cCtx.arc(fx + 0.3, fy + 1.2, 3.6, 0, Math.PI * 2);
+  cCtx.fill();
+
+  cCtx.fillStyle = '#e7e0d5';
+  cCtx.beginPath();
+  cCtx.arc(fx + 0.4, fy + 0.8, 2.3, 0, Math.PI * 2);
+  cCtx.fill();
+
+  cCtx.fillStyle = '#d5cab8';
+  cCtx.beginPath();
+  cCtx.arc(fx + 0.4, fy + 0.4, 1.15, 0, Math.PI * 2);
+  cCtx.fill();
+
+  cCtx.restore();
+  bCtx.restore();
+}
+
+function paintMimiCrossFloret(
+  cCtx: CanvasRenderingContext2D,
+  bCtx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  variant: number
+): void {
+  const angleOffset = ((variant % 3) - 1) * 0.035;
+  // ~23px total width in 1024px (0.265m) = ~6.0mm dainty 4-arm '×' periwinkle floret
+  const armReach = 7.4;
+  const petalRx = 3.6;
+  const petalRy = 6.2;
+
+  cCtx.save();
+  cCtx.translate(cx, cy);
+  cCtx.rotate(angleOffset);
+
+  // Subtle crisp ivory block-print registration halo (#faf8f2)
+  cCtx.fillStyle = '#faf8f2';
+  for (let a = 0; a < 4; a++) {
+    const theta = Math.PI * 0.25 + a * Math.PI * 0.5;
+    cCtx.save();
+    cCtx.rotate(theta);
+    cCtx.beginPath();
+    cCtx.ellipse(-0.9, -armReach * 0.58, petalRx * 1.04, petalRy * 1.04, 0, 0, Math.PI * 2);
+    cCtx.fill();
+    cCtx.restore();
+  }
+
+  // Four diagonal periwinkle-lavender petals forming '×' cross (#a4a6b8 / #a9acbc)
+  for (let a = 0; a < 4; a++) {
+    const theta = Math.PI * 0.25 + a * Math.PI * 0.5;
+    cCtx.save();
+    cCtx.rotate(theta);
+    cCtx.fillStyle = a % 2 === 0 ? '#a4a6b8' : '#abaebd';
+    cCtx.beginPath();
+    cCtx.ellipse(0, -armReach * 0.56, petalRx, petalRy, 0, 0, Math.PI * 2);
+    cCtx.fill();
+    cCtx.restore();
+  }
+
+  // Soft deeper periwinkle & ivory eye at intersection
+  cCtx.fillStyle = '#989bad';
+  cCtx.beginPath();
+  cCtx.arc(0, 0, 2.3, 0, Math.PI * 2);
+  cCtx.fill();
+
+  cCtx.fillStyle = '#faf8f2';
+  cCtx.beginPath();
+  cCtx.arc(-0.3, -0.3, 1.05, 0, Math.PI * 2);
+  cCtx.fill();
+
+  cCtx.restore();
+
+  bCtx.save();
+  bCtx.translate(cx, cy);
+  bCtx.fillStyle = 'rgb(154, 154, 154)';
+  bCtx.beginPath();
+  bCtx.arc(0, 0, 9.5, 0, Math.PI * 2);
+  bCtx.fill();
+  bCtx.restore();
+}
+
+/**
+ * Sandberg Wallpaper `Mimi Sandstone` (SKU `S10267`, Kolonin Collection) seamless `1024 × 1024`
+ * PBR texture set covering `0.265m × 0.266m` world space (`2 × 2` of the `13.25cm × 13.30cm`
+ * straight-match repeat on `#F1EEE7` warm sandstone-ecru non-woven paper ground, alternating
+ * horizontally-mirrored wild-violet sprigs with tiny `6mm` 4-arm periwinkle `'×'` cross florets).
+ */
+export function createSandbergMimiSandstoneWallpaperTextures(): {
+  readonly colorMap: THREE.CanvasTexture;
+  readonly bumpMap: THREE.CanvasTexture;
+  readonly normalMap: THREE.CanvasTexture;
+  readonly roughnessMap: THREE.CanvasTexture;
+} {
+  return getOrCreateCachedTexture('sandberg-mimi-sandstone-pbr', () => {
+    const size = 1024;
+    const cellW = size / 2; // 512px = 13.25cm horizontal repeat
+    const cellH = size / 2; // 512px = 13.30cm vertical repeat
+
+    const [colorCanvas, bumpCanvas] = getOrCreateCachedCanvasPair(
+      'sandberg-mimi-sandstone',
+      size,
+      size,
+      (cCtx, bCtx) => {
+        // 1. Warm sandstone-ecru matte non-woven paper ground (#F1EEE7 = rgb(241, 238, 231), ~93% open ground)
+        cCtx.fillStyle = MIMI_PAPER_GROUND;
+        cCtx.fillRect(0, 0, size, size);
+
+        bCtx.fillStyle = 'rgb(142, 142, 142)';
+        bCtx.fillRect(0, 0, size, size);
+
+        // Subtle matte non-woven Scandinavian paper fiber weave (tileable across 1024x1024)
+        for (let i = 0; i < 420; i++) {
+          const fx = (i * 173 + 29) % size;
+          const fy = (i * 257 + 61) % size;
+          const fw = 10 + (i % 5) * 6;
+          const fh = 2 + (i % 3);
+          const warmShift = i % 2 === 0 ? 2 : -2;
+          cCtx.fillStyle = `rgba(${241 + warmShift}, ${238 + warmShift}, ${231 + warmShift}, 0.26)`;
+          cCtx.fillRect(fx, fy, fw, fh);
+          if (fx + fw > size) cCtx.fillRect(fx - size, fy, fw, fh);
+
+          const bVal = 142 + ((i % 5) - 2) * 3;
+          bCtx.fillStyle = `rgb(${bVal}, ${bVal}, ${bVal})`;
+          bCtx.fillRect(fx, fy, fw, fh);
+          if (fx + fw > size) bCtx.fillRect(fx - size, fy, fw, fh);
+        }
+
+        // 2. Exact alternating checkerboard grid inside each 13.25 × 13.30cm (512 × 512px) repeat:
+        //    - Even rows (v = 0.25 of cell): Wild-violet sprig (+1) at u = 0.25, '×' cross floret at u = 0.75
+        //    - Odd rows  (v = 0.75 of cell): '×' cross floret at u = 0.25, Mirrored wild-violet sprig (-1) at u = 0.75
+        for (let gy = 0; gy < 2; gy++) {
+          for (let gx = 0; gx < 2; gx++) {
+            const ox = gx * cellW;
+            const oy = gy * cellH;
+            const seed = gy * 2 + gx;
+
+            // Even row: upright/right-nodding wild-violet sprig + midway '×' cross floret
+            paintMimiWildVioletSprig(cCtx, bCtx, ox + cellW * 0.25, oy + cellH * 0.25, 1, seed);
+            paintMimiCrossFloret(cCtx, bCtx, ox + cellW * 0.75, oy + cellH * 0.25, seed);
+
+            // Odd row: midway '×' cross floret + horizontally mirrored wild-violet sprig
+            paintMimiCrossFloret(cCtx, bCtx, ox + cellW * 0.25, oy + cellH * 0.75, seed + 3);
+            paintMimiWildVioletSprig(cCtx, bCtx, ox + cellW * 0.75, oy + cellH * 0.75, -1, seed + 1);
+          }
+        }
+      }
+    );
+
+    const colorMap = new THREE.CanvasTexture(colorCanvas);
+    colorMap.wrapS = THREE.RepeatWrapping;
+    colorMap.wrapT = THREE.RepeatWrapping;
+    colorMap.colorSpace = THREE.SRGBColorSpace;
+    colorMap.anisotropy = 16;
+
+    const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+    bumpMap.wrapS = THREE.RepeatWrapping;
+    bumpMap.wrapT = THREE.RepeatWrapping;
+    bumpMap.anisotropy = 16;
+
+    const { normalMap, roughnessMap } = derivePbrNormalAndRoughnessMaps(
+      'sandberg-mimi-sandstone',
+      bumpCanvas,
+      {
+        normalStrength: 0.55,
+        mortarThreshold: 0.05,
+        mortarRoughness: 0.82,
+        surfaceRoughnessMin: 0.75,
+        surfaceRoughnessMax: 0.81,
+        microGrainRoughness: 0.02,
+      }
+    );
+    normalMap.anisotropy = 16;
+    roughnessMap.anisotropy = 16;
+
+    return { colorMap, bumpMap, normalMap, roughnessMap };
+  });
+}
+
+/**
+ * Creates a ready-to-use `THREE.MeshStandardMaterial` for Sandberg `Mimi Sandstone` (`S10267`)
+ * matte non-woven botanical wallpaper (`roughness: 0.78`, `metalness: 0.0`, world repeat `0.265m × 0.266m`).
+ */
+export function createSandbergMimiSandstoneWallpaperMaterial(): THREE.MeshStandardMaterial {
+  const maps = createSandbergMimiSandstoneWallpaperTextures();
+  return new THREE.MeshStandardMaterial({
+    name: 'sandbergMimiSandstoneS10267',
+    map: maps.colorMap,
+    normalMap: maps.normalMap,
+    normalScale: new THREE.Vector2(0.16, 0.16),
+    roughnessMap: maps.roughnessMap,
+    color: 0xffffff,
+    roughness: 0.78,
+    metalness: 0.0,
+  });
+}

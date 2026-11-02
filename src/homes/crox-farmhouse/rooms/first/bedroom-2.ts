@@ -53,7 +53,7 @@ function ensureNamedAddedChildren(
  */
 export function buildBedroom2(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'skirtingMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'parisianManoirUpstandMat' | 'skirtingMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'wimborneWhiteJoineryMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addShakerWardrobeDoor' | 'addUpperBedroomChimneyBreastWithFireplace' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteriorWall' | 'doorH' | 'tagUpperCutawayWall'>
 ): void {
   const { firstFloorMeshGroup: scene, interactions } = ctx;
@@ -61,18 +61,18 @@ export function buildBedroom2(
     addShakerWardrobeDoor,
     addUpperBedroomChimneyBreastWithFireplace,
     addUpperBrickWallAlongZWithWindow,
-    antiqueOakSkirtingMat,
     brassMat,
     exteriorBrickMat,
     floorBaseY,
     floorTopY,
     oakFloorMat,
+    parisianManoirUpstandMat,
     tagUpperCutawayWall,
-    timberDoorMat,
     upperWallTopY,
     wallCapMat,
     wardrobeMat,
     warmRoomPlasterMat,
+    wimborneWhiteJoineryMat,
   } = kit;
 
   const collarCeilingY = 4.73; // Surveyed Room 19 collar ceiling: +2.68m above +2.05m FFL
@@ -118,7 +118,7 @@ export function buildBedroom2(
     wallMaterial: exteriorBrickMat,
     capMaterial: wallCapMat,
     skipCap: true,
-    skirtingMaterial: antiqueOakSkirtingMat,
+    skirtingMaterial: wimborneWhiteJoineryMat,
     addFrontSkirting: false, // Issue #1: Continuous 45°-mitred skirting `bedroom2.northEastAndCutoutMitredSkirting` joins North wall & East wardrobes seamlessly
     addBackSkirting: false,
   });
@@ -321,23 +321,49 @@ export function buildBedroom2(
       );
     }
 
+    // Flush painted Shaker base plinth across the wardrobe base (below y = 0.15m doors, flush with Shaker door stiles at frontLocalZ + 0.021m)
+    const plinthH = 0.146;
+    const plinthDepth = 0.021;
+    const basePlinthGeo = new THREE.BoxGeometry(baySpan, plinthH, plinthDepth);
+    basePlinthGeo.computeBoundingSphere();
+    const basePlinth = new THREE.Mesh(basePlinthGeo, wardrobeMat);
+    basePlinth.name = 'bedroom2.eastWardrobes.basePlinth';
+    basePlinth.position.set(
+      (uStart + uEnd) * 0.5,
+      0.002 + plinthH * 0.5,
+      frontLocalZ + plinthDepth * 0.5
+    );
+    basePlinth.castShadow = true;
+    basePlinth.receiveShadow = true;
+    wardGroup.add(basePlinth);
+
     scene.add(wardGroup);
 
-    // Issue #3: Exact intersection of the North wall South plaster face (`v = +0.1535m`) with the East wardrobe front face (`frontLocalZ = 0.68m`)
+    // Stop Wimborne White room skirtings cleanly (0mm gap, square butt) at the North & South cheeks of eastWardrobes
     const uSkirtStart = 0.063;
-    const neCornerX = startX + uSkirtStart * ux + frontLocalZ * nx;
-    const neCornerZ = startZ + uSkirtStart * uz + frontLocalZ * nz;
-    const seCornerX = startX + uEnd * ux + frontLocalZ * nx;
-    const seCornerZ = startZ + uEnd * uz + frontLocalZ * nz;
+    const wardFrontCheekZ = frontLocalZ + plinthDepth;
+    const neCornerX = startX + uSkirtStart * ux + wardFrontCheekZ * nx;
+    const neCornerZ = startZ + uSkirtStart * uz + wardFrontCheekZ * nz;
+    const seCornerX = startX + uEnd * ux + wardFrontCheekZ * nx;
+    const seCornerZ = startZ + uEnd * uz + wardFrontCheekZ * nz;
 
-    // Issues #1, #3 & #6: Single continuous 45°-mitred antique oak skirting board along the Bedroom 2 North Wall (`[-22.19, -3.165]`),
-    // turning seamlessly at the NE corner (`[neCornerX, neCornerZ]`), running South along the 6-door East Wardrobe
-    // plinth to `[seCornerX, seCornerZ]`, turning West along the North cut-out hallway wall (`Z = 0.975m`),
-    // and turning South along `X = -18.995m` up to the North architrave of `bedroom2Door`!
-    const northEastAndCutoutSkirtGeo = buildMitredWallSkirtingGeometry(
+    const northWallSkirtGeo = buildMitredWallSkirtingGeometry(
       [
         [-22.19, -3.165],
         [neCornerX, neCornerZ],
+      ],
+      floorTopY
+    );
+    northWallSkirtGeo.computeBoundingSphere();
+    const northWallSkirt = new THREE.Mesh(northWallSkirtGeo, wimborneWhiteJoineryMat);
+    northWallSkirt.name = 'bedroom2.northWallMitredSkirting';
+    northWallSkirt.userData.isArchitecturalShell = true;
+    northWallSkirt.castShadow = true;
+    northWallSkirt.receiveShadow = true;
+    scene.add(northWallSkirt);
+
+    const northEastAndCutoutSkirtGeo = buildMitredWallSkirtingGeometry(
+      [
         [seCornerX, seCornerZ],
         [-18.995, 0.975],
         [-18.995, 1.24],
@@ -347,7 +373,7 @@ export function buildBedroom2(
     northEastAndCutoutSkirtGeo.computeBoundingSphere();
     const northEastAndCutoutSkirt = new THREE.Mesh(
       northEastAndCutoutSkirtGeo,
-      antiqueOakSkirtingMat
+      wimborneWhiteJoineryMat
     );
     northEastAndCutoutSkirt.name = 'bedroom2.northEastAndCutoutMitredSkirting';
     northEastAndCutoutSkirt.userData.isArchitecturalShell = true;
@@ -381,12 +407,6 @@ export function buildBedroom2(
   // Includes:
   //   1. En-suite connecting door `Door 1683671` (`0.90m x 1.73m`, low cottage solid oak door under front roof slope)
   //   2. Bedroom 2 South Chimney Breast (`uCenter = 1.69m, width = 1.20m`), leaving clear wall East of the chimney breast!
-  const ensuiteShowerSideWhiteMat = new THREE.MeshStandardMaterial({
-    name: 'showerRoom.wimborneWhiteDoorWoodwork',
-    color: 0xf7f4ec,
-    roughness: 0.34,
-    metalness: 0.02,
-  });
   const southWallStartIdx = scene.children.length;
   const bed2SouthWallFrame = buildAngledWallSegment(scene, interactions, {
     start: [-22.19, 1.905],
@@ -398,12 +418,12 @@ export function buildBedroom2(
     wallMaterial: warmRoomPlasterMat,
     capMaterial: wallCapMat,
     skipCap: true,
-    skirtingMaterial: antiqueOakSkirtingMat,
-    addFrontSkirting: false, // Shower Room North face East of bedroom2EnsuiteDoor uses continuous 45°-mitred skirting in west-wing-corridor.ts
+    skirtingMaterial: wimborneWhiteJoineryMat,
+    addFrontSkirting: false,
     addBackSkirting: true,
     backSkirtingExclusions: [
       [0, 1.07],
-      [1.09, 3.31], // East of the chimney breast (`u = 2.29m..3.22m`), `bedroom2.southPierMitredSkirting` provides a continuous 45°-mitred corner into the X = -18.995m wall!
+      [1.09, 3.31],
     ],
     openings: [
       {
@@ -414,10 +434,10 @@ export function buildBedroom2(
         doorHeight: 1.73,
         lowerFloorY: floorTopY,
         upperFloorY: showerRoomFloorY,
-        architraveMaterial: antiqueOakSkirtingMat,
-        frontArchitraveMaterial: ensuiteShowerSideWhiteMat,
-        doorLeafMaterial: timberDoorMat,
-        frontDoorLeafMaterial: ensuiteShowerSideWhiteMat,
+        architraveMaterial: wimborneWhiteJoineryMat,
+        frontArchitraveMaterial: wimborneWhiteJoineryMat,
+        doorLeafMaterial: wimborneWhiteJoineryMat,
+        frontDoorLeafMaterial: wimborneWhiteJoineryMat,
         hardwareMaterial: brassMat,
         hingeSide: 'left',
         openAngle: -Math.PI * 0.42,
@@ -427,12 +447,12 @@ export function buildBedroom2(
   });
   ensureNamedAddedChildren(scene, southWallStartIdx, 'bedroom2.southWall');
 
-  // 25mm solid oak threshold step at `bedroom2EnsuiteDoor` (`2.050m -> 2.075m` into Room 20 Shower Room)
+  // Flush Parisian Manoir honed cream marble threshold saddle at bedroom2EnsuiteDoor (2.050m -> 2.075m flush with Shower Room floor)
   {
     const ensuiteStepRise = showerRoomFloorY - floorTopY; // 0.025m
     const ensuiteStepGeo = new THREE.BoxGeometry(0.9, ensuiteStepRise, 0.136);
     ensuiteStepGeo.computeBoundingSphere();
-    const ensuiteStepMesh = new THREE.Mesh(ensuiteStepGeo, antiqueOakSkirtingMat);
+    const ensuiteStepMesh = new THREE.Mesh(ensuiteStepGeo, parisianManoirUpstandMat);
     ensuiteStepMesh.name = 'bedroom2.ensuiteDoorThresholdStep';
     ensuiteStepMesh.userData.isArchitecturalShell = true;
     ensuiteStepMesh.position.copy(
@@ -443,7 +463,7 @@ export function buildBedroom2(
     scene.add(ensuiteStepMesh);
   }
 
-  // Continuous 45°-mitred antique oak skirting on the South-East pier between `bedroom2Door` and `bed2SouthWallFrame`
+  // Continuous 45°-mitred Wimborne White skirting on the South-East pier between bedroom2Door and bed2SouthWallFrame
   {
     const southPierSkirtGeo = buildMitredWallSkirtingGeometry(
       [
@@ -456,7 +476,7 @@ export function buildBedroom2(
     southPierSkirtGeo.computeBoundingSphere();
     const southPierSkirt = new THREE.Mesh(
       southPierSkirtGeo,
-      antiqueOakSkirtingMat
+      wimborneWhiteJoineryMat
     );
     southPierSkirt.name = 'bedroom2.southPierMitredSkirting';
     southPierSkirt.userData.isArchitecturalShell = true;
@@ -602,7 +622,7 @@ export function buildBedroom2(
   ] as const) {
     const skirtGeo = buildMitredWallSkirtingGeometry(path, floorTopY);
     skirtGeo.computeBoundingSphere();
-    const skirtMesh = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
+    const skirtMesh = new THREE.Mesh(skirtGeo, wimborneWhiteJoineryMat);
     skirtMesh.name = skirtName;
     skirtMesh.userData.isArchitecturalShell = true;
     skirtMesh.castShadow = true;

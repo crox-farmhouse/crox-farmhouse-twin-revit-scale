@@ -32,6 +32,11 @@ export {
   createGraniteSettLPathTextures,
   createHerringboneTerracottaQuarryTileTextures,
   createMarbleBacksplashTexture,
+  SANDBERG_MIMI_SANDSTONE_REPEAT_U,
+  SANDBERG_MIMI_SANDSTONE_REPEAT_V,
+  createParisianManoirUpstandTextures,
+  createSandbergMimiSandstoneWallpaperMaterial,
+  createSandbergMimiSandstoneWallpaperTextures,
   createStoneTileTexture,
   createTumbledLimestoneFlagstoneTextures,
 } from './stone-and-tile-textures.ts';

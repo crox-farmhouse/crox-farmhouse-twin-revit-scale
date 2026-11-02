@@ -34,8 +34,8 @@ const NORTH_EXTERIOR_CUTAWAY = {
 };
 
 /**
- * Shared boxed-dado projection dimensions for the Master Bathroom (`familyBathroom`)
- * so sanitaryware, alcove joinery, and trim align with zero air gaps or clipping.
+ * Shared boxed-dado projection dimensions & Option 1 shell planes for Room 17 (`familyBathroom`)
+ * so sanitaryware, West vanity joinery, SE alcove shower, and trim align with zero gaps or clipping.
  */
 export const ROOM17_BOXED_DADO = {
   /** Boxed T&G matchboard front face projection (`68mm` proud of structural plaster plane). */
@@ -48,43 +48,51 @@ export const ROOM17_BOXED_DADO = {
   skirtingD: 0.08,
 } as const;
 
-const ROOM17_SHELL_PLANES = {
+export const ROOM17_OPTION1_PLANES = {
   westWallX: -12.81,
   eastWallX: -9.8,
-  bulkheadWestX: -10.77,
   northWallZ: -2.5,
   southWallZ: 0.9,
-  bulkheadNorthZ: -0.01,
-  showerNorthZ: -0.65,
-  showerEastX: -11.91,
+  /** Outside West plaster face of the 120mm SE shower acoustic bulkhead (`X = -10.89..-10.77m`). */
+  bulkheadOuterWestX: -10.89,
+  /** Inside West structural face of the SE walk-in shower (`X = -10.77..-9.80m` = 970mm W). */
+  showerWestX: -10.77,
+  /** Stretched North glass screen/door line of SE walk-in shower (`Z = -0.68..+0.48m` = 1,160mm D). */
+  showerNorthZ: -0.68,
+  /** Inside South structural face of SE walk-in shower (120mm acoustic stud `Z = +0.48..+0.60m`). */
+  showerSouthZ: 0.48,
+  /** Passage mini-bar recess back structural face (`Z = +0.60..+1.05m` = 450mm D). */
+  miniBarBackZ: 0.6,
+  /** West vanity North cheek (`Z = -0.70..+0.90m` = 1,600mm W). */
+  vanityNorthZ: -0.7,
+  /** West vanity base front (`550mm` deep: `X = -12.81..-12.26m`). */
+  vanityBaseEastX: -12.26,
+  /** West vanity upper apothecary joinery front (`300mm` deep: `X = -12.81..-12.51m`). */
+  vanityUpperEastX: -12.51,
+  /** West vanity Carrara marble countertop top offset above `floorTopY` (`0.870m` -> `Y = 3.030m`). */
+  vanityCounterHeight: 0.87,
+  /** Door-54 (`opening = -11.735..-10.975m`, `center = -11.355m`, `width = 0.76m`) architrave bounds. */
+  doorArchitraveButtZ: 0.882,
+  doorWestArchitraveX: -11.819,
+  doorEastArchitraveX: -10.891,
+  doorHeadArchitraveOffsetY: 1.866 + 0.084,
   zelligeDepth: 0.009,
   plasterLiningDepth: 0.0075,
   zelligeUvScale: [0.66, 0.5] as const,
-  /** South front of base vanity carcass (`Z = -0.495m`) where lower East panelling & skirting butt flush. */
-  vanityBaseFrontZ: -0.495,
-  /** North front of full-height `84mm` dark-oak `eastOuterCheek` (`Z = -0.220m`) where East dado rail butts flush. */
-  vanityUpperCheekFrontZ: -0.22,
-  /** Countertop top elevation offset above `floorTopY` (`0.850m` -> `Y = 3.010m`). */
-  vanityCounterHeight: 0.85,
-  /** North face of `door-54` East oak architrave (`Z = +0.882m`) where bulkhead dado & panelling butt flush. */
-  doorArchitraveButtZ: 0.882,
-  doorWestArchitraveX: -11.685,
-  doorEastArchitraveX: -10.855,
-  doorHeadArchitraveOffsetY: 1.866 + 0.068,
 } as const;
 
-const WEST_SHOWER_NICHE_OPENING = {
-  northZ: -0.5,
-  southZ: -0.06,
-  bottomY: 3.36,
-  topY: 3.72,
-} as const;
-
-const SOUTH_SHOWER_NICHE_OPENING = {
-  westX: -12.61,
-  eastX: -12.15,
+export const SOUTH_SHOWER_NICHE_OPENING = {
+  westX: -10.525,
+  eastX: -10.045,
   bottomY: 2.9,
-  topY: 3.68,
+  topY: 3.66,
+} as const;
+
+export const WEST_SHOWER_NICHE_OPENING = {
+  northZ: 0.08,
+  southZ: 0.38,
+  bottomY: 3.24,
+  topY: 3.62,
 } as const;
 
 const DADO_SHELF_PROFILE: readonly ProfilePoint2D[] = [
@@ -519,13 +527,17 @@ function buildVerticalVGroovePanellingGeometry(
 }
 
 /**
- * Builds the Master Bathroom (`familyBathroom`) wall linings, wet-zone Zellige tiling, and boxed dado joinery:
- * - Floor-to-ceiling handmade cream vertical Zellige tiling across the entire West wall (`Z = -2.50m..+0.90m`)
- *   and South wall (`X = -12.81m..-10.77m`), with clean apertures for both recessed shower niches.
- * - `School House White` (No. 291) matte upper plaster linings on the North, East, and Bulkhead walls.
- * - `68mm` boxed-out `Wimborne White` (No. 239) V-groove matchboard dado panelling, `82mm` bullnose dado shelf,
- *   and `80mm` rebated skirting on the North, East, and Bulkhead walls, all terminating squarely (`0mm` gap)
- *   into either full-height Zellige tile, solid dark-oak alcove joinery cheeks, or oak doorway architraves.
+ * Builds Room 17 (`familyBathroom`) Option 1 wall linings, SE walk-in shower Zellige tiling,
+ * and crisp `Wimborne White` `68mm` boxed V-groove T&G dado panelling (`top Y = 3.340m`):
+ * - Full-height vertical handmade cream Zellige tiling (`Y = 2.198..4.664m`) on ALL 3 interior walls
+ *   of the `970 × 1,160mm` SE walk-in shower (`West X = -10.77m`, `South Z = +0.48m`, `East X = -9.80m`),
+ *   with clean apertures for the South 2-tier & West companion LED-lit recessed stud niches (East brick
+ *   headboard wall stays 100% solid & un-chased).
+ * - `School House White` (No. 291) matte upper plaster linings above the `3.340m` dado shelf across all
+ *   dry walls (West North of vanity, North, East North of shower, SE bulkhead West/North nib, & South).
+ * - `Wimborne White` (No. 239) `68mm` V-groove T&G panelling, `82mm` bullnose dado shelf, and `80mm`
+ *   profiled skirting with 45° internal/external mitres, 45° self-returns, and 0.0mm flush butts into
+ *   the West vanity dark-oak cheeks, `door-54` white architrave, and Living Brass shower channel.
  */
 export function buildFamilyBathroomPanellingAndLinings(
   scene: THREE.Group,
@@ -542,15 +554,14 @@ export function buildFamilyBathroomPanellingAndLinings(
   const { collarCeilingY, collarNorthZ, wallTopEmbed } = EAST_WING_BATHROOM_VAULT;
   const collarEmbedTopY = collarCeilingY + wallTopEmbed;
   const northEavesEmbedTopY = getEastWingCeilingHeightAtZ(-2.502) + wallTopEmbed;
-  const southWallEmbedTopY = getEastWingCeilingHeightAtZ(ROOM17_SHELL_PLANES.southWallZ) + wallTopEmbed;
+  const southWallEmbedTopY = getEastWingCeilingHeightAtZ(ROOM17_OPTION1_PLANES.southWallZ) + wallTopEmbed;
 
   const panelBotY = floorTopY + 0.138;
   const dadoBaseY = floorTopY + 1.152;
   const panelTopY = dadoBaseY + 0.006;
   const liningBotY = dadoBaseY + 0.006;
-  const counterTopY = floorTopY + ROOM17_SHELL_PLANES.vanityCounterHeight;
-  const showerRimTopY = floorTopY + 0.042;
-  const doorArchitraveTopY = floorTopY + ROOM17_SHELL_PLANES.doorHeadArchitraveOffsetY;
+  const showerRimTopY = floorTopY + 0.038;
+  const doorArchitraveTopY = floorTopY + ROOM17_OPTION1_PLANES.doorHeadArchitraveOffsetY;
 
   const addShellMesh = (
     name: string,
@@ -568,93 +579,133 @@ export function buildFamilyBathroomPanellingAndLinings(
     return mesh;
   };
 
-  // Floor-to-ceiling vertical Zellige tiling across the entire West wall (Z = +0.90m -> -2.502m)
-  const westSouthZ = ROOM17_SHELL_PLANES.southWallZ;
-  const westNorthZ = -2.502;
+  // =========================================================================
+  // 1. SE WALK-IN ALCOVE SHOWER FULL-HEIGHT VERTICAL ZELLIGE TILING (3 WALLS)
+  // =========================================================================
+  // 1A. West inner shower stud wall (X = -10.77m facing +X East, Z = +0.48m -> -0.68m)
+  const shSouthZ = ROOM17_OPTION1_PLANES.showerSouthZ;
+  const shNorthZ = ROOM17_OPTION1_PLANES.showerNorthZ;
+  const shDepthSpan = shSouthZ - shNorthZ;
+  addShellMesh(
+    'familyBathroom.showerWestWallTiling',
+    buildPolygonalWallLiningGeometry(
+      ROOM17_OPTION1_PLANES.showerWestX,
+      shSouthZ,
+      ROOM17_OPTION1_PLANES.showerWestX,
+      shNorthZ,
+      [
+        [0, showerRimTopY],
+        [shDepthSpan, showerRimTopY],
+        [shDepthSpan, collarEmbedTopY],
+        [0, collarEmbedTopY],
+      ],
+      ROOM17_OPTION1_PLANES.zelligeDepth,
+      {
+        holes: [
+          [
+            [shSouthZ - WEST_SHOWER_NICHE_OPENING.southZ, WEST_SHOWER_NICHE_OPENING.bottomY],
+            [shSouthZ - WEST_SHOWER_NICHE_OPENING.northZ, WEST_SHOWER_NICHE_OPENING.bottomY],
+            [shSouthZ - WEST_SHOWER_NICHE_OPENING.northZ, WEST_SHOWER_NICHE_OPENING.topY],
+            [shSouthZ - WEST_SHOWER_NICHE_OPENING.southZ, WEST_SHOWER_NICHE_OPENING.topY],
+          ],
+        ],
+        uvScale: ROOM17_OPTION1_PLANES.zelligeUvScale,
+      }
+    ),
+    zelligeTileMat
+  );
+
+  // 1B. South back shower stud wall (Z = +0.48m facing -Z North, X = -9.80m -> -10.77m)
+  const shEastX = ROOM17_OPTION1_PLANES.eastWallX;
+  const shWestX = ROOM17_OPTION1_PLANES.showerWestX;
+  const shWidthSpan = shEastX - shWestX;
+  addShellMesh(
+    'familyBathroom.showerSouthWallTiling',
+    buildPolygonalWallLiningGeometry(
+      shEastX,
+      shSouthZ,
+      shWestX,
+      shSouthZ,
+      [
+        [0, showerRimTopY],
+        [shWidthSpan, showerRimTopY],
+        [shWidthSpan, collarEmbedTopY],
+        [0, collarEmbedTopY],
+      ],
+      ROOM17_OPTION1_PLANES.zelligeDepth,
+      {
+        holes: [
+          [
+            [shEastX - SOUTH_SHOWER_NICHE_OPENING.eastX, SOUTH_SHOWER_NICHE_OPENING.bottomY],
+            [shEastX - SOUTH_SHOWER_NICHE_OPENING.westX, SOUTH_SHOWER_NICHE_OPENING.bottomY],
+            [shEastX - SOUTH_SHOWER_NICHE_OPENING.westX, SOUTH_SHOWER_NICHE_OPENING.topY],
+            [shEastX - SOUTH_SHOWER_NICHE_OPENING.eastX, SOUTH_SHOWER_NICHE_OPENING.topY],
+          ],
+        ],
+        uvScale: ROOM17_OPTION1_PLANES.zelligeUvScale,
+      }
+    ),
+    zelligeTileMat
+  );
+
+  // 1C. East solid masonry shower wall (X = -9.80m facing -X West, Z = -0.68m -> +0.48m — 100% un-chased!)
+  addShellMesh(
+    'familyBathroom.showerEastWallTiling',
+    buildPolygonalWallLiningGeometry(
+      shEastX,
+      shNorthZ,
+      shEastX,
+      shSouthZ,
+      [
+        [0, showerRimTopY],
+        [shDepthSpan, showerRimTopY],
+        [shDepthSpan, collarEmbedTopY],
+        [0, collarEmbedTopY],
+      ],
+      ROOM17_OPTION1_PLANES.zelligeDepth,
+      {
+        uvScale: ROOM17_OPTION1_PLANES.zelligeUvScale,
+      }
+    ),
+    zelligeTileMat
+  );
+
+  // =========================================================================
+  // 2. DRY-ZONE SCHOOL HOUSE WHITE UPPER PLASTER LININGS (ABOVE 3.34m DADO)
+  // =========================================================================
+  const westDrySouthZ = ROOM17_OPTION1_PLANES.vanityNorthZ;
+  const westDryNorthZ = -2.502;
   addShellMesh(
     'familyBathroom.westWallUpperLining',
     buildPolygonalWallLiningGeometry(
-      ROOM17_SHELL_PLANES.westWallX,
-      westSouthZ,
-      ROOM17_SHELL_PLANES.westWallX,
-      westNorthZ,
-      [
-        [0, showerRimTopY],
-        [westSouthZ - ROOM17_SHELL_PLANES.showerNorthZ, showerRimTopY],
-        [westSouthZ - ROOM17_SHELL_PLANES.showerNorthZ, floorTopY],
-        [westSouthZ - westNorthZ, floorTopY],
-        [westSouthZ - westNorthZ, northEavesEmbedTopY],
-        [westSouthZ - collarNorthZ, collarEmbedTopY],
-        [0, southWallEmbedTopY],
-      ],
-      ROOM17_SHELL_PLANES.zelligeDepth,
-      {
-        holes: [
-          [
-            [westSouthZ - WEST_SHOWER_NICHE_OPENING.southZ, WEST_SHOWER_NICHE_OPENING.bottomY],
-            [westSouthZ - WEST_SHOWER_NICHE_OPENING.northZ, WEST_SHOWER_NICHE_OPENING.bottomY],
-            [westSouthZ - WEST_SHOWER_NICHE_OPENING.northZ, WEST_SHOWER_NICHE_OPENING.topY],
-            [westSouthZ - WEST_SHOWER_NICHE_OPENING.southZ, WEST_SHOWER_NICHE_OPENING.topY],
-          ],
-        ],
-        uvScale: ROOM17_SHELL_PLANES.zelligeUvScale,
-      }
-    ),
-    zelligeTileMat
-  );
-
-  // Full-height South wall vertical Zellige tiling framing Door 1685658 and the 2-tier shower niche
-  const southEastX = ROOM17_SHELL_PLANES.bulkheadWestX;
-  const southWestX = -12.812;
-  addShellMesh(
-    'familyBathroom.southWallUpperLining',
-    buildPolygonalWallLiningGeometry(
-      southEastX,
-      ROOM17_SHELL_PLANES.southWallZ,
-      southWestX,
-      ROOM17_SHELL_PLANES.southWallZ,
+      ROOM17_OPTION1_PLANES.westWallX,
+      westDrySouthZ,
+      ROOM17_OPTION1_PLANES.westWallX,
+      westDryNorthZ,
       [
         [0, liningBotY],
-        [southEastX - ROOM17_SHELL_PLANES.doorEastArchitraveX, liningBotY],
-        [southEastX - ROOM17_SHELL_PLANES.doorEastArchitraveX, doorArchitraveTopY],
-        [southEastX - ROOM17_SHELL_PLANES.doorWestArchitraveX, doorArchitraveTopY],
-        [southEastX - ROOM17_SHELL_PLANES.doorWestArchitraveX, floorTopY],
-        [southEastX - (ROOM17_SHELL_PLANES.showerEastX + 0.002), floorTopY],
-        [southEastX - (ROOM17_SHELL_PLANES.showerEastX + 0.002), showerRimTopY],
-        [southEastX - southWestX, showerRimTopY],
-        [southEastX - southWestX, southWallEmbedTopY],
-        [0, southWallEmbedTopY],
+        [westDrySouthZ - westDryNorthZ, liningBotY],
+        [westDrySouthZ - westDryNorthZ, northEavesEmbedTopY],
+        [westDrySouthZ - collarNorthZ, collarEmbedTopY],
+        [0, collarEmbedTopY],
       ],
-      ROOM17_SHELL_PLANES.zelligeDepth,
-      {
-        holes: [
-          [
-            [southEastX - SOUTH_SHOWER_NICHE_OPENING.eastX, SOUTH_SHOWER_NICHE_OPENING.bottomY],
-            [southEastX - SOUTH_SHOWER_NICHE_OPENING.westX, SOUTH_SHOWER_NICHE_OPENING.bottomY],
-            [southEastX - SOUTH_SHOWER_NICHE_OPENING.westX, SOUTH_SHOWER_NICHE_OPENING.topY],
-            [southEastX - SOUTH_SHOWER_NICHE_OPENING.eastX, SOUTH_SHOWER_NICHE_OPENING.topY],
-          ],
-        ],
-        uvScale: ROOM17_SHELL_PLANES.zelligeUvScale,
-      }
+      ROOM17_OPTION1_PLANES.plasterLiningDepth
     ),
-    zelligeTileMat
+    schoolHouseWhiteMat
   );
 
-  // Dry-zone School House White upper plaster linings above the 3.34m dado shelf (North, East & Bulkhead)
-  const westZelligeFaceX = ROOM17_SHELL_PLANES.westWallX + ROOM17_SHELL_PLANES.zelligeDepth;
   addShellMesh(
     'familyBathroom.northWallUpperLining',
     buildPolygonalWallLiningGeometry(
-      westZelligeFaceX,
-      ROOM17_SHELL_PLANES.northWallZ,
+      ROOM17_OPTION1_PLANES.westWallX,
+      ROOM17_OPTION1_PLANES.northWallZ,
       -9.798,
-      ROOM17_SHELL_PLANES.northWallZ,
+      ROOM17_OPTION1_PLANES.northWallZ,
       [
         [0, liningBotY],
-        [-9.798 - westZelligeFaceX, liningBotY],
-        [-9.798 - westZelligeFaceX, getEastWingCeilingHeightAtZ(ROOM17_SHELL_PLANES.northWallZ) + wallTopEmbed],
-        [0, getEastWingCeilingHeightAtZ(ROOM17_SHELL_PLANES.northWallZ) + wallTopEmbed],
+        [-9.798 - ROOM17_OPTION1_PLANES.westWallX, liningBotY],
+        [-9.798 - ROOM17_OPTION1_PLANES.westWallX, getEastWingCeilingHeightAtZ(ROOM17_OPTION1_PLANES.northWallZ) + wallTopEmbed],
+        [0, getEastWingCeilingHeightAtZ(ROOM17_OPTION1_PLANES.northWallZ) + wallTopEmbed],
       ],
       0.006
     ),
@@ -662,68 +713,148 @@ export function buildFamilyBathroomPanellingAndLinings(
     true
   );
 
+  const eastDryEndZ = shNorthZ;
   addShellMesh(
     'familyBathroom.eastWallUpperLining',
     buildPolygonalWallLiningGeometry(
-      ROOM17_SHELL_PLANES.eastWallX,
-      westNorthZ,
-      ROOM17_SHELL_PLANES.eastWallX,
-      ROOM17_SHELL_PLANES.vanityUpperCheekFrontZ,
+      ROOM17_OPTION1_PLANES.eastWallX,
+      westDryNorthZ,
+      ROOM17_OPTION1_PLANES.eastWallX,
+      eastDryEndZ,
       [
         [0, liningBotY],
-        [ROOM17_SHELL_PLANES.vanityUpperCheekFrontZ - westNorthZ, liningBotY],
-        [ROOM17_SHELL_PLANES.vanityUpperCheekFrontZ - westNorthZ, collarEmbedTopY],
-        [collarNorthZ - westNorthZ, collarEmbedTopY],
+        [eastDryEndZ - westDryNorthZ, liningBotY],
+        [eastDryEndZ - westDryNorthZ, collarEmbedTopY],
+        [collarNorthZ - westDryNorthZ, collarEmbedTopY],
         [0, northEavesEmbedTopY],
       ],
-      ROOM17_SHELL_PLANES.plasterLiningDepth
+      ROOM17_OPTION1_PLANES.plasterLiningDepth
     ),
     schoolHouseWhiteMat
   );
 
+  // Outside West face & 120mm North nib of the SE shower bulkhead
   addShellMesh(
     'familyBathroom.bulkheadWestUpperLining',
     buildPolygonalWallLiningGeometry(
-      ROOM17_SHELL_PLANES.bulkheadWestX,
-      ROOM17_SHELL_PLANES.bulkheadNorthZ,
-      ROOM17_SHELL_PLANES.bulkheadWestX,
-      ROOM17_SHELL_PLANES.southWallZ,
+      ROOM17_OPTION1_PLANES.bulkheadOuterWestX,
+      shNorthZ,
+      ROOM17_OPTION1_PLANES.bulkheadOuterWestX,
+      ROOM17_OPTION1_PLANES.southWallZ,
       [
         [0, liningBotY],
-        [ROOM17_SHELL_PLANES.southWallZ - ROOM17_SHELL_PLANES.bulkheadNorthZ, liningBotY],
-        [ROOM17_SHELL_PLANES.southWallZ - ROOM17_SHELL_PLANES.bulkheadNorthZ, collarEmbedTopY],
+        [ROOM17_OPTION1_PLANES.southWallZ - shNorthZ, liningBotY],
+        [ROOM17_OPTION1_PLANES.southWallZ - shNorthZ, collarEmbedTopY],
         [0, collarEmbedTopY],
       ],
-      ROOM17_SHELL_PLANES.plasterLiningDepth
+      ROOM17_OPTION1_PLANES.plasterLiningDepth
     ),
     schoolHouseWhiteMat
   );
 
-  // Boxed 68mm Wimborne White V-groove matchboard dado panelling (North, East & Bulkhead walls)
-  const northStartX = westZelligeFaceX;
-  const northSpan = ROOM17_SHELL_PLANES.eastWallX - northStartX;
-  const winLeftU = -11.969 - northStartX;
-  const winRightU = -10.731 - northStartX;
+  addShellMesh(
+    'familyBathroom.bulkheadNorthNibUpperLining',
+    buildPolygonalWallLiningGeometry(
+      ROOM17_OPTION1_PLANES.showerWestX,
+      shNorthZ,
+      ROOM17_OPTION1_PLANES.bulkheadOuterWestX - ROOM17_OPTION1_PLANES.plasterLiningDepth,
+      shNorthZ,
+      [
+        [0, liningBotY],
+        [ROOM17_OPTION1_PLANES.showerWestX - (ROOM17_OPTION1_PLANES.bulkheadOuterWestX - ROOM17_OPTION1_PLANES.plasterLiningDepth), liningBotY],
+        [ROOM17_OPTION1_PLANES.showerWestX - (ROOM17_OPTION1_PLANES.bulkheadOuterWestX - ROOM17_OPTION1_PLANES.plasterLiningDepth), collarEmbedTopY],
+        [0, collarEmbedTopY],
+      ],
+      ROOM17_OPTION1_PLANES.plasterLiningDepth
+    ),
+    schoolHouseWhiteMat
+  );
+
+  // South dry wall upper lining framing Door-54 and stopping cleanly against the 300mm upper vanity cheek (-12.51m)
+  const southEastX = ROOM17_OPTION1_PLANES.bulkheadOuterWestX;
+  const southWestStopX = ROOM17_OPTION1_PLANES.vanityUpperEastX;
+  addShellMesh(
+    'familyBathroom.southWallUpperLining',
+    buildPolygonalWallLiningGeometry(
+      southEastX,
+      ROOM17_OPTION1_PLANES.southWallZ,
+      southWestStopX,
+      ROOM17_OPTION1_PLANES.southWallZ,
+      [
+        [0, doorArchitraveTopY],
+        [southEastX - ROOM17_OPTION1_PLANES.doorWestArchitraveX, doorArchitraveTopY],
+        [southEastX - ROOM17_OPTION1_PLANES.doorWestArchitraveX, liningBotY],
+        [southEastX - southWestStopX, liningBotY],
+        [southEastX - southWestStopX, southWallEmbedTopY],
+        [0, southWallEmbedTopY],
+      ],
+      ROOM17_OPTION1_PLANES.plasterLiningDepth
+    ),
+    schoolHouseWhiteMat
+  );
+
+  // Also fill the narrow strip between Door-54 West architrave (-11.819m) and South-West returned panelling (-11.825m)
+  // down to floorTopY so bare plaster never peeks next to the door casing.
+  addShellMesh(
+    'familyBathroom.southDoorWestMarginLining',
+    buildPolygonalWallLiningGeometry(
+      ROOM17_OPTION1_PLANES.doorWestArchitraveX,
+      ROOM17_OPTION1_PLANES.southWallZ,
+      -11.91,
+      ROOM17_OPTION1_PLANES.southWallZ,
+      [
+        [0, floorTopY],
+        [-11.819 - -11.91, floorTopY],
+        [-11.819 - -11.91, liningBotY],
+        [0, liningBotY],
+      ],
+      ROOM17_OPTION1_PLANES.plasterLiningDepth
+    ),
+    schoolHouseWhiteMat
+  );
+
+  // =========================================================================
+  // 3. WIMBORNE WHITE 68mm BOXED V-GROOVE T&G PANELLING
+  // =========================================================================
+  // 3A. West dry section (Z = -0.70m -> -2.50m): butts 0.0mm squarely into vanity North cheek at -0.70m, 45°-mitres NW corner
+  const westPanelSpan = ROOM17_OPTION1_PLANES.vanityNorthZ - ROOM17_OPTION1_PLANES.northWallZ;
+  addShellMesh(
+    'familyBathroom.westPanelling',
+    buildVerticalVGroovePanellingGeometry(
+      ROOM17_OPTION1_PLANES.westWallX,
+      ROOM17_OPTION1_PLANES.vanityNorthZ,
+      ROOM17_OPTION1_PLANES.westWallX,
+      ROOM17_OPTION1_PLANES.northWallZ,
+      19,
+      [{ uMin: 0, uMax: westPanelSpan, yBands: [[panelBotY, panelTopY]] }],
+      { startMitreSign: 0, endMitreSign: -1 }
+    ),
+    wimborneWhitePanellingMat
+  );
+
+  // 3B. North wall (X = -12.81m -> -9.80m): 45°-mitres at both NW and NE corners, notched under Win 1763678
+  const northSpan = ROOM17_OPTION1_PLANES.eastWallX - ROOM17_OPTION1_PLANES.westWallX;
+  const winLeftU = -11.969 - ROOM17_OPTION1_PLANES.westWallX;
+  const winRightU = -10.731 - ROOM17_OPTION1_PLANES.westWallX;
   addShellMesh(
     'familyBathroom.northPanelling',
     buildVerticalVGroovePanellingGeometry(
-      northStartX,
-      ROOM17_SHELL_PLANES.northWallZ,
-      ROOM17_SHELL_PLANES.eastWallX,
-      ROOM17_SHELL_PLANES.northWallZ,
-      28,
+      ROOM17_OPTION1_PLANES.westWallX,
+      ROOM17_OPTION1_PLANES.northWallZ,
+      ROOM17_OPTION1_PLANES.eastWallX,
+      ROOM17_OPTION1_PLANES.northWallZ,
+      30,
       [
         { uMin: 0, uMax: winLeftU, yBands: [[panelBotY, panelTopY]] },
         { uMin: winLeftU, uMax: winRightU, yBands: [[panelBotY, 2.322]] },
         { uMin: winRightU, uMax: northSpan, yBands: [[panelBotY, panelTopY]] },
       ],
-      { startMitreSign: 0, endMitreSign: -1 }
+      { startMitreSign: 1, endMitreSign: -1 }
     ),
     wimborneWhitePanellingMat,
     true
   );
 
-  // Boxed Wimborne White cottage window sill capping the North panelling beneath Win 1763678
   const northSillGeo = new THREE.BoxGeometry(1.296, 0.024, ROOM17_BOXED_DADO.dadoShelfD + 0.012);
   northSillGeo.computeBoundingSphere();
   addShellMesh(
@@ -734,116 +865,129 @@ export function buildFamilyBathroomPanellingAndLinings(
   ).position.set(
     -11.35,
     2.33,
-    ROOM17_SHELL_PLANES.northWallZ + (ROOM17_BOXED_DADO.dadoShelfD - 0.012) * 0.5
+    ROOM17_OPTION1_PLANES.northWallZ + (ROOM17_BOXED_DADO.dadoShelfD - 0.012) * 0.5
   );
 
-  // East panelling runs flush into the base vanity carcass below 3.01m and continues above the Carrara
-  // countertop to butt 0.0mm squarely into the solid 84mm dark-oak `eastOuterCheek` at Z = -0.22m.
-  const eastTotalSpan = ROOM17_SHELL_PLANES.vanityUpperCheekFrontZ - ROOM17_SHELL_PLANES.northWallZ;
-  const eastVanityFrontU = ROOM17_SHELL_PLANES.vanityBaseFrontZ - ROOM17_SHELL_PLANES.northWallZ;
+  // 3C. East dry section (Z = -2.50m -> -0.692m): 45°-mitres NE corner and finishes cleanly with returned end-stile at -0.692m
+  const eastPanelEndZ = -0.692;
+  const eastPanelSpan = eastPanelEndZ - ROOM17_OPTION1_PLANES.northWallZ;
   addShellMesh(
     'familyBathroom.eastPanelling',
     buildVerticalVGroovePanellingGeometry(
-      ROOM17_SHELL_PLANES.eastWallX,
-      ROOM17_SHELL_PLANES.northWallZ,
-      ROOM17_SHELL_PLANES.eastWallX,
-      ROOM17_SHELL_PLANES.vanityUpperCheekFrontZ,
-      22,
-      [
-        { uMin: 0, uMax: eastVanityFrontU, yBands: [[panelBotY, panelTopY]] },
-        { uMin: eastVanityFrontU, uMax: eastTotalSpan, yBands: [[counterTopY, panelTopY]] },
-      ],
+      ROOM17_OPTION1_PLANES.eastWallX,
+      ROOM17_OPTION1_PLANES.northWallZ,
+      ROOM17_OPTION1_PLANES.eastWallX,
+      eastPanelEndZ,
+      19,
+      [{ uMin: 0, uMax: eastPanelSpan, yBands: [[panelBotY, panelTopY]] }],
       { startMitreSign: 1, endMitreSign: 0 }
     ),
     wimborneWhitePanellingMat
   );
 
-  // Bulkhead West panelling butts squarely into the solid 84mm dark-oak `westOuterCheek` (North) and Door 1685658 architrave (South)
-  const bulkheadSpan = ROOM17_SHELL_PLANES.doorArchitraveButtZ - ROOM17_SHELL_PLANES.bulkheadNorthZ;
+  // 3D. SE Shower Bulkhead outside North nib + West face (45° external mitre at [-10.89, -0.68], 0.0mm butt at Door-54 +0.882m)
+  const nibStartX = -10.785;
+  const nibSpan = nibStartX - ROOM17_OPTION1_PLANES.bulkheadOuterWestX;
+  addShellMesh(
+    'familyBathroom.bulkheadNorthNibPanelling',
+    buildVerticalVGroovePanellingGeometry(
+      nibStartX,
+      shNorthZ,
+      ROOM17_OPTION1_PLANES.bulkheadOuterWestX,
+      shNorthZ,
+      2,
+      [{ uMin: 0, uMax: nibSpan, yBands: [[panelBotY, panelTopY]] }],
+      { startMitreSign: 0, endMitreSign: 1 }
+    ),
+    wimborneWhitePanellingMat
+  );
+
+  const bulkheadWestSpan = ROOM17_OPTION1_PLANES.doorArchitraveButtZ - shNorthZ;
   addShellMesh(
     'familyBathroom.bulkheadWestPanelling',
     buildVerticalVGroovePanellingGeometry(
-      ROOM17_SHELL_PLANES.bulkheadWestX,
-      ROOM17_SHELL_PLANES.bulkheadNorthZ,
-      ROOM17_SHELL_PLANES.bulkheadWestX,
-      ROOM17_SHELL_PLANES.doorArchitraveButtZ,
-      8,
-      [{ uMin: 0, uMax: bulkheadSpan, yBands: [[panelBotY, panelTopY]] }],
+      ROOM17_OPTION1_PLANES.bulkheadOuterWestX,
+      shNorthZ,
+      ROOM17_OPTION1_PLANES.bulkheadOuterWestX,
+      ROOM17_OPTION1_PLANES.doorArchitraveButtZ,
+      16,
+      [{ uMin: 0, uMax: bulkheadWestSpan, yBands: [[panelBotY, panelTopY]] }],
+      { startMitreSign: -1, endMitreSign: 0 }
+    ),
+    wimborneWhitePanellingMat
+  );
+
+  // 3E. South dry wall West of Door-54 (X = -11.825m -> -12.26m plumb with the dark-oak vanity front plane)
+  const swPanelStartX = -11.825;
+  const swBaseU = swPanelStartX - ROOM17_OPTION1_PLANES.vanityBaseEastX;
+  addShellMesh(
+    'familyBathroom.southWestPanelling',
+    buildVerticalVGroovePanellingGeometry(
+      swPanelStartX,
+      ROOM17_OPTION1_PLANES.southWallZ,
+      ROOM17_OPTION1_PLANES.vanityBaseEastX,
+      ROOM17_OPTION1_PLANES.southWallZ,
+      5,
+      [{ uMin: 0, uMax: swBaseU, yBands: [[panelBotY, panelTopY]] }],
       { startMitreSign: 0, endMitreSign: 0 }
     ),
     wimborneWhitePanellingMat
   );
 
-  // 82mm bullnose dado shelf ledges & 80mm boxed skirtings — every endpoint either 45° internal-mitres
-  // or butts 0.0mm squarely into full-height Zellige tile, solid 84mm dark-oak cheeks, or oak doorway casing.
+  // =========================================================================
+  // 4. 82mm BULLNOSE DADO SHELF RAILS & 80mm PROFILE SKIRTINGS (ZERO STUMPS)
+  // =========================================================================
+  // Continuous West -> North -> East U-run with 45° internal mitres and a 45° self-return into East wall at Z = -0.690m
+  const eastReturnCornerZ = -0.69 - ROOM17_BOXED_DADO.dadoShelfD; // -0.772m -> outer bullnose lands at Z = -0.690m
   addShellMesh(
-    'familyBathroom.northDadoRail',
+    'familyBathroom.perimeterDadoRail',
     buildSweptMitredMouldingGeometry(
       [
-        [northStartX, ROOM17_SHELL_PLANES.northWallZ],
-        [ROOM17_SHELL_PLANES.eastWallX, ROOM17_SHELL_PLANES.northWallZ],
+        [ROOM17_OPTION1_PLANES.westWallX, ROOM17_OPTION1_PLANES.vanityNorthZ],
+        [ROOM17_OPTION1_PLANES.westWallX, ROOM17_OPTION1_PLANES.northWallZ],
+        [ROOM17_OPTION1_PLANES.eastWallX, ROOM17_OPTION1_PLANES.northWallZ],
+        [ROOM17_OPTION1_PLANES.eastWallX, eastReturnCornerZ],
+        [ROOM17_OPTION1_PLANES.eastWallX + 0.002, eastReturnCornerZ],
       ],
       DADO_SHELF_PROFILE,
       dadoBaseY,
-      { startMitreSign: 0, endMitreSign: -1 }
+      { startMitreSign: 0, endMitreSign: 0 }
     ),
     wimborneWhitePanellingMat,
     true
   );
 
+  const eastSkirtReturnCornerZ = -0.69 - ROOM17_BOXED_DADO.skirtingD;
   addShellMesh(
-    'familyBathroom.eastDadoRail',
+    'familyBathroom.perimeterSkirting',
     buildSweptMitredMouldingGeometry(
       [
-        [ROOM17_SHELL_PLANES.eastWallX, ROOM17_SHELL_PLANES.northWallZ],
-        [ROOM17_SHELL_PLANES.eastWallX, ROOM17_SHELL_PLANES.vanityUpperCheekFrontZ],
+        [ROOM17_OPTION1_PLANES.westWallX, ROOM17_OPTION1_PLANES.vanityNorthZ],
+        [ROOM17_OPTION1_PLANES.westWallX, ROOM17_OPTION1_PLANES.northWallZ],
+        [ROOM17_OPTION1_PLANES.eastWallX, ROOM17_OPTION1_PLANES.northWallZ],
+        [ROOM17_OPTION1_PLANES.eastWallX, eastSkirtReturnCornerZ],
+        [ROOM17_OPTION1_PLANES.eastWallX + 0.002, eastSkirtReturnCornerZ],
       ],
-      DADO_SHELF_PROFILE,
-      dadoBaseY,
-      { startMitreSign: 1, endMitreSign: 0 }
+      BOXED_SKIRTING_PROFILE,
+      floorTopY,
+      { startMitreSign: 0, endMitreSign: 0 }
     ),
-    wimborneWhitePanellingMat
+    wimborneWhitePanellingMat,
+    true
   );
 
+  // Bulkhead North nib -> 45° external mitre -> Bulkhead West face -> 0.0mm butt into Door-54 white architrave
   addShellMesh(
     'familyBathroom.bulkheadDadoRail',
     buildSweptMitredMouldingGeometry(
       [
-        [ROOM17_SHELL_PLANES.bulkheadWestX, ROOM17_SHELL_PLANES.bulkheadNorthZ],
-        [ROOM17_SHELL_PLANES.bulkheadWestX, ROOM17_SHELL_PLANES.doorArchitraveButtZ],
+        [nibStartX, shNorthZ],
+        [ROOM17_OPTION1_PLANES.bulkheadOuterWestX, shNorthZ],
+        [ROOM17_OPTION1_PLANES.bulkheadOuterWestX, ROOM17_OPTION1_PLANES.doorArchitraveButtZ],
       ],
       DADO_SHELF_PROFILE,
       dadoBaseY,
       { startMitreSign: 0, endMitreSign: 0 }
-    ),
-    wimborneWhitePanellingMat
-  );
-
-  addShellMesh(
-    'familyBathroom.northSkirting',
-    buildSweptMitredMouldingGeometry(
-      [
-        [northStartX, ROOM17_SHELL_PLANES.northWallZ],
-        [ROOM17_SHELL_PLANES.eastWallX, ROOM17_SHELL_PLANES.northWallZ],
-      ],
-      BOXED_SKIRTING_PROFILE,
-      floorTopY,
-      { startMitreSign: 0, endMitreSign: -1 }
-    ),
-    wimborneWhitePanellingMat,
-    true
-  );
-
-  addShellMesh(
-    'familyBathroom.eastSkirting',
-    buildSweptMitredMouldingGeometry(
-      [
-        [ROOM17_SHELL_PLANES.eastWallX, ROOM17_SHELL_PLANES.northWallZ],
-        [ROOM17_SHELL_PLANES.eastWallX, ROOM17_SHELL_PLANES.vanityBaseFrontZ],
-      ],
-      BOXED_SKIRTING_PROFILE,
-      floorTopY,
-      { startMitreSign: 1, endMitreSign: 0 }
     ),
     wimborneWhitePanellingMat
   );
@@ -852,8 +996,44 @@ export function buildFamilyBathroomPanellingAndLinings(
     'familyBathroom.bulkheadSkirting',
     buildSweptMitredMouldingGeometry(
       [
-        [ROOM17_SHELL_PLANES.bulkheadWestX, ROOM17_SHELL_PLANES.bulkheadNorthZ],
-        [ROOM17_SHELL_PLANES.bulkheadWestX, ROOM17_SHELL_PLANES.doorArchitraveButtZ],
+        [nibStartX, shNorthZ],
+        [ROOM17_OPTION1_PLANES.bulkheadOuterWestX, shNorthZ],
+        [ROOM17_OPTION1_PLANES.bulkheadOuterWestX, ROOM17_OPTION1_PLANES.doorArchitraveButtZ],
+      ],
+      BOXED_SKIRTING_PROFILE,
+      floorTopY,
+      { startMitreSign: 0, endMitreSign: 0 }
+    ),
+    wimborneWhitePanellingMat
+  );
+
+  // South-West dado rail & skirting (45° self-return next to Door-54 West architrave -> 0.0mm butt into dark-oak vanity cheeks)
+  const swDadoReturnCornerX = swPanelStartX - ROOM17_BOXED_DADO.dadoShelfD;
+  const swDadoVanityReturnX = ROOM17_OPTION1_PLANES.vanityBaseEastX + ROOM17_BOXED_DADO.dadoShelfD;
+  addShellMesh(
+    'familyBathroom.southWestDadoRail',
+    buildSweptMitredMouldingGeometry(
+      [
+        [swDadoReturnCornerX, ROOM17_OPTION1_PLANES.southWallZ + 0.002],
+        [swDadoReturnCornerX, ROOM17_OPTION1_PLANES.southWallZ],
+        [swDadoVanityReturnX, ROOM17_OPTION1_PLANES.southWallZ],
+        [swDadoVanityReturnX, ROOM17_OPTION1_PLANES.southWallZ + 0.002],
+      ],
+      DADO_SHELF_PROFILE,
+      dadoBaseY,
+      { startMitreSign: 0, endMitreSign: 0 }
+    ),
+    wimborneWhitePanellingMat
+  );
+
+  const swSkirtReturnCornerX = swPanelStartX - ROOM17_BOXED_DADO.skirtingD;
+  addShellMesh(
+    'familyBathroom.southWestSkirting',
+    buildSweptMitredMouldingGeometry(
+      [
+        [swSkirtReturnCornerX, ROOM17_OPTION1_PLANES.southWallZ + 0.002],
+        [swSkirtReturnCornerX, ROOM17_OPTION1_PLANES.southWallZ],
+        [ROOM17_OPTION1_PLANES.vanityBaseEastX, ROOM17_OPTION1_PLANES.southWallZ],
       ],
       BOXED_SKIRTING_PROFILE,
       floorTopY,

@@ -48,7 +48,7 @@ function ensureNamedAddedChildren(
  */
 export function buildBedroom4(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'windowFrameMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'upperWallTopY' | 'wallCapMat' | 'wardrobeMat' | 'warmRoomPlasterMat' | 'wimborneWhiteJoineryMat' | 'windowFrameMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addShakerWardrobeDoor' | 'addUpperBedroomChimneyBreastWithFireplace' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperExteriorBrickWall' | 'addUpperInteriorWall' | 'applyWorldSpaceBrickUVs' | 'tagUpperCutawayWall'>
 ): void {
   const { firstFloorMeshGroup: scene } = ctx;
@@ -58,7 +58,6 @@ export function buildBedroom4(
     addUpperBedroomChimneyBreastWithFireplace,
     addUpperBrickWallAlongZWithWindow,
     addUpperExteriorBrickWall,
-    antiqueOakSkirtingMat,
     applyWorldSpaceBrickUVs,
     exteriorBrickMat,
     floorTopY,
@@ -68,6 +67,7 @@ export function buildBedroom4(
     wallCapMat,
     wardrobeMat,
     warmRoomPlasterMat,
+    wimborneWhiteJoineryMat,
   } = kit;
 
   const collarCeilingY = 5.05; // Surveyed Room 22 vaulted collar: +3.00m above +2.05m FFL
@@ -363,15 +363,32 @@ export function buildBedroom4(
       );
     }
 
+    // Flush painted Shaker base plinth across southEastCupboards (below doorBaseY = floorTopY + 0.15m, flush with Shaker door stiles at Z = 10.834m)
+    const plinthH = 0.146;
+    const plinthD = 0.016; // Z = 10.834m .. 10.850m
+    const plinthW = eastWallFrontX - cupMinX;
+    const basePlinthGeo = new THREE.BoxGeometry(plinthW, plinthH, plinthD);
+    basePlinthGeo.computeBoundingSphere();
+    const basePlinth = new THREE.Mesh(basePlinthGeo, wardrobeMat);
+    basePlinth.name = 'bedroom4.southEastCupboards.basePlinth';
+    basePlinth.position.set(
+      (cupMinX + eastWallFrontX) * 0.5,
+      floorTopY + 0.002 + plinthH * 0.5,
+      10.85 - plinthD * 0.5
+    );
+    basePlinth.castShadow = true;
+    basePlinth.receiveShadow = true;
+    cupGroup.add(basePlinth);
+
     scene.add(cupGroup);
   }
 
-  // Issue #2, #4, #5 & #7: Continuous 45°-mitred skirting along Bedroom 4 North-East Pier (`Z = 8.39m`), East Wall, South Alcove Cupboards,
-  // Chimney Breast, SW Alcove, West Wall, and North Wall up to the door architrave (`X = -18.224m`)!
+  // Continuous 45°-mitred Wimborne White skirtings stopped cleanly (0mm gap, square butt) at southEastCupboards cheeks (Z = 10.834m)
   {
     const eastWallSlope = (-17.25 - -16.82) / (11.77 - 2.4);
     const getEastInnerX = (wz: number): number =>
       -16.82 + eastWallSlope * (wz - 2.4) - 0.14;
+    const cupboardFrontZ = 10.834;
 
     for (const [skirtName, path] of [
       [
@@ -379,8 +396,12 @@ export function buildBedroom4(
         [
           [-17.165, 8.39],
           [getEastInnerX(8.39), 8.39],
-          [getEastInnerX(10.85), 10.85],
-          [-19.25, 10.85],
+          [getEastInnerX(cupboardFrontZ), cupboardFrontZ],
+        ] as const,
+      ],
+      [
+        'bedroom4.southChimneyEastMitredSkirting',
+        [
           [-19.25, 11.09],
           [-19.57, 11.09],
         ] as const,
@@ -399,7 +420,7 @@ export function buildBedroom4(
     ] as const) {
       const skirtGeo = buildMitredWallSkirtingGeometry(path, floorTopY);
       skirtGeo.computeBoundingSphere();
-      const skirtMesh = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
+      const skirtMesh = new THREE.Mesh(skirtGeo, wimborneWhiteJoineryMat);
       skirtMesh.name = skirtName;
       skirtMesh.userData.isArchitecturalShell = true;
       skirtMesh.castShadow = true;

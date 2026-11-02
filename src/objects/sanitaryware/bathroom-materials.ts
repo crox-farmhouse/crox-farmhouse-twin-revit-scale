@@ -609,17 +609,29 @@ export function getWcSeatMaterial(seatFinish: WcSeatFinish): THREE.MeshPhysicalM
     });
   } else if (seatFinish === 'darkOak') {
     const darkOak = getDarkOakVeneerMaterials();
+    const seatColorMap = darkOak.veneer.map!.clone();
+    seatColorMap.name = 'bathroom.wcSeat.darkOak.color';
+    seatColorMap.repeat.set(1, 1);
+    seatColorMap.needsUpdate = true;
+    const seatBumpMap = darkOak.veneer.bumpMap!.clone();
+    seatBumpMap.name = 'bathroom.wcSeat.darkOak.bump';
+    seatBumpMap.repeat.set(1, 1);
+    seatBumpMap.needsUpdate = true;
+    const seatRoughMap = darkOak.veneer.roughnessMap!.clone();
+    seatRoughMap.name = 'bathroom.wcSeat.darkOak.roughness';
+    seatRoughMap.repeat.set(1, 1);
+    seatRoughMap.needsUpdate = true;
     mat = new THREE.MeshPhysicalMaterial({
       name: 'bathroom.wcSeat.darkOak',
       color: 0xffffff,
-      map: darkOak.veneer.map,
-      bumpMap: darkOak.veneer.bumpMap,
-      bumpScale: 0.001,
-      roughnessMap: darkOak.veneer.roughnessMap,
+      map: seatColorMap,
+      bumpMap: seatBumpMap,
+      bumpScale: 0.0007,
+      roughnessMap: seatRoughMap,
       metalness: 0.0,
-      roughness: 0.3,
-      clearcoat: 0.44,
-      clearcoatRoughness: 0.16,
+      roughness: 0.34,
+      clearcoat: 0.38,
+      clearcoatRoughness: 0.2,
     });
   } else {
     const maps = getWoodSeatMaps(seatFinish);
@@ -805,27 +817,35 @@ export function getDarkOakVeneerMaterials(): DarkOakVeneerMaterialPalette {
     const v = y / h;
     for (let x = 0; x < w; x++) {
       const u = x / w;
-      const cathedral = seamlessFbm2D(u, v, 3, 4, 14107);
-      const fiber = seamlessNoise2D(u, v, 10, 96, 14221);
-      const medullary = seamlessNoise2D(u, v, 32, 12, 14347);
-      const ringWave = Math.sin((u * 9.5 + cathedral * 2.8 + v * 0.45) * Math.PI * 2) * 0.5 + 0.5;
-      const pore = Math.pow(ringWave, 2.2);
+      // Straight-grained quarter-sawn fumed/smoked English oak (#38281d .. #463325):
+      // fine longitudinal vessel pores along v with minimal lateral drift and delicate medullary rays.
+      const subtleDrift = seamlessFbm2D(u, v, 2, 2, 14107);
+      const fineFiber = seamlessNoise2D(u, v, 36, 128, 14221);
+      const openPore = seamlessNoise2D(u, v, 56, 96, 14519);
+      const medullary = seamlessNoise2D(u, v, 44, 16, 14347);
+      const straightRing =
+        Math.sin((u * 22.0 + (subtleDrift - 0.5) * 0.55) * Math.PI * 2) * 0.5 + 0.5;
+      const poreGroove = Math.pow(Math.max(0, 1 - openPore * 1.15), 2.4);
+      const rayFleck = Math.pow(medullary, 3.2);
 
-      // Deep smoked espresso oak (#3d2b1d) with warm umber cathedral highlights (#634730)
-      const grainLift = (pore - 0.42) * 30 + (fiber - 0.5) * 18 + (medullary - 0.5) * 8;
+      const grainLift =
+        (straightRing - 0.5) * 9 +
+        (fineFiber - 0.5) * 11 -
+        poreGroove * 13 +
+        rayFleck * 7;
       const idx = (y * w + x) * 4;
-      colorData[idx] = clampByte(72 + grainLift * 1.05);
-      colorData[idx + 1] = clampByte(51 + grainLift * 0.78);
-      colorData[idx + 2] = clampByte(35 + grainLift * 0.54);
+      colorData[idx] = clampByte(63 + grainLift * 0.98);
+      colorData[idx + 1] = clampByte(45 + grainLift * 0.76);
+      colorData[idx + 2] = clampByte(33 + grainLift * 0.56);
       colorData[idx + 3] = 255;
 
-      const bByte = clampByte(132 + (fiber - 0.5) * 58 - pore * 28);
+      const bByte = clampByte(132 + (fineFiber - 0.5) * 36 - poreGroove * 44);
       bumpData[idx] = bByte;
       bumpData[idx + 1] = bByte;
       bumpData[idx + 2] = bByte;
       bumpData[idx + 3] = 255;
 
-      const rByte = clampByte(216 + pore * 28 + (1 - fiber) * 12);
+      const rByte = clampByte(218 + poreGroove * 26 + (1 - fineFiber) * 10);
       roughData[idx] = rByte;
       roughData[idx + 1] = rByte;
       roughData[idx + 2] = rByte;

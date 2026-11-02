@@ -45,7 +45,7 @@ function tagHighLodDetail(mesh: THREE.Mesh): void {
  */
 export function buildUpperLanding(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'skirtingMat' | 'upperWallTopY' | 'wallCapMat' | 'warmRoomPlasterMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'exteriorBrickMat' | 'floorBaseY' | 'floorTopY' | 'oakFloorMat' | 'skirtingMat' | 'upperWallTopY' | 'wallCapMat' | 'warmRoomPlasterMat' | 'wimborneWhiteJoineryMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addUpperBrickWallAlongXWithWindow' | 'addUpperInteriorWall' | 'applyWorldSpaceBrickUVs' | 'doorH' | 'tagUpperCutawayWall'>
 ): void {
   const { firstFloorMeshGroup: scene, interactions } = ctx;
@@ -61,6 +61,7 @@ export function buildUpperLanding(
     upperWallTopY,
     wallCapMat,
     warmRoomPlasterMat,
+    wimborneWhiteJoineryMat,
   } = kit;
   // =========================================================================
   // 3. MAIN STAIRCASE LANDING (DN) — Matching New Photos 3 & 4
@@ -553,12 +554,17 @@ export function buildUpperLanding(
       [2, -15.38],
       [3, -13.38],
     ] as const) {
-      // Lower oak post across the exposed brick panel (seated cleanly on the +Z = -2.490m face of northInteriorBrickPanel)
-      const lowerPost = new THREE.Mesh(sharedLowerPostGeo, darkTimberBeamMat);
+      // Lower oak post across the exposed brick panel (postIdx === 2 sits cleanly at Y = floorTopY + 0.176 on top of the 176mm stringer-to-skirting plinth block)
+      const postBaseOffset = postIdx === 2 ? 0.184 : 0.148;
+      const postH = (floorTopY + 0.98) - (floorTopY + postBaseOffset);
+      const lowerPostGeo =
+        postIdx === 2 ? new THREE.BoxGeometry(0.115, postH, 0.038) : sharedLowerPostGeo;
+      if (postIdx === 2) lowerPostGeo.computeBoundingSphere();
+      const lowerPost = new THREE.Mesh(lowerPostGeo, darkTimberBeamMat);
       lowerPost.name = `upperLanding.northWallPost.lower.${postIdx}`;
       lowerPost.position.set(
         postX,
-        floorTopY + 0.148 + lowerPostH / 2,
+        floorTopY + postBaseOffset + postH / 2,
         -2.471
       );
       lowerPost.castShadow = true;
@@ -1074,7 +1080,7 @@ export function buildUpperLanding(
       geo.setIndex(bandIdx);
       geo.computeVertexNormals();
       geo.computeBoundingSphere();
-      const mesh = new THREE.Mesh(geo, antiqueOakSkirtingMat);
+      const mesh = new THREE.Mesh(geo, wimborneWhiteJoineryMat);
       mesh.name = name;
       mesh.userData.isArchitecturalShell = true;
       mesh.castShadow = true;
@@ -1115,7 +1121,7 @@ export function buildUpperLanding(
     backFloorY: floorTopY,               // -normal = East (Upper Landing at Y = 2.160m)
     wallMaterial: warmRoomPlasterMat,
     capMaterial: warmRoomPlasterMat,
-    skirtingMaterial: antiqueOakSkirtingMat,
+    skirtingMaterial: wimborneWhiteJoineryMat,
     skipCap: true,
     skipWallBody: true,
     addFrontSkirting: false, // Bedroom 2 & West Wing Hallway build continuous 45°-mitred skirtings on the West face
@@ -1133,7 +1139,7 @@ export function buildUpperLanding(
         doorHeight: 1.88,
         lowerFloorY: westWingCorridorFloorY,
         upperFloorY: floorTopY,
-        architraveMaterial: antiqueOakSkirtingMat,
+        architraveMaterial: wimborneWhiteJoineryMat,
       },
     ],
   });

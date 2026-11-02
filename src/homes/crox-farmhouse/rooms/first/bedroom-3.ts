@@ -41,7 +41,7 @@ function ensureNamedAddedChildren(
  */
 export function buildBedroom3(
   ctx: SceneBuilderContext,
-  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'floorTopY' | 'oakFloorMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'warmRoomPlasterMat'> &
+  kit: Pick<ReturnType<typeof createFirstFloorMaterials>, 'antiqueOakSkirtingMat' | 'brassMat' | 'floorTopY' | 'oakFloorMat' | 'timberDoorMat' | 'upperWallTopY' | 'wallCapMat' | 'warmRoomPlasterMat' | 'wimborneWhiteJoineryMat'> &
     Pick<ReturnType<typeof createFirstFloorShellKit>, 'addFirstFloorSlab' | 'addUpperBedroomChimneyBreastWithFireplace' | 'addUpperBrickWallAlongZWithWindow' | 'addUpperInteractiveDoor' | 'doorH'>
 ): void {
   const { firstFloorMeshGroup: scene, interactions } = ctx;
@@ -50,13 +50,12 @@ export function buildBedroom3(
     addUpperBedroomChimneyBreastWithFireplace,
     addUpperBrickWallAlongZWithWindow,
     addUpperInteractiveDoor,
-    antiqueOakSkirtingMat,
     brassMat,
     floorTopY,
     oakFloorMat,
-    timberDoorMat,
     wallCapMat,
     warmRoomPlasterMat,
+    wimborneWhiteJoineryMat,
   } = kit;
 
   const corridorFloorY = 2.095;
@@ -127,7 +126,7 @@ export function buildBedroom3(
       wallMaterial: warmRoomPlasterMat,
       capMaterial: wallCapMat,
       skipCap: true,
-      skirtingMaterial: antiqueOakSkirtingMat,
+      skirtingMaterial: wimborneWhiteJoineryMat,
       addFrontSkirting: false,
       addBackSkirting: false,
       openings: [
@@ -139,8 +138,8 @@ export function buildBedroom3(
           doorHeight: 1.95,
           lowerFloorY: floorTopY,
           upperFloorY: corridorFloorY,
-          architraveMaterial: antiqueOakSkirtingMat,
-          doorLeafMaterial: timberDoorMat,
+          architraveMaterial: wimborneWhiteJoineryMat,
+          doorLeafMaterial: wimborneWhiteJoineryMat,
           hardwareMaterial: brassMat,
           hingeSide: 'left',
           openAngle: -Math.PI * 0.48,
@@ -195,7 +194,7 @@ export function buildBedroom3(
   ] as const) {
     const skirtGeo = buildMitredWallSkirtingGeometry(path, corridorFloorY);
     skirtGeo.computeBoundingSphere();
-    const skirtMesh = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
+    const skirtMesh = new THREE.Mesh(skirtGeo, wimborneWhiteJoineryMat);
     skirtMesh.name = skirtName;
     skirtMesh.userData.isArchitecturalShell = true;
     skirtMesh.castShadow = true;
@@ -235,7 +234,7 @@ export function buildBedroom3(
     const bed4StepRise = corridorFloorY - bed4FloorY;
     const bed4StepGeo = new THREE.BoxGeometry(0.86, bed4StepRise, 0.116);
     bed4StepGeo.computeBoundingSphere();
-    const bed4Step = new THREE.Mesh(bed4StepGeo, antiqueOakSkirtingMat);
+    const bed4Step = new THREE.Mesh(bed4StepGeo, wimborneWhiteJoineryMat);
     bed4Step.name = 'bedroom4.doorThresholdStep';
     bed4Step.userData.isArchitecturalShell = true;
     bed4Step.position.set(-17.67, bed4FloorY + bed4StepRise * 0.5, 8.332);
@@ -297,7 +296,7 @@ export function buildBedroom3(
   ] as const) {
     const skirtGeo = buildMitredWallSkirtingGeometry(path, floorTopY);
     skirtGeo.computeBoundingSphere();
-    const skirtMesh = new THREE.Mesh(skirtGeo, antiqueOakSkirtingMat);
+    const skirtMesh = new THREE.Mesh(skirtGeo, wimborneWhiteJoineryMat);
     skirtMesh.name = skirtName;
     skirtMesh.userData.isArchitecturalShell = true;
     skirtMesh.castShadow = true;
